@@ -6,23 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('message_type', function (Blueprint $table)
         {
-            $table->increments('id');
+            $table->tinyIncrements('id');
             $table->string('name');
-            $table->tinyInteger('status')->default(2);
+            $table->boolean('status')->default(1);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('message_type');
     }

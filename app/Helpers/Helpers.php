@@ -244,4 +244,41 @@ class Helpers
 
         return $languageToCountryMap[$languageCode] ?? $languageCode;
     }
+
+    /**
+     * Format money amount with currency
+     *
+     * @param  float  $amount  Amount to format
+     * @param  string  $currency  Currency code (USD, ARS, EUR, etc.)
+     * @param  int  $decimals  Number of decimal places
+     * @return string Formatted money string
+     */
+    public static function formatMoney($amount, $currency = 'USD', $decimals = 2)
+    {
+        $symbols = [
+            'USD' => '$',
+            'ARS' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'BRL' => 'R$',
+            'MXN' => '$',
+        ];
+
+        $symbol = $symbols[$currency] ?? $currency.' ';
+        $formattedAmount = number_format($amount, $decimals, '.', ',');
+
+        return $symbol.$formattedAmount;
+    }
+
+    /**
+     * Format money amount with currency using Laravel Cashier Money class
+     *
+     * @param  int  $amount  Amount in cents
+     * @param  string  $currency  Currency code
+     * @return string Formatted money string
+     */
+    public static function formatMoneyFromCents($amount, $currency = 'USD')
+    {
+        return \Laravel\Cashier\Cashier::formatAmount($amount, $currency);
+    }
 }

@@ -14,6 +14,8 @@ class MessageDeliveries extends Component
 
     public $search = '';
 
+    public $statusFilter = 'all';
+
     protected $paginationTheme = 'bootstrap';
 
     public function mount($messageId)
@@ -23,11 +25,32 @@ class MessageDeliveries extends Component
 
     public function updating($name, $value)
     {
-        // Reset pagination when search changes
-        if ($name === 'search')
+        // Reset pagination when search or filter changes
+        if ($name === 'search' || $name === 'statusFilter')
         {
             $this->resetPage();
         }
+    }
+
+    #[\Livewire\Attributes\On('filterByStatus')]
+    public function filterByStatus($status = 'all')
+    {
+        // Accept both direct value and named parameter from event
+        if (is_array($status) && isset($status['status']))
+        {
+            $status = $status['status'];
+        }
+
+        // Toggle filter: if clicking the same filter, show all
+        if ($this->statusFilter === $status)
+        {
+            $this->statusFilter = 'all';
+        } else
+        {
+            $this->statusFilter = $status;
+        }
+
+        $this->resetPage();
     }
 
     public function getDeliveriesProperty()
@@ -40,6 +63,32 @@ class MessageDeliveries extends Component
         $query = MessageDelivery::where('message_id', $this->messageId)
             ->with(['contact']);
 
+        // Apply status filter
+        if ($this->statusFilter !== 'all')
+        {
+            switch ($this->statusFilter)
+            {
+                case 'sent':
+                    $query->whereNotNull('sent_at')->whereNull('delivered_at');
+                    break;
+                case 'delivered':
+                    $query->whereNotNull('delivered_at');
+                    break;
+                case 'opened':
+                    $query->whereNotNull('opened_at');
+                    break;
+                case 'clicked':
+                    $query->whereNotNull('clicked_at');
+                    break;
+                case 'failed':
+                    $query->where('status_id', 4);
+                    break;
+                case 'pending':
+                    $query->whereNull('sent_at');
+                    break;
+            }
+        }
+
         // Apply search filter
         if ($this->search)
         {
@@ -50,7 +99,7 @@ class MessageDeliveries extends Component
             });
         }
 
-        $paginated = $query->orderBy('created_at', 'desc')->paginate(13);
+        $paginated = $query->orderBy('created_at', 'desc')->paginate(10);
 
         // Transform the items manually
         $transformedItems = collect($paginated->items())->map(function ($delivery)
@@ -115,33 +164,35 @@ class MessageDeliveries extends Component
     {
         if ($delivery->status_id == 4)
         {
-            return 'Failed';
+            return 'Fallido';
         } elseif ($delivery->delivered_at)
         {
-            return 'Delivered';
+            return 'Entregado';
         } elseif ($delivery->status_id == 3 && $delivery->delivered_at)
         {
-            return 'Delivered';
+            return 'Entregado';
         } elseif ($delivery->status_id == 3)
         {
-            return 'Sending';
+            return 'Enviando';
         } elseif ($delivery->sent_at && $delivery->sent_at->isFuture())
         {
-            return 'Scheduled';
+            return 'Programado';
         } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && ! $delivery->delivered_at)
         {
-            return 'Sent';
+            return 'Enviado';
         } else
         {
-            return 'Pending';
+            return 'Pendiente';
         }
     }
 
     public function render()
     {
+        $deliveries = $this->deliveries;
+
         return view('livewire.message-deliveries', [
-            'deliveries' => $this->deliveries,
-            'hasDeliveries' => MessageDelivery::where('message_id', $this->messageId)->exists(),
+            'deliveries' => $deliveries,
+            'hasDeliveries' => $deliveries->total() > 0,
         ]);
     }
 }

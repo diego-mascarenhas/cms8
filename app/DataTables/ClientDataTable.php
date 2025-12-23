@@ -59,9 +59,16 @@ class ClientDataTable extends DataTable
     {
         return $model->newQuery()
             ->activeClients()
+            ->select([
+                'enterprises.id',
+                'enterprises.name',
+                'enterprises.responsible_id',
+                'enterprises.status_id',
+                'enterprises.team_id',
+            ])
             ->with([
                 'responsible:id,name',
-                'status',
+                'status:id,name,label_class',
             ]);
     }
 

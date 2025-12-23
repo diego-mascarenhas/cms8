@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Service extends Model
 {
@@ -16,6 +16,7 @@ class Service extends Model
     public $timestamps = true;
 
     protected $table = 'services';
+
     protected static function booted()
     {
         // Team scope via related enterprise

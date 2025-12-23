@@ -3,19 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
-use App\Helpers\DnsHelper;
-use App\Mail\MySendGridMail;
-use App\Models\Contact;
-use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
-use App\Models\Template;
-use App\Models\User;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use stdClass;
@@ -37,8 +32,8 @@ class MessageController extends Controller
     {
         $data = new stdClass;
         $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
-        $data->contactStatuses = ContactStatus::getOptions();
+        $data->templates = \App\Models\Template::getOptions();
+        $data->contactStatuses = \App\Models\ContactStatus::getOptions();
 
         return view('message.form', compact('data'));
     }
@@ -58,7 +53,7 @@ class MessageController extends Controller
         $templateId = $data['template_id'] ?? null;
 
         // Set status_id based on checkbox presence
-        $status_id = $request->has('status_id') ? 1 : 0; // 1 = active, 0 = inactive
+        $status_id = $request->has('status_id') ? 1 : 0;  // 1 = active, 0 = inactive
 
         // Set boolean fields based on checkbox presence
         $show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
@@ -70,7 +65,7 @@ class MessageController extends Controller
             [
                 'name' => $data['name'],
                 'type_id' => $data['type_id'],
-                'category_id' => $data['category_id'] ?: null, // Convert empty string to null
+                'category_id' => $data['category_id'] ?: null,  // Convert empty string to null
                 'contact_status_id' => $data['contact_status_id'] ?? null,
                 'template_id' => $templateId,
                 'text' => $data['text'],
@@ -82,7 +77,7 @@ class MessageController extends Controller
             ],
         );
 
-        return redirect()->route('message-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('message.index')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -90,33 +85,59 @@ class MessageController extends Controller
      */
     public function show(string $id)
     {
-        // Obtener el mensaje
-        $message = Message::findOrFail($id);
+        // Obtener el mensaje con relaciones necesarias
+        $message = Message::with('category')->findOrFail($id);
 
-        // Obtener configuración de correo saliente del team
-        $team = auth()->user()->currentTeam;
+        // Obtener configuración de correo saliente del team con settings cargados
+        $team = auth()->user()->currentTeam->load('settings');
         $emailConfig = $team->getOutgoingEmailConfig();
 
-        // Contar contactos que coinciden con la categoría del mensaje
+        // Contar contactos que coinciden con la categoría y estado de contacto del mensaje
         $contactsInCategory = 0;
         if ($message->category)
         {
-            $contactsInCategory = $message->category->contacts()->count();
+            $query = $message->category->contacts();
+
+            // Apply contact status filter if specified in the message
+            if ($message->contact_status_id)
+            {
+                $query->where('status_id', $message->contact_status_id);
+            }
+
+            $contactsInCategory = $query->count();
+        } elseif ($message->contact_status_id)
+        {
+            // If no category but has contact status filter, count all team contacts with that status
+            $contactsInCategory = \App\Models\Contact::where('team_id', $message->team_id)
+                ->where('status_id', $message->contact_status_id)
+                ->whereNotNull('email')
+                ->count();
         }
 
-        // Obtener estadísticas reales calculadas desde la base de datos
+        // Obtener estadísticas reales calculadas desde la base de datos (optimizado con una sola query)
+        $deliveryStats = MessageDelivery::where('message_id', $message->id)
+            ->selectRaw('
+                COUNT(DISTINCT contact_id) as subscribers,
+                SUM(CASE WHEN status_id = 0 THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered,
+                SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+                SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicks
+            ')
+            ->first();
+
         $stats = [
-            'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
-            'remaining' => 0, // Puedes calcularlo según tu lógica
-            'failed' => MessageDelivery::where('message_id', $message->id)->where('status_id', 0)->count(),
-            'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
-            'rejected' => 0, // Ajusta según tu lógica
-            'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
-            'opened' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(),
-            'unsubscribed' => 0, // Si tienes tracking de desuscriptos
-            'clicks' => MessageDelivery::where('message_id', $message->id)->whereNotNull('clicked_at')->count(),
-            'unique_opens' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(), // Same as opened for now
-            'ratio' => 0, // Se calculará después
+            'subscribers' => $deliveryStats->subscribers ?? 0,
+            'remaining' => 0,  // Puedes calcularlo según tu lógica
+            'failed' => $deliveryStats->failed ?? 0,
+            'sent' => $deliveryStats->sent ?? 0,
+            'rejected' => 0,  // Ajusta según tu lógica
+            'delivered' => $deliveryStats->delivered ?? 0,
+            'opened' => $deliveryStats->opened ?? 0,
+            'unsubscribed' => 0,  // Si tienes tracking de desuscriptos
+            'clicks' => $deliveryStats->clicks ?? 0,
+            'unique_opens' => $deliveryStats->opened ?? 0,  // Same as opened for now
+            'ratio' => 0,  // Se calculará después
         ];
 
         // Calcular el ratio de apertura (open rate)
@@ -149,7 +170,7 @@ class MessageController extends Controller
 
         // Obtener links de conversión agrupados por URL única
         $links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
-            ->where('click_count', '>', 0) // Only count links that were actually clicked
+            ->where('click_count', '>', 0)  // Only count links that were actually clicked
             ->with('messageDelivery.contact')
             ->get()
             ->groupBy('link')
@@ -175,18 +196,21 @@ class MessageController extends Controller
 
         // Verificar configuración DNS para el dominio del remitente
         $dnsStatus = null;
-        $mailbabyUser = null;
+        $apiUser = null;
 
         if (! empty($emailConfig['from_address']))
         {
-            // Obtener el usuario de MailBaby desde la configuración
-            $mailbabyUser = config('services.mailbaby.enabled') ? env('MAIL_USERNAME') : null;
+            // Obtener configuración de API de email
+            $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
 
             // Verificar configuración DNS
-            $dnsStatus = DnsHelper::checkEmailDomainConfiguration(
-                $emailConfig['from_address'],
-                $mailbabyUser,
-            );
+            if (class_exists(\App\Helpers\DnsHelper::class))
+            {
+                $dnsStatus = \App\Helpers\DnsHelper::checkEmailDomainConfiguration(
+                    $emailConfig['from_address'],
+                    $apiUser,
+                );
+            }
         }
 
         return view('message.show', [
@@ -198,7 +222,7 @@ class MessageController extends Controller
             'emailConfig' => $emailConfig,
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
-            'mailbabyUser' => $mailbabyUser,
+            'apiUser' => $apiUser,
         ]);
     }
 
@@ -211,12 +235,15 @@ class MessageController extends Controller
 
         if (! $data)
         {
-            return redirect()->route('message-list')->with('error', 'Message not found.');
+            return redirect()->route('message.index')->with('error', 'Message not found.');
         }
 
         $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
-        $data->contactStatuses = ContactStatus::getOptions();
+        $data->templates = \App\Models\Template::getOptions();
+        $data->contactStatuses = \App\Models\ContactStatus::getOptions();
+
+        // Check if message has any deliveries created
+        $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
 
         return view('message.form', compact('data'));
     }
@@ -238,7 +265,7 @@ class MessageController extends Controller
 
         $model->delete();
 
-        return response()->json(['success' => 'The record has been deleted.'], 200);
+        return redirect()->route('message.index')->with('success', 'The record has been deleted.');
     }
 
     public function sendSmsMessage(Request $request)
@@ -289,25 +316,11 @@ class MessageController extends Controller
         }
     }
 
-    public function sendSendGridMessage()
-    {
-        $data = [
-            'to' => env('MAILBOX_USERNAME'),
-            'dynamic_template_data' => [
-                'name' => env('APP_NAME', 'Laravel'),
-                'message' => env('APP_NAME', 'Laravel').' SendGrid Message testing...',
-                'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
-            ],
-        ];
-
-        Mail::send(new MySendGridMail($data));
-    }
-
     public function unsubscribe($email)
     {
         // Update contact status to "Perdido" (ID 4) when they unsubscribe
         // But don't change status if they are already a client (status_id 5)
-        $contact = Contact::where('email', $email)->first();
+        $contact = \App\Models\Contact::where('email', $email)->first();
 
         if ($contact)
         {
@@ -344,18 +357,54 @@ class MessageController extends Controller
         {
             $message = Message::findOrFail($id);
 
-            // Simply activate the message - the scheduler will handle delivery creation
-            $message->update([
-                'status_id' => 1, // Active
-                'started_at' => now(), // Mark when campaign started
-            ]);
+            // Validate email sender configuration
+            $team = auth()->user()->currentTeam->load('settings');
+            $emailConfig = $team->getOutgoingEmailConfig();
+
+            if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email sender not configured. Please configure it in Team Settings.',
+                ], 400);
+            }
+
+            // Activate the message
+            $updateData = ['status_id' => 1];
+
+            // Only update started_at if it's the first time starting or if it was never started
+            if (! $message->started_at)
+            {
+                $updateData['started_at'] = now();
+            }
+
+            $message->update($updateData);
 
             // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();
 
+            // Check if there are pending deliveries to send
+            $pendingDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)
+                ->where(function ($query)
+                {
+                    $query->whereNull('sent_at')
+                        ->orWhere('sent_at', '>', now());
+                })
+                ->count();
+
+            $responseMessage = 'Campaign activated successfully. ';
+
+            if ($pendingDeliveries > 0)
+            {
+                $responseMessage .= "{$pendingDeliveries} deliveries are pending and will be sent by the scheduler.";
+            } else
+            {
+                $responseMessage .= "{$contactsCount} contacts will be processed by the scheduler.";
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => "Campaign activated successfully. {$contactsCount} contacts will be processed by the scheduler.",
+                'message' => $responseMessage,
             ]);
         } catch (\Exception $e)
         {
@@ -437,6 +486,62 @@ class MessageController extends Controller
         }
     }
 
+    public function sendPendingNow(Request $request, $id)
+    {
+        try
+        {
+            $message = Message::findOrFail($id);
+
+            // Count ALL pending deliveries (including future scheduled ones)
+            $pendingCount = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1) // pending status
+                ->whereNull('delivered_at') // not delivered yet
+                ->count();
+
+            if ($pendingCount === 0)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay deliveries pendientes. Todos los contactos ya recibieron el correo.',
+                ], 400);
+            }
+
+            // Queue pending deliveries immediately (including future scheduled)
+            $deliveries = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1)
+                ->whereNull('delivered_at')
+                ->with(['contact', 'message', 'team'])
+                ->limit(100) // Process max 100 at a time
+                ->get();
+
+            $queued = 0;
+            foreach ($deliveries as $delivery)
+            {
+                // Dispatch immediately without delay
+                \App\Jobs\SendMessageCampaignJob::dispatch($delivery)->onQueue('mailer');
+                $queued++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se encolaron {$queued} correos para envío inmediato",
+                'queued' => $queued,
+                'remaining' => max(0, $pendingCount - $queued),
+            ]);
+        } catch (\Exception $e)
+        {
+            Log::error('Error sending pending deliveries', [
+                'message_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al encolar correos: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Get contact details for a specific link
      */
@@ -453,7 +558,7 @@ class MessageController extends Controller
             // Get contact details for this specific link - only those who actually clicked
             $linkDetails = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
                 ->where('link', $link)
-                ->where('click_count', '>', 0) // Only contacts who actually clicked
+                ->where('click_count', '>', 0)  // Only contacts who actually clicked
                 ->with(['messageDelivery.contact'])
                 ->get();
 
@@ -483,7 +588,7 @@ class MessageController extends Controller
                         'first_click' => $linkDetail->created_at,
                         'last_click' => $linkDetail->updated_at,
                     ];
-                    $uniqueClicks++; // Count unique contacts
+                    $uniqueClicks++;  // Count unique contacts
                 }
 
                 $contactData[$contactId]['click_count'] += $clickCount;
@@ -597,19 +702,16 @@ class MessageController extends Controller
 
             switch ($emailProvider)
             {
-                case 'mailgun':
-                    if (config('services.mailgun.secret'))
+                case 'api':
+                    if (config('humano-mailer.providers.api.enabled'))
                     {
-                        Mail::mailer('mailgun')->to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                        // Use configured email API (MailBaby, Mailgun, etc.)
+                        Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     } else
                     {
-                        Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
+                        Log::warning('TEST SEND: Email API not configured, using default SMTP');
                         Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     }
-                    break;
-                case 'mailbaby':
-                    Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
-                    Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     break;
                 case 'smtp':
                 default:
@@ -754,32 +856,32 @@ class MessageController extends Controller
 
         // Check for common SMTP error patterns
         if (strpos($errorMessage, '550 domain is not configured with ORIGIN IP IN SPF') !== false ||
-            strpos($errorMessage, 'SPF') !== false ||
-            strpos($errorMessage, '550') !== false)
+                strpos($errorMessage, 'SPF') !== false ||
+                strpos($errorMessage, '550') !== false)
         {
             return "No se pudo enviar el email de prueba.\nPor favor, contacte con soporte técnico para autorizar la salida de emails desde su dominio.";
         }
 
         // Check for authentication errors
         if (strpos($errorMessage, '535') !== false ||
-            strpos($errorMessage, 'authentication') !== false ||
-            strpos($errorMessage, 'login') !== false)
+                strpos($errorMessage, 'authentication') !== false ||
+                strpos($errorMessage, 'login') !== false)
         {
             return 'Error de autenticación en el servidor de correo. Verifique las credenciales de configuración.';
         }
 
         // Check for connection errors
         if (strpos($errorMessage, 'connection') !== false ||
-            strpos($errorMessage, 'timeout') !== false ||
-            strpos($errorMessage, 'refused') !== false)
+                strpos($errorMessage, 'timeout') !== false ||
+                strpos($errorMessage, 'refused') !== false)
         {
             return 'No se pudo conectar al servidor de correo. Verifique la configuración de conexión.';
         }
 
         // Check for quota exceeded
         if (strpos($errorMessage, 'quota') !== false ||
-            strpos($errorMessage, 'limit') !== false ||
-            strpos($errorMessage, 'exceeded') !== false)
+                strpos($errorMessage, 'limit') !== false ||
+                strpos($errorMessage, 'exceeded') !== false)
         {
             return 'Se ha alcanzado el límite de envío de emails. Contacte con soporte técnico.';
         }
@@ -802,5 +904,60 @@ class MessageController extends Controller
         // They are now hardcoded in the template content
 
         return $htmlContent;
+    }
+
+    /**
+     * Resend a specific delivery
+     */
+    public function resendDelivery(Request $request, $deliveryId)
+    {
+        try
+        {
+            $delivery = MessageDelivery::findOrFail($deliveryId);
+
+            // Verify the delivery belongs to the current team
+            if ($delivery->team_id !== auth()->user()->current_team_id)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para reenviar esta entrega.',
+                ], 403);
+            }
+
+            // Create a new delivery with the same data but reset status
+            $newDelivery = MessageDelivery::create([
+                'team_id' => $delivery->team_id,
+                'message_id' => $delivery->message_id,
+                'contact_id' => $delivery->contact_id,
+                'status_id' => 1, // pending
+                'sent_at' => now(), // Send immediately
+            ]);
+
+            Log::info('📧 Delivery resend requested', [
+                'original_delivery_id' => $delivery->id,
+                'new_delivery_id' => $newDelivery->id,
+                'contact_email' => $delivery->contact->email ?? 'unknown',
+                'user_id' => auth()->id(),
+            ]);
+
+            // Dispatch the job to send immediately
+            \App\Jobs\SendMessageCampaignJob::dispatch($newDelivery);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'El correo ha sido reenviado exitosamente.',
+            ]);
+        } catch (\Exception $e)
+        {
+            Log::error('❌ Failed to resend delivery', [
+                'delivery_id' => $deliveryId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error al reenviar el correo: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use App\Traits\HasEmailProviderTracking;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MessageDelivery extends Model
 {
-    use HasEmailProviderTracking, HasFactory;
+    use HasFactory;
 
     protected $fillable = [
         'team_id',
@@ -40,7 +39,7 @@ class MessageDelivery extends Model
 
     public function team()
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(\App\Models\Team::class);
     }
 
     public function message()
@@ -50,7 +49,7 @@ class MessageDelivery extends Model
 
     public function contact()
     {
-        return $this->belongsTo(Contact::class);
+        return $this->belongsTo(\App\Models\Contact::class);
     }
 
     public function links()

@@ -8,18 +8,11 @@ return [
     |--------------------------------------------------------------------------
     |
     | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
+    | as Postmark, AWS and more. This file provides the de facto
     | location for this type of information, allowing packages to have
     | a conventional file to locate the various service credentials.
     |
     */
-
-    'mailgun' => [
-        'domain' => env('MAILGUN_DOMAIN'),
-        'secret' => env('MAILGUN_SECRET'),
-        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
-        'scheme' => 'https',
-    ],
 
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
@@ -77,20 +70,26 @@ return [
     ],
 
     'email' => [
-        'provider' => env('EMAIL_PROVIDER', 'smtp'), // mailbaby | mailgun | smtp
+        'provider' => env('EMAIL_PROVIDER', 'smtp'), // mailbaby | smtp
         'fallback_to_smtp' => env('EMAIL_FALLBACK_TO_SMTP', true),
 
         // Email sending delay configuration
         'delay' => [
-            'base_minutes' => (int) env('EMAIL_DELAY_BASE_MINUTES', 1), // Minutes between each email (reduced from 5)
-            'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 60), // Random 0-X seconds added (reduced from 120)
+            'base_minutes' => (int) env('EMAIL_DELAY_BASE_MINUTES', 1), // Minutes between each email
+            'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 60), // Random 0-X seconds added
         ],
 
-        // Campaign processing limits
+        // Campaign processing limits (~20 emails/minute configuration)
         'processing' => [
-            'deliveries_per_campaign_run' => (int) env('EMAIL_DELIVERIES_PER_CAMPAIGN_RUN', 50), // Max deliveries created per campaign per run
-            'deliveries_per_send_run' => (int) env('EMAIL_DELIVERIES_PER_SEND_RUN', 100), // Max deliveries sent per run
+            'deliveries_per_campaign_run' => (int) env('EMAIL_DELIVERIES_PER_CAMPAIGN_RUN', 30), // Max deliveries created per campaign per run (every 5 minutes)
+            'deliveries_per_send_run' => (int) env('EMAIL_DELIVERIES_PER_SEND_RUN', 20), // Max deliveries sent per run (every 1 minute = ~20 emails/minute)
         ],
+    ],
+
+    'currencyfreaks' => [
+        'api_key' => env('CURRENCYFREAKS_API_KEY'),
+        'base_currency' => env('CURRENCYFREAKS_BASE_CURRENCY', 'USD'),
+        'target_currencies' => env('CURRENCYFREAKS_TARGET_CURRENCIES', 'ARS,EUR'),
     ],
 
 ];

@@ -22,35 +22,44 @@
                                         {{ $subscription['status_translated'] }}
                                     </span>
                                     <small class="text-muted d-block mt-2">
-                                        {{ number_format($subscription['amount'], 2) }} 
+                                        {{ number_format($subscription['amount'], 2) }}
                                         {{ $subscription['currency'] }}/{{ $subscription['interval'] === 'year' ? 'año' : 'mes' }}
                                     </small>
                                 </div>
                             </div>
-                            
+
                             @php
-                                $start = \Carbon\Carbon::createFromTimestamp($subscription['current_period_start']);
-                                $end = \Carbon\Carbon::createFromTimestamp($subscription['current_period_end']);
-                                $now = \Carbon\Carbon::now();
-                                $totalDays = $start->diffInDays($end);
-                                $usedDays = $start->diffInDays($now);
-                                $remainingDays = $end->diffInDays($now);
-                                $progressPercentage = ($usedDays / $totalDays) * 100;
+								$start = \Carbon\Carbon::createFromTimestamp($subscription['current_period_start']);
+								$end = \Carbon\Carbon::createFromTimestamp($subscription['current_period_end']);
+								$now = \Carbon\Carbon::now();
+
+								// Total dias del periodo (al menos 1 para evitar división por cero)
+								$totalDays = max(1, $start->diffInDays($end));
+
+								// Días transcurridos dentro del periodo [0, totalDays]
+								$usedDaysRaw = $start->diffInDays($now, false); // negativo si aún no inició
+								$usedDays = max(0, min($totalDays, $usedDaysRaw));
+
+								// Días restantes (0 si ya venció)
+								$remainingDays = max(0, -1 * $end->diffInDays($now, false));
+
+								// Porcentaje de progreso entre 0 y 100
+								$progressPercentage = max(0, min(100, ($usedDays / $totalDays) * 100));
                             @endphp
-                            
+
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span>{{ $usedDays }} de {{ $totalDays }} Días</span>
-                                <span>{{ $remainingDays }} días restantes</span>
+								<span>{{ (int) $usedDays }} de {{ (int) $totalDays }} Días</span>
+								<span>{{ (int) $remainingDays }} días restantes</span>
                             </div>
                             <div class="progress mb-1" style="height: 6px;">
-                                <div class="progress-bar" role="progressbar" 
+                                <div class="progress-bar" role="progressbar"
                                     style="width: {{ round($progressPercentage) }}%"
-                                    aria-valuenow="{{ $progressPercentage }}" 
-                                    aria-valuemin="0" 
+                                    aria-valuenow="{{ $progressPercentage }}"
+                                    aria-valuemin="0"
                                     aria-valuemax="100">
                                 </div>
                             </div>
-                            
+
                             @if($subscription['collection_method'] === 'send_invoice')
                                 <small class="text-muted d-block mt-2">
                                     Facturación por adelantado, pago a {{ $subscription['days_until_due'] }} días

@@ -29,8 +29,16 @@ class ContactController extends Controller
 {
     use TracksContactActions;
 
+    public function __construct()
+    {
+        // Note: Manual authorization in each method due to non-standard route parameter names
+        // Laravel's authorizeResource() expects {contact} parameter, but routes use {id}
+    }
+
     public function index(ContactDataTable $dataTable)
     {
+        $this->authorize('viewAny', Contact::class);
+
         if (! auth()->user()->currentTeam)
         {
             return redirect()->route('error-without-team');
@@ -50,6 +58,8 @@ class ContactController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Contact::class);
+
         $data = new \stdClass;
 
         // Pre-fill user_id if provided in query string
@@ -69,6 +79,8 @@ class ContactController extends Controller
      */
     public function store(UpdateContactRequest $request)
     {
+        $this->authorize('create', Contact::class);
+
         $data = $request->validated();
 
         $contactData = $data['contact'];
@@ -125,14 +137,9 @@ class ContactController extends Controller
             'enterprises',  // relación correcta
             'currentEnterprise',
             'user.roles',
-        ])->find($id);
+        ])->findOrFail($id);
 
-        if (! $data)
-        {
-            return redirect()
-                ->route('contact-list')
-                ->with('error', __('messages.errors.not_found'));
-        }
+        $this->authorize('view', $data);
 
         // Collaborators can only view their own assigned contacts
         $currentUser = auth()->user();
@@ -164,7 +171,7 @@ class ContactController extends Controller
             $data->load('currentEnterprise');
         }
 
-        $team = auth()->user()->currentTeam;
+        $team = auth()->user()->currentTeam->load('settings');
 
         $stripeData = [
             'subscription' => null,
@@ -467,6 +474,8 @@ class ContactController extends Controller
     public function edit($id)
     {
         $data = Contact::with('enterprises', 'sources', 'softwares', 'categories', 'currentEnterprise')->findOrFail($id);
+        $this->authorize('update', $data);
+
         $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 
         // Verify current_enterprise_id belongs to this contact's enterprises
@@ -503,6 +512,9 @@ class ContactController extends Controller
      */
     public function update(UpdateContactRequest $request, $id)
     {
+        $contact = Contact::findOrFail($id);
+        $this->authorize('update', $contact);
+
         $data = $request->validated();
         $contactData = $data['contact'];
 
@@ -571,6 +583,7 @@ class ContactController extends Controller
     public function destroy(string $id)
     {
         $model = Contact::findOrFail($id);
+        $this->authorize('delete', $model);
 
         $model->delete();
 
@@ -1202,44 +1215,187 @@ class ContactController extends Controller
 
     public function uploadFileForMapping(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
-        ]);
-
-        $file = $request->file('file');
-        $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
-
-        $file->storeAs('contact/import', $teamUserId);
-
-        $filePath = storage_path('app/contact/import/'.$teamUserId);
-        $spreadsheet = IOFactory::load($filePath);
-        $worksheet = $spreadsheet->getActiveSheet();
-
-        $rows = $worksheet->toArray();
-        $headers = array_shift($rows);
-
-        $rows = array_filter($rows, function ($row)
+        try
         {
-            return array_filter($row, function ($cell)
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv,txt|mimetypes:text/plain,text/csv,text/x-csv,application/csv,application/x-csv,text/comma-separated-values,text/x-comma-separated-values,text/tab-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+
+            $file = $request->file('file');
+            $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
+
+            // Ensure the directory exists
+            $importDir = storage_path('app/contact/import');
+            if (! file_exists($importDir))
             {
-                return ! empty($cell) && $cell !== '' && $cell !== null;
+                mkdir($importDir, 0755, true);
+            }
+
+            $file->storeAs('contact/import', $teamUserId);
+
+            $filePath = storage_path('app/contact/import/'.$teamUserId);
+
+            if (! file_exists($filePath))
+            {
+                return redirect()->back()->with('error', 'Error al guardar el archivo.');
+            }
+
+            $spreadsheet = IOFactory::load($filePath);
+            $worksheet = $spreadsheet->getActiveSheet();
+
+            $rows = $worksheet->toArray();
+
+            // Detect if first row is a header or data
+            $firstRow = $rows[0] ?? [];
+            $hasHeaders = $this->detectHeaders($firstRow);
+
+            if ($hasHeaders)
+            {
+                // Remove header row
+                $headers = array_shift($rows);
+            } else
+            {
+                // Generate generic headers based on column count
+                $columnCount = count($firstRow);
+                $headers = [];
+                for ($i = 0; $i < $columnCount; $i++)
+                {
+                    // Try to detect column type by looking at first data rows
+                    $columnType = $this->detectColumnType($rows, $i);
+                    $headers[] = $columnType ?: 'Columna '.($i + 1);
+                }
+            }
+
+            $rows = array_filter($rows, function ($row)
+            {
+                return array_filter($row, function ($cell)
+                {
+                    return ! empty($cell) && $cell !== '' && $cell !== null;
+                });
             });
-        });
 
-        $rows = array_values($rows);
-        shuffle($rows);
+            $rows = array_values($rows);
+            shuffle($rows);
 
-        $availableFields = [
-            'name' => 'Nombre',
-            'email' => 'Email',
-            'phone' => 'Teléfono',
-        ];
+            $availableFields = [
+                'name' => 'Nombre',
+                'email' => 'Email',
+                'phone' => 'Teléfono',
+            ];
 
-        return view('contact.map', compact('headers', 'rows', 'availableFields'));
+            // Get contact statuses
+            $statuses = ContactStatus::getOptions();
+
+            return view('contact.map', compact('headers', 'rows', 'availableFields', 'statuses'));
+        } catch (\Exception $e)
+        {
+            \Log::error('Error uploading file for mapping: '.$e->getMessage(), [
+                'file' => $request->file('file')?->getClientOriginalName(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Error al procesar el archivo: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Detect if the first row contains headers or data
+     */
+    private function detectHeaders($firstRow): bool
+    {
+        if (empty($firstRow))
+        {
+            return false;
+        }
+
+        // Check if first row looks like headers (contains common header terms)
+        $headerKeywords = ['name', 'nombre', 'email', 'correo', 'mail', 'phone', 'telefono', 'teléfono', 'celular', 'mobile'];
+
+        foreach ($firstRow as $cell)
+        {
+            if (! empty($cell))
+            {
+                $cellLower = strtolower(trim($cell));
+                foreach ($headerKeywords as $keyword)
+                {
+                    if (strpos($cellLower, $keyword) !== false)
+                    {
+                        return true;
+                    }
+                }
+
+                // If cell contains @ symbol, it's likely data (email), not a header
+                if (strpos($cell, '@') !== false)
+                {
+                    return false;
+                }
+
+                // If cell is numeric and long enough, it's likely data (phone), not a header
+                if (is_numeric($cell) && strlen($cell) >= 9)
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Default: assume it's data if we can't determine
+        return false;
+    }
+
+    /**
+     * Detect column type by analyzing data in that column
+     */
+    private function detectColumnType($rows, $columnIndex): ?string
+    {
+        $sampleSize = min(10, count($rows));
+        $emailCount = 0;
+        $phoneCount = 0;
+
+        for ($i = 0; $i < $sampleSize; $i++)
+        {
+            $value = $rows[$i][$columnIndex] ?? null;
+
+            if (empty($value))
+            {
+                continue;
+            }
+
+            // Check if it's an email
+            if (filter_var($value, FILTER_VALIDATE_EMAIL))
+            {
+                $emailCount++;
+            }
+
+            // Check if it's a phone number
+            if (is_numeric($value) && strlen($value) >= 9 && strlen($value) <= 15)
+            {
+                $phoneCount++;
+            }
+        }
+
+        // If most values are emails, suggest Email
+        if ($emailCount >= $sampleSize * 0.7)
+        {
+            return 'Email';
+        }
+
+        // If most values are phone numbers, suggest Phone
+        if ($phoneCount >= $sampleSize * 0.7)
+        {
+            return 'Phone';
+        }
+
+        return null;
     }
 
     public function processMapping(Request $request)
     {
+        $request->validate([
+            'status_id' => 'required|exists:contact_statuses,id',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
+        ]);
+
         $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
         $filePath = storage_path('app/contact/import/'.$teamUserId);
 
@@ -1249,14 +1405,19 @@ class ContactController extends Controller
 
         $headers = array_shift($rows);
         $mapping = $request->input('mapping', []);
+        $categories = $request->input('categories', []);
+        $statusId = $request->input('status_id');
 
         $contactsCreated = 0;
+        $contactsSkipped = 0;
+        $contactsUpdated = 0;
 
         foreach ($rows as $row)
         {
             $mappedRow = [];
-            $sources = [];
             $nameParts = [];
+            $emailValue = null;
+            $phoneValue = null;
 
             foreach ($mapping as $columnIndex => $field)
             {
@@ -1269,18 +1430,18 @@ class ContactController extends Controller
                         $nameParts[] = trim($value);
                     } elseif ($field === 'email' && ! empty($value))
                     {
-                        $sources[] = [
-                            'source_id' => 1,
-                            'value' => $value,
-                        ];
+                        $emailValue = trim($value);
                     } elseif ($field === 'phone' && ! empty($value))
                     {
-                        $sources[] = [
-                            'source_id' => 2,
-                            'value' => $value,
-                        ];
+                        $phoneValue = trim($value);
                     }
                 }
+            }
+
+            // Use email as name if no name is provided
+            if (empty($nameParts) && ! empty($emailValue))
+            {
+                $nameParts[] = explode('@', $emailValue)[0];
             }
 
             if (! empty($nameParts))
@@ -1288,6 +1449,7 @@ class ContactController extends Controller
                 $mappedRow['name'] = implode(' ', array_filter($nameParts));
             }
 
+            // Store additional data from the import
             $additionalData = ['import' => []];
             foreach ($headers as $index => $header)
             {
@@ -1298,31 +1460,71 @@ class ContactController extends Controller
                 }
             }
 
-            if (! empty($mappedRow['name']))
+            // Skip if no name and no email
+            if (empty($mappedRow['name']) && empty($emailValue))
             {
+                $contactsSkipped++;
+
+                continue;
+            }
+
+            // Check if contact already exists by email
+            $existingContact = null;
+            if ($emailValue)
+            {
+                $existingContact = Contact::where('team_id', auth()->user()->currentTeam->id)
+                    ->where('email', $emailValue)
+                    ->first();
+            }
+
+            if ($existingContact)
+            {
+                // Update existing contact: sync categories only
+                if (! empty($categories))
+                {
+                    $existingContact->categories()->syncWithoutDetaching($categories);
+                }
+                $contactsUpdated++;
+            } else
+            {
+                // Create new contact
                 $contact = Contact::create(array_merge($mappedRow, [
                     'team_id' => auth()->user()->currentTeam->id,
                     'creator_id' => auth()->user()->id,
-                    'status_id' => 1,
+                    'status_id' => $statusId,
+                    'email' => $emailValue,
+                    'phone' => $phoneValue ? (int) preg_replace('/[^0-9]/', '', $phoneValue) : null,
                     'data' => $additionalData,
                 ]));
 
-                foreach ($sources as $source)
+                // Attach categories to the contact
+                if (! empty($categories))
                 {
-                    ContactSource::create([
-                        'contact_id' => $contact->id,
-                        'source_id' => $source['source_id'],
-                        'value' => $source['value'],
-                    ]);
+                    $contact->categories()->attach($categories);
                 }
 
                 $contactsCreated++;
             }
         }
 
+        // Build success message
+        $message = [];
+        if ($contactsCreated > 0)
+        {
+            $message[] = "{$contactsCreated} contactos creados";
+        }
+        if ($contactsUpdated > 0)
+        {
+            $message[] = "{$contactsUpdated} contactos actualizados";
+        }
+        if ($contactsSkipped > 0)
+        {
+            $message[] = "{$contactsSkipped} registros omitidos (sin datos válidos)";
+        }
+
         return redirect()
             ->route('contact-list')
-            ->with('success', $contactsCreated.' contactos importados correctamente.');
+            ->with('success', implode(', ', $message).'.');
     }
 
     /**

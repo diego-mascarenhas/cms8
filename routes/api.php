@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ContactController;
@@ -12,10 +13,12 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
+use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
+use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\AuthController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -25,15 +28,15 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
+ * |--------------------------------------------------------------------------
+ * | API Routes
+ * |--------------------------------------------------------------------------
+ * |
+ * | Here is where you can register API routes for your application. These
+ * | routes are loaded by the RouteServiceProvider and all of them will
+ * | be assigned to the "api" middleware group. Make something great!
+ * |
+ */
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request)
 {
@@ -58,9 +61,9 @@ Route::post('/mailgun/webhook', function (Request $request)
         $event = $request->input('event');
         $recipient = $request->input('recipient');
         $messageId = $request->input('message.headers.message-id')
-                    ?: $request->input('Message-Id')
-                    ?: $request->input('message_headers_message-id')
-                    ?: $request->input('message-id');
+            ?: $request->input('Message-Id')
+            ?: $request->input('message_headers_message-id')
+            ?: $request->input('message-id');
     }
 
     Log::info('📧 Mailgun Webhook Received', [
@@ -89,7 +92,7 @@ Route::post('/mailgun/webhook', function (Request $request)
         {
             $q->where('email', $recipient);
         })
-            ->where('sent_at', '>=', now()->subDays(7)) // Only recent deliveries
+            ->where('sent_at', '>=', now()->subDays(7))  // Only recent deliveries
             ->orderBy('sent_at', 'desc')
             ->first();
     }
@@ -124,7 +127,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             {
                 $delivery->update([
                     'delivered_at' => now(),
-                    'status_id' => 2, // 2 = delivered
+                    'status_id' => 2,  // 2 = delivered
                 ]);
                 Log::info('📊 Updated delivery status to delivered', ['delivery_id' => $delivery->id]);
             }
@@ -139,7 +142,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             {
                 $delivery->update([
                     'opened_at' => now(),
-                    'status_id' => 3, // 3 = opened
+                    'status_id' => 3,  // 3 = opened
                 ]);
                 Log::info('📊 Updated delivery status to opened', ['delivery_id' => $delivery->id]);
             }
@@ -197,7 +200,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             if ($delivery)
             {
                 $delivery->update([
-                    'status_id' => 5, // 5 = complained
+                    'status_id' => 5,  // 5 = complained
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
                         'complained_at' => now()->toISOString(),
                         'complaint_reason' => 'spam',
@@ -216,7 +219,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             if ($delivery)
             {
                 $delivery->update([
-                    'status_id' => 6, // 6 = permanent failure
+                    'status_id' => 6,  // 6 = permanent failure
                     'bounced_at' => now(),
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
                         'failure_type' => 'permanent',
@@ -258,7 +261,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             if ($delivery)
             {
                 $delivery->update([
-                    'status_id' => 6, // 6 = failed
+                    'status_id' => 6,  // 6 = failed
                     'bounced_at' => now(),
                 ]);
             }
@@ -271,7 +274,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             if ($delivery)
             {
                 $delivery->update([
-                    'status_id' => 6, // 6 = bounced
+                    'status_id' => 6,  // 6 = bounced
                     'bounced_at' => now(),
                 ]);
             }
@@ -285,7 +288,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             if ($delivery)
             {
                 $delivery->update([
-                    'status_id' => 6, // 6 = dropped
+                    'status_id' => 6,  // 6 = dropped
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
                         'dropped_reason' => $request->input('reason'),
                         'dropped_description' => $request->input('description'),
@@ -320,7 +323,7 @@ Route::post('/mailgun/webhook', function (Request $request)
             'delivered' => $deliveries->whereNotNull('delivered_at')->count(),
             'opened' => $deliveries->whereNotNull('opened_at')->count(),
             'clicks' => $deliveries->whereNotNull('clicked_at')->count(),
-            'failed' => $deliveries->whereIn('status_id', [5, 6])->count(), // complained, failed, bounced
+            'failed' => $deliveries->whereIn('status_id', [5, 6])->count(),  // complained, failed, bounced
         ]);
 
         Log::info('📊 Updated message statistics', [
@@ -350,6 +353,33 @@ Route::group(['prefix' => 'auth'], function ()
 
 Route::middleware('auth:sanctum')->group(function ()
 {
+    // Time tracking / Fichaje
+    Route::prefix('time')->group(function ()
+    {
+        Route::get('/', [TimeController::class, 'index']);
+        Route::get('/running', [TimeController::class, 'running']);
+        Route::post('/start', [TimeController::class, 'start']);
+        Route::post('/{id}/stop', [TimeController::class, 'stop']);
+    });
+
+    // Attendance / Work shift tracking
+    Route::prefix('attendance')->group(function ()
+    {
+        Route::get('/', [AttendanceController::class, 'index']);
+        Route::get('/running', [AttendanceController::class, 'running']);
+        Route::post('/clock-in', [AttendanceController::class, 'clockIn']);
+        Route::post('/{id}/clock-out', [AttendanceController::class, 'clockOut']);
+        Route::post('/{id}/pause', [AttendanceController::class, 'pause']);
+        Route::post('/{id}/resume', [AttendanceController::class, 'resume']);
+    });
+
+    // Tasks
+    Route::prefix('tasks')->group(function ()
+    {
+        Route::get('/', [TaskController::class, 'index']);
+        Route::get('/{id}', [TaskController::class, 'show']);
+    });
+
     // Category
     Route::get('category', [CategoryController::class, 'index']);
 

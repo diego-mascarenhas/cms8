@@ -3,8 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Conversation;
-use Livewire\Component;
 use Illuminate\Support\Facades\Cache;
+use Livewire\Component;
 
 class HelpCenterIcon extends Component
 {

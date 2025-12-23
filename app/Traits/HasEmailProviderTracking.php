@@ -29,27 +29,11 @@ trait HasEmailProviderTracking
     }
 
     /**
-     * Check if this delivery was sent via SendGrid
-     */
-    public function wasSentViaSendGrid()
-    {
-        return $this->wasSentVia('sendgrid');
-    }
-
-    /**
-     * Check if this delivery was sent via Mailgun
-     */
-    public function wasSentViaMailgun()
-    {
-        return $this->wasSentVia('mailgun');
-    }
-
-    /**
      * Check if this delivery has real delivery tracking (vs simulated)
      */
     public function hasRealTracking()
     {
-        return in_array($this->email_provider, ['mailbaby', 'sendgrid', 'mailgun']);
+        return in_array($this->email_provider, ['mailbaby']);
     }
 
     /**
@@ -74,10 +58,6 @@ trait HasEmailProviderTracking
         {
             case 'mailbaby':
                 return "https://mail.baby/dashboard/messages/{$this->provider_message_id}";
-            case 'sendgrid':
-                return "https://app.sendgrid.com/email_activity?search={$this->provider_message_id}";
-            case 'mailgun':
-                return "https://app.mailgun.com/app/sending/domains/DOMAIN/logs?query={$this->provider_message_id}";
             default:
                 return null;
         }

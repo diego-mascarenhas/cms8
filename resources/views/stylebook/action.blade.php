@@ -1,8 +1,8 @@
 <div class="d-flex justify-content-center align-items-center">
-    @if (auth()->user()->can('stylebook.show'))
+    @can('view', $stylebook)
         <a href="{{ route('stylebook.show', $stylebook->id) }}" class="text-body"><i class="ti ti-eye ti-sm me-2"></i></a>
-    @endif
-    @if (auth()->user()->can('stylebook.edit'))
+    @endcan
+    @can('update', $stylebook)
         <a href="{{ route('stylebook.edit', $stylebook->id) }}" class="text-body"><i class="ti ti-edit ti-sm me-2"></i></a>
-    @endif
+    @endcan
 </div> 

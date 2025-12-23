@@ -19,6 +19,47 @@ class ImportDataCommand extends Command
 
     protected $description = 'Interactive menu for importing data from old database';
 
+    /**
+     * Merge new data with existing data, preserving local values when legacy is empty
+     *
+     * @param  array  $newData  Data from legacy system
+     * @param  object|null  $existingRecord  Existing local record
+     * @param  array  $alwaysUpdate  Fields that should always be updated even if empty
+     * @return array Merged data
+     */
+    protected function mergePreservingLocal(array $newData, $existingRecord = null, array $alwaysUpdate = []): array
+    {
+        if (! $existingRecord)
+        {
+            return $newData;
+        }
+
+        $merged = $newData;
+
+        foreach ($newData as $key => $value)
+        {
+            // Skip timestamp fields and IDs
+            if (in_array($key, ['id', 'created_at', 'updated_at', 'deleted_at', 'team_id']))
+            {
+                continue;
+            }
+
+            // If field is marked to always update, keep new value
+            if (in_array($key, $alwaysUpdate))
+            {
+                continue;
+            }
+
+            // If new value is empty/null and existing has a value, preserve existing
+            if (($value === null || $value === '' || $value === 0) && ! empty($existingRecord->$key))
+            {
+                $merged[$key] = $existingRecord->$key;
+            }
+        }
+
+        return $merged;
+    }
+
     protected function testDatabaseConnection()
     {
         $this->info('Testing database connections...');
@@ -614,7 +655,14 @@ class ImportDataCommand extends Command
                     }
                     $existingData['imported_from_cms7'] = true;
                     $contactData['data'] = json_encode($existingData);
-                    DB::table('contacts')->where('id', $existingContact->id)->update($contactData);
+
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $contactData,
+                        $existingContact,
+                        ['status_id', 'user_id'], // Always update status and user_id
+                    );
+                    DB::table('contacts')->where('id', $existingContact->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -978,7 +1026,13 @@ class ImportDataCommand extends Command
                     $stats['imported']++;
                 } else
                 {
-                    DB::table('enterprises')->where('id', $existingEnterprise->id)->update($enterpriseData);
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $enterpriseData,
+                        $existingEnterprise,
+                        ['status_id', 'type_id'], // Always update status and type
+                    );
+                    DB::table('enterprises')->where('id', $existingEnterprise->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1100,7 +1154,13 @@ class ImportDataCommand extends Command
                         $stats['imported']++;
                     } else
                     {
-                        DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $categoryData,
+                            $existingCategory,
+                            ['module_key', 'status_id'], // Always update these fields
+                        );
+                        DB::table('categories')->where('id', $existingCategory->id)->update($mergedData);
                         $stats['updated']++;
                     }
 
@@ -1160,7 +1220,13 @@ class ImportDataCommand extends Command
                         $serviceTypesImported++;
                     } else
                     {
-                        DB::table('service_types')->where('id', $existingServiceType->id)->update($serviceTypeData);
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $serviceTypeData,
+                            $existingServiceType,
+                            ['name', 'status_id'], // Always update these fields
+                        );
+                        DB::table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
                         $serviceTypesUpdated++;
                     }
 
@@ -1248,7 +1314,13 @@ class ImportDataCommand extends Command
                     $stats['imported']++;
                 } else
                 {
-                    DB::table('service_types')->where('id', $existingServiceType->id)->update($serviceTypeData);
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $serviceTypeData,
+                        $existingServiceType,
+                        ['name', 'status_id'], // Always update these fields
+                    );
+                    DB::table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1381,6 +1453,7 @@ class ImportDataCommand extends Command
 
                 $invoiceData = [
                     'id' => $data->id,
+                    'team_id' => env('CMS_TEAM_ID', 2),
                     'enterprise_id' => $data->enterprise_id,
                     'type_id' => 1,  // Set to 1 (fixed value) since original types may not exist
                     'billing_id' => $data->billing_id,  // Use original empresas_fiscales.id
@@ -1404,7 +1477,13 @@ class ImportDataCommand extends Command
                     $stats['imported']++;
                 } else
                 {
-                    DB::table('invoices')->where('id', $existingInvoice->id)->update($invoiceData);
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $invoiceData,
+                        $existingInvoice,
+                        ['status_id', 'enterprise_id', 'total_amount', 'due_date'], // Always update these fields
+                    );
+                    DB::table('invoices')->where('id', $existingInvoice->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1492,7 +1571,13 @@ class ImportDataCommand extends Command
                     $stats['imported']++;
                 } else
                 {
-                    DB::table('enterprise_billing_addresses')->where('id', $existingBillingAddress->id)->update($billingAddressData);
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $billingAddressData,
+                        $existingBillingAddress,
+                        ['enterprise_id', 'is_default'], // Always update these fields
+                    );
+                    DB::table('enterprise_billing_addresses')->where('id', $existingBillingAddress->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1588,7 +1673,13 @@ class ImportDataCommand extends Command
                         $stats['imported']++;
                     } else
                     {
-                        DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($invoiceItemData);
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $invoiceItemData,
+                            $existingInvoiceItem,
+                            ['invoice_id', 'quantity', 'price', 'total'], // Always update these fields
+                        );
+                        DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($mergedData);
                         $stats['updated']++;
                     }
                 } catch (\Exception $e)
@@ -1676,31 +1767,36 @@ class ImportDataCommand extends Command
 
                     $existingService = \App\Models\Service::where('id', $service->id)->first();
 
-                    \App\Models\Service::updateOrCreate(
-                        ['id' => $service->id],
-                        [
-                            'enterprise_id' => $service->id_empresa,
-                            'service_type_id' => $service->id_categoria ?? null,
-                            'operation' => $operation,
-                            'description' => strip_tags($service->descripcion ?? ''),
-                            'price' => $service->valor ?? 0,
-                            'frequency' => $service->frecuencia ?? 'M',
-                            'currency_id' => $service->id_moneda ?? 1,
-                            'discount' => $service->descuento ?? 0,
-                            'status' => $service->estado ?? 1,
-                            'next_billing' => $service->proxima ?? null,
-                            'last_billed' => $service->ultima ?? null,
-                            'expires_at' => $service->caduca ?? null,
-                            'created_at' => $service->fecha_alta ?? now(),
-                            'updated_at' => $service->fecha_modificacion ?? now(),
-                        ],
-                    );
+                    $serviceData = [
+                        'enterprise_id' => $service->id_empresa,
+                        'service_type_id' => $service->id_categoria ?? null,
+                        'operation' => $operation,
+                        'description' => strip_tags($service->descripcion ?? ''),
+                        'price' => $service->valor ?? 0,
+                        'frequency' => $service->frecuencia ?? 'M',
+                        'currency_id' => $service->id_moneda ?? 1,
+                        'discount' => $service->descuento ?? 0,
+                        'status' => $service->estado ?? 1,
+                        'next_billing' => $service->proxima ?? null,
+                        'last_billed' => $service->ultima ?? null,
+                        'expires_at' => $service->caduca ?? null,
+                        'created_at' => $service->fecha_alta ?? now(),
+                        'updated_at' => $service->fecha_modificacion ?? now(),
+                    ];
 
                     if ($existingService)
                     {
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $serviceData,
+                            $existingService,
+                            ['status', 'operation', 'enterprise_id'], // Always update these fields
+                        );
+                        $existingService->update($mergedData);
                         $stats['updated']++;
                     } else
                     {
+                        \App\Models\Service::create(array_merge(['id' => $service->id], $serviceData));
                         $stats['imported']++;
                     }
                     $bar->advance();
@@ -1810,33 +1906,38 @@ class ImportDataCommand extends Command
 
                     $existingProject = \App\Models\Project::where('id', $project->id)->first();
 
-                    \App\Models\Project::updateOrCreate(
-                        ['id' => $project->id],
-                        [
-                            'team_id' => $teamId,
-                            'enterprise_id' => $project->id_empresa,
-                            'category_id' => $categoryId,
-                            'responsible_id' => $responsibleId,
-                            'name' => $project->titulo ?? 'Proyecto '.$project->id,
-                            'real_name' => null,
-                            'description' => $project->descripcion ?? null,
-                            'date_material' => null,
-                            'date_start' => $project->desde ?? null,
-                            'date_end' => $project->hasta ?? null,
-                            'cost' => $project->costo ?? 0,
-                            'price' => $project->valor ?? 0,
-                            'discount' => $project->descuento ?? 0,
-                            'status_id' => $project->estado ?? 1,
-                            'created_at' => $project->fecha_alta ?? now(),
-                            'updated_at' => $project->fecha_modificacion ?? now(),
-                        ],
-                    );
+                    $projectData = [
+                        'team_id' => $teamId,
+                        'enterprise_id' => $project->id_empresa,
+                        'category_id' => $categoryId,
+                        'responsible_id' => $responsibleId,
+                        'name' => $project->titulo ?? 'Proyecto '.$project->id,
+                        'real_name' => null,
+                        'description' => $project->descripcion ?? null,
+                        'date_material' => null,
+                        'date_start' => $project->desde ?? null,
+                        'date_end' => $project->hasta ?? null,
+                        'cost' => $project->costo ?? 0,
+                        'price' => $project->valor ?? 0,
+                        'discount' => $project->descuento ?? 0,
+                        'status_id' => $project->estado ?? 1,
+                        'created_at' => $project->fecha_alta ?? now(),
+                        'updated_at' => $project->fecha_modificacion ?? now(),
+                    ];
 
                     if ($existingProject)
                     {
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $projectData,
+                            $existingProject,
+                            ['status_id', 'enterprise_id', 'responsible_id'], // Always update these fields
+                        );
+                        $existingProject->update($mergedData);
                         $stats['updated']++;
                     } else
                     {
+                        \App\Models\Project::create(array_merge(['id' => $project->id], $projectData));
                         $stats['imported']++;
                     }
                     $bar->advance();
@@ -2029,29 +2130,34 @@ class ImportDataCommand extends Command
 
                     $existingPayment = \App\Models\Payment::where('id', $payment->id)->first();
 
-                    \App\Models\Payment::updateOrCreate(
-                        ['id' => $payment->id],
-                        [
-                            'team_id' => $teamId,
-                            'enterprise_id' => $enterpriseId,
-                            'invoice_id' => $invoiceId,
-                            'transaction_type' => $transactionType,
-                            'date' => $payment->fecha ? \Carbon\Carbon::parse($payment->fecha)->format('Y-m-d') : now()->format('Y-m-d'),
-                            'amount' => $amount,
-                            'type_id' => $typeId,
-                            'account_id' => $accountId,
-                            'remarks' => $payment->observaciones ?? null,
-                            'status' => $payment->estado ?? 1,
-                            'created_at' => $payment->fecha_alta ?? now(),
-                            'updated_at' => $payment->fecha_modificacion ?? now(),
-                        ],
-                    );
+                    $paymentData = [
+                        'team_id' => $teamId,
+                        'enterprise_id' => $enterpriseId,
+                        'invoice_id' => $invoiceId,
+                        'transaction_type' => $transactionType,
+                        'date' => $payment->fecha ? \Carbon\Carbon::parse($payment->fecha)->format('Y-m-d') : now()->format('Y-m-d'),
+                        'amount' => $amount,
+                        'type_id' => $typeId,
+                        'account_id' => $accountId,
+                        'remarks' => $payment->observaciones ?? null,
+                        'status' => $payment->estado ?? 1,
+                        'created_at' => $payment->fecha_alta ?? now(),
+                        'updated_at' => $payment->fecha_modificacion ?? now(),
+                    ];
 
                     if ($existingPayment)
                     {
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $paymentData,
+                            $existingPayment,
+                            ['status', 'transaction_type', 'amount', 'date'], // Always update these fields
+                        );
+                        $existingPayment->update($mergedData);
                         $stats['updated']++;
                     } else
                     {
+                        \App\Models\Payment::create(array_merge(['id' => $payment->id], $paymentData));
                         $stats['imported']++;
                     }
                     $bar->advance();
@@ -2243,35 +2349,40 @@ class ImportDataCommand extends Command
 
                     $existingNotification = \App\Models\Notification::withoutGlobalScope('team')->where('id', $comm->id)->first();
 
-                    \App\Models\Notification::withoutGlobalScope('team')->updateOrCreate(
-                        ['id' => $comm->id],
-                        [
-                            'team_id' => 2,  // REVISION ALPHA team
-                            'type_id' => $comm->id_tipo ?? 1,
-                            'contact_id' => $contactId,
-                            'user_id' => $userId,
-                            'reference' => $comm->id_referencia ?? null,
-                            'subject' => $comm->asunto ?? 'Sin asunto',
-                            'message' => $comm->data ?? '',
-                            'is_sent' => $comm->enviado ? true : false,
-                            'sent_at' => $comm->enviado ? now() : null,
-                            'is_read' => $comm->recibido ? true : false,
-                            'read_at' => $comm->recibido ? now() : null,
-                            'metadata' => json_encode([
-                                'vinculo' => $comm->vinculo ?? null,
-                                'debug' => $comm->debug ?? null,
-                                'estado' => $comm->estado ?? 1,
-                            ]),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ],
-                    );
+                    $notificationData = [
+                        'team_id' => 2,  // REVISION ALPHA team
+                        'type_id' => $comm->id_tipo ?? 1,
+                        'contact_id' => $contactId,
+                        'user_id' => $userId,
+                        'reference' => $comm->id_referencia ?? null,
+                        'subject' => $comm->asunto ?? 'Sin asunto',
+                        'message' => $comm->data ?? '',
+                        'is_sent' => $comm->enviado ? true : false,
+                        'sent_at' => $comm->enviado ? now() : null,
+                        'is_read' => $comm->recibido ? true : false,
+                        'read_at' => $comm->recibido ? now() : null,
+                        'metadata' => json_encode([
+                            'vinculo' => $comm->vinculo ?? null,
+                            'debug' => $comm->debug ?? null,
+                            'estado' => $comm->estado ?? 1,
+                        ]),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
 
                     if ($existingNotification)
                     {
+                        // Preserve local values when legacy is empty
+                        $mergedData = $this->mergePreservingLocal(
+                            $notificationData,
+                            $existingNotification,
+                            ['is_sent', 'is_read', 'subject', 'message'], // Always update these fields
+                        );
+                        $existingNotification->update($mergedData);
                         $stats['updated']++;
                     } else
                     {
+                        \App\Models\Notification::withoutGlobalScope('team')->create(array_merge(['id' => $comm->id], $notificationData));
                         $stats['imported']++;
                     }
 
@@ -2443,7 +2554,13 @@ class ImportDataCommand extends Command
                     $this->info("✅ Imported category: {$cms7Category->categoria}");
                 } else
                 {
-                    $existingCategory->update($categoryData);
+                    // Preserve local values when legacy is empty
+                    $mergedData = $this->mergePreservingLocal(
+                        $categoryData,
+                        $existingCategory,
+                        ['name', 'module_key', 'status_id'], // Always update these fields
+                    );
+                    $existingCategory->update($mergedData);
                     $stats['updated']++;
                     $this->info("🔄 Updated category: {$cms7Category->categoria}");
                 }
@@ -2582,7 +2699,13 @@ class ImportDataCommand extends Command
             return 'imported';
         } else
         {
-            $existingProduct->update($productData);
+            // Preserve local values when legacy is empty
+            $mergedData = $this->mergePreservingLocal(
+                $productData,
+                $existingProduct,
+                ['name', 'price', 'category_id', 'status'], // Always update these fields
+            );
+            $existingProduct->update($mergedData);
 
             return 'updated';
         }

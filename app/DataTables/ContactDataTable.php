@@ -21,13 +21,11 @@ class ContactDataTable extends DataTable
     {
         $table = (new EloquentDataTable($query));
 
-        if (\Auth::user()->can('contact.edit') || \Auth::user()->can('contact.destroy') || \Auth::user()->can('contact.show'))
+        // Add action column if user has any action permissions (always show for now, blade will handle permissions)
+        $table = $table->addColumn('action', function ($contact)
         {
-            $table = $table->addColumn('action', function ($contact)
-            {
-                return view('contact.action', compact('contact'));
-            });
-        }
+            return view('contact.action', compact('contact'));
+        });
 
         return $table
             ->setRowId('id')
@@ -121,14 +119,14 @@ class ContactDataTable extends DataTable
         $query = $model->newQuery()
             ->where('team_id', Auth::user()->currentTeam->id)
             ->with([
-            'list60:id,contact_id',
-            'enterprises:id,name',
-            'currentSentiment.sentiment',
-            'status',
-            'sources',
-            'responsible:id,name',
-            'categories',
-        ]);
+                'list60:id,contact_id',
+                'enterprises:id,name',
+                'currentSentiment.sentiment',
+                'status',
+                'sources',
+                'responsible:id,name',
+                'categories',
+            ]);
 
         // Collaborators only see their assigned contacts
         $user = Auth::user();

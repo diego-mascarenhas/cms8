@@ -30,27 +30,33 @@ class ModifyMenuBasedOnRole
                 return $next($request);
             }
 
-			// Resolve team safely; if user has no current team, try first attached team
-			$team = $user->currentTeam;
-			if (! $team)
-			{
-				$team = $user->teams()->first();
-				if ($team && (int) ($user->current_team_id ?? 0) !== (int) $team->id)
-				{
-					$user->forceFill(['current_team_id' => $team->id])->save();
-				}
-			}
+            // Resolve team safely; if user has no current team, try first attached team
+            $team = $user->currentTeam;
+            if (! $team)
+            {
+                $team = $user->teams()->first();
+                if ($team && (int) ($user->current_team_id ?? 0) !== (int) $team->id)
+                {
+                    $user->forceFill(['current_team_id' => $team->id])->save();
+                }
+            }
 
-			// Cache menu for 1 hour per user/team combination
-			$teamKey = $team?->id ?? 'none';
-			$cacheKey = "menu_user_{$user->id}_team_{$teamKey}";
-			$menuData = Cache::remember($cacheKey, 3600, function () use ($user, $team)
+            // Eager load modules to avoid N+1 queries when checking hasModule()
+            if ($team && ! $team->relationLoaded('modules'))
+            {
+                $team->load('modules');
+            }
+
+            // Cache menu for 1 hour per user/team combination
+            $teamKey = $team?->id ?? 'none';
+            $cacheKey = "menu_user_{$user->id}_team_{$teamKey}";
+            $menuData = Cache::remember($cacheKey, 3600, function () use ($user, $team)
             {
                 $menuConfig = MenuHelper::getMenuConfig();
                 $horizontalMenuJson = file_get_contents(base_path('resources/menu/horizontalMenu.json'));
                 $horizontalMenuData = json_decode($horizontalMenuJson);
 
-				// Team resolved above (may be null)
+                // Team resolved above (may be null)
 
                 // Get all core modules
                 $coreModules = Module::where('is_core', true)->pluck('key')->toArray();
@@ -81,16 +87,20 @@ class ModifyMenuBasedOnRole
                         // Check if the menu item has a module key
                         $moduleKey = $menuItem['module_key'] ?? null;
 
-                        // Skip if the user doesn't have permission
-                        if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
+                        // Skip permission check if user has admin role (admins have access to everything)
+                        if (! $user->hasRole('admin'))
                         {
-                            continue;
+                            // For non-admin users, skip if they don't have the required permission
+                            if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
+                            {
+                                continue;
+                            }
                         }
 
                         // Gate all menu items by team module setting, except a small allowlist
-						if ($moduleKey && ! in_array($moduleKey, $alwaysVisibleModules))
+                        if ($moduleKey && ! in_array($moduleKey, $alwaysVisibleModules))
                         {
-							if (! $team || ! $team->hasModule($moduleKey))
+                            if (! $team || ! $team->hasModule($moduleKey))
                             {
                                 continue;
                             }

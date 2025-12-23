@@ -6,6 +6,7 @@ use App\DataTables\AccountDataTable;
 use App\Models\Module;
 use App\Models\Team;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AccountController extends Controller
 {
@@ -104,9 +105,25 @@ class AccountController extends Controller
             }
         }
 
+        // Clear menu cache for all users in this team
+        $this->clearTeamMenuCache($team);
+
         return redirect()
             ->route('account-management')
             ->with('success', 'Account updated successfully');
+    }
+
+    /**
+     * Clear menu cache for all users in a team
+     */
+    private function clearTeamMenuCache(Team $team)
+    {
+        // Clear cache for all users in this team
+        foreach ($team->users as $user)
+        {
+            $cacheKey = "menu_user_{$user->id}_team_{$team->id}";
+            Cache::forget($cacheKey);
+        }
     }
 
     /**

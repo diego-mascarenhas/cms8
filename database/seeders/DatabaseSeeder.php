@@ -2,13 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Traits\ClearsActivityLog;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use ClearsActivityLog;
-
     /**
      * Get command instance, create dummy if null
      */
@@ -110,8 +107,7 @@ class DatabaseSeeder extends Seeder
             TeamHumanoSeeder::class,  // Humano team setup
         ]);
 
-        // Clear activity log entries generated during seeding
-        $this->clearAllActivities();
+        // Activity log was removed from the application
 
         $this->getCommand()->info('');
         $this->getCommand()->info('✅ HUMANO System installed successfully!');

@@ -54,12 +54,12 @@
 			<p class="text-muted">{{ __('Created on') }} {{ \Carbon\Carbon::parse($project->created_at)->format('F d, Y') }}</p>
 		</div>
 		<div class="d-flex align-content-center flex-wrap gap-3">
-			@can('project.edit')
+			@can('update', $project)
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
 					<i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}
 				</a>
 			@endcan
-			@can('project.edit')
+			@can('update', $project)
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
 				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
 			</a>
@@ -67,9 +67,9 @@
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban Board') }}
 			</a>
-			@can('project.index')
+			@role('admin|collaborator|developer|editor|technical')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
-			@endcan
+			@endrole
 		</div>
 	</div>
 
@@ -293,7 +293,7 @@
 <div class="card mb-4">
    <div class="card-header d-flex justify-content-between align-items-center">
        <h5 class="mb-0">{{ __('Linked services') }}</h5>
-       @can('project.edit')
+       @can('update', $project)
        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
            <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
        </button>
@@ -382,12 +382,12 @@
 							</td>
 							<td class="col-1 text-center">
                                 <div class="d-flex justify-content-center align-items-center">
-                                    @can('project.edit')
+                                    @can('update', $project)
                                     <a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
                                         <i class="ti ti-edit ti-sm"></i>
                                     </a>
                                     @endcan
-                                    @can('project.destroy')
+                                    @can('delete', $project)
                                     <a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
                                         <i class="ti ti-trash ti-sm"></i>
                                     </a>
@@ -407,7 +407,7 @@
 			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
 			<h6 class="mb-2">{{ __('No linked services') }}</h6>
 			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-		@can('project.edit')
+		@can('update', $project)
 		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
 			<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
 		</button>

@@ -29,12 +29,9 @@ class MessageDeliveryMail extends Mailable implements ShouldQueue
         $inliner = new CssToInlineStyles;
         $htmlInlined = $inliner->convert($html, $css);
 
-        // Get explicit from configuration like TestMessageMail does
-        $fromAddress = config('mail.from.address');
-        $fromName = config('mail.from.name');
-
-        return $this->from($fromAddress, $fromName)
-            ->subject($subject)
+        // Use config() which will be set by ConfiguresTeamMail trait before sending
+        // Do NOT explicitly set ->from() here, let Laravel use the config('mail.from')
+        return $this->subject($subject)
             ->html($htmlInlined);
     }
 }

@@ -11,6 +11,19 @@ class ContactPolicy
     use HandlesAuthorization;
 
     /**
+     * Perform pre-authorization checks.
+     * Admins have full access to everything in their team.
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        return null; // Continue to specific policy methods
+    }
+
+    /**
      * Determine whether the user can view any contacts.
      */
     public function viewAny(User $user): bool
@@ -33,8 +46,13 @@ class ContactPolicy
             return true;
         }
 
-        // Regular users need specific permission
-        return $user->can('contact.index');
+        // Developers and editors can view contacts
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -76,8 +94,13 @@ class ContactPolicy
             return false;
         }
 
-        // Regular users need specific permission and team membership
-        return $user->can('contact.show') && $contact->team_id === $user->currentTeam->id;
+        // Developers and editors can view contacts in their team
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return $contact->team_id === $user->currentTeam->id;
+        }
+
+        return false;
     }
 
     /**
@@ -85,12 +108,7 @@ class ContactPolicy
      */
     public function create(User $user): bool
     {
-        if ($user->hasRole('admin'))
-        {
-            return true;
-        }
-
-        return $user->can('contact.create');
+        return $user->hasRole(['admin', 'collaborator', 'developer', 'technical']);
     }
 
     /**
@@ -110,8 +128,13 @@ class ContactPolicy
             return $contact->user_id === $user->id && $contact->team_id === $user->currentTeam->id;
         }
 
-        // Regular users need specific permission and team membership
-        return $user->can('contact.update') && $contact->team_id === $user->currentTeam->id;
+        // Developers and technical users can update contacts in their team
+        if ($user->hasRole(['developer', 'technical']))
+        {
+            return $contact->team_id === $user->currentTeam->id;
+        }
+
+        return false;
     }
 
     /**
@@ -120,13 +143,7 @@ class ContactPolicy
     public function delete(User $user, Contact $contact): bool
     {
         // Only admins can delete contacts
-        if ($user->hasRole('admin'))
-        {
-            return $contact->team_id === $user->currentTeam->id;
-        }
-
-        // Regular users need specific permission
-        return $user->can('contact.destroy') && $contact->team_id === $user->currentTeam->id;
+        return $user->hasRole('admin') && $contact->team_id === $user->currentTeam->id;
     }
 
     /**
@@ -172,8 +189,8 @@ class ContactPolicy
                     });
             }
 
-            // Regular users can see all contacts if they have permission
-            if ($user->can('contact.index'))
+            // Developers and editors can see all contacts in their team
+            if ($user->hasRole(['developer', 'editor', 'technical']))
             {
                 return $query->where('team_id', $user->currentTeam->id);
             }

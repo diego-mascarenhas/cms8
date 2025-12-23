@@ -1,23 +1,23 @@
 <div class="d-flex justify-content-center align-items-center">
     @if(!$contact->user_id)
         <!-- Pending acceptance - show accept button -->
-        @if (auth()->user()->can('collaborator.edit'))
+        @role('admin')
             <a href="{{ route('collaborator.accept', $contact->id) }}" class="btn btn-sm btn-success" title="{{ __('Aceptar colaborador') }}">
                 <i class="ti ti-check me-1"></i>{{ __('Aceptar') }}
             </a>
-        @endif
+        @endrole
     @else
         <!-- Normal actions for accepted collaborators -->
-        @if (auth()->user()->can('collaborator.edit'))
+        @role('admin|collaborator')
             <a href="{{ route('collaborator.edit', $contact->id) }}" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
-        @endif
-        
-        @if (auth()->user()->can('collaborator.show'))
+        @endrole
+
+        @role('admin|collaborator')
             <a href="{{ route('collaborator.show', $contact->id) }}" class="text-body me-2"><i class="ti ti-eye ti-sm"></i></a>
-        @endif
-        
+        @endrole
+
         <!-- Three dots dropdown menu -->
-        @if (auth()->user()->can('collaborator.edit'))
+        @role('admin')
             <div class="dropdown">
                 <button class="btn btn-sm btn-icon dropdown-toggle hide-arrow" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="ti ti-dots-vertical ti-sm"></i>
@@ -43,6 +43,6 @@
                     </li>
                 </ul>
             </div>
-        @endif
+        @endrole
     @endif
-</div> 
+</div>

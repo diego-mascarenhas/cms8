@@ -10,9 +10,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
-
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/toastr/toastr.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -25,7 +23,6 @@
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave-phone.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
-
 <script src="{{asset('assets/vendor/libs/toastr/toastr.js')}}"></script>
 @endsection
 
@@ -43,11 +40,11 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Messages</h4>
-        <p class="text-muted">Manage your messages with ease and keep your audience engaged!</p>
+        <h4 class="mb-1 mt-3">{{ __('Messages') }}</h4>
+        <p class="text-muted">{{ __('Manage your messages with ease and keep your audience engaged!') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
+        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">{{ __('Create New') }}</a>
     </div>
 </div>
 
@@ -141,12 +138,3 @@
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 @endpush
-
-{{-- vendor scripts --}}
-@section('vendor-script')
-<script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-<script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
-<script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
-@endsection

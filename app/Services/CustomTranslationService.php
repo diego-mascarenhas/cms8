@@ -27,42 +27,45 @@ class CustomTranslationService
             return null;
         }
 
-        // Try to get from cache first
-        $cacheKey = "custom_translation_{$teamId}_{$key}_{$group}_{$locale}";
-
         try
         {
-            $cached = Cache::get($cacheKey);
-            if ($cached !== null)
-            {
-                return $cached;
-            }
+            // Load all translations for this team at once and cache them
+            $allTranslations = $this->getAllTranslationsForTeam($teamId);
 
-            // Get from database
-            $translation = CustomTranslation::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('key', $key)
-                ->where('group', $group)
-                ->where('locale', $locale)
-                ->first();
+            // Find the specific translation
+            $cacheKey = "{$key}_{$group}_{$locale}";
 
-            if (! $translation)
-            {
-                return null;
-            }
-
-            // Get the value (now it's a simple string)
-            $value = $translation->value;
-
-            // Cache the result
-            Cache::put($cacheKey, $value, now()->addHours(24));
-
-            return $value;
+            return $allTranslations[$cacheKey] ?? null;
         } catch (\Exception $e)
         {
             // Return null if database query fails
             return null;
         }
+    }
+
+    /**
+     * Get all translations for a team, cached
+     */
+    protected function getAllTranslationsForTeam($teamId)
+    {
+        $cacheKey = "custom_translations_team_{$teamId}";
+
+        return Cache::remember($cacheKey, now()->addHours(24), function () use ($teamId)
+        {
+            $translations = CustomTranslation::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->get();
+
+            // Build associative array for fast lookups
+            $result = [];
+            foreach ($translations as $translation)
+            {
+                $key = "{$translation->key}_{$translation->group}_{$translation->locale}";
+                $result[$key] = $translation->value;
+            }
+
+            return $result;
+        });
     }
 
     /**
@@ -100,8 +103,8 @@ class CustomTranslationService
                 ],
             );
 
-            // Clear cache
-            $this->clearCache($key, $group, $locale);
+            // Clear team cache
+            $this->clearTeamCache($teamId);
 
             return $translation;
         } catch (\Exception $e)
@@ -132,9 +135,8 @@ class CustomTranslationService
 
         try
         {
-            // Clear cache
-            $cacheKey = "custom_translation_{$teamId}_{$key}_{$group}_{$locale}";
-            Cache::forget($cacheKey);
+            // Clear team cache
+            $this->clearTeamCache($teamId);
 
             return CustomTranslation::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
@@ -188,7 +190,7 @@ class CustomTranslationService
     }
 
     /**
-     * Clear cache for specific translation
+     * Clear cache for specific translation or entire team
      */
     public function clearCache($key = null, $group = null, $locale = null)
     {
@@ -207,28 +209,22 @@ class CustomTranslationService
 
         try
         {
-            if ($key && $group && $locale)
-            {
-                // Clear specific cache
-                $cacheKey = "custom_translation_{$teamId}_{$key}_{$group}_{$locale}";
-                Cache::forget($cacheKey);
-            } else
-            {
-                // Clear all cache for team
-                $translations = CustomTranslation::withoutGlobalScope('team')->where('team_id', $teamId)->get();
-
-                foreach ($translations as $translation)
-                {
-                    $cacheKey = "custom_translation_{$teamId}_{$translation->key}_{$translation->group}_{$translation->locale}";
-                    Cache::forget($cacheKey);
-                }
-            }
+            // Always clear the entire team cache since we now cache all translations together
+            $this->clearTeamCache($teamId);
 
             return true;
         } catch (\Exception $e)
         {
             return false;
         }
+    }
+
+    /**
+     * Clear all cached translations for a team
+     */
+    protected function clearTeamCache($teamId)
+    {
+        Cache::forget("custom_translations_team_{$teamId}");
     }
 
     /**
@@ -248,10 +244,15 @@ class CustomTranslationService
             return true;
         }
 
-        // Skip if schema doesn't exist (during migrations)
+        // Check table existence with cache (24 hour TTL) to avoid repeated schema queries
         try
         {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('custom_translations'))
+            $tableExists = Cache::remember('custom_translations_table_exists', now()->addHours(24), function ()
+            {
+                return \Illuminate\Support\Facades\Schema::hasTable('custom_translations');
+            });
+
+            if (! $tableExists)
             {
                 return true;
             }

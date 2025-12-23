@@ -12,6 +12,9 @@ use Yajra\DataTables\Services\DataTable;
 
 class InvoiceDataTable extends DataTable
 {
+    // Fix N+1: Cache exchange rates to avoid querying in the loop
+    protected $exchangeRatesCache = null;
+
     /**
      * Build the DataTable class.
      *
@@ -19,10 +22,21 @@ class InvoiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
+        // Fix N+1: Load all exchange rates once
+        $this->exchangeRatesCache = \App\Models\ExchangeRate::query()
+            ->whereIn('base_currency', ['USD', 'ARS', 'EUR'])
+            ->whereIn('target_currency', ['USD', 'ARS', 'EUR'])
+            ->latest('date')
+            ->get()
+            ->groupBy(function ($rate)
+            {
+                return $rate->base_currency.'_'.$rate->target_currency;
+            });
+
         return (new EloquentDataTable($query))
             ->addColumn('action', 'invoices.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator'])
+            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount'])
             ->addColumn('number_with_indicator', function ($data)
             {
                 // Punto de color según tipo de operación (rojo: compra, verde: venta)
@@ -51,10 +65,68 @@ class InvoiceDataTable extends DataTable
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
             })
+            ->editColumn('total_amount', function ($data)
+            {
+                $conversions = '';
+
+                // Fix N+1: Use cached rates for conversion
+                $ars = $this->convertToWithCache($data, 'ARS', 'total_amount');
+                if ($ars !== null)
+                {
+                    $conversions .= '<span class="fw-bold">'.\App\Helpers\Helpers::formatMoney($ars, 'ARS').' ARS</span>';
+                }
+
+                $eur = $this->convertToWithCache($data, 'EUR', 'total_amount');
+                if ($eur !== null)
+                {
+                    if ($conversions)
+                    {
+                        $conversions .= '<br>';
+                    }
+                    $conversions .= '<small class="text-muted">≈ '.\App\Helpers\Helpers::formatMoney($eur, 'EUR').' EUR</small>';
+                }
+
+                return $conversions ?: '<span class="text-muted">N/A</span>';
+            })
             ->editColumn('status', function ($data)
             {
                 return $data->status_badge;
             });
+    }
+
+    /**
+     * Fix N+1: Convert using cached exchange rates
+     */
+    protected function convertToWithCache($invoice, string $targetCurrency, string $field = 'total_amount'): ?float
+    {
+        $baseCurrency = $invoice->currency ?? 'USD';
+        $amount = $invoice->$field ?? 0;
+
+        if ($baseCurrency === $targetCurrency)
+        {
+            return $amount;
+        }
+
+        $key = $baseCurrency.'_'.$targetCurrency;
+        $rates = $this->exchangeRatesCache[$key] ?? collect();
+        $rate = $rates->first();
+
+        if ($rate)
+        {
+            return $amount * (float) $rate->rate;
+        }
+
+        // Try inverse conversion
+        $inverseKey = $targetCurrency.'_'.$baseCurrency;
+        $inverseRates = $this->exchangeRatesCache[$inverseKey] ?? collect();
+        $inverseRate = $inverseRates->first();
+
+        if ($inverseRate && $inverseRate->rate > 0)
+        {
+            return $amount / (float) $inverseRate->rate;
+        }
+
+        return null;
     }
 
     public function query(Invoice $model): QueryBuilder

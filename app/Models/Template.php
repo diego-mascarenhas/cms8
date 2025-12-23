@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+// Will need to be adjusted or made configurable
 use Dotlogics\Grapesjs\App\Contracts\Editable;
 use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Illuminate\Contracts\Encryption\DecryptException;

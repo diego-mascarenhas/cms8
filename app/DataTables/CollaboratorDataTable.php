@@ -16,14 +16,11 @@ class CollaboratorDataTable extends DataTable
     {
         $table = (new EloquentDataTable($query));
 
-        if (\Auth::user()->can('collaborator.edit') || \Auth::user()->can('collaborator.destroy') || \Auth::user()->can('collaborator.show'))
+        // Add action column (blade view will handle policy-based permissions)
+        $table = $table->addColumn('action', function ($contact)
         {
-            $table = $table->addColumn('action', function ($contact)
-            {
-                return view('collaborator.action', compact('contact'));
-            });
-        }
-        $table = $table
+            return view('collaborator.action', compact('contact'));
+        })
             ->addColumn('rating', function ($contact)
             {
                 // Get the valoration name from the relationship

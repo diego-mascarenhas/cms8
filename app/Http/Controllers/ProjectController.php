@@ -16,8 +16,15 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
+    public function __construct()
+    {
+        // Note: Manual authorization in each method due to non-standard route parameter names
+        // Laravel's authorizeResource() expects {project} parameter, but routes use {id}
+    }
+
     public function index(ProjectDataTable $dataTable)
     {
+        $this->authorize('viewAny', Project::class);
         return $dataTable->render('project.index');
     }
 
@@ -38,6 +45,8 @@ class ProjectController extends Controller
      */
     public function store(StoreProjectRequest $request)
     {
+        $this->authorize('create', Project::class);
+        
         $data = $request->validated();
 
         $project = Project::updateOrCreate(
@@ -483,6 +492,9 @@ class ProjectController extends Controller
      */
     public function show(string $id)
     {
+        $project = Project::findOrFail($id);
+        $this->authorize('view', $project);
+        
         $project = Project::with([
             'client',
             'responsible',
@@ -551,6 +563,7 @@ class ProjectController extends Controller
     public function destroy(string $id)
     {
         $model = Project::findOrFail($id);
+        $this->authorize('delete', $model);
 
         $model->delete();
 

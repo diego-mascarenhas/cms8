@@ -7,7 +7,6 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
-use Spatie\Activitylog\Models\Activity;
 use Stripe\Balance;
 use Stripe\Stripe;
 
@@ -28,15 +27,17 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'No team assigned');
         }
 
-        // Calculate total team minutes
+        // Calculate total team minutes (only positive values)
         $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
         {
             $query->where('team_id', $activeTeam->id);
         })
             ->whereNotNull('duration_seconds')
+            ->where('duration_seconds', '>', 0)  // Only count positive durations
             ->sum('duration_seconds');
 
-        $totalTeamMinutes = round($totalTeamSeconds / 60);
+        // Ensure we never have negative minutes
+        $totalTeamMinutes = max(0, round($totalTeamSeconds / 60));
 
         // Filter dangerous contacts by team
         $dangerousContacts = Contact::where('team_id', $activeTeam->id)
@@ -150,29 +151,8 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // Get recent activities from team members
-        $teamUserIds = $activeTeam->users->pluck('id');
-        $recentActivities = Activity::with(['causer', 'subject'])
-            ->whereIn('causer_id', $teamUserIds)
-            ->latest()
-            ->take(8)
-            ->get();
-
-        // Format activities for display
-        $formattedActivities = $recentActivities->map(function ($activity)
-        {
-            return [
-                'id' => $activity->id,
-                'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
-                'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
-                'description' => $activity->description,
-                'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
-                'subject_id' => $activity->subject_id,
-                'time_ago' => $activity->created_at->diffForHumans(),
-                'created_at' => $activity->created_at,
-                'properties' => $activity->properties,
-            ];
-        });
+        // Recent activities removed - Activity Log package was removed from the project
+        $formattedActivities = collect();
 
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)
         // if ($activeTeam && $activeTeam->getSetting('stripe_secret'))

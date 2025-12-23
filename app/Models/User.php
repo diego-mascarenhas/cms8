@@ -10,8 +10,6 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -21,10 +19,16 @@ class User extends Authenticatable
     use HasProfilePhoto;
     use HasRoles;
     use HasTeams;
-    use LogsActivity;
     use Notifiable;
     use SoftDeletes;
     use TwoFactorAuthenticatable;
+
+    /**
+     * The relationships that should always be loaded.
+     *
+     * @var array
+     */
+    protected $with = ['currentTeam.modules', 'roles', 'teams'];
 
     /**
      * The attributes that should be mutated to dates.

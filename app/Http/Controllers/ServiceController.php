@@ -16,11 +16,14 @@ class ServiceController extends Controller
      */
     public function __construct()
     {
-        // No middleware needed here as it's already applied at the route level
+        // Note: Manual authorization in each method due to non-standard route parameter names
+        // Laravel's authorizeResource() expects {service} parameter, but routes use {id}
     }
 
     public function index(ServiceDataTable $dataTable)
     {
+        $this->authorize('viewAny', Service::class);
+        
         $teamId = auth()->user()->currentTeam->id;
 
         // Relevant dates
@@ -107,6 +110,8 @@ class ServiceController extends Controller
      */
     public function create(Request $request)
     {
+        $this->authorize('create', Service::class);
+        
         $enterprise_id = $request->input('enterprise_id');
 
         return view('service.form', compact('enterprise_id'));
@@ -117,6 +122,8 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Service::class);
+        
         try
         {
             $validator = \Validator::make($request->all(), [
@@ -191,6 +198,7 @@ class ServiceController extends Controller
     public function show(string $id)
     {
         $service = Service::with(['category', 'client'])->findOrFail($id);
+        $this->authorize('view', $service);
 
         // Collaborators can only view their assigned services
         $currentUser = auth()->user();
@@ -220,7 +228,8 @@ class ServiceController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Service::find($id);
+        $data = Service::findOrFail($id);
+        $this->authorize('update', $data);
 
         if (! $data)
         {
@@ -238,6 +247,7 @@ class ServiceController extends Controller
     public function update(Request $request, string $id)
     {
         $service = Service::findOrFail($id);
+        $this->authorize('update', $service);
 
         $request->validate([
             'enterprise_id' => 'required|exists:enterprises,id',
@@ -280,6 +290,7 @@ class ServiceController extends Controller
     public function destroy(string $id)
     {
         $model = Service::findOrFail($id);
+        $this->authorize('delete', $model);
 
         $model->delete();
 

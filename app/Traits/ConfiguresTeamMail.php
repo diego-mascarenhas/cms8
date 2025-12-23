@@ -45,20 +45,6 @@ trait ConfiguresTeamMail
             'final_from_address' => config('mail.from.address'),
         ]);
 
-        // If EMAIL_PROVIDER is mailgun, only transport changes, but keep team email config
-        if ($emailProvider === 'mailgun')
-        {
-            \Log::info('🚀 EMAIL_PROVIDER=mailgun: Using Mailgun API with team email config', [
-                'team_id' => $team->id,
-                'mailgun_domain' => config('services.mailgun.domain'),
-                'mailgun_configured' => ! empty(config('services.mailgun.secret')),
-                'from_name' => config('mail.from.name'),
-                'from_address' => config('mail.from.address'),
-            ]);
-
-            return; // Use Mailgun transport but with team email config applied
-        }
-
         // Check if team has its own email configuration (only for SMTP provider)
         if ($team->hasOutgoingEmailConfig())
         {

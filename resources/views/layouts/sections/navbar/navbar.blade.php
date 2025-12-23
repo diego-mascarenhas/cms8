@@ -83,7 +83,7 @@
         </li>
         @endauth
         <!-- Language -->
-        @if ($configData['showLanguageSelector'] == true && Auth::user()->hasRole('developer'))
+        @if ($configData['showLanguageSelector'] && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                 <i class='ti ti-language rounded-circle ti-md'></i>
@@ -137,7 +137,7 @@
             </li>
             <!-- /Livewire Search -->
         @endif
-        @if ($configData['hasCustomizer'] == true)
+        @if ($configData['hasCustomizer'])
             <!-- Style Switcher -->
             <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
@@ -165,7 +165,7 @@
         @endif
 
         <!-- Quick links  -->
-        @if ($configData['showQuickAccess'] == true || Auth::user()->hasRole('developer'))
+        @if ($configData['showQuickAccess'] || Auth::user()->hasRole('developer'))
             <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
                     data-bs-auto-close="outside" aria-expanded="false">
@@ -250,7 +250,7 @@
         <!-- Quick links -->
 
         <!-- Notification -->
-        @if ($configData['showNotifications'] == true)
+        @if ($configData['showNotifications'])
             <x-task-notifications />
         @endif
         <!--/ Notification -->
@@ -266,7 +266,9 @@
         @endif
 
         <!-- Help Center -->
-        @livewire('help-center-icon')
+		@if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('chat'))
+			@livewire('help-center-icon')
+		@endif
         <!-- /Help Center -->
 
         <!-- User -->
@@ -653,7 +655,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    fetchRunning();
+    // Defer loading by 1 second to avoid blocking initial page load
+    setTimeout(fetchRunning, 1000);
 });
 </script>
 @endauth

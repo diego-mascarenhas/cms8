@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -20,7 +18,6 @@ class Contact extends Model implements HasMedia
     use HasFactory;
     use HasSourceIcons;
     use InteractsWithMedia;
-    use LogsActivity;
     use SoftDeletes;
 
     protected $fillable = [
@@ -59,18 +56,18 @@ class Contact extends Model implements HasMedia
             }
         });
 
-		// Visibility: non-admin users only see contacts assigned to them
-		static::addGlobalScope('ownership', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$user = auth()->user();
-				if (! $user->hasRole('admin'))
-				{
-					$builder->where('responsible_id', $user->id);
-				}
-			}
-		});
+        // Visibility: non-admin users only see contacts assigned to them
+        static::addGlobalScope('ownership', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $user = auth()->user();
+                if (! $user->hasRole('admin'))
+                {
+                    $builder->where('responsible_id', $user->id);
+                }
+            }
+        });
     }
 
     /**
@@ -461,10 +458,13 @@ class Contact extends Model implements HasMedia
             return 0;
         }
 
-        $startTime = $latestAction->start_time;
+        $startTime = Carbon::parse($latestAction->start_time);
         $endTime = Carbon::now();
 
-        return $endTime->diffInSeconds($startTime);
+        // Ensure we always return a positive value
+        $seconds = abs($endTime->diffInSeconds($startTime, false));
+
+        return max(0, $seconds);
     }
 
     public function calculateTotalAccumulatedSeconds()
@@ -477,13 +477,21 @@ class Contact extends Model implements HasMedia
 
         foreach ($completedActions as $action)
         {
-            $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
+            $startTime = Carbon::parse($action->start_time);
+            $endTime = Carbon::parse($action->end_time);
+
+            // Only add positive time differences
+            if ($endTime->greaterThanOrEqualTo($startTime))
+            {
+                $totalSeconds += abs($endTime->diffInSeconds($startTime, false));
+            }
         }
 
         $currentActionSeconds = $this->calculateCurrentActionSeconds();
         $totalSeconds += $currentActionSeconds;
 
-        return $totalSeconds;
+        // Ensure we never return a negative value
+        return max(0, $totalSeconds);
     }
 
     public static function getTotalTeamMinutes()

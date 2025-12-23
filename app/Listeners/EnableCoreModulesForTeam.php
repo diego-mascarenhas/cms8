@@ -8,23 +8,28 @@ use Laravel\Jetstream\Events\TeamCreated;
 
 class EnableCoreModulesForTeam
 {
-    /**
-     * Handle the event.
-     */
-    public function handle(TeamCreated $event): void
-    {
-        $team = $event->team instanceof Team ? $event->team : Team::find($event->team->id);
+	/**
+	 * Handle the event.
+	 */
+	public function handle(TeamCreated $event): void
+	{
+		$team = $event->team instanceof Team ? $event->team : Team::find($event->team->id);
 
-        if (! $team)
-        {
-            return;
-        }
+		if (!$team) {
+			return;
+		}
 
-        $coreModuleKeys = Module::where('is_core', true)->pluck('key');
+		$coreModuleKeys = Module::where('is_core', true)->pluck('key');
 
-        foreach ($coreModuleKeys as $moduleKey)
-        {
-            $team->enableModule($moduleKey);
-        }
-    }
+		foreach ($coreModuleKeys as $moduleKey) {
+			$team->enableModule($moduleKey);
+		}
+
+		// Enable additional modules for new teams
+		$additionalModules = ['products', 'orders', 'earnings', 'expenses', 'mailer'];
+
+		foreach ($additionalModules as $moduleKey) {
+			$team->enableModule($moduleKey);
+		}
+	}
 }

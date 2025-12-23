@@ -45,10 +45,10 @@ class MessageDataTable extends DataTable
 
                 if ($statusValue == 2)
                 {
-                    return '<span class="badge rounded-pill bg-label-success">Active</span>';
+                    return '<span class="badge rounded-pill bg-label-success">'.__('Active').'</span>';
                 } else
                 {
-                    return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
+                    return '<span class="badge rounded-pill bg-label-warning">'.__('Inactive').'</span>';
                 }
             });
     }

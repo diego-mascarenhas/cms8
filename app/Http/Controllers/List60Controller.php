@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DataTables\List60DataTable;
 use App\Models\List60;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Carbon\Carbon;
-use App\Models\User;
 
 class List60Controller extends Controller
 {

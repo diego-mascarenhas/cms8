@@ -36,7 +36,7 @@ class SendScheduledDeliveries extends Command
             ->whereNull('delivered_at') // not delivered yet
             ->with(['contact', 'message', 'team']) // eager load relations
             ->orderBy('sent_at', 'asc')
-            ->limit(config('services.email.processing.deliveries_per_send_run', 100)) // Configurable limit
+            ->limit(config('services.email.processing.deliveries_per_send_run', 20)) // ~20 emails/minute
             ->get();
 
         if ($dueDeliveries->isEmpty())
