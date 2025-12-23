@@ -107,9 +107,18 @@
             <!-- Progress Bar -->
             @if(($stats->subscribers ?? 0) > 0)
                 @php
-                    $sentPercent = round((($stats->sent ?? 0) / $stats->subscribers) * 100, 1);
-                    $deliveredPercent = round((($stats->delivered ?? 0) / $stats->subscribers) * 100, 1);
-                    $openedPercent = round((($stats->opened ?? 0) / $stats->subscribers) * 100, 1);
+                    // Calculate percentages relative to subscribers (max 100%)
+                    $sentPercent = min(100, round((($stats->sent ?? 0) / $stats->subscribers) * 100, 1));
+                    $deliveredPercent = min(100, round((($stats->delivered ?? 0) / $stats->subscribers) * 100, 1));
+                    $openedPercent = min(100, round((($stats->opened ?? 0) / $stats->subscribers) * 100, 1));
+                    $clicksPercent = min(100, round((($stats->clicks ?? 0) / $stats->subscribers) * 100, 1));
+                    $failedPercent = min(100, round((($stats->failed ?? 0) / $stats->subscribers) * 100, 1));
+                    
+                    // Ensure percentages don't exceed 100% in total
+                    $totalPercent = $sentPercent + $failedPercent;
+                    if ($totalPercent > 100) {
+                        $sentPercent = 100 - $failedPercent;
+                    }
                 @endphp
 
                 <div class="mt-4">
@@ -117,11 +126,29 @@
                         <small class="text-muted">{{ __('Campaign Progress') }}</small>
                         <small class="fw-medium">{{ $stats->ratio ?? 0 }}% {{ __('Open Rate') }}</small>
                     </div>
-                    <div class="progress mb-2" style="height: 8px;">
+                    
+                    <!-- Stacked Progress Bar: Green (sent), overlayed by Cyan (delivered), Orange (opened), Purple (clicks), Red (failed from right) -->
+                    <div class="progress mb-2" style="height: 8px; position: relative;">
+                        <!-- Base: Sent (Green) -->
                         <div class="progress-bar bg-success" style="width: {{ $sentPercent }}%"></div>
-                        <div class="progress-bar bg-info" style="width: {{ max(0, $deliveredPercent - $sentPercent) }}%"></div>
-                        <div class="progress-bar bg-warning" style="width: {{ max(0, $openedPercent - $deliveredPercent) }}%"></div>
+                        
+                        <!-- Overlay: Delivered (Cyan) - stacked on top of sent -->
+                        <div class="progress-bar bg-info" style="position: absolute; left: 0; width: {{ $deliveredPercent }}%; height: 100%; opacity: 0.7;"></div>
+                        
+                        <!-- Overlay: Opened (Orange) - stacked on top of delivered -->
+                        <div class="progress-bar bg-warning" style="position: absolute; left: 0; width: {{ $openedPercent }}%; height: 100%; opacity: 0.7;"></div>
+                        
+                        <!-- Overlay: Clicks (Purple) - stacked on top of opened -->
+                        @if($clicksPercent > 0)
+                        <div class="progress-bar bg-secondary" style="position: absolute; left: 0; width: {{ $clicksPercent }}%; height: 100%; opacity: 0.7;"></div>
+                        @endif
+                        
+                        <!-- Failed (Red) - from right to left -->
+                        @if($failedPercent > 0)
+                        <div class="progress-bar bg-danger" style="position: absolute; right: 0; width: {{ $failedPercent }}%; height: 100%;"></div>
+                        @endif
                     </div>
+                    
                     <div class="d-flex justify-content-between">
                         <small class="text-success">{{ $sentPercent }}% {{ __('Sent') }}</small>
                         <small class="text-info">{{ $deliveredPercent }}% {{ __('Delivered') }}</small>
