@@ -254,8 +254,17 @@ class SendMessageCampaignJob implements ShouldQueue
             'team_name' => $this->messageDelivery->team->name ?? 'Unknown',
         ]);
 
-        // Configure mail settings for this team (uses ConfiguresTeamMail trait)
+        // IMPORTANT: Configure mail settings for this team BEFORE creating the Mailable
         $this->configureMailForTeam($this->messageDelivery->team);
+
+        // Log the configuration that will be used
+        Log::info('📧 Mail configuration after team setup', [
+            'delivery_id' => $this->messageDelivery->id,
+            'config_from_address' => config('mail.from.address'),
+            'config_from_name' => config('mail.from.name'),
+            'smtp_host' => config('mail.mailers.smtp.host'),
+            'smtp_username' => config('mail.mailers.smtp.username'),
+        ]);
 
         // Create mailable class name - this should be configurable
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
@@ -265,11 +274,15 @@ class SendMessageCampaignJob implements ShouldQueue
             throw new \Exception("Mailable class {$mailableClass} not found");
         }
 
-        Mail::to($this->messageDelivery->contact->email)
-            ->send(new $mailableClass($this->messageDelivery));
+        // Create the mailable AFTER configuring the team settings
+        $mailable = new $mailableClass($this->messageDelivery);
+        
+        // Send the email
+        Mail::to($this->messageDelivery->contact->email)->send($mailable);
 
         Log::info('✅ Email sent via SMTP', [
             'delivery_id' => $this->messageDelivery->id,
+            'sent_to' => $this->messageDelivery->contact->email,
             'from_address' => config('mail.from.address'),
             'from_name' => config('mail.from.name'),
         ]);
