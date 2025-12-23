@@ -365,7 +365,7 @@ class MessageController extends Controller
             {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email sender not configured. Please configure it in Team Settings.',
+                    'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
                 ], 400);
             }
 
@@ -392,14 +392,14 @@ class MessageController extends Controller
                 })
                 ->count();
 
-            $responseMessage = 'Campaign activated successfully. ';
+            $responseMessage = 'Campaña activada exitosamente. ';
 
             if ($pendingDeliveries > 0)
             {
-                $responseMessage .= "{$pendingDeliveries} deliveries are pending and will be sent by the scheduler.";
+                $responseMessage .= "{$pendingDeliveries} envíos pendientes serán enviados por el programador.";
             } else
             {
-                $responseMessage .= "{$contactsCount} contacts will be processed by the scheduler.";
+                $responseMessage .= "{$contactsCount} contactos serán procesados por el programador.";
             }
 
             return response()->json([
@@ -410,7 +410,7 @@ class MessageController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error starting campaign: '.$e->getMessage(),
+                'message' => 'Error al iniciar campaña: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -475,13 +475,13 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Campaign paused successfully',
+                'message' => 'Campaña pausada exitosamente',
             ]);
         } catch (\Exception $e)
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error pausing campaign: '.$e->getMessage(),
+                'message' => 'Error al pausar campaña: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -633,7 +633,7 @@ class MessageController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error loading link details: '.$e->getMessage(),
+                'message' => 'Error al cargar detalles del enlace: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -728,7 +728,7 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Test email sent successfully',
+                'message' => 'Correo de prueba enviado exitosamente',
                 'email' => $user->email,
             ]);
         } catch (\Exception $e)
