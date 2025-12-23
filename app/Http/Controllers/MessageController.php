@@ -369,18 +369,42 @@ class MessageController extends Controller
                 ], 400);
             }
 
-            // Simply activate the message - the scheduler will handle delivery creation
-            $message->update([
-                'status_id' => 1,  // Active
-                'started_at' => now(),  // Mark when campaign started
-            ]);
+            // Activate the message
+            $updateData = ['status_id' => 1];
+
+            // Only update started_at if it's the first time starting or if it was never started
+            if (! $message->started_at)
+            {
+                $updateData['started_at'] = now();
+            }
+
+            $message->update($updateData);
 
             // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();
 
+            // Check if there are pending deliveries to send
+            $pendingDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)
+                ->where(function ($query)
+                {
+                    $query->whereNull('sent_at')
+                        ->orWhere('sent_at', '>', now());
+                })
+                ->count();
+
+            $responseMessage = 'Campaign activated successfully. ';
+
+            if ($pendingDeliveries > 0)
+            {
+                $responseMessage .= "{$pendingDeliveries} deliveries are pending and will be sent by the scheduler.";
+            } else
+            {
+                $responseMessage .= "{$contactsCount} contacts will be processed by the scheduler.";
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => "Campaign activated successfully. {$contactsCount} contacts will be processed by the scheduler.",
+                'message' => $responseMessage,
             ]);
         } catch (\Exception $e)
         {

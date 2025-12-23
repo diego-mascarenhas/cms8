@@ -73,25 +73,39 @@ class ProcessActiveCampaigns extends Command
     }
 
     /**
-     * Process a single message campaign
+     * Process a single message campaign (Dynamic: adds new, removes invalid)
      */
     private function processMessageCampaign(Message $message): int
     {
-        // Get contacts for this message
-        $contacts = $this->getContactsForMessage($message);
+        // Get contacts that SHOULD receive this message based on current criteria
+        $validContacts = $this->getContactsForMessage($message);
+        $validContactIds = $validContacts->pluck('id')->toArray();
 
-        // Get the last delivery time for this message to calculate next send time
+        // Step 1: Remove pending deliveries for contacts that NO LONGER meet criteria
+        $removedCount = MessageDelivery::where('message_id', $message->id)
+            ->whereNull('sent_at') // Only remove pending deliveries, not sent ones
+            ->whereNotIn('contact_id', $validContactIds)
+            ->delete();
+
+        if ($removedCount > 0)
+        {
+            $this->info("   🗑️  Removed {$removedCount} deliveries for contacts that no longer meet criteria");
+            Log::info('Removed invalid pending deliveries', [
+                'message_id' => $message->id,
+                'removed_count' => $removedCount,
+            ]);
+        }
+
+        // Step 2: Create deliveries for contacts that meet criteria and don't have one yet
         $lastDelivery = MessageDelivery::where('message_id', $message->id)
             ->orderBy('sent_at', 'desc')
             ->first();
 
-        // Calculate base time for next deliveries
         $baseTime = $lastDelivery ? $lastDelivery->sent_at : $message->started_at;
-
         $createdCount = 0;
         $deliveryIndex = MessageDelivery::where('message_id', $message->id)->count();
 
-        foreach ($contacts as $contact)
+        foreach ($validContacts as $contact)
         {
             // Check if delivery already exists
             $existingDelivery = MessageDelivery::where('message_id', $message->id)
@@ -110,8 +124,8 @@ class ProcessActiveCampaigns extends Command
                 }
 
                 // Calculate scheduled time based on the last delivery + random interval
-                $baseMinutes = config('services.email.delay.base_minutes', 1); // Reduced from 5 to 1 minute
-                $maxRandomSeconds = config('services.email.delay.random_seconds', 60); // Reduced from 120 to 60 seconds
+                $baseMinutes = config('services.email.delay.base_minutes', 1);
+                $maxRandomSeconds = config('services.email.delay.random_seconds', 60);
 
                 $delayMinutes = $deliveryIndex * $baseMinutes;
                 $randomSeconds = rand(0, $maxRandomSeconds);
@@ -134,6 +148,13 @@ class ProcessActiveCampaigns extends Command
 
                 $createdCount++;
                 $deliveryIndex++;
+
+                Log::info('📧 New delivery created dynamically', [
+                    'message_id' => $message->id,
+                    'contact_id' => $contact->id,
+                    'contact_email' => $contact->email,
+                    'scheduled_at' => $scheduledTime,
+                ]);
 
                 // Create multiple deliveries per run but limit to avoid overload
                 $maxDeliveries = config('services.email.processing.deliveries_per_campaign_run', 50);
