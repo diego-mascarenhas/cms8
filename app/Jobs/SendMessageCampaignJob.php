@@ -276,7 +276,7 @@ class SendMessageCampaignJob implements ShouldQueue
 
         // Create the mailable AFTER configuring the team settings
         $mailable = new $mailableClass($this->messageDelivery);
-        
+
         // Send the email
         Mail::to($this->messageDelivery->contact->email)->send($mailable);
 

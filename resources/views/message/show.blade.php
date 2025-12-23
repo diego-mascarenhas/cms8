@@ -238,83 +238,8 @@
 
 	<!-- Right Column: Deliveries -->
 	<div class="col-lg-8 col-md-7">
-		<div class="card">
-			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="mb-0">Entregas</h5>
-				<div class="d-flex align-items-center">
-					<input type="text" id="searchDeliveries" class="form-control form-control-sm me-2" placeholder="Buscar..." style="width: 200px;">
-					<i class="ti ti-search"></i>
-				</div>
-			</div>
-			<div class="card-body">
-				<div class="table-responsive">
-					<table class="table table-hover" id="deliveriesTable">
-						<thead>
-							<tr>
-								<th>CONTACTO</th>
-								<th>ESTADO DE ENTREGA</th>
-								<th class="text-center">ACCIONES</th>
-							</tr>
-						</thead>
-						<tbody class="delivery-tbody">
-							@forelse($deliveries as $delivery)
-							<tr>
-								<td>
-									<div>
-										<strong>{{ $delivery->contact->name ?? 'N/A' }}</strong><br>
-										<small class="text-muted">{{ $delivery->contact->email ?? 'N/A' }}</small>
-									</div>
-								</td>
-								<td>
-									@if($delivery->delivered_at)
-										<span class="text-info">
-											<i class="ti ti-check me-1"></i>
-											Entregado: {{ $delivery->delivered_at->format('M d, Y H:i') }}
-										</span><br>
-										<small class="text-muted">Enviado: {{ $delivery->sent_at ? $delivery->sent_at->format('M d, Y H:i') : 'N/A' }}</small>
-									@elseif($delivery->sent_at)
-										<span class="text-success">
-											<i class="ti ti-send me-1"></i>
-											Enviado: {{ $delivery->sent_at->format('M d, Y H:i') }}
-										</span>
-									@elseif($delivery->failed_at)
-										<span class="text-danger">
-											<i class="ti ti-x me-1"></i>
-											Failed: {{ $delivery->failed_at->format('M d, Y H:i') }}
-										</span>
-									@else
-										<span class="text-muted">
-											<i class="ti ti-clock me-1"></i>
-											Pendiente
-										</span>
-									@endif
-								</td>
-								<td>
-									<div class="d-flex justify-content-center align-items-center">
-										@if($delivery->opened_at)
-											<i class="ti ti-eye text-success me-2" title="Abierto"></i>
-										@endif
-										@if($delivery->clicked_at)
-											<i class="ti ti-mouse text-primary me-2" title="Clickeado"></i>
-										@endif
-										<a href="javascript:;" class="text-primary" onclick="resendDelivery({{ $delivery->id }})" title="Reenviar">
-											<i class="ti ti-refresh ti-sm"></i>
-										</a>
-									</div>
-								</td>
-							</tr>
-							@empty
-							<tr>
-								<td colspan="3" class="text-center text-muted py-4">
-									No deliveries found
-								</td>
-							</tr>
-							@endforelse
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
+		{{-- Envíos Component with Pagination --}}
+		@livewire('message-deliveries', ['messageId' => $message->id])
 	</div>
 </div>
 
