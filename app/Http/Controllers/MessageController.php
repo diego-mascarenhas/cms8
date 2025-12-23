@@ -148,11 +148,13 @@ class MessageController extends Controller
             'failed_deliveries' => $failedDeliveries,
             'queue_status' => $queueStatus,
             'email_limits' => [
-                'monthly_used' => $emailLimits['monthly_used'],
-                'monthly_limit' => $emailLimits['monthly_limit'],
-                'daily_used' => $emailLimits['daily_used'],
-                'daily_limit' => $emailLimits['daily_limit'],
-                'is_blocked' => $emailLimits['is_blocked'],
+                'monthly_used' => $emailLimits['monthly_used'] ?? 0,
+                'monthly_limit' => $emailLimits['monthly_limit'] ?? 0,
+                'monthly_remaining' => $emailLimits['monthly_remaining'] ?? 0,
+                'daily_used' => $emailLimits['daily_used'] ?? 0,
+                'daily_limit' => $emailLimits['daily_limit'] ?? 0,
+                'daily_remaining' => $emailLimits['daily_remaining'] ?? 0,
+                'is_blocked' => ($emailLimits['monthly_remaining'] ?? 1) <= 0 || ($emailLimits['daily_remaining'] ?? 1) <= 0,
             ],
             'last_logs' => $lastLogs,
         ], 200, [], JSON_PRETTY_PRINT);
