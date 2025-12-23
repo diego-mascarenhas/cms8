@@ -49,7 +49,7 @@
                                                 </small>
                                             @endif
                                         @else
-                                            <span class="text-muted">Pending</span>
+                                            <span class="text-muted">Pendiente</span>
                                         @endif
                                     </div>
                                 </td>

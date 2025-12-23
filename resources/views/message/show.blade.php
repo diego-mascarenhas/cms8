@@ -285,7 +285,7 @@
 									@else
 										<span class="text-muted">
 											<i class="ti ti-clock me-1"></i>
-											Pending
+											Pendiente
 										</span>
 									@endif
 								</td>

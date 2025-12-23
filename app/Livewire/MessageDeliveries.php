@@ -115,25 +115,25 @@ class MessageDeliveries extends Component
     {
         if ($delivery->status_id == 4)
         {
-            return 'Failed';
+            return 'Fallido';
         } elseif ($delivery->delivered_at)
         {
-            return 'Delivered';
+            return 'Entregado';
         } elseif ($delivery->status_id == 3 && $delivery->delivered_at)
         {
-            return 'Delivered';
+            return 'Entregado';
         } elseif ($delivery->status_id == 3)
         {
-            return 'Sending';
+            return 'Enviando';
         } elseif ($delivery->sent_at && $delivery->sent_at->isFuture())
         {
-            return 'Scheduled';
+            return 'Programado';
         } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && ! $delivery->delivered_at)
         {
-            return 'Sent';
+            return 'Enviado';
         } else
         {
-            return 'Pending';
+            return 'Pendiente';
         }
     }
 
