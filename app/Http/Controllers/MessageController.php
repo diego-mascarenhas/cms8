@@ -506,12 +506,28 @@ class MessageController extends Controller
                 ], 400);
             }
 
-            // Queue pending deliveries immediately (including future scheduled)
+            // First, reschedule ALL pending deliveries to send now
+            $baseTime = now();
+            $allPending = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1)
+                ->whereNull('delivered_at')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            foreach ($allPending as $index => $delivery)
+            {
+                // Add small delay (3 seconds) between each to avoid spam
+                $delivery->update([
+                    'sent_at' => $baseTime->copy()->addSeconds($index * 3),
+                ]);
+            }
+
+            // Then, queue first 100 immediately
             $deliveries = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1)
                 ->whereNull('delivered_at')
                 ->with(['contact', 'message', 'team'])
-                ->limit(100) // Process max 100 at a time
+                ->limit(100)
                 ->get();
 
             $queued = 0;
@@ -522,11 +538,14 @@ class MessageController extends Controller
                 $queued++;
             }
 
+            $totalRescheduled = $allPending->count();
+
             return response()->json([
                 'success' => true,
-                'message' => "Se encolaron {$queued} correos para envío inmediato",
+                'message' => "Se reprogramaron {$totalRescheduled} correos y se encolaron {$queued} para envío inmediato",
                 'queued' => $queued,
-                'remaining' => max(0, $pendingCount - $queued),
+                'rescheduled' => $totalRescheduled,
+                'remaining' => max(0, $totalRescheduled - $queued),
             ]);
         } catch (\Exception $e)
         {

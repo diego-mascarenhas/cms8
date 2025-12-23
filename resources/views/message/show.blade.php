@@ -366,10 +366,10 @@ function sendPendingNow(messageId) {
 			if (result.value.success) {
 				let message = result.value.message;
 				if (result.value.remaining > 0) {
-					message += `. Quedan ${result.value.remaining} pendientes.`;
+					message += `\n\nLos restantes ${result.value.remaining} serán enviados automáticamente por el programador cada minuto.`;
 				}
 				Swal.fire({
-					title: '¡Encolados!',
+					title: '¡Proceso completado!',
 					text: message,
 					icon: 'success',
 					customClass: {
