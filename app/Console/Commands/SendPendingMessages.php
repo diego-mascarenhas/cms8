@@ -49,18 +49,16 @@ class SendPendingMessages extends Command
 
             try
             {
-                // Use configurable delays from .env
-                $maxRandomSeconds = config('services.email.delay.random_seconds', 120);
-                $randomDelay = rand(60, max(300, $maxRandomSeconds)); // Min 60s, configurable max
-
                 // 🚀 Use the Job instead of Mailable directly
+                // Random delay pequeño (3-15 segundos) para evitar spam flags
+                $randomDelay = rand(3, 15);
+
                 SendMessageCampaignJob::dispatch($delivery)
                     ->onQueue('mailer')
-                    ->delay(now()->addSeconds($delay));
+                    ->delay(now()->addSeconds($randomDelay));
 
-                $this->info('Queued job for: '.$delivery->contact->email.' (delay: '.$delay.'s, team: '.$delivery->team->name.')');
+                $this->info('Queued job for: '.$delivery->contact->email.' (delay: '.$randomDelay.'s, team: '.$delivery->team->name.')');
                 $sent++;
-                $delay += $randomDelay;
             } catch (\Exception $e)
             {
                 $this->error('Error queueing job for '.$delivery->contact->email.': '.$e->getMessage());
