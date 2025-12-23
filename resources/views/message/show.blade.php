@@ -347,13 +347,17 @@ function sendPendingNow(messageId) {
 				}
 			})
 			.then(response => {
-				if (!response.ok) {
-					throw new Error(response.statusText);
-				}
-				return response.json();
+				return response.json().then(data => {
+					if (!response.ok) {
+						// Si la respuesta no es OK, lanzar error con el mensaje del servidor
+						throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+					}
+					return data;
+				});
 			})
 			.catch(error => {
-				Swal.showValidationMessage(`Error: ${error}`);
+				console.error('Error completo:', error);
+				Swal.showValidationMessage(`${error.message || error}`);
 			});
 		},
 		allowOutsideClick: () => !Swal.isLoading()
