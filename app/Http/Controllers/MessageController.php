@@ -1037,24 +1037,30 @@ class MessageController extends Controller
                 ], 403);
             }
 
-            // Create a new delivery with the same data but reset status
-            $newDelivery = MessageDelivery::create([
-                'team_id' => $delivery->team_id,
-                'message_id' => $delivery->message_id,
-                'contact_id' => $delivery->contact_id,
+            // Reset the SAME delivery record to resend
+            $delivery->update([
                 'status_id' => 1, // pending
-                'sent_at' => now(), // Send immediately
+                'sent_at' => now(), // Schedule to send immediately
+                'delivered_at' => null, // Reset delivery status
+                'opened_at' => null, // Reset tracking
+                'clicked_at' => null,
+                'complained_at' => null,
+                'bounced_at' => null,
+                'delivery_status' => null,
+                'error_message' => null, // Clear previous errors
+                'error_type' => null,
+                'bounce_type' => null,
+                'bounce_reason' => null,
             ]);
 
             Log::info('📧 Delivery resend requested', [
-                'original_delivery_id' => $delivery->id,
-                'new_delivery_id' => $newDelivery->id,
+                'delivery_id' => $delivery->id,
                 'contact_email' => $delivery->contact->email ?? 'unknown',
                 'user_id' => auth()->id(),
             ]);
 
             // Dispatch the job to send immediately
-            \App\Jobs\SendMessageCampaignJob::dispatch($newDelivery);
+            \App\Jobs\SendMessageCampaignJob::dispatch($delivery);
 
             return response()->json([
                 'success' => true,

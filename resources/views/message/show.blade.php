@@ -148,100 +148,8 @@
 			</div>
 		</div>
 
-		<!-- Email Plans Information -->
-		<div class="card mb-4">
-			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="card-title mb-0">{{ __('Email Plan') }}</h5>
-				@php
-					$team = auth()->user()->currentTeam;
-					$currentPlan = $team->getEmailPlan();
-					$remaining = $team->getRemainingEmails();
-				@endphp
-
-				<span class="badge bg-label-{{ $currentPlan->value === 'basic' ? 'primary' : ($currentPlan->value === 'foundation' ? 'info' : 'success') }}">
-					{{ $currentPlan->getDisplayName() }}
-				</span>
-			</div>
-			<div class="card-body">
-				<!-- Monthly Usage -->
-				<div class="mb-3">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">{{ __('Monthly Usage') }}</span>
-						<span class="fw-semibold">{{ number_format($remaining['monthly_used']) }} / {{ number_format($remaining['monthly_limit']) }}</span>
-					</div>
-					<div class="progress" style="height: 8px;">
-						@php
-							$monthlyPercent = $remaining['monthly_limit'] > 0 ? ($remaining['monthly_used'] / $remaining['monthly_limit']) * 100 : 0;
-							$monthlyColor = $monthlyPercent >= 100 ? 'danger' : ($monthlyPercent >= 80 ? 'warning' : 'success');
-						@endphp
-						<div class="progress-bar bg-{{ $monthlyColor }}" role="progressbar"
-							 style="width: {{ min(100, $monthlyPercent) }}%"
-							 aria-valuenow="{{ $monthlyPercent }}" aria-valuemin="0" aria-valuemax="100">
-						</div>
-					</div>
-				</div>
-
-				<!-- Daily Usage -->
-				<div class="mb-3">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">{{ __('Daily Usage') }}</span>
-						<span class="fw-semibold">
-							{{ number_format($remaining['daily_used']) }} /
-							{{ $remaining['daily_limit'] ? number_format($remaining['daily_limit']) : '∞' }}
-						</span>
-					</div>
-					<div class="progress" style="height: 8px;">
-						@if($remaining['daily_limit'])
-							@php
-								$dailyPercent = $remaining['daily_limit'] > 0 ? ($remaining['daily_used'] / $remaining['daily_limit']) * 100 : 0;
-								$dailyColor = $dailyPercent >= 100 ? 'danger' : ($dailyPercent >= 80 ? 'warning' : 'success');
-							@endphp
-							<div class="progress-bar bg-{{ $dailyColor }}" role="progressbar"
-								 style="width: {{ min(100, $dailyPercent) }}%"
-								 aria-valuenow="{{ $dailyPercent }}" aria-valuemin="0" aria-valuemax="100">
-							</div>
-						@else
-							<div class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
-						@endif
-					</div>
-				</div>
-
-				<!-- Contacts -->
-				<div class="mb-3">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">{{ __('Contacts') }}</span>
-						<span class="fw-semibold">{{ number_format($team->contacts()->count()) }} / {{ number_format($team->getContactLimit()) }}</span>
-					</div>
-					<div class="progress" style="height: 8px;">
-						@php
-							$contactsCount = $team->contacts()->count();
-							$contactLimit = $team->getContactLimit();
-							$contactsPercent = $contactLimit > 0 ? ($contactsCount / $contactLimit) * 100 : 0;
-							$contactsColor = $contactsPercent >= 100 ? 'danger' : ($contactsPercent >= 80 ? 'warning' : 'success');
-						@endphp
-						<div class="progress-bar bg-{{ $contactsColor }}" role="progressbar"
-							 style="width: {{ min(100, $contactsPercent) }}%"
-							 aria-valuenow="{{ $contactsPercent }}" aria-valuemin="0" aria-valuemax="100">
-						</div>
-					</div>
-				</div>
-
-				<!-- Upgrade button if needed -->
-				@php
-					$isOverLimits = ($remaining['monthly_used'] >= $remaining['monthly_limit']) ||
-									($remaining['daily_limit'] && $remaining['daily_used'] >= $remaining['daily_limit']);
-				@endphp
-			{{-- Upgrade Plan button disabled - billing.plans route not defined
-			@if($isOverLimits)
-				<div class="text-center mt-3">
-					<a href="{{ route('billing.plans') }}" class="btn btn-sm btn-primary">
-						<i class="ti ti-arrow-up me-1"></i>{{ __('Upgrade Plan') }}
-					</a>
-				</div>
-			@endif
-			--}}
-			</div>
-		</div>
+		<!-- Email Plans Information (Livewire Component) -->
+		@livewire('email-plan-info')
 	</div>
 
 	<!-- Right Column: Deliveries -->
@@ -278,16 +186,16 @@ function pauseCampaign(messageId) {
 		buttonsStyling: false
 	}).then((result) => {
 		if (result.isConfirmed) {
-			fetch(`/message/${messageId}/pause`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRF-TOKEN': '{{ csrf_token() }}'
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
+	fetch(`/message/${messageId}/pause`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
 					Swal.fire({
 						title: '¡Pausada!',
 						text: data.message,
@@ -297,9 +205,9 @@ function pauseCampaign(messageId) {
 						},
 						buttonsStyling: false
 					}).then(() => {
-						location.reload();
+			location.reload();
 					});
-				} else {
+		} else {
 					Swal.fire({
 						title: 'Error',
 						text: data.message,
@@ -309,10 +217,10 @@ function pauseCampaign(messageId) {
 						},
 						buttonsStyling: false
 					});
-				}
-			})
-			.catch(error => {
-				console.error('Error:', error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
 				Swal.fire({
 					title: 'Error',
 					text: 'Ha ocurrido un error al pausar la campaña',
@@ -412,16 +320,16 @@ function startCampaign(messageId) {
 		buttonsStyling: false
 	}).then((result) => {
 		if (result.isConfirmed) {
-			fetch(`/message/${messageId}/start`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRF-TOKEN': '{{ csrf_token() }}'
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
+	fetch(`/message/${messageId}/start`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
 					Swal.fire({
 						title: '¡Iniciada!',
 						text: data.message,
@@ -431,9 +339,9 @@ function startCampaign(messageId) {
 						},
 						buttonsStyling: false
 					}).then(() => {
-						location.reload();
+			location.reload();
 					});
-				} else {
+		} else {
 					Swal.fire({
 						title: 'Error',
 						text: data.message,
@@ -443,10 +351,10 @@ function startCampaign(messageId) {
 						},
 						buttonsStyling: false
 					});
-				}
-			})
-			.catch(error => {
-				console.error('Error:', error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
 				Swal.fire({
 					title: 'Error',
 					text: 'Ha ocurrido un error al iniciar la campaña',
@@ -501,16 +409,16 @@ function testSend(messageId) {
 				}
 			});
 
-			fetch(`/message/${messageId}/test`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRF-TOKEN': '{{ csrf_token() }}'
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
+	fetch(`/message/${messageId}/test`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
 					Swal.fire({
 						title: '¡Enviado!',
 						text: 'Correo de prueba enviado exitosamente a ' + data.email,
@@ -520,7 +428,7 @@ function testSend(messageId) {
 						},
 						buttonsStyling: false
 					});
-				} else {
+		} else {
 					Swal.fire({
 						title: 'Error',
 						text: data.message,
@@ -530,10 +438,10 @@ function testSend(messageId) {
 						},
 						buttonsStyling: false
 					});
-				}
-			})
-			.catch(error => {
-				console.error('Error:', error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
 				Swal.fire({
 					title: 'Error',
 					text: 'Ocurrió un error al enviar el correo de prueba',

@@ -34,7 +34,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['message_id', 'status_id']);
-            $table->index(['message_id', 'created_at']); // Para ORDER BY en listados
+            $table->index(['message_id', 'created_at']); // For ORDER BY in listings
             $table->index(['contact_id']);
             $table->index(['team_id']);
             $table->index(['sent_at']);
@@ -42,6 +42,9 @@ return new class extends Migration
             $table->index(['clicked_at']);
             $table->index(['error_type']);
             $table->index(['bounce_type']);
+
+            // Unique constraint: One contact can only have one delivery per message
+            $table->unique(['message_id', 'contact_id'], 'unique_message_contact');
         });
     }
 
