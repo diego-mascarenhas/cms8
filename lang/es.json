@@ -907,5 +907,13 @@
   "Enable Open Tracking": "Habilitar Seguimiento de Aperturas",
   "Track when emails are opened": "Rastrear cuando los correos son abiertos",
   "Enable Click Tracking": "Habilitar Seguimiento de Clics",
-  "Track clicks on email links": "Rastrear clics en enlaces del correo"
+  "Track clicks on email links": "Rastrear clics en enlaces del correo",
+  "Create and manage email templates with visual editor": "Crea y gestiona plantillas de correo con editor visual",
+  "Create New Template": "Crear Nueva Plantilla",
+  "Visual Editor": "Editor Visual",
+  "Template Name": "Nombre de Plantilla",
+  "Active Template": "Plantilla Activa",
+  "Template Created!": "¡Plantilla Creada!",
+  "Use the Visual Editor button above to design your email template with GrapesJS.": "Usa el botón Editor Visual arriba para diseñar tu plantilla de correo con GrapesJS.",
+  "Update": "Actualizar"
 }

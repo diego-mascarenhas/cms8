@@ -20,7 +20,8 @@ class TemplateDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', function ($template) {
+            ->addColumn('action', function ($template)
+            {
                 return view('template.action', ['hashedId' => $template->getHashedId()])->render();
             })
             ->setRowId('id')
@@ -33,10 +34,10 @@ class TemplateDataTable extends DataTable
             {
                 if ($data->status_id)
                 {
-                    return '<span class="badge rounded-pill bg-label-success">Active</span>';
+                    return '<span class="badge rounded-pill bg-label-success">'.__('Active').'</span>';
                 } else
                 {
-                    return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
+                    return '<span class="badge rounded-pill bg-label-warning">'.__('Inactive').'</span>';
                 }
             });
     }

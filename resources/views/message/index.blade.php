@@ -44,7 +44,9 @@
         <p class="text-muted">{{ __('Manage your messages with ease and keep your audience engaged!') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">{{ __('Create New') }}</a>
+        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">
+            <i class="ti ti-plus me-1"></i>{{ __('Create New') }}
+        </a>
     </div>
 </div>
 
