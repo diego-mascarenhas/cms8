@@ -1,21 +1,12 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Subscription Management')
-
-@section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
-@endsection
-
-@section('vendor-script')
-<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
-@endsection
+@section('title', 'Subscription Plans')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-	<div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3">Subscription Management</h4>
-		<p class="text-muted">Manage your email sending plan and billing</p>
-	</div>
+<!-- Pricing Plans -->
+<div class="text-center mb-5">
+	<h1 class="mb-2">Pricing Plans</h1>
+	<p class="mb-5">Get started with us - it's perfect for individuals and teams. Choose a subscription plan that meets your needs.</p>
 </div>
 
 @if(session('success'))
@@ -32,188 +23,305 @@
 	</div>
 @endif
 
-<div class="row">
-	<!-- Current Plan Card -->
-	<div class="col-12 mb-4">
-		<div class="card">
-			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="mb-0">Current Plan</h5>
-				@if($subscription && $subscription->onGracePeriod())
-					<span class="badge bg-warning">Cancelling</span>
-				@elseif($subscription && $subscription->active())
-					<span class="badge bg-success">Active</span>
-				@else
-					<span class="badge bg-secondary">Inactive</span>
+<!-- Current Plan Status (if not free) -->
+@if($currentPlan !== \App\Enums\EmailPlan::FREE)
+<div class="card mb-5">
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6">
+				<h5 class="mb-3">Current Plan: {{ $currentPlan->getDisplayName() }}</h5>
+				<p class="text-muted mb-3">{{ $currentPlan->getDescription() }}</p>
+				
+				@if($subscription)
+					<div class="mb-2">
+						<span class="badge bg-label-{{ $subscription->onGracePeriod() ? 'warning' : ($subscription->active() ? 'success' : 'secondary') }}">
+							@if($subscription->onGracePeriod())
+								Cancels on {{ $subscription->ends_at->format('M d, Y') }}
+							@elseif($subscription->active())
+								Active
+							@else
+								Inactive
+							@endif
+						</span>
+					</div>
+					
+					@if($subscription->active() && !$subscription->onGracePeriod())
+						<p class="text-muted mb-0">
+							<small><i class="ti ti-calendar ti-xs me-1"></i>Next billing: {{ $subscription->asStripeSubscription()->current_period_end ? \Carbon\Carbon::createFromTimestamp($subscription->asStripeSubscription()->current_period_end)->format('M d, Y') : 'N/A' }}</small>
+						</p>
+					@endif
 				@endif
 			</div>
-			<div class="card-body">
-				<div class="row">
-					<div class="col-md-6">
-						<h4>{{ $currentPlan->getDisplayName() }} Plan</h4>
-						<p class="text-muted">{{ $currentPlan->getDescription() }}</p>
-
-						<div class="mt-3">
-							<h6>Plan Limits:</h6>
-							<ul class="list-unstyled">
-								<li><i class="ti ti-check text-success me-2"></i>{{ number_format($planConfig['monthly_limit']) }} emails per month</li>
-								<li><i class="ti ti-check text-success me-2"></i>
-									@if($planConfig['daily_limit'])
-										{{ number_format($planConfig['daily_limit']) }} emails per day
-									@else
-										Unlimited daily emails
-									@endif
-								</li>
-								<li><i class="ti ti-check text-success me-2"></i>Up to {{ number_format($planConfig['contact_limit']) }} contacts</li>
-							</ul>
-						</div>
-
-						@if($subscription)
-							<div class="mt-3">
-								<h6>Subscription Details:</h6>
-								<p class="mb-1"><strong>Status:</strong>
-									@if($subscription->onGracePeriod())
-										<span class="badge bg-warning">Cancels on {{ $subscription->ends_at->format('M d, Y') }}</span>
-									@elseif($subscription->active())
-										<span class="badge bg-success">Active</span>
-									@else
-										<span class="badge bg-secondary">Inactive</span>
-									@endif
-								</p>
-								@if($subscription->active())
-									<p class="mb-1"><strong>Next billing:</strong> {{ $subscription->asStripeSubscription()->current_period_end ? \Carbon\Carbon::createFromTimestamp($subscription->asStripeSubscription()->current_period_end)->format('M d, Y') : 'N/A' }}</p>
-								@endif
-							</div>
-						@endif
+			<div class="col-md-6">
+				<h6 class="mb-3">Usage Statistics</h6>
+				<div class="mb-2">
+					<div class="d-flex justify-content-between mb-1">
+						<small>Monthly Emails</small>
+						<small class="fw-medium">{{ number_format($planConfig['monthly_used']) }} / {{ number_format($planConfig['monthly_limit']) }}</small>
 					</div>
-
-					<div class="col-md-6">
-						<h6>Current Usage:</h6>
-						<div class="mb-3">
-							<div class="d-flex justify-content-between mb-1">
-								<span>Monthly Emails</span>
-								<span>{{ number_format($planConfig['monthly_used']) }} / {{ number_format($planConfig['monthly_limit']) }}</span>
-							</div>
-							<div class="progress">
-								<div class="progress-bar {{ $planConfig['monthly_remaining'] < ($planConfig['monthly_limit'] * 0.2) ? 'bg-danger' : ($planConfig['monthly_remaining'] < ($planConfig['monthly_limit'] * 0.5) ? 'bg-warning' : 'bg-success') }}"
-									 role="progressbar"
-									 style="width: {{ ($planConfig['monthly_used'] / $planConfig['monthly_limit']) * 100 }}%">
-								</div>
-							</div>
-						</div>
-
-						@if($planConfig['daily_limit'])
-							<div class="mb-3">
-								<div class="d-flex justify-content-between mb-1">
-									<span>Daily Emails</span>
-									<span>{{ number_format($planConfig['daily_used']) }} / {{ number_format($planConfig['daily_limit']) }}</span>
-								</div>
-								<div class="progress">
-									<div class="progress-bar {{ $planConfig['daily_remaining'] < ($planConfig['daily_limit'] * 0.2) ? 'bg-danger' : ($planConfig['daily_remaining'] < ($planConfig['daily_limit'] * 0.5) ? 'bg-warning' : 'bg-success') }}"
-										 role="progressbar"
-										 style="width: {{ ($planConfig['daily_used'] / $planConfig['daily_limit']) * 100 }}%">
-									</div>
-								</div>
-							</div>
-						@endif
-
-						<div class="mb-3">
-							<div class="d-flex justify-content-between mb-1">
-								<span>Contacts</span>
-								<span>{{ number_format($team->contacts()->count()) }} / {{ number_format($planConfig['contact_limit']) }}</span>
-							</div>
-							<div class="progress">
-								<div class="progress-bar bg-info"
-									 role="progressbar"
-									 style="width: {{ ($team->contacts()->count() / $planConfig['contact_limit']) * 100 }}%">
-								</div>
-							</div>
-						</div>
-
-						@if($subscription && $subscription->onGracePeriod())
-							<form method="POST" action="{{ route('subscription.resume') }}" class="mt-3">
-								@csrf
-								<button type="submit" class="btn btn-success w-100">
-									<i class="ti ti-refresh me-1"></i>Resume Subscription
-								</button>
-							</form>
-						@elseif($subscription && $subscription->active())
-							<button type="button" class="btn btn-outline-danger w-100 mt-3" onclick="confirmCancel()">
-								<i class="ti ti-x me-1"></i>Cancel Subscription
-							</button>
-						@endif
+					<div class="progress" style="height: 6px;">
+						<div class="progress-bar" role="progressbar" style="width: {{ min(($planConfig['monthly_used'] / $planConfig['monthly_limit']) * 100, 100) }}%"></div>
+					</div>
+				</div>
+				
+				@if($planConfig['daily_limit'])
+				<div class="mb-2">
+					<div class="d-flex justify-content-between mb-1">
+						<small>Daily Emails</small>
+						<small class="fw-medium">{{ number_format($planConfig['daily_used']) }} / {{ number_format($planConfig['daily_limit']) }}</small>
+					</div>
+					<div class="progress" style="height: 6px;">
+						<div class="progress-bar" role="progressbar" style="width: {{ min(($planConfig['daily_used'] / $planConfig['daily_limit']) * 100, 100) }}%"></div>
+					</div>
+				</div>
+				@endif
+				
+				<div class="mb-0">
+					<div class="d-flex justify-content-between mb-1">
+						<small>Contacts</small>
+						<small class="fw-medium">{{ number_format($team->contacts()->count()) }} / {{ number_format($planConfig['contact_limit']) }}</small>
+					</div>
+					<div class="progress" style="height: 6px;">
+						<div class="progress-bar bg-info" role="progressbar" style="width: {{ min(($team->contacts()->count() / $planConfig['contact_limit']) * 100, 100) }}%"></div>
 					</div>
 				</div>
 			</div>
 		</div>
+		
+		@if($subscription)
+		<div class="mt-4 pt-3 border-top">
+			@if($subscription->onGracePeriod())
+				<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
+					@csrf
+					<button type="submit" class="btn btn-success btn-sm">
+						<i class="ti ti-refresh ti-xs me-1"></i>Resume Subscription
+					</button>
+				</form>
+			@elseif($subscription->active())
+				<button type="button" class="btn btn-label-danger btn-sm" onclick="confirmCancel()">
+					<i class="ti ti-x ti-xs me-1"></i>Cancel Subscription
+				</button>
+			@endif
+		</div>
+		@endif
 	</div>
+</div>
+@endif
 
-	<!-- Available Plans -->
-	<div class="col-12">
-		<h5 class="mb-3">Available Plans</h5>
-	</div>
-
-	@foreach($plans as $plan)
-		@if($plan !== \App\Enums\EmailPlan::FREE)
-			<div class="col-xl-4 col-lg-6 col-md-6 mb-4">
-				<div class="card {{ $currentPlan === $plan ? 'border border-primary' : '' }}">
-					<div class="card-header text-center {{ $currentPlan === $plan ? 'bg-label-primary' : '' }}">
-						<h4 class="mb-0">{{ $plan->getDisplayName() }}</h4>
-						@if($currentPlan === $plan)
-							<span class="badge bg-primary mt-2">Current Plan</span>
-						@endif
+<!-- Pricing Cards -->
+<div class="row gy-4">
+	<!-- FREE Plan -->
+	<div class="col-xl col-lg-4 col-md-6">
+		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'border-primary shadow-sm' : '' }}">
+			<div class="card-body position-relative text-center d-flex flex-column">
+				@if($currentPlan === \App\Enums\EmailPlan::FREE)
+					<div class="position-absolute end-0 me-4 top-0 mt-3">
+						<span class="badge bg-label-primary">Plan Actual</span>
 					</div>
-					<div class="card-body">
-						<p class="text-center text-muted mb-4">{{ $plan->getDescription() }}</p>
-
-						<ul class="list-unstyled mb-4">
-							<li class="mb-2">
-								<i class="ti ti-check text-success me-2"></i>
-								<strong>{{ number_format($plan->getMonthlyLimit()) }}</strong> emails/month
-							</li>
-							<li class="mb-2">
-								<i class="ti ti-check text-success me-2"></i>
-								@if($plan->getDailyLimit())
-									<strong>{{ number_format($plan->getDailyLimit()) }}</strong> emails/day
-								@else
-									<strong>Unlimited</strong> daily emails
-								@endif
-							</li>
-							<li class="mb-2">
-								<i class="ti ti-check text-success me-2"></i>
-								Up to <strong>{{ number_format($plan->getContactLimit()) }}</strong> contacts
-							</li>
-						</ul>
-
-						<div class="text-center">
-							@if($currentPlan === $plan)
-								<button class="btn btn-label-primary w-100" disabled>
-									Current Plan
-								</button>
-							@elseif(!$subscription || !$subscription->active())
-								<form method="POST" action="{{ route('subscription.checkout') }}">
-									@csrf
-									<input type="hidden" name="plan" value="{{ $plan->value }}">
-									<button type="submit" class="btn btn-primary w-100">
-										<i class="ti ti-credit-card me-1"></i>Subscribe Now
-									</button>
-								</form>
-							@else
-								<button type="button" class="btn btn-primary w-100" onclick="confirmSwap('{{ $plan->value }}', '{{ $plan->getDisplayName() }}')">
-									<i class="ti ti-arrow-up me-1"></i>
-									@if($currentPlan->getMonthlyLimit() < $plan->getMonthlyLimit())
-										Upgrade
-									@else
-										Downgrade
-									@endif
-								</button>
-							@endif
-						</div>
+				@endif
+				
+				<div class="mb-4">
+					<div class="d-flex justify-content-center">
+						<h1 class="mb-0 text-primary">0</h1>
+						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
+						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
 				</div>
+
+				<h4>Free</h4>
+				<p class="mb-4">{{ \App\Enums\EmailPlan::FREE->getDescription() }}</p>
+
+				<ul class="list-unstyled text-start mb-4 flex-grow-1">
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>{{ number_format(\App\Enums\EmailPlan::FREE->getMonthlyLimit()) }} emails por mes</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>{{ number_format(\App\Enums\EmailPlan::FREE->getDailyLimit()) }} emails por día</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>Hasta {{ number_format(\App\Enums\EmailPlan::FREE->getContactLimit()) }} contactos</span>
+					</li>
+				</ul>
+
+				@if($currentPlan === \App\Enums\EmailPlan::FREE)
+					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
+				@else
+					<button class="btn btn-label-secondary w-100 mt-auto" disabled>Downgrade</button>
+				@endif
 			</div>
-		@endif
-	@endforeach
+		</div>
+	</div>
+
+	<!-- BASIC Plan -->
+	<div class="col-xl col-lg-4 col-md-6">
+		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::BASIC ? 'border-primary shadow-sm' : '' }}">
+			<div class="card-body position-relative text-center d-flex flex-column">
+				@if($currentPlan === \App\Enums\EmailPlan::BASIC)
+					<div class="position-absolute end-0 me-4 top-0 mt-3">
+						<span class="badge bg-label-primary">Plan Actual</span>
+					</div>
+				@endif
+				
+				<div class="mb-4">
+					<div class="d-flex justify-content-center">
+						<h1 class="mb-0 text-primary">49</h1>
+						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
+						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
+					</div>
+				</div>
+
+				<h4>Basic</h4>
+				<p class="mb-4">{{ \App\Enums\EmailPlan::BASIC->getDescription() }}</p>
+
+				<ul class="list-unstyled text-start mb-4 flex-grow-1">
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>{{ number_format(\App\Enums\EmailPlan::BASIC->getMonthlyLimit()) }}</strong> emails por mes</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>{{ number_format(\App\Enums\EmailPlan::BASIC->getDailyLimit()) }}</strong> emails por día</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>Hasta <strong>{{ number_format(\App\Enums\EmailPlan::BASIC->getContactLimit()) }}</strong> contactos</span>
+					</li>
+				</ul>
+
+				@if($currentPlan === \App\Enums\EmailPlan::BASIC)
+					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
+				@elseif(!$subscription || !$subscription->active())
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
+						<input type="hidden" name="plan" value="basic">
+						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
+					</form>
+				@else
+					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('basic', 'Basic')">
+						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::BASIC->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
+					</button>
+				@endif
+			</div>
+		</div>
+	</div>
+
+	<!-- FOUNDATION Plan -->
+	<div class="col-xl col-lg-4 col-md-6">
+		<div class="card border border-primary shadow-sm h-100">
+			<div class="card-body position-relative text-center d-flex flex-column">
+				@if($currentPlan === \App\Enums\EmailPlan::FOUNDATION)
+					<div class="position-absolute end-0 me-4 top-0 mt-3">
+						<span class="badge bg-label-primary">Plan Actual</span>
+					</div>
+				@else
+					<div class="position-absolute end-0 me-4 top-0 mt-3">
+						<span class="badge bg-label-primary">Popular</span>
+					</div>
+				@endif
+				
+				<div class="mb-4">
+					<div class="d-flex justify-content-center">
+						<h1 class="mb-0 text-primary">99</h1>
+						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
+						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
+					</div>
+				</div>
+
+				<h4>Foundation</h4>
+				<p class="mb-4">{{ \App\Enums\EmailPlan::FOUNDATION->getDescription() }}</p>
+
+				<ul class="list-unstyled text-start mb-4 flex-grow-1">
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>{{ number_format(\App\Enums\EmailPlan::FOUNDATION->getMonthlyLimit()) }}</strong> emails por mes</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>{{ number_format(\App\Enums\EmailPlan::FOUNDATION->getDailyLimit()) }}</strong> emails por día</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>Hasta <strong>{{ number_format(\App\Enums\EmailPlan::FOUNDATION->getContactLimit()) }}</strong> contactos</span>
+					</li>
+				</ul>
+
+				@if($currentPlan === \App\Enums\EmailPlan::FOUNDATION)
+					<button class="btn btn-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
+				@elseif(!$subscription || !$subscription->active())
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
+						<input type="hidden" name="plan" value="foundation">
+						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
+					</form>
+				@else
+					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('foundation', 'Foundation')">
+						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::FOUNDATION->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
+					</button>
+				@endif
+			</div>
+		</div>
+	</div>
+
+	<!-- SCALE Plan -->
+	<div class="col-xl col-lg-4 col-md-6">
+		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::SCALE ? 'border-primary shadow-sm' : '' }}">
+			<div class="card-body position-relative text-center d-flex flex-column">
+				@if($currentPlan === \App\Enums\EmailPlan::SCALE)
+					<div class="position-absolute end-0 me-4 top-0 mt-3">
+						<span class="badge bg-label-primary">Plan Actual</span>
+					</div>
+				@endif
+				
+				<div class="mb-4">
+					<div class="d-flex justify-content-center">
+						<h1 class="mb-0 text-primary">199</h1>
+						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
+						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
+					</div>
+				</div>
+
+				<h4>Scale</h4>
+				<p class="mb-4">{{ \App\Enums\EmailPlan::SCALE->getDescription() }}</p>
+
+				<ul class="list-unstyled text-start mb-4 flex-grow-1">
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>{{ number_format(\App\Enums\EmailPlan::SCALE->getMonthlyLimit()) }}</strong> emails por mes</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span><strong>Ilimitados</strong> emails por día</span>
+					</li>
+					<li class="mb-2">
+						<i class="ti ti-circle-check text-success ti-xs me-2"></i>
+						<span>Hasta <strong>{{ number_format(\App\Enums\EmailPlan::SCALE->getContactLimit()) }}</strong> contactos</span>
+					</li>
+				</ul>
+
+				@if($currentPlan === \App\Enums\EmailPlan::SCALE)
+					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
+				@elseif(!$subscription || !$subscription->active())
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
+						<input type="hidden" name="plan" value="scale">
+						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
+					</form>
+				@else
+					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('scale', 'Scale')">
+						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::SCALE->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
+					</button>
+				@endif
+			</div>
+		</div>
+	</div>
 </div>
+
+@section('vendor-script')
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
+@endsection
 
 <script>
 function confirmCancel()
@@ -226,7 +334,12 @@ function confirmCancel()
 		confirmButtonColor: '#d33',
 		cancelButtonColor: '#3085d6',
 		confirmButtonText: 'Yes, cancel it',
-		cancelButtonText: 'No, keep it'
+		cancelButtonText: 'No, keep it',
+		customClass: {
+			confirmButton: 'btn btn-danger me-2',
+			cancelButton: 'btn btn-label-secondary'
+		},
+		buttonsStyling: false
 	}).then((result) => {
 		if (result.isConfirmed)
 		{
@@ -247,10 +360,15 @@ function confirmSwap(plan, planName)
 		text: `Switch to ${planName} plan? Changes will take effect immediately.`,
 		icon: 'question',
 		showCancelButton: true,
-		confirmButtonColor: '#3085d6',
-		cancelButtonColor: '#6c757d',
+		confirmButtonColor: '#696cff',
+		cancelButtonColor: '#8592a3',
 		confirmButtonText: 'Yes, switch plan',
-		cancelButtonText: 'Cancel'
+		cancelButtonText: 'Cancel',
+		customClass: {
+			confirmButton: 'btn btn-primary me-2',
+			cancelButton: 'btn btn-label-secondary'
+		},
+		buttonsStyling: false
 	}).then((result) => {
 		if (result.isConfirmed)
 		{
@@ -265,4 +383,3 @@ function confirmSwap(plan, planName)
 }
 </script>
 @endsection
-

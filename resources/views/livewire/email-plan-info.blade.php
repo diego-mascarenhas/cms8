@@ -59,12 +59,10 @@
 			</div>
 		</div>
 
-		<!-- Upgrade Button - Temporarily hidden -->
-		{{--
-		<a href="{{ route('email-plans.current') }}" class="btn btn-primary w-100">
+		<!-- Upgrade Button -->
+		<a href="{{ route('subscription.index') }}" class="btn btn-primary w-100">
 			<i class="ti ti-rocket me-1"></i>
-			{{ __('Upgrade Plan') }}
+			{{ __('Actualizar Plan') }}
 		</a>
-		--}}
 	</div>
 </div>

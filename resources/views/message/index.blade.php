@@ -50,6 +50,109 @@
     </div>
 </div>
 
+<!-- Statistics Cards -->
+@php
+	$team = auth()->user()->currentTeam;
+	$currentPlan = $team->getEmailPlan();
+	$planConfig = $team->getEmailPlanConfig();
+@endphp
+
+<div class="row mb-4">
+	<!-- Plan Actual -->
+	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
+		<div class="card h-100">
+			<div class="card-body d-flex justify-content-between align-items-center">
+				<div class="card-title mb-0">
+					<h5 class="mb-0 me-2">{{ $currentPlan->getDisplayName() }}</h5>
+					<small>Plan Actual</small>
+				</div>
+				<div class="card-icon">
+					<span class="badge bg-label-primary rounded-pill p-2">
+						<i class='ti ti-award ti-sm'></i>
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Contactos -->
+	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
+		<div class="card h-100">
+			<div class="card-body d-flex justify-content-between align-items-center">
+				<div class="card-title mb-0">
+					<h5 class="mb-0 me-2">{{ number_format($team->contacts()->count()) }}</h5>
+					<small>Contactos / {{ number_format($planConfig['contact_limit']) }}</small>
+				</div>
+				<div class="card-icon">
+					<span class="badge bg-label-info rounded-pill p-2">
+						<i class='ti ti-users ti-sm'></i>
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Envíos Mensuales -->
+	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
+		<div class="card h-100">
+			<div class="card-body d-flex justify-content-between align-items-center">
+				<div class="card-title mb-0">
+					<h5 class="mb-0 me-2">{{ number_format($planConfig['monthly_used']) }}</h5>
+					<small>Envíos este mes / {{ number_format($planConfig['monthly_limit']) }}</small>
+				</div>
+				<div class="card-icon">
+					<span class="badge bg-label-success rounded-pill p-2">
+						<i class='ti ti-send ti-sm'></i>
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Envíos Diarios -->
+	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
+		<div class="card h-100">
+			<div class="card-body d-flex justify-content-between align-items-center">
+				<div class="card-title mb-0">
+					<h5 class="mb-0 me-2">{{ number_format($planConfig['daily_used']) }}</h5>
+					<small>Envíos hoy / {{ $planConfig['daily_limit'] ? number_format($planConfig['daily_limit']) : '∞' }}</small>
+				</div>
+				<div class="card-icon">
+					<span class="badge bg-label-warning rounded-pill p-2">
+						<i class='ti ti-clock ti-sm'></i>
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Email Plan Limits Alert -->
+@php
+	$team = auth()->user()->currentTeam;
+	$currentPlan = $team->getEmailPlan();
+	$planConfig = $team->getEmailPlanConfig();
+@endphp
+
+@if($currentPlan === \App\Enums\EmailPlan::FREE)
+<div class="alert alert-info d-flex align-items-center mb-3" role="alert">
+	<div class="flex-grow-1">
+		<i class="ti ti-info-circle me-2"></i>
+		<strong>Plan FREE:</strong>
+		Estás usando el plan gratuito con {{ number_format($planConfig['monthly_limit']) }} envíos/mes,
+		{{ number_format($planConfig['daily_limit']) }} envíos/día y hasta {{ number_format($planConfig['contact_limit']) }} contactos.
+		<br>
+		<small>
+			Usados este mes: {{ number_format($planConfig['monthly_used']) }}/{{ number_format($planConfig['monthly_limit']) }}
+			| Hoy: {{ number_format($planConfig['daily_used']) }}/{{ number_format($planConfig['daily_limit']) }}
+		</small>
+	</div>
+	<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary ms-3">
+		<i class="ti ti-rocket me-1"></i>Actualizar Plan
+	</a>
+</div>
+@endif
+
 @if(session('success'))
 <div id="toast-container" class="toast-top-right">
     <div class="toast toast-success" aria-live="polite" style="display: block;">
