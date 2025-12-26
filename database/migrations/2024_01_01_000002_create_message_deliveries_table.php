@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('delivered_at')->nullable();
             $table->timestamp('removed_at')->nullable();
             $table->integer('status_id')->default(0);
+            $table->timestamp('scheduled_for')->nullable();
             $table->string('email_provider')->nullable();
             $table->string('provider_message_id')->nullable();
             $table->string('delivery_status')->nullable();
@@ -38,6 +39,7 @@ return new class extends Migration
             $table->index(['contact_id']);
             $table->index(['team_id']);
             $table->index(['sent_at']);
+            $table->index(['scheduled_for']);
             $table->index(['opened_at']);
             $table->index(['clicked_at']);
             $table->index(['error_type']);
