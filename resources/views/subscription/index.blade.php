@@ -167,10 +167,11 @@
 				
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
-						<h1 class="mb-0 text-primary">49</h1>
+						<h1 class="mb-0 text-primary">{{ $prices['basic'] ? number_format($prices['basic']['amount'], 2, ',', '.') : '15,99' }}</h1>
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
+					<small class="text-muted">+ IVA</small>
 				</div>
 
 				<h4>Basic</h4>
@@ -224,13 +225,12 @@
 				
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
-						<h1 class="mb-0 text-primary">99</h1>
+						<h1 class="mb-0 text-primary">{{ $prices['foundation'] ? number_format($prices['foundation']['amount'], 2, ',', '.') : '35,99' }}</h1>
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
+					<small class="text-muted">+ IVA</small>
 				</div>
-
-				<h4>Foundation</h4>
 				<p class="mb-4">{{ \App\Enums\EmailPlan::FOUNDATION->getDescription() }}</p>
 
 				<ul class="list-unstyled text-start mb-4 flex-grow-1">
@@ -277,13 +277,12 @@
 				
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
-						<h1 class="mb-0 text-primary">199</h1>
+						<h1 class="mb-0 text-primary">{{ $prices['scale'] ? number_format($prices['scale']['amount'], 2, ',', '.') : '119,99' }}</h1>
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
+					<small class="text-muted">+ IVA</small>
 				</div>
-
-				<h4>Scale</h4>
 				<p class="mb-4">{{ \App\Enums\EmailPlan::SCALE->getDescription() }}</p>
 
 				<ul class="list-unstyled text-start mb-4 flex-grow-1">

@@ -33,6 +33,9 @@ class SubscriptionController extends Controller
             }
         }
 
+        // Get prices from Stripe API
+        $prices = $this->getStripePrices();
+
         return view('subscription.index', [
             'team' => $team,
             'currentPlan' => $currentPlan,
@@ -40,7 +43,52 @@ class SubscriptionController extends Controller
             'subscription' => $subscription,
             'stripeSubscription' => $stripeSubscription,
             'plans' => EmailPlan::getAll(),
+            'prices' => $prices,
         ]);
+    }
+
+    /**
+     * Get prices from Stripe API for each plan
+     */
+    private function getStripePrices(): array
+    {
+        Stripe::setApiKey(config('cashier.secret'));
+        
+        $prices = [
+            'basic' => null,
+            'foundation' => null,
+            'scale' => null,
+        ];
+
+        try
+        {
+            foreach (EmailPlan::getAll() as $plan)
+            {
+                if ($plan->isPaid())
+                {
+                    $priceId = $plan->getStripePriceId();
+                    if ($priceId)
+                    {
+                        try
+                        {
+                            $priceData = \Stripe\Price::retrieve($priceId);
+                            $prices[$plan->value] = [
+                                'amount' => $priceData->unit_amount / 100, // Convert from cents to euros
+                                'currency' => strtoupper($priceData->currency),
+                            ];
+                        } catch (\Exception $e)
+                        {
+                            \Log::warning("Error fetching price for {$plan->value}: ".$e->getMessage());
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e)
+        {
+            \Log::error('Error fetching Stripe prices: '.$e->getMessage());
+        }
+
+        return $prices;
     }
 
     /**
