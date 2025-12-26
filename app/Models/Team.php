@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\HasEmailLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
@@ -11,7 +12,7 @@ use Laravel\Jetstream\Team as JetstreamTeam;
 
 class Team extends JetstreamTeam
 {
-    use HasEmailLimits, HasFactory;
+    use Billable, HasEmailLimits, HasFactory;
 
     /**
      * The attributes that should be cast.
@@ -21,6 +22,22 @@ class Team extends JetstreamTeam
     protected $casts = [
         'personal_team' => 'boolean',
     ];
+
+    /**
+     * Get the team that owns the subscription (for Cashier)
+     */
+    public function stripeEmail()
+    {
+        return $this->owner->email ?? null;
+    }
+
+    /**
+     * Get all of the subscriptions for the team.
+     */
+    public function subscriptions()
+    {
+        return $this->hasMany(\Laravel\Cashier\Subscription::class, 'team_id')->orderByDesc('created_at');
+    }
 
     /**
      * The attributes that are mass assignable.

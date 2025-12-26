@@ -100,6 +100,65 @@
 @endif
 @endif
 
+<!-- Email Plan Limits Alert -->
+@php
+	$team = auth()->user()->currentTeam;
+	$currentPlan = $team->getEmailPlan();
+	$planConfig = $team->getEmailPlanConfig();
+	$isOverLimits = $team->isOverLimits();
+@endphp
+
+@if($currentPlan === \App\Enums\EmailPlan::FREE || $isOverLimits['over_monthly'] || $isOverLimits['over_daily'])
+<div class="row mb-3">
+	<div class="col-12">
+		@if($currentPlan === \App\Enums\EmailPlan::FREE)
+			<div class="alert alert-info d-flex align-items-center" role="alert">
+				<div class="flex-grow-1">
+					<i class="ti ti-info-circle me-2"></i>
+					<strong>Plan FREE:</strong>
+					Estás usando el plan gratuito con {{ number_format($planConfig['monthly_limit']) }} envíos/mes,
+					{{ number_format($planConfig['daily_limit']) }} envíos/día y hasta {{ number_format($planConfig['contact_limit']) }} contactos.
+					<br>
+					<small class="text-muted">
+						Usados este mes: {{ number_format($planConfig['monthly_used']) }}/{{ number_format($planConfig['monthly_limit']) }}
+						| Hoy: {{ number_format($planConfig['daily_used']) }}/{{ number_format($planConfig['daily_limit']) }}
+					</small>
+				</div>
+				<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary ms-3">
+					<i class="ti ti-arrow-up me-1"></i>Actualizar Plan
+				</a>
+			</div>
+		@endif
+
+		@if($isOverLimits['over_monthly'])
+			<div class="alert alert-danger d-flex align-items-center" role="alert">
+				<div class="flex-grow-1">
+					<i class="ti ti-alert-triangle me-2"></i>
+					<strong>Límite Mensual Alcanzado:</strong>
+					Has alcanzado tu límite de {{ number_format($planConfig['monthly_limit']) }} envíos mensuales.
+					Actualiza tu plan para continuar enviando.
+				</div>
+				<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-danger ms-3">
+					<i class="ti ti-arrow-up me-1"></i>Actualizar Ahora
+				</a>
+			</div>
+		@elseif($isOverLimits['over_daily'])
+			<div class="alert alert-warning d-flex align-items-center" role="alert">
+				<div class="flex-grow-1">
+					<i class="ti ti-alert-triangle me-2"></i>
+					<strong>Límite Diario Alcanzado:</strong>
+					Has alcanzado tu límite de {{ number_format($planConfig['daily_limit']) }} envíos diarios.
+					Espera hasta mañana o actualiza tu plan.
+				</div>
+				<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-warning ms-3">
+					<i class="ti ti-arrow-up me-1"></i>Actualizar Plan
+				</a>
+			</div>
+		@endif
+	</div>
+</div>
+@endif
+
 <div class="row">
 	<!-- Left Column: Stats + General Info -->
 	<div class="col-lg-4 col-md-5">

@@ -42,6 +42,7 @@ use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
@@ -584,6 +585,14 @@ Route::middleware(['auth'])->group(function ()
     // Academy - Now using the humano-academy package
     // Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
     // Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
+
+    // Subscription Management
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+    Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+    Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
+    Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
 });
 
 // Testing

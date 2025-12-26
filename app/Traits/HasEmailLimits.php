@@ -14,7 +14,7 @@ trait HasEmailLimits
     {
         if (! $this->getSetting('email_plan'))
         {
-            $this->assignEmailPlan(EmailPlan::BASIC, null);
+            $this->assignEmailPlan(EmailPlan::FREE, null);
         }
     }
 
@@ -227,7 +227,9 @@ trait HasEmailLimits
      */
     public function getEmailPlan(): EmailPlan
     {
-        return EmailPlan::from($this->getSetting('email_plan', 'basic'));
+        $planValue = $this->getSetting('email_plan', 'free');
+
+        return EmailPlan::from($planValue);
     }
 
     /**
