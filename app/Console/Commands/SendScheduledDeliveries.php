@@ -32,10 +32,10 @@ class SendScheduledDeliveries extends Command
 
         // Get deliveries that are scheduled to be sent now or in the past
         $dueDeliveries = MessageDelivery::where('status_id', 1) // pending
-            ->where('sent_at', '<=', now())
+            ->where('scheduled_for', '<=', now())
             ->whereNull('delivered_at') // not delivered yet
             ->with(['contact', 'message', 'team']) // eager load relations
-            ->orderBy('sent_at', 'asc')
+            ->orderBy('scheduled_for', 'asc')
             ->limit(config('services.email.processing.deliveries_per_send_run', 20)) // ~20 emails/minute
             ->get();
 
