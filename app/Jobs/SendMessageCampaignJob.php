@@ -62,15 +62,15 @@ class SendMessageCampaignJob implements ShouldQueue
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
 
             // Check if it's time to send (respect scheduled time)
-            if ($this->messageDelivery->sent_at && $this->messageDelivery->sent_at->isFuture())
+            if ($this->messageDelivery->scheduled_for && $this->messageDelivery->scheduled_for->isFuture())
             {
                 Log::info('⏰ Message delivery not yet time to send, releasing job', [
                     'delivery_id' => $this->messageDelivery->id,
-                    'scheduled_time' => $this->messageDelivery->sent_at,
+                    'scheduled_time' => $this->messageDelivery->scheduled_for,
                     'current_time' => now(),
                 ]);
 
-                $delay = $this->messageDelivery->sent_at->diffInSeconds(now());
+                $delay = $this->messageDelivery->scheduled_for->diffInSeconds(now());
                 $this->release($delay);
 
                 return;

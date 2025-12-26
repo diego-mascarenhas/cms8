@@ -143,7 +143,7 @@ class ProcessActiveCampaigns extends Command
                     'message_id' => $message->id,
                     'contact_id' => $contact->id,
                     'status_id' => 1, // pending
-                    'sent_at' => $scheduledTime,
+                    'scheduled_for' => $scheduledTime, // When to send
                 ]);
 
                 $createdCount++;
