@@ -241,24 +241,41 @@ class SubscriptionController extends Controller
     {
         $team = auth()->user()->currentTeam;
 
-        if (! $team->subscribed('default'))
-        {
-            return redirect()->route('subscription.index')
-                ->with('error', 'No active subscription found.');
-        }
-
         try
         {
-            $team->subscription('default')->cancel();
+            // Get subscription directly from database
+            $subscription = $team->subscriptions()
+                ->where('type', 'default')
+                ->where('stripe_status', 'active')
+                ->whereNull('ends_at')
+                ->first();
 
-            return redirect()->route('subscription.index')
-                ->with('success', 'Subscription cancelled. You will continue to have access until the end of your billing period.');
+            if (! $subscription)
+            {
+                return redirect()->route('billing.index')
+                    ->with('error', 'No se encontró una suscripción activa.');
+            }
+
+            // Cancel via Stripe API
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            \Stripe\Subscription::update($subscription->stripe_id, [
+                'cancel_at_period_end' => true,
+            ]);
+
+            // Update local database
+            $subscription->ends_at = \Carbon\Carbon::createFromTimestamp(
+                \Stripe\Subscription::retrieve($subscription->stripe_id)->current_period_end,
+            );
+            $subscription->save();
+
+            return redirect()->route('billing.index')
+                ->with('success', 'Suscripción cancelada. Seguirás teniendo acceso hasta el final de tu período de facturación.');
         } catch (\Exception $e)
         {
             \Log::error('Cancel error: '.$e->getMessage());
 
-            return redirect()->route('subscription.index')
-                ->with('error', 'Error cancelling subscription: '.$e->getMessage());
+            return redirect()->route('billing.index')
+                ->with('error', 'Error al cancelar la suscripción: '.$e->getMessage());
         }
     }
 
