@@ -43,23 +43,61 @@ class BillingController extends Controller
 
         try
         {
-            $stripeService = new StripeService;
-            $stripeData = $stripeService->getCustomerDataByEmail($user->email, true, 20);
-
-            if ($stripeData)
+            // Use team's stripe_id if available, otherwise fallback to email search
+            if ($team->stripe_id)
             {
-                $invoices = collect($stripeData['invoices']->data);
-                $subscriptions = collect($stripeData['subscriptions']->data);
+                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+
+                // Get customer data
+                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+                // Get invoices
+                $invoicesData = \Stripe\Invoice::all([
+                    'customer' => $team->stripe_id,
+                    'limit' => 20,
+                ]);
+                $invoices = collect($invoicesData->data);
+
+                // Get subscriptions
+                $subscriptionsData = \Stripe\Subscription::all([
+                    'customer' => $team->stripe_id,
+                    'limit' => 10,
+                ]);
+                $subscriptions = collect($subscriptionsData->data);
 
                 // Get payment methods
-                if (isset($stripeData['customer']))
+                $paymentMethodsData = \Stripe\PaymentMethod::all([
+                    'customer' => $team->stripe_id,
+                    'type' => 'card',
+                ]);
+                $paymentMethods = collect($paymentMethodsData->data);
+
+                $stripeData = [
+                    'customer' => $customer,
+                    'invoices' => $invoicesData,
+                    'subscriptions' => $subscriptionsData,
+                ];
+            } else
+            {
+                // Fallback to email search (legacy)
+                $stripeService = new StripeService;
+                $stripeData = $stripeService->getCustomerDataByEmail($user->email, true, 20);
+
+                if ($stripeData)
                 {
-                    \Stripe\Stripe::setApiKey(config('cashier.secret'));
-                    $paymentMethodsData = \Stripe\PaymentMethod::all([
-                        'customer' => $stripeData['customer']->id,
-                        'type' => 'card',
-                    ]);
-                    $paymentMethods = collect($paymentMethodsData->data);
+                    $invoices = collect($stripeData['invoices']->data);
+                    $subscriptions = collect($stripeData['subscriptions']->data);
+
+                    // Get payment methods
+                    if (isset($stripeData['customer']))
+                    {
+                        \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                        $paymentMethodsData = \Stripe\PaymentMethod::all([
+                            'customer' => $stripeData['customer']->id,
+                            'type' => 'card',
+                        ]);
+                        $paymentMethods = collect($paymentMethodsData->data);
+                    }
                 }
             }
         } catch (\Exception $e)

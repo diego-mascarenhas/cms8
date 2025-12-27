@@ -285,26 +285,40 @@ class SubscriptionController extends Controller
     public function resume()
     {
         $team = auth()->user()->currentTeam;
-        $subscription = $team->subscription('default');
-
-        if (! $subscription || ! $subscription->onGracePeriod())
-        {
-            return redirect()->route('subscription.index')
-                ->with('error', 'No cancelled subscription found.');
-        }
 
         try
         {
-            $subscription->resume();
+            // Get subscription from database
+            $subscription = $team->subscriptions()
+                ->where('type', 'default')
+                ->where('stripe_status', 'active')
+                ->whereNotNull('ends_at')
+                ->first();
 
-            return redirect()->route('subscription.index')
-                ->with('success', 'Subscription resumed successfully!');
+            if (! $subscription)
+            {
+                return redirect()->route('billing.index')
+                    ->with('error', 'No se encontró una suscripción cancelada.');
+            }
+
+            // Resume via Stripe API
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            \Stripe\Subscription::update($subscription->stripe_id, [
+                'cancel_at_period_end' => false,
+            ]);
+
+            // Update local database
+            $subscription->ends_at = null;
+            $subscription->save();
+
+            return redirect()->route('billing.index')
+                ->with('success', '¡Suscripción reanudada exitosamente!');
         } catch (\Exception $e)
         {
             \Log::error('Resume error: '.$e->getMessage());
 
-            return redirect()->route('subscription.index')
-                ->with('error', 'Error resuming subscription: '.$e->getMessage());
+            return redirect()->route('billing.index')
+                ->with('error', 'Error al reanudar la suscripción: '.$e->getMessage());
         }
     }
 
