@@ -320,6 +320,13 @@
                         <span class="align-middle">{{ __('app.profile.my_profile') }}</span>
                     </a>
                 </li>
+                
+                <li>
+                    <a class="dropdown-item" href="{{ route('billing.index') }}">
+                        <i class="ti ti-credit-card me-2 ti-sm"></i>
+                        <span class="align-middle">Facturación y Planes</span>
+                    </a>
+                </li>
 
                 @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
                     {{-- Variables de configuración (Team Settings module) --}}

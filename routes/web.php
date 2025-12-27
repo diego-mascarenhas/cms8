@@ -593,6 +593,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
+    
+    // Billing & Plans
+    Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
 });
 
 // Stripe Webhook (outside auth middleware)
