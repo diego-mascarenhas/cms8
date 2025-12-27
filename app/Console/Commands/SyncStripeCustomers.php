@@ -188,7 +188,7 @@ class SyncStripeCustomers extends Command
 
         try
         {
-            // Find or create user
+            // Find or create user first
             $user = User::firstOrCreate(
                 ['email' => $customer->email],
                 [
@@ -199,27 +199,70 @@ class SyncStripeCustomers extends Command
                 ],
             );
 
-            // Create team if user doesn't have one
-            if ($user->allTeams()->count() === 0)
+            // Check if a team already exists with this stripe_id
+            $existingTeam = Team::where('stripe_id', $customer->id)->first();
+
+            if ($existingTeam)
             {
-                $team = Team::create([
-                    'user_id' => $user->id,
-                    'name' => $customer->name ?? "{$user->name}'s Team",
-                    'personal_team' => false,
-                    'stripe_id' => $customer->id,
-                ]);
+                // Team exists, ensure the user is the owner
+                if ($existingTeam->user_id !== $user->id)
+                {
+                    $existingTeam->user_id = $user->id;
+                    $existingTeam->save();
+                    $this->line("  ✅ Updated team owner to user: {$user->email}");
+                }
 
-                // Attach user to team
-                $user->teams()->attach($team, ['role' => 'admin']);
+                // Ensure user is attached to the team
+                if (! $user->teams->contains($existingTeam->id))
+                {
+                    $user->teams()->attach($existingTeam, ['role' => 'admin']);
+                    $this->line('  ✅ Attached user to existing team');
+                }
 
-                // Set as current team
-                $user->current_team_id = $team->id;
-                $user->save();
+                // Set as current team if user doesn't have one
+                if (! $user->current_team_id)
+                {
+                    $user->current_team_id = $existingTeam->id;
+                    $user->save();
+                }
 
-                return $team;
+                $this->line("  ℹ️  Team already exists with stripe_id: {$customer->id}");
+
+                return $existingTeam;
             }
 
-            return $user->allTeams()->first();
+            // Check if user already has a team
+            $existingUserTeam = $user->allTeams()->first();
+
+            if ($existingUserTeam)
+            {
+                // User has a team, update it with stripe_id if it doesn't have one
+                if (! $existingUserTeam->stripe_id)
+                {
+                    $existingUserTeam->stripe_id = $customer->id;
+                    $existingUserTeam->save();
+                    $this->line('  ✅ Updated existing team with stripe_id');
+                }
+
+                return $existingUserTeam;
+            }
+
+            // Create new team only if user has no teams
+            $team = Team::create([
+                'user_id' => $user->id,
+                'name' => $customer->name ?? "{$user->name}'s Team",
+                'personal_team' => false,
+                'stripe_id' => $customer->id,
+            ]);
+
+            // Attach user to team
+            $user->teams()->attach($team, ['role' => 'admin']);
+
+            // Set as current team
+            $user->current_team_id = $team->id;
+            $user->save();
+
+            return $team;
         } catch (\Exception $e)
         {
             $this->error("Error creating team: {$e->getMessage()}");
