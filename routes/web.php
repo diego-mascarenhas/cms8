@@ -595,6 +595,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
 });
 
+// Stripe Webhook (outside auth middleware)
+Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']);
+
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
