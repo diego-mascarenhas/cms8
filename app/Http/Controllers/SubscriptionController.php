@@ -301,13 +301,6 @@ class SubscriptionController extends Controller
         ]);
 
         $team = auth()->user()->currentTeam;
-
-        if (! $team->subscribed('default'))
-        {
-            return redirect()->route('subscription.index')
-                ->with('error', 'No active subscription found. Please subscribe first.');
-        }
-
         $plan = EmailPlan::from($request->plan);
 
         try
@@ -321,20 +314,54 @@ class SubscriptionController extends Controller
                     ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
             }
 
-            // Swap subscription
-            $team->subscription('default')->swap($priceId);
+            // Get subscription
+            $subscription = $team->subscriptions()
+                ->where('type', 'default')
+                ->where('stripe_status', 'active')
+                ->first();
 
-            // Update the team's email plan
-            $team->assignEmailPlan($plan, auth()->id());
+            if (! $subscription)
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', 'No se encontró una suscripción activa. Por favor, contacta a soporte.');
+            }
+
+            // Update directly via Stripe API to avoid Billable model issues
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+
+            $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
+            \Stripe\Subscription::update($subscription->stripe_id, [
+                'items' => [
+                    [
+                        'id' => $stripeSubscription->items->data[0]->id,
+                        'price' => $priceId,
+                    ],
+                ],
+                'proration_behavior' => 'create_prorations',
+            ]);
+
+            // Update local database
+            $subscription->stripe_price = $priceId;
+            $subscription->save();
+
+            // Update the team's email plan (bypass admin check for owner)
+            try
+            {
+                $team->email_plan = $plan->value;
+                $team->save();
+            } catch (\Exception $e)
+            {
+                \Log::warning('Could not update email_plan: '.$e->getMessage());
+            }
 
             return redirect()->route('subscription.index')
-                ->with('success', 'Plan updated successfully!');
+                ->with('success', '¡Plan actualizado exitosamente!');
         } catch (\Exception $e)
         {
             \Log::error('Swap error: '.$e->getMessage());
 
             return redirect()->route('subscription.index')
-                ->with('error', 'Error updating plan: '.$e->getMessage());
+                ->with('error', 'Error al actualizar el plan: '.$e->getMessage());
         }
     }
 

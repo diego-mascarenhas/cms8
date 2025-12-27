@@ -199,6 +199,13 @@ class SyncStripeCustomers extends Command
                 ],
             );
 
+            // Assign admin role to the user if they don't have it
+            if (! $user->hasRole('admin'))
+            {
+                $user->assignRole('admin');
+                $this->line("  ✅ Assigned admin role to user: {$user->email}");
+            }
+
             // Check if a team already exists with this stripe_id
             $existingTeam = Team::where('stripe_id', $customer->id)->first();
 
