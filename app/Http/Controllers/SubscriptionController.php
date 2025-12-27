@@ -14,7 +14,18 @@ class SubscriptionController extends Controller
     public function index()
     {
         $team = auth()->user()->currentTeam;
-        $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+
+        // Get subscription info if exists
+        $subscription = $team->subscription('default');
+
+        // Get current plan from active subscription or fallback to team setting
+        if ($subscription && $subscription->active())
+        {
+            $currentPlan = EmailPlan::fromStripePriceId($subscription->stripe_price);
+        } else
+        {
+            $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+        }
 
         // Get plan usage configuration
         $planConfig = [
@@ -25,8 +36,6 @@ class SubscriptionController extends Controller
             'contact_limit' => $currentPlan->getContactLimit(),
         ];
 
-        // Get subscription info if exists
-        $subscription = $team->subscription('default');
         $stripeSubscription = null;
 
         if ($subscription && $subscription->stripe_id)

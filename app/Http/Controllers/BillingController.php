@@ -13,7 +13,18 @@ class BillingController extends Controller
     {
         $user = auth()->user();
         $team = $user->currentTeam;
-        $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+
+        // Get Cashier subscription first
+        $subscription = $team->subscription('default');
+
+        // Get current plan from active subscription or fallback to team setting
+        if ($subscription && $subscription->active())
+        {
+            $currentPlan = EmailPlan::fromStripePriceId($subscription->stripe_price);
+        } else
+        {
+            $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+        }
 
         // Get plan usage configuration
         $planConfig = [
@@ -55,9 +66,6 @@ class BillingController extends Controller
         {
             Log::error('Error fetching Stripe data: '.$e->getMessage());
         }
-
-        // Get Cashier subscription
-        $subscription = $team->subscription('default');
 
         return view('billing.index', compact(
             'team',

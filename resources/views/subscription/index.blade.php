@@ -23,91 +23,6 @@
 	</div>
 @endif
 
-<!-- Current Plan Status (if not free) -->
-@if($currentPlan !== \App\Enums\EmailPlan::FREE)
-<div class="card mb-5">
-	<div class="card-body">
-		<div class="row">
-			<div class="col-md-6">
-				<h5 class="mb-3">Current Plan: {{ $currentPlan->getDisplayName() }}</h5>
-				<p class="text-muted mb-3">{{ $currentPlan->getDescription() }}</p>
-
-				@if($subscription)
-					<div class="mb-2">
-						<span class="badge bg-label-{{ $subscription->onGracePeriod() ? 'warning' : ($subscription->active() ? 'success' : 'secondary') }}">
-							@if($subscription->onGracePeriod())
-								Cancels on {{ $subscription->ends_at->format('M d, Y') }}
-							@elseif($subscription->active())
-								Active
-							@else
-								Inactive
-							@endif
-						</span>
-					</div>
-
-				@if($subscription->active() && !$subscription->onGracePeriod())
-					<p class="text-muted mb-0">
-						<small><i class="ti ti-calendar ti-xs me-1"></i>Next billing: {{ $stripeSubscription && $stripeSubscription->current_period_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('M d, Y') : 'N/A' }}</small>
-					</p>
-				@endif
-				@endif
-			</div>
-			<div class="col-md-6">
-				<h6 class="mb-3">Usage Statistics</h6>
-				<div class="mb-2">
-					<div class="d-flex justify-content-between mb-1">
-						<small>Monthly Emails</small>
-						<small class="fw-medium">{{ number_format($planConfig['monthly_used']) }} / {{ number_format($planConfig['monthly_limit']) }}</small>
-					</div>
-					<div class="progress" style="height: 6px;">
-						<div class="progress-bar" role="progressbar" style="width: {{ min(($planConfig['monthly_used'] / $planConfig['monthly_limit']) * 100, 100) }}%"></div>
-					</div>
-				</div>
-
-				@if($planConfig['daily_limit'])
-				<div class="mb-2">
-					<div class="d-flex justify-content-between mb-1">
-						<small>Daily Emails</small>
-						<small class="fw-medium">{{ number_format($planConfig['daily_used']) }} / {{ number_format($planConfig['daily_limit']) }}</small>
-					</div>
-					<div class="progress" style="height: 6px;">
-						<div class="progress-bar" role="progressbar" style="width: {{ min(($planConfig['daily_used'] / $planConfig['daily_limit']) * 100, 100) }}%"></div>
-					</div>
-				</div>
-				@endif
-
-				<div class="mb-0">
-					<div class="d-flex justify-content-between mb-1">
-						<small>Contacts</small>
-						<small class="fw-medium">{{ number_format($team->contacts()->count()) }} / {{ number_format($planConfig['contact_limit']) }}</small>
-					</div>
-					<div class="progress" style="height: 6px;">
-						<div class="progress-bar bg-info" role="progressbar" style="width: {{ min(($team->contacts()->count() / $planConfig['contact_limit']) * 100, 100) }}%"></div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		@if($subscription)
-		<div class="mt-4 pt-3 border-top">
-			@if($subscription->onGracePeriod())
-				<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
-					@csrf
-					<button type="submit" class="btn btn-success btn-sm">
-						<i class="ti ti-refresh ti-xs me-1"></i>Resume Subscription
-					</button>
-				</form>
-			@elseif($subscription->active())
-				<button type="button" class="btn btn-label-danger btn-sm" onclick="confirmCancel()">
-					<i class="ti ti-x ti-xs me-1"></i>Cancel Subscription
-				</button>
-			@endif
-		</div>
-		@endif
-	</div>
-</div>
-@endif
-
 <!-- Pricing Cards -->
 <div class="row gy-4">
 	<!-- FREE Plan -->
@@ -126,6 +41,7 @@
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
+					<small class="text-muted">&nbsp;</small>
 				</div>
 
 				<h4>Free</h4>
@@ -171,7 +87,7 @@
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
-					<small class="text-muted">+ IVA</small>
+					<small class="text-muted">+ I.V.A.</small>
 				</div>
 
 				<h4>Basic</h4>
@@ -229,8 +145,10 @@
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
-					<small class="text-muted">+ IVA</small>
+					<small class="text-muted">+ I.V.A.</small>
 				</div>
+
+				<h4>Foundation</h4>
 				<p class="mb-4">{{ \App\Enums\EmailPlan::FOUNDATION->getDescription() }}</p>
 
 				<ul class="list-unstyled text-start mb-4 flex-grow-1">
@@ -281,8 +199,10 @@
 						<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">€</sup>
 						<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/mes</sub>
 					</div>
-					<small class="text-muted">+ IVA</small>
+					<small class="text-muted">+ I.V.A.</small>
 				</div>
+
+				<h4>Scale</h4>
 				<p class="mb-4">{{ \App\Enums\EmailPlan::SCALE->getDescription() }}</p>
 
 				<ul class="list-unstyled text-start mb-4 flex-grow-1">

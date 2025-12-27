@@ -393,7 +393,7 @@ protected function schedule(Schedule $schedule)
 {
     // Sincronizar diariamente a las 2 AM
     $schedule->command('stripe:sync-customers')->dailyAt('02:00');
-    
+
     // Actualizar nombres semanalmente
     $schedule->command('stripe:sync-customer-names')->weekly();
 }
@@ -499,10 +499,10 @@ php artisan stripe:sync-customers
 
 1. **Identificar duplicados:**
 ```sql
-SELECT stripe_id, COUNT(*) as count 
-FROM teams 
-WHERE stripe_id IS NOT NULL 
-GROUP BY stripe_id 
+SELECT stripe_id, COUNT(*) as count
+FROM teams
+WHERE stripe_id IS NOT NULL
+GROUP BY stripe_id
 HAVING count > 1;
 ```
 
@@ -533,12 +533,12 @@ php artisan stripe:sync-customers
 
 O manualmente:
 ```sql
-UPDATE users u 
+UPDATE users u
 SET current_team_id = (
-    SELECT t.id FROM teams t 
-    WHERE t.user_id = u.id 
+    SELECT t.id FROM teams t
+    WHERE t.user_id = u.id
     LIMIT 1
-) 
+)
 WHERE current_team_id IS NULL;
 ```
 
@@ -643,7 +643,7 @@ El sistema previene duplicados verificando en este orden:
 
 ---
 
-**Última actualización:** 2025-12-27  
-**Versión de Laravel:** 10.x  
+**Última actualización:** 2025-12-27
+**Versión de Laravel:** 10.x
 **Versión de Cashier:** 15.x
 

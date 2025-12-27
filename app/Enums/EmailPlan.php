@@ -110,6 +110,60 @@ enum EmailPlan: string
         return $this !== self::FREE;
     }
 
+    /**
+     * Get EmailPlan from Stripe price ID
+     */
+    public static function fromStripePriceId(?string $priceId): self
+    {
+        if (! $priceId)
+        {
+            return self::FREE;
+        }
+
+        // First try to match with configured price IDs from env
+        $basicPrice = env('STRIPE_MAILER_BASIC', 'price_1SUolyRwN51ygFdec574kfHt');
+        $foundationPrice = env('STRIPE_MAILER_FOUNDATION', 'price_1SUomeRwN51ygFdehZBo2SXd');
+        $scalePrice = env('STRIPE_MAILER_SCALE', 'price_1SUon4RwN51ygFdeu3gm5bkR');
+
+        return match ($priceId)
+        {
+            $basicPrice => self::BASIC,
+            $foundationPrice => self::FOUNDATION,
+            $scalePrice => self::SCALE,
+            default => self::fromStripeProductId($priceId),
+        };
+    }
+
+    /**
+     * Get EmailPlan from Stripe price ID by querying Stripe API
+     */
+    private static function fromStripeProductId(string $priceId): self
+    {
+        try
+        {
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $price = \Stripe\Price::retrieve($priceId);
+
+            if ($price && $price->product)
+            {
+                $productId = is_string($price->product) ? $price->product : $price->product->id;
+
+                return match ($productId)
+                {
+                    'prod_TRiCHCP6QiGK9n' => self::BASIC,
+                    'prod_TRiDcPW8PSKYkq' => self::FOUNDATION,
+                    'prod_TRiDBLKIOlK0pL' => self::SCALE,
+                    default => self::FREE,
+                };
+            }
+        } catch (\Exception $e)
+        {
+            \Log::warning("Could not determine plan from price ID {$priceId}: ".$e->getMessage());
+        }
+
+        return self::FREE;
+    }
+
     public function getConfig(): array
     {
         return [
