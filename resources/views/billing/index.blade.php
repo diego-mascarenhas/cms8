@@ -50,43 +50,6 @@
 					@endif
 				</div>
 
-				<!-- Plan Features -->
-				<div class="row mb-4">
-					<div class="col-md-4 mb-3">
-						<div class="d-flex align-items-center">
-							<div class="badge badge-center rounded bg-label-primary me-3">
-								<i class="ti ti-mail ti-sm"></i>
-							</div>
-							<div>
-								<p class="mb-0 fw-medium">Emails Mensuales</p>
-								<small class="text-muted">{{ number_format($planConfig['monthly_limit']) }} por mes</small>
-							</div>
-						</div>
-					</div>
-					<div class="col-md-4 mb-3">
-						<div class="d-flex align-items-center">
-							<div class="badge badge-center rounded bg-label-info me-3">
-								<i class="ti ti-clock ti-sm"></i>
-							</div>
-							<div>
-								<p class="mb-0 fw-medium">Emails Diarios</p>
-								<small class="text-muted">{{ $planConfig['daily_limit'] ? number_format($planConfig['daily_limit']) . ' por día' : 'Ilimitados' }}</small>
-							</div>
-						</div>
-					</div>
-					<div class="col-md-4 mb-3">
-						<div class="d-flex align-items-center">
-							<div class="badge badge-center rounded bg-label-success me-3">
-								<i class="ti ti-users ti-sm"></i>
-							</div>
-							<div>
-								<p class="mb-0 fw-medium">Contactos</p>
-								<small class="text-muted">Hasta {{ number_format($planConfig['contact_limit']) }}</small>
-							</div>
-						</div>
-					</div>
-				</div>
-
 			<!-- Subscription Status -->
 			@if($subscription && $subscription->active())
 				@php
@@ -158,7 +121,7 @@
 
 				<!-- Actions -->
 				<div class="d-flex flex-wrap gap-3">
-					<a href="{{ route('subscription.index') }}" class="btn btn-primary">
+					<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
 						<i class="ti ti-refresh ti-xs me-1"></i>
 						{{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'Ver Planes' : 'Cambiar Plan' }}
 					</a>
@@ -167,13 +130,13 @@
 						@if($subscription->onGracePeriod())
 							<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
 								@csrf
-								<button type="submit" class="btn btn-success">
+								<button type="submit" class="btn btn-sm btn-success">
 									<i class="ti ti-player-play ti-xs me-1"></i>
 									Reanudar Suscripción
 								</button>
 							</form>
 						@else
-							<button type="button" class="btn btn-label-danger" onclick="confirmCancel()">
+							<button type="button" class="btn btn-sm btn-label-danger" onclick="confirmCancel()">
 								<i class="ti ti-x ti-xs me-1"></i>
 								Cancelar Suscripción
 							</button>
@@ -184,167 +147,135 @@
 		</div>
 	</div>
 
-	<!-- Usage Statistics -->
+	<!-- Payment Methods -->
 	<div class="col-12 col-lg-4 mb-4">
 		<div class="card h-100">
 			<div class="card-header">
-				<h5 class="card-title mb-0">Uso Actual</h5>
-			</div>
-			<div class="card-body">
-				<!-- Monthly Usage -->
-				<div class="mb-4">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Emails este Mes</span>
-						<span class="fw-medium">{{ number_format($planConfig['monthly_used']) }} / {{ number_format($planConfig['monthly_limit']) }}</span>
-					</div>
-					<div class="progress" style="height: 10px;">
-						<div class="progress-bar {{ $planConfig['monthly_used'] / $planConfig['monthly_limit'] > 0.9 ? 'bg-danger' : ($planConfig['monthly_used'] / $planConfig['monthly_limit'] > 0.7 ? 'bg-warning' : '') }}" 
-							role="progressbar" 
-							style="width: {{ min(($planConfig['monthly_used'] / $planConfig['monthly_limit']) * 100, 100) }}%">
-						</div>
-					</div>
-				</div>
-
-				<!-- Daily Usage -->
-				@if($planConfig['daily_limit'])
-				<div class="mb-4">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Emails Hoy</span>
-						<span class="fw-medium">{{ number_format($planConfig['daily_used']) }} / {{ number_format($planConfig['daily_limit']) }}</span>
-					</div>
-					<div class="progress" style="height: 10px;">
-						<div class="progress-bar bg-info {{ $planConfig['daily_used'] / $planConfig['daily_limit'] > 0.9 ? 'bg-danger' : '' }}" 
-							role="progressbar" 
-							style="width: {{ min(($planConfig['daily_used'] / $planConfig['daily_limit']) * 100, 100) }}%">
-						</div>
-					</div>
-				</div>
-				@endif
-
-				<!-- Contacts Usage -->
-				<div class="mb-3">
-					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Contactos</span>
-						<span class="fw-medium">{{ number_format($team->contacts()->count()) }} / {{ number_format($planConfig['contact_limit']) }}</span>
-					</div>
-					<div class="progress" style="height: 10px;">
-						<div class="progress-bar bg-success {{ $team->contacts()->count() / $planConfig['contact_limit'] > 0.9 ? 'bg-danger' : '' }}" 
-							role="progressbar" 
-							style="width: {{ min(($team->contacts()->count() / $planConfig['contact_limit']) * 100, 100) }}%">
-						</div>
-					</div>
-				</div>
-
-				@if($planConfig['monthly_used'] / $planConfig['monthly_limit'] > 0.8)
-				<div class="alert alert-warning p-2 mt-4">
-					<small>
-						<i class="ti ti-alert-triangle ti-xs me-1"></i>
-						Estás cerca del límite de tu plan
-					</small>
-				</div>
-				@endif
-			</div>
-		</div>
-	</div>
-</div>
-
-<!-- Payment Methods -->
-@if($paymentMethods->isNotEmpty())
-<div class="row">
-	<div class="col-12 col-lg-8 mb-4">
-		<div class="card">
-			<div class="card-header d-flex justify-content-between align-items-center">
 				<h5 class="card-title mb-0">Métodos de Pago</h5>
-				@if($stripeData && isset($stripeData['customer']))
-					<a href="https://billing.stripe.com/p/login/test_00g14Y8i03dEc2kdQQ" target="_blank" class="btn btn-sm btn-label-primary">
-						<i class="ti ti-plus ti-xs me-1"></i>
-						Agregar Método
-					</a>
-				@endif
 			</div>
 			<div class="card-body">
-				<div class="row g-3">
-					@foreach($paymentMethods as $method)
-					<div class="col-md-6">
-						<div class="card border shadow-none">
-							<div class="card-body">
-								<div class="d-flex align-items-start">
-									<div class="badge badge-center rounded bg-label-primary me-3 p-2">
-										<i class="ti ti-credit-card ti-sm"></i>
-									</div>
-									<div class="flex-grow-1">
-										<div class="d-flex justify-content-between mb-1">
-											<h6 class="mb-0 text-capitalize">{{ $method->card->brand }}</h6>
-											@if($method->id === $stripeData['customer']->invoice_settings->default_payment_method)
-												<span class="badge bg-label-success">Principal</span>
-											@endif
+				@if($paymentMethods->isNotEmpty())
+					<div class="row g-3">
+						@foreach($paymentMethods as $method)
+						<div class="col-12">
+							<div class="card border shadow-none">
+								<div class="card-body">
+									<div class="d-flex align-items-start">
+										<div class="badge badge-center rounded bg-label-primary me-3 p-2">
+											<i class="ti ti-credit-card ti-sm"></i>
 										</div>
-										<p class="mb-0">**** **** **** {{ $method->card->last4 }}</p>
-										<small class="text-muted">Vence {{ $method->card->exp_month }}/{{ $method->card->exp_year }}</small>
+										<div class="flex-grow-1">
+											<div class="d-flex justify-content-between mb-1">
+												<h6 class="mb-0 text-capitalize">{{ $method->card->brand }}</h6>
+												@if($method->id === $stripeData['customer']->invoice_settings->default_payment_method)
+													<span class="badge bg-label-success">Principal</span>
+												@endif
+											</div>
+											<p class="mb-0">**** **** **** {{ $method->card->last4 }}</p>
+											<small class="text-muted">Vence {{ $method->card->exp_month }}/{{ $method->card->exp_year }}</small>
+										</div>
 									</div>
 								</div>
 							</div>
 						</div>
+						@endforeach
 					</div>
-					@endforeach
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Billing Address -->
-	<div class="col-12 col-lg-4 mb-4">
-		<div class="card h-100">
-			<div class="card-header">
-				<h5 class="card-title mb-0">Dirección de Facturación</h5>
-			</div>
-			<div class="card-body">
-				@if($stripeData && isset($stripeData['customer']->address))
-					<p class="mb-2"><strong>{{ $stripeData['customer']->name ?? $team->name }}</strong></p>
-					@if($stripeData['customer']->address->line1)
-						<p class="mb-1">{{ $stripeData['customer']->address->line1 }}</p>
-					@endif
-					@if($stripeData['customer']->address->line2)
-						<p class="mb-1">{{ $stripeData['customer']->address->line2 }}</p>
-					@endif
-					@if($stripeData['customer']->address->city || $stripeData['customer']->address->postal_code)
-						<p class="mb-1">
-							{{ $stripeData['customer']->address->postal_code }} {{ $stripeData['customer']->address->city }}
-						</p>
-					@endif
-					@if($stripeData['customer']->address->country)
-						<p class="mb-0">{{ $stripeData['customer']->address->country }}</p>
-					@endif
-					
-					<a href="https://billing.stripe.com/p/login/test_00g14Y8i03dEc2kdQQ" target="_blank" class="btn btn-sm btn-label-secondary mt-3">
-						<i class="ti ti-edit ti-xs me-1"></i>
-						Editar Dirección
-					</a>
 				@else
-					<p class="text-muted mb-3">No hay dirección de facturación configurada</p>
-					<a href="https://billing.stripe.com/p/login/test_00g14Y8i03dEc2kdQQ" target="_blank" class="btn btn-sm btn-primary">
-						<i class="ti ti-plus ti-xs me-1"></i>
-						Agregar Dirección
-					</a>
+					<div class="text-center py-4">
+						<i class="ti ti-credit-card-off ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+						<h6 class="text-muted mb-2">No hay métodos de pago</h6>
+						<p class="text-muted mb-0 small">Añade un método de pago para gestionar tus suscripciones</p>
+					</div>
 				@endif
 			</div>
 		</div>
 	</div>
 </div>
-@endif
+
+<!-- Billing Data -->
+<div class="row">
+	<div class="col-12 col-lg-8 mb-4">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="card-title mb-0">Datos de Facturación</h5>
+				<button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal" data-bs-target="#editBillingModal">
+					<i class="ti ti-edit ti-xs me-1"></i>
+					Editar
+				</button>
+			</div>
+			<div class="card-body">
+				@if ($stripeData && isset($stripeData['customer']))
+					<div class="row">
+						<div class="col-md-6">
+							<dl class="row mb-0">
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['metadata']['company_name'] ?? 'No especificado' }}</dd>
+
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
+
+								@if(isset($stripeData['customer']['phone']) && $stripeData['customer']['phone'])
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Teléfono:</dt>
+									<dd class="col-sm-7">{{ $stripeData['customer']['phone'] }}</dd>
+								@endif
+							</dl>
+						</div>
+						<div class="col-md-6">
+							<dl class="row mb-0">
+								@if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
+									@foreach($stripeData['customer']['tax_ids'] as $taxId)
+										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper($taxId['type']) }}:</dt>
+										<dd class="col-sm-7">{{ $taxId['value'] }} <small class="text-muted">({{ $taxId['country'] }})</small></dd>
+									@endforeach
+								@else
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">CIF/NIF:</dt>
+									<dd class="col-sm-7 text-muted">No especificado</dd>
+								@endif
+
+								@if(isset($stripeData['customer']['address']) && $stripeData['customer']['address'])
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Dirección:</dt>
+									<dd class="col-sm-7">
+										@if($stripeData['customer']['address']['line1'])
+											{{ $stripeData['customer']['address']['line1'] }}<br>
+										@endif
+										@if($stripeData['customer']['address']['line2'])
+											{{ $stripeData['customer']['address']['line2'] }}<br>
+										@endif
+										@if($stripeData['customer']['address']['postal_code'] || $stripeData['customer']['address']['city'])
+											{{ $stripeData['customer']['address']['postal_code'] }} {{ $stripeData['customer']['address']['city'] }}<br>
+										@endif
+										@if($stripeData['customer']['address']['state'])
+											{{ $stripeData['customer']['address']['state'] }}<br>
+										@endif
+										@if($stripeData['customer']['address']['country'])
+											{{ $stripeData['customer']['address']['country'] }}
+										@endif
+									</dd>
+								@endif
+							</dl>
+						</div>
+					</div>
+				@else
+					<div class="text-center py-4">
+						<i class="ti ti-file-invoice ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+						<h6 class="text-muted mb-2">No hay dirección de facturación configurada</h6>
+						<p class="text-muted mb-0 small">Añade tu información de facturación para gestionar tus pagos</p>
+					</div>
+				@endif
+			</div>
+		</div>
+	</div>
+</div>
 
 <!-- Billing History -->
 <div class="row">
 	<div class="col-12">
 		<div class="card">
-			<div class="card-header d-flex justify-content-between align-items-center">
+			<div class="card-header">
 				<h5 class="card-title mb-0">Historial de Facturación</h5>
-				@if($stripeData && isset($stripeData['customer']))
-					<a href="https://billing.stripe.com/p/login/test_00g14Y8i03dEc2kdQQ" target="_blank" class="btn btn-sm btn-label-primary">
-						<i class="ti ti-external-link ti-xs me-1"></i>
-						Portal de Stripe
-					</a>
-				@endif
 			</div>
 			<div class="card-body">
 				@if($invoices->isNotEmpty())
@@ -410,6 +341,171 @@
 	</div>
 </div>
 
+<!-- Modal: Edit Billing Data -->
+<div class="modal fade" id="editBillingModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">Editar Datos de Facturación</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('billing.update') }}">
+				@csrf
+				<div class="modal-body">
+					<div class="row g-3">
+						<!-- Individual Name -->
+						<div class="col-12">
+							<label class="form-label" for="individual_name">Nombre Completo *</label>
+							<input type="text" id="individual_name" name="individual_name" 
+								class="form-control @error('individual_name') is-invalid @enderror" 
+								value="{{ old('individual_name', $stripeData['customer']['name'] ?? '') }}" 
+								placeholder="Diego Adrián Mascarenhas Goytia" required>
+							@error('individual_name')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Company Name -->
+						<div class="col-md-6">
+							<label class="form-label" for="company_name">Razón Social *</label>
+							<input type="text" id="company_name" name="company_name" 
+								class="form-control @error('company_name') is-invalid @enderror" 
+								value="{{ old('company_name', $stripeData['customer']['name'] ?? $team->name) }}" 
+								placeholder="Nombre de la empresa" required>
+							@error('company_name')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Tax ID -->
+						<div class="col-md-6">
+							<label class="form-label" for="tax_id">CIF/NIF *</label>
+							<input type="text" id="tax_id" name="tax_id" 
+								class="form-control @error('tax_id') is-invalid @enderror" 
+								value="{{ old('tax_id', $stripeData['customer']['tax_ids'][0]['value'] ?? '') }}" 
+								placeholder="Ej: B12345678" required>
+							@error('tax_id')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Email -->
+						<div class="col-md-6">
+							<label class="form-label" for="billing_email">Email de Facturación *</label>
+							<input type="email" id="billing_email" name="billing_email" 
+								class="form-control @error('billing_email') is-invalid @enderror" 
+								value="{{ old('billing_email', $stripeData['customer']['email'] ?? $team->user->email) }}" 
+								placeholder="facturacion@empresa.com" required>
+							@error('billing_email')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Phone -->
+						<div class="col-md-6">
+							<label class="form-label" for="billing_phone">Teléfono</label>
+							<input type="text" id="billing_phone" name="billing_phone" 
+								class="form-control @error('billing_phone') is-invalid @enderror" 
+								value="{{ old('billing_phone', $stripeData['customer']['phone'] ?? '') }}" 
+								placeholder="+34 600 000 000">
+							@error('billing_phone')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Address Line 1 -->
+						<div class="col-12">
+							<label class="form-label" for="address_line1">Dirección *</label>
+							<input type="text" id="address_line1" name="address_line1" 
+								class="form-control @error('address_line1') is-invalid @enderror" 
+								value="{{ old('address_line1', $stripeData['customer']['address']['line1'] ?? '') }}" 
+								placeholder="Calle, número, piso, puerta" required>
+							@error('address_line1')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Address Line 2 -->
+						<div class="col-12">
+							<label class="form-label" for="address_line2">Dirección 2 (opcional)</label>
+							<input type="text" id="address_line2" name="address_line2" 
+								class="form-control @error('address_line2') is-invalid @enderror" 
+								value="{{ old('address_line2', $stripeData['customer']['address']['line2'] ?? '') }}" 
+								placeholder="Edificio, escalera, etc.">
+							@error('address_line2')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Postal Code -->
+						<div class="col-md-4">
+							<label class="form-label" for="postal_code">Código Postal *</label>
+							<input type="text" id="postal_code" name="postal_code" 
+								class="form-control @error('postal_code') is-invalid @enderror" 
+								value="{{ old('postal_code', $stripeData['customer']['address']['postal_code'] ?? '') }}" 
+								placeholder="28001" required>
+							@error('postal_code')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- City -->
+						<div class="col-md-4">
+							<label class="form-label" for="city">Ciudad *</label>
+							<input type="text" id="city" name="city" 
+								class="form-control @error('city') is-invalid @enderror" 
+								value="{{ old('city', $stripeData['customer']['address']['city'] ?? '') }}" 
+								placeholder="Madrid" required>
+							@error('city')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- State -->
+						<div class="col-md-4">
+							<label class="form-label" for="state">Provincia/Estado</label>
+							<input type="text" id="state" name="state" 
+								class="form-control @error('state') is-invalid @enderror" 
+								value="{{ old('state', $stripeData['customer']['address']['state'] ?? '') }}" 
+								placeholder="Madrid">
+							@error('state')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+
+						<!-- Country -->
+						<div class="col-12">
+							<label class="form-label" for="country">País *</label>
+							<select id="country" name="country" 
+								class="form-select @error('country') is-invalid @enderror" required>
+								<option value="">Seleccionar país</option>
+								<option value="ES" {{ old('country', $stripeData['customer']['address']['country'] ?? 'ES') === 'ES' ? 'selected' : '' }}>España</option>
+								<option value="US" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'US' ? 'selected' : '' }}>Estados Unidos</option>
+								<option value="MX" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'MX' ? 'selected' : '' }}>México</option>
+								<option value="AR" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'AR' ? 'selected' : '' }}>Argentina</option>
+								<option value="CO" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'CO' ? 'selected' : '' }}>Colombia</option>
+								<option value="CL" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'CL' ? 'selected' : '' }}>Chile</option>
+								<option value="PE" {{ old('country', $stripeData['customer']['address']['country'] ?? '') === 'PE' ? 'selected' : '' }}>Perú</option>
+							</select>
+							@error('country')
+								<div class="invalid-feedback">{{ $message }}</div>
+							@enderror
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-primary">
+						<i class="ti ti-device-floppy me-1"></i>
+						Guardar Cambios
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+<!-- /Modal -->
+
 @section('vendor-script')
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
@@ -443,5 +539,13 @@ function confirmCancel()
 		}
 	});
 }
+
+// Reabrir el modal si hay errores de validación
+@if($errors->any())
+	document.addEventListener('DOMContentLoaded', function() {
+		var myModal = new bootstrap.Modal(document.getElementById('editBillingModal'));
+		myModal.show();
+	});
+@endif
 </script>
 @endsection
