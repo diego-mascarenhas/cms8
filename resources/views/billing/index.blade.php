@@ -506,38 +506,36 @@
 </div>
 <!-- /Modal -->
 
+<!-- Modal Cancelar Suscripción -->
+<div class="modal fade" id="cancelSubscriptionModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">¿Cancelar Suscripción?</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>Tu suscripción permanecerá activa hasta el final del período de facturación actual.</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">No, mantener</button>
+				<form method="POST" action="{{ route('subscription.cancel') }}" style="display: inline;">
+					@csrf
+					<button type="submit" class="btn btn-danger">Sí, cancelar</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+
 @section('vendor-script')
-<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 <script>
 function confirmCancel()
 {
-	Swal.fire({
-		title: '¿Cancelar Suscripción?',
-		text: "Tu suscripción permanecerá activa hasta el final del período de facturación actual.",
-		icon: 'warning',
-		showCancelButton: true,
-		confirmButtonColor: '#d33',
-		cancelButtonColor: '#3085d6',
-		confirmButtonText: 'Sí, cancelar',
-		cancelButtonText: 'No, mantener',
-		customClass: {
-			confirmButton: 'btn btn-danger me-2',
-			cancelButton: 'btn btn-label-secondary'
-		},
-		buttonsStyling: false
-	}).then((result) => {
-		if (result.isConfirmed)
-		{
-			const form = document.createElement('form');
-			form.method = 'POST';
-			form.action = '{{ route("subscription.cancel") }}';
-			form.innerHTML = '@csrf';
-			document.body.appendChild(form);
-			form.submit();
-		}
-	});
+	const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
+	modal.show();
 }
 
 // Reabrir el modal si hay errores de validación
