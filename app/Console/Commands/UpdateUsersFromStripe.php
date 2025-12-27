@@ -16,7 +16,7 @@ class UpdateUsersFromStripe extends Command
      *
      * @var string
      */
-    protected $signature = 'stripe:update-users 
+    protected $signature = 'stripe:update-users
                             {--dry-run : Show what would be updated without making changes}
                             {--sync-subscriptions : Also sync subscriptions from Stripe}
                             {--password=Simplicity! : Default password for users without one}';

@@ -48,14 +48,15 @@ class StripeCustomerReport extends Command
             {
                 $stripeData[] = [
                     'Customer ID' => $customer->id,
-                    'Name' => $customer->name ?? 'N/A',
+                    'Business Name' => $customer->name ?? 'N/A',
+                    'Contact Name' => $customer->individual_name ?? 'N/A',
                     'Email' => $customer->email ?? 'N/A',
                     'Created' => date('Y-m-d', $customer->created),
                 ];
             }
 
             $this->table(
-                ['Customer ID', 'Name', 'Email', 'Created'],
+                ['Customer ID', 'Business Name', 'Contact Name', 'Email', 'Created'],
                 $stripeData,
             );
 
