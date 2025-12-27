@@ -189,6 +189,7 @@ return [
         Yajra\DataTables\DataTablesServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
         App\Providers\BladeServiceProvider::class,
+        App\Providers\CashierServiceProvider::class,
     ])->toArray(),
 
     /*

@@ -14,8 +14,16 @@ class SubscriptionController extends Controller
     public function index()
     {
         $team = auth()->user()->currentTeam;
-        $currentPlan = $team->getEmailPlan();
-        $planConfig = $team->getEmailPlanConfig();
+        $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+
+        // Get plan usage configuration
+        $planConfig = [
+            'monthly_limit' => $currentPlan->getMonthlyLimit(),
+            'monthly_used' => (int) $team->getSetting('email_monthly_used', 0),
+            'daily_limit' => $currentPlan->getDailyLimit(),
+            'daily_used' => (int) $team->getSetting('email_daily_used', 0),
+            'contact_limit' => $currentPlan->getContactLimit(),
+        ];
 
         // Get subscription info if exists
         $subscription = $team->subscription('default');
@@ -53,7 +61,7 @@ class SubscriptionController extends Controller
     private function getStripePrices(): array
     {
         Stripe::setApiKey(config('cashier.secret'));
-        
+
         $prices = [
             'basic' => null,
             'foundation' => null,
@@ -164,13 +172,36 @@ class SubscriptionController extends Controller
                     ->with('error', 'Invalid session.');
             }
 
-            // Get subscription details
-            $subscription = $team->subscription('default');
+            // Get the subscription ID from the session
+            $subscriptionId = $session->subscription;
 
-            if ($subscription)
+            if ($subscriptionId)
             {
-                // Determine which plan based on the subscription
-                $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
+                // Retrieve the full subscription from Stripe
+                $stripeSubscription = \Stripe\Subscription::retrieve([
+                    'id' => $subscriptionId,
+                    'expand' => ['items.data.price.product'],
+                ]);
+
+                // Sync subscription to local database if it doesn't exist
+                $localSubscription = $team->subscription('default');
+
+                if (! $localSubscription)
+                {
+                    // Create the subscription record manually
+                    $team->subscriptions()->create([
+                        'user_id' => $team->owner->id ?? $team->user_id,
+                        'type' => 'default',
+                        'stripe_id' => $stripeSubscription->id,
+                        'stripe_status' => $stripeSubscription->status,
+                        'stripe_price' => $stripeSubscription->items->data[0]->price->id,
+                        'quantity' => $stripeSubscription->items->data[0]->quantity,
+                        'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
+                        'ends_at' => null,
+                    ]);
+                }
+
+                // Get product ID to determine the plan
                 $productId = $stripeSubscription->items->data[0]->price->product;
 
                 // Map product ID to EmailPlan

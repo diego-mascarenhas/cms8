@@ -31,7 +31,7 @@
 			<div class="col-md-6">
 				<h5 class="mb-3">Current Plan: {{ $currentPlan->getDisplayName() }}</h5>
 				<p class="text-muted mb-3">{{ $currentPlan->getDescription() }}</p>
-				
+
 				@if($subscription)
 					<div class="mb-2">
 						<span class="badge bg-label-{{ $subscription->onGracePeriod() ? 'warning' : ($subscription->active() ? 'success' : 'secondary') }}">
@@ -44,12 +44,12 @@
 							@endif
 						</span>
 					</div>
-					
-					@if($subscription->active() && !$subscription->onGracePeriod())
-						<p class="text-muted mb-0">
-							<small><i class="ti ti-calendar ti-xs me-1"></i>Next billing: {{ $subscription->asStripeSubscription()->current_period_end ? \Carbon\Carbon::createFromTimestamp($subscription->asStripeSubscription()->current_period_end)->format('M d, Y') : 'N/A' }}</small>
-						</p>
-					@endif
+
+				@if($subscription->active() && !$subscription->onGracePeriod())
+					<p class="text-muted mb-0">
+						<small><i class="ti ti-calendar ti-xs me-1"></i>Next billing: {{ $stripeSubscription && $stripeSubscription->current_period_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('M d, Y') : 'N/A' }}</small>
+					</p>
+				@endif
 				@endif
 			</div>
 			<div class="col-md-6">
@@ -63,7 +63,7 @@
 						<div class="progress-bar" role="progressbar" style="width: {{ min(($planConfig['monthly_used'] / $planConfig['monthly_limit']) * 100, 100) }}%"></div>
 					</div>
 				</div>
-				
+
 				@if($planConfig['daily_limit'])
 				<div class="mb-2">
 					<div class="d-flex justify-content-between mb-1">
@@ -75,7 +75,7 @@
 					</div>
 				</div>
 				@endif
-				
+
 				<div class="mb-0">
 					<div class="d-flex justify-content-between mb-1">
 						<small>Contacts</small>
@@ -87,7 +87,7 @@
 				</div>
 			</div>
 		</div>
-		
+
 		@if($subscription)
 		<div class="mt-4 pt-3 border-top">
 			@if($subscription->onGracePeriod())
@@ -119,7 +119,7 @@
 						<span class="badge bg-label-primary">Plan Actual</span>
 					</div>
 				@endif
-				
+
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
 						<h1 class="mb-0 text-primary">0</h1>
@@ -164,7 +164,7 @@
 						<span class="badge bg-label-primary">Plan Actual</span>
 					</div>
 				@endif
-				
+
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
 						<h1 class="mb-0 text-primary">{{ $prices['basic'] ? number_format($prices['basic']['amount'], 2, ',', '.') : '15,99' }}</h1>
@@ -222,7 +222,7 @@
 						<span class="badge bg-label-primary">Popular</span>
 					</div>
 				@endif
-				
+
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
 						<h1 class="mb-0 text-primary">{{ $prices['foundation'] ? number_format($prices['foundation']['amount'], 2, ',', '.') : '35,99' }}</h1>
@@ -274,7 +274,7 @@
 						<span class="badge bg-label-primary">Plan Actual</span>
 					</div>
 				@endif
-				
+
 				<div class="mb-4">
 					<div class="d-flex justify-content-center">
 						<h1 class="mb-0 text-primary">{{ $prices['scale'] ? number_format($prices['scale']['amount'], 2, ',', '.') : '119,99' }}</h1>

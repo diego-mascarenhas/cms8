@@ -87,21 +87,24 @@
 					</div>
 				</div>
 
-				<!-- Subscription Status -->
-				@if($subscription && $subscription->active())
-					<div class="alert alert-{{ $subscription->onGracePeriod() ? 'warning' : 'success' }} mb-4">
-						<div class="d-flex align-items-center">
-							<i class="ti ti-{{ $subscription->onGracePeriod() ? 'alert-triangle' : 'circle-check' }} me-2"></i>
-							<div>
-								@if($subscription->onGracePeriod())
-									<strong>Cancelado</strong> - Tu suscripción finalizará el {{ $subscription->ends_at->format('d/m/Y') }}
-								@else
-									<strong>Activa</strong> - Próxima facturación: {{ \Carbon\Carbon::createFromTimestamp($subscription->asStripeSubscription()->current_period_end)->format('d/m/Y') }}
-								@endif
-							</div>
+			<!-- Subscription Status -->
+			@if($subscription && $subscription->active())
+				<div class="alert alert-{{ $subscription->onGracePeriod() ? 'warning' : 'success' }} mb-4">
+					<div class="d-flex align-items-center">
+						<i class="ti ti-{{ $subscription->onGracePeriod() ? 'alert-triangle' : 'circle-check' }} me-2"></i>
+						<div>
+							@if($subscription->onGracePeriod())
+								<strong>Cancelado</strong> - Tu suscripción finalizará el {{ $subscription->ends_at->format('d/m/Y') }}
+							@else
+								@php
+									$stripeSubscription = $subscriptions->firstWhere('id', $subscription->stripe_id);
+								@endphp
+								<strong>Activa</strong> - Próxima facturación: {{ $stripeSubscription && $stripeSubscription->current_period_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('d/m/Y') : 'N/A' }}
+							@endif
 						</div>
 					</div>
-				@endif
+				</div>
+			@endif
 
 				<!-- Actions -->
 				<div class="d-flex flex-wrap gap-3">
