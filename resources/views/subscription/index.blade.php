@@ -1,12 +1,12 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Subscription Plans')
+@section('title', 'Planes de Suscripción')
 
 @section('content')
 <!-- Pricing Plans -->
 <div class="text-center mb-5">
-	<h1 class="mb-2">Pricing Plans</h1>
-	<p class="mb-5">Get started with us - it's perfect for individuals and teams. Choose a subscription plan that meets your needs.</p>
+	<h1 class="mb-2">Planes de Suscripción</h1>
+	<p class="mb-5">Comienza con nosotros - es perfecto para individuos y equipos. Elige un plan que se ajuste a tus necesidades.</p>
 </div>
 
 @if(session('success'))
