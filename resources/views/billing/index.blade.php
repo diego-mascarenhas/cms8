@@ -209,10 +209,7 @@
 						<div class="col-md-6">
 							<dl class="row mb-0">
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
-
-								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']['metadata']['company_name'] ?? 'No especificado' }}</dd>
+								<dd class="col-sm-7">{{ $stripeData['customer']['individual_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
 
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email:</dt>
 								<dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
@@ -225,9 +222,12 @@
 						</div>
 						<div class="col-md-6">
 							<dl class="row mb-0">
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['metadata']['company_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+
 								@if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
 									@foreach($stripeData['customer']['tax_ids'] as $taxId)
-										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper($taxId['type']) }}:</dt>
+										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper(str_replace('_', '_', $taxId['type'])) }}:</dt>
 										<dd class="col-sm-7">{{ $taxId['value'] }} <small class="text-muted">({{ $taxId['country'] }})</small></dd>
 									@endforeach
 								@else
@@ -235,25 +235,22 @@
 									<dd class="col-sm-7 text-muted">No especificado</dd>
 								@endif
 
-								@if(isset($stripeData['customer']['address']) && $stripeData['customer']['address'])
-									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Dirección:</dt>
-									<dd class="col-sm-7">
-										@if($stripeData['customer']['address']['line1'])
-											{{ $stripeData['customer']['address']['line1'] }}<br>
-										@endif
-										@if($stripeData['customer']['address']['line2'])
-											{{ $stripeData['customer']['address']['line2'] }}<br>
-										@endif
-										@if($stripeData['customer']['address']['postal_code'] || $stripeData['customer']['address']['city'])
-											{{ $stripeData['customer']['address']['postal_code'] }} {{ $stripeData['customer']['address']['city'] }}<br>
-										@endif
-										@if($stripeData['customer']['address']['state'])
-											{{ $stripeData['customer']['address']['state'] }}<br>
-										@endif
-										@if($stripeData['customer']['address']['country'])
-											{{ $stripeData['customer']['address']['country'] }}
-										@endif
-									</dd>
+								@if(isset($stripeData['customer']['address']) && isset($stripeData['customer']['address']['country']))
+									@php
+										$countries = [
+											'ES' => 'España',
+											'AR' => 'Argentina',
+											'MX' => 'México',
+											'US' => 'Estados Unidos',
+											'CO' => 'Colombia',
+											'CL' => 'Chile',
+											'PE' => 'Perú',
+										];
+										$countryCode = $stripeData['customer']['address']['country'];
+										$countryName = $countries[$countryCode] ?? $countryCode;
+									@endphp
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">País:</dt>
+									<dd class="col-sm-7">{{ $countryName }}</dd>
 								@endif
 							</dl>
 						</div>
