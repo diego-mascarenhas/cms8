@@ -89,21 +89,71 @@
 
 			<!-- Subscription Status -->
 			@if($subscription && $subscription->active())
-				<div class="alert alert-{{ $subscription->onGracePeriod() ? 'warning' : 'success' }} mb-4">
-					<div class="d-flex align-items-center">
-						<i class="ti ti-{{ $subscription->onGracePeriod() ? 'alert-triangle' : 'circle-check' }} me-2"></i>
-						<div>
-							@if($subscription->onGracePeriod())
+				@php
+					$stripeSubscription = $subscriptions->firstWhere('id', $subscription->stripe_id);
+				@endphp
+				
+				@if($subscription->onGracePeriod())
+					<div class="alert alert-warning mb-4">
+						<div class="d-flex align-items-center">
+							<i class="ti ti-alert-triangle me-2"></i>
+							<div>
 								<strong>Cancelado</strong> - Tu suscripción finalizará el {{ $subscription->ends_at->format('d/m/Y') }}
-							@else
-								@php
-									$stripeSubscription = $subscriptions->firstWhere('id', $subscription->stripe_id);
-								@endphp
-								<strong>Activa</strong> - Próxima facturación: {{ $stripeSubscription && $stripeSubscription->current_period_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('d/m/Y') : 'N/A' }}
-							@endif
+							</div>
 						</div>
 					</div>
-				</div>
+				@elseif($stripeSubscription)
+					<div class="card shadow-none bg-lighter mb-4">
+						<div class="card-body">
+							<div class="d-flex justify-content-between align-items-start mb-3">
+								<div>
+									<h6 class="mb-0">Período de Suscripción Actual</h6>
+									<small class="text-muted d-block mt-1">
+										{{ \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start)->format('d M, Y') }}
+									</small>
+								</div>
+								<div class="text-end">
+									<span class="badge bg-label-success">Activa</span>
+									<small class="text-muted d-block mt-2">
+										Próxima facturación: {{ \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('d/m/Y') }}
+									</small>
+								</div>
+							</div>
+
+							@php
+								$start = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start);
+								$end = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+								$now = \Carbon\Carbon::now();
+
+								// Total dias del periodo (al menos 1 para evitar división por cero)
+								$totalDays = max(1, $start->diffInDays($end));
+
+								// Días transcurridos dentro del periodo [0, totalDays]
+								$usedDaysRaw = $start->diffInDays($now, false);
+								$usedDays = max(0, min($totalDays, $usedDaysRaw));
+
+								// Días restantes (0 si ya venció)
+								$remainingDays = max(0, -1 * $end->diffInDays($now, false));
+
+								// Porcentaje de progreso entre 0 y 100
+								$progressPercentage = max(0, min(100, ($usedDays / $totalDays) * 100));
+							@endphp
+
+							<div class="d-flex justify-content-between align-items-center mb-1">
+								<span>{{ (int) $usedDays }} de {{ (int) $totalDays }} Días</span>
+								<span>{{ (int) $remainingDays }} días restantes</span>
+							</div>
+							<div class="progress mb-1" style="height: 6px;">
+								<div class="progress-bar" role="progressbar"
+									style="width: {{ round($progressPercentage) }}%"
+									aria-valuenow="{{ $progressPercentage }}"
+									aria-valuemin="0"
+									aria-valuemax="100">
+								</div>
+							</div>
+						</div>
+					</div>
+				@endif
 			@endif
 
 				<!-- Actions -->
