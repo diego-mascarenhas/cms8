@@ -181,27 +181,98 @@ class SubscriptionController extends Controller
         // Use business name if provided, otherwise use individual name
         $displayName = $request->business_name ?: $request->individual_name;
 
+        // Ensure team has a Stripe customer
+        if (! $team->stripe_id)
+        {
+            try
+            {
+                $team->createAsStripeCustomer([
+                    'name' => $displayName,
+                    'email' => auth()->user()->email,
+                ]);
+            } catch (\Exception $e)
+            {
+                \Log::error('Error creating Stripe customer: '.$e->getMessage());
+            }
+        }
+
         // Update Stripe customer with billing info
         if ($team->stripe_id)
         {
             try
             {
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
+
+                // Update customer basic info
                 \Stripe\Customer::update($team->stripe_id, [
                     'name' => $displayName,
                     'phone' => $request->phone,
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'business_name' => $request->business_name,
-                        'tax_id' => $request->tax_id,
-                    ],
                     'address' => [
                         'country' => $request->country,
                     ],
                 ]);
+
+                // Add or update Tax ID
+                try
+                {
+                    // Get existing tax IDs
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
+
+                    // Delete existing tax IDs
+                    foreach ($taxIds->data as $taxId)
+                    {
+                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
+                    }
+
+                    // Map country code to Stripe tax ID type
+                    $taxIdType = match ($request->country)
+                    {
+                        'AR' => 'ar_cuit',
+                        'ES' => in_array(strtoupper(substr($request->tax_id, 0, 1)), ['X', 'Y', 'Z']) ? 'es_cif' : 'eu_vat',
+                        'MX' => 'mx_rfc',
+                        'CL' => 'cl_tin',
+                        'CO' => 'co_nit',
+                        'PE' => 'pe_ruc',
+                        'UY' => 'uy_ruc',
+                        'US' => 'us_ein',
+                        default => 'unknown',
+                    };
+
+                    // Create new tax ID
+                    if ($taxIdType !== 'unknown')
+                    {
+                        \Stripe\Customer::createTaxId($team->stripe_id, [
+                            'type' => $taxIdType,
+                            'value' => $request->tax_id,
+                        ]);
+                    }
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Error updating tax ID: '.$e->getMessage());
+                }
+
+                // Update metadata
+                \Stripe\Customer::update($team->stripe_id, [
+                    'metadata' => [
+                        'individual_name' => $request->individual_name,
+                        'business_name' => $request->business_name,
+                        'tax_id' => $request->tax_id,
+                        'country' => $request->country,
+                    ],
+                ]);
+
+                \Log::info('Stripe customer updated successfully', [
+                    'customer_id' => $team->stripe_id,
+                    'name' => $displayName,
+                    'tax_id' => $request->tax_id,
+                ]);
             } catch (\Exception $e)
             {
                 \Log::error('Error updating Stripe customer: '.$e->getMessage());
+
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Error al actualizar los datos en Stripe: '.$e->getMessage());
             }
         }
 
