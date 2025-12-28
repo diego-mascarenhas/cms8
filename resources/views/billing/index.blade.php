@@ -391,7 +391,7 @@
 							<label class="form-label" for="billing_email">Email de Facturación *</label>
 							<input type="email" id="billing_email" name="billing_email" 
 								class="form-control @error('billing_email') is-invalid @enderror" 
-								value="{{ old('billing_email', $stripeData['customer']['email'] ?? $team->user->email) }}" 
+								value="{{ old('billing_email', $stripeData['customer']['email'] ?? auth()->user()->email) }}" 
 								placeholder="facturacion@empresa.com" required>
 							@error('billing_email')
 								<div class="invalid-feedback">{{ $message }}</div>
