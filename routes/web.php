@@ -795,3 +795,9 @@ Route::middleware(['web', 'auth'])->group(function ()
     Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
 });
+
+// Fallback route for 404 errors - must be at the end
+Route::fallback(function ()
+{
+    return response()->view('errors.404', [], 404);
+});
