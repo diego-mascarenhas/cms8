@@ -109,6 +109,170 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Show billing info form before checkout
+     */
+    public function billingInfo(Request $request)
+    {
+        $request->validate([
+            'plan' => 'required|in:basic,foundation,scale',
+        ]);
+
+        $team = auth()->user()->currentTeam;
+        $plan = $request->plan;
+        $prices = $this->getStripePrices();
+
+        return view('subscription.billing-info', [
+            'team' => $team,
+            'plan' => $plan,
+            'prices' => $prices,
+        ]);
+    }
+
+    /**
+     * Save billing info and redirect to checkout
+     */
+    public function saveBillingInfo(Request $request)
+    {
+        $request->validate([
+            'plan' => 'required|in:basic,foundation,scale',
+            'individual_name' => 'required|string|max:255',
+            'business_name' => 'nullable|string|max:255',
+            'country' => 'required|string|size:2',
+            'phone' => 'required|string|max:50',
+            'tax_id' => [
+                'required',
+                'string',
+                'max:50',
+                function ($attribute, $value, $fail) use ($request)
+                {
+                    $country = $request->country;
+                    $taxId = preg_replace('/[^0-9A-Za-z]/', '', $value); // Remove special characters for validation
+
+                    // Validation rules by country
+                    $valid = match ($country)
+                    {
+                        'AR' => $this->validateCUIT($taxId), // Argentina: CUIT (11 digits)
+                        'ES' => $this->validateCIF_NIF($taxId), // Spain: CIF/NIF
+                        'MX' => $this->validateRFC($taxId), // Mexico: RFC (12-13 characters)
+                        'CL' => $this->validateRUT($taxId), // Chile: RUT
+                        'CO' => $this->validateNIT($taxId), // Colombia: NIT
+                        'PE' => $this->validateRUC($taxId), // Peru: RUC (11 digits)
+                        'UY' => $this->validateRUT_UY($taxId), // Uruguay: RUT
+                        default => strlen($taxId) >= 5, // Generic: at least 5 characters
+                    };
+
+                    if (! $valid)
+                    {
+                        $fail('El formato de la Identificación Fiscal no es válido para el país seleccionado.');
+                    }
+                },
+            ],
+        ]);
+
+        $team = auth()->user()->currentTeam;
+
+        // Save billing info in team settings
+        $team->setSetting('billing_individual_name', $request->individual_name);
+        $team->setSetting('billing_business_name', $request->business_name);
+        $team->setSetting('billing_country', $request->country);
+        $team->setSetting('billing_phone', $request->phone);
+        $team->setSetting('billing_tax_id', $request->tax_id);
+
+        // Use business name if provided, otherwise use individual name
+        $displayName = $request->business_name ?: $request->individual_name;
+
+        // Update Stripe customer with billing info
+        if ($team->stripe_id)
+        {
+            try
+            {
+                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                \Stripe\Customer::update($team->stripe_id, [
+                    'name' => $displayName,
+                    'phone' => $request->phone,
+                    'metadata' => [
+                        'individual_name' => $request->individual_name,
+                        'business_name' => $request->business_name,
+                        'tax_id' => $request->tax_id,
+                    ],
+                    'address' => [
+                        'country' => $request->country,
+                    ],
+                ]);
+            } catch (\Exception $e)
+            {
+                \Log::error('Error updating Stripe customer: '.$e->getMessage());
+            }
+        }
+
+        // Redirect to checkout
+        return redirect()->route('subscription.checkout', ['plan' => $request->plan]);
+    }
+
+    /**
+     * Validate Argentina CUIT format
+     */
+    private function validateCUIT(string $taxId): bool
+    {
+        // CUIT: 11 digits
+        return strlen($taxId) === 11 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Spain CIF/NIF format
+     */
+    private function validateCIF_NIF(string $taxId): bool
+    {
+        // CIF/NIF: 8-9 characters (letter + numbers or numbers + letter)
+        return preg_match('/^[A-Z0-9]{8,9}$/i', $taxId);
+    }
+
+    /**
+     * Validate Mexico RFC format
+     */
+    private function validateRFC(string $taxId): bool
+    {
+        // RFC: 12-13 characters
+        return strlen($taxId) >= 12 && strlen($taxId) <= 13 && preg_match('/^[A-Z0-9]+$/i', $taxId);
+    }
+
+    /**
+     * Validate Chile RUT format
+     */
+    private function validateRUT(string $taxId): bool
+    {
+        // RUT: 8-9 digits + verification digit
+        return strlen($taxId) >= 8 && strlen($taxId) <= 10 && preg_match('/^[0-9]{7,9}[0-9Kk]$/i', $taxId);
+    }
+
+    /**
+     * Validate Colombia NIT format
+     */
+    private function validateNIT(string $taxId): bool
+    {
+        // NIT: 9-10 digits
+        return strlen($taxId) >= 9 && strlen($taxId) <= 10 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Peru RUC format
+     */
+    private function validateRUC(string $taxId): bool
+    {
+        // RUC: 11 digits
+        return strlen($taxId) === 11 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Uruguay RUT format
+     */
+    private function validateRUT_UY(string $taxId): bool
+    {
+        // RUT Uruguay: 12 digits
+        return strlen($taxId) === 12 && ctype_digit($taxId);
+    }
+
+    /**
      * Create a checkout session for upgrading to a paid plan
      */
     public function checkout(Request $request)
@@ -138,14 +302,33 @@ class SubscriptionController extends Controller
                     ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
             }
 
-            // Create Stripe checkout session
-            $checkout = $team->newSubscription('default', $priceId)
-                ->checkout([
-                    'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
-                    'cancel_url' => route('subscription.index'),
-                ]);
+            // Ensure team has a Stripe customer ID
+            if (! $team->stripe_id)
+            {
+                $team->createAsStripeCustomer();
+            }
 
-            return redirect($checkout->url);
+            // Create Stripe checkout session directly via API
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+
+            $checkoutSession = \Stripe\Checkout\Session::create([
+                'customer' => $team->stripe_id,
+                'mode' => 'subscription',
+                'locale' => 'es',
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => route('subscription.index'),
+                'subscription_data' => [
+                    'metadata' => [
+                        'team_id' => $team->id,
+                    ],
+                ],
+            ]);
+
+            return redirect($checkoutSession->url);
         } catch (\Exception $e)
         {
             \Log::error('Checkout error: '.$e->getMessage());
