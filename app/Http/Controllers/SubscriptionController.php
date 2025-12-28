@@ -15,16 +15,19 @@ class SubscriptionController extends Controller
     {
         $team = auth()->user()->currentTeam;
 
-        // Get subscription info if exists
-        $subscription = $team->subscription('default');
+        // Get only active subscription (exclude canceled)
+        $subscription = $team->subscriptions()
+            ->where('type', 'default')
+            ->where('stripe_status', '!=', 'canceled')
+            ->first();
 
-        // Get current plan from active subscription or fallback to team setting
+        // Get current plan from active subscription or fallback to free
         if ($subscription && $subscription->active())
         {
             $currentPlan = EmailPlan::fromStripePriceId($subscription->stripe_price);
         } else
         {
-            $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+            $currentPlan = EmailPlan::FREE;
         }
 
         // Get plan usage configuration
