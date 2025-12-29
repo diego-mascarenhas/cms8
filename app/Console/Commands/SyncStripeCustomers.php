@@ -177,6 +177,23 @@ class SyncStripeCustomers extends Command
     }
 
     /**
+     * Clean phone number to contain only digits
+     */
+    protected function cleanPhoneNumber(?string $phone): ?int
+    {
+        if (! $phone)
+        {
+            return null;
+        }
+
+        // Remove all non-numeric characters
+        $cleaned = preg_replace('/\D/', '', $phone);
+
+        // Return as integer or null if empty
+        return $cleaned ? (int) $cleaned : null;
+    }
+
+    /**
      * Create a team from Stripe customer
      */
     protected function createTeamFromCustomer(Customer $customer): ?Team
@@ -193,7 +210,7 @@ class SyncStripeCustomers extends Command
                 ['email' => $customer->email],
                 [
                     'name' => $customer->name ?? explode('@', $customer->email)[0],
-                    'phone' => $customer->phone,
+                    'phone' => $this->cleanPhoneNumber($customer->phone),
                     'password' => bcrypt('Simplicity!'),
                     'email_verified_at' => now(),
                 ],
