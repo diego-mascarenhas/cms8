@@ -41,10 +41,10 @@
 						<div class="col-md-6">
 							<dl class="row mb-0">
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->individual_name ?? $stripeData['customer']->collected_information->individual_name ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
+								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->individual_name ?? $stripeData['customer']->collected_information->individual_name ?? 'No especificado' }}</dd>
 
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->business_name ?? $stripeData['customer']->metadata->company_name ?? $stripeData['customer']->collected_information->business_name ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
+								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->business_name ?? $stripeData['customer']->metadata->company_name ?? $stripeData['customer']->collected_information->business_name ?? 'No especificado' }}</dd>
 
 								@if(isset($stripeData['customer']->address->country))
 									@php
@@ -435,7 +435,7 @@
 								if (!$individualName && isset($stripeData['customer'])) {
 									$individualName = $stripeData['customer']->metadata->individual_name ?? 
 													  $stripeData['customer']->collected_information->individual_name ?? 
-													  $stripeData['customer']->name ?? '';
+													  '';
 								}
 							@endphp
 							<input type="text" 
@@ -458,7 +458,7 @@
 									$businessName = $stripeData['customer']->metadata->business_name ?? 
 													$stripeData['customer']->metadata->company_name ?? 
 													$stripeData['customer']->collected_information->business_name ?? 
-													$team->name;
+													'';
 								}
 							@endphp
 							<input type="text"
