@@ -51,7 +51,17 @@
 				</div>
 
 			<!-- Subscription Status -->
-			@if($subscription && $subscription->active())
+			@if($subscription && $subscription->stripe_status === 'canceled' && !$subscription->active())
+				<!-- Completely cancelled subscription -->
+				<div class="alert alert-danger mb-4">
+					<div class="d-flex align-items-center">
+						<i class="ti ti-info-circle me-2"></i>
+						<div>
+							<strong>Suscripción Cancelada</strong> - Tu plan actual es Free
+						</div>
+					</div>
+				</div>
+			@elseif($subscription && $subscription->active())
 				@php
 					$stripeSubscription = $subscriptions->firstWhere('id', $subscription->stripe_id);
 				@endphp
@@ -121,25 +131,33 @@
 
 				<!-- Actions -->
 				<div class="d-flex flex-wrap gap-3">
-					<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
-						<i class="ti ti-refresh ti-xs me-1"></i>
-						{{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'Ver Planes' : 'Cambiar Plan' }}
-					</a>
-					
-					@if($subscription && $subscription->active())
-						@if($subscription->onGracePeriod())
-							<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
-								@csrf
-								<button type="submit" class="btn btn-sm btn-success">
-									<i class="ti ti-player-play ti-xs me-1"></i>
-									Reanudar Suscripción
+					@if($subscription && $subscription->stripe_status === 'canceled' && !$subscription->active())
+						<!-- Cancelled subscription - show reactivate button -->
+						<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-success">
+							<i class="ti ti-refresh ti-xs me-1"></i>
+							Reactivar Suscripción
+						</a>
+					@else
+						<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
+							<i class="ti ti-refresh ti-xs me-1"></i>
+							{{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'Ver Planes' : 'Cambiar Plan' }}
+						</a>
+						
+						@if($subscription && $subscription->active())
+							@if($subscription->onGracePeriod())
+								<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
+									@csrf
+									<button type="submit" class="btn btn-sm btn-success">
+										<i class="ti ti-player-play ti-xs me-1"></i>
+										Reanudar Suscripción
+									</button>
+								</form>
+							@else
+								<button type="button" class="btn btn-sm btn-label-danger" onclick="confirmCancel()">
+									<i class="ti ti-x ti-xs me-1"></i>
+									Cancelar Suscripción
 								</button>
-							</form>
-						@else
-							<button type="button" class="btn btn-sm btn-label-danger" onclick="confirmCancel()">
-								<i class="ti ti-x ti-xs me-1"></i>
-								Cancelar Suscripción
-							</button>
+							@endif
 						@endif
 					@endif
 				</div>

@@ -392,7 +392,7 @@ class SubscriptionController extends Controller
         if ($team->subscribed('default'))
         {
             return redirect()->route('subscription.index')
-                ->with('error', 'You already have an active subscription. Please manage your current plan first.');
+                ->with('error', 'Ya tienes una suscripción activa. Por favor, gestiona tu plan actual primero.');
         }
 
         try
@@ -438,7 +438,7 @@ class SubscriptionController extends Controller
             \Log::error('Checkout error: '.$e->getMessage());
 
             return redirect()->route('subscription.index')
-                ->with('error', 'Error creating checkout session: '.$e->getMessage());
+                ->with('error', 'Error al crear la sesión de pago: '.$e->getMessage());
         }
     }
 
@@ -465,7 +465,7 @@ class SubscriptionController extends Controller
             if ($session->customer !== $team->stripe_id)
             {
                 return redirect()->route('subscription.index')
-                    ->with('error', 'Invalid session.');
+                    ->with('error', 'Sesión inválida.');
             }
 
             // Get the subscription ID from the session
@@ -511,13 +511,13 @@ class SubscriptionController extends Controller
             }
 
             return redirect()->route('subscription.index')
-                ->with('success', 'Subscription activated successfully!');
+                ->with('success', '¡Suscripción activada exitosamente!');
         } catch (\Exception $e)
         {
             \Log::error('Success handler error: '.$e->getMessage());
 
             return redirect()->route('subscription.index')
-                ->with('error', 'Error processing subscription: '.$e->getMessage());
+                ->with('error', 'Error al procesar la suscripción: '.$e->getMessage());
         }
     }
 

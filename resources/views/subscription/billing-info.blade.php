@@ -25,11 +25,11 @@
                         <!-- Individual Name -->
                         <div class="col-md-6">
                             <label class="form-label" for="individual_name">{{ __('Nombre Completo') }} (*)</label>
-                            <input type="text" 
-                                class="form-control @error('individual_name') is-invalid @enderror" 
-                                id="individual_name" 
-                                name="individual_name" 
-                                value="{{ old('individual_name', $customerData['individual_name']) }}" 
+                            <input type="text"
+                                class="form-control @error('individual_name') is-invalid @enderror"
+                                id="individual_name"
+                                name="individual_name"
+                                value="{{ old('individual_name', $customerData['individual_name']) }}"
                                 placeholder="Juan Pérez">
                             @error('individual_name')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -39,11 +39,11 @@
                         <!-- Business Name -->
                         <div class="col-md-6">
                             <label class="form-label" for="business_name">{{ __('Razón Social') }}</label>
-                            <input type="text" 
-                                class="form-control @error('business_name') is-invalid @enderror" 
-                                id="business_name" 
-                                name="business_name" 
-                                value="{{ old('business_name', $customerData['business_name']) }}" 
+                            <input type="text"
+                                class="form-control @error('business_name') is-invalid @enderror"
+                                id="business_name"
+                                name="business_name"
+                                value="{{ old('business_name', $customerData['business_name']) }}"
                                 placeholder="Mi Empresa S.A.">
                             @error('business_name')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -54,8 +54,8 @@
                         <!-- Country -->
                         <div class="col-md-6">
                             <label class="form-label" for="country">{{ __('País') }} (*)</label>
-                            <select class="form-select @error('country') is-invalid @enderror" 
-                                id="country" 
+                            <select class="form-select @error('country') is-invalid @enderror"
+                                id="country"
                                 name="country">
                                 <option value="">{{ __('Seleccionar país') }}</option>
                                 <option value="AR" {{ old('country', $customerData['country']) == 'AR' ? 'selected' : '' }}>Argentina</option>
@@ -75,11 +75,11 @@
                         <!-- Phone -->
                         <div class="col-md-6">
                             <label class="form-label" for="phone">{{ __('WhatsApp') }} (*)</label>
-                            <input type="text" 
-                                class="form-control @error('phone') is-invalid @enderror" 
-                                id="phone" 
-                                name="phone" 
-                                value="{{ old('phone', $customerData['phone']) }}" 
+                            <input type="text"
+                                class="form-control @error('phone') is-invalid @enderror"
+                                id="phone"
+                                name="phone"
+                                value="{{ old('phone', $customerData['phone']) }}"
                                 placeholder="9 11 0000-0000">
                             @error('phone')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -89,11 +89,11 @@
                         <!-- Tax ID -->
                         <div class="col-md-12">
                             <label class="form-label" for="tax_id">{{ __('Identificación Fiscal') }} (*)</label>
-                            <input type="text" 
-                                class="form-control @error('tax_id') is-invalid @enderror" 
-                                id="tax_id" 
-                                name="tax_id" 
-                                value="{{ old('tax_id', $customerData['tax_id']) }}" 
+                            <input type="text"
+                                class="form-control @error('tax_id') is-invalid @enderror"
+                                id="tax_id"
+                                name="tax_id"
+                                value="{{ old('tax_id', $customerData['tax_id']) }}"
                                 placeholder="CUIT, CIF, NIF, RFC, etc.">
                             @error('tax_id')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -165,7 +165,7 @@
 
                 <div class="mb-3">
                     <h6 class="mb-3">{{ __('Características Incluidas') }}</h6>
-                    
+
                     <div class="d-flex mb-2">
                         <i class="ti ti-check text-success me-2"></i>
                         <div>
