@@ -15,7 +15,7 @@ class BillingController extends Controller
         $team = $user->currentTeam;
 
         // Get Cashier subscription first
-        $subscription = $team->subscription('default');
+        $subscription = $team->subscription('mailer');
 
         // Get current plan from active subscription or fallback to team setting
         if ($subscription && $subscription->active())

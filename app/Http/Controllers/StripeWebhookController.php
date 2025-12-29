@@ -34,7 +34,7 @@ class StripeWebhookController extends CashierController
         \Log::info('Invoice payment succeeded for team '.$team->id);
 
         // Ensure the team's subscription is synced
-        $subscription = $team->subscription('default');
+        $subscription = $team->subscription('mailer');
 
         if ($subscription && $subscription->active())
         {

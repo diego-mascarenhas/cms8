@@ -17,7 +17,7 @@ class SubscriptionController extends Controller
 
         // Get only active subscription (exclude canceled)
         $subscription = $team->subscriptions()
-            ->where('type', 'default')
+            ->where('type', 'mailer')
             ->where('stripe_status', '!=', 'canceled')
             ->first();
 
@@ -390,7 +390,7 @@ class SubscriptionController extends Controller
 
         // Check if already has an active subscription (not canceled)
         $activeSubscription = $team->subscriptions()
-            ->where('type', 'default')
+            ->where('type', 'mailer')
             ->where('stripe_status', '!=', 'canceled')
             ->first();
 
@@ -402,7 +402,7 @@ class SubscriptionController extends Controller
 
         // Clean up any canceled subscriptions to avoid conflicts
         $team->subscriptions()
-            ->where('type', 'default')
+            ->where('type', 'mailer')
             ->where('stripe_status', 'canceled')
             ->delete();
 
@@ -426,7 +426,14 @@ class SubscriptionController extends Controller
             // Create Stripe checkout session directly via API
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
-            $checkoutSession = \Stripe\Checkout\Session::create([
+            // Check if customer has existing payment methods
+            $paymentMethods = \Stripe\PaymentMethod::all([
+                'customer' => $team->stripe_id,
+                'type' => 'card',
+                'limit' => 1,
+            ]);
+
+            $checkoutConfig = [
                 'customer' => $team->stripe_id,
                 'mode' => 'subscription',
                 'locale' => 'es',
@@ -441,7 +448,19 @@ class SubscriptionController extends Controller
                         'team_id' => $team->id,
                     ],
                 ],
-            ]);
+            ];
+
+            // If customer has payment methods, allow them to choose
+            if (! empty($paymentMethods->data))
+            {
+                $checkoutConfig['payment_method_types'] = ['card'];
+                $checkoutConfig['saved_payment_method_options'] = [
+                    'payment_method_save' => 'enabled',
+                    'payment_method_remove' => 'enabled',
+                ];
+            }
+
+            $checkoutSession = \Stripe\Checkout\Session::create($checkoutConfig);
 
             return redirect($checkoutSession->url);
         } catch (\Exception $e)
@@ -491,14 +510,14 @@ class SubscriptionController extends Controller
                 ]);
 
                 // Sync subscription to local database if it doesn't exist
-                $localSubscription = $team->subscription('default');
+                $localSubscription = $team->subscription('mailer');
 
                 if (! $localSubscription)
                 {
                     // Create the subscription record manually
                     $team->subscriptions()->create([
                         'user_id' => $team->owner->id ?? $team->user_id,
-                        'type' => 'default',
+                        'type' => 'mailer',
                         'stripe_id' => $stripeSubscription->id,
                         'stripe_status' => $stripeSubscription->status,
                         'stripe_price' => $stripeSubscription->items->data[0]->price->id,
@@ -543,7 +562,7 @@ class SubscriptionController extends Controller
         {
             // Get subscription directly from database
             $subscription = $team->subscriptions()
-                ->where('type', 'default')
+                ->where('type', 'mailer')
                 ->where('stripe_status', 'active')
                 ->whereNull('ends_at')
                 ->first();
@@ -588,7 +607,7 @@ class SubscriptionController extends Controller
         {
             // Get subscription from database
             $subscription = $team->subscriptions()
-                ->where('type', 'default')
+                ->where('type', 'mailer')
                 ->where('stripe_status', 'active')
                 ->whereNotNull('ends_at')
                 ->first();
@@ -643,22 +662,23 @@ class SubscriptionController extends Controller
                     ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
             }
 
-            // Get subscription
+            // Get subscription (including canceled ones)
             $subscription = $team->subscriptions()
-                ->where('type', 'default')
-                ->where('stripe_status', 'active')
+                ->where('type', 'mailer')
                 ->first();
 
             if (! $subscription)
             {
                 return redirect()->route('subscription.index')
-                    ->with('error', 'No se encontró una suscripción activa. Por favor, contacta a soporte.');
+                    ->with('error', 'No se encontró una suscripción. Por favor, crea una nueva suscripción primero.');
             }
 
             // Update directly via Stripe API to avoid Billable model issues
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
             $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
+
+            // Update subscription with new price and ensure it's not set to cancel
             \Stripe\Subscription::update($subscription->stripe_id, [
                 'items' => [
                     [
@@ -666,11 +686,14 @@ class SubscriptionController extends Controller
                         'price' => $priceId,
                     ],
                 ],
+                'cancel_at_period_end' => false, // Always remove cancellation
                 'proration_behavior' => 'create_prorations',
             ]);
 
             // Update local database
             $subscription->stripe_price = $priceId;
+            $subscription->stripe_status = 'active';
+            $subscription->ends_at = null; // Always clear cancellation date
             $subscription->save();
 
             // Update the team's email plan (bypass admin check for owner)
