@@ -55,10 +55,18 @@ class BillingController extends Controller
             {
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
-                // Get customer data with tax IDs and collected_information expanded
-                $customer = \Stripe\Customer::retrieve($team->stripe_id, [
-                    'expand' => ['tax_ids', 'collected_information'],
-                ]);
+                // Get customer data
+                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+                // Get tax IDs separately for more reliability
+                try
+                {
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 10]);
+                    $customer->tax_ids = $taxIds;
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not retrieve tax IDs: '.$e->getMessage());
+                }
 
                 // Get invoices
                 $invoicesData = \Stripe\Invoice::all([
@@ -129,28 +137,41 @@ class BillingController extends Controller
 
     public function update(Request $request)
     {
-        // Validation rules matching the contract form
-        $validationRules = [
+        // Validation rules with smart tax_id validation
+        $request->validate([
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|max:2',
             'phone' => 'required|string|max:50',
-            'tax_id' => 'required|string|max:50',
-        ];
+            'tax_id' => [
+                'required',
+                'string',
+                'max:50',
+                function ($attribute, $value, $fail) use ($request)
+                {
+                    $country = $request->country;
+                    $taxId = preg_replace('/[^0-9A-Za-z]/', '', $value); // Remove special characters for validation
 
-        // Country-specific tax ID validation
-        $countryValidation = [
-            'AR' => 'regex:/^\d{2}-\d{8}-\d{1}$/',  // CUIT format
-            'ES' => 'regex:/^[A-Z]\d{8}$/',  // CIF/NIF format
-            'MX' => 'regex:/^[A-Z]{4}\d{6}[A-Z0-9]{3}$/',  // RFC format
-        ];
+                    // Validation rules by country
+                    $valid = match ($country)
+                    {
+                        'AR' => $this->validateCUIT($taxId), // Argentina: CUIT (11 digits)
+                        'ES' => $this->validateCIF_NIF($taxId), // Spain: CIF/NIF
+                        'MX' => $this->validateRFC($taxId), // Mexico: RFC (12-13 characters)
+                        'CL' => $this->validateRUT($taxId), // Chile: RUT
+                        'CO' => $this->validateNIT($taxId), // Colombia: NIT
+                        'PE' => $this->validateRUC($taxId), // Peru: RUC (11 digits)
+                        'UY' => $this->validateRUT_UY($taxId), // Uruguay: RUT
+                        default => strlen($taxId) >= 5, // Generic: at least 5 characters
+                    };
 
-        if (isset($countryValidation[$request->country]))
-        {
-            $validationRules['tax_id'] .= '|'.$countryValidation[$request->country];
-        }
-
-        $request->validate($validationRules);
+                    if (! $valid)
+                    {
+                        $fail('El formato de la Identificación Fiscal no es válido para el país seleccionado.');
+                    }
+                },
+            ],
+        ]);
 
         $user = auth()->user();
         $team = $user->currentTeam;
@@ -161,33 +182,30 @@ class BillingController extends Controller
 
             // Prepare data
             $customerName = $request->business_name ?: $request->individual_name;
+            $taxIdError = null;
 
             // Get or create Stripe customer
             if ($team->stripe_id)
             {
-                // Update existing customer
-                $customer = \Stripe\Customer::update($team->stripe_id, [
+                // Step 1: Update customer basic info
+                \Stripe\Customer::update($team->stripe_id, [
                     'name' => $customerName,
                     'phone' => $request->phone,
                     'address' => [
                         'country' => $request->country,
                     ],
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'company_name' => $request->business_name ?: $request->individual_name,
-                    ],
                 ]);
 
-                // Update or create tax ID separately
+                // Step 2: Update or create tax ID
                 try
                 {
                     // Get existing tax IDs
-                    $taxIds = \Stripe\TaxId::all(['customer' => $team->stripe_id]);
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
 
                     // Delete existing tax IDs
                     foreach ($taxIds->data as $taxId)
                     {
-                        $taxId->delete();
+                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
                     }
 
                     // Determine tax ID type based on country
@@ -200,36 +218,53 @@ class BillingController extends Controller
                         'CO' => 'co_nit',
                         'PE' => 'pe_ruc',
                         'UY' => 'uy_ruc',
-                        default => 'eu_vat',
+                        'US' => 'us_ein',
+                        default => 'unknown',
                     };
 
-                    // Create new tax ID
-                    \Stripe\TaxId::create([
-                        'customer' => $team->stripe_id,
-                        'type' => $taxIdType,
-                        'value' => $request->tax_id,
-                    ]);
+                    // Create new tax ID if type is known
+                    if ($taxIdType !== 'unknown')
+                    {
+                        \Stripe\Customer::createTaxId($team->stripe_id, [
+                            'type' => $taxIdType,
+                            'value' => $request->tax_id,
+                        ]);
+                        \Log::info('Tax ID created successfully for customer: '.$team->stripe_id);
+                    }
                 } catch (\Exception $e)
                 {
-                    // If tax ID fails, just log it but don't fail the whole update
-                    \Log::warning('Could not update tax ID: '.$e->getMessage());
+                    // Log the full error
+                    \Log::error('Could not update tax ID: '.$e->getMessage());
+                    \Log::error('Tax ID Error details: ', [
+                        'customer' => $team->stripe_id,
+                        'country' => $request->country,
+                        'tax_id' => $request->tax_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $taxIdError = $e->getMessage();
                 }
+
+                // Step 3: Update metadata separately (like SubscriptionController)
+                \Stripe\Customer::update($team->stripe_id, [
+                    'metadata' => [
+                        'individual_name' => $request->individual_name,
+                        'business_name' => $request->business_name,
+                        'tax_id' => $request->tax_id,
+                        'country' => $request->country,
+                    ],
+                ]);
             } else
             {
-                // Create new customer
+                // Step 1: Create new customer
                 $customer = $team->createAsStripeCustomer([
                     'name' => $customerName,
                     'phone' => $request->phone,
                     'address' => [
                         'country' => $request->country,
                     ],
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'company_name' => $request->business_name ?: $request->individual_name,
-                    ],
                 ]);
 
-                // Add tax ID
+                // Step 2: Add tax ID
                 try
                 {
                     $taxIdType = match ($request->country)
@@ -241,26 +276,119 @@ class BillingController extends Controller
                         'CO' => 'co_nit',
                         'PE' => 'pe_ruc',
                         'UY' => 'uy_ruc',
-                        default => 'eu_vat',
+                        'US' => 'us_ein',
+                        default => 'unknown',
                     };
 
-                    \Stripe\TaxId::create([
-                        'customer' => $customer->id,
-                        'type' => $taxIdType,
-                        'value' => $request->tax_id,
-                    ]);
+                    // Create tax ID if type is known
+                    if ($taxIdType !== 'unknown')
+                    {
+                        \Stripe\Customer::createTaxId($customer->id, [
+                            'type' => $taxIdType,
+                            'value' => $request->tax_id,
+                        ]);
+                        \Log::info('Tax ID created successfully for new customer: '.$customer->id);
+                    }
                 } catch (\Exception $e)
                 {
-                    \Log::warning('Could not create tax ID: '.$e->getMessage());
+                    \Log::error('Could not create tax ID: '.$e->getMessage());
+                    \Log::error('Tax ID Error details: ', [
+                        'customer' => $customer->id,
+                        'country' => $request->country,
+                        'tax_id' => $request->tax_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $taxIdError = $e->getMessage();
                 }
+
+                // Step 3: Update metadata separately (like SubscriptionController)
+                \Stripe\Customer::update($customer->id, [
+                    'metadata' => [
+                        'individual_name' => $request->individual_name,
+                        'business_name' => $request->business_name,
+                        'tax_id' => $request->tax_id,
+                        'country' => $request->country,
+                    ],
+                ]);
             }
 
-            return redirect()->route('billing.index')->with('success', 'Datos de facturación actualizados correctamente.');
+            $successMessage = 'Datos de facturación actualizados correctamente.';
+            if ($taxIdError)
+            {
+                $successMessage .= ' Sin embargo, hubo un problema al actualizar el ID Fiscal: '.$taxIdError;
+
+                return redirect()->route('billing.index')->with('warning', $successMessage);
+            }
+
+            return redirect()->route('billing.index')->with('success', $successMessage);
         } catch (\Exception $e)
         {
             \Log::error('Error updating billing data: '.$e->getMessage());
 
             return redirect()->back()->withInput()->with('error', 'Error al actualizar los datos de facturación: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Validate Argentina CUIT format
+     */
+    private function validateCUIT(string $taxId): bool
+    {
+        // CUIT: 11 digits
+        return strlen($taxId) === 11 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Spain CIF/NIF format
+     */
+    private function validateCIF_NIF(string $taxId): bool
+    {
+        // CIF/NIF: 8-9 characters (letter + numbers or numbers + letter)
+        return preg_match('/^[A-Z0-9]{8,9}$/i', $taxId);
+    }
+
+    /**
+     * Validate Mexico RFC format
+     */
+    private function validateRFC(string $taxId): bool
+    {
+        // RFC: 12-13 characters
+        return strlen($taxId) >= 12 && strlen($taxId) <= 13 && preg_match('/^[A-Z0-9]+$/i', $taxId);
+    }
+
+    /**
+     * Validate Chile RUT format
+     */
+    private function validateRUT(string $taxId): bool
+    {
+        // RUT: 8-9 digits + verification digit
+        return strlen($taxId) >= 8 && strlen($taxId) <= 10 && preg_match('/^[0-9]{7,9}[0-9Kk]$/i', $taxId);
+    }
+
+    /**
+     * Validate Colombia NIT format
+     */
+    private function validateNIT(string $taxId): bool
+    {
+        // NIT: 9-10 digits
+        return strlen($taxId) >= 9 && strlen($taxId) <= 10 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Peru RUC format
+     */
+    private function validateRUC(string $taxId): bool
+    {
+        // RUC: 11 digits
+        return strlen($taxId) === 11 && ctype_digit($taxId);
+    }
+
+    /**
+     * Validate Uruguay RUT format
+     */
+    private function validateRUT_UY(string $taxId): bool
+    {
+        // RUT Uruguay: 12 digits
+        return strlen($taxId) === 12 && ctype_digit($taxId);
     }
 }

@@ -41,10 +41,10 @@
 						<div class="col-md-6">
 							<dl class="row mb-0">
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']->collected_information->individual_name ?? $stripeData['customer']->metadata['individual_name'] ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
+								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->individual_name ?? $stripeData['customer']->collected_information->individual_name ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
 
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']->collected_information->business_name ?? $stripeData['customer']->metadata['company_name'] ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
+								<dd class="col-sm-7">{{ $stripeData['customer']->metadata->business_name ?? $stripeData['customer']->metadata->company_name ?? $stripeData['customer']->collected_information->business_name ?? $stripeData['customer']->name ?? 'No especificado' }}</dd>
 
 								@if(isset($stripeData['customer']->address->country))
 									@php
@@ -74,26 +74,21 @@
 					@endif
 
 								@php
-									$hasTaxId = false;
+									$taxIdValue = null;
+									$taxIdType = 'ID Fiscal';
+									
+									// Intentar obtener tax ID
 									if (isset($stripeData['customer']->tax_ids)) {
-										if (is_object($stripeData['customer']->tax_ids) && isset($stripeData['customer']->tax_ids->data)) {
-											$taxIds = $stripeData['customer']->tax_ids->data;
-											$hasTaxId = count($taxIds) > 0;
-										} elseif (is_array($stripeData['customer']->tax_ids)) {
-											$taxIds = $stripeData['customer']->tax_ids;
-											$hasTaxId = count($taxIds) > 0;
+										if (is_object($stripeData['customer']->tax_ids) && isset($stripeData['customer']->tax_ids->data) && count($stripeData['customer']->tax_ids->data) > 0) {
+											$firstTaxId = $stripeData['customer']->tax_ids->data[0];
+											$taxIdValue = $firstTaxId->value;
+											$taxIdType = strtoupper(str_replace('_', ' ', $firstTaxId->type));
 										}
 									}
 				@endphp
-								@if($hasTaxId)
-									@foreach($taxIds as $taxId)
-										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper(str_replace('_', ' ', is_object($taxId) ? $taxId->type : $taxId['type'])) }}:</dt>
-										<dd class="col-sm-7">{{ is_object($taxId) ? $taxId->value : $taxId['value'] }}</dd>
-									@endforeach
-								@else
-									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID Fiscal:</dt>
-									<dd class="col-sm-7 text-muted">No especificado</dd>
-								@endif
+				
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ $taxIdType }}:</dt>
+								<dd class="col-sm-7{{ !$taxIdValue ? ' text-muted' : '' }}">{{ $taxIdValue ?: 'No especificado' }}</dd>
 							</dl>
 						</div>
 					</div>
@@ -435,11 +430,19 @@
 						<!-- Individual Name -->
 						<div class="col-md-6">
 							<label class="form-label" for="individual_name">Nombre Completo (*)</label>
+							@php
+								$individualName = old('individual_name');
+								if (!$individualName && isset($stripeData['customer'])) {
+									$individualName = $stripeData['customer']->metadata->individual_name ?? 
+													  $stripeData['customer']->collected_information->individual_name ?? 
+													  $stripeData['customer']->name ?? '';
+								}
+							@endphp
 							<input type="text" 
 								class="form-control @error('individual_name') is-invalid @enderror" 
 								id="individual_name"
 								name="individual_name"
-								value="{{ old('individual_name', $stripeData['customer']->collected_information->individual_name ?? $stripeData['customer']->metadata['individual_name'] ?? $stripeData['customer']->name ?? '') }}" 
+								value="{{ $individualName }}" 
 								placeholder="Juan Pérez">
 							@error('individual_name')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
@@ -449,11 +452,20 @@
 						<!-- Business Name -->
 						<div class="col-md-6">
 							<label class="form-label" for="business_name">Razón Social</label>
+							@php
+								$businessName = old('business_name');
+								if (!$businessName && isset($stripeData['customer'])) {
+									$businessName = $stripeData['customer']->metadata->business_name ?? 
+													$stripeData['customer']->metadata->company_name ?? 
+													$stripeData['customer']->collected_information->business_name ?? 
+													$team->name;
+								}
+							@endphp
 							<input type="text"
 								class="form-control @error('business_name') is-invalid @enderror"
 								id="business_name"
 								name="business_name"
-								value="{{ old('business_name', $stripeData['customer']->collected_information->business_name ?? $stripeData['customer']->metadata['company_name'] ?? $team->name) }}"
+								value="{{ $businessName }}"
 								placeholder="Mi Empresa S.A.">
 							@error('business_name')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
@@ -518,7 +530,7 @@
 							@error('tax_id')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
 							@enderror
-							<small class="text-muted">Formato según su país: CUIT (Argentina), CIF/NIF (España), RFC (México), etc.</small>
+							<small class="text-muted">Ingrese su identificación fiscal según su país. Ejemplos: 20250242000 (Argentina), B12345678 (España), ABCD123456ABC (México)</small>
 						</div>
 					</div>
 				</div>
