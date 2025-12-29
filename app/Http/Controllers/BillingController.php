@@ -55,8 +55,10 @@ class BillingController extends Controller
             {
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
-                // Get customer data
-                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+                // Get customer data with tax IDs and collected_information expanded
+                $customer = \Stripe\Customer::retrieve($team->stripe_id, [
+                    'expand' => ['tax_ids', 'collected_information'],
+                ]);
 
                 // Get invoices
                 $invoicesData = \Stripe\Invoice::all([
@@ -127,39 +129,28 @@ class BillingController extends Controller
 
     public function update(Request $request)
     {
-        $request->validate([
+        // Validation rules matching the contract form
+        $validationRules = [
             'individual_name' => 'required|string|max:255',
-            'company_name' => 'required|string|max:255',
-            'tax_id' => 'required|string|max:50',
-            'billing_email' => 'required|email',
-            'billing_phone' => 'nullable|string|max:50',
-            'address_line1' => 'required|string|max:255',
-            'address_line2' => 'nullable|string|max:255',
-            'postal_code' => 'required|string|max:20',
-            'city' => 'required|string|max:100',
-            'state' => 'nullable|string|max:100',
+            'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|max:2',
-        ], [
-            'individual_name.required' => 'El nombre completo es obligatorio.',
-            'individual_name.max' => 'El nombre completo no puede tener más de 255 caracteres.',
-            'company_name.required' => 'La razón social es obligatoria.',
-            'company_name.max' => 'La razón social no puede tener más de 255 caracteres.',
-            'tax_id.required' => 'El CIF/NIF es obligatorio.',
-            'tax_id.max' => 'El CIF/NIF no puede tener más de 50 caracteres.',
-            'billing_email.required' => 'El email de facturación es obligatorio.',
-            'billing_email.email' => 'El email de facturación debe ser una dirección válida.',
-            'billing_phone.max' => 'El teléfono no puede tener más de 50 caracteres.',
-            'address_line1.required' => 'La dirección es obligatoria.',
-            'address_line1.max' => 'La dirección no puede tener más de 255 caracteres.',
-            'address_line2.max' => 'La dirección 2 no puede tener más de 255 caracteres.',
-            'postal_code.required' => 'El código postal es obligatorio.',
-            'postal_code.max' => 'El código postal no puede tener más de 20 caracteres.',
-            'city.required' => 'La ciudad es obligatoria.',
-            'city.max' => 'La ciudad no puede tener más de 100 caracteres.',
-            'state.max' => 'La provincia/estado no puede tener más de 100 caracteres.',
-            'country.required' => 'El país es obligatorio.',
-            'country.max' => 'El país no puede tener más de 2 caracteres.',
-        ]);
+            'phone' => 'required|string|max:50',
+            'tax_id' => 'required|string|max:50',
+        ];
+
+        // Country-specific tax ID validation
+        $countryValidation = [
+            'AR' => 'regex:/^\d{2}-\d{8}-\d{1}$/',  // CUIT format
+            'ES' => 'regex:/^[A-Z]\d{8}$/',  // CIF/NIF format
+            'MX' => 'regex:/^[A-Z]{4}\d{6}[A-Z0-9]{3}$/',  // RFC format
+        ];
+
+        if (isset($countryValidation[$request->country]))
+        {
+            $validationRules['tax_id'] .= '|'.$countryValidation[$request->country];
+        }
+
+        $request->validate($validationRules);
 
         $user = auth()->user();
         $team = $user->currentTeam;
@@ -168,24 +159,22 @@ class BillingController extends Controller
         {
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
+            // Prepare data
+            $customerName = $request->business_name ?: $request->individual_name;
+
             // Get or create Stripe customer
             if ($team->stripe_id)
             {
                 // Update existing customer
                 $customer = \Stripe\Customer::update($team->stripe_id, [
-                    'name' => $request->individual_name, // Nombre del particular (aparece en facturas)
-                    'email' => $request->billing_email,
-                    'phone' => $request->billing_phone,
+                    'name' => $customerName,
+                    'phone' => $request->phone,
                     'address' => [
-                        'line1' => $request->address_line1,
-                        'line2' => $request->address_line2,
-                        'postal_code' => $request->postal_code,
-                        'city' => $request->city,
-                        'state' => $request->state,
                         'country' => $request->country,
                     ],
                     'metadata' => [
-                        'company_name' => $request->company_name, // Razón Social (solo interno)
+                        'individual_name' => $request->individual_name,
+                        'company_name' => $request->business_name ?: $request->individual_name,
                     ],
                 ]);
 
@@ -201,10 +190,23 @@ class BillingController extends Controller
                         $taxId->delete();
                     }
 
+                    // Determine tax ID type based on country
+                    $taxIdType = match ($request->country)
+                    {
+                        'AR' => 'ar_cuit',
+                        'ES' => 'es_cif',
+                        'MX' => 'mx_rfc',
+                        'CL' => 'cl_tin',
+                        'CO' => 'co_nit',
+                        'PE' => 'pe_ruc',
+                        'UY' => 'uy_ruc',
+                        default => 'eu_vat',
+                    };
+
                     // Create new tax ID
                     \Stripe\TaxId::create([
                         'customer' => $team->stripe_id,
-                        'type' => $request->country === 'ES' ? 'es_cif' : 'eu_vat',
+                        'type' => $taxIdType,
                         'value' => $request->tax_id,
                     ]);
                 } catch (\Exception $e)
@@ -216,28 +218,35 @@ class BillingController extends Controller
             {
                 // Create new customer
                 $customer = $team->createAsStripeCustomer([
-                    'name' => $request->individual_name, // Nombre del particular (aparece en facturas)
-                    'email' => $request->billing_email,
-                    'phone' => $request->billing_phone,
+                    'name' => $customerName,
+                    'phone' => $request->phone,
                     'address' => [
-                        'line1' => $request->address_line1,
-                        'line2' => $request->address_line2,
-                        'postal_code' => $request->postal_code,
-                        'city' => $request->city,
-                        'state' => $request->state,
                         'country' => $request->country,
                     ],
                     'metadata' => [
-                        'company_name' => $request->company_name, // Razón Social (solo interno)
+                        'individual_name' => $request->individual_name,
+                        'company_name' => $request->business_name ?: $request->individual_name,
                     ],
                 ]);
 
                 // Add tax ID
                 try
                 {
+                    $taxIdType = match ($request->country)
+                    {
+                        'AR' => 'ar_cuit',
+                        'ES' => 'es_cif',
+                        'MX' => 'mx_rfc',
+                        'CL' => 'cl_tin',
+                        'CO' => 'co_nit',
+                        'PE' => 'pe_ruc',
+                        'UY' => 'uy_ruc',
+                        default => 'eu_vat',
+                    };
+
                     \Stripe\TaxId::create([
                         'customer' => $customer->id,
-                        'type' => $request->country === 'ES' ? 'es_cif' : 'eu_vat',
+                        'type' => $taxIdType,
                         'value' => $request->tax_id,
                     ]);
                 } catch (\Exception $e)
