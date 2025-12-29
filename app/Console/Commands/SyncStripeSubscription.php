@@ -84,7 +84,7 @@ class SyncStripeSubscription extends Command
                         // Create new subscription record
                         $team->subscriptions()->create([
                             'user_id' => $team->owner->id ?? $team->user_id,
-                            'type' => 'default',
+                            'type' => 'mailer',
                             'stripe_id' => $stripeSubscription->id,
                             'stripe_status' => $stripeSubscription->status,
                             'stripe_price' => $stripeSubscription->items->data[0]->price->id,
