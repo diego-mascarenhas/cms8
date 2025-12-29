@@ -184,13 +184,16 @@ class BillingController extends Controller
             $customerName = $request->business_name ?: $request->individual_name;
             $taxIdError = null;
 
+            // Normalize phone number to E.164 format
+            $phone = $this->normalizePhoneNumber($request->phone, $request->country);
+
             // Get or create Stripe customer
             if ($team->stripe_id)
             {
                 // Step 1: Update customer basic info
                 \Stripe\Customer::update($team->stripe_id, [
                     'name' => $customerName,
-                    'phone' => $request->phone,
+                    'phone' => $phone,
                     'address' => [
                         'country' => $request->country,
                     ],
@@ -258,7 +261,7 @@ class BillingController extends Controller
                 // Step 1: Create new customer
                 $customer = $team->createAsStripeCustomer([
                     'name' => $customerName,
-                    'phone' => $request->phone,
+                    'phone' => $phone,
                     'address' => [
                         'country' => $request->country,
                     ],
@@ -390,5 +393,49 @@ class BillingController extends Controller
     {
         // RUT Uruguay: 12 digits
         return strlen($taxId) === 12 && ctype_digit($taxId);
+    }
+
+    /**
+     * Normalize phone number to E.164 format
+     */
+    private function normalizePhoneNumber(string $phone, string $country): string
+    {
+        // Remove all non-numeric characters except +
+        $cleaned = preg_replace('/[^0-9+]/', '', $phone);
+
+        // If already has + at the start, return as is (already in international format)
+        if (str_starts_with($cleaned, '+'))
+        {
+            return $cleaned;
+        }
+
+        // Get country code based on country
+        $countryCode = match ($country)
+        {
+            'AR' => '+54',
+            'ES' => '+34',
+            'MX' => '+52',
+            'US' => '+1',
+            'CO' => '+57',
+            'CL' => '+56',
+            'PE' => '+51',
+            'UY' => '+598',
+            'BR' => '+55',
+            default => '',
+        };
+
+        // For Argentina, ensure mobile numbers have the '9' prefix after country code
+        if ($country === 'AR' && ! str_starts_with($cleaned, '9'))
+        {
+            // If starts with 15, remove it (old mobile format)
+            if (str_starts_with($cleaned, '15'))
+            {
+                $cleaned = substr($cleaned, 2);
+            }
+            // Add 9 prefix for mobile
+            $cleaned = '9'.$cleaned;
+        }
+
+        return $countryCode.$cleaned;
     }
 }

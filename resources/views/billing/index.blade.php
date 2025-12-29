@@ -502,10 +502,11 @@
 								id="phone"
 								name="phone"
 								value="{{ old('phone', $stripeData['customer']->phone ?? '') }}"
-								placeholder="9 11 0000-0000">
+								placeholder="+54 9 11 0000-0000">
 							@error('phone')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
 							@enderror
+							<small class="text-muted">Ingrese con código de país: +54 para Argentina, +34 para España, +52 para México</small>
 						</div>
 
 						<!-- Tax ID -->
