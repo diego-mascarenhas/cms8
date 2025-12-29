@@ -124,10 +124,47 @@ class SubscriptionController extends Controller
         $plan = $request->plan;
         $prices = $this->getStripePrices();
 
+        // Get customer data from Stripe if exists
+        $customerData = [
+            'individual_name' => '',
+            'business_name' => '',
+            'country' => '',
+            'phone' => '',
+            'tax_id' => '',
+        ];
+
+        if ($team->stripe_id)
+        {
+            try
+            {
+                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+                $customerData = [
+                    'individual_name' => $customer->metadata->individual_name ?? '',
+                    'business_name' => $customer->metadata->business_name ?? '',
+                    'country' => $customer->address->country ?? '',
+                    'phone' => $customer->phone ?? '',
+                    'tax_id' => '',
+                ];
+
+                // Get Tax ID if exists
+                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+                if (! empty($taxIds->data))
+                {
+                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage());
+            }
+        }
+
         return view('subscription.billing-info', [
             'team' => $team,
             'plan' => $plan,
             'prices' => $prices,
+            'customerData' => $customerData,
         ]);
     }
 
@@ -173,13 +210,6 @@ class SubscriptionController extends Controller
         ]);
 
         $team = auth()->user()->currentTeam;
-
-        // Save billing info in team settings
-        $team->setSetting('billing_individual_name', $request->individual_name);
-        $team->setSetting('billing_business_name', $request->business_name);
-        $team->setSetting('billing_country', $request->country);
-        $team->setSetting('billing_phone', $request->phone);
-        $team->setSetting('billing_tax_id', $request->tax_id);
 
         // Use business name if provided, otherwise use individual name
         $displayName = $request->business_name ?: $request->individual_name;

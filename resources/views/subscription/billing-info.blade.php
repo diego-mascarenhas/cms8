@@ -29,7 +29,7 @@
                                 class="form-control @error('individual_name') is-invalid @enderror" 
                                 id="individual_name" 
                                 name="individual_name" 
-                                value="{{ old('individual_name', $team->getSetting('billing_individual_name')) }}" 
+                                value="{{ old('individual_name', $customerData['individual_name']) }}" 
                                 placeholder="Juan Pérez">
                             @error('individual_name')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -43,7 +43,7 @@
                                 class="form-control @error('business_name') is-invalid @enderror" 
                                 id="business_name" 
                                 name="business_name" 
-                                value="{{ old('business_name', $team->getSetting('billing_business_name')) }}" 
+                                value="{{ old('business_name', $customerData['business_name']) }}" 
                                 placeholder="Mi Empresa S.A.">
                             @error('business_name')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -58,14 +58,14 @@
                                 id="country" 
                                 name="country">
                                 <option value="">{{ __('Seleccionar país') }}</option>
-                                <option value="AR" {{ old('country', $team->getSetting('billing_country')) == 'AR' ? 'selected' : '' }}>Argentina</option>
-                                <option value="ES" {{ old('country', $team->getSetting('billing_country')) == 'ES' ? 'selected' : '' }}>España</option>
-                                <option value="MX" {{ old('country', $team->getSetting('billing_country')) == 'MX' ? 'selected' : '' }}>México</option>
-                                <option value="CL" {{ old('country', $team->getSetting('billing_country')) == 'CL' ? 'selected' : '' }}>Chile</option>
-                                <option value="CO" {{ old('country', $team->getSetting('billing_country')) == 'CO' ? 'selected' : '' }}>Colombia</option>
-                                <option value="PE" {{ old('country', $team->getSetting('billing_country')) == 'PE' ? 'selected' : '' }}>Perú</option>
-                                <option value="UY" {{ old('country', $team->getSetting('billing_country')) == 'UY' ? 'selected' : '' }}>Uruguay</option>
-                                <option value="US" {{ old('country', $team->getSetting('billing_country')) == 'US' ? 'selected' : '' }}>Estados Unidos</option>
+                                <option value="AR" {{ old('country', $customerData['country']) == 'AR' ? 'selected' : '' }}>Argentina</option>
+                                <option value="ES" {{ old('country', $customerData['country']) == 'ES' ? 'selected' : '' }}>España</option>
+                                <option value="MX" {{ old('country', $customerData['country']) == 'MX' ? 'selected' : '' }}>México</option>
+                                <option value="CL" {{ old('country', $customerData['country']) == 'CL' ? 'selected' : '' }}>Chile</option>
+                                <option value="CO" {{ old('country', $customerData['country']) == 'CO' ? 'selected' : '' }}>Colombia</option>
+                                <option value="PE" {{ old('country', $customerData['country']) == 'PE' ? 'selected' : '' }}>Perú</option>
+                                <option value="UY" {{ old('country', $customerData['country']) == 'UY' ? 'selected' : '' }}>Uruguay</option>
+                                <option value="US" {{ old('country', $customerData['country']) == 'US' ? 'selected' : '' }}>Estados Unidos</option>
                             </select>
                             @error('country')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -79,7 +79,7 @@
                                 class="form-control @error('phone') is-invalid @enderror" 
                                 id="phone" 
                                 name="phone" 
-                                value="{{ old('phone', $team->getSetting('billing_phone')) }}" 
+                                value="{{ old('phone', $customerData['phone']) }}" 
                                 placeholder="9 11 0000-0000">
                             @error('phone')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -93,7 +93,7 @@
                                 class="form-control @error('tax_id') is-invalid @enderror" 
                                 id="tax_id" 
                                 name="tax_id" 
-                                value="{{ old('tax_id', $team->getSetting('billing_tax_id')) }}" 
+                                value="{{ old('tax_id', $customerData['tax_id']) }}" 
                                 placeholder="CUIT, CIF, NIF, RFC, etc.">
                             @error('tax_id')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
