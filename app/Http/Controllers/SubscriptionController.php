@@ -388,12 +388,23 @@ class SubscriptionController extends Controller
         $team = auth()->user()->currentTeam;
         $plan = EmailPlan::from($request->plan);
 
-        // Check if already has active subscription
-        if ($team->subscribed('default'))
+        // Check if already has an active subscription (not canceled)
+        $activeSubscription = $team->subscriptions()
+            ->where('type', 'default')
+            ->where('stripe_status', '!=', 'canceled')
+            ->first();
+
+        if ($activeSubscription && $activeSubscription->active())
         {
             return redirect()->route('subscription.index')
                 ->with('error', 'Ya tienes una suscripción activa. Por favor, gestiona tu plan actual primero.');
         }
+
+        // Clean up any canceled subscriptions to avoid conflicts
+        $team->subscriptions()
+            ->where('type', 'default')
+            ->where('stripe_status', 'canceled')
+            ->delete();
 
         try
         {
