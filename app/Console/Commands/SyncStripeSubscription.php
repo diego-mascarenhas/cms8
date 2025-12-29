@@ -63,6 +63,9 @@ class SyncStripeSubscription extends Command
 
                 foreach ($subscriptions->data as $stripeSubscription)
                 {
+                    // Determine subscription type from metadata or product
+                    $subscriptionType = $this->determineSubscriptionType($stripeSubscription);
+
                     // Check if subscription exists locally
                     $localSubscription = $team->subscriptions()
                         ->where('stripe_id', $stripeSubscription->id)
@@ -78,13 +81,13 @@ class SyncStripeSubscription extends Command
                             'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         ]);
 
-                        $this->info("Updated subscription: {$stripeSubscription->id}");
+                        $this->info("Updated subscription: {$stripeSubscription->id} (type: {$localSubscription->type})");
                     } else
                     {
                         // Create new subscription record
                         $team->subscriptions()->create([
                             'user_id' => $team->owner->id ?? $team->user_id,
-                            'type' => 'mailer',
+                            'type' => $subscriptionType,
                             'stripe_id' => $stripeSubscription->id,
                             'stripe_status' => $stripeSubscription->status,
                             'stripe_price' => $stripeSubscription->items->data[0]->price->id,
@@ -93,7 +96,7 @@ class SyncStripeSubscription extends Command
                             'ends_at' => null,
                         ]);
 
-                        $this->info("Created subscription: {$stripeSubscription->id}");
+                        $this->info("Created subscription: {$stripeSubscription->id} (type: {$subscriptionType})");
                     }
 
                     // Update team's email plan if subscription is active
@@ -161,5 +164,53 @@ class SyncStripeSubscription extends Command
         }
 
         return null;
+    }
+
+    /**
+     * Determine subscription type from Stripe subscription data
+     */
+    private function determineSubscriptionType($stripeSubscription)
+    {
+        // 1. Check subscription metadata first
+        if (isset($stripeSubscription->metadata['type']) && ! empty($stripeSubscription->metadata['type']))
+        {
+            return $stripeSubscription->metadata['type'];
+        }
+
+        // 2. Check product metadata or name
+        try
+        {
+            $price = $stripeSubscription->items->data[0]->price;
+            $product = is_string($price->product) ? \Stripe\Product::retrieve($price->product) : $price->product;
+
+            // Check product metadata
+            if (isset($product->metadata['type']) && ! empty($product->metadata['type']))
+            {
+                return $product->metadata['type'];
+            }
+
+            // Check product name for keywords
+            $productName = strtolower($product->name ?? '');
+
+            if (str_contains($productName, 'mailer') || str_contains($productName, 'email'))
+            {
+                return 'mailer';
+            } elseif (str_contains($productName, 'hosting'))
+            {
+                return 'hosting';
+            } elseif (str_contains($productName, 'domain'))
+            {
+                return 'domain';
+            } elseif (str_contains($productName, 'licen'))
+            {
+                return 'licence';
+            }
+        } catch (\Exception $e)
+        {
+            $this->warn("Could not determine type from product: {$e->getMessage()}");
+        }
+
+        // 3. Fallback to 'default'
+        return 'default';
     }
 }

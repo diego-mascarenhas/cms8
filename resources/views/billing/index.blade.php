@@ -24,143 +24,76 @@
 	</div>
 @endif
 
+<!-- Billing Data & Payment Methods -->
 <div class="row">
-	<!-- Current Plan -->
 	<div class="col-12 col-lg-8 mb-4">
 		<div class="card">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="card-title mb-0">Plan Actual</h5>
-				<div class="badge bg-label-{{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'secondary' : 'primary' }} text-uppercase">
-					{{ $currentPlan->getDisplayName() }}
-				</div>
+				<h5 class="card-title mb-0">Datos de Facturación</h5>
+				<button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal" data-bs-target="#editBillingModal">
+					<i class="ti ti-edit ti-xs me-1"></i>
+					Editar
+				</button>
 			</div>
 			<div class="card-body">
-				<div class="mb-4">
-					<h6 class="mb-2">{{ $currentPlan->getDescription() }}</h6>
-					@if($currentPlan !== \App\Enums\EmailPlan::FREE)
-						<div class="d-flex align-items-baseline">
-							<span class="h2 mb-0 text-primary me-1">{{ $currentPlan === \App\Enums\EmailPlan::BASIC ? '15,99' : ($currentPlan === \App\Enums\EmailPlan::FOUNDATION ? '35,99' : '119,99') }}</span>
-							<span class="text-muted">€/mes + IVA</span>
+				@if ($stripeData && isset($stripeData['customer']))
+					<div class="row">
+						<div class="col-md-6">
+							<dl class="row mb-0">
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['individual_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
+
+								@if(isset($stripeData['customer']['phone']) && $stripeData['customer']['phone'])
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Teléfono:</dt>
+									<dd class="col-sm-7">{{ $stripeData['customer']['phone'] }}</dd>
+								@endif
+							</dl>
 						</div>
+						<div class="col-md-6">
+							<dl class="row mb-0">
+								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
+								<dd class="col-sm-7">{{ $stripeData['customer']['metadata']['company_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+
+								@if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
+									@foreach($stripeData['customer']['tax_ids'] as $taxId)
+										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper(str_replace('_', '_', $taxId['type'])) }}:</dt>
+										<dd class="col-sm-7">{{ $taxId['value'] }} <small class="text-muted">({{ $taxId['country'] }})</small></dd>
+									@endforeach
 					@else
-						<div class="d-flex align-items-baseline">
-							<span class="h2 mb-0 text-primary me-1">0</span>
-							<span class="text-muted">€/mes</span>
-						</div>
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">CIF/NIF:</dt>
+									<dd class="col-sm-7 text-muted">No especificado</dd>
 					@endif
-				</div>
 
-			<!-- Subscription Status -->
-			@if($subscription && $subscription->stripe_status === 'canceled' && !$subscription->active())
-				<!-- Completely cancelled subscription -->
-				<div class="alert alert-danger mb-4">
-					<div class="d-flex align-items-center">
-						<i class="ti ti-info-circle me-2"></i>
-						<div>
-							<strong>Suscripción Cancelada</strong> - Tu plan actual es Free
-						</div>
-					</div>
-				</div>
-			@elseif($subscription && $subscription->active())
-				@php
-					$stripeSubscription = $subscriptions->firstWhere('id', $subscription->stripe_id);
+								@if(isset($stripeData['customer']['address']) && isset($stripeData['customer']['address']['country']))
+									@php
+										$countries = [
+											'ES' => 'España',
+											'AR' => 'Argentina',
+											'MX' => 'México',
+											'US' => 'Estados Unidos',
+											'CO' => 'Colombia',
+											'CL' => 'Chile',
+											'PE' => 'Perú',
+										];
+										$countryCode = $stripeData['customer']['address']['country'];
+										$countryName = $countries[$countryCode] ?? $countryCode;
 				@endphp
-				
-				@if($subscription->onGracePeriod())
-					<div class="alert alert-warning mb-4">
-						<div class="d-flex align-items-center">
-							<i class="ti ti-alert-triangle me-2"></i>
-							<div>
-								<strong>Cancelado</strong> - Tu suscripción finalizará el {{ $subscription->ends_at->format('d/m/Y') }}
-							</div>
+									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">País:</dt>
+									<dd class="col-sm-7">{{ $countryName }}</dd>
+								@endif
+							</dl>
 						</div>
 					</div>
-				@elseif($stripeSubscription)
-					<div class="card shadow-none bg-lighter mb-4">
-						<div class="card-body">
-							<div class="d-flex justify-content-between align-items-start mb-3">
-								<div>
-									<h6 class="mb-0">Período de Suscripción Actual</h6>
-									<small class="text-muted d-block mt-1">
-										{{ \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start)->format('d M, Y') }}
-									</small>
-								</div>
-								<div class="text-end">
-									<span class="badge bg-label-success">Activa</span>
-									<small class="text-muted d-block mt-2">
-										Próxima facturación: {{ \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end)->format('d/m/Y') }}
-									</small>
-								</div>
-							</div>
-
-							@php
-								$start = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_start);
-								$end = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
-								$now = \Carbon\Carbon::now();
-
-								// Total dias del periodo (al menos 1 para evitar división por cero)
-								$totalDays = max(1, $start->diffInDays($end));
-
-								// Días transcurridos dentro del periodo [0, totalDays]
-								$usedDaysRaw = $start->diffInDays($now, false);
-								$usedDays = max(0, min($totalDays, $usedDaysRaw));
-
-								// Días restantes (0 si ya venció)
-								$remainingDays = max(0, -1 * $end->diffInDays($now, false));
-
-								// Porcentaje de progreso entre 0 y 100
-								$progressPercentage = max(0, min(100, ($usedDays / $totalDays) * 100));
-							@endphp
-
-							<div class="d-flex justify-content-between align-items-center mb-1">
-								<span>{{ (int) $usedDays }} de {{ (int) $totalDays }} Días</span>
-								<span>{{ (int) $remainingDays }} días restantes</span>
-							</div>
-							<div class="progress mb-1" style="height: 6px;">
-								<div class="progress-bar" role="progressbar"
-									style="width: {{ round($progressPercentage) }}%"
-									aria-valuenow="{{ $progressPercentage }}"
-									aria-valuemin="0"
-									aria-valuemax="100">
-								</div>
-							</div>
-						</div>
+				@else
+					<div class="text-center py-4">
+						<i class="ti ti-file-invoice ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+						<h6 class="text-muted mb-2">No hay dirección de facturación configurada</h6>
+						<p class="text-muted mb-0 small">Añade tu información de facturación para gestionar tus pagos</p>
 					</div>
 				@endif
-			@endif
-
-				<!-- Actions -->
-				<div class="d-flex flex-wrap gap-3">
-					@if($subscription && $subscription->stripe_status === 'canceled' && !$subscription->active())
-						<!-- Cancelled subscription - show reactivate button -->
-						<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-success">
-							<i class="ti ti-refresh ti-xs me-1"></i>
-							Reactivar Suscripción
-						</a>
-					@else
-						<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
-							<i class="ti ti-refresh ti-xs me-1"></i>
-							{{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'Ver Planes' : 'Cambiar Plan' }}
-						</a>
-						
-						@if($subscription && $subscription->active())
-							@if($subscription->onGracePeriod())
-								<form method="POST" action="{{ route('subscription.resume') }}" class="d-inline">
-									@csrf
-									<button type="submit" class="btn btn-sm btn-success">
-										<i class="ti ti-player-play ti-xs me-1"></i>
-										Reanudar Suscripción
-									</button>
-								</form>
-							@else
-								<button type="button" class="btn btn-sm btn-label-danger" onclick="confirmCancel()">
-									<i class="ti ti-x ti-xs me-1"></i>
-									Cancelar Suscripción
-								</button>
-							@endif
-						@endif
-					@endif
-				</div>
 			</div>
 		</div>
 	</div>
@@ -210,74 +143,202 @@
 	</div>
 </div>
 
-<!-- Billing Data -->
+<!-- All Subscriptions -->
 <div class="row">
-	<div class="col-12 col-lg-8 mb-4">
+	<div class="col-12 mb-4">
 		<div class="card">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="card-title mb-0">Datos de Facturación</h5>
-				<button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal" data-bs-target="#editBillingModal">
-					<i class="ti ti-edit ti-xs me-1"></i>
-					Editar
-				</button>
+				<h5 class="card-title mb-0">Todas las Suscripciones</h5>
+				<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
+					<i class="ti ti-plus ti-xs me-1"></i>
+					Ver Planes
+				</a>
 			</div>
 			<div class="card-body">
-				@if ($stripeData && isset($stripeData['customer']))
-					<div class="row">
-						<div class="col-md-6">
-							<dl class="row mb-0">
-								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre Completo:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']['individual_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+@if($teamSubscriptions->isNotEmpty())
+				<div class="row g-3">
+					@foreach($teamSubscriptions as $type => $subscriptionGroup)
+						@foreach($subscriptionGroup as $sub)
+								@php
+									// Get corresponding Stripe subscription for more details
+									$stripeSub = $subscriptions->firstWhere('id', $sub->stripe_id);
+									
+									// Determine status badge
+									$statusBadge = match($sub->stripe_status) {
+										'active' => $sub->onGracePeriod() ? 'bg-label-warning' : 'bg-label-success',
+										'canceled' => 'bg-label-danger',
+										'trialing' => 'bg-label-info',
+										'past_due' => 'bg-label-warning',
+										'incomplete' => 'bg-label-secondary',
+										'incomplete_expired' => 'bg-label-danger',
+										'unpaid' => 'bg-label-danger',
+										default => 'bg-label-secondary',
+									};
+									
+									$statusText = match($sub->stripe_status) {
+										'active' => $sub->onGracePeriod() ? 'Cancela el ' . $sub->ends_at->format('d/m/Y') : 'Activa',
+										'canceled' => 'Cancelada',
+										'trialing' => 'En prueba',
+										'past_due' => 'Pago atrasado',
+										'incomplete' => 'Incompleta',
+										'incomplete_expired' => 'Expirada',
+										'unpaid' => 'Impagada',
+										default => ucfirst($sub->stripe_status),
+									};
+									
+									// Get EmailPlan info for mailer subscriptions
+									$planInfo = null;
+									if ($type === 'mailer' && $stripeSub) {
+										try {
+											$planInfo = \App\Enums\EmailPlan::fromStripePriceId($sub->stripe_price);
+										} catch (\Exception $e) {
+											// Ignore
+										}
+									}
+									
+									// Get type icon and name
+									$typeIcons = [
+										'mailer' => 'ti-send',
+										'hosting' => 'ti-server',
+										'domain' => 'ti-world',
+										'licence' => 'ti-license',
+										'default' => 'ti-package',
+									];
+									$typeIcon = $typeIcons[$type] ?? 'ti-package';
+									
+									$typeNames = [
+										'mailer' => 'Mailer',
+										'hosting' => 'Hosting',
+										'domain' => 'Dominio',
+										'licence' => 'Licencia',
+										'default' => 'General',
+									];
+									$typeName = $typeNames[$type] ?? ucfirst($type);
+								@endphp
 
-								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
+								<div class="col-lg-6">
+									<div class="card shadow-none border h-100">
+										<div class="card-body">
+											<div class="d-flex justify-content-between align-items-start mb-3">
+												<div class="flex-grow-1">
+													<div class="d-flex align-items-center gap-2 mb-2">
+														<div class="badge badge-center rounded bg-label-primary p-2">
+															<i class="ti {{ $typeIcon }} ti-sm"></i>
+														</div>
+														<h5 class="mb-0">{{ $sub->name ?? ($planInfo ? $planInfo->getDisplayName() : 'Suscripción') }}</h5>
+													</div>
+													@if($planInfo)
+														<p class="text-muted mb-0 small">{{ $planInfo->getDescription() }}</p>
+													@else
+														<small class="text-muted d-block mb-0">{{ $typeName }}</small>
+													@endif
+												</div>
+												<span class="badge {{ $statusBadge }}">{{ $statusText }}</span>
+											</div>
 
-								@if(isset($stripeData['customer']['phone']) && $stripeData['customer']['phone'])
-									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Teléfono:</dt>
-									<dd class="col-sm-7">{{ $stripeData['customer']['phone'] }}</dd>
+											@if($stripeSub)
+												<div class="mb-3">
+													<div class="d-flex align-items-baseline">
+														<span class="h4 mb-0 text-primary me-2">{{ number_format($stripeSub->plan->amount / 100, 2) }}</span>
+														<span class="text-muted">{{ strtoupper($stripeSub->plan->currency) }} / {{ $stripeSub->plan->interval === 'month' ? 'mes' : 'año' }}</span>
+													</div>
+												</div>
+
+												{{-- Subscription Period Progress (for active subscriptions) --}}
+												@if($sub->active() && !$sub->onGracePeriod())
+													@php
+														$start = \Carbon\Carbon::createFromTimestamp($stripeSub->current_period_start);
+														$end = \Carbon\Carbon::createFromTimestamp($stripeSub->current_period_end);
+														$now = \Carbon\Carbon::now();
+														$totalDays = max(1, $start->diffInDays($end));
+														$usedDaysRaw = $start->diffInDays($now, false);
+														$usedDays = max(0, min($totalDays, $usedDaysRaw));
+														$remainingDays = max(0, -1 * $end->diffInDays($now, false));
+														$progressPercentage = max(0, min(100, ($usedDays / $totalDays) * 100));
+													@endphp
+
+													<div class="card shadow-none bg-lighter mb-3">
+														<div class="card-body p-3">
+															<div class="d-flex justify-content-between align-items-center mb-2">
+																<small class="text-muted">Período actual</small>
+																<small class="text-muted">{{ (int) $remainingDays }} días restantes</small>
+															</div>
+															<div class="progress mb-2" style="height: 6px;">
+																<div class="progress-bar" role="progressbar"
+																	style="width: {{ round($progressPercentage) }}%"
+																	aria-valuenow="{{ $progressPercentage }}"
+																	aria-valuemin="0"
+																	aria-valuemax="100">
+																</div>
+															</div>
+															<div class="d-flex justify-content-between align-items-center">
+																<small>{{ $start->format('d M, Y') }}</small>
+																<small>{{ $end->format('d M, Y') }}</small>
+															</div>
+														</div>
+													</div>
 								@endif
-							</dl>
+
+												{{-- Grace Period Warning --}}
+												@if($sub->active() && $sub->onGracePeriod())
+													<div class="alert alert-warning mb-3 py-2">
+														<small class="d-flex align-items-center mb-0">
+															<i class="ti ti-alert-triangle ti-xs me-2"></i>
+															Se cancelará el {{ $sub->ends_at->format('d/m/Y') }}
+														</small>
 						</div>
-						<div class="col-md-6">
-							<dl class="row mb-0">
-								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">Razón Social:</dt>
-								<dd class="col-sm-7">{{ $stripeData['customer']['metadata']['company_name'] ?? $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
-
-								@if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
-									@foreach($stripeData['customer']['tax_ids'] as $taxId)
-										<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper(str_replace('_', '_', $taxId['type'])) }}:</dt>
-										<dd class="col-sm-7">{{ $taxId['value'] }} <small class="text-muted">({{ $taxId['country'] }})</small></dd>
-									@endforeach
-								@else
-									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">CIF/NIF:</dt>
-									<dd class="col-sm-7 text-muted">No especificado</dd>
+												@endif
 								@endif
 
-								@if(isset($stripeData['customer']['address']) && isset($stripeData['customer']['address']['country']))
-									@php
-										$countries = [
-											'ES' => 'España',
-											'AR' => 'Argentina',
-											'MX' => 'México',
-											'US' => 'Estados Unidos',
-											'CO' => 'Colombia',
-											'CL' => 'Chile',
-											'PE' => 'Perú',
-										];
-										$countryCode = $stripeData['customer']['address']['country'];
-										$countryName = $countries[$countryCode] ?? $countryCode;
-									@endphp
-									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">País:</dt>
-									<dd class="col-sm-7">{{ $countryName }}</dd>
+											{{-- Actions --}}
+											<div class="d-flex flex-wrap gap-2 mt-auto">
+												@if($type === 'mailer')
+													<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary flex-grow-1">
+														<i class="ti ti-refresh ti-xs me-1"></i>
+														Cambiar Plan
+													</a>
+										@endif
+												
+												@if($sub->active())
+													@if($sub->onGracePeriod())
+														{{-- On grace period - show resume --}}
+														<form method="POST" action="{{ route('subscription.resume') }}" class="flex-grow-1">
+															@csrf
+															<button type="submit" class="btn btn-sm btn-success w-100">
+																<i class="ti ti-player-play ti-xs me-1"></i>
+																Reanudar
+															</button>
+														</form>
+													@else
+														{{-- Active - show cancel --}}
+														<button type="button" class="btn btn-sm btn-label-danger flex-grow-1" onclick="confirmCancel('{{ $sub->stripe_id }}')">
+															<i class="ti ti-x ti-xs me-1"></i>
+															Cancelar
+														</button>
+										@endif
+										@endif
+											</div>
+
+											@if($sub->created_at)
+												<div class="mt-3 pt-3 border-top">
+													<small class="text-muted">Creada: {{ $sub->created_at->format('d/m/Y') }}</small>
+												</div>
 								@endif
-							</dl>
+										</div>
 						</div>
+								</div>
+						@endforeach
+					@endforeach
 					</div>
 				@else
-					<div class="text-center py-4">
-						<i class="ti ti-file-invoice ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
-						<h6 class="text-muted mb-2">No hay dirección de facturación configurada</h6>
-						<p class="text-muted mb-0 small">Añade tu información de facturación para gestionar tus pagos</p>
+				<div class="text-center py-5">
+					<i class="ti ti-package-off ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+					<h5 class="text-muted mb-2">No tienes suscripciones activas</h5>
+					<p class="text-muted mb-4">Explora nuestros planes para comenzar a utilizar los servicios</p>
+					<a href="{{ route('subscription.index') }}" class="btn btn-primary">
+						<i class="ti ti-eye ti-xs me-1"></i>
+						Ver Planes Disponibles
+					</a>
 					</div>
 				@endif
 			</div>
@@ -534,8 +595,9 @@
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">No, mantener</button>
-				<form method="POST" action="{{ route('subscription.cancel') }}" style="display: inline;">
+				<form id="cancelSubscriptionForm" method="POST" action="{{ route('subscription.cancel') }}" style="display: inline;">
 					@csrf
+					<input type="hidden" name="stripe_id" id="cancelStripeId" value="">
 					<button type="submit" class="btn btn-danger">Sí, cancelar</button>
 				</form>
 			</div>
@@ -547,8 +609,11 @@
 @endsection
 
 <script>
-function confirmCancel()
+function confirmCancel(stripeId)
 {
+	// Set the stripe_id in the hidden input
+	document.getElementById('cancelStripeId').value = stripeId || '';
+	
 	const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
 	modal.show();
 }

@@ -554,18 +554,32 @@ class SubscriptionController extends Controller
     /**
      * Cancel subscription
      */
-    public function cancel()
+    public function cancel(Request $request)
     {
         $team = auth()->user()->currentTeam;
 
         try
         {
-            // Get subscription directly from database
-            $subscription = $team->subscriptions()
-                ->where('type', 'mailer')
-                ->where('stripe_status', 'active')
-                ->whereNull('ends_at')
-                ->first();
+            // Get subscription by stripe_id if provided, otherwise fallback to mailer
+            $stripeId = $request->input('stripe_id');
+
+            if ($stripeId)
+            {
+                // Find by stripe_id (supports any subscription type)
+                $subscription = $team->subscriptions()
+                    ->where('stripe_id', $stripeId)
+                    ->where('stripe_status', 'active')
+                    ->whereNull('ends_at')
+                    ->first();
+            } else
+            {
+                // Fallback: find active mailer subscription
+                $subscription = $team->subscriptions()
+                    ->where('type', 'mailer')
+                    ->where('stripe_status', 'active')
+                    ->whereNull('ends_at')
+                    ->first();
+            }
 
             if (! $subscription)
             {

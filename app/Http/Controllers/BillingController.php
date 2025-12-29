@@ -14,13 +14,20 @@ class BillingController extends Controller
         $user = auth()->user();
         $team = $user->currentTeam;
 
-        // Get Cashier subscription first
-        $subscription = $team->subscription('mailer');
+        // Get ALL subscriptions from database (exclude canceled ones)
+        $teamSubscriptions = $team->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('type'); // Group by type: mailer, hosting, domain, licence, etc.
+
+        // Get mailer subscription for email plan info
+        $mailerSubscription = $team->subscription('mailer');
 
         // Get current plan from active subscription or fallback to team setting
-        if ($subscription && $subscription->active())
+        if ($mailerSubscription && $mailerSubscription->active())
         {
-            $currentPlan = EmailPlan::fromStripePriceId($subscription->stripe_price);
+            $currentPlan = EmailPlan::fromStripePriceId($mailerSubscription->stripe_price);
         } else
         {
             $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
@@ -108,7 +115,8 @@ class BillingController extends Controller
         return view('billing.index', compact(
             'team',
             'currentPlan',
-            'subscription',
+            'mailerSubscription',
+            'teamSubscriptions',
             'planConfig',
             'invoices',
             'subscriptions',
