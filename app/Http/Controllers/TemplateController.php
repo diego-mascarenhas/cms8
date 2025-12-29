@@ -32,7 +32,7 @@ class TemplateController extends Controller
         $data = $request->except(['id', '_token']);
 
         $request->validate([
-            'name' => 'required|string|min:3|max:25',
+            'name' => 'required|string|min:3|max:75',
         ]);
 
         // Set status_id based on checkbox presence

@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Messages')
+@section('title', __('Messages'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
@@ -21,16 +21,18 @@
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script>
-// Delete message function with Sweet Alert - Updated v2
+// Delete message function with Sweet Alert
 function deleteMessage(messageId) {
     Swal.fire({
         title: '¿Estás seguro?',
         text: "¿Deseas eliminar este mensaje?",
         icon: 'warning',
         showCancelButton: true,
-        showDenyButton: false,
-        confirmButtonColor: '#7367f0',
-        cancelButtonColor: '#a8aaae',
+        buttonsStyling: false,
+        customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-label-secondary'
+        },
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar',
         allowOutsideClick: false,
@@ -143,27 +145,27 @@ document.querySelector('form').addEventListener('submit', function() {
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Messages/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
-        <p class="text-muted">Manage your messages with ease and keep your audience engaged!</p>
+		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
+        <p class="text-muted">{{ __('Manage your messages with ease and keep your audience engaged!') }}</p>
     </div>
     @if(isset($data->id))
     <div class="d-flex align-content-center flex-wrap gap-3">
         <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
-            <i class="ti ti-trash me-1"></i>Delete Message
+            <i class="ti ti-trash me-1"></i>{{ __('Delete Message') }}
         </button>
     </div>
     @endif
 </div>
 
 <div class="card mb-4">
-	<h5 class="card-header">Messages</h5>
+	<h5 class="card-header">{{ __('Messages') }}</h5>
 	<form class="card-body" action="{{ route('message.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
 		<div class="row g-3">
 			<div class="col-md-6">
-				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
+				<x-input-general id="name" label="{{ __('Name') }} (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-4">
 				<x-module-categories-select
@@ -196,19 +198,19 @@ document.querySelector('form').addEventListener('submit', function() {
 				@endif
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select id="type_id" label="{{ __('Type') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="template_id" label="Template" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
+				<x-input-select id="template_id" label="{{ __('Template') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
 				<div class="form-text mt-1">
 					¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
 				</div>
 			</div>
 			<div class="col-md-12">
-				<x-input-textarea id="text" label="Text (*)" value="{{ old('text', $data->text?? '') }}" />
+				<x-input-textarea id="text" label="{{ __('Text') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 			</div>
 						<div class="col-md-6">
-				<label for="min_hours_between_emails" class="form-label">Minimum Time Between Emails</label>
+				<label for="min_hours_between_emails" class="form-label">{{ __('Minimum Time Between Emails') }}</label>
 				<div class="input-group">
 					<input
 						type="number"
@@ -220,22 +222,22 @@ document.querySelector('form').addEventListener('submit', function() {
 						value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
 					>
 					<select class="form-select" id="time_unit" name="time_unit" style="max-width: 120px;">
-						<option value="hours" selected>Hours</option>
-						<option value="days">Days</option>
-						<option value="weeks">Weeks</option>
+						<option value="hours" selected>{{ __('Hours') }}</option>
+						<option value="days">{{ __('Days') }}</option>
+						<option value="weeks">{{ __('Weeks') }}</option>
 					</select>
 				</div>
 				<div class="form-text mt-1">
-					Time to wait before sending another email to the same contact
+					{{ __('Time to wait before sending another email to the same contact') }}
 				</div>
 			</div>
 			<div class="col-md-6">
-				<label class="form-label">Quick Presets</label>
+				<label class="form-label">{{ __('Quick Presets') }}</label>
 				<div class="btn-group d-flex" role="group">
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(0, 'hours')">Immediate</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(24, 'hours')">1 Day</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(48, 'hours')">2 Days</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(1, 'weeks')">1 Week</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(0, 'hours')">{{ __('Immediate') }}</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(24, 'hours')">{{ __('1 Day') }}</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(48, 'hours')">{{ __('2 Days') }}</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(1, 'weeks')">{{ __('1 Week') }}</button>
 				</div>
 			</div>
 		</div>
@@ -244,21 +246,21 @@ document.querySelector('form').addEventListener('submit', function() {
 			<div class="col-md-6">
 				<div class="card">
 					<div class="card-header">
-						<h6 class="card-title mb-0">General Options</h6>
+						<h6 class="card-title mb-0">{{ __('General Options') }}</h6>
 					</div>
 					<div class="card-body">
 						<div class="form-check form-switch mb-3">
 							<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
 							<label class="form-check-label" for="status_id">
-								<strong>Active Campaign</strong>
-								<div class="text-muted small">Enable this message for sending</div>
+								<strong>{{ __('Active Campaign') }}</strong>
+								<div class="text-muted small">{{ __('Enable this message for sending') }}</div>
 							</label>
 						</div>
 						<div class="form-check form-switch">
 							<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
 							<label class="form-check-label" for="show_unsubscribe">
-								<strong>Show Unsubscribe Link</strong>
-								<div class="text-muted small">Include unsubscribe option in emails</div>
+								<strong>{{ __('Show Unsubscribe Link') }}</strong>
+								<div class="text-muted small">{{ __('Include unsubscribe option in emails') }}</div>
 							</label>
 						</div>
 					</div>
@@ -267,21 +269,21 @@ document.querySelector('form').addEventListener('submit', function() {
 			<div class="col-md-6">
 				<div class="card">
 					<div class="card-header">
-						<h6 class="card-title mb-0">Tracking Options</h6>
+						<h6 class="card-title mb-0">{{ __('Tracking Options') }}</h6>
 					</div>
 					<div class="card-body">
 						<div class="form-check form-switch mb-3">
 							<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
 							<label class="form-check-label" for="enable_open_tracking">
-								<strong>Enable Open Tracking</strong>
-								<div class="text-muted small">Track when emails are opened</div>
+								<strong>{{ __('Enable Open Tracking') }}</strong>
+								<div class="text-muted small">{{ __('Track when emails are opened') }}</div>
 							</label>
 						</div>
 						<div class="form-check form-switch">
 							<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
 							<label class="form-check-label" for="enable_click_tracking">
-								<strong>Enable Click Tracking</strong>
-								<div class="text-muted small">Track clicks on email links</div>
+								<strong>{{ __('Enable Click Tracking') }}</strong>
+								<div class="text-muted small">{{ __('Track clicks on email links') }}</div>
 							</label>
 						</div>
 					</div>
@@ -290,8 +292,8 @@ document.querySelector('form').addEventListener('submit', function() {
 		</div>
 
 		<div class="pt-4">
-			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">Cancel</button>
+			<button type="submit" class="btn btn-primary me-sm-3 me-1">{{ __('Save') }}</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
 		</div>
 	</form>
 </div>

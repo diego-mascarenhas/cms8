@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -63,15 +62,15 @@ class SendMessageCampaignJob implements ShouldQueue
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
 
             // Check if it's time to send (respect scheduled time)
-            if ($this->messageDelivery->sent_at && $this->messageDelivery->sent_at->isFuture())
+            if ($this->messageDelivery->scheduled_for && $this->messageDelivery->scheduled_for->isFuture())
             {
                 Log::info('⏰ Message delivery not yet time to send, releasing job', [
                     'delivery_id' => $this->messageDelivery->id,
-                    'scheduled_time' => $this->messageDelivery->sent_at,
+                    'scheduled_time' => $this->messageDelivery->scheduled_for,
                     'current_time' => now(),
                 ]);
 
-                $delay = $this->messageDelivery->sent_at->diffInSeconds(now());
+                $delay = $this->messageDelivery->scheduled_for->diffInSeconds(now());
                 $this->release($delay);
 
                 return;
@@ -156,19 +155,25 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendEmail()
     {
-        $apiEnabled = config('humano-mailer.providers.api.enabled', false);
-        $fallbackToSmtp = config('humano-mailer.fallback_to_smtp', true);
+        $mailBabyEnabled = config('services.mailbaby.enabled', false);
+        $fallbackToSmtp = config('services.email.fallback_to_smtp', true);
 
-        if ($apiEnabled)
+        Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
+            'delivery_id' => $this->messageDelivery->id,
+            'mailbaby_enabled' => $mailBabyEnabled,
+            'fallback_to_smtp' => $fallbackToSmtp,
+        ]);
+
+        if ($mailBabyEnabled && config('services.mailbaby.api_key'))
         {
             try
             {
-                $this->sendViaApi();
+                $this->sendViaMailBabyApi();
 
                 return;
             } catch (\Exception $e)
             {
-                Log::warning('API provider failed, falling back to SMTP', [
+                Log::warning('⚠️  MailBaby API failed, falling back to SMTP', [
                     'delivery_id' => $this->messageDelivery->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -187,60 +192,60 @@ class SendMessageCampaignJob implements ShouldQueue
     }
 
     /**
-     * Send email via generic API
+     * Send email via MailBaby API
      */
-    private function sendViaApi()
+    private function sendViaMailBabyApi()
     {
-        Log::info('📧 SendMessageCampaignJob: Using API provider', [
+        Log::info('📧 SendMessageCampaignJob: Using MailBaby API', [
             'delivery_id' => $this->messageDelivery->id,
+            'contact_email' => $this->messageDelivery->contact->email,
         ]);
 
-        $apiKey = config('humano-mailer.providers.api.key');
-        $apiDomain = config('humano-mailer.providers.api.domain');
-
-        if (! $apiKey)
-        {
-            throw new \Exception('API key not configured');
-        }
+        $mailBabyService = app(\App\Services\MailBabyService::class);
 
         // Get email content
         $htmlContent = $this->messageDelivery->getHtmlForContact();
 
-        // This is a generic implementation - you would adapt this for your specific API
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.$apiKey,
-            'Content-Type' => 'application/json',
-        ])->post('https://api.your-email-provider.com/send', [
-            'from' => config('mail.from.address'),
-            'from_name' => config('mail.from.name'),
-            'to' => $this->messageDelivery->contact->email,
-            'subject' => $this->messageDelivery->message->name,
-            'html' => $htmlContent,
-            'track_opens' => true,
-            'track_clicks' => true,
-        ]);
+        // Use team's configured email settings (already set by configureMailForTeam)
+        $fromName = config('mail.from.name');
+        $fromEmail = config('mail.from.address');
 
-        if (! $response->successful())
+        // Prepare email data for MailBaby API
+        $emailData = [
+            'to' => $this->messageDelivery->contact->email,
+            'from' => $fromName.' <'.$fromEmail.'>',
+            'subject' => $this->messageDelivery->message->name,
+            'body' => $htmlContent,
+            'message_id' => $this->messageDelivery->id, // For logging purposes
+        ];
+
+        // Send via MailBaby API
+        $result = $mailBabyService->sendEmail($emailData);
+
+        if (! $result['success'])
         {
-            throw new \Exception('API request failed: '.$response->body());
+            throw new \Exception('MailBaby API request failed: '.($result['error'] ?? 'Unknown error'));
         }
 
-        $result = $response->json();
-
-        Log::info('✅ Email sent via API', [
+        Log::info('✅ SendMessageCampaignJob: Email sent via MailBaby API', [
             'delivery_id' => $this->messageDelivery->id,
-            'provider_message_id' => $result['id'] ?? null,
+            'mailbaby_message_id' => $result['message_id'] ?? null,
+            'contact_email' => $this->messageDelivery->contact->email,
+            'from' => $fromEmail,
         ]);
 
-        // Mark as sent and delivered
+        // Mark as sent (not delivered yet - wait for webhook)
         $this->messageDelivery->update([
-            'email_provider' => 'api',
-            'provider_message_id' => $result['id'] ?? null,
+            'email_provider' => 'mailbaby',
+            'provider_message_id' => $result['message_id'] ?? null,
             'sent_at' => now(),
-            'delivered_at' => now(),
-            'delivery_status' => 'delivered',
-            'status_id' => 3, // delivered
+            'delivery_status' => 'sent',
+            'status_id' => 2, // sent (waiting for delivery confirmation)
+            'provider_data' => $result['data'] ?? null,
         ]);
+
+        // Increment team email usage
+        $this->messageDelivery->team->incrementEmailUsage();
     }
 
     /**

@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Templates')
+@section('title', __('Templates'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -33,12 +33,12 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Templates</h4>
-        <p class="text-muted">Create and manage email templates with visual editor</p>
+        <h4 class="mb-1 mt-3">{{ __('Templates') }}</h4>
+        <p class="text-muted">{{ __('Create and manage email templates with visual editor') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ route('template.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">
-            <i class="ti ti-plus me-1"></i>Create New Template
+            <i class="ti ti-plus me-1"></i>{{ __('Create New Template') }}
         </a>
     </div>
 </div>
@@ -72,15 +72,19 @@
 <script>
     function deleteRecord(id, element) {
         Swal.fire({
-            title: 'Are you sure you want to delete this template?',
-            text: 'This action cannot be undone',
+            title: '¿Estás seguro de que deseas eliminar este template?',
+            text: 'Esta acción no se puede deshacer',
             icon: 'warning',
-            showCloseButton: false,
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete',
-            cancelButtonText: 'Cancel'
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: 'btn btn-danger me-2',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            allowOutsideClick: false,
+            allowEscapeKey: false
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch("{{ route('template.destroy', ['hashedId' => ':ID']) }}".replace(':ID', id), {
@@ -124,7 +128,15 @@
                     }
                 }).catch(error => {
                     console.error('Error:', error);
-                    Swal.fire('Error', 'Ha ocurrido un error al eliminar el template', 'error');
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Ha ocurrido un error al eliminar el template',
+                        icon: 'error',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        }
+                    });
                 });
             }
         });

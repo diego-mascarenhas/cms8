@@ -55,17 +55,17 @@
       "module_key": "projects"
     },
     {
-      "url": "kanban",
+      "url": "task/list",
       "name": "Tasks",
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
-      "slug": "kanban",
+      "slug": "task",
       "module_key": "tasks"
     },
     {
       "url": "time/list",
       "name": "Times",
       "icon": "menu-icon tf-icons ti ti-hourglass-low",
-      "slug": "time-list",
+      "slug": "time",
       "module_key": "times"
     },
     {
@@ -96,17 +96,17 @@
       "menuHeader": "Billing"
     },
     {
-      "url": "invoice/list",
+      "url": "invoices",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",
-      "slug": "invoice-list",
+      "slug": "invoices",
       "module_key": "invoices"
     },
     {
-      "url": "payment/list",
+      "url": "payments",
       "name": "Payments",
       "icon": "menu-icon tf-icons ti ti-credit-card",
-      "slug": "payment-list",
+      "slug": "payments",
       "module_key": "payments"
     },
     {
@@ -134,7 +134,7 @@
       "url": "accounting",
       "name": "Accounting",
       "icon": "menu-icon tf-icons ti ti-receipt-tax",
-      "slug": "accounting-list",
+      "slug": "accounting",
       "module_key": "accounting"
     },
     {
@@ -151,7 +151,7 @@
       "url": "user-management",
       "name": "Users",
       "icon": "menu-icon tf-icons ti ti-users",
-      "slug": "user-list",
+      "slug": "user-management",
       "module_key": "users"
     },
     {

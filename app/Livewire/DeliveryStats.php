@@ -99,7 +99,22 @@ class DeliveryStats extends Component
         $delivered = $deliveries->whereNotNull('delivered_at')->count();
         $opened = $deliveries->whereNotNull('opened_at')->count();
         $clicks = $deliveries->whereNotNull('clicked_at')->count(); // ✅ Count real clicks
-        $failed = $deliveries->where('status_id', 4)->count();
+
+        // Count failed deliveries, but exclude those that have a successful resend
+        $failedDeliveries = $deliveries->where('status_id', 4);
+        $failed = $failedDeliveries->filter(function ($failedDelivery) use ($deliveries)
+        {
+            // Check if there's a successful delivery for the same contact after this one
+            $hasSuccessfulResend = $deliveries->first(function ($d) use ($failedDelivery)
+            {
+                return $d->contact_id === $failedDelivery->contact_id &&
+                       $d->id !== $failedDelivery->id &&
+                       $d->created_at > $failedDelivery->created_at &&
+                       ($d->delivered_at !== null || $d->status_id === 1);
+            });
+
+            return ! $hasSuccessfulResend; // Only count if no successful resend exists
+        })->count();
 
         // Pending includes both unsent and scheduled (future sent_at)
         $pending = $deliveries->filter(function ($delivery)

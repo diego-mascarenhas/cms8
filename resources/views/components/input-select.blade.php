@@ -2,7 +2,7 @@
 
 <div class="form-group">
     @if($label)
-        <label for="{{ $id }}">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
+        <label for="{{ $id }}" class="form-label">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
     @endif
     <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" @if($required) required @endif @if($disabled) disabled @endif>
         @if($placeholder)

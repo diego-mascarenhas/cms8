@@ -58,7 +58,12 @@ $configData = Helper::appClasses();
     $activeClass = 'active open';
     }
     }
-
+    }
+    else {
+    // For items without submenu, check if route starts with slug
+    if (str_contains($currentRouteName,$menu->slug) and strpos($currentRouteName,$menu->slug) === 0) {
+    $activeClass = 'active';
+    }
     }
     @endphp
 

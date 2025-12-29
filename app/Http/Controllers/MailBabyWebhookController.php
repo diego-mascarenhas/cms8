@@ -143,10 +143,18 @@ class MailBabyWebhookController extends Controller
      */
     private function handleBounced(MessageDelivery $delivery, array $data)
     {
+        // Determine bounce type (hard, soft, complaint, block)
+        $bounceType = $this->determineBounceType($data);
+        $bounceReason = $data['reason'] ?? $data['message'] ?? $data['error'] ?? 'Unknown bounce reason';
+
         $delivery->update([
             'bounced_at' => now(),
             'delivery_status' => 'bounced',
             'status_id' => 4, // bounced/failed
+            'error_type' => 'bounce',
+            'bounce_type' => $bounceType,
+            'bounce_reason' => $bounceReason,
+            'error_message' => $bounceReason,
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
 
@@ -154,8 +162,54 @@ class MailBabyWebhookController extends Controller
             'delivery_id' => $delivery->id,
             'provider_message_id' => $delivery->provider_message_id,
             'contact_email' => $delivery->contact->email ?? 'unknown',
-            'bounce_reason' => $data['reason'] ?? 'unknown',
+            'bounce_type' => $bounceType,
+            'bounce_reason' => $bounceReason,
         ]);
+    }
+
+    /**
+     * Determine bounce type from webhook data
+     */
+    private function determineBounceType(array $data): string
+    {
+        $reason = strtolower($data['reason'] ?? $data['message'] ?? $data['type'] ?? '');
+
+        // Hard bounces (permanent failures)
+        if (str_contains($reason, 'permanent') ||
+            str_contains($reason, 'invalid') ||
+            str_contains($reason, 'not exist') ||
+            str_contains($reason, 'unknown user') ||
+            str_contains($reason, 'mailbox not found'))
+        {
+            return 'hard';
+        }
+
+        // Soft bounces (temporary failures)
+        if (str_contains($reason, 'temporary') ||
+            str_contains($reason, 'mailbox full') ||
+            str_contains($reason, 'quota exceeded') ||
+            str_contains($reason, 'try again'))
+        {
+            return 'soft';
+        }
+
+        // Complaints (spam reports)
+        if (str_contains($reason, 'complaint') ||
+            str_contains($reason, 'spam') ||
+            str_contains($reason, 'abuse'))
+        {
+            return 'complaint';
+        }
+
+        // Blocks (blacklisted, blocked)
+        if (str_contains($reason, 'block') ||
+            str_contains($reason, 'blacklist') ||
+            str_contains($reason, 'reputation'))
+        {
+            return 'block';
+        }
+
+        return 'unknown';
     }
 
     /**
@@ -198,9 +252,13 @@ class MailBabyWebhookController extends Controller
      */
     private function handleFailed(MessageDelivery $delivery, array $data)
     {
+        $errorReason = $data['error'] ?? $data['reason'] ?? $data['message'] ?? 'Unknown error';
+
         $delivery->update([
             'delivery_status' => 'failed',
             'status_id' => 4, // failed
+            'error_type' => 'smtp_error', // SMTP/API error (not a bounce)
+            'error_message' => $errorReason,
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
 
@@ -208,7 +266,7 @@ class MailBabyWebhookController extends Controller
             'delivery_id' => $delivery->id,
             'provider_message_id' => $delivery->provider_message_id,
             'contact_email' => $delivery->contact->email ?? 'unknown',
-            'error' => $data['error'] ?? 'unknown',
+            'error' => $errorReason,
         ]);
     }
 }

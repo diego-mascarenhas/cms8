@@ -81,6 +81,86 @@ class MessageController extends Controller
     }
 
     /**
+     * Debug deliveries status (temporary route)
+     */
+    public function debug(string $id)
+    {
+        $message = Message::findOrFail($id);
+        $team = auth()->user()->currentTeam;
+
+        // Get delivery statistics
+        $stats = [
+            'total' => MessageDelivery::where('message_id', $id)->count(),
+            'pending' => MessageDelivery::where('message_id', $id)->where('status_id', 1)->count(),
+            'sent' => MessageDelivery::where('message_id', $id)->whereNotNull('sent_at')->count(),
+            'delivered' => MessageDelivery::where('message_id', $id)->whereNotNull('delivered_at')->count(),
+            'failed' => MessageDelivery::where('message_id', $id)->where('status_id', 4)->count(),
+        ];
+
+        // Get last 5 failed deliveries
+        $failedDeliveries = MessageDelivery::where('message_id', $id)
+            ->where('status_id', 4)
+            ->with('contact')
+            ->orderBy('updated_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($d)
+            {
+                return [
+                    'id' => $d->id,
+                    'contact' => $d->contact ? $d->contact->email : 'N/A',
+                    'error_type' => $d->error_type ?: 'NULL',
+                    'error_message' => $d->error_message ?: ($d->provider_data['error'] ?? 'NULL'),
+                    'updated_at' => $d->updated_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+        // Get queue status
+        $queueStatus = [
+            'failed_jobs_count' => \DB::table('failed_jobs')->count(),
+            'jobs_count' => \DB::table('jobs')->where('queue', 'mailer')->count(),
+        ];
+
+        // Get email limits
+        $emailLimits = $team->getRemainingEmails();
+
+        // Get last log entries
+        $logFile = storage_path('logs/laravel.log');
+        $lastLogs = [];
+        if (file_exists($logFile))
+        {
+            $logs = file($logFile);
+            $relevantLogs = array_filter($logs, function ($line)
+            {
+                return str_contains($line, 'SendMessageCampaignJob') ||
+                       str_contains($line, 'Failed to send message delivery');
+            });
+            $lastLogs = array_slice($relevantLogs, -10);
+        }
+
+        return response()->json([
+            'message' => [
+                'id' => $message->id,
+                'name' => $message->name,
+                'status' => $message->status_id,
+            ],
+            'delivery_stats' => $stats,
+            'failed_deliveries' => $failedDeliveries,
+            'queue_status' => $queueStatus,
+            'email_limits' => [
+                'monthly_used' => $emailLimits['monthly_used'] ?? 0,
+                'monthly_limit' => $emailLimits['monthly_limit'] ?? 0,
+                'monthly_remaining' => $emailLimits['monthly_remaining'] ?? 0,
+                'daily_used' => $emailLimits['daily_used'] ?? 0,
+                'daily_limit' => $emailLimits['daily_limit'] ?? 0,
+                'daily_remaining' => $emailLimits['daily_remaining'] ?? 0,
+                'is_blocked' => ($emailLimits['monthly_remaining'] ?? 1) <= 0 || ($emailLimits['daily_remaining'] ?? 1) <= 0,
+            ],
+            'last_logs' => $lastLogs,
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(string $id)
@@ -365,7 +445,7 @@ class MessageController extends Controller
             {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email sender not configured. Please configure it in Team Settings.',
+                    'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
                 ], 400);
             }
 
@@ -392,14 +472,14 @@ class MessageController extends Controller
                 })
                 ->count();
 
-            $responseMessage = 'Campaign activated successfully. ';
+            $responseMessage = 'Campaña activada exitosamente. ';
 
             if ($pendingDeliveries > 0)
             {
-                $responseMessage .= "{$pendingDeliveries} deliveries are pending and will be sent by the scheduler.";
+                $responseMessage .= "{$pendingDeliveries} envíos pendientes serán enviados por el programador.";
             } else
             {
-                $responseMessage .= "{$contactsCount} contacts will be processed by the scheduler.";
+                $responseMessage .= "{$contactsCount} contactos serán procesados por el programador.";
             }
 
             return response()->json([
@@ -410,7 +490,7 @@ class MessageController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error starting campaign: '.$e->getMessage(),
+                'message' => 'Error al iniciar campaña: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -475,13 +555,13 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Campaign paused successfully',
+                'message' => 'Campaña pausada exitosamente',
             ]);
         } catch (\Exception $e)
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error pausing campaign: '.$e->getMessage(),
+                'message' => 'Error al pausar campaña: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -492,26 +572,56 @@ class MessageController extends Controller
         {
             $message = Message::findOrFail($id);
 
-            // Count ALL pending deliveries (including future scheduled ones)
+            // Count ALL pending deliveries (status_id = 1, not failed = 4, not delivered)
             $pendingCount = MessageDelivery::where('message_id', $id)
-                ->where('status_id', 1) // pending status
+                ->where('status_id', 1) // pending status (automatically excludes status_id = 4)
                 ->whereNull('delivered_at') // not delivered yet
                 ->count();
 
             if ($pendingCount === 0)
             {
+                // Check how many failed
+                $failedCount = MessageDelivery::where('message_id', $id)
+                    ->where('status_id', 4)
+                    ->count();
+
+                $message = 'No hay deliveries pendientes. ';
+                if ($failedCount > 0)
+                {
+                    $message .= "Hay {$failedCount} fallidos que no se reenviarán automáticamente. Usa el botón 'Reenviar' en cada uno si deseas reintentarlos.";
+                } else
+                {
+                    $message .= 'Todos los contactos ya recibieron el correo.';
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'No hay deliveries pendientes. Todos los contactos ya recibieron el correo.',
+                    'message' => $message,
                 ], 400);
             }
 
-            // Queue pending deliveries immediately (including future scheduled)
+            // First, reschedule ALL pending deliveries to send now
+            $baseTime = now();
+            $allPending = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1) // only pending, not failed
+                ->whereNull('delivered_at')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            foreach ($allPending as $index => $delivery)
+            {
+                // Add small delay (3 seconds) between each to avoid spam
+                $delivery->update([
+                    'sent_at' => $baseTime->copy()->addSeconds($index * 3),
+                ]);
+            }
+
+            // Then, queue first 100 immediately
             $deliveries = MessageDelivery::where('message_id', $id)
-                ->where('status_id', 1)
+                ->where('status_id', 1) // only pending, not failed
                 ->whereNull('delivered_at')
                 ->with(['contact', 'message', 'team'])
-                ->limit(100) // Process max 100 at a time
+                ->limit(100)
                 ->get();
 
             $queued = 0;
@@ -522,11 +632,14 @@ class MessageController extends Controller
                 $queued++;
             }
 
+            $totalRescheduled = $allPending->count();
+
             return response()->json([
                 'success' => true,
-                'message' => "Se encolaron {$queued} correos para envío inmediato",
+                'message' => "Se reprogramaron {$totalRescheduled} correos y se encolaron {$queued} para envío inmediato",
                 'queued' => $queued,
-                'remaining' => max(0, $pendingCount - $queued),
+                'rescheduled' => $totalRescheduled,
+                'remaining' => max(0, $totalRescheduled - $queued),
             ]);
         } catch (\Exception $e)
         {
@@ -633,7 +746,7 @@ class MessageController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Error loading link details: '.$e->getMessage(),
+                'message' => 'Error al cargar detalles del enlace: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -728,7 +841,7 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Test email sent successfully',
+                'message' => 'Correo de prueba enviado exitosamente',
                 'email' => $user->email,
             ]);
         } catch (\Exception $e)
@@ -924,24 +1037,30 @@ class MessageController extends Controller
                 ], 403);
             }
 
-            // Create a new delivery with the same data but reset status
-            $newDelivery = MessageDelivery::create([
-                'team_id' => $delivery->team_id,
-                'message_id' => $delivery->message_id,
-                'contact_id' => $delivery->contact_id,
+            // Reset the SAME delivery record to resend
+            $delivery->update([
                 'status_id' => 1, // pending
-                'sent_at' => now(), // Send immediately
+                'sent_at' => now(), // Schedule to send immediately
+                'delivered_at' => null, // Reset delivery status
+                'opened_at' => null, // Reset tracking
+                'clicked_at' => null,
+                'complained_at' => null,
+                'bounced_at' => null,
+                'delivery_status' => null,
+                'error_message' => null, // Clear previous errors
+                'error_type' => null,
+                'bounce_type' => null,
+                'bounce_reason' => null,
             ]);
 
             Log::info('📧 Delivery resend requested', [
-                'original_delivery_id' => $delivery->id,
-                'new_delivery_id' => $newDelivery->id,
+                'delivery_id' => $delivery->id,
                 'contact_email' => $delivery->contact->email ?? 'unknown',
                 'user_id' => auth()->id(),
             ]);
 
             // Dispatch the job to send immediately
-            \App\Jobs\SendMessageCampaignJob::dispatch($newDelivery);
+            \App\Jobs\SendMessageCampaignJob::dispatch($delivery);
 
             return response()->json([
                 'success' => true,

@@ -42,6 +42,7 @@ use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
@@ -495,6 +496,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
+    Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug'); // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
@@ -583,7 +585,24 @@ Route::middleware(['auth'])->group(function ()
     // Academy - Now using the humano-academy package
     // Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
     // Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
+
+    // Subscription Management
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
+    Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');
+    Route::get('/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+    Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+    Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
+    Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
+
+    // Billing & Plans
+    Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
+    Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
 });
+
+// Stripe Webhook (outside auth middleware)
+Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']);
 
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
@@ -777,4 +796,10 @@ Route::middleware(['web', 'auth'])->group(function ()
     Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
     Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+});
+
+// Fallback route for 404 errors - must be at the end
+Route::fallback(function ()
+{
+    return response()->view('errors.404', [], 404);
 });

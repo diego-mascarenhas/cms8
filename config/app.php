@@ -180,8 +180,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        // TelescopeServiceProvider is registered conditionally in AppServiceProvider
-        // App\Providers\TelescopeServiceProvider::class,
+        App\Providers\TelescopeServiceProvider::class, // Telescope Dashboard
         App\Providers\FortifyServiceProvider::class,
         App\Providers\JetstreamServiceProvider::class,
         App\Providers\MenuServiceProvider::class,
@@ -189,6 +188,7 @@ return [
         Yajra\DataTables\DataTablesServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
         App\Providers\BladeServiceProvider::class,
+        App\Providers\CashierServiceProvider::class,
     ])->toArray(),
 
     /*
