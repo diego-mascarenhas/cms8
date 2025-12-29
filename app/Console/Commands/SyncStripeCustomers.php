@@ -65,6 +65,16 @@ class SyncStripeCustomers extends Command
 
                 $this->info("Processing customer: {$customer->id} ({$customer->email})");
 
+                // Skip customers without email
+                if (! $customer->email)
+                {
+                    $this->warn('  ⚠️  Customer has no email, skipping...');
+                    $stats['skipped']++;
+                    $this->newLine();
+
+                    continue;
+                }
+
                 // Try to find the team by owner email
                 $team = $this->findTeamByEmail($customer->email);
 
@@ -157,7 +167,7 @@ class SyncStripeCustomers extends Command
     /**
      * Find a team by owner email
      */
-    protected function findTeamByEmail(string $email): ?Team
+    protected function findTeamByEmail(?string $email): ?Team
     {
         if (! $email)
         {
