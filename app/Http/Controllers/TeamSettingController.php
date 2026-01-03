@@ -53,7 +53,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'type' => $this->getSettingType($key),
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'twilio_token', 'mail_password', 'imap_password']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret']),
                     ]);
                 }
             }
@@ -281,6 +281,64 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
                         'readonly' => true,
+                    ],
+                ],
+            ],
+            'woocommerce' => [
+                'title' => 'WooCommerce Integration',
+                'icon' => 'ti ti-brand-wordpress',
+                'settings' => [
+                    'woocommerce_url' => [
+                        'label' => 'Store URL',
+                        'type' => 'text',
+                        'value' => $team->getSetting('woocommerce_url'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'https://tu-tienda.com',
+                        'help' => 'La URL completa de tu tienda WooCommerce',
+                        'section' => 'connection',
+                        'row' => 1,
+                    ],
+                    'woocommerce_api_version' => [
+                        'label' => 'API Version',
+                        'type' => 'select',
+                        'options' => [
+                            'wc/v3' => 'v3 (Recomendado)',
+                            'wc/v2' => 'v2',
+                            'wc/v1' => 'v1',
+                        ],
+                        'value' => $team->getSetting('woocommerce_api_version', 'wc/v3'),
+                        'is_encrypted' => false,
+                        'section' => 'connection',
+                        'row' => 1,
+                    ],
+                    'woocommerce_consumer_key' => [
+                        'label' => 'Consumer Key',
+                        'type' => 'text',
+                        'value' => $team->getSetting('woocommerce_consumer_key'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+                        'help' => 'Consumer Key generado en WooCommerce > Settings > Advanced > REST API',
+                        'section' => 'credentials',
+                        'row' => 2,
+                    ],
+                    'woocommerce_consumer_secret' => [
+                        'label' => 'Consumer Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('woocommerce_consumer_secret'),
+                        'is_encrypted' => true,
+                        'placeholder' => 'cs_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+                        'help' => 'Consumer Secret generado en WooCommerce > Settings > Advanced > REST API',
+                        'section' => 'credentials',
+                        'row' => 2,
+                    ],
+                    'woocommerce_verify_ssl' => [
+                        'label' => 'Verify SSL Certificate',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('woocommerce_verify_ssl', '1'),
+                        'is_encrypted' => false,
+                        'help' => 'Recomendado activar para sitios en producción con SSL válido',
+                        'section' => 'security',
+                        'row' => 3,
                     ],
                 ],
             ],
