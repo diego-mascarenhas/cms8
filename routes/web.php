@@ -601,9 +601,6 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
 });
 
-// Stripe Webhook (outside auth middleware)
-Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']);
-
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 

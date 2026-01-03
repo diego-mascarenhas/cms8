@@ -40,6 +40,9 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
 
+            // Stripe webhook - NO middleware to avoid CSRF
+            Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']);
+
             // Mailbox package removed - routes commented out
             // Route::middleware('mailbox')
             // 	->prefix('mailbox')
