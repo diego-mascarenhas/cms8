@@ -181,6 +181,10 @@ document.querySelector('form').addEventListener('submit', function() {
 					<div class="form-text text-warning mt-1">
 						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar la categoría porque el mensaje ya tiene entregas creadas.
 					</div>
+				@else
+					<div class="form-text mt-1">
+						¿No encuentras la categoría que buscas? <a href="{{ route('categories.index') }}">Administrar categorías</a>
+					</div>
 				@endif
 			</div>
 			<div class="col-md-2">
