@@ -37,6 +37,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
@@ -431,9 +432,18 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
     Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
     Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
-    Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
+	Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
-    // Invoice & Payment Routes
+	// Product Routes
+	Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
+	Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
+	Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
+	Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
+	Route::post('/product', [ProductController::class, 'store'])->name('product.store');
+	Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
+	Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+	// Invoice & Payment Routes
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
