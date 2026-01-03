@@ -33,6 +33,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
@@ -442,6 +443,15 @@ Route::middleware(['auth'])->group(function ()
 	Route::post('/product', [ProductController::class, 'store'])->name('product.store');
 	Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
 	Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+	// Order Routes
+	Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
+	Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
+	Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
+	Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
+	Route::post('/order', [OrderController::class, 'store'])->name('order.store');
+	Route::put('/order/{id}', [OrderController::class, 'update'])->name('order.update');
+	Route::delete('/order/{id}', [OrderController::class, 'destroy'])->name('order.destroy');
 
 	// Invoice & Payment Routes
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
