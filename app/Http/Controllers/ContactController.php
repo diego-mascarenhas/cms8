@@ -917,15 +917,16 @@ class ContactController extends Controller
         // Only search contacts if the contacts module is active
         if ($team && $team->hasModule('contacts'))
         {
-            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
-                ->where('status_id', '!=', 6);  // Exclude clients from global search (status_id = 6)
+            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at');
+                // No filter by status_id - include all contacts regardless of status
 
             if (! $isInitialLoad)
             {
                 // Optimized search with better performance
                 $contactsQuery->where(function ($q) use ($query)
                 {
-                    $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$query}%"])
+                    $q->where('name', 'like', "%{$query}%")
+                        ->orWhere('surname', 'like', "%{$query}%")
                         ->orWhere('email', 'like', "%{$query}%")
                         ->orWhere('phone', 'like', "%{$query}%");
                 });
