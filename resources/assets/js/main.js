@@ -371,6 +371,13 @@ if (typeof $ !== 'undefined') {
       searchInput = $('.search-input'),
       contentBackdrop = $('.content-backdrop');
 
+    console.log('[INIT] Search elements found:', {
+      toggler: searchToggler.length,
+      wrapper: searchInputWrapper.length,
+      input: searchInput.length,
+      backdrop: contentBackdrop.length
+    });
+
     // Open search input on click of search icon
     if (searchToggler.length) {
       searchToggler.on('click', function () {
@@ -407,6 +414,8 @@ if (typeof $ !== 'undefined') {
     }, 10);
 
     if (searchInput.length) {
+      console.log('[INIT] Initializing Typeahead on search input');
+
       // Filter config
       var filterConfig = function (data) {
         return function findMatches(q, cb) {
@@ -432,61 +441,64 @@ if (typeof $ !== 'undefined') {
       };
 
       // Modern async search with Promise and debouncing
-      var searchCache = {};
-      var searchTimeouts = {};
+      // Shared AJAX cache to avoid multiple requests for the same query
+      var searchAjaxCache = {
+        lastQuery: null,
+        lastResponse: null,
+        inflight: null,
+        listeners: []
+      };
 
+      // Fetch search response (shared among all datasets)
+      function fetchSearchResponse(query, onDone) {
+        // If we already have a response for this exact query, reuse it immediately
+        if (searchAjaxCache.lastQuery === query && searchAjaxCache.lastResponse) {
+          return onDone(searchAjaxCache.lastResponse);
+        }
+        // If there is a request in-flight for this query, attach as listener
+        if (searchAjaxCache.inflight && searchAjaxCache.lastQuery === query) {
+          searchAjaxCache.listeners.push(onDone);
+          return;
+        }
+        // Start a new request for this query
+        searchAjaxCache.lastQuery = query;
+        searchAjaxCache.listeners = [onDone];
+        searchAjaxCache.inflight = $.ajax({
+          url: baseUrl + 'contact/search',
+          dataType: 'json',
+          data: { q: query }
+        })
+          .done(function (response) {
+            searchAjaxCache.lastResponse = response;
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn(response); } catch (e) { console.error(e); } });
+          })
+          .fail(function (xhr, status, error) {
+            console.error('[Search] AJAX Error!', status, error);
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn({}); } catch (e) { console.error(e); } });
+          })
+          .always(function () {
+            searchAjaxCache.inflight = null;
+          });
+      }
+
+      // Dynamic search function - queries server on each keystroke
       var dynamicSearch = function (field) {
         return function findMatches(q, cb) {
-          console.log('[Search] Query:', q, 'Field:', field);
-
           if (!q || q.length < 1) {
-            console.log('[Search] Empty query, returning empty array');
             return cb([]);
           }
 
-          // Check cache first
-          var cacheKey = field + ':' + q.toLowerCase();
-          if (searchCache[cacheKey]) {
-            console.log('[Search] Cache hit for:', cacheKey);
-            return cb(searchCache[cacheKey]);
-          }
-
-          // Clear previous timeout for this field
-          if (searchTimeouts[field]) {
-            clearTimeout(searchTimeouts[field]);
-          }
-
-          // Debounce search requests per field
-          searchTimeouts[field] = setTimeout(function() {
-            console.log('[Search] Making async AJAX request for:', field, q);
-
-            // Use Promise-based approach
-            fetch('/contact/search?q=' + encodeURIComponent(q))
-              .then(function(response) {
-                if (!response.ok) {
-                  throw new Error('Network response was not ok');
-                }
-                return response.json();
-              })
-              .then(function(data) {
-                console.log('[Search] Async response for', field, ':', data);
-
-                var results = data[field] || [];
-                if (typeof results === 'object' && !Array.isArray(results)) {
-                  results = Object.values(results);
-                }
-
-                // Cache the results
-                searchCache[cacheKey] = results;
-
-                console.log('[Search] ✅ Calling cb() with', results.length, 'results for', field);
-                cb(results);
-              })
-              .catch(function(error) {
-                console.error('[Search] Async error for', field, ':', error);
-                cb([]);
-              });
-          }, 150); // 150ms debounce per field
+          fetchSearchResponse(q, function (response) {
+            var results = response[field] || [];
+            if (typeof results === 'object' && !Array.isArray(results)) {
+              results = Object.values(results);
+            }
+            cb(results);
+          });
         };
       };
 
@@ -514,18 +526,16 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  console.log('[Contacts] Rendering suggestion:', data);
                   if (!data || !data.name) {
-                    console.log('[Contacts] Invalid data:', data);
                     return '';
                   }
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
-                  console.log('[Contacts] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
-                    url + '">' +
+                    url +
+                    '">' +
                     '<div class="d-flex align-items-center">' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
@@ -690,7 +700,8 @@ if (typeof $ !== 'undefined') {
             }
           )
           //On typeahead result render.
-          .bind('typeahead:render', function () {
+          .bind('typeahead:render', function (ev, suggestions, async, dataset) {
+            console.log('[Typeahead] Render event:', {dataset, suggestions, async});
             // Show content backdrop,
             contentBackdrop.addClass('show').removeClass('fade');
           })

@@ -1,191 +1,180 @@
-# Restauración del Buscador Global a AJAX (Versión Original)
+# Search AJAX Restoration - Implementation Guide
 
-**Fecha:** 2026-01-11  
-**Estado:** ✅ Completado
+## Overview
+This document tracks the restoration of the AJAX search functionality in Humano, moving away from Livewire back to the original Vuexy-style Typeahead.js implementation.
 
-## Resumen
+## Problem Statement
+The search functionality stopped working after attempts to modularize the application into packages. The issue arose when trying to conditionally search in modules (like invoices) that might not be installed.
 
-Se restauró el buscador global del navbar a la **versión AJAX original** (pre-packages) que utilizaba un **toggler button** y un **input oculto**, eliminando la implementación Livewire que nunca funcionó correctamente.
+## Root Cause
+The main issue was using **Bloodhound-style independent AJAX calls** for each dataset, which caused:
+1. Multiple simultaneous AJAX requests for the same query
+2. Race conditions in Typeahead.js rendering
+3. Inconsistent results across datasets
 
-## Problema Original
+## Solution: Shared AJAX Cache Pattern
 
-- El componente Livewire `GlobalSearch` fue implementado pero nunca funcionó correctamente
-- La separación en packages rompió la funcionalidad
-- El buscador estaba deshabilitado (`showSearch => false` en `config/custom.php`)
-- La implementación no coincidía con el patrón original de Vuexy
+### Key Implementation: `fetchSearchResponse()`
 
-## Versión Original (Pre-Livewire)
+The working solution uses a **shared AJAX cache** that ensures only ONE request is made per query, and all datasets share the same response:
 
-La versión original usaba:
-1. **Botón toggler visible** - `<a class="search-toggler">` que muestra "Buscar (Ctrl+/)"
-2. **Input oculto** - `<div class="search-input-wrapper d-none">` que aparece al hacer clic
-3. **Atajo de teclado** - `Ctrl+/` para abrir el buscador
-4. **Spinner de loading** - Indicador visual mientras busca
-5. **Typeahead.js** - Para autocompletado con resultados agrupados
-
-## Cambios Realizados
-
-### 1. Configuración Habilitada
-**Archivo:** `config/custom.php`
-- Cambió `'showSearch' => false` a `'showSearch' => true` (línea 38)
-
-### 2. Navbar Restaurado a Versión Original
-**Archivo:** `resources/views/layouts/sections/navbar/navbar.blade.php`
-
-**Versión Correcta (Restaurada):**
-**Versión Correcta (Restaurada):**
-```blade
-@if (!isset($menuHorizontal) && (($configData['showSearch'] ?? true) === true))
-    <!-- Search -->
-    <div class="navbar-nav align-items-center">
-        <div class="nav-item navbar-search-wrapper mb-0">
-            <a class="nav-item nav-link search-toggler d-flex align-items-center px-0" href="javascript:void(0);">
-                <i class="ti ti-search ti-md me-2"></i>
-                <span class="d-none d-md-inline-block text-muted">{{ __('app.search_with_shortcut') }}</span>
-            </a>
-        </div>
-    </div>
-    <!-- /Search -->
-@endif
-```
-
-**Input Oculto (ya existente al final del navbar):**
-```blade
-<!-- Search Small Screens -->
-<div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }} d-none">
-    <input type="text"
-        class="form-control search-input {{ isset($menuHorizontal) ? '' : $containerNav }} border-0"
-        placeholder="{{ __('app.search') }}..." aria-label="Search...">
-    <i class="ti ti-x ti-sm search-toggler cursor-pointer"></i>
-</div>
-
-<div id="search-spinner" class="spinner-border text-primary d-none" role="status">
-    <span class="visually-hidden">{{ __('app.searching') }}...</span>
-</div>
-```
-
-### 3. JavaScript Ctrl+/ Habilitado
-**Archivo:** `resources/assets/js/main.js` (líneas 383-395)
-
-**Antes (Comentado para Livewire):**
 ```javascript
-// Open search on 'CTRL+/' - Disabled for Livewire search
-// $(document).on('keydown', function (event) {
-//   let ctrlKey = event.ctrlKey,
-//     slashKey = event.which === 191;
-//   if (ctrlKey && slashKey) {
-//     if (searchInputWrapper.length) {
-//       searchInputWrapper.toggleClass('d-none');
-//       searchInput.focus();
-//     }
-//   }
-// });
-```
+// Shared AJAX cache to avoid multiple requests for the same query
+var searchAjaxCache = {
+  lastQuery: null,
+  lastResponse: null,
+  inflight: null,
+  listeners: []
+};
 
-**Después (Descomentado):**
-```javascript
-// Open search on 'CTRL+/'
-$(document).on('keydown', function (event) {
-  let ctrlKey = event.ctrlKey,
-    slashKey = event.which === 191;
-  if (ctrlKey && slashKey) {
-    if (searchInputWrapper.length) {
-      searchInputWrapper.toggleClass('d-none');
-      searchInput.focus();
-    }
+// Fetch search response (shared among all datasets)
+function fetchSearchResponse(query, onDone) {
+  // If we already have a response for this exact query, reuse it immediately
+  if (searchAjaxCache.lastQuery === query && searchAjaxCache.lastResponse) {
+    return onDone(searchAjaxCache.lastResponse);
   }
-});
+  // If there is a request in-flight for this query, attach as listener
+  if (searchAjaxCache.inflight && searchAjaxCache.lastQuery === query) {
+    searchAjaxCache.listeners.push(onDone);
+    return;
+  }
+  // Start a new request for this query
+  searchAjaxCache.lastQuery = query;
+  searchAjaxCache.listeners = [onDone];
+  searchAjaxCache.inflight = $.ajax({
+    url: baseUrl + 'contact/search',
+    dataType: 'json',
+    data: { q: query }
+  })
+    .done(function (response) {
+      searchAjaxCache.lastResponse = response;
+      var cbs = searchAjaxCache.listeners.slice(0);
+      searchAjaxCache.listeners = [];
+      cbs.forEach(function (fn) { try { fn(response); } catch (e) { console.error(e); } });
+    })
+    .fail(function (xhr, status, error) {
+      console.error('[Search] AJAX Error!', status, error);
+      var cbs = searchAjaxCache.listeners.slice(0);
+      searchAjaxCache.listeners = [];
+      cbs.forEach(function (fn) { try { fn({}); } catch (e) { console.error(e); } });
+    })
+    .always(function () {
+      searchAjaxCache.inflight = null;
+    });
+}
 ```
 
-### 4. Endpoint AJAX Existente
-**Archivo:** `app/Http/Controllers/contactController.php`  
-**Ruta:** `/contact/search` (línea 865-1100+)
+### Dynamic Search Function
 
-El endpoint ya existía y está completamente funcional. Búsqueda en:
-- **Contactos** (`members`): Búsqueda por nombre, apellido, email, teléfono
-- **Empresas** (`enterprises`): Búsqueda por nombre, código, teléfono, email
-- **Servicios** (`services`): Búsqueda por descripción y datos JSON
-- **Proyectos** (`projects`): Búsqueda por nombre y descripción
-- **Facturas** (`invoices`): Búsqueda por número de factura
+Each dataset uses this simple function to extract its specific field from the shared response:
 
-**Características:**
-- ✅ Scoped por equipo (`team_id`)
-- ✅ Respeta permisos de usuario (admin vs no-admin)
-- ✅ Búsqueda optimizada con límites (20 resultados por categoría)
-- ✅ Respeta módulos activos del equipo
-- ✅ Caché en frontend para evitar llamadas duplicadas
-- ✅ Debouncing de 150ms por tipo de búsqueda
+```javascript
+// Dynamic search function - queries server on each keystroke
+var dynamicSearch = function (field) {
+  return function findMatches(q, cb) {
+    if (!q || q.length < 1) {
+      return cb([]);
+    }
 
-### 5. JavaScript Typeahead
-**Archivo:** `resources/assets/js/main.js` (líneas 409-736)
-
-Ya implementado con:
-- **Typeahead.js** para autocompletado
-- **Fetch API** para peticiones asíncronas
-- **Caché** de resultados por query
-- **Debouncing** para optimizar peticiones
-- **Templates personalizados** para cada tipo de resultado
-- **Iconos específicos** por categoría:
-  - `ti-user` para contactos
-  - `ti-building` para empresas
-  - `ti-world` para servicios
-  - `ti-folder` para proyectos
-  - `ti-file-invoice` para facturas
-
-### 6. Compilación de Assets
-```bash
-npm run build
+    fetchSearchResponse(q, function (response) {
+      var results = response[field] || [];
+      if (typeof results === 'object' && !Array.isArray(results)) {
+        results = Object.values(results);
+      }
+      cb(results);
+    });
+  };
+};
 ```
-✅ Compilado exitosamente
 
-## Cómo Funciona
+## Typeahead.js Configuration
 
-### Flujo de Búsqueda:
+### Correct Dataset Pattern ✅
 
-1. **Usuario hace clic** en "Buscar (Ctrl+/)" o presiona `Ctrl+/`
-2. **Se muestra input oculto** - Se remueve clase `d-none` del `search-input-wrapper`
-3. **Usuario escribe** - Se activa Typeahead.js
-4. **Debouncing 150ms** - Espera que el usuario termine de escribir
-5. **AJAX fetch** - Llama a `/contact/search?q=término`
-6. **Respuesta JSON** - Retorna resultados agrupados por categoría
-7. **Renderiza resultados** - Typeahead muestra dropdown con templates personalizados
-8. **Usuario selecciona** - Navega a la URL del resultado
-9. **Input se oculta** - Vuelve a `d-none` al cerrar
+Use a **single dataset per category** with `header`, `suggestion`, AND `notFound`:
 
-### Atajos de Teclado:
+```javascript
+// Contacts
+{
+  name: 'contacts',
+  display: 'name',
+  limit: 10,
+  source: dynamicSearch('members'),
+  templates: {
+    header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
+    suggestion: function (data) {
+      if (!data || !data.name) {
+        return '';
+      }
+      var name = data.name || '';
+      var subtitle = data.subtitle || '';
+      var url = data.url || '#';
+      return (
+        '<a href="' + url + '">' +
+        '<div class="d-flex align-items-center">' +
+        '<i class="ti ti-user me-2"></i>' +
+        '<div class="user-info">' +
+        '<h6 class="mb-0">' + name + '</h6>' +
+        '<small class="text-muted">' + subtitle + '</small>' +
+        '</div>' +
+        '</div>' +
+        '</a>'
+      );
+    },
+    notFound:
+      '<div class="not-found px-3 py-2">' +
+      '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
+      '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
+      '</div>'
+  }
+}
+```
 
-- **Ctrl+/** - Abre/cierra el buscador
-- **Flechas ↑↓** - Navega entre resultados
-- **Enter** - Selecciona resultado actual
-- **Esc** - Cierra el buscador
+**Key Points:**
+- ✅ `header`: Displays category name (always shown)
+- ✅ `suggestion`: Template for each result
+- ✅ `notFound`: Message when no results (prevents empty sections)
+- ✅ Validation in `suggestion` function (`if (!data || !data.name)`)
+- ✅ Safe property access with fallbacks (`data.name || ''`)
 
-## Componentes Obsoletos (NO Eliminados)
+### ❌ Incorrect Pattern (Double Dataset)
 
-Los siguientes archivos de Livewire **NO se eliminaron** por si se necesitan de referencia:
-- `app/Livewire/GlobalSearch.php`
-- `resources/views/livewire/global-search.blade.php`
+**Don't** use two datasets (header+notFound and results) as it causes "not found" messages to appear above results:
 
-**Nota:** Pueden eliminarse manualmente si ya no se necesitan.
+```javascript
+// ❌ DON'T DO THIS - causes duplicate headers
+{
+  name: 'contacts',
+  limit: 0,
+  source: dynamicSearch('members'),
+  templates: {
+    header: '...',
+    notFound: '...'
+  }
+},
+{
+  name: 'contacts-results',
+  limit: 10,
+  source: dynamicSearch('members'),
+  templates: {
+    suggestion: function (data) { ... }
+  }
+}
+```
 
-## Características de la Búsqueda
+## Backend Response Format
 
-### Funcionalidades
-1. **Búsqueda en tiempo real** mientras escribes (debouncing 150ms)
-2. **Resultados agrupados** por categoría con headers
-3. **Navegación con teclado** (Ctrl+/ para abrir)
-4. **Caché local** para mejorar rendimiento
-5. **Backdrop oscuro** cuando hay resultados
-6. **Redirección automática** al seleccionar resultado
-7. **Scope automático por equipo** y permisos
+The `contactController@search` method returns:
 
-### Ejemplo de Respuesta JSON
 ```json
 {
+  "pages": [...],
+  "files": [...],
   "members": [
     {
-      "name": "John Doe",
-      "subtitle": "john@example.com",
-      "url": "https://humano.test/contact/123"
+      "name": "pepe",
+      "subtitle": "pepe@pepe.com",
+      "url": "/contact/123"
     }
   ],
   "enterprises": [...],
@@ -195,66 +184,90 @@ Los siguientes archivos de Livewire **NO se eliminaron** por si se necesitan de 
 }
 ```
 
-## Pruebas
+Each dataset extracts its field (`members`, `enterprises`, etc.) from this single response.
 
-### Para Probar:
-1. Navegar a cualquier página de la app: `https://humano.test/dashboard`
-2. Hacer clic en el campo de búsqueda o presionar `Ctrl+/`
-3. Escribir al menos 1 carácter
-4. Ver resultados agrupados por categoría
-5. Hacer clic en un resultado para navegar
+## Files Modified
 
-### Verificaciones:
-- ✅ Búsqueda de contactos funciona
-- ✅ Búsqueda de empresas funciona
-- ✅ Búsqueda de servicios funciona (si módulo activo)
-- ✅ Búsqueda de proyectos funciona (si módulo activo)
-- ✅ Búsqueda de facturas funciona (admin only)
-- ✅ Respeta permisos por equipo
-- ✅ Caché funciona correctamente
-- ✅ Resultados se muestran con iconos apropiados
+1. **resources/assets/js/main.js**
+   - Added `fetchSearchResponse()` function
+   - Updated `dynamicSearch()` to use shared cache
+   - Simplified datasets (removed double-dataset pattern)
+   - Removed hardcoded debug data
 
-## Ventajas vs Livewire
+2. **public/assets/js/main.js**
+   - Manually copied from resources (Vite wasn't updating it correctly)
 
-| Aspecto | AJAX (Actual) | Livewire (Anterior) |
-|---------|--------------|---------------------|
-| **Rendimiento** | ⚡ Muy rápido (fetch + caché) | 🐢 Más lento (WebSocket overhead) |
-| **Compatibilidad** | ✅ No depende de packages | ❌ Se rompió con packages |
-| **Debugging** | ✅ Fácil en Network tab | ❌ Complejo (WebSocket) |
-| **Código** | ✅ JavaScript estándar | ❌ Lógica dividida PHP/JS |
-| **Mantenimiento** | ✅ Código Vuexy original | ❌ Custom implementation |
-| **Browser Cache** | ✅ Implementado | ❌ No implementado |
+3. **resources/views/layouts/sections/navbar/navbar.blade.php**
+   - Reverted from Livewire to original AJAX pattern
+   - Added search toggler and hidden input
 
-## Próximos Pasos (Opcional)
+4. **config/custom.php**
+   - Enabled search: `'showSearch' => true`
 
-1. **Eliminar componentes Livewire** si ya no se necesitan:
-   ```bash
-   rm app/Livewire/GlobalSearch.php
-   rm resources/views/livewire/global-search.blade.php
-   ```
+5. **resources/views/layouts/sections/scripts.blade.php**
+   - Added Select2 globally to fix JavaScript errors
 
-2. **Agregar más categorías** de búsqueda si se requiere (ej: productos, órdenes)
+6. **resources/views/layouts/sections/styles.blade.php**
+   - Added Select2 CSS globally
 
-3. **Mejorar UI** del dropdown de resultados si se desea
+## Testing
 
-4. **Agregar búsqueda avanzada** con filtros adicionales
+### Manual Testing Steps
 
-## Notas Técnicas
+1. Navigate to any page (e.g., `/contact/list`)
+2. Press `Ctrl+/` to open search
+3. Type "pepe" (or any search term)
+4. Verify dropdown appears with results grouped by category
+5. Click a result to navigate
 
-- El buscador usa **Typeahead.js** v0.11+
-- El endpoint retorna JSON con estructura de Vuexy
-- La búsqueda es case-insensitive
-- Se usa `CONCAT` para búsqueda de nombre completo en contactos
-- Se usa `JSON_SEARCH` para búsqueda en campos JSON de servicios
-- El placeholder es traducible vía `__('Search')`
+### Verification
 
-## Referencias
+- ✅ Search opens with `Ctrl+/`
+- ✅ AJAX request goes to `/contact/search?q=...`
+- ✅ Results display grouped by: Contactos, Empresas, Servicios, Proyectos, Facturas
+- ✅ Clicking a result navigates to the correct URL
+- ✅ Search closes on selection or Escape
 
-- Template original: `https://vuexy.test`
-- Ruta del endpoint: `/contact/search`
-- Archivo JS principal: `resources/assets/js/main.js`
-- Configuración: `config/custom.php`
+## Troubleshooting History
+
+### Issue 1: Search Bar Hidden
+**Solution**: Changed `config/custom.php` → `'showSearch' => true`
+
+### Issue 2: Select2 Not Defined
+**Solution**: Added Select2 globally in layouts
+
+### Issue 3: Ctrl+/ Not Working
+**Solution**: Uncommented keydown event listener
+
+### Issue 4: Vite Not Updating public/assets/js/main.js
+**Solution**: Manual copy required:
+```bash
+cp resources/assets/js/main.js public/assets/js/main.js
+```
+
+### Issue 5: Typeahead Not Rendering
+**Root Cause**: Using independent AJAX calls per dataset
+**Solution**: Implemented shared `fetchSearchResponse()` cache
+
+### Issue 6: "Not Found" Message Above Results
+**Root Cause**: Using double-dataset pattern (header+results)
+**Solution**: Use single dataset with both header and suggestion
+
+## Key Learnings
+
+1. **Shared AJAX is Critical**: Multiple Typeahead datasets need to share ONE AJAX response
+2. **Single Dataset Pattern**: Use one dataset per category with header+suggestion, not header+results
+3. **Vite Doesn't Auto-Copy**: The `vite-plugin-static-copy` wasn't updating `public/assets/js/main.js` correctly - manual copy required
+4. **Debug Carefully**: Browser console logs are essential for debugging Typeahead.js
+5. **Git History is Gold**: Finding the working version before package separation was key to solving this
+
+## References
+
+- Original working commit: `f5f701a3` (before Livewire integration)
+- Typeahead.js docs: https://github.com/twitter/typeahead.js/
+- Related issue: Package separation causing conditional module searches to fail
 
 ---
 
-**✅ La búsqueda global está completamente funcional y lista para uso.**
+**Status**: ✅ **WORKING** as of 2026-01-11  
+**Last Updated**: 2026-01-11 23:00 UTC
