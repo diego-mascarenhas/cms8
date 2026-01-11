@@ -380,18 +380,18 @@ if (typeof $ !== 'undefined') {
         }
       });
     }
-    // Open search on 'CTRL+/' - Disabled for Livewire search
-    // $(document).on('keydown', function (event) {
-    //   let ctrlKey = event.ctrlKey,
-    //     slashKey = event.which === 191;
+    // Open search on 'CTRL+/'
+    $(document).on('keydown', function (event) {
+      let ctrlKey = event.ctrlKey,
+        slashKey = event.which === 191;
 
-    //   if (ctrlKey && slashKey) {
-    //     if (searchInputWrapper.length) {
-    //       searchInputWrapper.toggleClass('d-none');
-    //       searchInput.focus();
-    //     }
-    //   }
-    // });
+      if (ctrlKey && slashKey) {
+        if (searchInputWrapper.length) {
+          searchInputWrapper.toggleClass('d-none');
+          searchInput.focus();
+        }
+      }
+    });
     // Note: Following code is required to update container class of typeahead dropdown width on focus of search input. setTimeout is required to allow time to initiate Typeahead UI.
     setTimeout(function () {
       var twitterTypeahead = $('.twitter-typeahead');
