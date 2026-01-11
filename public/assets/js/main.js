@@ -526,16 +526,13 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  if (!data || !data.name) {
-                    return '';
-                  }
+                  if (!data || !data.name) return '';
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
                   return (
                     '<a href="' +
-                    url +
-                    '">' +
+                    url + '">' +
                     '<div class="d-flex align-items-center">' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
@@ -566,15 +563,10 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
                 suggestion: function (data) {
-                  console.log('[Enterprises] Rendering suggestion:', data);
-                  if (!data || !data.name) {
-                    console.log('[Enterprises] Invalid data:', data);
-                    return '';
-                  }
+                  if (!data || !data.name) return '';
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
-                  console.log('[Enterprises] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
                     url + '">' +
