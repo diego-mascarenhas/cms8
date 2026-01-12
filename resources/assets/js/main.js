@@ -418,7 +418,7 @@ if (typeof $ !== 'undefined') {
 
     if (searchInput.length) {
       console.log('[INIT] Initializing Typeahead on search input');
-      console.log('[VERSION] Search JS Version: 2026-01-12-20:05-contacts-search-handler');
+      console.log('[VERSION] Search JS Version: 2026-01-12-20:15-only-contacts-debug');
 
       // Filter config
       var filterConfig = function (data) {
@@ -549,7 +549,7 @@ if (typeof $ !== 'undefined') {
               name: 'contacts',
               display: 'name',
               limit: 10,
-              source: contactsSearch,
+              source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
@@ -580,143 +580,144 @@ if (typeof $ !== 'undefined') {
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
                   '</div>'
               }
-            },
-            // Enterprises
-            {
-              name: 'enterprises',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('enterprises'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
-                suggestion: function (data) {
-                  if (!data || !data.name) return '';
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-building me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Empresas</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p>' +
-                  '</div>'
-              }
-            },
-            // Services
-            {
-              name: 'services',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('services'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-world me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Servicios</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Servicio no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // Projects
-            {
-              name: 'projects',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('projects'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-folder me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Proyectos</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // Invoices
-            {
-              name: 'invoices',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('invoices'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-file-invoice me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
-                  '</div>'
-              }
             }
+            // COMMENTED OUT FOR DEBUGGING - Only contacts dataset active
+            // // Enterprises
+            // {
+            //   name: 'enterprises',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('enterprises'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
+            //     suggestion: function (data) {
+            //       if (!data || !data.name) return '';
+            //       var name = data.name || '';
+            //       var subtitle = data.subtitle || '';
+            //       var url = data.url || '#';
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-building me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Empresas</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Services
+            // {
+            //   name: 'services',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('services'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-world me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Servicios</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Servicio no encontrado</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Projects
+            // {
+            //   name: 'projects',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('projects'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-folder me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Proyectos</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Invoices
+            // {
+            //   name: 'invoices',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('invoices'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-file-invoice me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
+            //       '</div>'
+            //   }
+            // }
           )
           //On typeahead result render.
           .bind('typeahead:render', function (ev, suggestions, async, dataset) {
