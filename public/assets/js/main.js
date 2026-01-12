@@ -387,15 +387,18 @@ if (typeof $ !== 'undefined') {
         }
       });
     }
-    // Open search on 'CTRL+/'
+    // Open search on 'CTRL+/' (or CMD+/ on Mac)
     $(document).on('keydown', function (event) {
-      let ctrlKey = event.ctrlKey,
-        slashKey = event.which === 191;
+      let ctrlKey = event.ctrlKey || event.metaKey,
+        slashKey = event.which === 191 || event.keyCode === 191;
 
       if (ctrlKey && slashKey) {
+        event.preventDefault();
         if (searchInputWrapper.length) {
-          searchInputWrapper.toggleClass('d-none');
-          searchInput.focus();
+          searchInputWrapper.removeClass('d-none');
+          setTimeout(function() {
+            searchInput.focus();
+          }, 10);
         }
       }
     });
@@ -415,6 +418,7 @@ if (typeof $ !== 'undefined') {
 
     if (searchInput.length) {
       console.log('[INIT] Initializing Typeahead on search input');
+      console.log('[VERSION] Search JS Version: 2026-01-12-20:05-contacts-search-handler');
 
       // Filter config
       var filterConfig = function (data) {
@@ -497,10 +501,33 @@ if (typeof $ !== 'undefined') {
             if (typeof results === 'object' && !Array.isArray(results)) {
               results = Object.values(results);
             }
+            // Force array and ensure each item has required properties
+            if (!Array.isArray(results)) {
+              results = [];
+            }
             cb(results);
           });
         };
       };
+
+      // Special handler for contacts to use members data
+      var contactsSearch = function (q, cb) {
+        if (!q || q.length < 1) {
+          return cb([]);
+        }
+        fetchSearchResponse(q, function (response) {
+          // Use members data for contacts
+          var results = response['members'] || [];
+          if (typeof results === 'object' && !Array.isArray(results)) {
+            results = Object.values(results);
+          }
+          if (!Array.isArray(results)) {
+            results = [];
+          }
+          cb(results);
+        });
+      };
+
 
       // Init typeahead on searchInput
       searchInput.each(function () {
@@ -522,7 +549,7 @@ if (typeof $ !== 'undefined') {
               name: 'contacts',
               display: 'name',
               limit: 10,
-              source: dynamicSearch('members'),
+              source: contactsSearch,
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {

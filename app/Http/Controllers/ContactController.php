@@ -918,7 +918,7 @@ class ContactController extends Controller
         if ($team && $team->hasModule('contacts'))
         {
             $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at');
-                // No filter by status_id - include all contacts regardless of status
+            // No filter by status_id - include all contacts regardless of status
 
             if (! $isInitialLoad)
             {
