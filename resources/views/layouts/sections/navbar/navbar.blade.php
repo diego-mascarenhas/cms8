@@ -45,12 +45,154 @@
 
     @if (!isset($menuHorizontal) && (($configData['showSearch'] ?? true) === true))
         <!-- Search -->
-        <div class="navbar-nav align-items-center">
+        <div class="navbar-nav align-items-center" x-data="globalSearch()" x-init="init()">
             <div class="nav-item navbar-search-wrapper mb-0">
-                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0" href="javascript:void(0);">
+                <!-- Search Toggle Link - Hidden when search is active -->
+                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0"
+                   href="javascript:void(0);"
+                   :class="{ 'd-none': !isHidden }"
+                   @click="open()"
+                   x-cloak>
                     <i class="ti ti-search ti-md me-2"></i>
                     <span class="d-none d-md-inline-block text-muted">{{ __('app.search_with_shortcut') }}</span>
                 </a>
+
+                <!-- Search Input - Shown when search is active -->
+                <div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }}"
+                     :class="{ 'd-none': isHidden }"
+                     x-cloak>
+                    <input type="text"
+                        class="form-control search-input {{ isset($menuHorizontal) ? '' : $containerNav }} border-0"
+                           placeholder="{{ __('app.search') }}..."
+                           aria-label="Search..."
+                           style="color: inherit !important;"
+                           x-model="query"
+                           @input.debounce.300ms="search()"
+                           @keydown.arrow-down.prevent="navigateDown()"
+                           @keydown.arrow-up.prevent="navigateUp()"
+                           @keydown.enter.prevent="selectCurrent()"
+                           @keydown.escape="close()"
+                           x-ref="searchInput">
+                    <i class="ti ti-x ti-sm search-toggler cursor-pointer" @click="close()"></i>
+
+                    <!-- Search Results Dropdown -->
+                    <div class="twitter-typeahead">
+                        <div class="tt-menu navbar-search-suggestion"
+                                 x-cloak
+                                 x-ref="resultsContainer"
+                                 x-bind:style="(showResults && hasResults) ? 'display: block !important; visibility: visible !important;' : 'display: none !important;'">
+                                <!-- Members (Contactos) -->
+                                <template x-if="results.members && results.members.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>
+                                        <template x-for="(item, index) in results.members" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'members' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'members', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-user me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- Enterprises (Empresas) -->
+                                <template x-if="results.enterprises && results.enterprises.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>
+                                        <template x-for="(item, index) in results.enterprises" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'enterprises' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'enterprises', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-building me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- Services (Servicios) -->
+                                <template x-if="results.services && results.services.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>
+                                        <template x-for="(item, index) in results.services" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'services' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'services', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-world me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- Projects (Proyectos) -->
+                                <template x-if="results.projects && results.projects.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>
+                                        <template x-for="(item, index) in results.projects" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'projects' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'projects', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-folder me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- Invoices (Facturas) -->
+                                <template x-if="results.invoices && results.invoices.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>
+                                        <template x-for="(item, index) in results.invoices" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'invoices' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'invoices', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-file-invoice me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- /Search -->
@@ -673,143 +815,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endauth
 
-<!-- Search Small Screens -->
-<div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }}"
-     :class="{ 'd-none': isHidden }"
-     x-data="globalSearch()"
-     x-init="init()"
-     x-cloak>
-    <input type="text"
-        class="form-control search-input {{ isset($menuHorizontal) ? '' : $containerNav }} border-0"
-           placeholder="{{ __('app.search') }}..."
-           aria-label="Search..."
-           x-model="query"
-           @input.debounce.300ms="search()"
-           @keydown.arrow-down.prevent="navigateDown()"
-           @keydown.arrow-up.prevent="navigateUp()"
-           @keydown.enter.prevent="selectCurrent()"
-           @keydown.escape="close()"
-           x-ref="searchInput">
-    <i class="ti ti-x ti-sm search-toggler cursor-pointer" @click="close()"></i>
-    
-    <!-- Search Results Dropdown - Using twitter-typeahead wrapper for CSS compatibility -->
-    <div class="twitter-typeahead" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
-        <div class="tt-menu navbar-search-suggestion"
-             x-cloak
-             x-ref="resultsContainer"
-             x-bind:style="(showResults && hasResults) ? 'display: block !important; visibility: visible !important;' : 'display: none !important;'">
-            <!-- Members (Contactos) -->
-            <template x-if="results.members && results.members.length > 0">
-                <div>
-                    <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>
-                    <template x-for="(item, index) in results.members" :key="index">
-                        <a :href="item.url || '#'"
-                           class="suggestion d-flex justify-content-between px-3 py-2 w-100"
-                           :class="{ 'active': selectedItem && selectedItem.category === 'members' && selectedItem.index === index }"
-                           @mouseenter="selectedItem = { category: 'members', index: index }"
-                           @click.prevent="navigateTo(item.url)">
-                            <div class="d-flex align-items-center">
-                                <i class="ti ti-user me-2"></i>
-                                <div class="user-info">
-                                    <h6 class="mb-0" x-text="item.name"></h6>
-                                    <small class="text-muted" x-text="item.subtitle"></small>
-                                </div>
-                            </div>
-                        </a>
-                    </template>
-                </div>
-            </template>
-            
-            <!-- Enterprises (Empresas) -->
-            <template x-if="results.enterprises && results.enterprises.length > 0">
-                <div>
-                    <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>
-                    <template x-for="(item, index) in results.enterprises" :key="index">
-                        <a :href="item.url || '#'"
-                           class="suggestion d-flex justify-content-between px-3 py-2 w-100"
-                           :class="{ 'active': selectedItem && selectedItem.category === 'enterprises' && selectedItem.index === index }"
-                           @mouseenter="selectedItem = { category: 'enterprises', index: index }"
-                           @click.prevent="navigateTo(item.url)">
-                            <div class="d-flex align-items-center">
-                                <i class="ti ti-building me-2"></i>
-                                <div class="user-info">
-                                    <h6 class="mb-0" x-text="item.name"></h6>
-                                    <small class="text-muted" x-text="item.subtitle"></small>
-                                </div>
-                            </div>
-                        </a>
-                    </template>
-                </div>
-            </template>
-            
-            <!-- Services (Servicios) -->
-            <template x-if="results.services && results.services.length > 0">
-                <div>
-                    <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>
-                    <template x-for="(item, index) in results.services" :key="index">
-                        <a :href="item.url || '#'"
-                           class="suggestion d-flex justify-content-between px-3 py-2 w-100"
-                           :class="{ 'active': selectedItem && selectedItem.category === 'services' && selectedItem.index === index }"
-                           @mouseenter="selectedItem = { category: 'services', index: index }"
-                           @click.prevent="navigateTo(item.url)">
-                            <div class="d-flex align-items-center">
-                                <i class="ti ti-world me-2"></i>
-                                <div class="user-info">
-                                    <h6 class="mb-0" x-text="item.name"></h6>
-                                    <small class="text-muted" x-text="item.subtitle"></small>
-                                </div>
-                            </div>
-                        </a>
-                    </template>
-                </div>
-            </template>
-            
-            <!-- Projects (Proyectos) -->
-            <template x-if="results.projects && results.projects.length > 0">
-                <div>
-                    <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>
-                    <template x-for="(item, index) in results.projects" :key="index">
-                        <a :href="item.url || '#'"
-                           class="suggestion d-flex justify-content-between px-3 py-2 w-100"
-                           :class="{ 'active': selectedItem && selectedItem.category === 'projects' && selectedItem.index === index }"
-                           @mouseenter="selectedItem = { category: 'projects', index: index }"
-                           @click.prevent="navigateTo(item.url)">
-                            <div class="d-flex align-items-center">
-                                <i class="ti ti-folder me-2"></i>
-                                <div class="user-info">
-                                    <h6 class="mb-0" x-text="item.name"></h6>
-                                    <small class="text-muted" x-text="item.subtitle"></small>
-                                </div>
-                            </div>
-                        </a>
-                    </template>
-                </div>
-            </template>
-            
-            <!-- Invoices (Facturas) -->
-            <template x-if="results.invoices && results.invoices.length > 0">
-                <div>
-                    <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>
-                    <template x-for="(item, index) in results.invoices" :key="index">
-                        <a :href="item.url || '#'"
-                           class="suggestion d-flex justify-content-between px-3 py-2 w-100"
-                           :class="{ 'active': selectedItem && selectedItem.category === 'invoices' && selectedItem.index === index }"
-                           @mouseenter="selectedItem = { category: 'invoices', index: index }"
-                           @click.prevent="navigateTo(item.url)">
-                            <div class="d-flex align-items-center">
-                                <i class="ti ti-file-invoice me-2"></i>
-                                <div class="user-info">
-                                    <h6 class="mb-0" x-text="item.name"></h6>
-                                    <small class="text-muted" x-text="item.subtitle"></small>
-                                </div>
-                            </div>
-                        </a>
-                    </template>
-                </div>
-            </template>
-        </div>
-    </div>
-</div>
 @if (isset($navbarDetached) && $navbarDetached == '')
     </div>
 @endif
@@ -836,14 +841,12 @@ function globalSearch() {
             lastResponse: null,
             inflight: null
         },
-        
+
         init() {
-            console.log('[Search] Alpine.js component initialized');
             // Get baseUrl from HTML attribute
             const htmlEl = document.documentElement;
             this.baseUrl = (htmlEl.getAttribute('data-base-url') || '') + '/';
-            console.log('[Search] Base URL:', this.baseUrl);
-            
+
             // Setup keyboard shortcut CTRL+/ or CMD+/
             document.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.keyCode === 191)) {
@@ -851,15 +854,18 @@ function globalSearch() {
                     this.open();
                 }
             });
-            
+
             // Setup click handlers for search togglers
             document.querySelectorAll('.search-toggler').forEach(btn => {
                 if (!btn.closest('.search-input-wrapper')) {
-                    btn.addEventListener('click', () => this.open());
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.open();
+                    });
                 }
             });
         },
-        
+
         get hasResults() {
             return (this.results.members && this.results.members.length > 0) ||
                    (this.results.enterprises && this.results.enterprises.length > 0) ||
@@ -867,15 +873,14 @@ function globalSearch() {
                    (this.results.projects && this.results.projects.length > 0) ||
                    (this.results.invoices && this.results.invoices.length > 0);
         },
-        
+
         open() {
             this.isHidden = false;
             this.$nextTick(() => {
                 this.$refs.searchInput?.focus();
-                this.updateBackdrop(true);
             });
         },
-        
+
         close() {
             this.isHidden = true;
             this.query = '';
@@ -883,7 +888,7 @@ function globalSearch() {
             this.showResults = false;
             this.selectedItem = null;
             this.updateBackdrop(false);
-            
+
             // Destroy PerfectScrollbar if initialized
             if (this.psInstance) {
                 try {
@@ -892,13 +897,11 @@ function globalSearch() {
                 this.psInstance = null;
             }
         },
-        
+
         async search() {
-            console.log('[Search] search() called, query:', this.query);
             const query = this.query.trim();
-            
+
             if (!query || query.length < 3) {
-                console.log('[Search] Query too short, clearing results');
                 this.results = {};
                 this.showResults = false;
                 this.selectedItem = null;
@@ -911,7 +914,7 @@ function globalSearch() {
                 }
                 return;
             }
-            
+
             // Check cache first
             if (this.ajaxCache.lastQuery === query && this.ajaxCache.lastResponse) {
                 this.results = this.ajaxCache.lastResponse;
@@ -924,21 +927,20 @@ function globalSearch() {
                 });
                 return;
             }
-            
+
             // Cancel previous request if in-flight
             if (this.ajaxCache.inflight) {
                 this.ajaxCache.inflight.abort();
             }
-            
+
             this.isLoading = true;
             this.ajaxCache.lastQuery = query;
-            
+
             const controller = new AbortController();
             this.ajaxCache.inflight = controller;
-            
+
             try {
                 const url = this.baseUrl + 'contact/search?q=' + encodeURIComponent(query);
-                console.log('[Search] Fetching:', url);
                 const response = await fetch(url, {
                     signal: controller.signal,
                     headers: {
@@ -946,19 +948,16 @@ function globalSearch() {
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 if (!response.ok) throw new Error('Network response was not ok');
-                
+
                 const data = await response.json();
-                console.log('[Search] Response data:', data);
                 this.ajaxCache.lastResponse = data;
                 this.results = data;
-                console.log('[Search] Setting showResults = true, hasResults:', this.hasResults);
                 this.showResults = true;
                 this.selectedItem = null;
                 this.updateBackdrop(true);
                 this.$nextTick(() => {
-                    console.log('[Search] After $nextTick, showResults:', this.showResults, 'hasResults:', this.hasResults);
                     this.forceDisplayUpdate();
                     this.initPerfectScrollbar();
                 });
@@ -976,7 +975,7 @@ function globalSearch() {
                 }
             }
         },
-        
+
         updateBackdrop(show) {
             this.$nextTick(() => {
                 const backdrop = document.querySelector('.content-backdrop');
@@ -991,13 +990,13 @@ function globalSearch() {
                 }
             });
         },
-        
+
         initPerfectScrollbar() {
             if (typeof PerfectScrollbar === 'undefined') return;
-            
+
             const container = this.$refs.resultsContainer;
             if (!container) return;
-            
+
             // Destroy existing instance
             if (this.psInstance) {
                 try {
@@ -1005,7 +1004,7 @@ function globalSearch() {
                 } catch (e) {}
                 this.psInstance = null;
             }
-            
+
             // Create new instance
             try {
                 this.psInstance = new PerfectScrollbar(container, {
@@ -1016,17 +1015,16 @@ function globalSearch() {
                 console.error('[Search] PerfectScrollbar initialization error:', e);
             }
         },
-        
+
         // Force display update after Alpine renders
         forceDisplayUpdate() {
             const container = this.$refs.resultsContainer;
             if (container && this.showResults && this.hasResults) {
                 // Force display block to override Typeahead CSS
                 container.style.setProperty('display', 'block', 'important');
-                console.log('[Search] Forced display: block', container.style.display);
             }
         },
-        
+
         getAllItemsFlat() {
             const items = [];
             if (this.results.members) {
@@ -1056,16 +1054,16 @@ function globalSearch() {
             }
             return items;
         },
-        
+
         navigateDown() {
             if (!this.showResults || !this.hasResults) return;
             const items = this.getAllItemsFlat();
             if (items.length === 0) return;
-            
-            const currentIndex = this.selectedItem 
+
+            const currentIndex = this.selectedItem
                 ? items.findIndex(item => item.category === this.selectedItem.category && item.index === this.selectedItem.index)
                 : -1;
-            
+
             const nextIndex = (currentIndex + 1) % items.length;
             this.selectedItem = {
                 category: items[nextIndex].category,
@@ -1073,16 +1071,16 @@ function globalSearch() {
             };
             this.scrollToSelected();
         },
-        
+
         navigateUp() {
             if (!this.showResults || !this.hasResults) return;
             const items = this.getAllItemsFlat();
             if (items.length === 0) return;
-            
-            const currentIndex = this.selectedItem 
+
+            const currentIndex = this.selectedItem
                 ? items.findIndex(item => item.category === this.selectedItem.category && item.index === this.selectedItem.index)
                 : -1;
-            
+
             const prevIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
             this.selectedItem = {
                 category: items[prevIndex].category,
@@ -1090,13 +1088,13 @@ function globalSearch() {
             };
             this.scrollToSelected();
         },
-        
+
         scrollToSelected() {
             this.$nextTick(() => {
                 if (!this.selectedItem) return;
                 const container = this.$refs.resultsContainer;
                 if (!container) return;
-                
+
                 const active = container.querySelector('.suggestion.active');
                 if (active) {
                     active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -1108,21 +1106,21 @@ function globalSearch() {
                 }
             });
         },
-        
+
         selectCurrent() {
             if (!this.showResults || !this.hasResults || !this.selectedItem) return;
-            
+
             const items = this.getAllItemsFlat();
-            const selected = items.find(item => 
-                item.category === this.selectedItem.category && 
+            const selected = items.find(item =>
+                item.category === this.selectedItem.category &&
                 item.index === this.selectedItem.index
             );
-            
+
             if (selected && selected.url && selected.url !== 'javascript:;' && selected.url !== '#') {
                 this.navigateTo(selected.url);
             }
         },
-        
+
         navigateTo(url) {
             if (url && url !== 'javascript:;' && url !== '#') {
                 window.location.href = url;
