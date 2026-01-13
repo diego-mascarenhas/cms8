@@ -41,11 +41,11 @@
     </div>
 @endif
 
-<div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+<div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse" x-data="globalSearch()" x-init="init()">
 
     @if (!isset($menuHorizontal) && (($configData['showSearch'] ?? true) === true))
         <!-- Search -->
-        <div class="navbar-nav align-items-center" x-data="globalSearch()" x-init="init()">
+        <div class="navbar-nav align-items-center">
             <div class="nav-item navbar-search-wrapper mb-0">
                 <!-- Search Toggle Link - Hidden when search is active -->
                 <a class="nav-item nav-link search-toggler d-flex align-items-center px-0"
@@ -197,7 +197,7 @@
         </div>
         <!-- /Search -->
     @endif
-    <ul class="navbar-nav flex-row align-items-center ms-auto">
+    <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
         @auth
         <li class="nav-item dropdown me-2" id="quick-timer"
