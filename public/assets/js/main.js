@@ -1,1 +1,370 @@
-"use strict";let menu,animate,isRtl=window.Helpers.isRtl(),isDarkStyle=window.Helpers.isDarkStyle(),isHorizontalLayout=!1;document.getElementById("layout-menu")&&(isHorizontalLayout=document.getElementById("layout-menu").classList.contains("menu-horizontal")),function(){setTimeout(function(){window.Helpers.initCustomOptionCheck()},1e3),"undefined"!=typeof Waves&&(Waves.init(),Waves.attach(".btn[class*='btn-']:not([class*='btn-outline-']):not([class*='btn-label-'])",["waves-light"]),Waves.attach("[class*='btn-outline-']"),Waves.attach("[class*='btn-label-']"),Waves.attach(".pagination .page-item .page-link")),document.querySelectorAll("#layout-menu").forEach(function(e){menu=new Menu(e,{orientation:isHorizontalLayout?"horizontal":"vertical",closeChildren:!!isHorizontalLayout,showDropdownOnHover:localStorage.getItem("templateCustomizer-"+templateName+"--ShowDropdownOnHover")?"true"===localStorage.getItem("templateCustomizer-"+templateName+"--ShowDropdownOnHover"):void 0===window.templateCustomizer||window.templateCustomizer.settings.defaultShowDropdownOnHover}),window.Helpers.scrollToActive(animate=!1),window.Helpers.mainMenu=menu}),document.querySelectorAll(".layout-menu-toggle").forEach(e=>{e.addEventListener("click",e=>{if(e.preventDefault(),window.Helpers.toggleCollapsed(),config.enableMenuLocalStorage&&!window.Helpers.isSmallScreen())try{localStorage.setItem("templateCustomizer-"+templateName+"--LayoutCollapsed",String(window.Helpers.isCollapsed()));let e=document.querySelector(".template-customizer-layouts-options");if(e){let t=window.Helpers.isCollapsed()?"collapsed":"expanded";e.querySelector(`input[value="${t}"]`).click()}}catch(e){}})}),window.Helpers.swipeIn(".drag-target",function(e){window.Helpers.setCollapsed(!1)}),window.Helpers.swipeOut("#layout-menu",function(e){window.Helpers.isSmallScreen()&&window.Helpers.setCollapsed(!0)});let e=document.getElementsByClassName("menu-inner"),t=document.getElementsByClassName("menu-inner-shadow")[0];e.length>0&&t&&e[0].addEventListener("ps-scroll-y",function(){this.querySelector(".ps__thumb-y").offsetTop?t.style.display="block":t.style.display="none"});let s=document.querySelector(".dropdown-style-switcher"),o=localStorage.getItem("templateCustomizer-"+templateName+"--Style")||(window.templateCustomizer?.settings?.defaultStyle??"light");if(window.templateCustomizer&&s){[].slice.call(s.children[1].querySelectorAll(".dropdown-item")).forEach(function(e){e.addEventListener("click",function(){let e=this.getAttribute("data-theme");"light"===e?window.templateCustomizer.setStyle("light"):"dark"===e?window.templateCustomizer.setStyle("dark"):window.templateCustomizer.setStyle("system")})});const d=s.querySelector("i");"light"===o?(d.classList.add("ti-sun"),new bootstrap.Tooltip(d,{title:"Light Mode",fallbackPlacements:["bottom"]})):"dark"===o?(d.classList.add("ti-moon"),new bootstrap.Tooltip(d,{title:"Dark Mode",fallbackPlacements:["bottom"]})):(d.classList.add("ti-device-desktop"),new bootstrap.Tooltip(d,{title:"System Mode",fallbackPlacements:["bottom"]}))}var n;"system"===(n=o)&&(n=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),[].slice.call(document.querySelectorAll("[data-app-"+n+"-img]")).map(function(e){const t=e.getAttribute("data-app-"+n+"-img");e.src=assetsPath+"img/"+t});let a=document.getElementsByClassName("dropdown-language");if(a.length){let m=a[0].querySelectorAll(".dropdown-item");u(a[0].querySelector(".dropdown-item.active").dataset.textDirection);for(let p=0;p<m.length;p++)m[p].addEventListener("click",function(){let e=this.getAttribute("data-text-direction");window.templateCustomizer.setLang(this.getAttribute("data-language")),u(e)});function u(e){"rtl"===e?"true"!==localStorage.getItem("templateCustomizer-"+templateName+"--Rtl")&&window.templateCustomizer&&window.templateCustomizer.setRtl(!0):"true"===localStorage.getItem("templateCustomizer-"+templateName+"--Rtl")&&window.templateCustomizer&&window.templateCustomizer.setRtl(!1)}}setTimeout(function(){let e=document.querySelector(".template-customizer-reset-btn");e&&(e.onclick=function(){window.location.href=baseUrl+"lang/en"})},1500);const i=document.querySelector(".dropdown-notifications-all"),l=document.querySelectorAll(".dropdown-notifications-read");i&&i.addEventListener("click",e=>{l.forEach(e=>{e.closest(".dropdown-notifications-item").classList.add("marked-as-read")})}),l&&l.forEach(e=>{e.addEventListener("click",t=>{e.closest(".dropdown-notifications-item").classList.toggle("marked-as-read")})});document.querySelectorAll(".dropdown-notifications-archive").forEach(e=>{e.addEventListener("click",t=>{e.closest(".dropdown-notifications-item").remove()})});[].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]')).map(function(e){return new bootstrap.Tooltip(e)});const r=function(e){"show.bs.collapse"==e.type||"show.bs.collapse"==e.type?e.target.closest(".accordion-item").classList.add("active"):e.target.closest(".accordion-item").classList.remove("active")};[].slice.call(document.querySelectorAll(".accordion")).map(function(e){e.addEventListener("show.bs.collapse",r),e.addEventListener("hide.bs.collapse",r)});window.Helpers.setAutoUpdate(!0),window.Helpers.initPasswordToggle(),window.Helpers.initSpeechToText(),window.Helpers.initNavbarDropdownScrollbar();let c=document.querySelector("[data-template^='horizontal-menu']");if(c&&(window.innerWidth<window.Helpers.LAYOUT_BREAKPOINT?window.Helpers.setNavbarFixed("fixed"):window.Helpers.setNavbarFixed("")),window.addEventListener("resize",function(e){window.innerWidth>=window.Helpers.LAYOUT_BREAKPOINT&&document.querySelector(".search-input-wrapper")&&(document.querySelector(".search-input-wrapper").classList.add("d-none"),document.querySelector(".search-input").value=""),c&&(window.innerWidth<window.Helpers.LAYOUT_BREAKPOINT?window.Helpers.setNavbarFixed("fixed"):window.Helpers.setNavbarFixed(""),setTimeout(function(){window.innerWidth<window.Helpers.LAYOUT_BREAKPOINT?document.getElementById("layout-menu")&&document.getElementById("layout-menu").classList.contains("menu-horizontal")&&menu.switchMenu("vertical"):document.getElementById("layout-menu")&&document.getElementById("layout-menu").classList.contains("menu-vertical")&&menu.switchMenu("horizontal")},100))},!0),!isHorizontalLayout&&!window.Helpers.isSmallScreen()&&("undefined"!=typeof TemplateCustomizer&&(window.templateCustomizer.settings.defaultMenuCollapsed?window.Helpers.setCollapsed(!0,!1):window.Helpers.setCollapsed(!1,!1)),"undefined"!=typeof config&&config.enableMenuLocalStorage))try{null!==localStorage.getItem("templateCustomizer-"+templateName+"--LayoutCollapsed")&&window.Helpers.setCollapsed("true"===localStorage.getItem("templateCustomizer-"+templateName+"--LayoutCollapsed"),!1)}catch(w){}}(),"undefined"!=typeof $&&$(function(){window.Helpers.initSidebarToggle();var e=$(".search-toggler"),t=$(".search-input-wrapper"),s=$(".search-input"),o=$(".content-backdrop");if(e.length&&e.on("click",function(){t.length&&(t.toggleClass("d-none"),s.focus())}),setTimeout(function(){var e=$(".twitter-typeahead");s.on("focus",function(){t.hasClass("container-xxl")?(t.find(e).addClass("container-xxl"),e.removeClass("container-fluid")):t.hasClass("container-fluid")&&(t.find(e).addClass("container-fluid"),e.removeClass("container-xxl"))})},10),s.length){var n,a={},i={},l=function(e){return function(t,s){if(console.log("[Search] Query:",t,"Field:",e),!t||t.length<1)return console.log("[Search] Empty query, returning empty array"),s([]);var o=e+":"+t.toLowerCase();if(a[o])return console.log("[Search] Cache hit for:",o),s(a[o]);i[e]&&clearTimeout(i[e]),i[e]=setTimeout(function(){console.log("[Search] Making async AJAX request for:",e,t),fetch("/contact/search?q="+encodeURIComponent(t)).then(function(e){if(!e.ok)throw new Error("Network response was not ok");return e.json()}).then(function(t){console.log("[Search] Async response for",e,":",t);var n=t[e]||[];"object"!=typeof n||Array.isArray(n)||(n=Object.values(n)),a[o]=n,console.log("[Search] ✅ Calling cb() with",n.length,"results for",e),s(n)}).catch(function(t){console.error("[Search] Async error for",e,":",t),s([])})},150)}};s.each(function(){var e=$(this);e.typeahead({hint:!1,minLength:1,classNames:{menu:"tt-menu navbar-search-suggestion",cursor:"active",suggestion:"suggestion d-flex justify-content-between px-3 py-2 w-100"}},{name:"contacts",display:"name",limit:10,source:l("members"),templates:{header:'<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',suggestion:function(e){if(console.log("[Contacts] Rendering suggestion:",e),!e||!e.name)return console.log("[Contacts] Invalid data:",e),"";var t=e.name||"",s=e.subtitle||"",o=e.url||"#";return console.log("[Contacts] Rendering:",t,s,o),'<a href="'+o+'"><div class="d-flex align-items-center"><i class="ti ti-user me-2"></i><div class="user-info"><h6 class="mb-0">'+t+'</h6><small class="text-muted">'+s+"</small></div></div></a>"},notFound:'<div class="not-found px-3 py-2"><h6 class="suggestions-header text-primary mb-2">Contactos</h6><p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p></div>'}},{name:"enterprises",display:"name",limit:4,source:l("enterprises"),templates:{header:'<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',suggestion:function(e){if(console.log("[Enterprises] Rendering suggestion:",e),!e||!e.name)return console.log("[Enterprises] Invalid data:",e),"";var t=e.name||"",s=e.subtitle||"",o=e.url||"#";return console.log("[Enterprises] Rendering:",t,s,o),'<a href="'+o+'"><div class="d-flex align-items-center"><i class="ti ti-building me-2"></i><div class="user-info"><h6 class="mb-0">'+t+'</h6><small class="text-muted">'+s+"</small></div></div></a>"},notFound:'<div class="not-found px-3 py-2"><h6 class="suggestions-header text-primary mb-2">Empresas</h6><p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p></div>'}},{name:"services",display:"name",limit:4,source:l("services"),templates:{header:'<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',suggestion:function({name:e,subtitle:t,url:s}){return'<a href="'+s+'"><div class="d-flex align-items-center"><i class="ti ti-world me-2"></i><div class="user-info"><h6 class="mb-0">'+e+'</h6><small class="text-muted">'+t+"</small></div></div></a>"},notFound:'<div class="not-found px-3 py-2"><h6 class="suggestions-header text-primary mb-2">Servicios</h6><p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Servicio no encontrado</p></div>'}},{name:"projects",display:"name",limit:4,source:l("projects"),templates:{header:'<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',suggestion:function({name:e,subtitle:t,url:s}){return'<a href="'+s+'"><div class="d-flex align-items-center"><i class="ti ti-folder me-2"></i><div class="user-info"><h6 class="mb-0">'+e+'</h6><small class="text-muted">'+t+"</small></div></div></a>"},notFound:'<div class="not-found px-3 py-2"><h6 class="suggestions-header text-primary mb-2">Proyectos</h6><p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p></div>'}},{name:"invoices",display:"name",limit:4,source:l("invoices"),templates:{header:'<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',suggestion:function({name:e,subtitle:t,url:s}){return'<a href="'+s+'"><div class="d-flex align-items-center"><i class="ti ti-file-invoice me-2"></i><div class="user-info"><h6 class="mb-0">'+e+'</h6><small class="text-muted">'+t+"</small></div></div></a>"},notFound:'<div class="not-found px-3 py-2"><h6 class="suggestions-header text-primary mb-2">Facturas</h6><p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p></div>'}}).bind("typeahead:render",function(){o.addClass("show").removeClass("fade")}).bind("typeahead:select",function(e,t){t.url&&"javascript:;"!==t.url&&(window.location=t.url)}).bind("typeahead:close",function(){s.val(""),e.typeahead("val",""),t.addClass("d-none"),o.addClass("fade").removeClass("show")}),s.on("keyup",function(){""==s.val()&&o.addClass("fade").removeClass("show")})}),$(".navbar-search-suggestion").each(function(){n=new PerfectScrollbar($(this)[0],{wheelPropagation:!1,suppressScrollX:!0})}),s.on("keyup",function(){n.update()})}});
+/**
+ * Main
+ */
+
+'use strict';
+
+let isRtl = window.Helpers.isRtl(),
+  isDarkStyle = window.Helpers.isDarkStyle(),
+  menu,
+  animate,
+  isHorizontalLayout = false;
+
+if (document.getElementById('layout-menu')) {
+  isHorizontalLayout = document.getElementById('layout-menu').classList.contains('menu-horizontal');
+}
+
+(function () {
+  setTimeout(function () {
+    window.Helpers.initCustomOptionCheck();
+  }, 1000);
+
+  if (typeof Waves !== 'undefined') {
+    Waves.init();
+    Waves.attach(".btn[class*='btn-']:not([class*='btn-outline-']):not([class*='btn-label-'])", ['waves-light']);
+    Waves.attach("[class*='btn-outline-']");
+    Waves.attach("[class*='btn-label-']");
+    Waves.attach('.pagination .page-item .page-link');
+  }
+
+  // Initialize menu
+  //-----------------
+
+  let layoutMenuEl = document.querySelectorAll('#layout-menu');
+  layoutMenuEl.forEach(function (element) {
+    menu = new Menu(element, {
+      orientation: isHorizontalLayout ? 'horizontal' : 'vertical',
+      closeChildren: isHorizontalLayout ? true : false,
+      // ? This option only works with Horizontal menu
+      showDropdownOnHover: localStorage.getItem('templateCustomizer-' + templateName + '--ShowDropdownOnHover') // If value(showDropdownOnHover) is set in local storage
+        ? localStorage.getItem('templateCustomizer-' + templateName + '--ShowDropdownOnHover') === 'true' // Use the local storage value
+        : window.templateCustomizer !== undefined // If value is set in config.js
+        ? window.templateCustomizer.settings.defaultShowDropdownOnHover // Use the config.js value
+        : true // Use this if you are not using the config.js and want to set value directly from here
+    });
+    // Change parameter to true if you want scroll animation
+    window.Helpers.scrollToActive((animate = false));
+    window.Helpers.mainMenu = menu;
+  });
+
+  // Initialize menu togglers and bind click on each
+  let menuToggler = document.querySelectorAll('.layout-menu-toggle');
+  menuToggler.forEach(item => {
+    item.addEventListener('click', event => {
+      event.preventDefault();
+      window.Helpers.toggleCollapsed();
+      // Enable menu state with local storage support if enableMenuLocalStorage = true from config.js
+      if (config.enableMenuLocalStorage && !window.Helpers.isSmallScreen()) {
+        try {
+          localStorage.setItem(
+            'templateCustomizer-' + templateName + '--LayoutCollapsed',
+            String(window.Helpers.isCollapsed())
+          );
+          // Update customizer checkbox state on click of menu toggler
+          let layoutCollapsedCustomizerOptions = document.querySelector('.template-customizer-layouts-options');
+          if (layoutCollapsedCustomizerOptions) {
+            let layoutCollapsedVal = window.Helpers.isCollapsed() ? 'collapsed' : 'expanded';
+            layoutCollapsedCustomizerOptions.querySelector(`input[value="${layoutCollapsedVal}"]`).click();
+          }
+        } catch (e) {}
+      }
+    });
+  });
+
+  // Menu swipe gesture
+
+  // Detect swipe gesture on the target element and call swipe In
+  window.Helpers.swipeIn('.drag-target', function (e) {
+    window.Helpers.setCollapsed(false);
+  });
+
+  // Detect swipe gesture on the target element and call swipe Out
+  window.Helpers.swipeOut('#layout-menu', function (e) {
+    if (window.Helpers.isSmallScreen()) window.Helpers.setCollapsed(true);
+  });
+
+  // Display in main menu when menu scrolls
+  let menuInnerContainer = document.getElementsByClassName('menu-inner'),
+    menuInnerShadow = document.getElementsByClassName('menu-inner-shadow')[0];
+  if (menuInnerContainer.length > 0 && menuInnerShadow) {
+    menuInnerContainer[0].addEventListener('ps-scroll-y', function () {
+      if (this.querySelector('.ps__thumb-y').offsetTop) {
+        menuInnerShadow.style.display = 'block';
+      } else {
+        menuInnerShadow.style.display = 'none';
+      }
+    });
+  }
+
+  // Update light/dark image based on current style
+  function switchImage(style) {
+    if (style === 'system') {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        style = 'dark';
+      } else {
+        style = 'light';
+      }
+    }
+    const switchImagesList = [].slice.call(document.querySelectorAll('[data-app-' + style + '-img]'));
+    switchImagesList.map(function (imageEl) {
+      const setImage = imageEl.getAttribute('data-app-' + style + '-img');
+      imageEl.src = assetsPath + 'img/' + setImage; // Using window.assetsPath to get the exact relative path
+    });
+  }
+
+  //Style Switcher (Light/Dark/System Mode)
+  let styleSwitcher = document.querySelector('.dropdown-style-switcher');
+
+  // Get style from local storage or use 'system' as default
+  let storedStyle =
+    localStorage.getItem('templateCustomizer-' + templateName + '--Style') || //if no template style then use Customizer style
+    (window.templateCustomizer?.settings?.defaultStyle ?? 'light'); //!if there is no Customizer then use default style as light
+
+  // Set style on click of style switcher item if template customizer is enabled
+  if (window.templateCustomizer && styleSwitcher) {
+    let styleSwitcherItems = [].slice.call(styleSwitcher.children[1].querySelectorAll('.dropdown-item'));
+    styleSwitcherItems.forEach(function (item) {
+      item.addEventListener('click', function () {
+        let currentStyle = this.getAttribute('data-theme');
+        if (currentStyle === 'light') {
+          window.templateCustomizer.setStyle('light');
+        } else if (currentStyle === 'dark') {
+          window.templateCustomizer.setStyle('dark');
+        } else {
+          window.templateCustomizer.setStyle('system');
+        }
+      });
+    });
+
+    // Update style switcher icon based on the stored style
+
+    const styleSwitcherIcon = styleSwitcher.querySelector('i');
+
+    if (storedStyle === 'light') {
+      styleSwitcherIcon.classList.add('ti-sun');
+      new bootstrap.Tooltip(styleSwitcherIcon, {
+        title: 'Light Mode',
+        fallbackPlacements: ['bottom']
+      });
+    } else if (storedStyle === 'dark') {
+      styleSwitcherIcon.classList.add('ti-moon');
+      new bootstrap.Tooltip(styleSwitcherIcon, {
+        title: 'Dark Mode',
+        fallbackPlacements: ['bottom']
+      });
+    } else {
+      styleSwitcherIcon.classList.add('ti-device-desktop');
+      new bootstrap.Tooltip(styleSwitcherIcon, {
+        title: 'System Mode',
+        fallbackPlacements: ['bottom']
+      });
+    }
+  }
+
+  // Run switchImage function based on the stored style
+  switchImage(storedStyle);
+
+  let languageDropdown = document.getElementsByClassName('dropdown-language');
+
+  if (languageDropdown.length) {
+    let dropdownItems = languageDropdown[0].querySelectorAll('.dropdown-item');
+    const dropdownActiveItem = languageDropdown[0].querySelector('.dropdown-item.active');
+
+    directionChange(dropdownActiveItem.dataset.textDirection);
+
+    for (let i = 0; i < dropdownItems.length; i++) {
+      dropdownItems[i].addEventListener('click', function () {
+        let textDirection = this.getAttribute('data-text-direction');
+        window.templateCustomizer.setLang(this.getAttribute('data-language'));
+        directionChange(textDirection);
+      });
+    }
+    function directionChange(textDirection) {
+      if (textDirection === 'rtl') {
+        if (localStorage.getItem('templateCustomizer-' + templateName + '--Rtl') !== 'true')
+          window.templateCustomizer ? window.templateCustomizer.setRtl(true) : '';
+      } else {
+        if (localStorage.getItem('templateCustomizer-' + templateName + '--Rtl') === 'true')
+          window.templateCustomizer ? window.templateCustomizer.setRtl(false) : '';
+      }
+    }
+  }
+
+  // add on click javascript for template customizer reset button id template-customizer-reset-btn
+
+  setTimeout(function () {
+    let templateCustomizerResetBtn = document.querySelector('.template-customizer-reset-btn');
+    if (templateCustomizerResetBtn) {
+      templateCustomizerResetBtn.onclick = function () {
+        window.location.href = baseUrl + 'lang/en';
+      };
+    }
+  }, 1500);
+
+  // Notification
+  // ------------
+  const notificationMarkAsReadAll = document.querySelector('.dropdown-notifications-all');
+  const notificationMarkAsReadList = document.querySelectorAll('.dropdown-notifications-read');
+
+  // Notification: Mark as all as read
+  if (notificationMarkAsReadAll) {
+    notificationMarkAsReadAll.addEventListener('click', event => {
+      notificationMarkAsReadList.forEach(item => {
+        item.closest('.dropdown-notifications-item').classList.add('marked-as-read');
+      });
+    });
+  }
+  // Notification: Mark as read/unread onclick of dot
+  if (notificationMarkAsReadList) {
+    notificationMarkAsReadList.forEach(item => {
+      item.addEventListener('click', event => {
+        item.closest('.dropdown-notifications-item').classList.toggle('marked-as-read');
+      });
+    });
+  }
+
+  // Notification: Mark as read/unread onclick of dot
+  const notificationArchiveMessageList = document.querySelectorAll('.dropdown-notifications-archive');
+  notificationArchiveMessageList.forEach(item => {
+    item.addEventListener('click', event => {
+      item.closest('.dropdown-notifications-item').remove();
+    });
+  });
+
+  // Init helpers & misc
+  // --------------------
+
+  // Init BS Tooltip
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
+  // Accordion active class
+  const accordionActiveFunction = function (e) {
+    if (e.type == 'show.bs.collapse' || e.type == 'show.bs.collapse') {
+      e.target.closest('.accordion-item').classList.add('active');
+    } else {
+      e.target.closest('.accordion-item').classList.remove('active');
+    }
+  };
+
+  const accordionTriggerList = [].slice.call(document.querySelectorAll('.accordion'));
+  const accordionList = accordionTriggerList.map(function (accordionTriggerEl) {
+    accordionTriggerEl.addEventListener('show.bs.collapse', accordionActiveFunction);
+    accordionTriggerEl.addEventListener('hide.bs.collapse', accordionActiveFunction);
+  });
+
+  // If layout is RTL add .dropdown-menu-end class to .dropdown-menu
+  // if (isRtl) {
+  //   Helpers._addClass('dropdown-menu-end', document.querySelectorAll('#layout-navbar .dropdown-menu'));
+  // }
+
+  // Auto update layout based on screen size
+  window.Helpers.setAutoUpdate(true);
+
+  // Toggle Password Visibility
+  window.Helpers.initPasswordToggle();
+
+  // Speech To Text
+  window.Helpers.initSpeechToText();
+
+  // Init PerfectScrollbar in Navbar Dropdown (i.e notification)
+  window.Helpers.initNavbarDropdownScrollbar();
+
+  let horizontalMenuTemplate = document.querySelector("[data-template^='horizontal-menu']");
+  if (horizontalMenuTemplate) {
+    // if screen size is small then set navbar fixed
+    if (window.innerWidth < window.Helpers.LAYOUT_BREAKPOINT) {
+      window.Helpers.setNavbarFixed('fixed');
+    } else {
+      window.Helpers.setNavbarFixed('');
+    }
+  }
+
+  // On window resize listener
+  // -------------------------
+  window.addEventListener(
+    'resize',
+    function (event) {
+      // Hide open search input and set value blank
+      if (window.innerWidth >= window.Helpers.LAYOUT_BREAKPOINT) {
+        if (document.querySelector('.search-input-wrapper')) {
+          document.querySelector('.search-input-wrapper').classList.add('d-none');
+          document.querySelector('.search-input').value = '';
+        }
+      }
+      // Horizontal Layout : Update menu based on window size
+      if (horizontalMenuTemplate) {
+        // if screen size is small then set navbar fixed
+        if (window.innerWidth < window.Helpers.LAYOUT_BREAKPOINT) {
+          window.Helpers.setNavbarFixed('fixed');
+        } else {
+          window.Helpers.setNavbarFixed('');
+        }
+        setTimeout(function () {
+          if (window.innerWidth < window.Helpers.LAYOUT_BREAKPOINT) {
+            if (document.getElementById('layout-menu')) {
+              if (document.getElementById('layout-menu').classList.contains('menu-horizontal')) {
+                menu.switchMenu('vertical');
+              }
+            }
+          } else {
+            if (document.getElementById('layout-menu')) {
+              if (document.getElementById('layout-menu').classList.contains('menu-vertical')) {
+                menu.switchMenu('horizontal');
+              }
+            }
+          }
+        }, 100);
+      }
+    },
+    true
+  );
+
+  // Manage menu expanded/collapsed with templateCustomizer & local storage
+  //------------------------------------------------------------------
+
+  // If current layout is horizontal OR current window screen is small (overlay menu) than return from here
+  if (isHorizontalLayout || window.Helpers.isSmallScreen()) {
+    return;
+  }
+
+  // If current layout is vertical and current window screen is > small
+
+  // Auto update menu collapsed/expanded based on the themeConfig
+  if (typeof TemplateCustomizer !== 'undefined') {
+    if (window.templateCustomizer.settings.defaultMenuCollapsed) {
+      window.Helpers.setCollapsed(true, false);
+    } else {
+      window.Helpers.setCollapsed(false, false);
+    }
+  }
+
+  // Manage menu expanded/collapsed state with local storage support If enableMenuLocalStorage = true in config.js
+  if (typeof config !== 'undefined') {
+    if (config.enableMenuLocalStorage) {
+      try {
+        if (localStorage.getItem('templateCustomizer-' + templateName + '--LayoutCollapsed') !== null)
+          window.Helpers.setCollapsed(
+            localStorage.getItem('templateCustomizer-' + templateName + '--LayoutCollapsed') === 'true',
+            false
+          );
+      } catch (e) {}
+    }
+  }
+})();
+
+// ! Removed following code if you do't wish to use jQuery. Remember that navbar search functionality will stop working on removal.
+if (typeof $ !== 'undefined') {
+  $(function () {
+    // ! TODO: Required to load after DOM is ready, did this now with jQuery ready.
+    window.Helpers.initSidebarToggle();
+    // Toggle Universal Sidebar
+
+    // Navbar Search - Now handled by Alpine.js component in navbar.blade.php
+    // Search functionality is implemented with Alpine.js for better performance and maintainability
+  });
+}
+
+// Second Contact Search implementation removed - using the first implementation above

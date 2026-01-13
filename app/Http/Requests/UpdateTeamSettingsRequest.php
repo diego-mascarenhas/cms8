@@ -37,6 +37,13 @@ class UpdateTeamSettingsRequest extends FormRequest
             'twilio.twilio_whatsapp_from' => 'nullable|string|max:255',
             // webhook URLs are readonly and not validated
 
+            // WooCommerce settings
+            'woocommerce.woocommerce_url' => 'nullable|url|max:255',
+            'woocommerce.woocommerce_consumer_key' => 'nullable|string|max:255',
+            'woocommerce.woocommerce_consumer_secret' => 'nullable|string|max:255',
+            'woocommerce.woocommerce_api_version' => 'nullable|string|in:wc/v1,wc/v2,wc/v3',
+            'woocommerce.woocommerce_verify_ssl' => 'nullable|in:0,1',
+
             // Email settings
             'email.mail_host' => 'nullable|string|max:255',
             'email.mail_port' => 'nullable|integer|between:1,65535',

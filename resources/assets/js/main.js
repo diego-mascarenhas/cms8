@@ -371,6 +371,13 @@ if (typeof $ !== 'undefined') {
       searchInput = $('.search-input'),
       contentBackdrop = $('.content-backdrop');
 
+    console.log('[INIT] Search elements found:', {
+      toggler: searchToggler.length,
+      wrapper: searchInputWrapper.length,
+      input: searchInput.length,
+      backdrop: contentBackdrop.length
+    });
+
     // Open search input on click of search icon
     if (searchToggler.length) {
       searchToggler.on('click', function () {
@@ -380,18 +387,21 @@ if (typeof $ !== 'undefined') {
         }
       });
     }
-    // Open search on 'CTRL+/' - Disabled for Livewire search
-    // $(document).on('keydown', function (event) {
-    //   let ctrlKey = event.ctrlKey,
-    //     slashKey = event.which === 191;
+    // Open search on 'CTRL+/' (or CMD+/ on Mac)
+    $(document).on('keydown', function (event) {
+      let ctrlKey = event.ctrlKey || event.metaKey,
+        slashKey = event.which === 191 || event.keyCode === 191;
 
-    //   if (ctrlKey && slashKey) {
-    //     if (searchInputWrapper.length) {
-    //       searchInputWrapper.toggleClass('d-none');
-    //       searchInput.focus();
-    //     }
-    //   }
-    // });
+      if (ctrlKey && slashKey) {
+        event.preventDefault();
+        if (searchInputWrapper.length) {
+          searchInputWrapper.removeClass('d-none');
+          setTimeout(function() {
+            searchInput.focus();
+          }, 10);
+        }
+      }
+    });
     // Note: Following code is required to update container class of typeahead dropdown width on focus of search input. setTimeout is required to allow time to initiate Typeahead UI.
     setTimeout(function () {
       var twitterTypeahead = $('.twitter-typeahead');
@@ -407,6 +417,9 @@ if (typeof $ !== 'undefined') {
     }, 10);
 
     if (searchInput.length) {
+      console.log('[INIT] Initializing Typeahead on search input');
+      console.log('[VERSION] Search JS Version: 2026-01-12-20:15-only-contacts-debug');
+
       // Filter config
       var filterConfig = function (data) {
         return function findMatches(q, cb) {
@@ -432,63 +445,89 @@ if (typeof $ !== 'undefined') {
       };
 
       // Modern async search with Promise and debouncing
-      var searchCache = {};
-      var searchTimeouts = {};
+      // Shared AJAX cache to avoid multiple requests for the same query
+      var searchAjaxCache = {
+        lastQuery: null,
+        lastResponse: null,
+        inflight: null,
+        listeners: []
+      };
 
+      // Fetch search response (shared among all datasets)
+      function fetchSearchResponse(query, onDone) {
+        // If we already have a response for this exact query, reuse it immediately
+        if (searchAjaxCache.lastQuery === query && searchAjaxCache.lastResponse) {
+          return onDone(searchAjaxCache.lastResponse);
+        }
+        // If there is a request in-flight for this query, attach as listener
+        if (searchAjaxCache.inflight && searchAjaxCache.lastQuery === query) {
+          searchAjaxCache.listeners.push(onDone);
+          return;
+        }
+        // Start a new request for this query
+        searchAjaxCache.lastQuery = query;
+        searchAjaxCache.listeners = [onDone];
+        searchAjaxCache.inflight = $.ajax({
+          url: baseUrl + 'contact/search',
+          dataType: 'json',
+          data: { q: query }
+        })
+          .done(function (response) {
+            searchAjaxCache.lastResponse = response;
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn(response); } catch (e) { console.error(e); } });
+          })
+          .fail(function (xhr, status, error) {
+            console.error('[Search] AJAX Error!', status, error);
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn({}); } catch (e) { console.error(e); } });
+          })
+          .always(function () {
+            searchAjaxCache.inflight = null;
+          });
+      }
+
+      // Dynamic search function - queries server on each keystroke
       var dynamicSearch = function (field) {
         return function findMatches(q, cb) {
-          console.log('[Search] Query:', q, 'Field:', field);
-
           if (!q || q.length < 1) {
-            console.log('[Search] Empty query, returning empty array');
             return cb([]);
           }
 
-          // Check cache first
-          var cacheKey = field + ':' + q.toLowerCase();
-          if (searchCache[cacheKey]) {
-            console.log('[Search] Cache hit for:', cacheKey);
-            return cb(searchCache[cacheKey]);
-          }
-
-          // Clear previous timeout for this field
-          if (searchTimeouts[field]) {
-            clearTimeout(searchTimeouts[field]);
-          }
-
-          // Debounce search requests per field
-          searchTimeouts[field] = setTimeout(function() {
-            console.log('[Search] Making async AJAX request for:', field, q);
-
-            // Use Promise-based approach
-            fetch('/contact/search?q=' + encodeURIComponent(q))
-              .then(function(response) {
-                if (!response.ok) {
-                  throw new Error('Network response was not ok');
-                }
-                return response.json();
-              })
-              .then(function(data) {
-                console.log('[Search] Async response for', field, ':', data);
-
-                var results = data[field] || [];
-                if (typeof results === 'object' && !Array.isArray(results)) {
-                  results = Object.values(results);
-                }
-
-                // Cache the results
-                searchCache[cacheKey] = results;
-
-                console.log('[Search] ✅ Calling cb() with', results.length, 'results for', field);
-                cb(results);
-              })
-              .catch(function(error) {
-                console.error('[Search] Async error for', field, ':', error);
-                cb([]);
-              });
-          }, 150); // 150ms debounce per field
+          fetchSearchResponse(q, function (response) {
+            var results = response[field] || [];
+            if (typeof results === 'object' && !Array.isArray(results)) {
+              results = Object.values(results);
+            }
+            // Force array and ensure each item has required properties
+            if (!Array.isArray(results)) {
+              results = [];
+            }
+            cb(results);
+          });
         };
       };
+
+      // Special handler for contacts to use members data
+      var contactsSearch = function (q, cb) {
+        if (!q || q.length < 1) {
+          return cb([]);
+        }
+        fetchSearchResponse(q, function (response) {
+          // Use members data for contacts
+          var results = response['members'] || [];
+          if (typeof results === 'object' && !Array.isArray(results)) {
+            results = Object.values(results);
+          }
+          if (!Array.isArray(results)) {
+            results = [];
+          }
+          cb(results);
+        });
+      };
+
 
       // Init typeahead on searchInput
       searchInput.each(function () {
@@ -514,15 +553,10 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  console.log('[Contacts] Rendering suggestion:', data);
-                  if (!data || !data.name) {
-                    console.log('[Contacts] Invalid data:', data);
-                    return '';
-                  }
+                  if (!data || !data.name) return '';
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
-                  console.log('[Contacts] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
                     url + '">' +
@@ -546,151 +580,148 @@ if (typeof $ !== 'undefined') {
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
                   '</div>'
               }
-            },
-            // Enterprises
-            {
-              name: 'enterprises',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('enterprises'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
-                suggestion: function (data) {
-                  console.log('[Enterprises] Rendering suggestion:', data);
-                  if (!data || !data.name) {
-                    console.log('[Enterprises] Invalid data:', data);
-                    return '';
-                  }
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
-                  console.log('[Enterprises] Rendering:', name, subtitle, url);
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-building me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Empresas</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p>' +
-                  '</div>'
-              }
-            },
-            // Services
-            {
-              name: 'services',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('services'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-world me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Servicios</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Servicio no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // Projects
-            {
-              name: 'projects',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('projects'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-folder me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Proyectos</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // Invoices
-            {
-              name: 'invoices',
-              display: 'name',
-              limit: 4,
-              source: dynamicSearch('invoices'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
-                suggestion: function ({ name, subtitle, url }) {
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-file-invoice me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
-                  '</div>'
-              }
             }
+            // COMMENTED OUT FOR DEBUGGING - Only contacts dataset active
+            // // Enterprises
+            // {
+            //   name: 'enterprises',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('enterprises'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
+            //     suggestion: function (data) {
+            //       if (!data || !data.name) return '';
+            //       var name = data.name || '';
+            //       var subtitle = data.subtitle || '';
+            //       var url = data.url || '#';
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-building me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Empresas</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Services
+            // {
+            //   name: 'services',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('services'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-world me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Servicios</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Servicio no encontrado</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Projects
+            // {
+            //   name: 'projects',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('projects'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-folder me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Proyectos</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Invoices
+            // {
+            //   name: 'invoices',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: dynamicSearch('invoices'),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
+            //     suggestion: function ({ name, subtitle, url }) {
+            //       return (
+            //         '<a href="' +
+            //         url + '">' +
+            //         '<div class="d-flex align-items-center">' +
+            //         '<i class="ti ti-file-invoice me-2"></i>' +
+            //         '<div class="user-info">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
+            //       '</div>'
+            //   }
+            // }
           )
           //On typeahead result render.
-          .bind('typeahead:render', function () {
+          .bind('typeahead:render', function (ev, suggestions, async, dataset) {
+            console.log('[Typeahead] Render event:', {dataset, suggestions, async});
             // Show content backdrop,
             contentBackdrop.addClass('show').removeClass('fade');
           })

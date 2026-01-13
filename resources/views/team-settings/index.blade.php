@@ -124,6 +124,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-brand-wordpress mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">WooCommerce Integration</h5>
+                            <p class="card-text">Configure WooCommerce REST API settings for store synchronization</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'woocommerce']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

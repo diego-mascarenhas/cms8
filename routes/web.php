@@ -33,10 +33,12 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
@@ -431,9 +433,27 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
     Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
     Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
-    Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
+	Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
-    // Invoice & Payment Routes
+	// Product Routes
+	Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
+	Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
+	Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
+	Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
+	Route::post('/product', [ProductController::class, 'store'])->name('product.store');
+	Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
+	Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+	// Order Routes
+	Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
+	Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
+	Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
+	Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
+	Route::post('/order', [OrderController::class, 'store'])->name('order.store');
+	Route::put('/order/{id}', [OrderController::class, 'update'])->name('order.update');
+	Route::delete('/order/{id}', [OrderController::class, 'destroy'])->name('order.destroy');
+
+	// Invoice & Payment Routes
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
