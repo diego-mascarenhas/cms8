@@ -864,6 +864,26 @@ function globalSearch() {
                     });
                 }
             });
+
+            // Setup click outside handler to close search
+            const handleClickOutside = (e) => {
+                if (this.isHidden) return; // Search is already closed
+
+                const searchWrapper = this.$el?.querySelector('.search-input-wrapper');
+                const resultsContainer = this.$el?.querySelector('.tt-menu.navbar-search-suggestion');
+                const searchToggler = this.$el?.querySelector('.search-toggler:not(.search-input-wrapper .search-toggler)');
+
+                // Check if click is outside search area
+                const clickedInsideSearch = searchWrapper?.contains(e.target) ||
+                                          resultsContainer?.contains(e.target) ||
+                                          searchToggler?.contains(e.target);
+
+                if (!clickedInsideSearch) {
+                    this.close();
+                }
+            };
+
+            document.addEventListener('mousedown', handleClickOutside);
         },
 
         get hasResults() {
