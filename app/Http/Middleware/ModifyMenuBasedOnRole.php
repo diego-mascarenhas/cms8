@@ -30,6 +30,12 @@ class ModifyMenuBasedOnRole
                 return $next($request);
             }
 
+            // Eager load currentTeam with modules to avoid N+1 queries
+            if (! $user->relationLoaded('currentTeam'))
+            {
+                $user->load('currentTeam.modules');
+            }
+
             // Resolve team safely; if user has no current team, try first attached team
             $team = $user->currentTeam;
             if (! $team)

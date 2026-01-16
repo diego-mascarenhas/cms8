@@ -336,6 +336,42 @@ class CategoryController extends Controller
     }
 
     /**
+     * Quick store category from select2 (AJAX)
+     */
+    public function quickStore(Request $request)
+    {
+        $team = Auth::user()->currentTeam;
+
+        $request->validate([
+            'name' => 'required|string|min:2|max:255',
+            'module_key' => 'nullable|string',
+        ]);
+
+        // Get module if module_key is provided
+        $module = null;
+        if ($request->module_key) {
+            $module = Module::where('key', $request->module_key)->first();
+        }
+
+        $category = Category::create([
+            'name' => $request->name,
+            'module_id' => $module ? $module->id : null,
+            'parent_id' => null, // Quick create as parent category
+            'order' => 0,
+            'status' => 1,
+            'team_id' => $team->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ],
+        ]);
+    }
+
+    /**
      * Count how many items are using this category.
      */
     private function getCategoryUsageCount($category)

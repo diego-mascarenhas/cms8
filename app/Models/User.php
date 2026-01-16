@@ -27,8 +27,10 @@ class User extends Authenticatable
      * The relationships that should always be loaded.
      *
      * @var array
+     * Note: currentTeam is not included here as it's an accessor from Jetstream,
+     * not a direct relationship. It should be loaded explicitly where needed.
      */
-    protected $with = ['currentTeam.modules', 'roles', 'teams'];
+    protected $with = ['roles', 'teams'];
 
     /**
      * The attributes that should be mutated to dates.
