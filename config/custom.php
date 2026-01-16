@@ -31,7 +31,7 @@ return [
             'layoutNavbarOptions',
             'themes',
         ], // To show/hide customizer options
-        'showRegister' => false,
+        'showRegister' => true, // options[Boolean]: false(default), true // Show or hide register button on login page
         // REVIEW - TeamManager true/false
         'TeamManager' => false,
         'animateLogo' => true, // options[Boolean]: true(default), false // To enable or disable logo animation
