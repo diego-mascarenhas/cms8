@@ -16,6 +16,16 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
 
       <div class="menu-inner-shadow"></div>
 
+      <!-- Logo/Brand at top of sidebar -->
+      <div class="navbar-brand app-brand demo d-flex py-3 px-4 border-bottom">
+        <a href="{{ url('/') }}" class="app-brand-link gap-2">
+          <span class="app-brand-logo demo">
+            @include('_partials.macros', ['height' => 20])
+          </span>
+          <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
+        </a>
+      </div>
+
       <!-- Help Navigation Menu -->
       <ul class="menu-inner py-1">
         <li class="menu-header small text-uppercase">
@@ -77,17 +87,10 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
     <!-- Layout page -->
     <div class="layout-page">
 
-      <!-- Minimal Header with Logo Only - Responsive -->
+      <!-- Minimal Header - Logo moved to sidebar -->
       <nav class="layout-navbar navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
         <div class="container-fluid">
-          <div class="navbar-brand app-brand demo d-flex py-0 py-lg-2 me-4">
-            <a href="{{ url('/') }}" class="app-brand-link gap-2">
-              <span class="app-brand-logo demo">
-                @include('_partials.macros', ['height' => 20])
-              </span>
-              <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
-            </a>
-          </div>
+          <!-- Logo moved to sidebar -->
         </div>
       </nav>
 
