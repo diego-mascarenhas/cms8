@@ -9,40 +9,109 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
 @extends('layouts/commonMaster' )
 
 <div class="layout-wrapper layout-content-navbar">
-    <div class="layout-container">
+  <div class="layout-container">
 
-        <!-- Layout page -->
-        <div class="layout-page">
+    <!-- Documentation Sidebar Menu - Full Height -->
+    <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
 
-            <!-- Minimal Header with Logo Only -->
-            <nav class="layout-navbar navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
-                <div class="container-fluid">
-                    <div class="navbar-brand app-brand demo d-flex py-0 py-lg-2 me-4">
-                        <a href="{{ url('/') }}" class="app-brand-link gap-2">
-                            <span class="app-brand-logo demo">
-                                @include('_partials.macros', ['height' => 20])
-                            </span>
-                            <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
+      <div class="menu-inner-shadow"></div>
 
-            <!-- Content wrapper -->
-            <div class="content-wrapper">
+      <!-- Help Navigation Menu -->
+      <ul class="menu-inner py-1">
+        <li class="menu-header small text-uppercase">
+          <span class="menu-header-text">{{ __('Documentation') }}</span>
+        </li>
 
-                <!-- Content -->
-                <div class="{{ $container }} flex-grow-1 container-p-y">
-                    @yield('content')
-                </div>
-                <!-- / Content -->
+        <li class="menu-item {{ request()->routeIs('help.index') ? 'active' : '' }}">
+          <a href="{{ route('help.index') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-home"></i>
+            <div>{{ __('Introduction') }}</div>
+          </a>
+        </li>
 
-                <div class="content-backdrop fade"></div>
-            </div>
-            <!-- / Content wrapper -->
+        <li class="menu-item {{ request()->routeIs('help.usage') ? 'active' : '' }}">
+          <a href="{{ route('help.usage') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-book"></i>
+            <div>{{ __('How to Use') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-header small text-uppercase">
+          <span class="menu-header-text">{{ __('Modules') }}</span>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.contacts') ? 'active' : '' }}">
+          <a href="{{ route('help.contacts') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-users"></i>
+            <div>{{ __('Contact Management') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-header small text-uppercase">
+          <span class="menu-header-text">{{ __('API Documentation') }}</span>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api') ? 'active' : '' }}">
+          <a href="{{ route('help.api') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-api"></i>
+            <div>{{ __('API Overview') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.authentication') ? 'active' : '' }}">
+          <a href="{{ route('help.api.authentication') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-key"></i>
+            <div>{{ __('Authentication') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.contacts') ? 'active' : '' }}">
+          <a href="{{ route('help.api.contacts') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-users"></i>
+            <div>{{ __('Contacts API') }}</div>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Layout page -->
+    <div class="layout-page">
+
+      <!-- Minimal Header with Logo Only - Responsive -->
+      <nav class="layout-navbar navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
+        <div class="container-fluid">
+          <div class="navbar-brand app-brand demo d-flex py-0 py-lg-2 me-4">
+            <a href="{{ url('/') }}" class="app-brand-link gap-2">
+              <span class="app-brand-logo demo">
+                @include('_partials.macros', ['height' => 20])
+              </span>
+              <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
+            </a>
+          </div>
         </div>
-        <!-- / Layout page -->
+      </nav>
+
+      <!-- Content wrapper -->
+      <div class="content-wrapper">
+
+        <!-- Content -->
+        <div class="container-fluid flex-grow-1 py-3">
+          @yield('content')
+        </div>
+        <!-- / Content -->
+
+        <div class="content-backdrop fade"></div>
+      </div>
+      <!-- / Content wrapper -->
     </div>
+    <!-- / Layout page -->
+  </div>
+
+  <!-- Overlay -->
+  <div class="layout-overlay layout-menu-toggle"></div>
+
+  <!-- Drag Target Area To SlideIn Menu On Small Screens -->
+  <div class="drag-target"></div>
 </div>
 <!-- / Layout wrapper -->
 

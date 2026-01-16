@@ -11,55 +11,9 @@
 @endsection
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-    <div class="row">
-        <!-- Sidebar Navigation -->
-        <div class="col-xl-3 col-lg-4 col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">{{ __('Documentation') }}</h5>
-                </div>
-                <div class="card-body">
-                    <nav class="nav flex-column">
-                        <a class="nav-link" href="{{ route('help.index') }}">
-                            <i class="ti ti-home me-2"></i>
-                            {{ __('Introduction') }}
-                        </a>
-                        <a class="nav-link" href="{{ route('help.usage') }}">
-                            <i class="ti ti-book me-2"></i>
-                            {{ __('How to Use') }}
-                        </a>
-
-                        <div class="nav-divider my-2"></div>
-                        <h6 class="text-muted mb-2">{{ __('Modules') }}</h6>
-
-                        <a class="nav-link" href="{{ route('help.contacts') }}">
-                            <i class="ti ti-users me-2"></i>
-                            {{ __('Contact Management') }}
-                        </a>
-
-                        <div class="nav-divider my-2"></div>
-                        <h6 class="text-muted mb-2">{{ __('API Documentation') }}</h6>
-
-                        <a class="nav-link" href="{{ route('help.api') }}">
-                            <i class="ti ti-api me-2"></i>
-                            {{ __('API Overview') }}
-                        </a>
-                        <a class="nav-link" href="{{ route('help.api.authentication') }}">
-                            <i class="ti ti-key me-2"></i>
-                            {{ __('Authentication') }}
-                        </a>
-                        <a class="nav-link active" href="{{ route('help.api.contacts') }}">
-                            <i class="ti ti-users me-2"></i>
-                            {{ __('Contacts API') }}
-                        </a>
-                    </nav>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="col-xl-9 col-lg-8 col-md-8">
+<div class="row">
+    <!-- Main Content - Full Width since sidebar is in layout -->
+    <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h4 class="card-title mb-0">{{ __('Contacts API Reference') }}</h4>
@@ -124,16 +78,13 @@
                                     </table>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                            <div class="code-block-container">
-                                <pre><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts?page=1&per_page=10&search=john" \
+                            <pre class="docs-code"><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts?page=1&per_page=10&search=john" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Accept: application/json"</code></pre>
-                                    </div>
                             </div>
 
                                     <h6>{{ __('Response') }}</h6>
-                                    <div class="code-block-container">
-                                        <pre><code class="language-json">{
+                                    <pre class="docs-code"><code class="language-json">{
   "data": [
     {
       "id": 1,
@@ -156,7 +107,6 @@
     "last_page": 3
   }
 }</code></pre>
-                                    </div>
                             </div>
 
                             <!-- Get Single Contact -->
@@ -172,11 +122,9 @@
                                     <p>{{ __('Retrieve a single contact by ID.') }}</p>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                            <div class="code-block-container">
-                                <pre><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts/1" \
+                            <pre class="docs-code"><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts/1" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Accept: application/json"</code></pre>
-                                    </div>
                             </div>
                                 </div>
                             </div>
@@ -238,8 +186,7 @@
                                     </table>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                            <div class="code-block-container">
-                                <pre><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/contacts" \
+                            <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/contacts" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
@@ -266,8 +213,7 @@
                                     <p>{{ __('Update an existing contact. Only include fields you want to update.') }}</p>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                                    <div class="code-block-container">
-                                        <pre><code class="language-bash">curl -X PUT "{{ url('/') }}/api/team/contacts/1" \
+                                    <pre class="docs-code"><code class="language-bash">curl -X PUT "{{ url('/') }}/api/team/contacts/1" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
@@ -291,11 +237,9 @@
                                     <p>{{ __('Delete a contact. This action cannot be undone.') }}</p>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                                    <div class="code-block-container">
-                                        <pre><code class="language-bash">curl -X DELETE "{{ url('/') }}/api/team/contacts/1" \
+                                    <pre class="docs-code"><code class="language-bash">curl -X DELETE "{{ url('/') }}/api/team/contacts/1" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Accept: application/json"</code></pre>
-                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -336,11 +280,9 @@
                                     </table>
 
                                     <h6>{{ __('Example Request') }}</h6>
-                                    <div class="code-block-container">
-                                        <pre><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts/search?q=john&limit=5" \
+                                    <pre class="docs-code"><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contacts/search?q=john&limit=5" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Accept: application/json"</code></pre>
-                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -364,9 +306,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
     </div>
-</div>
 @endsection

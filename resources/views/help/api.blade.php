@@ -11,55 +11,9 @@
 @endsection
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-    <div class="row">
-        <!-- Sidebar Navigation -->
-        <div class="col-xl-3 col-lg-4 col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">{{ __('Documentation') }}</h5>
-                </div>
-                <div class="card-body">
-                    <nav class="nav flex-column">
-                        <a class="nav-link" href="{{ route('help.index') }}">
-                            <i class="ti ti-home me-2"></i>
-                            {{ __('Introduction') }}
-                        </a>
-                        <a class="nav-link" href="{{ route('help.usage') }}">
-                            <i class="ti ti-book me-2"></i>
-                            {{ __('How to Use') }}
-                        </a>
-
-                        <div class="nav-divider my-2"></div>
-                        <h6 class="text-muted mb-2">{{ __('Modules') }}</h6>
-
-                        <a class="nav-link" href="{{ route('help.contacts') }}">
-                            <i class="ti ti-users me-2"></i>
-                            {{ __('Contact Management') }}
-                        </a>
-
-                        <div class="nav-divider my-2"></div>
-                        <h6 class="text-muted mb-2">{{ __('API Documentation') }}</h6>
-
-                        <a class="nav-link active" href="{{ route('help.api') }}">
-                            <i class="ti ti-api me-2"></i>
-                            {{ __('API Overview') }}
-                        </a>
-                        <a class="nav-link" href="{{ route('help.api.authentication') }}">
-                            <i class="ti ti-key me-2"></i>
-                            {{ __('Authentication') }}
-                        </a>
-                        <a class="nav-link" href="{{ route('help.api.contacts') }}">
-                            <i class="ti ti-users me-2"></i>
-                            {{ __('Contacts API') }}
-                        </a>
-                    </nav>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="col-xl-9 col-lg-8 col-md-8">
+<div class="row">
+    <!-- Main Content - Full Width since sidebar is in layout -->
+    <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h4 class="card-title mb-0">{{ __('API Documentation Overview') }}</h4>
@@ -209,9 +163,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
     </div>
-</div>
 @endsection
