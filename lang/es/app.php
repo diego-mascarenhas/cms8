@@ -49,6 +49,7 @@ return [
     'profile' => [
         'my_profile' => 'Mi Perfil',
         'api_tokens' => 'Tokens API',
+        'help_documentation' => 'Ayuda y Documentación',
         'team' => [
             'manage' => 'Gestionar Equipo',
             'variables' => 'Variables de Entorno',

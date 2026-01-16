@@ -478,7 +478,7 @@
                 <li>
                     <a class="dropdown-item" href="{{ route('help.index') }}" target="_blank">
                         <i class="ti ti-help me-2 ti-sm"></i>
-                        <span class="align-middle">{{ __('Help & Documentation') }}</span>
+                        <span class="align-middle">{{ __('app.profile.help_documentation') }}</span>
                     </a>
                 </li>
 
