@@ -137,6 +137,7 @@ class ContactController extends Controller
             'enterprises',  // relación correcta
             'currentEnterprise',
             'user.roles',
+            'user.currentTeam.settings',
         ])->findOrFail($id);
 
         $this->authorize('view', $data);
@@ -512,7 +513,7 @@ class ContactController extends Controller
      */
     public function update(UpdateContactRequest $request, $id)
     {
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $this->authorize('update', $contact);
 
         $data = $request->validated();
@@ -523,7 +524,7 @@ class ContactController extends Controller
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ? (int) $request->phone : null;
 
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $contact->update($contactData);
 
         // Sync enterprise relationship (many-to-many)
@@ -1537,8 +1538,8 @@ class ContactController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $contact = Contact::findOrFail($id);
-        $user = \App\Models\User::findOrFail($request->user_id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
+        $user = \App\Models\User::with(['roles', 'teams', 'currentTeam.settings'])->findOrFail($request->user_id);
 
         // Check if user belongs to the same team
         if (! $user->teams->contains(auth()->user()->currentTeam->id))
@@ -1676,8 +1677,8 @@ class ContactController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $contact = Contact::findOrFail($id);
-        $user = \App\Models\User::findOrFail($request->user_id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
+        $user = \App\Models\User::with(['roles', 'teams', 'currentTeam.settings'])->findOrFail($request->user_id);
 
         // Check if user belongs to the same team
         if (! $user->teams->contains(auth()->user()->currentTeam->id))

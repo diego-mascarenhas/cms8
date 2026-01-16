@@ -30,10 +30,28 @@ class ModifyMenuBasedOnRole
                 return $next($request);
             }
 
-            // Eager load currentTeam with modules to avoid N+1 queries
+            // Eager load user relationships to avoid N+1 queries
+            $relationsToLoad = [];
+            
             if (! $user->relationLoaded('currentTeam'))
             {
-                $user->load('currentTeam.modules');
+                $relationsToLoad[] = 'currentTeam.modules';
+                $relationsToLoad[] = 'currentTeam.settings';
+            }
+            
+            if (! $user->relationLoaded('roles'))
+            {
+                $relationsToLoad[] = 'roles';
+            }
+            
+            if (! $user->relationLoaded('teams'))
+            {
+                $relationsToLoad[] = 'teams';
+            }
+            
+            if (! empty($relationsToLoad))
+            {
+                $user->load($relationsToLoad);
             }
 
             // Resolve team safely; if user has no current team, try first attached team
