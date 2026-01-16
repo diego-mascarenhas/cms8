@@ -342,7 +342,7 @@ class ManageContactDataCommand extends Command
             $contactId = $this->ask('Enter contact ID to validate data');
         }
 
-        $contact = Contact::with('user')->find($contactId);
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->find($contactId);
 
         if (! $contact)
         {

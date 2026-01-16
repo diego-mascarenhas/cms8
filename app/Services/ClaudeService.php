@@ -289,10 +289,11 @@ class ClaudeService
                 }
 
                 // Try looking in contacts directly
-                $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($cleanNumber)
-                {
-                    $query->where('source_id', 2)->where('value', 'like', '%'.$cleanNumber.'%');
-                })->first();
+                $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                    ->whereHas('sources', function ($query) use ($cleanNumber)
+                    {
+                        $query->where('source_id', 2)->where('value', 'like', '%'.$cleanNumber.'%');
+                    })->first();
 
                 if ($contact)
                 {
@@ -358,16 +359,18 @@ class ClaudeService
             if ($user)
             {
                 // Get associated contact info
-                $contact = \App\Models\Contact::where('user_id', $user->id)->first();
+                $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                    ->where('user_id', $user->id)->first();
                 Log::info('Contact lookup result', ['found' => (bool) $contact, 'user_id' => $user->id]);
 
                 if (! $contact)
                 {
                     // Try a different approach - maybe the phone number is stored directly on the contact
-                    $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($phoneNumber)
-                    {
-                        $query->where('source_id', 2)->where('value', 'like', '%'.$phoneNumber.'%');
-                    })->first();
+                    $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                        ->whereHas('sources', function ($query) use ($phoneNumber)
+                        {
+                            $query->where('source_id', 2)->where('value', 'like', '%'.$phoneNumber.'%');
+                        })->first();
 
                     Log::info('Alternative contact lookup result', ['found' => (bool) $contact]);
                 }
@@ -386,17 +389,19 @@ class ClaudeService
             if ($user)
             {
                 Log::info('Found user with known phone', ['user_id' => $user->id]);
-                $contact = \App\Models\Contact::where('user_id', $user->id)->first();
+                $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                    ->where('user_id', $user->id)->first();
                 Log::info('Found contact from known phone user', ['found' => (bool) $contact]);
             }
 
             // If still no contact, try the phone number in the contacts' sources
             if (! $contact)
             {
-                $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($knownClientPhone)
-                {
-                    $query->where('source_id', 2)->where('value', 'like', '%'.$knownClientPhone.'%');
-                })->first();
+                $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                    ->whereHas('sources', function ($query) use ($knownClientPhone)
+                    {
+                        $query->where('source_id', 2)->where('value', 'like', '%'.$knownClientPhone.'%');
+                    })->first();
                 Log::info('Contact lookup by known phone in sources', ['found' => (bool) $contact]);
             }
 
@@ -404,7 +409,7 @@ class ClaudeService
             if (! $contact)
             {
                 Log::info('Looking up hardcoded contact 300550 as final fallback');
-                $contact = \App\Models\Contact::find(300550);
+                $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->find(300550);
                 Log::info('Hardcoded contact lookup result', ['found' => (bool) $contact]);
             }
 

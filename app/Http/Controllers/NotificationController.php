@@ -24,7 +24,7 @@ class NotificationController extends Controller
      */
     public function create()
     {
-        $contacts = Contact::orderBy('name')->get();
+        $contacts = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->orderBy('name')->get();
         $types = NotificationType::getActiveOptions();
 
         return view('notification.create', compact('contacts', 'types'));
@@ -86,7 +86,7 @@ class NotificationController extends Controller
                 ->with('error', 'No se puede editar una notificación que ya ha sido enviada');
         }
 
-        $contacts = Contact::orderBy('name')->get();
+        $contacts = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->orderBy('name')->get();
         $types = NotificationType::getActiveOptions();
 
         return view('notification.edit', compact('notification', 'contacts', 'types'));
@@ -204,7 +204,7 @@ class NotificationController extends Controller
         ]);
 
         $type = NotificationType::findOrFail($request->type_id);
-        $contact = $request->contact_id ? Contact::find($request->contact_id) : null;
+        $contact = $request->contact_id ? Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->find($request->contact_id) : null;
 
         // Prepare placeholder data
         $placeholders = [
@@ -280,7 +280,7 @@ class NotificationController extends Controller
             'subject' => 'nullable|string|max:255',
         ]);
 
-        $contact = Contact::findOrFail($contactId);
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->findOrFail($contactId);
 
         // Use General Message type if not specified
         $typeId = $request->type_id ?? NotificationType::where('name', 'General Message')->first()?->id ?? 3;

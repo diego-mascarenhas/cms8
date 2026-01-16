@@ -681,7 +681,8 @@ class CollaboratorController extends Controller
         }
 
         // Check if user is already linked to another contact
-        $existingContact = Contact::where('user_id', $user->id)->first();
+        $existingContact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', $user->id)->first();
         if ($existingContact && $existingContact->id !== $collaborator->id)
         {
             return response()->json([

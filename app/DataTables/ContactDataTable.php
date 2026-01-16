@@ -127,6 +127,7 @@ class ContactDataTable extends DataTable
                 'responsible:id,name',
                 'categories',
                 'user.roles',
+                'user.teams',
                 'user.currentTeam.settings',
             ]);
 

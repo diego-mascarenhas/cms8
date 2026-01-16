@@ -36,7 +36,8 @@ class ProfileUpdateController extends Controller
         }
 
         // Get the collaborator's contact record
-        $contact = Contact::where('user_id', Auth::id())->first();
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', Auth::id())->first();
 
         if (! $contact)
         {
@@ -251,7 +252,8 @@ class ProfileUpdateController extends Controller
         }
 
         // Get the collaborator's contact record
-        $contact = Contact::where('user_id', Auth::id())->first();
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', Auth::id())->first();
 
         if (! $contact)
         {
@@ -591,7 +593,8 @@ class ProfileUpdateController extends Controller
         [$sourceCode, $targetCode] = $parts;
 
         // Get the collaborator's contact record
-        $contact = Contact::where('user_id', Auth::id())->first();
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', Auth::id())->first();
 
         if (! $contact)
         {

@@ -180,12 +180,13 @@ class TwilioService
         }
 
         // If no user found directly, try to find through contact relationship
-        $contact = Contact::whereHas('sources', function ($query) use ($cleanNumber)
-        {
-            $query
-                ->where('source_id', 2)  // Phone source
-                ->where('value', $cleanNumber);
-        })->first();
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->whereHas('sources', function ($query) use ($cleanNumber)
+            {
+                $query
+                    ->where('source_id', 2)  // Phone source
+                    ->where('value', $cleanNumber);
+            })->first();
 
         if ($contact && $contact->user)
         {

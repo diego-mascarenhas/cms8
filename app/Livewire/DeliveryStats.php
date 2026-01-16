@@ -32,12 +32,16 @@ class DeliveryStats extends Component
     public function mount($messageId)
     {
         $this->messageId = $messageId;
-        $this->message = \App\Models\Message::find($messageId);
+        $this->message = \App\Models\Message::with(['deliveries', 'team.settings'])->find($messageId);
         $this->loadStats();
         $this->checkForCriticalErrors();
 
         // Check if team is using system SMTP
         $team = auth()->user()->currentTeam;
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
         $this->isUsingSystemSmtp = $team ? $team->isUsingSystemSmtp() : false;
 
         // Calculate potential subscribers on mount
@@ -72,7 +76,7 @@ class DeliveryStats extends Component
 
     private function updateRealTimeStats()
     {
-        $message = \App\Models\Message::with('deliveries')->find($this->messageId);
+        $message = \App\Models\Message::with(['deliveries', 'team.settings'])->find($this->messageId);
 
         if (! $message)
         {
@@ -150,7 +154,7 @@ class DeliveryStats extends Component
 
     private function getPotentialSubscribersCount(): int
     {
-        $message = \App\Models\Message::find($this->messageId);
+        $message = \App\Models\Message::with(['deliveries', 'team.settings'])->find($this->messageId);
 
         if (! $message)
         {
@@ -202,7 +206,7 @@ class DeliveryStats extends Component
 
     private function loadPotentialSubscribers()
     {
-        $message = \App\Models\Message::with('category', 'contactStatus')->find($this->messageId);
+        $message = \App\Models\Message::with(['category', 'contactStatus', 'deliveries', 'team.settings'])->find($this->messageId);
 
         if (! $message)
         {

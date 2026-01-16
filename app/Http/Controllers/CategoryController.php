@@ -16,6 +16,10 @@ class CategoryController extends Controller
     {
         // Get current team
         $team = Auth::user()->currentTeam;
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
 
         // Get module filter if set
         $moduleId = $request->get('module_id');
@@ -51,6 +55,10 @@ class CategoryController extends Controller
     {
         // Get current team
         $team = Auth::user()->currentTeam;
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
 
         // Get parent_id if this is a subcategory
         $parentId = $request->get('parent_id');

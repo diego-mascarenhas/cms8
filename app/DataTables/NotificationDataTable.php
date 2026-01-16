@@ -60,7 +60,7 @@ class NotificationDataTable extends DataTable
     public function query(Notification $model): QueryBuilder
     {
         $query = $model->newQuery()
-            ->with(['contact', 'type', 'user'])
+            ->with(['contact.user.roles', 'contact.user.teams', 'contact.user.currentTeam.settings', 'type', 'user'])
             ->orderBy('created_at', 'desc');
 
         // Apply filters
