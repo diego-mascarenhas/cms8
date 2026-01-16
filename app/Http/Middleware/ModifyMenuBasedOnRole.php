@@ -32,23 +32,23 @@ class ModifyMenuBasedOnRole
 
             // Eager load user relationships to avoid N+1 queries
             $relationsToLoad = [];
-            
+
             if (! $user->relationLoaded('currentTeam'))
             {
                 $relationsToLoad[] = 'currentTeam.modules';
                 $relationsToLoad[] = 'currentTeam.settings';
             }
-            
+
             if (! $user->relationLoaded('roles'))
             {
                 $relationsToLoad[] = 'roles';
             }
-            
+
             if (! $user->relationLoaded('teams'))
             {
                 $relationsToLoad[] = 'teams';
             }
-            
+
             if (! empty($relationsToLoad))
             {
                 $user->load($relationsToLoad);
