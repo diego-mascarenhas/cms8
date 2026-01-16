@@ -42,3 +42,6 @@ $menuCollapsed = ($configData['menuCollapsed'] === 'layout-menu-collapsed') ? js
   });
 </script>
 @endif
+
+<!-- Code copy functionality -->
+<script src="{{ asset('assets/js/code-copy.js') }}"></script>

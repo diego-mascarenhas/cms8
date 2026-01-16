@@ -53,7 +53,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'type' => $this->getSettingType($key),
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret']),
                     ]);
                 }
             }
@@ -712,6 +712,12 @@ class TeamSettingController extends Controller
         $team->setSetting('api_token_hash', $tokenHash, [
             'group' => 'api',
             'is_encrypted' => true,
+        ]);
+
+        // Store the plain token for display in documentation
+        $team->setSetting('api_token_plain', $tokenValue, [
+            'group' => 'api',
+            'is_encrypted' => true, // Encrypt for security
         ]);
 
         $team->setSetting('api_token_name', $request->name, [
