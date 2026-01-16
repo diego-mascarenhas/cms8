@@ -83,6 +83,8 @@ class List60DataTable extends DataTable
                 'contact.enterprises',
                 'contact.sources',
                 'contact.status',
+                'contact.user.roles',
+                'contact.user.teams',
                 'status',
                 'type',
                 'responsible:id,name',

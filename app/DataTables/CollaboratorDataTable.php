@@ -148,7 +148,15 @@ class CollaboratorDataTable extends DataTable
     public function query(Contact $model): QueryBuilder
     {
         $query = $model->newQuery()
-            ->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type', 'weeklyAvailability'])
+            ->with([
+                'valoration',
+                'languageVariants.sourceLanguage',
+                'languageVariants.targetLanguage',
+                'fares.type',
+                'weeklyAvailability',
+                'user.roles',
+                'user.teams'
+            ])
             ->withCount([
                 'projects',
                 'fares as unique_fares_count' => function ($q)

@@ -23,7 +23,7 @@ trait TracksContactActions
     {
         $tracking = UserContactAction::findOrFail($trackingId);
         $tracking->end_time = now();
-        $tracking->duration_seconds = $tracking->end_time->diffInSeconds($tracking->start_time);
+        $tracking->duration_seconds = $tracking->start_time->diffInSeconds($tracking->end_time);
         $tracking->save();
 
         return $tracking;

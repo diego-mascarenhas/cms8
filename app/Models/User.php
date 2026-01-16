@@ -29,8 +29,10 @@ class User extends Authenticatable
      * @var array
      * Note: currentTeam is not included here as it's an accessor from Jetstream,
      * not a direct relationship. It should be loaded explicitly where needed.
+     * Note: Removed global eager loading of roles and teams to prevent conflicts
+     * with explicit eager loading in DataTables and other queries.
      */
-    protected $with = ['roles', 'teams'];
+    // protected $with = ['roles', 'teams'];
 
     /**
      * The attributes that should be mutated to dates.

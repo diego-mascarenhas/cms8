@@ -45,7 +45,7 @@ class ContactController extends Controller
             }
 
             // Build base query with policy-based filtering
-            $query = Contact::with(['status', 'country', 'language', 'creator', 'responsible', 'user.roles']);
+            $query = Contact::with(['status', 'country', 'language', 'creator', 'responsible', 'user.roles', 'user.teams']);
 
             // Apply role-based filtering using Policy
             $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
@@ -103,7 +103,7 @@ class ContactController extends Controller
         {
             // Find the contact first
             $contact = Contact::where('id', $id)
-                ->with(['status', 'country', 'language', 'creator', 'responsible', 'enterprise', 'user.roles'])
+                ->with(['status', 'country', 'language', 'creator', 'responsible', 'enterprise', 'user.roles', 'user.teams'])
                 ->firstOrFail();
 
             // Check if user can view this specific contact
