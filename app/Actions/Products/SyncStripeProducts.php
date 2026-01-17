@@ -14,10 +14,31 @@ class SyncStripeProducts
     public function handle(): int
     {
         $processed = 0;
+        $productsByName = [];
 
+        // Group products by name to handle duplicates
         foreach ($this->stripe->products() as $stripeProduct)
         {
-            $mapped = $this->mapProduct($stripeProduct);
+            $name = $stripeProduct->name;
+            if (! isset($productsByName[$name]))
+            {
+                $productsByName[$name] = [];
+            }
+            $productsByName[$name][] = $stripeProduct;
+        }
+
+        // Process products, preferring those with fewer prices (likely the correct ones)
+        foreach ($productsByName as $name => $stripeProducts)
+        {
+            // If there are duplicates, prefer the one with fewer prices
+            $selectedProduct = $this->selectBestProduct($stripeProducts);
+
+            if (! $selectedProduct)
+            {
+                continue;
+            }
+
+            $mapped = $this->mapProduct($selectedProduct);
 
             // First try to find by stripe_id
             $product = SubscriptionProduct::firstWhere('stripe_id', $mapped['stripe_id']);
@@ -65,6 +86,82 @@ class SyncStripeProducts
     }
 
     /**
+     * Select the best product when there are duplicates (prefer fewer prices, more recent)
+     */
+    private function selectBestProduct(array $products): ?\Stripe\Product
+    {
+        if (count($products) === 1)
+        {
+            return $products[0];
+        }
+
+        // Count prices for each product and prefer the one with fewer prices
+        $productsWithPriceCount = [];
+        foreach ($products as $product)
+        {
+            $priceCount = 0;
+            foreach ($this->stripe->prices($product->id) as $price)
+            {
+                $priceCount++;
+            }
+            $productsWithPriceCount[] = [
+                'product' => $product,
+                'price_count' => $priceCount,
+                'created' => $product->created,
+            ];
+        }
+
+        // Sort by price count (ascending - fewer prices first), then by created date (descending - more recent first)
+        usort($productsWithPriceCount, function ($a, $b)
+        {
+            if ($a['price_count'] !== $b['price_count'])
+            {
+                return $a['price_count'] <=> $b['price_count']; // Fewer prices first
+            }
+
+            return $b['created'] <=> $a['created']; // More recent first
+        });
+
+        return $productsWithPriceCount[0]['product'];
+    }
+
+    /**
+     * Sync a specific product by Stripe Product ID
+     * This will overwrite all local data with Stripe data
+     */
+    public function syncProduct(string $stripeProductId): void
+    {
+        try
+        {
+            $stripeProduct = $this->stripe->retrieve($stripeProductId);
+            $mapped = $this->mapProduct($stripeProduct);
+
+            // Find product by stripe_product or stripe_id
+            $product = SubscriptionProduct::where('stripe_product', $stripeProductId)
+                ->orWhere('stripe_id', $stripeProductId)
+                ->first();
+
+            if ($product)
+            {
+                // Update existing product with Stripe data, forcing overwrite of all fields
+                $this->updateProduct($product, $mapped, forceOverwrite: true);
+            } else
+            {
+                // Create new product if not found
+                SubscriptionProduct::create($mapped + ['last_synced_at' => now()]);
+            }
+        } catch (\Exception $e)
+        {
+            \Log::error('Failed to sync product from Stripe', [
+                'stripe_product_id' => $stripeProductId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
      * Map Stripe product to local format
      */
     private function mapProduct(\Stripe\Product $stripeProduct): array
@@ -85,7 +182,7 @@ class SyncStripeProducts
             'plan' => $stripeProduct->metadata['plan'] ?? null,
             'type' => $stripeProduct->metadata['type'] ?? null,
             'currency' => $mainPrice?->currency ?? 'usd',
-            'unit_amount' => $mainPrice?->unit_amount ?? null,
+            'unit_amount' => $mainPrice?->unit_amount ? ($mainPrice->unit_amount / 100) : null, // Convert from cents to decimal
             'recurring_interval' => $mainPrice?->recurring?->interval ?? null,
             'recurring_interval_count' => $mainPrice?->recurring?->interval_count ?? 1,
             'metadata' => $stripeProduct->metadata ?? [],
@@ -97,6 +194,7 @@ class SyncStripeProducts
 
     /**
      * Get main price for a product (recurring, most recent, or default)
+     * Prefers prices with EUR currency and recurring monthly
      */
     private function getMainPrice(string $productId): ?\Stripe\Price
     {
@@ -111,7 +209,17 @@ class SyncStripeProducts
             return null;
         }
 
-        // Prefer recurring prices
+        // Prefer recurring prices with EUR currency
+        $recurringEurPrices = array_filter($prices, fn ($p) => $p->recurring !== null && strtolower($p->currency) === 'eur');
+        if (! empty($recurringEurPrices))
+        {
+            // Sort by created date (most recent first)
+            usort($recurringEurPrices, fn ($a, $b) => $b->created <=> $a->created);
+
+            return reset($recurringEurPrices);
+        }
+
+        // Fallback to any recurring prices
         $recurringPrices = array_filter($prices, fn ($p) => $p->recurring !== null);
         if (! empty($recurringPrices))
         {
@@ -129,13 +237,13 @@ class SyncStripeProducts
 
     /**
      * Update existing product
+     *
+     * @param  bool  $forceOverwrite  If true, overwrites all fields including name/description
      */
-    private function updateProduct(SubscriptionProduct $product, array $mapped): void
+    private function updateProduct(SubscriptionProduct $product, array $mapped, bool $forceOverwrite = false): void
     {
-        // If product was precached (no stripe_id), update with Stripe data including name/description
-        // If product was already synced (has last_synced_at), update from Stripe but preserve name/description
-        // Only skip if product was created locally and manually edited (has stripe_id but no last_synced_at)
-        if ($product->stripe_id && ! $product->last_synced_at)
+        // If forceOverwrite is false, check if product was created locally and manually edited
+        if (! $forceOverwrite && $product->stripe_id && ! $product->last_synced_at)
         {
             // Product was created locally and manually edited, don't overwrite
             return;
@@ -156,9 +264,9 @@ class SyncStripeProducts
             'last_synced_at' => now(),
         ];
 
-        // If product was precached (no stripe_id), update name/description from Stripe
-        // If product was already synced, preserve name/description (assume they were manually edited)
-        if (! $product->stripe_id)
+        // If forceOverwrite is true, always update name/description from Stripe
+        // Otherwise, only update if product was precached (no stripe_id)
+        if ($forceOverwrite || ! $product->stripe_id)
         {
             $updateData['name'] = $mapped['name'];
             $updateData['description'] = $mapped['description'];

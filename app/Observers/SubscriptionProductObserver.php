@@ -23,8 +23,8 @@ class SubscriptionProductObserver
             return;
         }
 
-        // Skip if already has stripe_id (synced from Stripe)
-        if ($subscriptionProduct->stripe_id)
+        // Skip if already has stripe_id or stripe_product (synced from Stripe or manually set)
+        if ($subscriptionProduct->stripe_id || $subscriptionProduct->stripe_product)
         {
             return;
         }
@@ -39,10 +39,10 @@ class SubscriptionProductObserver
                 'metadata' => $this->buildMetadata($subscriptionProduct),
             ]);
 
-            // Create price in Stripe
+            // Create price in Stripe (convert from decimal to cents)
             $stripePrice = $this->stripeService->createPrice($stripeProduct->id, [
                 'currency' => $subscriptionProduct->currency ?? 'usd',
-                'unit_amount' => (int) ($subscriptionProduct->unit_amount ?? 0),
+                'unit_amount' => (int) (($subscriptionProduct->unit_amount ?? 0) * 100),
                 'recurring' => $subscriptionProduct->recurring_interval ? [
                     'interval' => $subscriptionProduct->recurring_interval,
                     'interval_count' => $subscriptionProduct->recurring_interval_count ?? 1,
@@ -75,14 +75,25 @@ class SubscriptionProductObserver
             return;
         }
 
-        // Skip if no stripe_id (not synced yet)
-        if (! $subscriptionProduct->stripe_id)
+        // Skip if only last_synced_at changed (to avoid infinite loop)
+        if ($subscriptionProduct->wasChanged('last_synced_at'))
         {
             return;
         }
 
-        // Skip if only last_synced_at changed (to avoid infinite loop)
-        if ($subscriptionProduct->wasChanged('last_synced_at'))
+        // If stripe_product was manually set, use it to sync
+        if ($subscriptionProduct->wasChanged('stripe_product') && $subscriptionProduct->stripe_product && ! $subscriptionProduct->stripe_id)
+        {
+            // Set stripe_id from stripe_product if not set
+            $subscriptionProduct->update([
+                'stripe_id' => $subscriptionProduct->stripe_product,
+            ]);
+
+            return; // Don't create/update in Stripe, just sync the ID
+        }
+
+        // Skip if no stripe_id (not synced yet)
+        if (! $subscriptionProduct->stripe_id)
         {
             return;
         }
@@ -97,12 +108,13 @@ class SubscriptionProductObserver
                 'metadata' => $this->buildMetadata($subscriptionProduct),
             ]);
 
-            // If price changed, create new price (Stripe doesn't allow updating prices)
-            if ($subscriptionProduct->wasChanged(['unit_amount', 'currency', 'recurring_interval', 'recurring_interval_count']))
+            // Only create new price if price-related fields changed AND we don't already have a stripe_price
+            // This prevents creating duplicate prices
+            if ($subscriptionProduct->wasChanged(['unit_amount', 'currency', 'recurring_interval', 'recurring_interval_count']) && ! $subscriptionProduct->stripe_price)
             {
                 $stripePrice = $this->stripeService->createPrice($subscriptionProduct->stripe_id, [
                     'currency' => $subscriptionProduct->currency ?? 'usd',
-                    'unit_amount' => (int) ($subscriptionProduct->unit_amount ?? 0),
+                    'unit_amount' => (int) (($subscriptionProduct->unit_amount ?? 0) * 100),
                     'recurring' => $subscriptionProduct->recurring_interval ? [
                         'interval' => $subscriptionProduct->recurring_interval,
                         'interval_count' => $subscriptionProduct->recurring_interval_count ?? 1,

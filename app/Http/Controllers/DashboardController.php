@@ -160,6 +160,7 @@ class DashboardController extends Controller
         $subscriptionLevel = null;
         $mentoringPlan = null;
         $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
+        $hasMentoringSubscription = false;
 
         // Get active subscriptions
         $activeSubscriptions = $activeTeam->subscriptions()
@@ -180,14 +181,16 @@ class DashboardController extends Controller
             if ($product)
             {
                 $type = $product->type ?? $product->category;
+                $category = $product->category;
 
                 if ($type === 'mailer')
                 {
                     // Mailer subscription
                     $subscriptionLevel = EmailPlan::fromStripePriceId($subscription->stripe_price);
-                } elseif ($type === 'mentoriás' || $product->category === 'mentoriás')
+                } elseif ($type === 'mentoring' || $category === 'mentoring')
                 {
-                    // Mentorías subscription
+                    // Mentoring subscription
+                    $hasMentoringSubscription = true;
                     if (! $hasProjects)
                     {
                         // Plan gratuito IDEA (dossier comercial)
@@ -197,12 +200,18 @@ class DashboardController extends Controller
                         // Plan pago
                         $mentoringPlan = $product->plan ?? 'Pago';
                     }
-                } elseif ($type === 'hosting' || $product->category === 'hosting')
+                } elseif ($type === 'hosting' || $category === 'hosting')
                 {
                     // Hosting subscription
                     $subscriptionLevel = $product->plan ?? 'Hosting';
                 }
             }
+        }
+
+        // If no mentoring subscription exists, show IDEA plan (free)
+        if (! $hasMentoringSubscription)
+        {
+            $mentoringPlan = 'IDEA';
         }
 
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)

@@ -21,7 +21,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'basic',
                 'type' => 'mailer',
                 'currency' => 'eur',
-                'unit_amount' => 1599, // 15.99€ in cents
+                'unit_amount' => 15.99,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -33,7 +33,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'foundation',
                 'type' => 'mailer',
                 'currency' => 'eur',
-                'unit_amount' => 3599, // 35.99€ in cents
+                'unit_amount' => 35.99,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -45,7 +45,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'scale',
                 'type' => 'mailer',
                 'currency' => 'eur',
-                'unit_amount' => 11999, // 119.99€ in cents
+                'unit_amount' => 119.99,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -61,7 +61,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'creation',
                 'type' => 'mentoring',
                 'currency' => 'eur',
-                'unit_amount' => 19900, // €199/mes in cents
+                'unit_amount' => 199.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -73,7 +73,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'operations',
                 'type' => 'mentoring',
                 'currency' => 'eur',
-                'unit_amount' => 29900, // €299/mes in cents
+                'unit_amount' => 299.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -85,7 +85,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'bussiness-exit',
                 'type' => 'mentoring',
                 'currency' => 'eur',
-                'unit_amount' => 39900, // €399/mes in cents
+                'unit_amount' => 399.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -97,7 +97,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'complete',
                 'type' => 'mentoring',
                 'currency' => 'eur',
-                'unit_amount' => 74900, // €749/mes in cents
+                'unit_amount' => 749.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -113,7 +113,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'cloud-wordPress',
                 'type' => 'cloud',
                 'currency' => 'eur',
-                'unit_amount' => 1500, // 15.00€ in cents
+                'unit_amount' => 15.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -125,7 +125,7 @@ class SubscriptionProductSeeder extends Seeder
                 'plan' => 'wordpress-maintenance',
                 'type' => 'support',
                 'currency' => 'eur',
-                'unit_amount' => 1000, // 10.00€ in cents
+                'unit_amount' => 10.00,
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,

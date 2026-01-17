@@ -56,10 +56,9 @@ class SubscriptionProduct extends Model
             return '—';
         }
 
-        $amount = $this->unit_amount / 100; // Convert from cents
         $currency = strtoupper($this->currency ?? 'USD');
 
-        return number_format($amount, 2, ',', '.').' '.$currency;
+        return number_format($this->unit_amount, 2, ',', '.').' '.$currency;
     }
 
     /**

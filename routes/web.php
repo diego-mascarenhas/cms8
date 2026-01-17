@@ -196,6 +196,8 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/account-management/products', [ProductManagementController::class, 'index'])->name('account.products.index');
         Route::get('/account-management/products/{id}/edit', [ProductManagementController::class, 'edit'])->name('account.products.edit');
         Route::put('/account-management/products/{id}', [ProductManagementController::class, 'update'])->name('account.products.update');
+        Route::put('/account-management/products/{id}/update-and-sync', [ProductManagementController::class, 'updateAndSync'])->name('account.products.update-and-sync');
+        Route::post('/account-management/products/{id}/sync', [ProductManagementController::class, 'sync'])->name('account.products.sync');
     });
 
     // Email Plans Management (Admin only)
