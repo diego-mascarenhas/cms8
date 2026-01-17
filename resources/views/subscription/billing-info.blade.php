@@ -19,7 +19,12 @@
             <div class="card-body">
                 <form action="{{ route('subscription.save-billing-info') }}" method="POST">
                     @csrf
-                    <input type="hidden" name="plan" value="{{ $plan }}">
+                    @if($plan)
+                        <input type="hidden" name="plan" value="{{ $plan }}">
+                    @endif
+                    @if($product)
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->
@@ -123,71 +128,94 @@
                 <h5 class="card-title mb-0">{{ __('Resumen del Plan') }}</h5>
             </div>
             <div class="card-body">
-                @php
-                    $planDetails = [
-                        'basic' => [
-                            'name' => 'Basic',
-                            'price' => $prices['basic']['amount'] ?? '15.99',
-                            'currency' => $prices['basic']['currency'] ?? 'EUR',
-                            'emails_month' => '10,000',
-                            'emails_day' => '500',
-                            'contacts' => '3,000',
-                        ],
-                        'foundation' => [
-                            'name' => 'Foundation',
-                            'price' => $prices['foundation']['amount'] ?? '35.99',
-                            'currency' => $prices['foundation']['currency'] ?? 'EUR',
-                            'emails_month' => '50,000',
-                            'emails_day' => '2,000',
-                            'contacts' => '20,000',
-                        ],
-                        'scale' => [
-                            'name' => 'Scale',
-                            'price' => $prices['scale']['amount'] ?? '119.99',
-                            'currency' => $prices['scale']['currency'] ?? 'EUR',
-                            'emails_month' => '100,000',
-                            'emails_day' => 'Ilimitados',
-                            'contacts' => '50,000',
-                        ],
-                    ];
-                    $currentPlan = $planDetails[$plan] ?? $planDetails['basic'];
-                @endphp
-
-                <div class="mb-3">
-                    <h4 class="mb-1">{{ $currentPlan['name'] }}</h4>
-                    <div class="d-flex align-items-baseline">
-                        <span class="h2 mb-0">{{ number_format($currentPlan['price'], 2) }} €</span>
-                        <span class="text-muted ms-2">/mes</span>
+                @if($product)
+                    {{-- Product Summary --}}
+                    <div class="mb-3">
+                        <h4 class="mb-1">{{ $product->name }}</h4>
+                        <div class="d-flex align-items-baseline">
+                            <span class="h2 mb-0">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</span>
+                            <span class="text-muted ms-2">{{ strtoupper($product->currency ?? 'EUR') }}</span>
+                            @if($product->recurring_interval)
+                                <span class="text-muted ms-2">/{{ $product->getBillingFrequency() }}</span>
+                            @endif
+                        </div>
+                        <small class="text-muted">+ I.V.A.</small>
                     </div>
-                    <small class="text-muted">+ I.V.A.</small>
-                </div>
 
-                <hr>
+                    @if($product->description)
+                        <hr>
+                        <div class="mb-3">
+                            <p class="mb-0">{{ $product->description }}</p>
+                        </div>
+                    @endif
+                @else
+                    {{-- Mailer Plan Summary --}}
+                    @php
+                        $planDetails = [
+                            'basic' => [
+                                'name' => 'Basic',
+                                'price' => $prices['basic']['amount'] ?? '15.99',
+                                'currency' => $prices['basic']['currency'] ?? 'EUR',
+                                'emails_month' => '10,000',
+                                'emails_day' => '500',
+                                'contacts' => '3,000',
+                            ],
+                            'foundation' => [
+                                'name' => 'Foundation',
+                                'price' => $prices['foundation']['amount'] ?? '35.99',
+                                'currency' => $prices['foundation']['currency'] ?? 'EUR',
+                                'emails_month' => '50,000',
+                                'emails_day' => '2,000',
+                                'contacts' => '20,000',
+                            ],
+                            'scale' => [
+                                'name' => 'Scale',
+                                'price' => $prices['scale']['amount'] ?? '119.99',
+                                'currency' => $prices['scale']['currency'] ?? 'EUR',
+                                'emails_month' => '100,000',
+                                'emails_day' => 'Ilimitados',
+                                'contacts' => '50,000',
+                            ],
+                        ];
+                        $currentPlan = $planDetails[$plan] ?? $planDetails['basic'];
+                    @endphp
 
-                <div class="mb-3">
-                    <h6 class="mb-3">{{ __('Características Incluidas') }}</h6>
+                    <div class="mb-3">
+                        <h4 class="mb-1">{{ $currentPlan['name'] }}</h4>
+                        <div class="d-flex align-items-baseline">
+                            <span class="h2 mb-0">{{ number_format($currentPlan['price'], 2) }} €</span>
+                            <span class="text-muted ms-2">/mes</span>
+                        </div>
+                        <small class="text-muted">+ I.V.A.</small>
+                    </div>
 
-                    <div class="d-flex mb-2">
-                        <i class="ti ti-check text-success me-2"></i>
-                        <div>
-                            <strong>{{ $currentPlan['emails_month'] }}</strong> emails por mes
+                    <hr>
+
+                    <div class="mb-3">
+                        <h6 class="mb-3">{{ __('Características Incluidas') }}</h6>
+
+                        <div class="d-flex mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            <div>
+                                <strong>{{ $currentPlan['emails_month'] }}</strong> emails por mes
+                            </div>
+                        </div>
+
+                        <div class="d-flex mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            <div>
+                                <strong>{{ $currentPlan['emails_day'] }}</strong> emails por día
+                            </div>
+                        </div>
+
+                        <div class="d-flex mb-2">
+                            <i class="ti ti-check text-success me-2"></i>
+                            <div>
+                                Hasta <strong>{{ $currentPlan['contacts'] }}</strong> contactos
+                            </div>
                         </div>
                     </div>
-
-                    <div class="d-flex mb-2">
-                        <i class="ti ti-check text-success me-2"></i>
-                        <div>
-                            <strong>{{ $currentPlan['emails_day'] }}</strong> emails por día
-                        </div>
-                    </div>
-
-                    <div class="d-flex mb-2">
-                        <i class="ti ti-check text-success me-2"></i>
-                        <div>
-                            Hasta <strong>{{ $currentPlan['contacts'] }}</strong> contactos
-                        </div>
-                    </div>
-                </div>
+                @endif
 
                 <hr>
 

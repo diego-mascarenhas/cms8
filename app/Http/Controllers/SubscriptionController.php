@@ -172,17 +172,66 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Check if customer has complete billing info in Stripe
+     */
+    private function hasCompleteBillingInfo($team): bool
+    {
+        if (! $team->stripe_id)
+        {
+            return false;
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+            // Check if we have all required fields
+            $hasName = ! empty($customer->metadata->individual_name ?? $customer->name ?? '');
+            $hasCountry = ! empty($customer->address->country ?? '');
+            $hasPhone = ! empty($customer->phone ?? '');
+            $hasTaxId = false;
+
+            // Check if tax ID exists
+            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+            if (! empty($taxIds->data))
+            {
+                $hasTaxId = true;
+            }
+
+            return $hasName && $hasCountry && $hasPhone && $hasTaxId;
+        } catch (\Exception $e)
+        {
+            \Log::warning('Error checking billing info: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
      * Show billing info form before checkout
      */
     public function billingInfo(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
         ]);
 
         $team = auth()->user()->currentTeam;
         $plan = $request->plan;
+        $product = null;
         $prices = $this->getStripePrices();
+
+        // Get product if product_id is provided
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+        } elseif ($request->price_id)
+        {
+            $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
+        }
 
         // Get customer data from Stripe if exists
         $customerData = [
@@ -223,6 +272,7 @@ class SubscriptionController extends Controller
         return view('subscription.billing-info', [
             'team' => $team,
             'plan' => $plan,
+            'product' => $product,
             'prices' => $prices,
             'customerData' => $customerData,
         ]);
@@ -234,7 +284,9 @@ class SubscriptionController extends Controller
     public function saveBillingInfo(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -373,7 +425,16 @@ class SubscriptionController extends Controller
         }
 
         // Redirect to checkout
-        return redirect()->route('subscription.checkout', ['plan' => $request->plan]);
+        if ($request->product_id)
+        {
+            return redirect()->route('subscription.checkout', ['product_id' => $request->product_id]);
+        } elseif ($request->price_id)
+        {
+            return redirect()->route('subscription.checkout', ['price_id' => $request->price_id]);
+        } else
+        {
+            return redirect()->route('subscription.checkout', ['plan' => $request->plan]);
+        }
     }
 
     /**
@@ -532,6 +593,25 @@ class SubscriptionController extends Controller
             }
 
             return $this->swap($swapRequest);
+        }
+
+        // Check if billing info is required (for non-mailer subscriptions)
+        if ($subscriptionType !== 'mailer')
+        {
+            // Check if customer has complete billing info in Stripe
+            $hasBillingInfo = $this->hasCompleteBillingInfo($team);
+
+            if (! $hasBillingInfo)
+            {
+                // Redirect to billing-info page
+                if ($request->product_id)
+                {
+                    return redirect()->route('subscription.billing-info', ['product_id' => $request->product_id]);
+                } elseif ($request->price_id)
+                {
+                    return redirect()->route('subscription.billing-info', ['price_id' => $request->price_id]);
+                }
+            }
         }
 
         // Clean up any canceled subscriptions of the same type to avoid conflicts
