@@ -595,6 +595,67 @@ class SubscriptionController extends Controller
             return $this->swap($swapRequest);
         }
 
+        // If different category and customer has payment method, create subscription directly (skip checkout)
+        // This prevents creating duplicate payment methods
+        if ($team->stripe_id)
+        {
+            try
+            {
+                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+                // Check if customer has a default payment method
+                if ($customer->invoice_settings->default_payment_method)
+                {
+                    // Create subscription directly using existing default payment method
+                    $stripeSubscription = \Stripe\Subscription::create([
+                        'customer' => $team->stripe_id,
+                        'items' => [[
+                            'price' => $priceId,
+                        ]],
+                        'default_payment_method' => $customer->invoice_settings->default_payment_method,
+                        'expand' => ['latest_invoice.payment_intent'],
+                        'metadata' => [
+                            'team_id' => $team->id,
+                            'subscription_type' => $subscriptionType,
+                        ],
+                    ]);
+
+                    // Sync subscription to local database
+                    $team->subscriptions()->create([
+                        'user_id' => $team->owner->id ?? $team->user_id,
+                        'type' => $subscriptionType,
+                        'stripe_id' => $stripeSubscription->id,
+                        'stripe_status' => $stripeSubscription->status,
+                        'stripe_price' => $priceId,
+                        'quantity' => $stripeSubscription->items->data[0]->quantity,
+                        'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
+                        'ends_at' => null,
+                    ]);
+
+                    // Only assign EmailPlan if it's a mailer subscription
+                    if ($subscriptionType === 'mailer')
+                    {
+                        try
+                        {
+                            $plan = EmailPlan::fromStripePriceId($priceId);
+                            $team->assignEmailPlan($plan, auth()->id());
+                        } catch (\Exception $e)
+                        {
+                            \Log::warning('Could not update email_plan: '.$e->getMessage());
+                        }
+                    }
+
+                    return redirect()->route('subscription.index')
+                        ->with('success', '¡Suscripción activada exitosamente usando tu método de pago guardado!');
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('Could not create subscription directly, falling back to checkout: '.$e->getMessage());
+                // Fall through to checkout flow
+            }
+        }
+
         // Check if billing info is required (for non-mailer subscriptions)
         if ($subscriptionType !== 'mailer')
         {
