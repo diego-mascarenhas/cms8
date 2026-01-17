@@ -191,9 +191,16 @@
 										default => ucfirst($sub->stripe_status),
 									};
 									
-									// Get EmailPlan info for mailer subscriptions
+									// Get product name from SubscriptionProduct
+									$productName = null;
+									$product = \App\Models\SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+									if ($product) {
+										$productName = $product->name;
+									}
+									
+									// Get EmailPlan info for mailer subscriptions (fallback)
 									$planInfo = null;
-									if ($type === 'mailer' && $stripeSub) {
+									if ($type === 'mailer' && $stripeSub && !$productName) {
 										try {
 											$planInfo = \App\Enums\EmailPlan::fromStripePriceId($sub->stripe_price);
 										} catch (\Exception $e) {
@@ -230,9 +237,19 @@
 														<div class="badge badge-center rounded bg-label-primary p-2">
 															<i class="ti {{ $typeIcon }} ti-sm"></i>
 														</div>
-														<h5 class="mb-0">{{ $sub->name ?? ($planInfo ? $planInfo->getDisplayName() : 'Suscripción') }}</h5>
+														<h5 class="mb-0">
+															@if($productName)
+																{{ $productName }}
+															@elseif($planInfo)
+																{{ $planInfo->getDisplayName() }}
+															@else
+																{{ $typeName }}
+															@endif
+														</h5>
 													</div>
-													@if($planInfo)
+													@if($product && $product->description)
+														<p class="text-muted mb-0 small">{{ $product->description }}</p>
+													@elseif($planInfo)
 														<p class="text-muted mb-0 small">{{ $planInfo->getDescription() }}</p>
 													@else
 														<small class="text-muted d-block mb-0">{{ $typeName }}</small>
