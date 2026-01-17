@@ -611,34 +611,53 @@ class SubscriptionController extends Controller
                     'expand' => ['items.data.price.product'],
                 ]);
 
+                // Get product ID and price ID from Stripe subscription
+                $priceId = $stripeSubscription->items->data[0]->price->id;
+                $productId = $stripeSubscription->items->data[0]->price->product;
+
+                // Determine subscription type from local product
+                $subscriptionProduct = SubscriptionProduct::where('stripe_price', $priceId)
+                    ->orWhere('stripe_product', $productId)
+                    ->orWhere('stripe_id', $productId)
+                    ->first();
+
+                $subscriptionType = 'mailer'; // Default
+                if ($subscriptionProduct)
+                {
+                    $subscriptionType = $subscriptionProduct->category ?? 'mailer';
+                }
+
                 // Sync subscription to local database if it doesn't exist
-                $localSubscription = $team->subscription('mailer');
+                $localSubscription = $team->subscriptions()
+                    ->where('stripe_id', $stripeSubscription->id)
+                    ->first();
 
                 if (! $localSubscription)
                 {
                     // Create the subscription record manually
                     $team->subscriptions()->create([
                         'user_id' => $team->owner->id ?? $team->user_id,
-                        'type' => 'mailer',
+                        'type' => $subscriptionType,
                         'stripe_id' => $stripeSubscription->id,
                         'stripe_status' => $stripeSubscription->status,
-                        'stripe_price' => $stripeSubscription->items->data[0]->price->id,
+                        'stripe_price' => $priceId,
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
                     ]);
                 }
 
-                // Get product ID to determine the plan
-                $productId = $stripeSubscription->items->data[0]->price->product;
-
-                // Map product ID to EmailPlan
-                $plan = $this->getEmailPlanFromProductId($productId);
-
-                if ($plan)
+                // Only assign EmailPlan if it's a mailer subscription
+                if ($subscriptionType === 'mailer')
                 {
-                    // Assign the plan to the team
-                    $team->assignEmailPlan($plan, auth()->id());
+                    // Map product ID to EmailPlan
+                    $plan = $this->getEmailPlanFromProductId($productId);
+
+                    if ($plan)
+                    {
+                        // Assign the plan to the team
+                        $team->assignEmailPlan($plan, auth()->id());
+                    }
                 }
             }
 

@@ -133,7 +133,19 @@ class AccountController extends Controller
     {
         $team = Team::with('subscriptions')->findOrFail($id);
 
-        return view('account.subscriptions', compact('team'));
+        // Get products for each subscription to display names
+        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription)
+        {
+            $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+            $subscription->product = $product;
+
+            return $subscription;
+        });
+
+        return view('account.subscriptions', [
+            'team' => $team,
+            'subscriptionsWithProducts' => $subscriptionsWithProducts,
+        ]);
     }
 
     /**

@@ -45,9 +45,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($team->subscriptions as $subscription)
+                            @foreach($subscriptionsWithProducts as $subscription)
                                 <tr>
-                                    <td>{{ $subscription->name }}</td>
+                                    <td>
+                                        @if($subscription->product)
+                                            {{ $subscription->product->name }}
+                                        @else
+                                            {{ $subscription->type ?? 'Suscripción' }}
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($subscription->stripe_status === 'active')
                                             <span class="badge bg-success">Activa</span>
@@ -59,7 +65,13 @@
                                             <span class="badge bg-info">{{ ucfirst($subscription->stripe_status) }}</span>
                                         @endif
                                     </td>
-                                    <td>{{ $subscription->stripe_price }}</td>
+                                    <td>
+                                        @if($subscription->product)
+                                            {{ $subscription->product->getFormattedPrice() }}
+                                        @else
+                                            {{ $subscription->stripe_price }}
+                                        @endif
+                                    </td>
                                     <td>{{ $subscription->created_at->format('d/m/Y') }}</td>
                                     <td>
                                         @if($subscription->trial_ends_at)

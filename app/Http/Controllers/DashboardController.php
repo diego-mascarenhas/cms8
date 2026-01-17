@@ -177,13 +177,48 @@ class DashboardController extends Controller
                 continue;
             }
 
-            // Get product from subscription
-            $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+            // Get product from subscription - try multiple ways to find it
+            $product = null;
+            if ($subscription->stripe_price)
+            {
+                $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+            }
+
+            // If not found by price, try to find by subscription metadata or type
+            if (! $product && $subscription->stripe_id)
+            {
+                // Try to get product info from Stripe directly
+                try
+                {
+                    \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                    $stripeSub = \Stripe\Subscription::retrieve($subscription->stripe_id, ['expand' => ['items.data.price.product']]);
+                    if ($stripeSub->items->data[0]->price->product)
+                    {
+                        $stripeProductId = is_string($stripeSub->items->data[0]->price->product)
+                            ? $stripeSub->items->data[0]->price->product
+                            : $stripeSub->items->data[0]->price->product->id;
+
+                        $product = SubscriptionProduct::where('stripe_id', $stripeProductId)
+                            ->orWhere('stripe_product', $stripeProductId)
+                            ->first();
+                    }
+                } catch (\Exception $e)
+                {
+                    // Silently fail, continue with existing logic
+                }
+            }
 
             if ($product)
             {
                 $type = $product->type ?? $product->category;
                 $category = $product->category;
+
+                // Update subscription type if it doesn't match the product category
+                if ($subscription->type !== $category && $category)
+                {
+                    $subscription->type = $category;
+                    $subscription->save();
+                }
 
                 if ($type === 'mailer')
                 {

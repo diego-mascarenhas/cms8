@@ -57,20 +57,21 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('subscriptions_count', function ($account)
             {
-                $count = $account->subscriptions_count;
-
-                return '<a href="'.route('account.subscriptions', $account->id).'" class="text-primary">'.$count.'</a>';
+                return $account->subscriptions_count;
             })
             ->addColumn('action', function ($account)
             {
                 return '<div class="d-flex justify-content-center align-items-center">
-					<a href="'.route('account.edit', $account->id).'" class="text-body">
-						<i class="ti ti-edit ti-sm me-2"></i>
+					<a href="'.route('account.subscriptions', $account->id).'" class="text-body" title="Ver suscripciones">
+						<i class="ti ti-eye ti-sm me-2"></i>
+					</a>
+					<a href="'.route('account.edit', $account->id).'" class="text-body" title="Editar">
+						<i class="ti ti-edit ti-sm"></i>
 					</a>
 				</div>';
             })
             ->setRowId('id')
-            ->rawColumns(['name', 'action', 'subscriptions_count']);
+            ->rawColumns(['name', 'action']);
     }
 
     public function query(Account $model): QueryBuilder
