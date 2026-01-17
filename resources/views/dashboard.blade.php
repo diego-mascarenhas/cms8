@@ -91,14 +91,23 @@
                             <div class="card-body text-nowrap">
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
-                                <p class="mb-2">¡Vas viento en popa!</p>
-                                
                                 @if($mentoringPlan === 'IDEA')
-                                    <p class="mb-2"><span class="badge bg-success">Plan: IDEA - Dossier comercial</span></p>
+                                    <p class="mb-2">Haz tenido una gran IDEA</p>
+                                    @if($mentoringLevelName)
+                                        <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
+                                    @endif
                                 @elseif($subscriptionLevel)
+                                    <p class="mb-2">¡Vas viento en popa!</p>
                                     <p class="mb-2"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
                                 @elseif($mentoringPlan)
-                                    <p class="mb-2"><span class="badge bg-primary">Plan: {{ $mentoringPlan }}</span></p>
+                                    <p class="mb-2">¡Vas viento en popa!</p>
+                                    @if($mentoringLevelName)
+                                        <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
+                                    @else
+                                        <p class="mb-2"><span class="badge bg-primary">Plan: {{ $mentoringPlan }}</span></p>
+                                    @endif
+                                @else
+                                    <p class="mb-2">¡Vas viento en popa!</p>
                                 @endif
                                 
                                 {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
@@ -122,26 +131,6 @@
         </div>
     </div>
     <!-- Hour chart End  -->
-
-    @if($mentoringPlan === 'IDEA')
-        <!-- Dossier Comercial Card for IDEA Plan -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-center border border-success mb-3">
-                    <div class="card-body">
-                        <i class="fas fa-briefcase fa-2x mb-3"></i>
-                        <h5 class="card-title">1. tu dossier comercial.</h5>
-                        <ul class="list-unstyled">
-                            <li>Cliente</li>
-                            <li>Destino</li>
-                            <li>Oferta</li>
-                            <li>Storytelling</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 
     <div class="row">
         <!-- Emotional Balance and Dangerous Clients (right column) -->

@@ -31,7 +31,7 @@
 
     <div class="card mb-4">
         <h5 class="card-header">{{ $product->name }}</h5>
-        <form class="card-body" action="{{ route('account.products.update', $product->id) }}" method="POST">
+        <form class="card-body" action="{{ route('account.products.update-and-sync', $product->id) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -138,8 +138,7 @@
 
             <div class="pt-4">
                 <div class="col-12 d-flex">
-                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                    <button type="submit" formaction="{{ route('account.products.update-and-sync', $product->id) }}" class="btn btn-success me-sm-3 me-1">Guardar y Actualizar con Stripe</button>
+                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar y actualizar Stripe</button>
                     <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('account.products.index') }}'">Cancelar</button>
                 </div>
             </div>

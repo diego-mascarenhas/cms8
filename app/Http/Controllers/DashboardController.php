@@ -159,6 +159,7 @@ class DashboardController extends Controller
         // Get subscription level
         $subscriptionLevel = null;
         $mentoringPlan = null;
+        $mentoringLevelName = null;
         $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
         $hasMentoringSubscription = false;
 
@@ -195,10 +196,20 @@ class DashboardController extends Controller
                     {
                         // Plan gratuito IDEA (dossier comercial)
                         $mentoringPlan = 'IDEA';
+                        $mentoringLevelName = 'Tu dossier comercial';
                     } else
                     {
                         // Plan pago
                         $mentoringPlan = $product->plan ?? 'Pago';
+                        // Map plan names to level names
+                        $mentoringLevelName = match ($mentoringPlan)
+                        {
+                            'creation' => 'Tu dossier comercial',
+                            'operations' => 'Operaciones',
+                            'bussiness-exit' => 'Business Exit',
+                            'complete' => 'Complete',
+                            default => $mentoringPlan,
+                        };
                     }
                 } elseif ($type === 'hosting' || $category === 'hosting')
                 {
@@ -212,6 +223,7 @@ class DashboardController extends Controller
         if (! $hasMentoringSubscription)
         {
             $mentoringPlan = 'IDEA';
+            $mentoringLevelName = 'Tu dossier comercial';
         }
 
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)
@@ -289,6 +301,7 @@ class DashboardController extends Controller
             'formattedActivities',
             'subscriptionLevel',
             'mentoringPlan',
+            'mentoringLevelName',
             'hasProjects',
         ));
     }
