@@ -54,6 +54,11 @@
 							<div class="mt-auto">
 								@if($currentMentoringPlan && $product->plan === $currentMentoringPlan)
 									<button class="btn btn-label-primary w-100" disabled>Tu Plan Actual</button>
+								@elseif($product->stripe_price)
+									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+										<input type="hidden" name="product_id" value="{{ $product->id }}">
+										<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
+									</form>
 								@else
 									<button class="btn btn-primary w-100" disabled>Próximamente</button>
 								@endif
@@ -281,29 +286,36 @@
 	<div class="mb-5 mt-5">
 		<h3 class="mb-4">Planes de Hosting</h3>
 		<div class="row gy-4">
-				@foreach($hostingProducts as $product)
-					<div class="col-xl col-lg-4 col-md-6">
-						<div class="card border h-100">
-							<div class="card-body position-relative text-center d-flex flex-column">
-								<div class="mb-4">
-									<div class="d-flex justify-content-center">
-										<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
-										<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
-										@if($product->recurring_interval)
-											<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
-										@endif
-									</div>
+			@foreach($hostingProducts as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							<div class="mb-4">
+								<div class="d-flex justify-content-center">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									@if($product->recurring_interval)
+										<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
+									@endif
 								</div>
+							</div>
 
-								<h4>{{ $product->name }}</h4>
-								<p class="mb-4">{{ $product->description }}</p>
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
 
-								<div class="mt-auto">
+							<div class="mt-auto">
+								@if($product->stripe_price)
+									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+										<input type="hidden" name="product_id" value="{{ $product->id }}">
+										<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
+									</form>
+								@else
 									<button class="btn btn-primary w-100" disabled>Próximamente</button>
-								</div>
+								@endif
 							</div>
 						</div>
 					</div>
+				</div>
 			@endforeach
 		</div>
 	</div>

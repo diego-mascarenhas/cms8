@@ -70,7 +70,8 @@ class SubscriptionController extends Controller
 
         $hostingProducts = SubscriptionProduct::active()
             ->whereIn('category', ['hosting', 'support'])
-            ->orderBy('unit_amount')
+            ->orderByRaw("CASE WHEN category = 'hosting' THEN 0 ELSE 1 END")
+            ->orderBy('unit_amount', 'desc')
             ->get();
 
         // Get active mentoring subscription to determine current plan
@@ -431,41 +432,93 @@ class SubscriptionController extends Controller
     public function checkout(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
         ]);
 
         $team = auth()->user()->currentTeam;
-        $plan = EmailPlan::from($request->plan);
+        $priceId = null;
+        $product = null;
+        $subscriptionType = 'mailer';
 
-        // Check if already has an active subscription (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('type', 'mailer')
-            ->where('stripe_status', '!=', 'canceled')
-            ->first();
-
-        if ($activeSubscription && $activeSubscription->active())
+        // If product_id is provided, get product and use its stripe_price
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+            $priceId = $product->stripe_price;
+            $subscriptionType = $product->category ?? 'mailer';
+        }
+        // If price_id is provided directly, use it
+        elseif ($request->price_id)
+        {
+            $priceId = $request->price_id;
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if ($product)
+            {
+                $subscriptionType = $product->category ?? 'mailer';
+            }
+        }
+        // Otherwise, use the plan parameter (for Mailer plans)
+        elseif ($request->plan)
+        {
+            $plan = EmailPlan::from($request->plan);
+            $priceId = $plan->getStripePriceId();
+            $subscriptionType = 'mailer';
+        } else
         {
             return redirect()->route('subscription.index')
-                ->with('error', 'Ya tienes una suscripción activa. Por favor, gestiona tu plan actual primero.');
+                ->with('error', 'Debes especificar un plan o producto.');
         }
 
-        // Clean up any canceled subscriptions to avoid conflicts
-        $team->subscriptions()
-            ->where('type', 'mailer')
-            ->where('stripe_status', 'canceled')
-            ->delete();
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
+        }
+
+        // Check if already has an active subscription of the same type (not canceled)
+        $activeSubscription = $team->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get()
+            ->filter(function ($sub) use ($subscriptionType, $product)
+            {
+                // For same category subscriptions, check if active
+                if ($product)
+                {
+                    $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+                    if ($subProduct && $subProduct->category === $product->category)
+                    {
+                        return $sub->active();
+                    }
+                }
+                // For mailer, use the existing logic
+                if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
+                {
+                    return $sub->active();
+                }
+
+                return false;
+            })
+            ->first();
+
+        if ($activeSubscription)
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Ya tienes una suscripción activa de este tipo. Por favor, gestiona tu plan actual primero.');
+        }
+
+        // Clean up any canceled subscriptions of the same type to avoid conflicts
+        if ($subscriptionType === 'mailer')
+        {
+            $team->subscriptions()
+                ->where('type', 'mailer')
+                ->where('stripe_status', 'canceled')
+                ->delete();
+        }
 
         try
         {
-            // Get the Stripe price ID directly from the plan
-            $priceId = $plan->getStripePriceId();
-
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
-            }
-
             // Ensure team has a Stripe customer ID
             if (! $team->stripe_id)
             {

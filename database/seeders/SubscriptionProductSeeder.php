@@ -98,7 +98,7 @@ class SubscriptionProductSeeder extends Seeder
                 'type' => 'mentoring',
                 'currency' => 'eur',
                 'unit_amount' => 749.00,
-                'recurring_interval' => 'month',
+                'recurring_interval' => 'year',
                 'recurring_interval_count' => 1,
                 'active' => true,
             ],
