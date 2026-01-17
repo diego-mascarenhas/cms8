@@ -127,6 +127,16 @@ class AccountController extends Controller
     }
 
     /**
+     * Show subscriptions for a specific account.
+     */
+    public function showSubscriptions(string $id)
+    {
+        $team = Team::with('subscriptions')->findOrFail($id);
+
+        return view('account.subscriptions', compact('team'));
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)

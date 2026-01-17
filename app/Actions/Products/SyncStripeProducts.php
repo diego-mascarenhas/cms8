@@ -19,15 +19,42 @@ class SyncStripeProducts
         {
             $mapped = $this->mapProduct($stripeProduct);
 
+            // First try to find by stripe_id
             $product = SubscriptionProduct::firstWhere('stripe_id', $mapped['stripe_id']);
+
+            // If not found, try to match with precached products by category, plan, and type
+            if (! $product)
+            {
+                $category = $mapped['category'] ?? null;
+                $type = $mapped['type'] ?? null;
+                $plan = $mapped['plan'] ?? null;
+
+                if ($category && $type)
+                {
+                    $query = SubscriptionProduct::where('category', $category)
+                        ->where('type', $type)
+                        ->whereNull('stripe_id'); // Only match precached products (no stripe_id yet)
+
+                    // Match plan if provided
+                    if ($plan)
+                    {
+                        $query->where('plan', $plan);
+                    } else
+                    {
+                        $query->whereNull('plan');
+                    }
+
+                    $product = $query->first();
+                }
+            }
 
             if ($product)
             {
-                // Update existing product
+                // Update existing product with Stripe data
                 $this->updateProduct($product, $mapped);
             } else
             {
-                // Create new product
+                // Create new product (not precached)
                 SubscriptionProduct::create($mapped + ['last_synced_at' => now()]);
             }
 
@@ -105,14 +132,39 @@ class SyncStripeProducts
      */
     private function updateProduct(SubscriptionProduct $product, array $mapped): void
     {
-        // Don't update if product was created locally (has no last_synced_at)
-        // This prevents overwriting local changes
-        if (! $product->last_synced_at)
+        // If product was precached (no stripe_id), update with Stripe data including name/description
+        // If product was already synced (has last_synced_at), update from Stripe but preserve name/description
+        // Only skip if product was created locally and manually edited (has stripe_id but no last_synced_at)
+        if ($product->stripe_id && ! $product->last_synced_at)
         {
+            // Product was created locally and manually edited, don't overwrite
             return;
         }
 
-        $product->fill($mapped + ['last_synced_at' => now()]);
+        // Update with Stripe data
+        $updateData = [
+            'stripe_id' => $mapped['stripe_id'],
+            'stripe_product' => $mapped['stripe_product'],
+            'stripe_price' => $mapped['stripe_price'],
+            'currency' => $mapped['currency'],
+            'unit_amount' => $mapped['unit_amount'],
+            'recurring_interval' => $mapped['recurring_interval'],
+            'recurring_interval_count' => $mapped['recurring_interval_count'],
+            'metadata' => $mapped['metadata'],
+            'raw_payload' => $mapped['raw_payload'],
+            'active' => $mapped['active'],
+            'last_synced_at' => now(),
+        ];
+
+        // If product was precached (no stripe_id), update name/description from Stripe
+        // If product was already synced, preserve name/description (assume they were manually edited)
+        if (! $product->stripe_id)
+        {
+            $updateData['name'] = $mapped['name'];
+            $updateData['description'] = $mapped['description'];
+        }
+
+        $product->fill($updateData);
         $product->save();
     }
 }

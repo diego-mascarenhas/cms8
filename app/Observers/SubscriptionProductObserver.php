@@ -17,6 +17,12 @@ class SubscriptionProductObserver
      */
     public function created(SubscriptionProduct $subscriptionProduct): void
     {
+        // Skip if running in console (seeders, migrations, etc.)
+        if (app()->runningInConsole())
+        {
+            return;
+        }
+
         // Skip if already has stripe_id (synced from Stripe)
         if ($subscriptionProduct->stripe_id)
         {
@@ -63,6 +69,12 @@ class SubscriptionProductObserver
      */
     public function updated(SubscriptionProduct $subscriptionProduct): void
     {
+        // Skip if running in console (seeders, migrations, etc.)
+        if (app()->runningInConsole())
+        {
+            return;
+        }
+
         // Skip if no stripe_id (not synced yet)
         if (! $subscriptionProduct->stripe_id)
         {

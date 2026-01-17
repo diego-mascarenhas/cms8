@@ -5,8 +5,8 @@ use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CategoryController;
-// use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\CertificationController;
+// use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
@@ -40,6 +40,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
@@ -189,6 +190,12 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
         Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
         Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
+        Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
+
+        // Product Management (Root only)
+        Route::get('/account-management/products', [ProductManagementController::class, 'index'])->name('account.products.index');
+        Route::get('/account-management/products/{id}/edit', [ProductManagementController::class, 'edit'])->name('account.products.edit');
+        Route::put('/account-management/products/{id}', [ProductManagementController::class, 'update'])->name('account.products.update');
     });
 
     // Email Plans Management (Admin only)

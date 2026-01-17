@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EmailPlan;
 use App\Models\Contact;
 use App\Models\List60;
 use App\Models\Project;
+use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
 use Stripe\Balance;
@@ -154,6 +156,55 @@ class DashboardController extends Controller
         // Recent activities removed - Activity Log package was removed from the project
         $formattedActivities = collect();
 
+        // Get subscription level
+        $subscriptionLevel = null;
+        $mentoringPlan = null;
+        $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
+
+        // Get active subscriptions
+        $activeSubscriptions = $activeTeam->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get();
+
+        // Determine subscription level based on active subscriptions
+        foreach ($activeSubscriptions as $subscription)
+        {
+            if (! $subscription->active())
+            {
+                continue;
+            }
+
+            // Get product from subscription
+            $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+
+            if ($product)
+            {
+                $type = $product->type ?? $product->category;
+
+                if ($type === 'mailer')
+                {
+                    // Mailer subscription
+                    $subscriptionLevel = EmailPlan::fromStripePriceId($subscription->stripe_price);
+                } elseif ($type === 'mentoriás' || $product->category === 'mentoriás')
+                {
+                    // Mentorías subscription
+                    if (! $hasProjects)
+                    {
+                        // Plan gratuito IDEA (dossier comercial)
+                        $mentoringPlan = 'IDEA';
+                    } else
+                    {
+                        // Plan pago
+                        $mentoringPlan = $product->plan ?? 'Pago';
+                    }
+                } elseif ($type === 'hosting' || $product->category === 'hosting')
+                {
+                    // Hosting subscription
+                    $subscriptionLevel = $product->plan ?? 'Hosting';
+                }
+            }
+        }
+
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)
         // if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
         // {
@@ -227,6 +278,9 @@ class DashboardController extends Controller
             'lastMonthRevenue',
             'ongoingProjects',
             'formattedActivities',
+            'subscriptionLevel',
+            'mentoringPlan',
+            'hasProjects',
         ));
     }
 }

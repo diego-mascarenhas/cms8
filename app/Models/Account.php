@@ -52,6 +52,18 @@ class Account extends Model
             ->sum('duration_seconds');
     }
 
+    public function subscriptions()
+    {
+        return $this->hasMany(\Laravel\Cashier\Subscription::class, 'team_id')->orderByDesc('created_at');
+    }
+
+    public function getSubscriptionsCountAttribute()
+    {
+        return $this->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->count();
+    }
+
     public function formatSeconds($seconds)
     {
         $hours = floor($seconds / 3600);

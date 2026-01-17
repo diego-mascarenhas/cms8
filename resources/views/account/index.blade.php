@@ -35,6 +35,11 @@
             <h4 class="mb-1 mt-3">Cuentas</h4>
             <p class="text-muted">Gestión de cuentas</p>
         </div>
+        <div class="d-flex align-content-center flex-wrap gap-3">
+            <a href="{{ route('account.products.index') }}" class="btn btn-primary waves-effect waves-light">
+                <i class="ti ti-package me-1"></i>Productos
+            </a>
+        </div>
     </div>
 
     <div class="card">

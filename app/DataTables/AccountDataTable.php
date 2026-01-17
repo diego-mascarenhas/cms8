@@ -55,6 +55,12 @@ class AccountDataTable extends DataTable
             {
                 return $account->created_at->format('d/m/Y');
             })
+            ->addColumn('subscriptions_count', function ($account)
+            {
+                $count = $account->subscriptions_count;
+
+                return '<a href="'.route('account.subscriptions', $account->id).'" class="text-primary">'.$count.'</a>';
+            })
             ->addColumn('action', function ($account)
             {
                 return '<div class="d-flex justify-content-center align-items-center">
@@ -64,13 +70,13 @@ class AccountDataTable extends DataTable
 				</div>';
             })
             ->setRowId('id')
-            ->rawColumns(['name', 'action']);
+            ->rawColumns(['name', 'action', 'subscriptions_count']);
     }
 
     public function query(Account $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with('owner');
+            ->with(['owner', 'subscriptions']);
     }
 
     public function html(): HtmlBuilder
@@ -114,13 +120,18 @@ class AccountDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::make('created_at')
-                ->title('Creación')
+            Column::computed('total_time')
+                ->title('Tiempo')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::computed('total_time')
-                ->title('Tiempo')
+            Column::computed('subscriptions_count')
+                ->title('Suscripciones')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::make('created_at')
+                ->title('Creación')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
