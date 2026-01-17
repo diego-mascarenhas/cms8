@@ -160,6 +160,7 @@ class DashboardController extends Controller
         $subscriptionLevel = null;
         $mentoringPlan = null;
         $mentoringLevelName = null;
+        $mentoringMessage = null;
         $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
         $hasMentoringSubscription = false;
 
@@ -192,16 +193,13 @@ class DashboardController extends Controller
                 {
                     // Mentoring subscription
                     $hasMentoringSubscription = true;
-                    if (! $hasProjects)
+                    // Get the plan from the product
+                    $mentoringPlan = $product->plan ?? null;
+
+                    // If there's a plan, use it; otherwise check if no projects (IDEA plan)
+                    if ($mentoringPlan)
                     {
-                        // Plan gratuito IDEA (dossier comercial)
-                        $mentoringPlan = 'IDEA';
-                        $mentoringLevelName = 'Tu dossier comercial';
-                    } else
-                    {
-                        // Plan pago
-                        $mentoringPlan = $product->plan ?? 'Pago';
-                        // Map plan names to level names
+                        // Plan pago activo
                         $mentoringLevelName = match ($mentoringPlan)
                         {
                             'creation' => 'Tu dossier comercial',
@@ -210,6 +208,20 @@ class DashboardController extends Controller
                             'complete' => 'Complete',
                             default => $mentoringPlan,
                         };
+                        $mentoringMessage = match ($mentoringPlan)
+                        {
+                            'creation' => 'Estás en la fase de Creación',
+                            'operations' => 'Estás en la fase de Operaciones',
+                            'bussiness-exit' => 'Estás en la fase de Business Exit',
+                            'complete' => 'Tienes el plan completo',
+                            default => '¡Vas viento en popa!',
+                        };
+                    } elseif (! $hasProjects)
+                    {
+                        // Plan gratuito IDEA (dossier comercial) - solo si no hay plan y no hay proyectos
+                        $mentoringPlan = 'IDEA';
+                        $mentoringLevelName = 'Tu dossier comercial';
+                        $mentoringMessage = 'Haz tenido una gran IDEA';
                     }
                 } elseif ($type === 'hosting' || $category === 'hosting')
                 {
@@ -224,6 +236,7 @@ class DashboardController extends Controller
         {
             $mentoringPlan = 'IDEA';
             $mentoringLevelName = 'Tu dossier comercial';
+            $mentoringMessage = 'Haz tenido una gran IDEA';
         }
 
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)
@@ -302,6 +315,7 @@ class DashboardController extends Controller
             'subscriptionLevel',
             'mentoringPlan',
             'mentoringLevelName',
+            'mentoringMessage',
             'hasProjects',
         ));
     }

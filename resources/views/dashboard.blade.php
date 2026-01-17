@@ -91,21 +91,16 @@
                             <div class="card-body text-nowrap">
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
-                                @if($mentoringPlan === 'IDEA')
-                                    <p class="mb-2">Haz tenido una gran IDEA</p>
+                                @if($mentoringPlan)
+                                    @if($mentoringMessage)
+                                        <p class="mb-2">{{ $mentoringMessage }}</p>
+                                    @endif
                                     @if($mentoringLevelName)
                                         <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
                                     @endif
                                 @elseif($subscriptionLevel)
                                     <p class="mb-2">¡Vas viento en popa!</p>
                                     <p class="mb-2"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
-                                @elseif($mentoringPlan)
-                                    <p class="mb-2">¡Vas viento en popa!</p>
-                                    @if($mentoringLevelName)
-                                        <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
-                                    @else
-                                        <p class="mb-2"><span class="badge bg-primary">Plan: {{ $mentoringPlan }}</span></p>
-                                    @endif
                                 @else
                                     <p class="mb-2">¡Vas viento en popa!</p>
                                 @endif
