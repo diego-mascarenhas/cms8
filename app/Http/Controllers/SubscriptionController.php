@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Models\SubscriptionProduct;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
 
@@ -53,7 +54,11 @@ class SubscriptionController extends Controller
             }
         }
 
-        // Get prices from Stripe API
+        // Get products from database (synced from Stripe)
+        $products = SubscriptionProduct::active()->get();
+
+        // Fallback to EmailPlan if no products synced yet
+        $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
 
         return view('subscription.index', [
@@ -62,7 +67,8 @@ class SubscriptionController extends Controller
             'planConfig' => $planConfig,
             'subscription' => $subscription,
             'stripeSubscription' => $stripeSubscription,
-            'plans' => EmailPlan::getAll(),
+            'plans' => $plans,
+            'products' => $products,
             'prices' => $prices,
         ]);
     }

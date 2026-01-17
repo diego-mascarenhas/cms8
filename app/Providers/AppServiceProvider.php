@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\SubscriptionProduct;
+use App\Observers\SubscriptionProductObserver;
+use App\Services\Stripe\StripeProductService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
+use Stripe\StripeClient;
 use Yajra\DataTables\Html\Builder;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,7 +17,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register StripeProductService
+        $this->app->singleton(StripeProductService::class, function ($app)
+        {
+            return new StripeProductService(
+                new StripeClient(config('cashier.secret')),
+            );
+        });
     }
 
     /**
@@ -23,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Builder::useVite();
         JsonResource::withoutWrapping();
+
+        // Register SubscriptionProduct Observer
+        SubscriptionProduct::observe(SubscriptionProductObserver::class);
 
         // Only register CustomTranslator when not in console mode to prevent bootstrap issues
         if (! $this->app->runningInConsole())
