@@ -54,6 +54,14 @@
 							<div class="mt-auto">
 								@if($currentMentoringPlan && $product->plan === $currentMentoringPlan)
 									<button class="btn btn-label-primary w-100" disabled>Tu Plan Actual</button>
+								@elseif($mentoringSubscription && $product->stripe_price)
+									@php
+										$currentProduct = $mentoringProducts->firstWhere('stripe_price', $mentoringSubscription->stripe_price);
+										$isUpgrade = $currentProduct && $product->unit_amount > $currentProduct->unit_amount;
+									@endphp
+									<button type="button" class="btn btn-primary w-100" onclick="confirmSwapProduct({{ $product->id }}, '{{ $product->name }}', {{ $isUpgrade ? 'true' : 'false' }})">
+										{{ $isUpgrade ? 'Upgrade' : 'Downgrade' }}
+									</button>
 								@elseif($product->stripe_price)
 									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
 										<input type="hidden" name="product_id" value="{{ $product->id }}">
@@ -304,7 +312,15 @@
 							<p class="mb-4">{{ $product->description }}</p>
 
 							<div class="mt-auto">
-								@if($product->stripe_price)
+								@if($hostingSubscription && $product->stripe_price)
+									@php
+										$currentProduct = $hostingProducts->firstWhere('stripe_price', $hostingSubscription->stripe_price);
+										$isUpgrade = $currentProduct && $product->unit_amount > $currentProduct->unit_amount;
+									@endphp
+									<button type="button" class="btn btn-primary w-100" onclick="confirmSwapProduct({{ $product->id }}, '{{ $product->name }}', {{ $isUpgrade ? 'true' : 'false' }})">
+										{{ $isUpgrade ? 'Upgrade' : 'Downgrade' }}
+									</button>
+								@elseif($product->stripe_price)
 									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
 										<input type="hidden" name="product_id" value="{{ $product->id }}">
 										<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
@@ -337,6 +353,7 @@
 				<form id="swapPlanForm" method="POST" action="{{ route('subscription.swap') }}" style="display: inline;">
 					@csrf
 					<input type="hidden" name="plan" id="swapPlanInput">
+					<input type="hidden" name="product_id" id="swapProductInput">
 					<button type="submit" class="btn btn-primary">Sí, cambiar plan</button>
 				</form>
 			</div>
@@ -375,19 +392,33 @@
 <script>
 function confirmCancel()
 {
-	const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
-	modal.show();
+    const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
+    modal.show();
 }
 
 function confirmSwap(plan, planName)
 {
-	// Update modal content
-	document.getElementById('swapPlanModalText').textContent = `¿Cambiar al plan ${planName}? Los cambios tomarán efecto inmediatamente.`;
-	document.getElementById('swapPlanInput').value = plan;
-	
-	// Show modal
-	const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
-	modal.show();
+    // Update modal content
+    document.getElementById('swapPlanModalText').textContent = `¿Cambiar al plan ${planName}? Los cambios tomarán efecto inmediatamente.`;
+    document.getElementById('swapPlanInput').value = plan;
+    document.getElementById('swapProductInput').value = '';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
+    modal.show();
+}
+
+function confirmSwapProduct(productId, productName, isUpgrade)
+{
+    // Update modal content
+    const action = isUpgrade ? 'mejorar' : 'degradar';
+    document.getElementById('swapPlanModalText').textContent = `¿${isUpgrade ? 'Mejorar' : 'Degradar'} al plan ${productName}? Los cambios tomarán efecto inmediatamente.`;
+    document.getElementById('swapPlanInput').value = '';
+    document.getElementById('swapProductInput').value = productId;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
+    modal.show();
 }
 </script>
 @endsection

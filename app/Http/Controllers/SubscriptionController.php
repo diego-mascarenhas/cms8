@@ -74,18 +74,20 @@ class SubscriptionController extends Controller
             ->orderBy('unit_amount', 'desc')
             ->get();
 
-        // Get active mentoring subscription to determine current plan
-        $mentoringSubscription = $team->subscriptions()
+        // Get active subscriptions for each category
+        $activeSubscriptions = $team->subscriptions()
             ->where('stripe_status', '!=', 'canceled')
             ->get()
-            ->filter(function ($sub) use ($mentoringProducts)
+            ->filter(fn ($sub) => $sub->active());
+
+        // Get active mentoring subscription to determine current plan
+        $mentoringSubscription = $activeSubscriptions->filter(function ($sub) use ($mentoringProducts)
+        {
+            return $mentoringProducts->contains(function ($product) use ($sub)
             {
-                return $mentoringProducts->contains(function ($product) use ($sub)
-                {
-                    return $product->stripe_price === $sub->stripe_price;
-                });
-            })
-            ->first();
+                return $product->stripe_price === $sub->stripe_price;
+            });
+        })->first();
 
         $currentMentoringPlan = null;
         if ($mentoringSubscription)
@@ -93,6 +95,15 @@ class SubscriptionController extends Controller
             $mentoringProduct = $mentoringProducts->firstWhere('stripe_price', $mentoringSubscription->stripe_price);
             $currentMentoringPlan = $mentoringProduct?->plan;
         }
+
+        // Get active hosting subscription
+        $hostingSubscription = $activeSubscriptions->filter(function ($sub) use ($hostingProducts)
+        {
+            return $hostingProducts->contains(function ($product) use ($sub)
+            {
+                return $product->stripe_price === $sub->stripe_price;
+            });
+        })->first();
 
         // Fallback to EmailPlan if no products synced yet
         $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
@@ -111,6 +122,8 @@ class SubscriptionController extends Controller
             'mailerProducts' => $mailerProducts,
             'hostingProducts' => $hostingProducts,
             'currentMentoringPlan' => $currentMentoringPlan,
+            'mentoringSubscription' => $mentoringSubscription,
+            'hostingSubscription' => $hostingSubscription,
         ]);
     }
 
@@ -502,10 +515,23 @@ class SubscriptionController extends Controller
             })
             ->first();
 
+        // If already has an active subscription of the same type, automatically swap instead of showing error
         if ($activeSubscription)
         {
-            return redirect()->route('subscription.index')
-                ->with('error', 'Ya tienes una suscripción activa de este tipo. Por favor, gestiona tu plan actual primero.');
+            // Redirect to swap method to upgrade/downgrade
+            $swapRequest = new Request;
+            if ($request->product_id)
+            {
+                $swapRequest->merge(['product_id' => $request->product_id]);
+            } elseif ($request->price_id)
+            {
+                $swapRequest->merge(['price_id' => $request->price_id]);
+            } elseif ($request->plan)
+            {
+                $swapRequest->merge(['plan' => $request->plan]);
+            }
+
+            return $this->swap($swapRequest);
         }
 
         // Clean up any canceled subscriptions of the same type to avoid conflicts
@@ -780,32 +806,78 @@ class SubscriptionController extends Controller
     public function swap(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
         ]);
 
         $team = auth()->user()->currentTeam;
-        $plan = EmailPlan::from($request->plan);
+        $priceId = null;
+        $product = null;
+        $subscriptionType = 'mailer';
+
+        // Determine priceId and subscriptionType
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+            $priceId = $product->stripe_price;
+            $subscriptionType = $product->category ?? 'mailer';
+        } elseif ($request->price_id)
+        {
+            $priceId = $request->price_id;
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if ($product)
+            {
+                $subscriptionType = $product->category ?? 'mailer';
+            }
+        } elseif ($request->plan)
+        {
+            $plan = EmailPlan::from($request->plan);
+            $priceId = $plan->getStripePriceId();
+            $subscriptionType = 'mailer';
+        } else
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Debes especificar un plan o producto para cambiar.');
+        }
+
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
+        }
 
         try
         {
-            // Get the Stripe price ID directly from the plan
-            $priceId = $plan->getStripePriceId();
-
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
-            }
-
-            // Get subscription (including canceled ones)
+            // Get subscription by type
             $subscription = $team->subscriptions()
-                ->where('type', 'mailer')
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($subscriptionType, $product)
+                {
+                    // For same category subscriptions, check if active
+                    if ($product)
+                    {
+                        $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+                        if ($subProduct && $subProduct->category === $product->category)
+                        {
+                            return $sub->active();
+                        }
+                    }
+                    // For mailer, use the existing logic
+                    if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
+                    {
+                        return $sub->active();
+                    }
+
+                    return false;
+                })
                 ->first();
 
             if (! $subscription)
             {
                 return redirect()->route('subscription.index')
-                    ->with('error', 'No se encontró una suscripción. Por favor, crea una nueva suscripción primero.');
+                    ->with('error', 'No se encontró una suscripción activa de este tipo. Por favor, crea una nueva suscripción primero.');
             }
 
             // Update directly via Stripe API to avoid Billable model issues
@@ -831,14 +903,17 @@ class SubscriptionController extends Controller
             $subscription->ends_at = null; // Always clear cancellation date
             $subscription->save();
 
-            // Update the team's email plan (bypass admin check for owner)
-            try
+            // Update the team's email plan if it's a mailer subscription
+            if ($subscriptionType === 'mailer')
             {
-                $team->email_plan = $plan->value;
-                $team->save();
-            } catch (\Exception $e)
-            {
-                \Log::warning('Could not update email_plan: '.$e->getMessage());
+                try
+                {
+                    $team->email_plan = EmailPlan::fromStripePriceId($priceId)->value;
+                    $team->save();
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not update email_plan: '.$e->getMessage());
+                }
             }
 
             return redirect()->route('subscription.index')
