@@ -57,6 +57,42 @@ class SubscriptionController extends Controller
         // Get products from database (synced from Stripe)
         $products = SubscriptionProduct::active()->get();
 
+        // Get all active subscription products grouped by category
+        $mentoringProducts = SubscriptionProduct::active()
+            ->where('category', 'mentoring')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $mailerProducts = SubscriptionProduct::active()
+            ->where('category', 'mailer')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $hostingProducts = SubscriptionProduct::active()
+            ->whereIn('category', ['hosting', 'support'])
+            ->orderBy('unit_amount')
+            ->get();
+
+        // Get active mentoring subscription to determine current plan
+        $mentoringSubscription = $team->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get()
+            ->filter(function ($sub) use ($mentoringProducts)
+            {
+                return $mentoringProducts->contains(function ($product) use ($sub)
+                {
+                    return $product->stripe_price === $sub->stripe_price;
+                });
+            })
+            ->first();
+
+        $currentMentoringPlan = null;
+        if ($mentoringSubscription)
+        {
+            $mentoringProduct = $mentoringProducts->firstWhere('stripe_price', $mentoringSubscription->stripe_price);
+            $currentMentoringPlan = $mentoringProduct?->plan;
+        }
+
         // Fallback to EmailPlan if no products synced yet
         $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
@@ -70,6 +106,10 @@ class SubscriptionController extends Controller
             'plans' => $plans,
             'products' => $products,
             'prices' => $prices,
+            'mentoringProducts' => $mentoringProducts,
+            'mailerProducts' => $mailerProducts,
+            'hostingProducts' => $hostingProducts,
+            'currentMentoringPlan' => $currentMentoringPlan,
         ]);
     }
 

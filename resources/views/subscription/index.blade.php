@@ -23,8 +23,53 @@
 	</div>
 @endif
 
-<!-- Pricing Cards -->
-<div class="row gy-4">
+<!-- Mentoring Plans -->
+@if($mentoringProducts->isNotEmpty())
+	<div class="mb-5">
+		<h3 class="mb-4">Planes de Mentoría</h3>
+		<div class="row gy-4">
+			@foreach($mentoringProducts as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100 {{ $currentMentoringPlan && $product->plan === $currentMentoringPlan ? 'border-primary shadow-sm' : '' }}">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							@if($currentMentoringPlan && $product->plan === $currentMentoringPlan)
+								<div class="position-absolute end-0 me-4 top-0 mt-3">
+									<span class="badge bg-label-primary">Plan Actual</span>
+								</div>
+							@endif
+
+							<div class="mb-4">
+								<div class="d-flex justify-content-center">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									@if($product->recurring_interval)
+										<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
+									@endif
+								</div>
+							</div>
+
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
+
+							<div class="mt-auto">
+								@if($currentMentoringPlan && $product->plan === $currentMentoringPlan)
+									<button class="btn btn-label-primary w-100" disabled>Tu Plan Actual</button>
+								@else
+									<button class="btn btn-primary w-100" disabled>Próximamente</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+			@endforeach
+		</div>
+	</div>
+@endif
+
+<!-- Mailer Plans -->
+<div class="mb-5">
+	<h3 class="mb-4">Planes de Mailer</h3>
+	<div class="row gy-4">
 	<!-- FREE Plan -->
 	<div class="col-xl col-lg-4 col-md-6">
 		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'border-primary shadow-sm' : '' }}">
@@ -132,10 +177,6 @@
 					<div class="position-absolute end-0 me-4 top-0 mt-3">
 						<span class="badge bg-label-primary">Plan Actual</span>
 					</div>
-				@else
-					<div class="position-absolute end-0 me-4 top-0 mt-3">
-						<span class="badge bg-label-primary">Popular</span>
-					</div>
 				@endif
 
 				<div class="mb-4">
@@ -234,6 +275,39 @@
 		</div>
 	</div>
 </div>
+
+<!-- Hosting Plans -->
+@if($hostingProducts->isNotEmpty())
+	<div class="mb-5 mt-5">
+		<h3 class="mb-4">Planes de Hosting</h3>
+		<div class="row gy-4">
+				@foreach($hostingProducts as $product)
+					<div class="col-xl col-lg-4 col-md-6">
+						<div class="card border h-100">
+							<div class="card-body position-relative text-center d-flex flex-column">
+								<div class="mb-4">
+									<div class="d-flex justify-content-center">
+										<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+										<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+										@if($product->recurring_interval)
+											<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
+										@endif
+									</div>
+								</div>
+
+								<h4>{{ $product->name }}</h4>
+								<p class="mb-4">{{ $product->description }}</p>
+
+								<div class="mt-auto">
+									<button class="btn btn-primary w-100" disabled>Próximamente</button>
+								</div>
+							</div>
+						</div>
+					</div>
+			@endforeach
+		</div>
+	</div>
+@endif
 
 <!-- Modal Cambiar Plan -->
 <div class="modal fade" id="swapPlanModal" tabindex="-1" aria-hidden="true">
