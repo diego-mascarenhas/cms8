@@ -28,6 +28,9 @@
                     @if(isset($domain) && $domain)
                         <input type="hidden" name="domain" value="{{ $domain }}">
                     @endif
+                    @if(isset($coupon) && $coupon)
+                        <input type="hidden" name="coupon" value="{{ $coupon }}">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->

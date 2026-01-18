@@ -218,6 +218,7 @@ class SubscriptionController extends Controller
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
             'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255', // Added coupon to validation
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -310,6 +311,7 @@ class SubscriptionController extends Controller
             'prices' => $prices,
             'customerData' => $customerData,
             'domain' => $request->domain,
+            'coupon' => $request->coupon, // Pass coupon code to view
         ]);
     }
 
@@ -322,6 +324,8 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255', // Added coupon to validation
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -396,17 +400,9 @@ class SubscriptionController extends Controller
                 ]);
 
                 // Add or update Tax ID
+                // IMPORTANT: Only delete existing tax IDs AFTER successfully creating the new one
                 try
                 {
-                    // Get existing tax IDs
-                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
-
-                    // Delete existing tax IDs
-                    foreach ($taxIds->data as $taxId)
-                    {
-                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
-                    }
-
                     // Map country code to Stripe tax ID type
                     $taxIdType = match ($request->country)
                     {
@@ -421,17 +417,47 @@ class SubscriptionController extends Controller
                         default => 'unknown',
                     };
 
-                    // Create new tax ID
-                    if ($taxIdType !== 'unknown')
+                    // Only proceed if tax ID type is known
+                    if ($taxIdType !== 'unknown' && ! empty($request->tax_id))
                     {
-                        \Stripe\Customer::createTaxId($team->stripe_id, [
+                        // First, try to create the new tax ID
+                        $newTaxId = \Stripe\Customer::createTaxId($team->stripe_id, [
                             'type' => $taxIdType,
                             'value' => $request->tax_id,
                         ]);
+
+                        // Only delete existing tax IDs AFTER successful creation
+                        if ($newTaxId)
+                        {
+                            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
+                            foreach ($taxIds->data as $taxId)
+                            {
+                                // Don't delete the one we just created
+                                if ($taxId->id !== $newTaxId->id)
+                                {
+                                    try
+                                    {
+                                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
+                                    } catch (\Exception $e)
+                                    {
+                                        \Log::warning('Error deleting old tax ID: '.$e->getMessage());
+                                    }
+                                }
+                            }
+                            \Log::info('Tax ID updated successfully', [
+                                'team_id' => $team->id,
+                                'tax_id_type' => $taxIdType,
+                            ]);
+                        }
                     }
                 } catch (\Exception $e)
                 {
-                    \Log::warning('Error updating tax ID: '.$e->getMessage());
+                    \Log::error('Error updating tax ID: '.$e->getMessage(), [
+                        'team_id' => $team->id,
+                        'country' => $request->country,
+                        'tax_id' => $request->tax_id,
+                    ]);
+                    // Don't throw - continue with other updates
                 }
 
                 // Update metadata
@@ -474,6 +500,10 @@ class SubscriptionController extends Controller
         if ($request->domain)
         {
             $redirectParams['domain'] = $request->domain;
+        }
+        if ($request->coupon)
+        {
+            $redirectParams['coupon'] = $request->coupon;
         }
 
         return redirect()->route('subscription.checkout', $redirectParams);
