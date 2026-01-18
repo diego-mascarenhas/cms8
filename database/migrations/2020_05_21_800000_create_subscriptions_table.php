@@ -15,7 +15,7 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('user_id');
-            $table->unsignedBigInteger('team_id')->nullable()->after('user_id');
+            $table->unsignedBigInteger('team_id')->nullable();
             $table->string('type');
             $table->string('stripe_id')->unique();
             $table->string('stripe_status');
