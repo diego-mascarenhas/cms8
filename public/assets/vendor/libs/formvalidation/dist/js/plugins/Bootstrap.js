@@ -1,1 +1,183 @@
-!function(e,t){if("object"==typeof exports&&"object"==typeof module)module.exports=t();else if("function"==typeof define&&define.amd)define([],t);else{var n=t();for(var o in n)("object"==typeof exports?exports:e)[o]=n[o]}}(self,function(){return e={68295:function(e,t,n){var o,r,i;function c(e){return c="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e},c(e)}i=function(){"use strict";function e(e,t){for(var n=0;n<t.length;n++){var o=t[n];o.enumerable=o.enumerable||!1,o.configurable=!0,"value"in o&&(o.writable=!0),Object.defineProperty(e,o.key,o)}}function t(e){return t=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(e){return e.__proto__||Object.getPrototypeOf(e)},t(e)}function n(e,t){return n=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(e,t){return e.__proto__=t,e},n(e,t)}function o(e,t){if(t&&("object"===c(t)||"function"==typeof t))return t;if(void 0!==t)throw new TypeError("Derived constructors may only return object or undefined");return function(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}(e)}function r(e){var n=function(){if("undefined"==typeof Reflect||!Reflect.construct)return!1;if(Reflect.construct.sham)return!1;if("function"==typeof Proxy)return!0;try{return Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){})),!0}catch(e){return!1}}();return function(){var r,i=t(e);if(n){var c=t(this).constructor;r=Reflect.construct(i,arguments,c)}else r=i.apply(this,arguments);return o(this,r)}}var i=FormValidation.utils.classSet,l=FormValidation.utils.hasClass,f=function(t){!function(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function");e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,writable:!0,configurable:!0}}),Object.defineProperty(e,"prototype",{writable:!1}),t&&n(e,t)}(a,t);var o,c,f,u=r(a);function a(e){return function(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}(this,a),u.call(this,Object.assign({},{eleInvalidClass:"is-invalid",eleValidClass:"is-valid",formClass:"fv-plugins-bootstrap",messageClass:"fv-help-block",rowInvalidClass:"has-danger",rowPattern:/^(.*)(col|offset)(-(sm|md|lg|xl))*-[0-9]+(.*)$/,rowSelector:".form-group",rowValidClass:"has-success"},e))}return o=a,c=[{key:"onIconPlaced",value:function(e){var t=e.element.parentElement;l(t,"input-group")&&t.parentElement.insertBefore(e.iconElement,t.nextSibling);var n=e.element.getAttribute("type");if("checkbox"===n||"radio"===n){var o=t.parentElement;l(t,"form-check")?(i(e.iconElement,{"fv-plugins-icon-check":!0}),t.parentElement.insertBefore(e.iconElement,t.nextSibling)):l(t.parentElement,"form-check")&&(i(e.iconElement,{"fv-plugins-icon-check":!0}),o.parentElement.insertBefore(e.iconElement,o.nextSibling))}}}],c&&e(o.prototype,c),f&&e(o,f),Object.defineProperty(o,"prototype",{writable:!1}),a}(FormValidation.plugins.Framework);return f},"object"===c(t)?e.exports=i():void 0===(r="function"==typeof(o=i)?o.call(t,n,t,e):o)||(e.exports=r)}},t={},function n(o){var r=t[o];if(void 0!==r)return r.exports;var i=t[o]={exports:{}};return e[o].call(i.exports,i,i.exports,n),i.exports}(68295);var e,t});
+/**
+ * FormValidation (https://formvalidation.io), v1.10.0 (2236098)
+ * The best validation library for JavaScript
+ * (c) 2013 - 2021 Nguyen Huu Phuoc <me@phuoc.ng>
+ */
+
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, (global.FormValidation = global.FormValidation || {}, global.FormValidation.plugins = global.FormValidation.plugins || {}, global.FormValidation.plugins.Bootstrap = factory()));
+})(this, (function () { 'use strict';
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties(Constructor, staticProps);
+    Object.defineProperty(Constructor, "prototype", {
+      writable: false
+    });
+    return Constructor;
+  }
+
+  function _inherits(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    Object.defineProperty(subClass, "prototype", {
+      writable: false
+    });
+    if (superClass) _setPrototypeOf(subClass, superClass);
+  }
+
+  function _getPrototypeOf(o) {
+    _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf(o);
+  }
+
+  function _setPrototypeOf(o, p) {
+    _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+    return _setPrototypeOf(o, p);
+  }
+
+  function _isNativeReflectConstruct() {
+    if (typeof Reflect === "undefined" || !Reflect.construct) return false;
+    if (Reflect.construct.sham) return false;
+    if (typeof Proxy === "function") return true;
+
+    try {
+      Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function _assertThisInitialized(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _possibleConstructorReturn(self, call) {
+    if (call && (typeof call === "object" || typeof call === "function")) {
+      return call;
+    } else if (call !== void 0) {
+      throw new TypeError("Derived constructors may only return object or undefined");
+    }
+
+    return _assertThisInitialized(self);
+  }
+
+  function _createSuper(Derived) {
+    var hasNativeReflectConstruct = _isNativeReflectConstruct();
+
+    return function _createSuperInternal() {
+      var Super = _getPrototypeOf(Derived),
+          result;
+
+      if (hasNativeReflectConstruct) {
+        var NewTarget = _getPrototypeOf(this).constructor;
+
+        result = Reflect.construct(Super, arguments, NewTarget);
+      } else {
+        result = Super.apply(this, arguments);
+      }
+
+      return _possibleConstructorReturn(this, result);
+    };
+  }
+
+  var e = FormValidation.utils.classSet;
+
+  var t = FormValidation.utils.hasClass;
+
+  var n = FormValidation.plugins.Framework;
+
+  var s = /*#__PURE__*/function (_n) {
+    _inherits(s, _n);
+
+    var _super = _createSuper(s);
+
+    function s(e) {
+      _classCallCheck(this, s);
+
+      return _super.call(this, Object.assign({}, {
+        eleInvalidClass: "is-invalid",
+        eleValidClass: "is-valid",
+        formClass: "fv-plugins-bootstrap",
+        messageClass: "fv-help-block",
+        rowInvalidClass: "has-danger",
+        rowPattern: /^(.*)(col|offset)(-(sm|md|lg|xl))*-[0-9]+(.*)$/,
+        rowSelector: ".form-group",
+        rowValidClass: "has-success"
+      }, e));
+    }
+
+    _createClass(s, [{
+      key: "onIconPlaced",
+      value: function onIconPlaced(n) {
+        var _s = n.element.parentElement;
+
+        if (t(_s, "input-group")) {
+          _s.parentElement.insertBefore(n.iconElement, _s.nextSibling);
+        }
+
+        var l = n.element.getAttribute("type");
+
+        if ("checkbox" === l || "radio" === l) {
+          var _l = _s.parentElement;
+
+          if (t(_s, "form-check")) {
+            e(n.iconElement, {
+              "fv-plugins-icon-check": true
+            });
+
+            _s.parentElement.insertBefore(n.iconElement, _s.nextSibling);
+          } else if (t(_s.parentElement, "form-check")) {
+            e(n.iconElement, {
+              "fv-plugins-icon-check": true
+            });
+
+            _l.parentElement.insertBefore(n.iconElement, _l.nextSibling);
+          }
+        }
+      }
+    }]);
+
+    return s;
+  }(n);
+
+  return s;
+
+}));
