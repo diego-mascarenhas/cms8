@@ -28,6 +28,10 @@ export default defineConfig({
                 {
                     src: 'resources/assets/css',
                     dest: 'assets'
+                },
+                {
+                    src: 'lang/datatables',
+                    dest: 'js'
                 }
             ]
         })
