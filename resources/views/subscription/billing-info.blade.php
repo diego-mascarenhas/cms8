@@ -25,6 +25,9 @@
                     @if($product)
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                     @endif
+                    @if(isset($domain) && $domain)
+                        <input type="hidden" name="domain" value="{{ $domain }}">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->

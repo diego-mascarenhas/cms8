@@ -312,19 +312,14 @@
 							<p class="mb-4">{{ $product->description }}</p>
 
 							<div class="mt-auto">
-								@if($hostingSubscription && $product->stripe_price)
-									@php
-										$currentProduct = $hostingProducts->firstWhere('stripe_price', $hostingSubscription->stripe_price);
-										$isUpgrade = $currentProduct && $product->unit_amount > $currentProduct->unit_amount;
-									@endphp
-									<button type="button" class="btn btn-primary w-100" onclick="confirmSwapProduct({{ $product->id }}, '{{ $product->name }}', {{ $isUpgrade ? 'true' : 'false' }})">
-										{{ $isUpgrade ? 'Upgrade' : 'Downgrade' }}
+								@php
+									$isSupport = $product->category === 'support';
+								@endphp
+								
+								@if($product->stripe_price)
+									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, '{{ $product->name }}', {{ $isSupport ? 'true' : 'false' }})">
+										Contratar
 									</button>
-								@elseif($product->stripe_price)
-									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
-										<input type="hidden" name="product_id" value="{{ $product->id }}">
-										<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
-									</form>
 								@else
 									<button class="btn btn-primary w-100" disabled>Próximamente</button>
 								@endif
@@ -383,6 +378,42 @@
 	</div>
 </div>
 
+<!-- Modal Solicitar Dominio -->
+<div class="modal fade" id="domainModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="domainModalTitle">Información del Dominio</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<form id="domainForm" method="GET" action="{{ route('subscription.checkout') }}">
+					<input type="hidden" name="product_id" id="domainProductId">
+					<input type="hidden" name="domain" id="domainInput">
+					
+					<div class="mb-3">
+						<label for="domain" class="form-label" id="domainLabel">Dominio (*)</label>
+						<input type="text" class="form-control" id="domain" name="domain" placeholder="ejemplo.com" required>
+						<small class="text-muted" id="domainHelp">
+							Ingresa el dominio para el servicio de hosting
+						</small>
+					</div>
+					
+					<div class="alert alert-info mb-0">
+						<small id="domainAlertText">
+							Este dominio se utilizará para configurar tu servicio de hosting WordPress.
+						</small>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+				<button type="button" class="btn btn-primary" onclick="submitDomainForm()">Continuar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 @section('vendor-script')
 @endsection
 
@@ -419,6 +450,60 @@ function confirmSwapProduct(productId, productName, isUpgrade)
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
     modal.show();
+}
+
+function showDomainModal(productId, productName, isSupport)
+{
+    // Update modal content
+    document.getElementById('domainModalTitle').textContent = productName;
+    document.getElementById('domainProductId').value = productId;
+    document.getElementById('domain').value = '';
+    
+    if (isSupport) {
+        document.getElementById('domainLabel').textContent = 'Dominio existente (*)';
+        document.getElementById('domainHelp').textContent = 'Ingresa el dominio al que se asociará el soporte (debe ser un dominio ya existente)';
+        document.getElementById('domainAlertText').textContent = 'Este soporte se asociará a un dominio existente. Asegúrate de que el dominio ya esté configurado.';
+    } else {
+        document.getElementById('domainLabel').textContent = 'Dominio (*)';
+        document.getElementById('domainHelp').textContent = 'Ingresa el dominio para el servicio de hosting (puedes tener varios dominios)';
+        document.getElementById('domainAlertText').textContent = 'Este dominio se utilizará para configurar tu servicio de hosting WordPress.';
+    }
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('domainModal'));
+    modal.show();
+}
+
+function submitDomainForm()
+{
+    const domainInput = document.getElementById('domain');
+    let domain = domainInput.value.trim();
+    
+    if (!domain) {
+        alert('Por favor, ingresa un dominio válido');
+        return;
+    }
+    
+    // Remove protocol if present
+    domain = domain.replace(/^https?:\/\//, '');
+    // Remove trailing slash
+    domain = domain.replace(/\/$/, '');
+    // Remove www. if present
+    domain = domain.replace(/^www\./, '');
+    
+    // Enhanced domain validation (matches backend validation)
+    const domainRegex = /^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+    if (!domainRegex.test(domain)) {
+        alert('Por favor, ingresa un dominio válido (ej: ejemplo.com)');
+        return;
+    }
+    
+    // Set cleaned domain in input
+    domainInput.value = domain;
+    document.getElementById('domainInput').value = domain;
+    
+    // Submit form
+    document.getElementById('domainForm').submit();
 }
 </script>
 @endsection

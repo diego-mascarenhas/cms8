@@ -217,6 +217,7 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -275,6 +276,7 @@ class SubscriptionController extends Controller
             'product' => $product,
             'prices' => $prices,
             'customerData' => $customerData,
+            'domain' => $request->domain,
         ]);
     }
 
@@ -424,17 +426,24 @@ class SubscriptionController extends Controller
             }
         }
 
-        // Redirect to checkout
+        // Redirect to checkout (preserve domain if provided)
+        $redirectParams = [];
         if ($request->product_id)
         {
-            return redirect()->route('subscription.checkout', ['product_id' => $request->product_id]);
+            $redirectParams['product_id'] = $request->product_id;
         } elseif ($request->price_id)
         {
-            return redirect()->route('subscription.checkout', ['price_id' => $request->price_id]);
+            $redirectParams['price_id'] = $request->price_id;
         } else
         {
-            return redirect()->route('subscription.checkout', ['plan' => $request->plan]);
+            $redirectParams['plan'] = $request->plan;
         }
+        if ($request->domain)
+        {
+            $redirectParams['domain'] = $request->domain;
+        }
+
+        return redirect()->route('subscription.checkout', $redirectParams);
     }
 
     /**
@@ -509,6 +518,7 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -551,51 +561,94 @@ class SubscriptionController extends Controller
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
         }
 
-        // Check if already has an active subscription of the same type (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
-            ->get()
-            ->filter(function ($sub) use ($subscriptionType, $product)
-            {
-                // For same category subscriptions, check if active
-                if ($product)
+        // Validate domain for hosting/support products
+        if ($product && in_array($product->category, ['hosting', 'support']) && ! $request->domain)
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Debes especificar un dominio para este servicio.');
+        }
+
+        // For hosting/support products, allow multiple subscriptions (one per domain)
+        // For other products, check if already has an active subscription of the same type
+        $isHostingOrSupport = $product && in_array($product->category, ['hosting', 'support']);
+
+        if (! $isHostingOrSupport)
+        {
+            // Check if already has an active subscription of the same type (not canceled)
+            $activeSubscription = $team->subscriptions()
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($subscriptionType, $product)
                 {
-                    $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
-                    if ($subProduct && $subProduct->category === $product->category)
+                    // For same category subscriptions, check if active
+                    if ($product)
+                    {
+                        $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+                        if ($subProduct && $subProduct->category === $product->category)
+                        {
+                            return $sub->active();
+                        }
+                    }
+                    // For mailer, use the existing logic
+                    if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
                     {
                         return $sub->active();
                     }
-                }
-                // For mailer, use the existing logic
-                if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
+
+                    return false;
+                })
+                ->first();
+
+            // If already has an active subscription of the same type, automatically swap instead of showing error
+            if ($activeSubscription)
+            {
+                // Redirect to swap method to upgrade/downgrade
+                $swapRequest = new Request;
+                if ($request->product_id)
                 {
-                    return $sub->active();
+                    $swapRequest->merge(['product_id' => $request->product_id]);
+                } elseif ($request->price_id)
+                {
+                    $swapRequest->merge(['price_id' => $request->price_id]);
+                } elseif ($request->plan)
+                {
+                    $swapRequest->merge(['plan' => $request->plan]);
                 }
 
-                return false;
-            })
-            ->first();
-
-        // If already has an active subscription of the same type, automatically swap instead of showing error
-        if ($activeSubscription)
-        {
-            // Redirect to swap method to upgrade/downgrade
-            $swapRequest = new Request;
-            if ($request->product_id)
-            {
-                $swapRequest->merge(['product_id' => $request->product_id]);
-            } elseif ($request->price_id)
-            {
-                $swapRequest->merge(['price_id' => $request->price_id]);
-            } elseif ($request->plan)
-            {
-                $swapRequest->merge(['plan' => $request->plan]);
+                return $this->swap($swapRequest);
             }
-
-            return $this->swap($swapRequest);
         }
 
-        // If different category and customer has payment method, create subscription directly (skip checkout)
+        // Validate domain for hosting/support products
+        if ($product && in_array($product->category, ['hosting', 'support']))
+        {
+            if (! $request->domain)
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', 'Debes especificar un dominio para este servicio.');
+            }
+
+            // Validate domain format
+            $domain = trim($request->domain);
+            // Remove protocol if present
+            $domain = preg_replace('#^https?://#', '', $domain);
+            // Remove trailing slash
+            $domain = rtrim($domain, '/');
+            // Remove www. if present
+            $domain = preg_replace('#^www\.#', '', $domain);
+
+            // Validate domain format: alphanumeric, dots, hyphens, at least one dot, valid TLD
+            if (! preg_match('/^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i', $domain))
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', 'El formato del dominio no es válido. Debe ser algo como: ejemplo.com');
+            }
+
+            // Store cleaned domain
+            $request->merge(['domain' => $domain]);
+        }
+
+        // If customer has payment method, create subscription directly (skip checkout)
         // This prevents creating duplicate payment methods
         if ($team->stripe_id)
         {
@@ -604,21 +657,87 @@ class SubscriptionController extends Controller
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
                 $customer = \Stripe\Customer::retrieve($team->stripe_id);
 
-                // Check if customer has a default payment method
-                if ($customer->invoice_settings->default_payment_method)
+                // Get default payment method or first available payment method
+                $paymentMethodId = $customer->invoice_settings->default_payment_method;
+
+                \Log::info('Checking payment methods', [
+                    'team_id' => $team->id,
+                    'stripe_customer_id' => $team->stripe_id,
+                    'default_payment_method' => $paymentMethodId,
+                ]);
+
+                // If no default payment method, try to get the first available one
+                if (! $paymentMethodId)
                 {
-                    // Create subscription directly using existing default payment method
+                    $paymentMethods = \Stripe\PaymentMethod::all([
+                        'customer' => $team->stripe_id,
+                        'type' => 'card',
+                        'limit' => 10, // Get more to find an active one
+                    ]);
+
+                    \Log::info('Found payment methods', [
+                        'team_id' => $team->id,
+                        'count' => count($paymentMethods->data),
+                        'payment_methods' => array_map(fn ($pm) => [
+                            'id' => $pm->id,
+                            'type' => $pm->type,
+                            'card_last4' => $pm->card->last4 ?? null,
+                        ], $paymentMethods->data),
+                    ]);
+
+                    // Find the first active payment method
+                    foreach ($paymentMethods->data as $pm)
+                    {
+                        if ($pm->card && ! empty($pm->card->last4))
+                        {
+                            $paymentMethodId = $pm->id;
+                            \Log::info('Selected payment method', [
+                                'team_id' => $team->id,
+                                'payment_method_id' => $paymentMethodId,
+                                'card_last4' => $pm->card->last4,
+                            ]);
+                            break;
+                        }
+                    }
+                } else
+                {
+                    \Log::info('Using default payment method', [
+                        'team_id' => $team->id,
+                        'payment_method_id' => $paymentMethodId,
+                    ]);
+                }
+
+                // If we have a payment method, create subscription directly
+                if ($paymentMethodId)
+                {
+                    \Log::info('Creating subscription directly with payment method', [
+                        'team_id' => $team->id,
+                        'payment_method_id' => $paymentMethodId,
+                        'subscription_type' => $subscriptionType,
+                        'product_id' => $product?->id,
+                    ]);
+
+                    // Build metadata
+                    $metadata = [
+                        'team_id' => $team->id,
+                        'subscription_type' => $subscriptionType,
+                    ];
+
+                    // Add domain to metadata if provided
+                    if ($request->domain)
+                    {
+                        $metadata['domain'] = $request->domain;
+                    }
+
+                    // Create subscription directly using existing payment method
                     $stripeSubscription = \Stripe\Subscription::create([
                         'customer' => $team->stripe_id,
                         'items' => [[
                             'price' => $priceId,
                         ]],
-                        'default_payment_method' => $customer->invoice_settings->default_payment_method,
+                        'default_payment_method' => $paymentMethodId,
                         'expand' => ['latest_invoice.payment_intent'],
-                        'metadata' => [
-                            'team_id' => $team->id,
-                            'subscription_type' => $subscriptionType,
-                        ],
+                        'metadata' => $metadata,
                     ]);
 
                     // Sync subscription to local database
@@ -631,6 +750,7 @@ class SubscriptionController extends Controller
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
+                        'data' => $metadata, // Store metadata including domain
                     ]);
 
                     // Only assign EmailPlan if it's a mailer subscription
@@ -646,17 +766,34 @@ class SubscriptionController extends Controller
                         }
                     }
 
+                    // Custom success message based on subscription type
+                    $successMessage = match ($subscriptionType)
+                    {
+                        'hosting', 'support' => '¡Servicio contratado exitosamente usando tu método de pago guardado!',
+                        default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
+                    };
+
                     return redirect()->route('subscription.index')
-                        ->with('success', '¡Suscripción activada exitosamente usando tu método de pago guardado!');
+                        ->with('success', $successMessage);
                 }
             } catch (\Exception $e)
             {
-                \Log::warning('Could not create subscription directly, falling back to checkout: '.$e->getMessage());
+                \Log::warning('Could not create subscription directly, falling back to checkout', [
+                    'team_id' => $team->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 // Fall through to checkout flow
             }
+        } else
+        {
+            \Log::info('No stripe_id for team, going to checkout', [
+                'team_id' => $team->id,
+            ]);
         }
 
         // Check if billing info is required (for non-mailer subscriptions)
+        // Only check if we didn't create subscription directly (no payment method found)
         if ($subscriptionType !== 'mailer')
         {
             // Check if customer has complete billing info in Stripe
@@ -664,14 +801,26 @@ class SubscriptionController extends Controller
 
             if (! $hasBillingInfo)
             {
-                // Redirect to billing-info page
+                \Log::info('Billing info incomplete, redirecting to billing-info', [
+                    'team_id' => $team->id,
+                    'subscription_type' => $subscriptionType,
+                ]);
+
+                // Redirect to billing-info page (preserve domain if provided)
+                $redirectParams = [];
                 if ($request->product_id)
                 {
-                    return redirect()->route('subscription.billing-info', ['product_id' => $request->product_id]);
+                    $redirectParams['product_id'] = $request->product_id;
                 } elseif ($request->price_id)
                 {
-                    return redirect()->route('subscription.billing-info', ['price_id' => $request->price_id]);
+                    $redirectParams['price_id'] = $request->price_id;
                 }
+                if ($request->domain)
+                {
+                    $redirectParams['domain'] = $request->domain;
+                }
+
+                return redirect()->route('subscription.billing-info', $redirectParams);
             }
         }
 
@@ -702,6 +851,18 @@ class SubscriptionController extends Controller
                 'limit' => 1,
             ]);
 
+            // Build subscription metadata
+            $subscriptionMetadata = [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+            ];
+
+            // Add domain to metadata if provided (for hosting/support products)
+            if ($request->domain)
+            {
+                $subscriptionMetadata['domain'] = $request->domain;
+            }
+
             $checkoutConfig = [
                 'customer' => $team->stripe_id,
                 'mode' => 'subscription',
@@ -713,9 +874,7 @@ class SubscriptionController extends Controller
                 'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('subscription.index'),
                 'subscription_data' => [
-                    'metadata' => [
-                        'team_id' => $team->id,
-                    ],
+                    'metadata' => $subscriptionMetadata,
                 ],
             ];
 
