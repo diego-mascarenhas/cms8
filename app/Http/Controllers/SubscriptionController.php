@@ -772,7 +772,20 @@ class SubscriptionController extends Controller
                         'metadata' => $metadata,
                     ]);
 
+                    // Log Stripe subscription data before saving
+                    \Log::info('Stripe subscription created - data before save', [
+                        'stripe_subscription_id' => $stripeSubscription->id,
+                        'stripe_subscription_status' => $stripeSubscription->status,
+                        'stripe_subscription_metadata' => $stripeSubscription->metadata ? $stripeSubscription->metadata->toArray() : null,
+                        'local_metadata' => $metadata,
+                        'metadata_type' => gettype($metadata),
+                        'metadata_is_array' => is_array($metadata),
+                        'metadata_json_encoded' => json_encode($metadata),
+                    ]);
+
                     // Sync subscription to local database
+                    // Note: Cast 'array' doesn't work with mass assignment through relations,
+                    // so we need to encode explicitly
                     $team->subscriptions()->create([
                         'user_id' => $team->owner->id ?? $team->user_id,
                         'type' => $subscriptionType,
@@ -782,7 +795,7 @@ class SubscriptionController extends Controller
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
-                        'data' => $metadata, // Store metadata including domain
+                        'data' => ! empty($metadata) ? json_encode($metadata) : null,
                     ]);
 
                     // Only assign EmailPlan if it's a mailer subscription
@@ -992,6 +1005,18 @@ class SubscriptionController extends Controller
                     $metadata = $stripeSubscription->metadata->toArray();
                 }
 
+                // Log Stripe subscription data before saving
+                \Log::info('Stripe subscription from checkout - data before save', [
+                    'stripe_subscription_id' => $stripeSubscription->id,
+                    'stripe_subscription_status' => $stripeSubscription->status,
+                    'stripe_subscription_metadata_raw' => $stripeSubscription->metadata,
+                    'stripe_subscription_metadata_array' => $metadata,
+                    'metadata_type' => gettype($metadata),
+                    'metadata_is_array' => is_array($metadata),
+                    'metadata_json_encoded' => json_encode($metadata),
+                    'session_metadata' => $session->subscription_data->metadata ?? null,
+                ]);
+
                 // Sync subscription to local database if it doesn't exist
                 $localSubscription = $team->subscriptions()
                     ->where('stripe_id', $stripeSubscription->id)
@@ -1000,6 +1025,12 @@ class SubscriptionController extends Controller
                 if (! $localSubscription)
                 {
                     // Create the subscription record manually
+                    // Note: Cast 'array' doesn't work with mass assignment through relations,
+                    // so we need to encode explicitly
+                    \Log::info('Creating subscription with data', [
+                        'data_value' => ! empty($metadata) ? json_encode($metadata) : null,
+                        'data_type' => gettype(! empty($metadata) ? json_encode($metadata) : null),
+                    ]);
                     $team->subscriptions()->create([
                         'user_id' => $team->owner->id ?? $team->user_id,
                         'type' => $subscriptionType,
@@ -1009,7 +1040,7 @@ class SubscriptionController extends Controller
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
-                        'data' => $metadata, // Store metadata including domain
+                        'data' => ! empty($metadata) ? json_encode($metadata) : null,
                     ]);
                 } else
                 {
