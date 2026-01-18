@@ -201,8 +201,8 @@
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
         @auth
         <li class="nav-item dropdown me-2" id="quick-timer"
-            data-running-url="/attendance/running"
-            data-start-url="/attendance/start"
+            data-running-url="{{ route('attendance.running') }}"
+            data-start-url="{{ route('attendance.start') }}"
             data-stop-url="/attendance/:ID/stop">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
                aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const runningUrl = container.getAttribute('data-running-url');
     const startUrl = container.getAttribute('data-start-url');
     const stopUrlTpl = container.getAttribute('data-stop-url');
-    const timeRunningUrl = '/time/running';
+    const timeRunningUrl = '{{ route('time.running') }}';
 
     let running = false;
     let paused = false;

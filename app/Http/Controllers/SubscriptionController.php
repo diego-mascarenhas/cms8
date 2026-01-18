@@ -275,19 +275,19 @@ class SubscriptionController extends Controller
                     // Don't use this customer's data
                 } else
                 {
-                $customerData = [
-                    'individual_name' => $customer->metadata->individual_name ?? '',
-                    'business_name' => $customer->metadata->business_name ?? '',
-                    'country' => $customer->address->country ?? '',
-                    'phone' => $customer->phone ?? '',
-                    'tax_id' => '',
-                ];
+                    $customerData = [
+                        'individual_name' => $customer->metadata->individual_name ?? '',
+                        'business_name' => $customer->metadata->business_name ?? '',
+                        'country' => $customer->address->country ?? '',
+                        'phone' => $customer->phone ?? '',
+                        'tax_id' => '',
+                    ];
 
-                // Get Tax ID if exists
-                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
-                if (! empty($taxIds->data))
-                {
-                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                    // Get Tax ID if exists
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+                    if (! empty($taxIds->data))
+                    {
+                        $customerData['tax_id'] = $taxIds->data[0]->value;
                     }
                 }
             } catch (\Exception $e)
@@ -712,7 +712,7 @@ class SubscriptionController extends Controller
         // Otherwise, use the plan parameter (for Mailer plans)
         elseif ($request->plan)
         {
-        $plan = EmailPlan::from($request->plan);
+            $plan = EmailPlan::from($request->plan);
             $priceId = $plan->getStripePriceId();
             $subscriptionType = 'mailer';
         } else
@@ -748,8 +748,8 @@ class SubscriptionController extends Controller
         if (! $isHostingOrSupport)
         {
             // Check if already has an active subscription of the same type (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
+            $activeSubscription = $team->subscriptions()
+                ->where('stripe_status', '!=', 'canceled')
                 ->get()
                 ->filter(function ($sub) use ($subscriptionType, $product)
                 {
@@ -770,7 +770,7 @@ class SubscriptionController extends Controller
 
                     return false;
                 })
-            ->first();
+                ->first();
 
             // If already has an active subscription of the same type, automatically swap instead of showing error
             if ($activeSubscription)
@@ -831,7 +831,7 @@ class SubscriptionController extends Controller
                     'domain.max' => 'El dominio no puede exceder 255 caracteres.',
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e)
-        {
+            {
                 // Redirect back with errors and product_id to show modal
                 return redirect()->route('subscription.index', ['product_id' => $request->product_id])
                     ->withErrors($e->errors())
@@ -1106,7 +1106,7 @@ class SubscriptionController extends Controller
                         default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
                     };
 
-                return redirect()->route('subscription.index')
+                    return redirect()->route('subscription.index')
                         ->with('success', $successMessage);
                 }
             } catch (\Exception $e)
@@ -1135,7 +1135,7 @@ class SubscriptionController extends Controller
                 ->where('type', 'mailer')
                 ->where('stripe_status', 'canceled')
                 ->delete();
-            }
+        }
 
         try
         {
@@ -1329,13 +1329,13 @@ class SubscriptionController extends Controller
                 // Only assign EmailPlan if it's a mailer subscription
                 if ($subscriptionType === 'mailer')
                 {
-                // Map product ID to EmailPlan
-                $plan = $this->getEmailPlanFromProductId($productId);
+                    // Map product ID to EmailPlan
+                    $plan = $this->getEmailPlanFromProductId($productId);
 
-                if ($plan)
-                {
-                    // Assign the plan to the team
-                    $team->assignEmailPlan($plan, auth()->id());
+                    if ($plan)
+                    {
+                        // Assign the plan to the team
+                        $team->assignEmailPlan($plan, auth()->id());
                     }
                 }
             }
@@ -1494,11 +1494,11 @@ class SubscriptionController extends Controller
                 ->with('error', 'Debes especificar un plan o producto para cambiar.');
         }
 
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
-            }
+        }
 
         try
         {
@@ -1559,13 +1559,13 @@ class SubscriptionController extends Controller
             // Update the team's email plan if it's a mailer subscription
             if ($subscriptionType === 'mailer')
             {
-            try
-            {
+                try
+                {
                     $team->email_plan = EmailPlan::fromStripePriceId($priceId)->value;
-                $team->save();
-            } catch (\Exception $e)
-            {
-                \Log::warning('Could not update email_plan: '.$e->getMessage());
+                    $team->save();
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not update email_plan: '.$e->getMessage());
                 }
             }
 
