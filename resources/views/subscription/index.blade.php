@@ -606,7 +606,8 @@ function validateDomainCoupon()
     .then(response => response.json())
     .then(data => {
         if (data.valid) {
-            document.getElementById('domainCouponInput').value = data.coupon.id;
+            // Store promotion code ID (not coupon ID) for Stripe
+            document.getElementById('domainCouponInput').value = data.coupon.promotion_code_id;
 
             // Calculate discount
             let discountText = '';
@@ -707,21 +708,22 @@ function validateCoupon()
     })
     .then(response => response.json())
     .then(data => {
-        if (data.valid) {
-            appliedCoupon = data.coupon;
-            document.getElementById('confirmCouponInput').value = data.coupon.id;
+            if (data.valid) {
+                appliedCoupon = data.coupon;
+                // Store promotion code ID (not coupon ID) for Stripe
+                document.getElementById('confirmCouponInput').value = data.coupon.promotion_code_id;
 
-            // Calculate discount
-            let discountAmount = 0;
-            let discountText = '';
+                // Calculate discount
+                let discountAmount = 0;
+                let discountText = '';
 
-            if (data.coupon.percent_off) {
-                discountAmount = (currentPrice * data.coupon.percent_off) / 100;
-                discountText = `${data.coupon.percent_off}% de descuento`;
-            } else if (data.coupon.amount_off) {
-                discountAmount = data.coupon.amount_off / 100; // Stripe stores in cents
-                discountText = `${discountAmount.toFixed(2)} ${data.coupon.currency.toUpperCase()} de descuento`;
-            }
+                if (data.coupon.percent_off) {
+                    discountAmount = (currentPrice * data.coupon.percent_off) / 100;
+                    discountText = `${data.coupon.percent_off}% de descuento`;
+                } else if (data.coupon.amount_off) {
+                    discountAmount = data.coupon.amount_off / 100; // Stripe stores in cents
+                    discountText = `${discountAmount.toFixed(2)} ${data.coupon.currency.toUpperCase()} de descuento`;
+                }
 
             const finalPrice = currentPrice - discountAmount;
 

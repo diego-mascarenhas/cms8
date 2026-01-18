@@ -546,7 +546,7 @@ class SubscriptionController extends Controller
      * Create a checkout session for upgrading to a paid plan
      */
     /**
-     * Validate coupon code
+     * Validate promotion code (coupon code)
      */
     public function validateCoupon(Request $request)
     {
@@ -557,45 +557,89 @@ class SubscriptionController extends Controller
         try
         {
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
-            $coupon = \Stripe\Coupon::retrieve($request->coupon);
 
-            // Check if coupon is valid
-            if ($coupon->valid)
+            // Search for promotion code by code
+            // Stripe's PromotionCode::all() doesn't support filtering by code directly
+            // We need to list all and filter, or use a different approach
+            // For better performance, we'll list active promotion codes and filter
+            $promotionCodes = \Stripe\PromotionCode::all([
+                'active' => true,
+                'limit' => 100, // Get more to find the matching code
+            ]);
+
+            // Find promotion code by code (case-insensitive)
+            $promotionCode = null;
+            $searchCode = strtoupper(trim($request->coupon));
+
+            foreach ($promotionCodes->data as $pc)
             {
-                $discount = [
-                    'id' => $coupon->id,
-                    'name' => $coupon->name ?? $coupon->id,
-                    'percent_off' => $coupon->percent_off,
-                    'amount_off' => $coupon->amount_off,
-                    'currency' => $coupon->currency,
-                    'duration' => $coupon->duration,
-                    'duration_in_months' => $coupon->duration_in_months,
-                ];
+                if (strtoupper($pc->code) === $searchCode)
+                {
+                    $promotionCode = $pc;
+                    break;
+                }
+            }
 
-                return response()->json([
-                    'valid' => true,
-                    'coupon' => $discount,
-                ]);
-            } else
+            if (! $promotionCode)
             {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'El cupón no es válido o ha expirado.',
+                    'message' => 'El código de promoción no existe o no es válido.',
                 ], 400);
             }
+
+            // Check if promotion code is active
+            if (! $promotionCode->active)
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El código de promoción no está activo.',
+                ], 400);
+            }
+
+            // Get the coupon associated with the promotion code
+            $coupon = $promotionCode->coupon;
+
+            // Check if coupon is valid
+            if (! $coupon->valid)
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El cupón asociado no es válido o ha expirado.',
+                ], 400);
+            }
+
+            $discount = [
+                'promotion_code_id' => $promotionCode->id,
+                'code' => $promotionCode->code,
+                'coupon_id' => $coupon->id,
+                'name' => $coupon->name ?? $promotionCode->code,
+                'percent_off' => $coupon->percent_off,
+                'amount_off' => $coupon->amount_off,
+                'currency' => $coupon->currency,
+                'duration' => $coupon->duration,
+                'duration_in_months' => $coupon->duration_in_months,
+            ];
+
+            return response()->json([
+                'valid' => true,
+                'coupon' => $discount,
+            ]);
         } catch (\Stripe\Exception\InvalidRequestException $e)
         {
-            return response()->json([
-                'valid' => false,
-                'message' => 'El cupón no existe o no es válido.',
-            ], 400);
-        } catch (\Exception $e)
-        {
-            \Log::error('Error validating coupon: '.$e->getMessage());
+            \Log::warning('Stripe error validating promotion code: '.$e->getMessage());
 
             return response()->json([
                 'valid' => false,
-                'message' => 'Error al validar el cupón. Por favor, intenta nuevamente.',
+                'message' => 'El código de promoción no existe o no es válido.',
+            ], 400);
+        } catch (\Exception $e)
+        {
+            \Log::error('Error validating promotion code: '.$e->getMessage());
+
+            return response()->json([
+                'valid' => false,
+                'message' => 'Error al validar el código de promoción. Por favor, intenta nuevamente.',
             ], 500);
         }
     }
@@ -896,10 +940,11 @@ class SubscriptionController extends Controller
                         'metadata' => $metadata,
                     ];
 
-                    // Add coupon if provided
+                    // Add promotion code if provided
                     if ($request->coupon)
                     {
-                        $subscriptionConfig['coupon'] = $request->coupon;
+                        // The coupon field contains the promotion code ID
+                        $subscriptionConfig['promotion_code'] = $request->coupon;
                     }
 
                     // Create subscription directly using existing payment method
@@ -1027,12 +1072,20 @@ class SubscriptionController extends Controller
                 ],
             ];
 
-            // Add coupon if provided
+            // Add promotion code if provided
+            // Note: In Stripe Checkout, we can either:
+            // 1. Use allow_promotion_codes: true to let user enter code manually
+            // 2. Use discounts with promotion_code to apply automatically
             if ($request->coupon)
             {
+                // The coupon field contains the promotion code ID
                 $checkoutConfig['discounts'] = [[
-                    'coupon' => $request->coupon,
+                    'promotion_code' => $request->coupon,
                 ]];
+            } else
+            {
+                // Allow users to enter promotion codes manually in checkout
+                $checkoutConfig['allow_promotion_codes'] = true;
             }
 
             // If customer has payment methods, allow them to choose
