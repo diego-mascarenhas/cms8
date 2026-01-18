@@ -15,6 +15,7 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('user_id');
+            $table->unsignedBigInteger('team_id')->nullable();
             $table->string('type');
             $table->string('stripe_id')->unique();
             $table->string('stripe_status');
@@ -22,9 +23,11 @@ return new class extends Migration
             $table->integer('quantity')->nullable();
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('ends_at')->nullable();
+            $table->json('data')->nullable();
             $table->timestamps();
 
             $table->index(['user_id', 'stripe_status']);
+            $table->index(['team_id', 'stripe_status'], 'subscriptions_team_id_stripe_status_index');
         });
     }
 

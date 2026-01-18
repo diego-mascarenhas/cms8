@@ -90,6 +90,7 @@ class DatabaseSeeder extends Seeder
             UnitsSeeder::class,  // Units (words, minutes, etc)
             FareTypesSeeder::class,  // Fare types
             CategorySeeder::class,  // Base categories
+            SubscriptionProductSeeder::class,  // Subscription products (Mailer, Mentoring, Hosting)
         ]);
 
         // ============================================

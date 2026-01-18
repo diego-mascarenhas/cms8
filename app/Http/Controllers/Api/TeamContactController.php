@@ -16,6 +16,7 @@ class TeamContactController extends Controller
         $team = $request->attributes->get('team');
 
         $contacts = Contact::where('team_id', $team->id)
+            ->with(['user.roles', 'user.teams'])
             ->paginate(20);
 
         return response()->json([
@@ -64,6 +65,7 @@ class TeamContactController extends Controller
 
         $contact = Contact::where('team_id', $team->id)
             ->where('id', $id)
+            ->with(['user.roles', 'user.teams'])
             ->firstOrFail();
 
         return response()->json([
@@ -81,6 +83,7 @@ class TeamContactController extends Controller
 
         $contact = Contact::where('team_id', $team->id)
             ->where('id', $id)
+            ->with(['user.roles', 'user.teams'])
             ->firstOrFail();
 
         $request->validate([
@@ -107,6 +110,7 @@ class TeamContactController extends Controller
 
         $contact = Contact::where('team_id', $team->id)
             ->where('id', $id)
+            ->with(['user.roles', 'user.teams'])
             ->firstOrFail();
 
         $contact->delete();

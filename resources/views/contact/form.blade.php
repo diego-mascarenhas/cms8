@@ -65,6 +65,11 @@
     <div class="row">
         <!-- Modern Icons Wizard -->
         <div class="col-12 mb-4">
+            @if(!isset($data->id))
+            <div class="card mb-4">
+                <div class="card-body">
+            @endif
+            @if(isset($data->id))
             <div class="bs-stepper wizard-icons wizard-modern wizard-modern-icons-example mt-2">
                 <div class="bs-stepper-header">
                     <div class="step" data-target="#personal-info-modern">
@@ -75,43 +80,42 @@
                             <span class="bs-stepper-label">Información Personal</span>
                         </button>
                     </div>
-                    @if(isset($data->id))
-                        <div class="line">
-                            <i class="ti ti-chevron-right"></i>
-                        </div>
-                        <div class="step" data-target="#social-links-modern">
-                            <button type="button" class="step-trigger">
-                                <span class="bs-stepper-icon">
-                                    <i class="ti ti-share"></i>
-                                </span>
-                                <span class="bs-stepper-label">Redes Sociales</span>
-                            </button>
-                        </div>
-                        <div class="line">
-                            <i class="ti ti-chevron-right"></i>
-                        </div>
-                        <div class="step" data-target="#account-details-modern">
-                            <button type="button" class="step-trigger">
-                                <span class="bs-stepper-icon">
-                                    <i class="ti ti-building"></i>
-                                </span>
-                                <span class="bs-stepper-label">Datos de la Empresa</span>
-                            </button>
-                        </div>
-                        <div class="line">
-                            <i class="ti ti-chevron-right"></i>
-                        </div>
-                        <div class="step" data-target="#address-modern">
-                            <button type="button" class="step-trigger">
-                                <span class="bs-stepper-icon">
-                                    <i class="ti ti-map-pin"></i>
-                                </span>
-                                <span class="bs-stepper-label">Domicilio</span>
-                            </button>
-                        </div>
-                    @endif
+                    <div class="line">
+                        <i class="ti ti-chevron-right"></i>
+                    </div>
+                    <div class="step" data-target="#social-links-modern">
+                        <button type="button" class="step-trigger">
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-share"></i>
+                            </span>
+                            <span class="bs-stepper-label">Redes Sociales</span>
+                        </button>
+                    </div>
+                    <div class="line">
+                        <i class="ti ti-chevron-right"></i>
+                    </div>
+                    <div class="step" data-target="#account-details-modern">
+                        <button type="button" class="step-trigger">
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-building"></i>
+                            </span>
+                            <span class="bs-stepper-label">Datos de la Empresa</span>
+                        </button>
+                    </div>
+                    <div class="line">
+                        <i class="ti ti-chevron-right"></i>
+                    </div>
+                    <div class="step" data-target="#address-modern">
+                        <button type="button" class="step-trigger">
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-map-pin"></i>
+                            </span>
+                            <span class="bs-stepper-label">Domicilio</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="bs-stepper-content">
+            @endif
                     <form action="{{ isset($data->id) ? route('contact.update', $data->id) : route('contact.store') }}"
                         method="POST">
                         @csrf
@@ -123,7 +127,6 @@
                         <div id="personal-info-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Información Personal</h6>
-                                <small>Información del contacto principal</small>
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-4">
@@ -132,13 +135,13 @@
                                 </div>
                                 <div class="col-sm-4">
                                     <label for="email" class="form-label">Email (*)</label>
-                                    <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}">
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}" required>
                                     @error('email')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="col-sm-4">
-                                    <label for="phone" class="form-label">Phone</label>
+                                    <label for="phone" class="form-label">{{ __('Teléfono') }}</label>
                                     <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $data->phone ?? '') }}">
                                     @error('phone')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -166,7 +169,7 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">Vincular este contacto con un usuario del sistema</small>
+                                    <small class="text-muted" style="font-size: 0.7rem;">Vincular este contacto con un usuario del sistema</small>
                                 </div>
                                 <div class="col-sm-4">
                                     <x-input-date id="birthday" label="Cumpleaños"
@@ -190,7 +193,7 @@
                                     />
                                 </div>
                                 <div class="col-sm-12">
-                                    <x-input-textarea id="profile" label="Profile" rows="3"
+                                    <x-input-textarea id="profile" label="{{ __('Perfil') }}" rows="3"
                                         value="{{ old('profile', $data->profile ?? '') }}" />
                                 </div>
                                 <div class="col-12 d-flex">
@@ -338,8 +341,14 @@
                             <button type="submit" class="btn btn-success btn-submit d-none">Guardar</button>
                         </div>
                     </form>
+            @if(isset($data->id))
                 </div>
             </div>
+            @endif
+            @if(!isset($data->id))
+                </div>
+            </div>
+            @endif
         </div>
         <!-- /Modern Icons Wizard -->
     </div>
@@ -405,6 +414,19 @@
             });
         });
     </script>
+    @if(!isset($data->id))
+    <style>
+        /* Show content in creation mode (no stepper) */
+        #personal-info-modern {
+            display: block !important;
+        }
+        #social-links-modern,
+        #account-details-modern,
+        #address-modern {
+            display: none !important;
+        }
+    </style>
+    @endif
 @endpush
 
 

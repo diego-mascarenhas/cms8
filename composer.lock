@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "963d6a6e0073b61eacba14308ebf667a",
+    "content-hash": "72acb78bbafe38d9e2796affb47daa94",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -5650,6 +5650,75 @@
                 }
             ],
             "time": "2025-01-13T13:04:43+00:00"
+        },
+        {
+            "name": "squareetlabs/laravel-verifactu",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/squareetlabs/LaravelVerifactu.git",
+                "reference": "53a5b5a4ce83a21eebcf2f7db08bb1b245847026"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/squareetlabs/LaravelVerifactu/zipball/53a5b5a4ce83a21eebcf2f7db08bb1b245847026",
+                "reference": "53a5b5a4ce83a21eebcf2f7db08bb1b245847026",
+                "shasum": ""
+            },
+            "require": {
+                "ext-soap": "*",
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^8.0|^9.0|^10.4",
+                "phpunit/phpunit": "^10.0|^11.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "VeriFactu": "Squareetlabs\\VeriFactu\\Facades\\VeriFactu"
+                    },
+                    "providers": [
+                        "Squareetlabs\\VeriFactu\\Providers\\VeriFactuServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Squareetlabs\\VeriFactu\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alberto Rial Barreiro",
+                    "email": "alberto@squareet.com",
+                    "homepage": "https://www.squareet.com",
+                    "role": "Developer"
+                },
+                {
+                    "name": "Jacobo Cantorna Cigarrán",
+                    "email": "jacobo@squareet.com",
+                    "homepage": "https://www.squareet.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Paquete Laravel para gestión y registro de facturación electrónica VeriFactu. Compatible con Laravel 10 a 12.x",
+            "keywords": [
+                "facturación electrónica",
+                "laravel",
+                "verifactu"
+            ],
+            "support": {
+                "issues": "https://github.com/squareetlabs/LaravelVerifactu/issues",
+                "source": "https://github.com/squareetlabs/LaravelVerifactu/tree/v1.0.1"
+            },
+            "time": "2025-11-24T16:31:38+00:00"
         },
         {
             "name": "stripe/stripe-php",

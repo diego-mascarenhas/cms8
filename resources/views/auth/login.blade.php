@@ -116,7 +116,7 @@ $configData = Helper::appClasses();
 </style>
 
 <script>
-  const animateLogo = {{ config('custom.animateLogo') ? 'true' : 'false' }};
+  const animateLogo = {{ config('custom.custom.animateLogo') ? 'true' : 'false' }};
   if (animateLogo) {
     setInterval(() => {
       const logo = document.getElementById('logo');

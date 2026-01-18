@@ -76,7 +76,7 @@
 								@php
 									$taxIdValue = null;
 									$taxIdType = 'ID Fiscal';
-									
+
 									// Intentar obtener tax ID
 									if (isset($stripeData['customer']->tax_ids)) {
 										if (is_object($stripeData['customer']->tax_ids) && isset($stripeData['customer']->tax_ids->data) && count($stripeData['customer']->tax_ids->data) > 0) {
@@ -86,7 +86,7 @@
 										}
 									}
 				@endphp
-				
+
 								<dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ $taxIdType }}:</dt>
 								<dd class="col-sm-7{{ !$taxIdValue ? ' text-muted' : '' }}">{{ $taxIdValue ?: 'No especificado' }}</dd>
 							</dl>
@@ -167,7 +167,7 @@
 								@php
 									// Get corresponding Stripe subscription for more details
 									$stripeSub = $subscriptions->firstWhere('id', $sub->stripe_id);
-									
+
 									// Determine status badge
 									$statusBadge = match($sub->stripe_status) {
 										'active' => $sub->onGracePeriod() ? 'bg-label-warning' : 'bg-label-success',
@@ -179,7 +179,7 @@
 										'unpaid' => 'bg-label-danger',
 										default => 'bg-label-secondary',
 									};
-									
+
 									$statusText = match($sub->stripe_status) {
 										'active' => $sub->onGracePeriod() ? 'Cancela el ' . $sub->ends_at->format('d/m/Y') : 'Activa',
 										'canceled' => 'Cancelada',
@@ -190,17 +190,24 @@
 										'unpaid' => 'Impagada',
 										default => ucfirst($sub->stripe_status),
 									};
-									
-									// Get EmailPlan info for mailer subscriptions
+
+									// Get product name from SubscriptionProduct
+									$productName = null;
+									$product = \App\Models\SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+									if ($product) {
+										$productName = $product->name;
+									}
+
+									// Get EmailPlan info for mailer subscriptions (fallback)
 									$planInfo = null;
-									if ($type === 'mailer' && $stripeSub) {
+									if ($type === 'mailer' && $stripeSub && !$productName) {
 										try {
 											$planInfo = \App\Enums\EmailPlan::fromStripePriceId($sub->stripe_price);
 										} catch (\Exception $e) {
 											// Ignore
 										}
 									}
-									
+
 									// Get type icon and name
 									$typeIcons = [
 										'mailer' => 'ti-send',
@@ -210,7 +217,7 @@
 										'default' => 'ti-package',
 									];
 									$typeIcon = $typeIcons[$type] ?? 'ti-package';
-									
+
 									$typeNames = [
 										'mailer' => 'Mailer',
 										'hosting' => 'Hosting',
@@ -230,12 +237,47 @@
 														<div class="badge badge-center rounded bg-label-primary p-2">
 															<i class="ti {{ $typeIcon }} ti-sm"></i>
 														</div>
-														<h5 class="mb-0">{{ $sub->name ?? ($planInfo ? $planInfo->getDisplayName() : 'Suscripción') }}</h5>
+														<h5 class="mb-0">
+															@if($productName)
+																{{ $productName }}
+															@elseif($planInfo)
+																{{ $planInfo->getDisplayName() }}
+															@else
+																{{ $typeName }}
+															@endif
+														</h5>
 													</div>
-													@if($planInfo)
+													@if($product && $product->description)
+														<p class="text-muted mb-0 small">{{ $product->description }}</p>
+													@elseif($planInfo)
 														<p class="text-muted mb-0 small">{{ $planInfo->getDescription() }}</p>
 													@else
 														<small class="text-muted d-block mb-0">{{ $typeName }}</small>
+													@endif
+													@php
+														// Get domain from subscription metadata if it's hosting or support
+														$domain = null;
+														if (in_array($type, ['hosting', 'support']))
+														{
+															// Try to get domain from local subscription data
+															if ($sub->data && is_array($sub->data) && isset($sub->data['domain']))
+															{
+																$domain = $sub->data['domain'];
+															}
+															// Fallback: try to get from Stripe subscription metadata
+															elseif ($stripeSub && isset($stripeSub->metadata->domain))
+															{
+																$domain = $stripeSub->metadata->domain;
+															}
+														}
+													@endphp
+													@if($domain)
+														<div class="mt-2">
+															<small class="text-muted d-flex align-items-center">
+																<i class="ti ti-world ti-xs me-1"></i>
+																<strong>Dominio:</strong> <span class="ms-1">{{ $domain }}</span>
+															</small>
+														</div>
 													@endif
 												</div>
 												@if($stripeSub)
@@ -302,7 +344,7 @@
 														Cambiar Plan
 													</a>
 										@endif
-												
+
 												@if($sub->active())
 													@if($sub->onGracePeriod())
 														{{-- On grace period - show resume --}}
@@ -433,16 +475,16 @@
 							@php
 								$individualName = old('individual_name');
 								if (!$individualName && isset($stripeData['customer'])) {
-									$individualName = $stripeData['customer']->metadata->individual_name ?? 
-													  $stripeData['customer']->collected_information->individual_name ?? 
+									$individualName = $stripeData['customer']->metadata->individual_name ??
+													  $stripeData['customer']->collected_information->individual_name ??
 													  '';
 								}
 							@endphp
-							<input type="text" 
-								class="form-control @error('individual_name') is-invalid @enderror" 
+							<input type="text"
+								class="form-control @error('individual_name') is-invalid @enderror"
 								id="individual_name"
 								name="individual_name"
-								value="{{ $individualName }}" 
+								value="{{ $individualName }}"
 								placeholder="Juan Pérez">
 							@error('individual_name')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
@@ -455,9 +497,9 @@
 							@php
 								$businessName = old('business_name');
 								if (!$businessName && isset($stripeData['customer'])) {
-									$businessName = $stripeData['customer']->metadata->business_name ?? 
-													$stripeData['customer']->metadata->company_name ?? 
-													$stripeData['customer']->collected_information->business_name ?? 
+									$businessName = $stripeData['customer']->metadata->business_name ??
+													$stripeData['customer']->metadata->company_name ??
+													$stripeData['customer']->collected_information->business_name ??
 													'';
 								}
 							@endphp
@@ -579,7 +621,7 @@ function confirmCancel(stripeId)
 {
 	// Set the stripe_id in the hidden input
 	document.getElementById('cancelStripeId').value = stripeId || '';
-	
+
 	const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
 	modal.show();
 }

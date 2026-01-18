@@ -90,6 +90,8 @@ class EmployeeDataTable extends DataTable
             ->with([
                 'status',
                 'responsible:id,name',
+                'user.roles',
+                'user.teams',
             ]);
     }
 

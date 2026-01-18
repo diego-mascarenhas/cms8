@@ -126,6 +126,9 @@ class ContactDataTable extends DataTable
                 'sources',
                 'responsible:id,name',
                 'categories',
+                'user.roles',
+                'user.teams',
+                'user.currentTeam.settings',
             ]);
 
         // Collaborators only see their assigned contacts

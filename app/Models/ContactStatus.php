@@ -10,6 +10,6 @@ class ContactStatus extends Model
 
     public static function getOptions()
     {
-        return self::orderBy('name')->pluck('name', 'id')->toArray();
+        return self::orderBy('id')->pluck('name', 'id')->toArray();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Models\SubscriptionProduct;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
 
@@ -53,7 +54,59 @@ class SubscriptionController extends Controller
             }
         }
 
-        // Get prices from Stripe API
+        // Get products from database (synced from Stripe)
+        $products = SubscriptionProduct::active()->get();
+
+        // Get all active subscription products grouped by category
+        $mentoringProducts = SubscriptionProduct::active()
+            ->where('category', 'mentoring')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $mailerProducts = SubscriptionProduct::active()
+            ->where('category', 'mailer')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $hostingProducts = SubscriptionProduct::active()
+            ->whereIn('category', ['hosting', 'support'])
+            ->orderByRaw("CASE WHEN category = 'hosting' THEN 0 ELSE 1 END")
+            ->orderBy('unit_amount', 'desc')
+            ->get();
+
+        // Get active subscriptions for each category
+        $activeSubscriptions = $team->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get()
+            ->filter(fn ($sub) => $sub->active());
+
+        // Get active mentoring subscription to determine current plan
+        $mentoringSubscription = $activeSubscriptions->filter(function ($sub) use ($mentoringProducts)
+        {
+            return $mentoringProducts->contains(function ($product) use ($sub)
+            {
+                return $product->stripe_price === $sub->stripe_price;
+            });
+        })->first();
+
+        $currentMentoringPlan = null;
+        if ($mentoringSubscription)
+        {
+            $mentoringProduct = $mentoringProducts->firstWhere('stripe_price', $mentoringSubscription->stripe_price);
+            $currentMentoringPlan = $mentoringProduct?->plan;
+        }
+
+        // Get active hosting subscription
+        $hostingSubscription = $activeSubscriptions->filter(function ($sub) use ($hostingProducts)
+        {
+            return $hostingProducts->contains(function ($product) use ($sub)
+            {
+                return $product->stripe_price === $sub->stripe_price;
+            });
+        })->first();
+
+        // Fallback to EmailPlan if no products synced yet
+        $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
 
         return view('subscription.index', [
@@ -62,8 +115,15 @@ class SubscriptionController extends Controller
             'planConfig' => $planConfig,
             'subscription' => $subscription,
             'stripeSubscription' => $stripeSubscription,
-            'plans' => EmailPlan::getAll(),
+            'plans' => $plans,
+            'products' => $products,
             'prices' => $prices,
+            'mentoringProducts' => $mentoringProducts,
+            'mailerProducts' => $mailerProducts,
+            'hostingProducts' => $hostingProducts,
+            'currentMentoringPlan' => $currentMentoringPlan,
+            'mentoringSubscription' => $mentoringSubscription,
+            'hostingSubscription' => $hostingSubscription,
         ]);
     }
 
@@ -112,19 +172,80 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Check if customer has complete billing info in Stripe
+     */
+    private function hasCompleteBillingInfo($team): bool
+    {
+        if (! $team->stripe_id)
+        {
+            return false;
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+            // Check if we have all required fields
+            $hasName = ! empty($customer->metadata->individual_name ?? $customer->name ?? '');
+            $hasCountry = ! empty($customer->address->country ?? '');
+            $hasPhone = ! empty($customer->phone ?? '');
+            $hasTaxId = false;
+
+            // Check if tax ID exists
+            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+            if (! empty($taxIds->data))
+            {
+                $hasTaxId = true;
+            }
+
+            return $hasName && $hasCountry && $hasPhone && $hasTaxId;
+        } catch (\Exception $e)
+        {
+            \Log::warning('Error checking billing info: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
      * Show billing info form before checkout
      */
     public function billingInfo(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255', // Added coupon to validation
         ]);
 
         $team = auth()->user()->currentTeam;
+
+        // Log for debugging
+        \Log::info('Billing info requested', [
+            'team_id' => $team->id,
+            'team_name' => $team->name,
+            'stripe_id' => $team->stripe_id,
+            'user_id' => auth()->id(),
+        ]);
+
         $plan = $request->plan;
+        $product = null;
         $prices = $this->getStripePrices();
 
+        // Get product if product_id is provided
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+        } elseif ($request->price_id)
+        {
+            $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
+        }
+
         // Get customer data from Stripe if exists
+        // IMPORTANT: Only get data if THIS team has a stripe_id
         $customerData = [
             'individual_name' => '',
             'business_name' => '',
@@ -133,6 +254,7 @@ class SubscriptionController extends Controller
             'tax_id' => '',
         ];
 
+        // Only fetch from Stripe if THIS team has a stripe_id
         if ($team->stripe_id)
         {
             try
@@ -140,31 +262,56 @@ class SubscriptionController extends Controller
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
                 $customer = \Stripe\Customer::retrieve($team->stripe_id);
 
-                $customerData = [
-                    'individual_name' => $customer->metadata->individual_name ?? '',
-                    'business_name' => $customer->metadata->business_name ?? '',
-                    'country' => $customer->address->country ?? '',
-                    'phone' => $customer->phone ?? '',
-                    'tax_id' => '',
-                ];
-
-                // Get Tax ID if exists
-                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
-                if (! empty($taxIds->data))
+                // Verify the customer belongs to this team
+                // Check metadata team_id if it exists
+                $customerTeamId = $customer->metadata->team_id ?? null;
+                if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
                 {
-                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                    \Log::warning('Customer stripe_id does not match team', [
+                        'team_id' => $team->id,
+                        'customer_team_id' => $customerTeamId,
+                        'stripe_customer_id' => $team->stripe_id,
+                    ]);
+                    // Don't use this customer's data
+                } else
+                {
+                    $customerData = [
+                        'individual_name' => $customer->metadata->individual_name ?? '',
+                        'business_name' => $customer->metadata->business_name ?? '',
+                        'country' => $customer->address->country ?? '',
+                        'phone' => $customer->phone ?? '',
+                        'tax_id' => '',
+                    ];
+
+                    // Get Tax ID if exists
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+                    if (! empty($taxIds->data))
+                    {
+                        $customerData['tax_id'] = $taxIds->data[0]->value;
+                    }
                 }
             } catch (\Exception $e)
             {
-                \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage());
+                \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage(), [
+                    'team_id' => $team->id,
+                    'stripe_id' => $team->stripe_id,
+                ]);
             }
+        } else
+        {
+            \Log::info('Team has no stripe_id, using empty customer data', [
+                'team_id' => $team->id,
+            ]);
         }
 
         return view('subscription.billing-info', [
             'team' => $team,
             'plan' => $plan,
+            'product' => $product,
             'prices' => $prices,
             'customerData' => $customerData,
+            'domain' => $request->domain,
+            'coupon' => $request->coupon, // Pass coupon code to view
         ]);
     }
 
@@ -174,7 +321,11 @@ class SubscriptionController extends Controller
     public function saveBillingInfo(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255', // Added coupon to validation
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -249,17 +400,9 @@ class SubscriptionController extends Controller
                 ]);
 
                 // Add or update Tax ID
+                // IMPORTANT: Only delete existing tax IDs AFTER successfully creating the new one
                 try
                 {
-                    // Get existing tax IDs
-                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
-
-                    // Delete existing tax IDs
-                    foreach ($taxIds->data as $taxId)
-                    {
-                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
-                    }
-
                     // Map country code to Stripe tax ID type
                     $taxIdType = match ($request->country)
                     {
@@ -274,17 +417,47 @@ class SubscriptionController extends Controller
                         default => 'unknown',
                     };
 
-                    // Create new tax ID
-                    if ($taxIdType !== 'unknown')
+                    // Only proceed if tax ID type is known
+                    if ($taxIdType !== 'unknown' && ! empty($request->tax_id))
                     {
-                        \Stripe\Customer::createTaxId($team->stripe_id, [
+                        // First, try to create the new tax ID
+                        $newTaxId = \Stripe\Customer::createTaxId($team->stripe_id, [
                             'type' => $taxIdType,
                             'value' => $request->tax_id,
                         ]);
+
+                        // Only delete existing tax IDs AFTER successful creation
+                        if ($newTaxId)
+                        {
+                            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
+                            foreach ($taxIds->data as $taxId)
+                            {
+                                // Don't delete the one we just created
+                                if ($taxId->id !== $newTaxId->id)
+                                {
+                                    try
+                                    {
+                                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
+                                    } catch (\Exception $e)
+                                    {
+                                        \Log::warning('Error deleting old tax ID: '.$e->getMessage());
+                                    }
+                                }
+                            }
+                            \Log::info('Tax ID updated successfully', [
+                                'team_id' => $team->id,
+                                'tax_id_type' => $taxIdType,
+                            ]);
+                        }
                     }
                 } catch (\Exception $e)
                 {
-                    \Log::warning('Error updating tax ID: '.$e->getMessage());
+                    \Log::error('Error updating tax ID: '.$e->getMessage(), [
+                        'team_id' => $team->id,
+                        'country' => $request->country,
+                        'tax_id' => $request->tax_id,
+                    ]);
+                    // Don't throw - continue with other updates
                 }
 
                 // Update metadata
@@ -312,8 +485,28 @@ class SubscriptionController extends Controller
             }
         }
 
-        // Redirect to checkout
-        return redirect()->route('subscription.checkout', ['plan' => $request->plan]);
+        // Redirect to checkout (preserve domain if provided)
+        $redirectParams = [];
+        if ($request->product_id)
+        {
+            $redirectParams['product_id'] = $request->product_id;
+        } elseif ($request->price_id)
+        {
+            $redirectParams['price_id'] = $request->price_id;
+        } else
+        {
+            $redirectParams['plan'] = $request->plan;
+        }
+        if ($request->domain)
+        {
+            $redirectParams['domain'] = $request->domain;
+        }
+        if ($request->coupon)
+        {
+            $redirectParams['coupon'] = $request->coupon;
+        }
+
+        return redirect()->route('subscription.checkout', $redirectParams);
     }
 
     /**
@@ -382,44 +575,570 @@ class SubscriptionController extends Controller
     /**
      * Create a checkout session for upgrading to a paid plan
      */
-    public function checkout(Request $request)
+    /**
+     * Validate promotion code (coupon code)
+     */
+    public function validateCoupon(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'coupon' => 'required|string|max:255',
         ]);
-
-        $team = auth()->user()->currentTeam;
-        $plan = EmailPlan::from($request->plan);
-
-        // Check if already has an active subscription (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('type', 'mailer')
-            ->where('stripe_status', '!=', 'canceled')
-            ->first();
-
-        if ($activeSubscription && $activeSubscription->active())
-        {
-            return redirect()->route('subscription.index')
-                ->with('error', 'Ya tienes una suscripción activa. Por favor, gestiona tu plan actual primero.');
-        }
-
-        // Clean up any canceled subscriptions to avoid conflicts
-        $team->subscriptions()
-            ->where('type', 'mailer')
-            ->where('stripe_status', 'canceled')
-            ->delete();
 
         try
         {
-            // Get the Stripe price ID directly from the plan
-            $priceId = $plan->getStripePriceId();
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
 
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+            // Search for promotion code by code
+            // Stripe's PromotionCode::all() doesn't support filtering by code directly
+            // We need to list all and filter, or use a different approach
+            // For better performance, we'll list active promotion codes and filter
+            $promotionCodes = \Stripe\PromotionCode::all([
+                'active' => true,
+                'limit' => 100, // Get more to find the matching code
+            ]);
+
+            // Find promotion code by code (case-insensitive)
+            $promotionCode = null;
+            $searchCode = strtoupper(trim($request->coupon));
+
+            foreach ($promotionCodes->data as $pc)
             {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
+                if (strtoupper($pc->code) === $searchCode)
+                {
+                    $promotionCode = $pc;
+                    break;
+                }
             }
 
+            if (! $promotionCode)
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El código de promoción no existe o no es válido.',
+                ], 400);
+            }
+
+            // Check if promotion code is active
+            if (! $promotionCode->active)
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El código de promoción no está activo.',
+                ], 400);
+            }
+
+            // Get the coupon associated with the promotion code
+            $coupon = $promotionCode->coupon;
+
+            // Check if coupon is valid
+            if (! $coupon->valid)
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El cupón asociado no es válido o ha expirado.',
+                ], 400);
+            }
+
+            $discount = [
+                'promotion_code_id' => $promotionCode->id,
+                'code' => $promotionCode->code,
+                'coupon_id' => $coupon->id,
+                'name' => $coupon->name ?? $promotionCode->code,
+                'percent_off' => $coupon->percent_off,
+                'amount_off' => $coupon->amount_off,
+                'currency' => $coupon->currency,
+                'duration' => $coupon->duration,
+                'duration_in_months' => $coupon->duration_in_months,
+            ];
+
+            return response()->json([
+                'valid' => true,
+                'coupon' => $discount,
+            ]);
+        } catch (\Stripe\Exception\InvalidRequestException $e)
+        {
+            \Log::warning('Stripe error validating promotion code: '.$e->getMessage());
+
+            return response()->json([
+                'valid' => false,
+                'message' => 'El código de promoción no existe o no es válido.',
+            ], 400);
+        } catch (\Exception $e)
+        {
+            \Log::error('Error validating promotion code: '.$e->getMessage());
+
+            return response()->json([
+                'valid' => false,
+                'message' => 'Error al validar el código de promoción. Por favor, intenta nuevamente.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Process checkout
+     */
+    public function checkout(Request $request)
+    {
+        $request->validate([
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
+            'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255',
+        ]);
+
+        $team = auth()->user()->currentTeam;
+        $priceId = null;
+        $product = null;
+        $subscriptionType = 'mailer';
+
+        // If product_id is provided, get product and use its stripe_price
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+            $priceId = $product->stripe_price;
+            $subscriptionType = $product->category ?? 'mailer';
+        }
+        // If price_id is provided directly, use it
+        elseif ($request->price_id)
+        {
+            $priceId = $request->price_id;
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if ($product)
+            {
+                $subscriptionType = $product->category ?? 'mailer';
+            }
+        }
+        // Otherwise, use the plan parameter (for Mailer plans)
+        elseif ($request->plan)
+        {
+            $plan = EmailPlan::from($request->plan);
+            $priceId = $plan->getStripePriceId();
+            $subscriptionType = 'mailer';
+        } else
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Debes especificar un plan o producto.');
+        }
+
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
+        }
+
+        // Validate domain for hosting/support products
+        if ($product && in_array($product->category, ['hosting', 'support']) && ! $request->domain)
+        {
+            // Redirect back with product_id to show modal with error
+            $redirectParams = ['product_id' => $request->product_id];
+            if ($request->domain)
+            {
+                $redirectParams['domain'] = $request->domain;
+            }
+
+            return redirect()->route('subscription.index', $redirectParams)
+                ->with('error', 'Debes especificar un dominio para este servicio.');
+        }
+
+        // For hosting/support products, allow multiple subscriptions (one per domain)
+        // For other products, check if already has an active subscription of the same type
+        $isHostingOrSupport = $product && in_array($product->category, ['hosting', 'support']);
+
+        if (! $isHostingOrSupport)
+        {
+            // Check if already has an active subscription of the same type (not canceled)
+            $activeSubscription = $team->subscriptions()
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($subscriptionType, $product)
+                {
+                    // For same category subscriptions, check if active
+                    if ($product)
+                    {
+                        $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+                        if ($subProduct && $subProduct->category === $product->category)
+                        {
+                            return $sub->active();
+                        }
+                    }
+                    // For mailer, use the existing logic
+                    if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
+                    {
+                        return $sub->active();
+                    }
+
+                    return false;
+                })
+                ->first();
+
+            // If already has an active subscription of the same type, automatically swap instead of showing error
+            if ($activeSubscription)
+            {
+                // Redirect to swap method to upgrade/downgrade
+                $swapRequest = new Request;
+                if ($request->product_id)
+                {
+                    $swapRequest->merge(['product_id' => $request->product_id]);
+                } elseif ($request->price_id)
+                {
+                    $swapRequest->merge(['price_id' => $request->price_id]);
+                } elseif ($request->plan)
+                {
+                    $swapRequest->merge(['plan' => $request->plan]);
+                }
+
+                return $this->swap($swapRequest);
+            }
+        }
+
+        // Validate domain for hosting/support products
+        if ($product && in_array($product->category, ['hosting', 'support']))
+        {
+            try
+            {
+                $request->validate([
+                    'domain' => [
+                        'required',
+                        'string',
+                        'max:255',
+                        function ($attribute, $value, $fail)
+                        {
+                            if (empty($value))
+                            {
+                                return;
+                            }
+
+                            // Clean domain
+                            $domain = trim($value);
+                            // Remove protocol if present
+                            $domain = preg_replace('#^https?://#', '', $domain);
+                            // Remove trailing slash
+                            $domain = rtrim($domain, '/');
+                            // Remove www. if present
+                            $domain = preg_replace('#^www\.#', '', $domain);
+
+                            // Validate domain format: alphanumeric, dots, hyphens, at least one dot, valid TLD
+                            if (! preg_match('/^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i', $domain))
+                            {
+                                $fail('El formato del dominio no es válido. Debe ser algo como: ejemplo.com');
+                            }
+                        },
+                    ],
+                ], [
+                    'domain.required' => 'Debes especificar un dominio para este servicio.',
+                    'domain.string' => 'El dominio debe ser una cadena de texto válida.',
+                    'domain.max' => 'El dominio no puede exceder 255 caracteres.',
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e)
+            {
+                // Redirect back with errors and product_id to show modal
+                return redirect()->route('subscription.index', ['product_id' => $request->product_id])
+                    ->withErrors($e->errors())
+                    ->withInput();
+            }
+
+            // Clean and store domain
+            $domain = trim($request->domain);
+            $domain = preg_replace('#^https?://#', '', $domain);
+            $domain = rtrim($domain, '/');
+            $domain = preg_replace('#^www\.#', '', $domain);
+            $request->merge(['domain' => $domain]);
+        }
+
+        // Validate duplicate domain for hosting/support products
+        // This must happen AFTER domain cleaning but BEFORE creating subscription
+        if ($product && in_array($product->category, ['hosting', 'support']) && $request->domain)
+        {
+            $normalizedDomain = strtolower($request->domain);
+
+            \Log::info('Validating domain subscription', [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+                'domain' => $request->domain,
+                'normalized_domain' => $normalizedDomain,
+            ]);
+
+            $existingSubscription = $team->subscriptions()
+                ->where('type', $subscriptionType) // Same type (hosting or support)
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($normalizedDomain)
+                {
+                    \Log::info('Checking subscription', [
+                        'subscription_id' => $sub->id,
+                        'subscription_type' => $sub->type,
+                        'stripe_status' => $sub->stripe_status,
+                        'is_active' => $sub->active(),
+                        'data' => $sub->data,
+                    ]);
+
+                    // Check if subscription is active
+                    if (! $sub->active())
+                    {
+                        return false;
+                    }
+
+                    // Check if domain matches in data field
+                    // Handle both array and JSON string formats
+                    $subData = $sub->data;
+                    if (is_string($subData))
+                    {
+                        $subData = json_decode($subData, true);
+                    }
+
+                    if ($subData && is_array($subData) && isset($subData['domain']))
+                    {
+                        $subDomain = strtolower(trim($subData['domain']));
+
+                        \Log::info('Comparing domains', [
+                            'sub_domain' => $subDomain,
+                            'normalized_domain' => $normalizedDomain,
+                            'match' => $subDomain === $normalizedDomain,
+                        ]);
+
+                        return $subDomain === $normalizedDomain;
+                    }
+
+                    return false;
+                })
+                ->first();
+
+            if ($existingSubscription)
+            {
+                $categoryName = $subscriptionType === 'hosting' ? 'hosting' : 'support';
+                $errorMessage = "Ya tienes una suscripción activa de {$categoryName} para el dominio {$request->domain}.";
+
+                \Log::warning('Duplicate subscription detected', [
+                    'team_id' => $team->id,
+                    'subscription_type' => $subscriptionType,
+                    'domain' => $request->domain,
+                    'existing_subscription_id' => $existingSubscription->id,
+                ]);
+
+                return redirect()->route('subscription.index', ['product_id' => $request->product_id])
+                    ->with('error', $errorMessage)
+                    ->withInput();
+            }
+        }
+
+        // Always check if billing info is complete (for ALL subscription types)
+        // If billing info is already complete, we skip this step
+        // This check happens BEFORE trying to create subscription directly
+        $hasBillingInfo = $this->hasCompleteBillingInfo($team);
+
+        if (! $hasBillingInfo)
+        {
+            \Log::info('Billing info incomplete, redirecting to billing-info (before direct creation)', [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+            ]);
+
+            // Redirect to billing-info page (preserve domain and coupon if provided)
+            $redirectParams = [];
+            if ($request->product_id)
+            {
+                $redirectParams['product_id'] = $request->product_id;
+            } elseif ($request->price_id)
+            {
+                $redirectParams['price_id'] = $request->price_id;
+            } elseif ($request->plan)
+            {
+                $redirectParams['plan'] = $request->plan;
+            }
+            if ($request->domain)
+            {
+                $redirectParams['domain'] = $request->domain;
+            }
+            if ($request->coupon)
+            {
+                $redirectParams['coupon'] = $request->coupon;
+            }
+
+            return redirect()->route('subscription.billing-info', $redirectParams);
+        }
+
+        // If customer has payment method, create subscription directly (skip checkout)
+        // This prevents creating duplicate payment methods
+        if ($team->stripe_id)
+        {
+            try
+            {
+                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+
+                // Get default payment method or first available payment method
+                $paymentMethodId = $customer->invoice_settings->default_payment_method;
+
+                \Log::info('Checking payment methods', [
+                    'team_id' => $team->id,
+                    'stripe_customer_id' => $team->stripe_id,
+                    'default_payment_method' => $paymentMethodId,
+                ]);
+
+                // If no default payment method, try to get the first available one
+                if (! $paymentMethodId)
+                {
+                    $paymentMethods = \Stripe\PaymentMethod::all([
+                        'customer' => $team->stripe_id,
+                        'type' => 'card',
+                        'limit' => 10, // Get more to find an active one
+                    ]);
+
+                    \Log::info('Found payment methods', [
+                        'team_id' => $team->id,
+                        'count' => count($paymentMethods->data),
+                        'payment_methods' => array_map(fn ($pm) => [
+                            'id' => $pm->id,
+                            'type' => $pm->type,
+                            'card_last4' => $pm->card->last4 ?? null,
+                        ], $paymentMethods->data),
+                    ]);
+
+                    // Find the first active payment method
+                    foreach ($paymentMethods->data as $pm)
+                    {
+                        if ($pm->card && ! empty($pm->card->last4))
+                        {
+                            $paymentMethodId = $pm->id;
+                            \Log::info('Selected payment method', [
+                                'team_id' => $team->id,
+                                'payment_method_id' => $paymentMethodId,
+                                'card_last4' => $pm->card->last4,
+                            ]);
+                            break;
+                        }
+                    }
+                } else
+                {
+                    \Log::info('Using default payment method', [
+                        'team_id' => $team->id,
+                        'payment_method_id' => $paymentMethodId,
+                    ]);
+                }
+
+                // If we have a payment method, create subscription directly
+                if ($paymentMethodId)
+                {
+                    \Log::info('Creating subscription directly with payment method', [
+                        'team_id' => $team->id,
+                        'payment_method_id' => $paymentMethodId,
+                        'subscription_type' => $subscriptionType,
+                        'product_id' => $product?->id,
+                    ]);
+
+                    // Build metadata
+                    $metadata = [
+                        'team_id' => $team->id,
+                        'subscription_type' => $subscriptionType,
+                    ];
+
+                    // Add domain to metadata if provided
+                    if ($request->domain)
+                    {
+                        $metadata['domain'] = $request->domain;
+                    }
+
+                    // Build subscription creation config
+                    $subscriptionConfig = [
+                        'customer' => $team->stripe_id,
+                        'items' => [[
+                            'price' => $priceId,
+                        ]],
+                        'default_payment_method' => $paymentMethodId,
+                        'expand' => ['latest_invoice.payment_intent'],
+                        'metadata' => $metadata,
+                    ];
+
+                    // Add promotion code if provided
+                    if ($request->coupon)
+                    {
+                        // The coupon field contains the promotion code ID
+                        $subscriptionConfig['promotion_code'] = $request->coupon;
+                    }
+
+                    // Create subscription directly using existing payment method
+                    $stripeSubscription = \Stripe\Subscription::create($subscriptionConfig);
+
+                    // Log Stripe subscription data before saving
+                    \Log::info('Stripe subscription created - data before save', [
+                        'stripe_subscription_id' => $stripeSubscription->id,
+                        'stripe_subscription_status' => $stripeSubscription->status,
+                        'stripe_subscription_metadata' => $stripeSubscription->metadata ? $stripeSubscription->metadata->toArray() : null,
+                        'local_metadata' => $metadata,
+                        'metadata_type' => gettype($metadata),
+                        'metadata_is_array' => is_array($metadata),
+                        'metadata_json_encoded' => json_encode($metadata),
+                    ]);
+
+                    // Sync subscription to local database
+                    // Note: Cast 'array' doesn't work with mass assignment through relations,
+                    // so we need to encode explicitly
+                    $team->subscriptions()->create([
+                        'user_id' => $team->owner->id ?? $team->user_id,
+                        'type' => $subscriptionType,
+                        'stripe_id' => $stripeSubscription->id,
+                        'stripe_status' => $stripeSubscription->status,
+                        'stripe_price' => $priceId,
+                        'quantity' => $stripeSubscription->items->data[0]->quantity,
+                        'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
+                        'ends_at' => null,
+                        'data' => ! empty($metadata) ? json_encode($metadata) : null,
+                    ]);
+
+                    // Only assign EmailPlan if it's a mailer subscription
+                    if ($subscriptionType === 'mailer')
+                    {
+                        try
+                        {
+                            $plan = EmailPlan::fromStripePriceId($priceId);
+                            $team->assignEmailPlan($plan, auth()->id());
+                        } catch (\Exception $e)
+                        {
+                            \Log::warning('Could not update email_plan: '.$e->getMessage());
+                        }
+                    }
+
+                    // Custom success message based on subscription type
+                    $successMessage = match ($subscriptionType)
+                    {
+                        'hosting', 'support' => '¡Servicio contratado exitosamente usando tu método de pago guardado!',
+                        default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
+                    };
+
+                    return redirect()->route('subscription.index')
+                        ->with('success', $successMessage);
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('Could not create subscription directly, falling back to checkout', [
+                    'team_id' => $team->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                // Fall through to checkout flow
+            }
+        } else
+        {
+            \Log::info('No stripe_id for team, going to checkout', [
+                'team_id' => $team->id,
+            ]);
+        }
+
+        // Note: Billing info check is now done BEFORE attempting direct subscription creation
+        // This ensures consistent behavior regardless of payment method availability
+
+        // Clean up any canceled subscriptions of the same type to avoid conflicts
+        if ($subscriptionType === 'mailer')
+        {
+            $team->subscriptions()
+                ->where('type', 'mailer')
+                ->where('stripe_status', 'canceled')
+                ->delete();
+        }
+
+        try
+        {
             // Ensure team has a Stripe customer ID
             if (! $team->stripe_id)
             {
@@ -436,6 +1155,18 @@ class SubscriptionController extends Controller
                 'limit' => 1,
             ]);
 
+            // Build subscription metadata
+            $subscriptionMetadata = [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+            ];
+
+            // Add domain to metadata if provided (for hosting/support products)
+            if ($request->domain)
+            {
+                $subscriptionMetadata['domain'] = $request->domain;
+            }
+
             $checkoutConfig = [
                 'customer' => $team->stripe_id,
                 'mode' => 'subscription',
@@ -447,11 +1178,25 @@ class SubscriptionController extends Controller
                 'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('subscription.index'),
                 'subscription_data' => [
-                    'metadata' => [
-                        'team_id' => $team->id,
-                    ],
+                    'metadata' => $subscriptionMetadata,
                 ],
             ];
+
+            // Add promotion code if provided
+            // Note: In Stripe Checkout, we can either:
+            // 1. Use allow_promotion_codes: true to let user enter code manually
+            // 2. Use discounts with promotion_code to apply automatically
+            if ($request->coupon)
+            {
+                // The coupon field contains the promotion code ID
+                $checkoutConfig['discounts'] = [[
+                    'promotion_code' => $request->coupon,
+                ]];
+            } else
+            {
+                // Allow users to enter promotion codes manually in checkout
+                $checkoutConfig['allow_promotion_codes'] = true;
+            }
 
             // If customer has payment methods, allow them to choose
             if (! empty($paymentMethods->data))
@@ -512,34 +1257,86 @@ class SubscriptionController extends Controller
                     'expand' => ['items.data.price.product'],
                 ]);
 
+                // Get product ID and price ID from Stripe subscription
+                $priceId = $stripeSubscription->items->data[0]->price->id;
+                $productId = $stripeSubscription->items->data[0]->price->product;
+
+                // Determine subscription type from local product
+                $subscriptionProduct = SubscriptionProduct::where('stripe_price', $priceId)
+                    ->orWhere('stripe_product', $productId)
+                    ->orWhere('stripe_id', $productId)
+                    ->first();
+
+                $subscriptionType = 'mailer'; // Default
+                if ($subscriptionProduct)
+                {
+                    $subscriptionType = $subscriptionProduct->category ?? 'mailer';
+                }
+
+                // Get metadata from Stripe subscription (includes domain for hosting/support)
+                $metadata = [];
+                if ($stripeSubscription->metadata)
+                {
+                    $metadata = $stripeSubscription->metadata->toArray();
+                }
+
+                // Log Stripe subscription data before saving
+                \Log::info('Stripe subscription from checkout - data before save', [
+                    'stripe_subscription_id' => $stripeSubscription->id,
+                    'stripe_subscription_status' => $stripeSubscription->status,
+                    'stripe_subscription_metadata_raw' => $stripeSubscription->metadata,
+                    'stripe_subscription_metadata_array' => $metadata,
+                    'metadata_type' => gettype($metadata),
+                    'metadata_is_array' => is_array($metadata),
+                    'metadata_json_encoded' => json_encode($metadata),
+                    'session_metadata' => $session->subscription_data->metadata ?? null,
+                ]);
+
                 // Sync subscription to local database if it doesn't exist
-                $localSubscription = $team->subscription('mailer');
+                $localSubscription = $team->subscriptions()
+                    ->where('stripe_id', $stripeSubscription->id)
+                    ->first();
 
                 if (! $localSubscription)
                 {
                     // Create the subscription record manually
+                    // Note: Cast 'array' doesn't work with mass assignment through relations,
+                    // so we need to encode explicitly
+                    \Log::info('Creating subscription with data', [
+                        'data_value' => ! empty($metadata) ? json_encode($metadata) : null,
+                        'data_type' => gettype(! empty($metadata) ? json_encode($metadata) : null),
+                    ]);
                     $team->subscriptions()->create([
                         'user_id' => $team->owner->id ?? $team->user_id,
-                        'type' => 'mailer',
+                        'type' => $subscriptionType,
                         'stripe_id' => $stripeSubscription->id,
                         'stripe_status' => $stripeSubscription->status,
-                        'stripe_price' => $stripeSubscription->items->data[0]->price->id,
+                        'stripe_price' => $priceId,
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
+                        'data' => ! empty($metadata) ? json_encode($metadata) : null,
                     ]);
+                } else
+                {
+                    // Update existing subscription with metadata if not already set
+                    if (empty($localSubscription->data) && ! empty($metadata))
+                    {
+                        $localSubscription->update(['data' => $metadata]);
+                    }
                 }
 
-                // Get product ID to determine the plan
-                $productId = $stripeSubscription->items->data[0]->price->product;
-
-                // Map product ID to EmailPlan
-                $plan = $this->getEmailPlanFromProductId($productId);
-
-                if ($plan)
+                // Only assign EmailPlan if it's a mailer subscription
+                if ($subscriptionType === 'mailer')
                 {
-                    // Assign the plan to the team
-                    $team->assignEmailPlan($plan, auth()->id());
+                    // Map product ID to EmailPlan
+                    $plan = $this->getEmailPlanFromProductId($productId);
+
+                    if ($plan)
+                    {
+                        // Assign the plan to the team
+                        $team->assignEmailPlan($plan, auth()->id());
+                    }
                 }
             }
 
@@ -662,32 +1459,78 @@ class SubscriptionController extends Controller
     public function swap(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:basic,foundation,scale',
+            'plan' => 'nullable|in:basic,foundation,scale',
+            'product_id' => 'nullable|exists:subscription_products,id',
+            'price_id' => 'nullable|string',
         ]);
 
         $team = auth()->user()->currentTeam;
-        $plan = EmailPlan::from($request->plan);
+        $priceId = null;
+        $product = null;
+        $subscriptionType = 'mailer';
+
+        // Determine priceId and subscriptionType
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::findOrFail($request->product_id);
+            $priceId = $product->stripe_price;
+            $subscriptionType = $product->category ?? 'mailer';
+        } elseif ($request->price_id)
+        {
+            $priceId = $request->price_id;
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if ($product)
+            {
+                $subscriptionType = $product->category ?? 'mailer';
+            }
+        } elseif ($request->plan)
+        {
+            $plan = EmailPlan::from($request->plan);
+            $priceId = $plan->getStripePriceId();
+            $subscriptionType = 'mailer';
+        } else
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Debes especificar un plan o producto para cambiar.');
+        }
+
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
+        }
 
         try
         {
-            // Get the Stripe price ID directly from the plan
-            $priceId = $plan->getStripePriceId();
-
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe en su archivo .env');
-            }
-
-            // Get subscription (including canceled ones)
+            // Get subscription by type
             $subscription = $team->subscriptions()
-                ->where('type', 'mailer')
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($subscriptionType, $product)
+                {
+                    // For same category subscriptions, check if active
+                    if ($product)
+                    {
+                        $subProduct = SubscriptionProduct::where('stripe_price', $sub->stripe_price)->first();
+                        if ($subProduct && $subProduct->category === $product->category)
+                        {
+                            return $sub->active();
+                        }
+                    }
+                    // For mailer, use the existing logic
+                    if ($subscriptionType === 'mailer' && $sub->type === 'mailer')
+                    {
+                        return $sub->active();
+                    }
+
+                    return false;
+                })
                 ->first();
 
             if (! $subscription)
             {
                 return redirect()->route('subscription.index')
-                    ->with('error', 'No se encontró una suscripción. Por favor, crea una nueva suscripción primero.');
+                    ->with('error', 'No se encontró una suscripción activa de este tipo. Por favor, crea una nueva suscripción primero.');
             }
 
             // Update directly via Stripe API to avoid Billable model issues
@@ -713,14 +1556,17 @@ class SubscriptionController extends Controller
             $subscription->ends_at = null; // Always clear cancellation date
             $subscription->save();
 
-            // Update the team's email plan (bypass admin check for owner)
-            try
+            // Update the team's email plan if it's a mailer subscription
+            if ($subscriptionType === 'mailer')
             {
-                $team->email_plan = $plan->value;
-                $team->save();
-            } catch (\Exception $e)
-            {
-                \Log::warning('Could not update email_plan: '.$e->getMessage());
+                try
+                {
+                    $team->email_plan = EmailPlan::fromStripePriceId($priceId)->value;
+                    $team->save();
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not update email_plan: '.$e->getMessage());
+                }
             }
 
             return redirect()->route('subscription.index')

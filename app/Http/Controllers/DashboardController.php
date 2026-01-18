@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EmailPlan;
 use App\Models\Contact;
 use App\Models\List60;
 use App\Models\Project;
+use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
 use Stripe\Balance;
@@ -154,6 +156,124 @@ class DashboardController extends Controller
         // Recent activities removed - Activity Log package was removed from the project
         $formattedActivities = collect();
 
+        // Get subscription level
+        $subscriptionLevel = null;
+        $mentoringPlan = null;
+        $mentoringLevelName = null;
+        $mentoringMessage = null;
+        $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
+        $hasMentoringSubscription = false;
+
+        // Get active subscriptions
+        $activeSubscriptions = $activeTeam->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get();
+
+        // Determine subscription level based on active subscriptions
+        foreach ($activeSubscriptions as $subscription)
+        {
+            if (! $subscription->active())
+            {
+                continue;
+            }
+
+            // Get product from subscription - try multiple ways to find it
+            $product = null;
+            if ($subscription->stripe_price)
+            {
+                $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+            }
+
+            // If not found by price, try to find by subscription metadata or type
+            if (! $product && $subscription->stripe_id)
+            {
+                // Try to get product info from Stripe directly
+                try
+                {
+                    \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                    $stripeSub = \Stripe\Subscription::retrieve($subscription->stripe_id, ['expand' => ['items.data.price.product']]);
+                    if ($stripeSub->items->data[0]->price->product)
+                    {
+                        $stripeProductId = is_string($stripeSub->items->data[0]->price->product)
+                            ? $stripeSub->items->data[0]->price->product
+                            : $stripeSub->items->data[0]->price->product->id;
+
+                        $product = SubscriptionProduct::where('stripe_id', $stripeProductId)
+                            ->orWhere('stripe_product', $stripeProductId)
+                            ->first();
+                    }
+                } catch (\Exception $e)
+                {
+                    // Silently fail, continue with existing logic
+                }
+            }
+
+            if ($product)
+            {
+                $type = $product->type ?? $product->category;
+                $category = $product->category;
+
+                // Update subscription type if it doesn't match the product category
+                if ($subscription->type !== $category && $category)
+                {
+                    $subscription->type = $category;
+                    $subscription->save();
+                }
+
+                if ($type === 'mailer')
+                {
+                    // Mailer subscription
+                    $subscriptionLevel = EmailPlan::fromStripePriceId($subscription->stripe_price);
+                } elseif ($type === 'mentoring' || $category === 'mentoring')
+                {
+                    // Mentoring subscription
+                    $hasMentoringSubscription = true;
+                    // Get the plan from the product
+                    $mentoringPlan = $product->plan ?? null;
+
+                    // If there's a plan, use it; otherwise check if no projects (IDEA plan)
+                    if ($mentoringPlan)
+                    {
+                        // Plan pago activo
+                        $mentoringLevelName = match ($mentoringPlan)
+                        {
+                            'creation' => 'Tu dossier comercial',
+                            'operations' => 'Operaciones',
+                            'bussiness-exit' => 'Business Exit',
+                            'complete' => 'Complete',
+                            default => $mentoringPlan,
+                        };
+                        $mentoringMessage = match ($mentoringPlan)
+                        {
+                            'creation' => 'Estás en la fase de Creación',
+                            'operations' => 'Estás en la fase de Operaciones',
+                            'bussiness-exit' => 'Estás en la fase de Business Exit',
+                            'complete' => 'Tienes el plan completo',
+                            default => '¡Vas viento en popa!',
+                        };
+                    } elseif (! $hasProjects)
+                    {
+                        // Plan gratuito IDEA (dossier comercial) - solo si no hay plan y no hay proyectos
+                        $mentoringPlan = 'IDEA';
+                        $mentoringLevelName = 'Tu dossier comercial';
+                        $mentoringMessage = 'Haz tenido una gran IDEA';
+                    }
+                } elseif ($type === 'hosting' || $category === 'hosting')
+                {
+                    // Hosting subscription
+                    $subscriptionLevel = $product->plan ?? 'Hosting';
+                }
+            }
+        }
+
+        // If no mentoring subscription exists, show IDEA plan (free)
+        if (! $hasMentoringSubscription)
+        {
+            $mentoringPlan = 'IDEA';
+            $mentoringLevelName = 'Tu dossier comercial';
+            $mentoringMessage = 'Haz tenido una gran IDEA';
+        }
+
         // Stripe revenue calculation - COMMENTED OUT (resource intensive)
         // if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
         // {
@@ -227,6 +347,11 @@ class DashboardController extends Controller
             'lastMonthRevenue',
             'ongoingProjects',
             'formattedActivities',
+            'subscriptionLevel',
+            'mentoringPlan',
+            'mentoringLevelName',
+            'mentoringMessage',
+            'hasProjects',
         ));
     }
 }

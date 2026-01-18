@@ -30,7 +30,7 @@ class EnterpriseStatus extends Model
             $query->where('enterprise_type_id', $enterpriseTypeId);
         }
 
-        return $query->get()->map(function ($status)
+        return $query->orderBy('id')->get()->map(function ($status)
         {
             return [
                 'id' => $status->id,

@@ -17,7 +17,7 @@ class UpdateContactRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'email' => 'required|email:rfc,dns|max:255',
             'phone' => 'nullable|numeric|digits_between:7,15',
             'birthday' => 'nullable|date',
             'status_id' => 'required|exists:contact_statuses,id',
@@ -29,7 +29,7 @@ class UpdateContactRequest extends FormRequest
             'enterprise.code' => 'nullable|string|max:255',
             'enterprise.website' => 'nullable|max:255',  // !FIXME: Add url validation
             'enterprise.phone' => 'nullable|string|max:20',
-            'enterprise.email' => 'nullable|email|max:255',
+            'enterprise.email' => 'nullable|email:rfc,dns|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
             'source_id' => 'array',
             'source_id.*' => 'required|exists:sources,id',

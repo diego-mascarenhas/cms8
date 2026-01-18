@@ -76,7 +76,8 @@ class ChatController extends Controller
         $selectedContact = null;
         if ($selectedUser && $selectedUser->id)
         {
-            $selectedContact = Contact::where('user_id', $selectedUser->id)->first();
+            $selectedContact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+                ->where('user_id', $selectedUser->id)->first();
             $hasContact = $selectedContact !== null;
         }
 
@@ -123,11 +124,12 @@ class ChatController extends Controller
         }
 
         // If no user found directly, try to find through contact relationship
-        $contact = Contact::whereHas('sources', function ($query) use ($cleanNumber)
-        {
-            $query->where('source_id', 2) // Phone source
-                ->where('value', $cleanNumber);
-        })->first();
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->whereHas('sources', function ($query) use ($cleanNumber)
+            {
+                $query->where('source_id', 2) // Phone source
+                    ->where('value', $cleanNumber);
+            })->first();
 
         if ($contact && $contact->user)
         {

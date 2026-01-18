@@ -120,7 +120,7 @@
                             <div>
                                 <p class="mb-0 fw-medium" style="line-height: 1.2;">
                                     <span id="totalTime" class="mb-0 fw-medium"
-                                        style="line-height: 1.2;">{{ $totalSeconds }} segundos</span>
+                                        style="line-height: 1.2;">{{ round($totalSeconds) }} segundos</span>
                                 </p>
                                 <small style="line-height: 1.2;">Tiempo dedicado</small>
                             </div>
@@ -232,8 +232,8 @@
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
                             <li class="mb-2 pt-3">
-                                @if ($data->user_id)
-                                    @php $linkedUser = \App\Models\User::find($data->user_id); @endphp
+                                @if ($data->user_id && $data->user)
+                                    @php $linkedUser = $data->user; @endphp
                                     @if ($linkedUser)
                                         <div class="d-flex align-items-center justify-content-between">
                                             <div>
@@ -530,12 +530,12 @@
             });
         });
 
-        let totalSeconds = {{ $totalSeconds }};
+        let totalSeconds = Math.round({{ $totalSeconds }});
         setInterval(() => {
             totalSeconds++;
             let hours = Math.floor(totalSeconds / 3600);
             let minutes = Math.floor((totalSeconds % 3600) / 60);
-            let seconds = totalSeconds % 60;
+            let seconds = Math.round(totalSeconds % 60);
 
             let formattedTime;
             if (hours > 0) {
@@ -543,7 +543,7 @@
             } else if (minutes > 0) {
                 formattedTime = `${minutes} minutos`;
             } else {
-                formattedTime = `${seconds} segundos`;
+                formattedTime = `${Math.round(seconds)} segundos`;
             }
 
             document.getElementById('totalTime').textContent = formattedTime;

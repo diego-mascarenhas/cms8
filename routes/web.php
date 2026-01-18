@@ -5,8 +5,8 @@ use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CategoryController;
-// use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\CertificationController;
+// use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
@@ -19,6 +19,7 @@ use App\Http\Controllers\EmailPlansManagementController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\FareController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\InvoiceController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
@@ -166,6 +168,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::post('/categories/quick-store', [CategoryController::class, 'quickStore'])->name('categories.quick-store');
     Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
@@ -187,6 +190,14 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
         Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
         Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
+        Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
+
+        // Product Management (Root only)
+        Route::get('/account-management/products', [ProductManagementController::class, 'index'])->name('account.products.index');
+        Route::get('/account-management/products/{id}/edit', [ProductManagementController::class, 'edit'])->name('account.products.edit');
+        Route::put('/account-management/products/{id}', [ProductManagementController::class, 'update'])->name('account.products.update');
+        Route::put('/account-management/products/{id}/update-and-sync', [ProductManagementController::class, 'updateAndSync'])->name('account.products.update-and-sync');
+        Route::post('/account-management/products/{id}/sync', [ProductManagementController::class, 'sync'])->name('account.products.sync');
     });
 
     // Email Plans Management (Admin only)
@@ -433,27 +444,27 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
     Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
     Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
-	Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
+    Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
-	// Product Routes
-	Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
-	Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
-	Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
-	Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
-	Route::post('/product', [ProductController::class, 'store'])->name('product.store');
-	Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
-	Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+    // Product Routes
+    Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
+    Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
+    Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
+    Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
+    Route::post('/product', [ProductController::class, 'store'])->name('product.store');
+    Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
+    Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
 
-	// Order Routes
-	Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
-	Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
-	Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
-	Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
-	Route::post('/order', [OrderController::class, 'store'])->name('order.store');
-	Route::put('/order/{id}', [OrderController::class, 'update'])->name('order.update');
-	Route::delete('/order/{id}', [OrderController::class, 'destroy'])->name('order.destroy');
+    // Order Routes
+    Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
+    Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
+    Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
+    Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
+    Route::post('/order', [OrderController::class, 'store'])->name('order.store');
+    Route::put('/order/{id}', [OrderController::class, 'update'])->name('order.update');
+    Route::delete('/order/{id}', [OrderController::class, 'destroy'])->name('order.destroy');
 
-	// Invoice & Payment Routes
+    // Invoice & Payment Routes
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
@@ -610,7 +621,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');
-    Route::get('/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+    Route::post('/subscription/validate-coupon', [SubscriptionController::class, 'validateCoupon'])->name('subscription.validate-coupon');
+    Route::match(['get', 'post'], '/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
@@ -813,6 +825,17 @@ Route::middleware(['web', 'auth'])->group(function ()
     Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
     Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+});
+
+// Help Documentation Routes (Public - No Authentication Required)
+Route::prefix('help')->name('help.')->group(function ()
+{
+    Route::get('/', [HelpController::class, 'index'])->name('index');
+    Route::get('/usage', [HelpController::class, 'usage'])->name('usage');
+    Route::get('/contacts', [HelpController::class, 'contacts'])->name('contacts');
+    Route::get('/api', [HelpController::class, 'api'])->name('api');
+    Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');
+    Route::get('/api/contacts', [HelpController::class, 'apiContacts'])->name('api.contacts');
 });
 
 // Fallback route for 404 errors - must be at the end

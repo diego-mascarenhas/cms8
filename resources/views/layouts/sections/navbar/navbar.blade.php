@@ -475,6 +475,13 @@
                     </a>
                 </li>
 
+                <li>
+                    <a class="dropdown-item" href="{{ route('help.index') }}" target="_blank">
+                        <i class="ti ti-help me-2 ti-sm"></i>
+                        <span class="align-middle">{{ __('app.profile.help_documentation') }}</span>
+                    </a>
+                </li>
+
                 @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
                     {{-- Variables de configuración (Team Settings module) --}}
                     <li>
@@ -864,6 +871,26 @@ function globalSearch() {
                     });
                 }
             });
+
+            // Setup click outside handler to close search
+            const handleClickOutside = (e) => {
+                if (this.isHidden) return; // Search is already closed
+
+                const searchWrapper = this.$el?.querySelector('.search-input-wrapper');
+                const resultsContainer = this.$el?.querySelector('.tt-menu.navbar-search-suggestion');
+                const searchToggler = this.$el?.querySelector('.search-toggler:not(.search-input-wrapper .search-toggler)');
+
+                // Check if click is outside search area
+                const clickedInsideSearch = searchWrapper?.contains(e.target) ||
+                                          resultsContainer?.contains(e.target) ||
+                                          searchToggler?.contains(e.target);
+
+                if (!clickedInsideSearch) {
+                    this.close();
+                }
+            };
+
+            document.addEventListener('mousedown', handleClickOutside);
         },
 
         get hasResults() {

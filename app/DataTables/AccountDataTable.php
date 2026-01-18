@@ -55,11 +55,18 @@ class AccountDataTable extends DataTable
             {
                 return $account->created_at->format('d/m/Y');
             })
+            ->addColumn('subscriptions_count', function ($account)
+            {
+                return $account->subscriptions_count;
+            })
             ->addColumn('action', function ($account)
             {
                 return '<div class="d-flex justify-content-center align-items-center">
-					<a href="'.route('account.edit', $account->id).'" class="text-body">
-						<i class="ti ti-edit ti-sm me-2"></i>
+					<a href="'.route('account.subscriptions', $account->id).'" class="text-body" title="Ver suscripciones">
+						<i class="ti ti-eye ti-sm me-2"></i>
+					</a>
+					<a href="'.route('account.edit', $account->id).'" class="text-body" title="Editar">
+						<i class="ti ti-edit ti-sm"></i>
 					</a>
 				</div>';
             })
@@ -70,7 +77,7 @@ class AccountDataTable extends DataTable
     public function query(Account $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with('owner');
+            ->with(['owner', 'subscriptions']);
     }
 
     public function html(): HtmlBuilder
@@ -114,13 +121,18 @@ class AccountDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::make('created_at')
-                ->title('Creación')
+            Column::computed('total_time')
+                ->title('Tiempo')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::computed('total_time')
-                ->title('Tiempo')
+            Column::computed('subscriptions_count')
+                ->title('Suscripciones')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::make('created_at')
+                ->title('Creación')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),

@@ -23,16 +23,47 @@ class Language extends Model
     public function getFlagAttribute()
     {
         $flagMapping = [
-            'es' => 'es',  // Spanish -> Spain
-            'en' => 'us',  // English -> United States (could be 'gb' for UK)
-            'fr' => 'fr',  // French -> France
+            'ar' => 'sa',  // Arabic -> Saudi Arabia
+            'bg' => 'bg',  // Bulgarian -> Bulgaria
+            'ca' => 'es',  // Catalan -> Spain
+            'cs' => 'cz',  // Czech -> Czech Republic
+            'da' => 'dk',  // Danish -> Denmark
             'de' => 'de',  // German -> Germany
+            'el' => 'gr',  // Greek -> Greece
+            'en' => 'us',  // English -> United States
+            'es' => 'es',  // Spanish -> Spain
+            'et' => 'ee',  // Estonian -> Estonia
+            'eu' => 'es',  // Basque -> Spain
+            'fi' => 'fi',  // Finnish -> Finland
+            'fr' => 'fr',  // French -> France
+            'gl' => 'es',  // Galician -> Spain
+            'he' => 'il',  // Hebrew -> Israel
+            'hi' => 'in',  // Hindi -> India
+            'hr' => 'hr',  // Croatian -> Croatia
+            'hu' => 'hu',  // Hungarian -> Hungary
             'it' => 'it',  // Italian -> Italy
-            'pt' => 'pt',  // Portuguese -> Portugal (could be 'br' for Brazil)
-            'ca' => 'es',  // Catalan -> Spain (uses Spanish flag)
+            'ja' => 'jp',  // Japanese -> Japan
+            'ko' => 'kr',  // Korean -> South Korea
+            'lt' => 'lt',  // Lithuanian -> Lithuania
+            'lv' => 'lv',  // Latvian -> Latvia
+            'mt' => 'mt',  // Maltese -> Malta
+            'nb' => 'no',  // Norwegian -> Norway
+            'nl' => 'nl',  // Dutch -> Netherlands
+            'pl' => 'pl',  // Polish -> Poland
+            'pt' => 'pt',  // Portuguese -> Portugal
+            'ro' => 'ro',  // Romanian -> Romania
+            'ru' => 'ru',  // Russian -> Russia
+            'sk' => 'sk',  // Slovak -> Slovakia
+            'sl' => 'si',  // Slovenian -> Slovenia
+            'sv' => 'se',  // Swedish -> Sweden
+            'th' => 'th',  // Thai -> Thailand
+            'tr' => 'tr',  // Turkish -> Turkey
+            'uk' => 'ua',  // Ukrainian -> Ukraine
+            'vi' => 'vn',  // Vietnamese -> Vietnam
+            'zh' => 'cn',  // Chinese -> China
         ];
 
-        return $flagMapping[$this->code] ?? $this->code;
+        return $flagMapping[$this->code] ?? strtolower($this->code);
     }
 
     /**

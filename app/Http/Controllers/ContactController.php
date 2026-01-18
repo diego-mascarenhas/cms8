@@ -137,6 +137,7 @@ class ContactController extends Controller
             'enterprises',  // relación correcta
             'currentEnterprise',
             'user.roles',
+            'user.currentTeam.settings',
         ])->findOrFail($id);
 
         $this->authorize('view', $data);
@@ -512,7 +513,7 @@ class ContactController extends Controller
      */
     public function update(UpdateContactRequest $request, $id)
     {
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $this->authorize('update', $contact);
 
         $data = $request->validated();
@@ -523,7 +524,7 @@ class ContactController extends Controller
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ? (int) $request->phone : null;
 
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $contact->update($contactData);
 
         // Sync enterprise relationship (many-to-many)
@@ -917,7 +918,8 @@ class ContactController extends Controller
         // Only search contacts if the contacts module is active
         if ($team && $team->hasModule('contacts'))
         {
-            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at');
+            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
+                ->with(['user.roles', 'user.teams', 'user.currentTeam.settings']);
             // No filter by status_id - include all contacts regardless of status
 
             if (! $isInitialLoad)
@@ -1537,8 +1539,8 @@ class ContactController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $contact = Contact::findOrFail($id);
-        $user = \App\Models\User::findOrFail($request->user_id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
+        $user = \App\Models\User::with(['roles', 'teams', 'currentTeam.settings'])->findOrFail($request->user_id);
 
         // Check if user belongs to the same team
         if (! $user->teams->contains(auth()->user()->currentTeam->id))
@@ -1550,7 +1552,8 @@ class ContactController extends Controller
         }
 
         // Check if user is already linked to another contact
-        $existingContact = Contact::where('user_id', $user->id)->first();
+        $existingContact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', $user->id)->first();
         if ($existingContact && $existingContact->id !== $contact->id)
         {
             return response()->json([
@@ -1676,8 +1679,8 @@ class ContactController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $contact = Contact::findOrFail($id);
-        $user = \App\Models\User::findOrFail($request->user_id);
+        $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
+        $user = \App\Models\User::with(['roles', 'teams', 'currentTeam.settings'])->findOrFail($request->user_id);
 
         // Check if user belongs to the same team
         if (! $user->teams->contains(auth()->user()->currentTeam->id))
@@ -1686,7 +1689,8 @@ class ContactController extends Controller
         }
 
         // Check if user is already linked to another contact
-        $existingContact = Contact::where('user_id', $user->id)->first();
+        $existingContact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('user_id', $user->id)->first();
         if ($existingContact && $existingContact->id !== $contact->id)
         {
             return back()->withErrors(['user_id' => 'Este usuario ya está vinculado a otro contacto']);
@@ -1755,7 +1759,7 @@ class ContactController extends Controller
             abort(404);
         }
 
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->findOrFail($id);
 
         // Check if contact has a linked user
         if (! $contact->user_id)
@@ -1775,7 +1779,7 @@ class ContactController extends Controller
      */
     public function processUserUnlink($type, $id)
     {
-        $contact = Contact::findOrFail($id);
+        $contact = Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])->findOrFail($id);
         $contact->update(['user_id' => null]);
 
         $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';

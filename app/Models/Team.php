@@ -69,6 +69,15 @@ class Team extends JetstreamTeam
 
     public function getSetting($key, $default = null)
     {
+        // If settings are already loaded, use them to avoid N+1 queries
+        if ($this->relationLoaded('settings'))
+        {
+            $setting = $this->settings->firstWhere('key', $key);
+
+            return $setting ? $setting->value : $default;
+        }
+
+        // Otherwise, query the database
         return $this->settings()->where('key', $key)->first()?->value ?? $default;
     }
 

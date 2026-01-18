@@ -49,6 +49,7 @@ return [
     'profile' => [
         'my_profile' => 'My Profile',
         'api_tokens' => 'API Tokens',
+        'help_documentation' => 'Help & Documentation',
         'team' => [
             'manage' => 'Manage Team',
             'settings' => 'Team Settings',

@@ -85,8 +85,12 @@ class MessageController extends Controller
      */
     public function debug(string $id)
     {
-        $message = Message::findOrFail($id);
+        $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
         $team = auth()->user()->currentTeam;
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
 
         // Get delivery statistics
         $stats = [
@@ -122,6 +126,10 @@ class MessageController extends Controller
         ];
 
         // Get email limits
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
         $emailLimits = $team->getRemainingEmails();
 
         // Get last log entries
@@ -166,10 +174,14 @@ class MessageController extends Controller
     public function show(string $id)
     {
         // Obtener el mensaje con relaciones necesarias
-        $message = Message::with('category')->findOrFail($id);
+        $message = Message::with(['category', 'deliveries', 'team.settings'])->findOrFail($id);
 
         // Obtener configuración de correo saliente del team con settings cargados
-        $team = auth()->user()->currentTeam->load('settings');
+        $team = auth()->user()->currentTeam;
+        if ($team && ! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
         $emailConfig = $team->getOutgoingEmailConfig();
 
         // Contar contactos que coinciden con la categoría y estado de contacto del mensaje
@@ -245,8 +257,14 @@ class MessageController extends Controller
             ];
         }
 
-        // Obtener entregas reales
-        $deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
+        // Obtener entregas reales - usar la relación cargada si está disponible
+        if ($message->relationLoaded('deliveries'))
+        {
+            $deliveries = $message->deliveries->load('contact');
+        } else
+        {
+            $deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
+        }
 
         // Obtener links de conversión agrupados por URL única
         $links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
@@ -311,7 +329,7 @@ class MessageController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Message::find($id);
+        $data = Message::with(['deliveries', 'team.settings'])->find($id);
 
         if (! $data)
         {
@@ -341,7 +359,7 @@ class MessageController extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Message::findOrFail($id);
+        $model = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
         $model->delete();
 
@@ -400,7 +418,8 @@ class MessageController extends Controller
     {
         // Update contact status to "Perdido" (ID 4) when they unsubscribe
         // But don't change status if they are already a client (status_id 5)
-        $contact = \App\Models\Contact::where('email', $email)->first();
+        $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
+            ->where('email', $email)->first();
 
         if ($contact)
         {
@@ -435,10 +454,14 @@ class MessageController extends Controller
     {
         try
         {
-            $message = Message::findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
             // Validate email sender configuration
-            $team = auth()->user()->currentTeam->load('settings');
+            $team = auth()->user()->currentTeam;
+            if ($team && ! $team->relationLoaded('settings'))
+            {
+                $team->load('settings');
+            }
             $emailConfig = $team->getOutgoingEmailConfig();
 
             if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
@@ -548,7 +571,7 @@ class MessageController extends Controller
     {
         try
         {
-            $message = Message::findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
             // Update message status to inactive/paused
             $message->update(['status_id' => 0]);
@@ -570,7 +593,7 @@ class MessageController extends Controller
     {
         try
         {
-            $message = Message::findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
             // Count ALL pending deliveries (status_id = 1, not failed = 4, not delivered)
             $pendingCount = MessageDelivery::where('message_id', $id)
@@ -662,11 +685,17 @@ class MessageController extends Controller
     {
         try
         {
-            $message = Message::findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
             $link = base64_decode($encodedLink);
 
-            // Get all deliveries for this message
-            $deliveries = MessageDelivery::where('message_id', $message->id)->get();
+            // Get all deliveries for this message - usar la relación cargada si está disponible
+            if ($message->relationLoaded('deliveries'))
+            {
+                $deliveries = $message->deliveries;
+            } else
+            {
+                $deliveries = MessageDelivery::where('message_id', $message->id)->get();
+            }
 
             // Get contact details for this specific link - only those who actually clicked
             $linkDetails = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
@@ -758,9 +787,13 @@ class MessageController extends Controller
     {
         try
         {
-            $message = Message::findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
             $user = auth()->user();
             $team = $user->currentTeam;
+            if ($team && ! $team->relationLoaded('settings'))
+            {
+                $team->load('settings');
+            }
 
             Log::info('🧪 TEST SEND: Starting test email', [
                 'message_id' => $message->id,

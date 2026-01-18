@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/fontawesome/css/all.min.css') }}">
 @endsection
 
 @section('page-style')
@@ -90,7 +91,20 @@
                             <div class="card-body text-nowrap">
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
-                                <p class="mb-2">¡Vas viento en popa!</p>
+                                @if($mentoringPlan)
+                                    @if($mentoringMessage)
+                                        <p class="mb-2">{{ $mentoringMessage }}</p>
+                                    @endif
+                                    @if($mentoringLevelName)
+                                        <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
+                                    @endif
+                                @elseif($subscriptionLevel)
+                                    <p class="mb-2">¡Vas viento en popa!</p>
+                                    <p class="mb-2"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
+                                @else
+                                    <p class="mb-2">¡Vas viento en popa!</p>
+                                @endif
+                                
                                 {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
