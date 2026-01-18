@@ -31,7 +31,7 @@ export default defineConfig({
                 },
                 {
                     src: 'lang/datatables',
-                    dest: 'js'
+                    dest: '../js'
                 }
             ]
         })
