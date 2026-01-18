@@ -846,6 +846,82 @@ class SubscriptionController extends Controller
             $request->merge(['domain' => $domain]);
         }
 
+        // Validate duplicate domain for hosting/support products
+        // This must happen AFTER domain cleaning but BEFORE creating subscription
+        if ($product && in_array($product->category, ['hosting', 'support']) && $request->domain)
+        {
+            $normalizedDomain = strtolower($request->domain);
+
+            \Log::info('Validating domain subscription', [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+                'domain' => $request->domain,
+                'normalized_domain' => $normalizedDomain,
+            ]);
+
+            $existingSubscription = $team->subscriptions()
+                ->where('type', $subscriptionType) // Same type (hosting or support)
+                ->where('stripe_status', '!=', 'canceled')
+                ->get()
+                ->filter(function ($sub) use ($normalizedDomain)
+                {
+                    \Log::info('Checking subscription', [
+                        'subscription_id' => $sub->id,
+                        'subscription_type' => $sub->type,
+                        'stripe_status' => $sub->stripe_status,
+                        'is_active' => $sub->active(),
+                        'data' => $sub->data,
+                    ]);
+
+                    // Check if subscription is active
+                    if (! $sub->active())
+                    {
+                        return false;
+                    }
+
+                    // Check if domain matches in data field
+                    // Handle both array and JSON string formats
+                    $subData = $sub->data;
+                    if (is_string($subData))
+                    {
+                        $subData = json_decode($subData, true);
+                    }
+
+                    if ($subData && is_array($subData) && isset($subData['domain']))
+                    {
+                        $subDomain = strtolower(trim($subData['domain']));
+
+                        \Log::info('Comparing domains', [
+                            'sub_domain' => $subDomain,
+                            'normalized_domain' => $normalizedDomain,
+                            'match' => $subDomain === $normalizedDomain,
+                        ]);
+
+                        return $subDomain === $normalizedDomain;
+                    }
+
+                    return false;
+                })
+                ->first();
+
+            if ($existingSubscription)
+            {
+                $categoryName = $subscriptionType === 'hosting' ? 'hosting' : 'support';
+                $errorMessage = "Ya tienes una suscripción activa de {$categoryName} para el dominio {$request->domain}.";
+
+                \Log::warning('Duplicate subscription detected', [
+                    'team_id' => $team->id,
+                    'subscription_type' => $subscriptionType,
+                    'domain' => $request->domain,
+                    'existing_subscription_id' => $existingSubscription->id,
+                ]);
+
+                return redirect()->route('subscription.index', ['product_id' => $request->product_id])
+                    ->with('error', $errorMessage)
+                    ->withInput();
+            }
+        }
+
         // Always check if billing info is complete (for ALL subscription types)
         // If billing info is already complete, we skip this step
         // This check happens BEFORE trying to create subscription directly
