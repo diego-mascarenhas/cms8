@@ -254,6 +254,31 @@
 													@else
 														<small class="text-muted d-block mb-0">{{ $typeName }}</small>
 													@endif
+													@php
+														// Get domain from subscription metadata if it's hosting or support
+														$domain = null;
+														if (in_array($type, ['hosting', 'support']))
+														{
+															// Try to get domain from local subscription data
+															if ($sub->data && is_array($sub->data) && isset($sub->data['domain']))
+															{
+																$domain = $sub->data['domain'];
+															}
+															// Fallback: try to get from Stripe subscription metadata
+															elseif ($stripeSub && isset($stripeSub->metadata->domain))
+															{
+																$domain = $stripeSub->metadata->domain;
+															}
+														}
+													@endphp
+													@if($domain)
+														<div class="mt-2">
+															<small class="text-muted d-flex align-items-center">
+																<i class="ti ti-world ti-xs me-1"></i>
+																<strong>Dominio:</strong> <span class="ms-1">{{ $domain }}</span>
+															</small>
+														</div>
+													@endif
 												</div>
 												@if($stripeSub)
 													<div class="text-end">

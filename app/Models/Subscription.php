@@ -7,6 +7,35 @@ use Laravel\Cashier\Subscription as CashierSubscription;
 class Subscription extends CashierSubscription
 {
     /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'user_id',
+        'type',
+        'stripe_id',
+        'stripe_status',
+        'stripe_price',
+        'quantity',
+        'trial_ends_at',
+        'ends_at',
+        'team_id',
+        'data',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'trial_ends_at' => 'datetime',
+        'ends_at' => 'datetime',
+        'data' => 'array',
+    ];
+
+    /**
      * Get the model related to the subscription (the owner).
      * Override to ALWAYS use Team instead of User.
      *

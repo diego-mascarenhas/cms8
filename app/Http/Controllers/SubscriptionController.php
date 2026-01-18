@@ -564,7 +564,14 @@ class SubscriptionController extends Controller
         // Validate domain for hosting/support products
         if ($product && in_array($product->category, ['hosting', 'support']) && ! $request->domain)
         {
-            return redirect()->route('subscription.index')
+            // Redirect back with product_id to show modal with error
+            $redirectParams = ['product_id' => $request->product_id];
+            if ($request->domain)
+            {
+                $redirectParams['domain'] = $request->domain;
+            }
+
+            return redirect()->route('subscription.index', $redirectParams)
                 ->with('error', 'Debes especificar un dominio para este servicio.');
         }
 
@@ -622,29 +629,54 @@ class SubscriptionController extends Controller
         // Validate domain for hosting/support products
         if ($product && in_array($product->category, ['hosting', 'support']))
         {
-            if (! $request->domain)
+            try
             {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'Debes especificar un dominio para este servicio.');
+                $request->validate([
+                    'domain' => [
+                        'required',
+                        'string',
+                        'max:255',
+                        function ($attribute, $value, $fail)
+                        {
+                            if (empty($value))
+                            {
+                                return;
+                            }
+
+                            // Clean domain
+                            $domain = trim($value);
+                            // Remove protocol if present
+                            $domain = preg_replace('#^https?://#', '', $domain);
+                            // Remove trailing slash
+                            $domain = rtrim($domain, '/');
+                            // Remove www. if present
+                            $domain = preg_replace('#^www\.#', '', $domain);
+
+                            // Validate domain format: alphanumeric, dots, hyphens, at least one dot, valid TLD
+                            if (! preg_match('/^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i', $domain))
+                            {
+                                $fail('El formato del dominio no es válido. Debe ser algo como: ejemplo.com');
+                            }
+                        },
+                    ],
+                ], [
+                    'domain.required' => 'Debes especificar un dominio para este servicio.',
+                    'domain.string' => 'El dominio debe ser una cadena de texto válida.',
+                    'domain.max' => 'El dominio no puede exceder 255 caracteres.',
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e)
+            {
+                // Redirect back with errors and product_id to show modal
+                return redirect()->route('subscription.index', ['product_id' => $request->product_id])
+                    ->withErrors($e->errors())
+                    ->withInput();
             }
 
-            // Validate domain format
+            // Clean and store domain
             $domain = trim($request->domain);
-            // Remove protocol if present
             $domain = preg_replace('#^https?://#', '', $domain);
-            // Remove trailing slash
             $domain = rtrim($domain, '/');
-            // Remove www. if present
             $domain = preg_replace('#^www\.#', '', $domain);
-
-            // Validate domain format: alphanumeric, dots, hyphens, at least one dot, valid TLD
-            if (! preg_match('/^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i', $domain))
-            {
-                return redirect()->route('subscription.index')
-                    ->with('error', 'El formato del dominio no es válido. Debe ser algo como: ejemplo.com');
-            }
-
-            // Store cleaned domain
             $request->merge(['domain' => $domain]);
         }
 
@@ -953,6 +985,13 @@ class SubscriptionController extends Controller
                     $subscriptionType = $subscriptionProduct->category ?? 'mailer';
                 }
 
+                // Get metadata from Stripe subscription (includes domain for hosting/support)
+                $metadata = [];
+                if ($stripeSubscription->metadata)
+                {
+                    $metadata = $stripeSubscription->metadata->toArray();
+                }
+
                 // Sync subscription to local database if it doesn't exist
                 $localSubscription = $team->subscriptions()
                     ->where('stripe_id', $stripeSubscription->id)
@@ -970,7 +1009,15 @@ class SubscriptionController extends Controller
                         'quantity' => $stripeSubscription->items->data[0]->quantity,
                         'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                         'ends_at' => null,
+                        'data' => $metadata, // Store metadata including domain
                     ]);
+                } else
+                {
+                    // Update existing subscription with metadata if not already set
+                    if (empty($localSubscription->data) && ! empty($metadata))
+                    {
+                        $localSubscription->update(['data' => $metadata]);
+                    }
                 }
 
                 // Only assign EmailPlan if it's a mailer subscription

@@ -16,7 +16,7 @@
 	</div>
 @endif
 
-@if(session('error'))
+@if(session('error') && !request('product_id'))
 	<div class="alert alert-danger alert-dismissible" role="alert">
 		{{ session('error') }}
 		<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -29,7 +29,7 @@
 		<h3 class="mb-4">Planes de Mentoría</h3>
 		<div class="row gy-4">
 			@foreach($mentoringProducts as $product)
-				<div class="col-xl col-lg-4 col-md-6">
+				<div class="{{ $product->plan === 'complete' ? 'col-12' : 'col-xl col-lg-4 col-md-6' }}">
 					<div class="card border h-100 {{ $currentMentoringPlan && $product->plan === $currentMentoringPlan ? 'border-primary shadow-sm' : '' }}">
 						<div class="card-body position-relative text-center d-flex flex-column">
 							@if($currentMentoringPlan && $product->plan === $currentMentoringPlan)
@@ -84,7 +84,7 @@
 	<h3 class="mb-4">Planes de Mailer</h3>
 	<div class="row gy-4">
 	<!-- FREE Plan -->
-	<div class="col-xl col-lg-4 col-md-6">
+	<div class="col-xl-3 col-lg-6 col-12">
 		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::FREE ? 'border-primary shadow-sm' : '' }}">
 			<div class="card-body position-relative text-center d-flex flex-column">
 				@if($currentPlan === \App\Enums\EmailPlan::FREE)
@@ -130,7 +130,7 @@
 	</div>
 
 	<!-- BASIC Plan -->
-	<div class="col-xl col-lg-4 col-md-6">
+	<div class="col-xl-3 col-lg-6 col-12">
 		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::BASIC ? 'border-primary shadow-sm' : '' }}">
 			<div class="card-body position-relative text-center d-flex flex-column">
 				@if($currentPlan === \App\Enums\EmailPlan::BASIC)
@@ -183,7 +183,7 @@
 	</div>
 
 	<!-- FOUNDATION Plan -->
-	<div class="col-xl col-lg-4 col-md-6">
+	<div class="col-xl-3 col-lg-6 col-12">
 		<div class="card border border-primary shadow-sm h-100">
 			<div class="card-body position-relative text-center d-flex flex-column">
 				@if($currentPlan === \App\Enums\EmailPlan::FOUNDATION)
@@ -236,7 +236,7 @@
 	</div>
 
 	<!-- SCALE Plan -->
-	<div class="col-xl col-lg-4 col-md-6">
+	<div class="col-xl-3 col-lg-6 col-12">
 		<div class="card border h-100 {{ $currentPlan === \App\Enums\EmailPlan::SCALE ? 'border-primary shadow-sm' : '' }}">
 			<div class="card-body position-relative text-center d-flex flex-column">
 				@if($currentPlan === \App\Enums\EmailPlan::SCALE)
@@ -295,7 +295,7 @@
 		<h3 class="mb-4">Planes de Hosting</h3>
 		<div class="row gy-4">
 			@foreach($hostingProducts as $product)
-				<div class="col-xl col-lg-4 col-md-6">
+				<div class="col-lg-6 col-12">
 					<div class="card border h-100">
 						<div class="card-body position-relative text-center d-flex flex-column">
 							<div class="mb-4">
@@ -315,7 +315,7 @@
 								@php
 									$isSupport = $product->category === 'support';
 								@endphp
-								
+
 								@if($product->stripe_price)
 									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, '{{ $product->name }}', {{ $isSupport ? 'true' : 'false' }})">
 										Contratar
@@ -387,18 +387,25 @@
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body">
-				<form id="domainForm" method="GET" action="{{ route('subscription.checkout') }}">
+				@if(session('error') && request('product_id'))
+					<div class="alert alert-danger mb-3">
+						{{ session('error') }}
+					</div>
+				@endif
+
+				<form id="domainForm" method="POST" action="{{ route('subscription.checkout') }}">
+					@csrf
 					<input type="hidden" name="product_id" id="domainProductId">
 					<input type="hidden" name="domain" id="domainInput">
-					
+
 					<div class="mb-3">
 						<label for="domain" class="form-label" id="domainLabel">Dominio (*)</label>
-						<input type="text" class="form-control" id="domain" name="domain" placeholder="ejemplo.com" required>
-						<small class="text-muted" id="domainHelp">
-							Ingresa el dominio para el servicio de hosting
-						</small>
+						<input type="text" class="form-control @error('domain') is-invalid @enderror" id="domain" name="domain" value="{{ old('domain') }}" placeholder="ejemplo.com">
+						@error('domain')
+							<div class="invalid-feedback d-block">{{ $message }}</div>
+						@enderror
 					</div>
-					
+
 					<div class="alert alert-info mb-0">
 						<small id="domainAlertText">
 							Este dominio se utilizará para configurar tu servicio de hosting WordPress.
@@ -433,7 +440,7 @@ function confirmSwap(plan, planName)
     document.getElementById('swapPlanModalText').textContent = `¿Cambiar al plan ${planName}? Los cambios tomarán efecto inmediatamente.`;
     document.getElementById('swapPlanInput').value = plan;
     document.getElementById('swapProductInput').value = '';
-    
+
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
     modal.show();
@@ -446,7 +453,7 @@ function confirmSwapProduct(productId, productName, isUpgrade)
     document.getElementById('swapPlanModalText').textContent = `¿${isUpgrade ? 'Mejorar' : 'Degradar'} al plan ${productName}? Los cambios tomarán efecto inmediatamente.`;
     document.getElementById('swapPlanInput').value = '';
     document.getElementById('swapProductInput').value = productId;
-    
+
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
     modal.show();
@@ -457,18 +464,16 @@ function showDomainModal(productId, productName, isSupport)
     // Update modal content
     document.getElementById('domainModalTitle').textContent = productName;
     document.getElementById('domainProductId').value = productId;
-    document.getElementById('domain').value = '';
-    
+    document.getElementById('domain').value = '{{ old('domain') }}';
+
     if (isSupport) {
         document.getElementById('domainLabel').textContent = 'Dominio existente (*)';
-        document.getElementById('domainHelp').textContent = 'Ingresa el dominio al que se asociará el soporte (debe ser un dominio ya existente)';
         document.getElementById('domainAlertText').textContent = 'Este soporte se asociará a un dominio existente. Asegúrate de que el dominio ya esté configurado.';
     } else {
         document.getElementById('domainLabel').textContent = 'Dominio (*)';
-        document.getElementById('domainHelp').textContent = 'Ingresa el dominio para el servicio de hosting (puedes tener varios dominios)';
         document.getElementById('domainAlertText').textContent = 'Este dominio se utilizará para configurar tu servicio de hosting WordPress.';
     }
-    
+
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('domainModal'));
     modal.show();
@@ -476,34 +481,19 @@ function showDomainModal(productId, productName, isSupport)
 
 function submitDomainForm()
 {
-    const domainInput = document.getElementById('domain');
-    let domain = domainInput.value.trim();
-    
-    if (!domain) {
-        alert('Por favor, ingresa un dominio válido');
-        return;
-    }
-    
-    // Remove protocol if present
-    domain = domain.replace(/^https?:\/\//, '');
-    // Remove trailing slash
-    domain = domain.replace(/\/$/, '');
-    // Remove www. if present
-    domain = domain.replace(/^www\./, '');
-    
-    // Enhanced domain validation (matches backend validation)
-    const domainRegex = /^([a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
-    if (!domainRegex.test(domain)) {
-        alert('Por favor, ingresa un dominio válido (ej: ejemplo.com)');
-        return;
-    }
-    
-    // Set cleaned domain in input
-    domainInput.value = domain;
-    document.getElementById('domainInput').value = domain;
-    
-    // Submit form
+    // Submit form directly - validation will be done by Laravel
     document.getElementById('domainForm').submit();
 }
+
+// Show modal automatically if there are validation errors or session error and product_id is present
+@if(($errors->has('domain') || session('error')) && request('product_id'))
+    document.addEventListener('DOMContentLoaded', function() {
+        @php
+            $product = \App\Models\SubscriptionProduct::find(request('product_id'));
+            $isSupport = $product && $product->category === 'support';
+        @endphp
+        showDomainModal({{ request('product_id') }}, '{{ $product ? $product->name : 'Producto' }}', {{ $isSupport ? 'true' : 'false' }});
+    });
+@endif
 </script>
 @endsection
