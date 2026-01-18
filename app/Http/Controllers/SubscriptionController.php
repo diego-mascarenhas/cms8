@@ -858,7 +858,7 @@ class SubscriptionController extends Controller
                 'subscription_type' => $subscriptionType,
             ]);
 
-            // Redirect to billing-info page (preserve domain if provided)
+            // Redirect to billing-info page (preserve domain and coupon if provided)
             $redirectParams = [];
             if ($request->product_id)
             {
@@ -873,6 +873,10 @@ class SubscriptionController extends Controller
             if ($request->domain)
             {
                 $redirectParams['domain'] = $request->domain;
+            }
+            if ($request->coupon)
+            {
+                $redirectParams['coupon'] = $request->coupon;
             }
 
             return redirect()->route('subscription.billing-info', $redirectParams);
