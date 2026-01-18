@@ -249,6 +249,8 @@ class TimeController extends Controller
         return response()->json([
             'running' => $runningTimer ? true : false,
             'time' => $runningTimer,
-        ]);
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Accept');
     }
 }

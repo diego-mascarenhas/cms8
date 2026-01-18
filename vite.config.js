@@ -19,75 +19,19 @@ export default defineConfig({
             targets: [
                 {
                     src: 'resources/assets/vendor',
-                    dest: '../assets'
+                    dest: 'assets'
                 },
                 {
                     src: 'resources/assets/js',
-                    dest: '../assets'
+                    dest: 'assets'
                 },
                 {
                     src: 'resources/assets/css',
-                    dest: '../assets'
+                    dest: 'assets'
                 },
-                // Copy FontAwesome from node_modules with specific structure
-                {
-                    src: 'node_modules/@fortawesome/fontawesome-free/css',
-                    dest: '../assets/vendor/libs/fontawesome'
-                },
-                {
-                    src: 'node_modules/@fortawesome/fontawesome-free/webfonts',
-                    dest: '../assets/vendor/libs/fontawesome'
-                },
-                // Copy DataTables language files
                 {
                     src: 'lang/datatables',
-                    dest: '../js/datatables'
-                },
-                // Copy compiled JS libraries from node_modules (override ES6 module wrappers)
-                {
-                    src: 'node_modules/flatpickr/dist/flatpickr.js',
-                    dest: '../assets/vendor/libs/flatpickr'
-                },
-                {
-                    src: 'node_modules/bootstrap-select/js/bootstrap-select.js',
-                    dest: '../assets/vendor/libs/bootstrap-select'
-                },
-                {
-                    src: 'node_modules/bs-stepper/dist/js/bs-stepper.js',
-                    dest: '../assets/vendor/libs/bs-stepper'
-                },
-                {
-                    src: 'node_modules/bs-stepper/dist/js/bs-stepper.js.map',
-                    dest: '../assets/vendor/libs/bs-stepper'
-                },
-                {
-                    src: 'node_modules/swiper/swiper-bundle.js',
-                    dest: '../assets/vendor/libs/swiper',
-                    rename: 'swiper.js'
-                },
-                {
-                    src: 'node_modules/swiper/swiper-bundle.js.map',
-                    dest: '../assets/vendor/libs/swiper',
-                    rename: 'swiper.js.map'
-                },
-                {
-                    src: 'node_modules/swiper/swiper-bundle.js.map',
-                    dest: '../assets/vendor/libs/swiper'
-                },
-                {
-                    src: 'node_modules/@simonwep/pickr/dist/pickr.min.js',
-                    dest: '../assets/vendor/libs/pickr',
-                    rename: 'pickr.js'
-                },
-                {
-                    src: 'node_modules/node-waves/dist/waves.js',
-                    dest: '../assets/vendor/libs/node-waves',
-                    rename: 'node-waves.js'
-                },
-                {
-                    src: 'node_modules/@popperjs/core/dist/umd/popper.min.js',
-                    dest: '../assets/vendor/libs/popper',
-                    rename: 'popper.js'
+                    dest: 'js'
                 }
             ]
         })

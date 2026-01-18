@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\SubscriptionProduct;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -19,31 +19,39 @@ class ProductDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->editColumn('active', function ($product)
+            ->editColumn('status', function ($product)
             {
-                return $product->active
+                return $product->status
                     ? '<span class="badge bg-success">Activo</span>'
                     : '<span class="badge bg-secondary">Inactivo</span>';
             })
-            ->editColumn('unit_amount', function ($product)
+            ->editColumn('price', function ($product)
             {
-                return $product->getFormattedPrice();
+                $currency = $product->currency ? $product->currency->code : 'USD';
+                return number_format($product->price, 2, ',', '.').' '.$currency;
+            })
+            ->editColumn('category.name', function ($product)
+            {
+                return $product->category ? $product->category->name : '—';
             })
             ->addColumn('action', function ($product)
             {
-                return '<div class="d-flex justify-content-center align-items-center">
-                    <a href="'.route('account.products.edit', $product->id).'" class="text-body">
+                $html = '<div class="d-flex justify-content-center align-items-center">';
+                if (auth()->user()->can('product.show')) {
+                    $html .= '<a href="'.route('product.show', $product->id).'" class="text-body">
                         <i class="ti ti-edit ti-sm me-2"></i>
-                    </a>
-                </div>';
+                    </a>';
+                }
+                $html .= '</div>';
+                return $html;
             })
             ->setRowId('id')
-            ->rawColumns(['active', 'action']);
+            ->rawColumns(['status', 'action']);
     }
 
-    public function query(SubscriptionProduct $model): QueryBuilder
+    public function query(Product $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->with(['category', 'currency']);
     }
 
     public function html(): HtmlBuilder
@@ -71,30 +79,18 @@ class ProductDataTable extends DataTable
                 ->addClass('all')
                 ->orderable(true)
                 ->searchable(true),
-            Column::make('category')
+            Column::make('category.name')
                 ->title('Categoría')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true)
                 ->searchable(true),
-            Column::make('plan')
-                ->title('Plan')
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->orderable(true)
-                ->searchable(true),
-            Column::make('type')
-                ->title('Tipo')
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->orderable(true)
-                ->searchable(true),
-            Column::computed('unit_amount')
+            Column::make('price')
                 ->title('Precio')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::computed('active')
+            Column::computed('status')
                 ->title('Estado')
                 ->className('text-center')
                 ->addClass('min-phone')

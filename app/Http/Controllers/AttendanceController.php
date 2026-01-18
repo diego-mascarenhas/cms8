@@ -118,6 +118,8 @@ class AttendanceController extends Controller
         return response()->json([
             'running' => $running ? true : false,
             'attendance' => $running,
-        ]);
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Accept');
     }
 }
