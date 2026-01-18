@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
-use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -50,7 +49,8 @@ class BillingController extends Controller
 
         try
         {
-            // Use team's stripe_id if available, otherwise fallback to email search
+            // IMPORTANT: Only use team's stripe_id - do NOT fallback to email search
+            // This ensures each team only sees its own billing data
             if ($team->stripe_id)
             {
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
@@ -58,68 +58,77 @@ class BillingController extends Controller
                 // Get customer data
                 $customer = \Stripe\Customer::retrieve($team->stripe_id);
 
-                // Get tax IDs separately for more reliability
-                try
+                // Verify the customer belongs to this team
+                // Check metadata team_id if it exists
+                $customerTeamId = $customer->metadata->team_id ?? null;
+                if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
                 {
-                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 10]);
-                    $customer->tax_ids = $taxIds;
-                } catch (\Exception $e)
+                    \Log::warning('Customer stripe_id does not match team in BillingController', [
+                        'team_id' => $team->id,
+                        'customer_team_id' => $customerTeamId,
+                        'stripe_customer_id' => $team->stripe_id,
+                    ]);
+                    // Don't use this customer's data - team has wrong stripe_id
+                    $stripeData = null;
+                } else
                 {
-                    \Log::warning('Could not retrieve tax IDs: '.$e->getMessage());
-                }
+                    // Get tax IDs separately for more reliability
+                    try
+                    {
+                        $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 10]);
+                        $customer->tax_ids = $taxIds;
+                    } catch (\Exception $e)
+                    {
+                        \Log::warning('Could not retrieve tax IDs: '.$e->getMessage());
+                    }
 
-                // Get invoices
-                $invoicesData = \Stripe\Invoice::all([
-                    'customer' => $team->stripe_id,
-                    'limit' => 20,
-                ]);
-                $invoices = collect($invoicesData->data);
+                    // Get invoices
+                    $invoicesData = \Stripe\Invoice::all([
+                        'customer' => $team->stripe_id,
+                        'limit' => 20,
+                    ]);
+                    $invoices = collect($invoicesData->data);
 
-                // Get subscriptions
-                $subscriptionsData = \Stripe\Subscription::all([
-                    'customer' => $team->stripe_id,
-                    'limit' => 10,
-                ]);
-                $subscriptions = collect($subscriptionsData->data);
-
-                // Get payment methods
-                $paymentMethodsData = \Stripe\PaymentMethod::all([
-                    'customer' => $team->stripe_id,
-                    'type' => 'card',
-                ]);
-                $paymentMethods = collect($paymentMethodsData->data);
-
-                $stripeData = [
-                    'customer' => $customer,
-                    'invoices' => $invoicesData,
-                    'subscriptions' => $subscriptionsData,
-                ];
-            } else
-            {
-                // Fallback to email search (legacy)
-                $stripeService = new StripeService;
-                $stripeData = $stripeService->getCustomerDataByEmail($user->email, true, 20);
-
-                if ($stripeData)
-                {
-                    $invoices = collect($stripeData['invoices']->data);
-                    $subscriptions = collect($stripeData['subscriptions']->data);
+                    // Get subscriptions
+                    $subscriptionsData = \Stripe\Subscription::all([
+                        'customer' => $team->stripe_id,
+                        'limit' => 10,
+                    ]);
+                    $subscriptions = collect($subscriptionsData->data);
 
                     // Get payment methods
-                    if (isset($stripeData['customer']))
-                    {
-                        \Stripe\Stripe::setApiKey(config('cashier.secret'));
-                        $paymentMethodsData = \Stripe\PaymentMethod::all([
-                            'customer' => $stripeData['customer']->id,
-                            'type' => 'card',
-                        ]);
-                        $paymentMethods = collect($paymentMethodsData->data);
-                    }
+                    $paymentMethodsData = \Stripe\PaymentMethod::all([
+                        'customer' => $team->stripe_id,
+                        'type' => 'card',
+                    ]);
+                    $paymentMethods = collect($paymentMethodsData->data);
+
+                    $stripeData = [
+                        'customer' => $customer,
+                        'invoices' => $invoicesData,
+                        'subscriptions' => $subscriptionsData,
+                    ];
                 }
+            } else
+            {
+                // Team has no stripe_id - don't show any billing data
+                // This is correct behavior: new teams should not see data from other teams
+                \Log::info('Team has no stripe_id, not showing billing data', [
+                    'team_id' => $team->id,
+                    'team_name' => $team->name,
+                ]);
+                $stripeData = null;
+                $invoices = collect([]);
+                $subscriptions = collect([]);
+                $paymentMethods = collect([]);
             }
         } catch (\Exception $e)
         {
-            Log::error('Error fetching Stripe data: '.$e->getMessage());
+            Log::error('Error fetching Stripe data: '.$e->getMessage(), [
+                'team_id' => $team->id,
+                'stripe_id' => $team->stripe_id,
+            ]);
+            $stripeData = null;
         }
 
         return view('billing.index', compact(

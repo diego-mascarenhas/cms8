@@ -221,6 +221,15 @@ class SubscriptionController extends Controller
         ]);
 
         $team = auth()->user()->currentTeam;
+
+        // Log for debugging
+        \Log::info('Billing info requested', [
+            'team_id' => $team->id,
+            'team_name' => $team->name,
+            'stripe_id' => $team->stripe_id,
+            'user_id' => auth()->id(),
+        ]);
+
         $plan = $request->plan;
         $product = null;
         $prices = $this->getStripePrices();
@@ -235,6 +244,7 @@ class SubscriptionController extends Controller
         }
 
         // Get customer data from Stripe if exists
+        // IMPORTANT: Only get data if THIS team has a stripe_id
         $customerData = [
             'individual_name' => '',
             'business_name' => '',
@@ -243,6 +253,7 @@ class SubscriptionController extends Controller
             'tax_id' => '',
         ];
 
+        // Only fetch from Stripe if THIS team has a stripe_id
         if ($team->stripe_id)
         {
             try
@@ -250,24 +261,46 @@ class SubscriptionController extends Controller
                 \Stripe\Stripe::setApiKey(config('cashier.secret'));
                 $customer = \Stripe\Customer::retrieve($team->stripe_id);
 
-                $customerData = [
-                    'individual_name' => $customer->metadata->individual_name ?? '',
-                    'business_name' => $customer->metadata->business_name ?? '',
-                    'country' => $customer->address->country ?? '',
-                    'phone' => $customer->phone ?? '',
-                    'tax_id' => '',
-                ];
-
-                // Get Tax ID if exists
-                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
-                if (! empty($taxIds->data))
+                // Verify the customer belongs to this team
+                // Check metadata team_id if it exists
+                $customerTeamId = $customer->metadata->team_id ?? null;
+                if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
                 {
-                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                    \Log::warning('Customer stripe_id does not match team', [
+                        'team_id' => $team->id,
+                        'customer_team_id' => $customerTeamId,
+                        'stripe_customer_id' => $team->stripe_id,
+                    ]);
+                    // Don't use this customer's data
+                } else
+                {
+                    $customerData = [
+                        'individual_name' => $customer->metadata->individual_name ?? '',
+                        'business_name' => $customer->metadata->business_name ?? '',
+                        'country' => $customer->address->country ?? '',
+                        'phone' => $customer->phone ?? '',
+                        'tax_id' => '',
+                    ];
+
+                    // Get Tax ID if exists
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+                    if (! empty($taxIds->data))
+                    {
+                        $customerData['tax_id'] = $taxIds->data[0]->value;
+                    }
                 }
             } catch (\Exception $e)
             {
-                \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage());
+                \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage(), [
+                    'team_id' => $team->id,
+                    'stripe_id' => $team->stripe_id,
+                ]);
             }
+        } else
+        {
+            \Log::info('Team has no stripe_id, using empty customer data', [
+                'team_id' => $team->id,
+            ]);
         }
 
         return view('subscription.billing-info', [
@@ -512,6 +545,64 @@ class SubscriptionController extends Controller
     /**
      * Create a checkout session for upgrading to a paid plan
      */
+    /**
+     * Validate coupon code
+     */
+    public function validateCoupon(Request $request)
+    {
+        $request->validate([
+            'coupon' => 'required|string|max:255',
+        ]);
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $coupon = \Stripe\Coupon::retrieve($request->coupon);
+
+            // Check if coupon is valid
+            if ($coupon->valid)
+            {
+                $discount = [
+                    'id' => $coupon->id,
+                    'name' => $coupon->name ?? $coupon->id,
+                    'percent_off' => $coupon->percent_off,
+                    'amount_off' => $coupon->amount_off,
+                    'currency' => $coupon->currency,
+                    'duration' => $coupon->duration,
+                    'duration_in_months' => $coupon->duration_in_months,
+                ];
+
+                return response()->json([
+                    'valid' => true,
+                    'coupon' => $discount,
+                ]);
+            } else
+            {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'El cupón no es válido o ha expirado.',
+                ], 400);
+            }
+        } catch (\Stripe\Exception\InvalidRequestException $e)
+        {
+            return response()->json([
+                'valid' => false,
+                'message' => 'El cupón no existe o no es válido.',
+            ], 400);
+        } catch (\Exception $e)
+        {
+            \Log::error('Error validating coupon: '.$e->getMessage());
+
+            return response()->json([
+                'valid' => false,
+                'message' => 'Error al validar el cupón. Por favor, intenta nuevamente.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Process checkout
+     */
     public function checkout(Request $request)
     {
         $request->validate([
@@ -519,6 +610,7 @@ class SubscriptionController extends Controller
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
             'domain' => 'nullable|string|max:255',
+            'coupon' => 'nullable|string|max:255',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -793,8 +885,8 @@ class SubscriptionController extends Controller
                         $metadata['domain'] = $request->domain;
                     }
 
-                    // Create subscription directly using existing payment method
-                    $stripeSubscription = \Stripe\Subscription::create([
+                    // Build subscription creation config
+                    $subscriptionConfig = [
                         'customer' => $team->stripe_id,
                         'items' => [[
                             'price' => $priceId,
@@ -802,7 +894,16 @@ class SubscriptionController extends Controller
                         'default_payment_method' => $paymentMethodId,
                         'expand' => ['latest_invoice.payment_intent'],
                         'metadata' => $metadata,
-                    ]);
+                    ];
+
+                    // Add coupon if provided
+                    if ($request->coupon)
+                    {
+                        $subscriptionConfig['coupon'] = $request->coupon;
+                    }
+
+                    // Create subscription directly using existing payment method
+                    $stripeSubscription = \Stripe\Subscription::create($subscriptionConfig);
 
                     // Log Stripe subscription data before saving
                     \Log::info('Stripe subscription created - data before save', [
@@ -925,6 +1026,14 @@ class SubscriptionController extends Controller
                     'metadata' => $subscriptionMetadata,
                 ],
             ];
+
+            // Add coupon if provided
+            if ($request->coupon)
+            {
+                $checkoutConfig['discounts'] = [[
+                    'coupon' => $request->coupon,
+                ]];
+            }
 
             // If customer has payment methods, allow them to choose
             if (! empty($paymentMethods->data))

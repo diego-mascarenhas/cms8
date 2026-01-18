@@ -63,10 +63,9 @@
 										{{ $isUpgrade ? 'Upgrade' : 'Downgrade' }}
 									</button>
 								@elseif($product->stripe_price)
-									<form method="GET" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
-										<input type="hidden" name="product_id" value="{{ $product->id }}">
-										<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
-									</form>
+									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ $product->name }}', '{{ $product->description }}')">
+										Suscribirse Ahora
+									</button>
 								@else
 									<button class="btn btn-primary w-100" disabled>Próximamente</button>
 								@endif
@@ -169,11 +168,9 @@
 				@if($currentPlan === \App\Enums\EmailPlan::BASIC)
 					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
-						@csrf
-						<input type="hidden" name="plan" value="basic">
-						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
-					</form>
+					<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal('basic', 'Basic', {{ $prices['basic']['amount'] ?? 15.99 }}, '{{ $prices['basic']['currency'] ?? 'EUR' }}')">
+						Suscribirse Ahora
+					</button>
 				@else
 					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('basic', 'Basic')">
 						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::BASIC->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
@@ -223,11 +220,9 @@
 				@if($currentPlan === \App\Enums\EmailPlan::FOUNDATION)
 					<button class="btn btn-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
-						@csrf
-						<input type="hidden" name="plan" value="foundation">
-						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
-					</form>
+					<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal('foundation', 'Foundation', {{ $prices['foundation']['amount'] ?? 35.99 }}, '{{ $prices['foundation']['currency'] ?? 'EUR' }}')">
+						Suscribirse Ahora
+					</button>
 				@else
 					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('foundation', 'Foundation')">
 						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::FOUNDATION->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
@@ -277,11 +272,9 @@
 				@if($currentPlan === \App\Enums\EmailPlan::SCALE)
 					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
-						@csrf
-						<input type="hidden" name="plan" value="scale">
-						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
-					</form>
+					<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal('scale', 'Scale', {{ $prices['scale']['amount'] ?? 119.99 }}, '{{ $prices['scale']['currency'] ?? 'EUR' }}')">
+						Suscribirse Ahora
+					</button>
 				@else
 					<button type="button" class="btn btn-primary w-100 mt-auto" onclick="confirmSwap('scale', 'Scale')">
 						{{ $currentPlan->getMonthlyLimit() < \App\Enums\EmailPlan::SCALE->getMonthlyLimit() ? 'Upgrade' : 'Downgrade' }}
@@ -381,6 +374,60 @@
 	</div>
 </div>
 
+<!-- Modal Confirmación con Cupón -->
+<div class="modal fade" id="confirmSubscriptionModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">Confirmar Suscripción</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<h6 id="confirmPlanName"></h6>
+					<p class="text-muted mb-0" id="confirmPlanDescription"></p>
+				</div>
+
+				<div class="mb-3">
+					<label for="couponCode" class="form-label">Cupón de Descuento (Opcional)</label>
+					<div class="input-group">
+						<input type="text" class="form-control" id="couponCode" placeholder="Ingresa el código del cupón">
+						<button type="button" class="btn btn-outline-primary" onclick="validateCoupon()">Aplicar</button>
+					</div>
+					<div id="couponMessage" class="mt-2"></div>
+					<div id="couponDiscount" class="mt-2"></div>
+				</div>
+
+				<hr>
+
+				<div class="d-flex justify-content-between align-items-center">
+					<span>Precio:</span>
+					<strong id="confirmPrice"></strong>
+				</div>
+				<div id="discountRow" class="d-flex justify-content-between align-items-center text-success" style="display: none !important;">
+					<span>Descuento:</span>
+					<strong id="discountAmount"></strong>
+				</div>
+				<div class="d-flex justify-content-between align-items-center mt-2">
+					<span class="h6 mb-0">Total:</span>
+					<span class="h5 mb-0 text-primary" id="confirmTotal"></span>
+				</div>
+
+				<form id="confirmSubscriptionForm" method="POST" action="{{ route('subscription.checkout') }}">
+					@csrf
+					<input type="hidden" name="plan" id="confirmPlanInput">
+					<input type="hidden" name="product_id" id="confirmProductIdInput">
+					<input type="hidden" name="coupon" id="confirmCouponInput">
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+				<button type="button" class="btn btn-primary" onclick="submitConfirmation()">Confirmar y Continuar</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 <!-- Modal Solicitar Dominio -->
 <div class="modal fade" id="domainModal" tabindex="-1" aria-hidden="true">
 	<div class="modal-dialog modal-dialog-centered">
@@ -400,6 +447,7 @@
 					@csrf
 					<input type="hidden" name="product_id" id="domainProductId">
 					<input type="hidden" name="domain" id="domainInput">
+					<input type="hidden" name="coupon" id="domainCouponInput">
 
 					<div class="mb-3">
 						<label for="domain" class="form-label" id="domainLabel">Dominio (*)</label>
@@ -407,6 +455,16 @@
 						@error('domain')
 							<div class="invalid-feedback d-block">{{ $message }}</div>
 						@enderror
+					</div>
+
+					<div class="mb-3">
+						<label for="domainCouponCode" class="form-label">Cupón de Descuento (Opcional)</label>
+						<div class="input-group">
+							<input type="text" class="form-control" id="domainCouponCode" placeholder="Ingresa el código del cupón">
+							<button type="button" class="btn btn-outline-primary" onclick="validateDomainCoupon()">Aplicar</button>
+						</div>
+						<div id="domainCouponMessage" class="mt-2"></div>
+						<div id="domainCouponDiscount" class="mt-2"></div>
 					</div>
 
 					<div class="alert alert-info mb-0">
@@ -482,10 +540,218 @@ function showDomainModal(productId, productName, isSupport)
     modal.show();
 }
 
+let domainProductPrice = 0;
+let domainProductCurrency = 'EUR';
+
+function showDomainModal(productId, productName, isSupport)
+{
+    // Reset coupon
+    document.getElementById('domainCouponCode').value = '';
+    document.getElementById('domainCouponMessage').innerHTML = '';
+    document.getElementById('domainCouponDiscount').innerHTML = '';
+    document.getElementById('domainCouponInput').value = '';
+
+    // Update modal content
+    document.getElementById('domainModalTitle').textContent = productName;
+    document.getElementById('domainProductId').value = productId;
+    document.getElementById('domain').value = '{{ old('domain') }}';
+
+    if (isSupport) {
+        document.getElementById('domainLabel').textContent = 'Dominio existente (*)';
+        document.getElementById('domainAlertText').textContent = 'Este soporte se asociará a un dominio existente. Asegúrate de que el dominio ya esté configurado.';
+    } else {
+        document.getElementById('domainLabel').textContent = 'Dominio (*)';
+        document.getElementById('domainAlertText').textContent = 'Este dominio se utilizará para configurar tu servicio de hosting WordPress.';
+    }
+
+    // Get product price (we'll need to fetch this or pass it)
+    // For now, we'll get it from the card on the page
+    const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+    if (productCard) {
+        const priceText = productCard.querySelector('.text-primary')?.textContent;
+        if (priceText) {
+            domainProductPrice = parseFloat(priceText.replace(/[^\d,]/g, '').replace(',', '.'));
+        }
+    }
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('domainModal'));
+    modal.show();
+}
+
+function validateDomainCoupon()
+{
+    const couponCode = document.getElementById('domainCouponCode').value.trim();
+    const messageDiv = document.getElementById('domainCouponMessage');
+    const discountDiv = document.getElementById('domainCouponDiscount');
+
+    if (!couponCode) {
+        messageDiv.innerHTML = '<div class="alert alert-warning">Por favor, ingresa un código de cupón.</div>';
+        return;
+    }
+
+    // Show loading
+    messageDiv.innerHTML = '<div class="text-muted">Validando cupón...</div>';
+    discountDiv.innerHTML = '';
+
+    // Validate coupon via AJAX
+    fetch('{{ route('subscription.validate-coupon') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ coupon: couponCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            document.getElementById('domainCouponInput').value = data.coupon.id;
+
+            // Calculate discount
+            let discountText = '';
+            if (data.coupon.percent_off) {
+                discountText = `${data.coupon.percent_off}% de descuento`;
+            } else if (data.coupon.amount_off) {
+                const discountAmount = data.coupon.amount_off / 100;
+                discountText = `${discountAmount.toFixed(2)} ${data.coupon.currency.toUpperCase()} de descuento`;
+            }
+
+            messageDiv.innerHTML = `<div class="alert alert-success">¡Cupón aplicado correctamente!</div>`;
+            discountDiv.innerHTML = `<small class="text-success">${discountText}</small>`;
+        } else {
+            document.getElementById('domainCouponInput').value = '';
+            messageDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'El cupón no es válido.'}</div>`;
+            discountDiv.innerHTML = '';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        messageDiv.innerHTML = '<div class="alert alert-danger">Error al validar el cupón. Por favor, intenta nuevamente.</div>';
+        discountDiv.innerHTML = '';
+    });
+}
+
 function submitDomainForm()
 {
+    // Update domain input
+    document.getElementById('domainInput').value = document.getElementById('domain').value;
+    
     // Submit form directly - validation will be done by Laravel
     document.getElementById('domainForm').submit();
+}
+
+let currentPrice = 0;
+let currentCurrency = 'EUR';
+let appliedCoupon = null;
+
+function showConfirmModal(plan, planName, price, currency, productId = null, productName = null, productDescription = null)
+{
+    // Reset coupon
+    document.getElementById('couponCode').value = '';
+    document.getElementById('couponMessage').innerHTML = '';
+    document.getElementById('couponDiscount').innerHTML = '';
+    document.getElementById('discountRow').style.display = 'none';
+    document.getElementById('confirmCouponInput').value = '';
+    appliedCoupon = null;
+
+    // Set form values
+    if (productId) {
+        document.getElementById('confirmPlanInput').value = '';
+        document.getElementById('confirmProductIdInput').value = productId;
+        document.getElementById('confirmPlanName').textContent = productName || 'Producto';
+        document.getElementById('confirmPlanDescription').textContent = productDescription || '';
+    } else {
+        document.getElementById('confirmPlanInput').value = plan;
+        document.getElementById('confirmProductIdInput').value = '';
+        document.getElementById('confirmPlanName').textContent = `Plan ${planName}`;
+        document.getElementById('confirmPlanDescription').textContent = '';
+    }
+
+    // Set price
+    currentPrice = price;
+    currentCurrency = currency;
+    document.getElementById('confirmPrice').textContent = `${parseFloat(price).toFixed(2).replace('.', ',')} ${currency}`;
+    document.getElementById('confirmTotal').textContent = `${parseFloat(price).toFixed(2).replace('.', ',')} ${currency}`;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('confirmSubscriptionModal'));
+    modal.show();
+}
+
+function validateCoupon()
+{
+    const couponCode = document.getElementById('couponCode').value.trim();
+    const messageDiv = document.getElementById('couponMessage');
+    const discountDiv = document.getElementById('couponDiscount');
+    const discountRow = document.getElementById('discountRow');
+
+    if (!couponCode) {
+        messageDiv.innerHTML = '<div class="alert alert-warning">Por favor, ingresa un código de cupón.</div>';
+        return;
+    }
+
+    // Show loading
+    messageDiv.innerHTML = '<div class="text-muted">Validando cupón...</div>';
+    discountDiv.innerHTML = '';
+    discountRow.style.display = 'none';
+
+    // Validate coupon via AJAX
+    fetch('{{ route('subscription.validate-coupon') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ coupon: couponCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            appliedCoupon = data.coupon;
+            document.getElementById('confirmCouponInput').value = data.coupon.id;
+
+            // Calculate discount
+            let discountAmount = 0;
+            let discountText = '';
+
+            if (data.coupon.percent_off) {
+                discountAmount = (currentPrice * data.coupon.percent_off) / 100;
+                discountText = `${data.coupon.percent_off}% de descuento`;
+            } else if (data.coupon.amount_off) {
+                discountAmount = data.coupon.amount_off / 100; // Stripe stores in cents
+                discountText = `${discountAmount.toFixed(2)} ${data.coupon.currency.toUpperCase()} de descuento`;
+            }
+
+            const finalPrice = currentPrice - discountAmount;
+
+            // Show success message
+            messageDiv.innerHTML = `<div class="alert alert-success">¡Cupón aplicado correctamente!</div>`;
+            discountDiv.innerHTML = `<small class="text-success">${discountText}</small>`;
+            discountRow.style.display = 'flex';
+            document.getElementById('discountAmount').textContent = `-${discountAmount.toFixed(2).replace('.', ',')} ${currentCurrency}`;
+            document.getElementById('confirmTotal').textContent = `${finalPrice.toFixed(2).replace('.', ',')} ${currentCurrency}`;
+        } else {
+            appliedCoupon = null;
+            document.getElementById('confirmCouponInput').value = '';
+            messageDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'El cupón no es válido.'}</div>`;
+            discountDiv.innerHTML = '';
+            discountRow.style.display = 'none';
+            document.getElementById('confirmTotal').textContent = `${currentPrice.toFixed(2).replace('.', ',')} ${currentCurrency}`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        messageDiv.innerHTML = '<div class="alert alert-danger">Error al validar el cupón. Por favor, intenta nuevamente.</div>';
+        discountDiv.innerHTML = '';
+        discountRow.style.display = 'none';
+    });
+}
+
+function submitConfirmation()
+{
+    // Submit the form
+    document.getElementById('confirmSubscriptionForm').submit();
 }
 
 // Show modal automatically if there are validation errors or session error and product_id is present
