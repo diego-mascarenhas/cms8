@@ -169,7 +169,8 @@
 				@if($currentPlan === \App\Enums\EmailPlan::BASIC)
 					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="GET" action="{{ route('subscription.billing-info') }}" class="mt-auto w-100">
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
 						<input type="hidden" name="plan" value="basic">
 						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
 					</form>
@@ -222,7 +223,8 @@
 				@if($currentPlan === \App\Enums\EmailPlan::FOUNDATION)
 					<button class="btn btn-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="GET" action="{{ route('subscription.billing-info') }}" class="mt-auto w-100">
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
 						<input type="hidden" name="plan" value="foundation">
 						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
 					</form>
@@ -275,7 +277,8 @@
 				@if($currentPlan === \App\Enums\EmailPlan::SCALE)
 					<button class="btn btn-label-primary w-100 mt-auto" disabled>Tu Plan Actual</button>
 				@elseif(!$subscription || !$subscription->active())
-					<form method="GET" action="{{ route('subscription.billing-info') }}" class="mt-auto w-100">
+					<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-auto w-100">
+						@csrf
 						<input type="hidden" name="plan" value="scale">
 						<button type="submit" class="btn btn-primary w-100">Suscribirse Ahora</button>
 					</form>

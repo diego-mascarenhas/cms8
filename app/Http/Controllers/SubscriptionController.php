@@ -680,6 +680,38 @@ class SubscriptionController extends Controller
             $request->merge(['domain' => $domain]);
         }
 
+        // Always check if billing info is complete (for ALL subscription types)
+        // If billing info is already complete, we skip this step
+        // This check happens BEFORE trying to create subscription directly
+        $hasBillingInfo = $this->hasCompleteBillingInfo($team);
+
+        if (! $hasBillingInfo)
+        {
+            \Log::info('Billing info incomplete, redirecting to billing-info (before direct creation)', [
+                'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
+            ]);
+
+            // Redirect to billing-info page (preserve domain if provided)
+            $redirectParams = [];
+            if ($request->product_id)
+            {
+                $redirectParams['product_id'] = $request->product_id;
+            } elseif ($request->price_id)
+            {
+                $redirectParams['price_id'] = $request->price_id;
+            } elseif ($request->plan)
+            {
+                $redirectParams['plan'] = $request->plan;
+            }
+            if ($request->domain)
+            {
+                $redirectParams['domain'] = $request->domain;
+            }
+
+            return redirect()->route('subscription.billing-info', $redirectParams);
+        }
+
         // If customer has payment method, create subscription directly (skip checkout)
         // This prevents creating duplicate payment methods
         if ($team->stripe_id)
@@ -837,37 +869,8 @@ class SubscriptionController extends Controller
             ]);
         }
 
-        // Check if billing info is required (for non-mailer subscriptions)
-        // Only check if we didn't create subscription directly (no payment method found)
-        if ($subscriptionType !== 'mailer')
-        {
-            // Check if customer has complete billing info in Stripe
-            $hasBillingInfo = $this->hasCompleteBillingInfo($team);
-
-            if (! $hasBillingInfo)
-            {
-                \Log::info('Billing info incomplete, redirecting to billing-info', [
-                    'team_id' => $team->id,
-                    'subscription_type' => $subscriptionType,
-                ]);
-
-                // Redirect to billing-info page (preserve domain if provided)
-                $redirectParams = [];
-                if ($request->product_id)
-                {
-                    $redirectParams['product_id'] = $request->product_id;
-                } elseif ($request->price_id)
-                {
-                    $redirectParams['price_id'] = $request->price_id;
-                }
-                if ($request->domain)
-                {
-                    $redirectParams['domain'] = $request->domain;
-                }
-
-                return redirect()->route('subscription.billing-info', $redirectParams);
-            }
-        }
+        // Note: Billing info check is now done BEFORE attempting direct subscription creation
+        // This ensures consistent behavior regardless of payment method availability
 
         // Clean up any canceled subscriptions of the same type to avoid conflicts
         if ($subscriptionType === 'mailer')
