@@ -118,7 +118,7 @@
                             <div class="alert alert-warning mt-2 mb-0 py-2 px-3" role="alert" style="font-size: 0.8rem;">
                                 <i class="ti ti-info-circle me-1"></i>
                                 <strong>Nota:</strong> {{ $astralProfile['human_design']['disclaimer'] }}
-                                <a href="{{ route('contact.edit', $data->id) }}" class="alert-link">Completar datos aquí</a>.
+                                <a href="javascript:;" class="alert-link" data-bs-toggle="modal" data-bs-target="#astralDataModal">Completar datos aquí</a>.
                             </div>
                         </div>
                         @endif

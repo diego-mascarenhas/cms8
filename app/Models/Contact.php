@@ -596,6 +596,14 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Get contact's astral profile
+     */
+    public function astralProfile()
+    {
+        return $this->hasOne(ContactAstralProfile::class);
+    }
+
+    /**
      * Get the WhatsApp formatted phone number from the contact
      *
      * @return string|null

@@ -109,73 +109,154 @@ class AstralChartService
     }
 
     /**
-     * Generate complete astral profile
-     * Can use Claude AI via MCP if configured, otherwise uses built-in interpretations
+     * Generate or retrieve astral profile from database
+     * Automatically creates/updates the profile based on contact's birth data
      */
     public function generateAstralProfile($contactId, $birthDate, $countryName = null): array
     {
-        // Cache key for this specific contact
-        $cacheKey = "astral_profile_{$contactId}";
+        $contact = \App\Models\Contact::find($contactId);
 
-        return Cache::remember($cacheKey, now()->addDays(30), function () use ($birthDate, $countryName)
+        if (! $contact)
         {
-            $birthDateCarbon = Carbon::parse($birthDate);
-            $zodiacData = $this->getZodiacSign($birthDateCarbon);
-            $northNodeData = $this->getNorthNode($birthDateCarbon);
+            return $this->getEmptyProfile();
+        }
 
-            // Calculate probable Human Design types
-            $humanDesignData = $this->getProbableHumanDesignTypes($zodiacData, $northNodeData);
+        // Check if profile exists in database
+        $profile = \App\Models\ContactAstralProfile::where('contact_id', $contactId)->first();
 
-            // Try to use Claude via MCP if enabled
-            $useMcp = config('services.mcp.enabled', false);
-            $interpretation = null;
+        // If profile exists and birth_date hasn't changed, return it
+        if ($profile && $profile->birth_date->eq(Carbon::parse($birthDate)))
+        {
+            return $this->formatProfileForView($profile, $contact);
+        }
 
-            if ($useMcp)
-            {
-                $prompt = $this->buildAstralPrompt($zodiacData, $northNodeData, $birthDateCarbon, $countryName);
+        // Generate new profile
+        return $this->generateAndSaveProfile($contact, $birthDate, $countryName);
+    }
 
-                try
-                {
-                    $mcpEndpoint = config('services.mcp.endpoint', 'http://localhost:3000/mcp');
+    /**
+     * Generate profile calculations and save to database
+     */
+    public function generateAndSaveProfile($contact, $birthDate, $countryName = null): array
+    {
+        $birthDateCarbon = Carbon::parse($birthDate);
+        $zodiacData = $this->getZodiacSign($birthDateCarbon);
+        $northNodeData = $this->getNorthNode($birthDateCarbon);
 
-                    $response = Http::timeout(10)->post($mcpEndpoint, [
-                        'server' => 'user-idoneo-mcp',
-                        'tool' => 'claude-interaction',
-                        'arguments' => [
-                            'prompt' => $prompt,
-                            'max_tokens' => 2000,
-                            'temperature' => 0.7,
-                        ],
-                    ]);
+        // Calculate probable Human Design types
+        $humanDesignData = $this->getProbableHumanDesignTypes($zodiacData, $northNodeData);
 
-                    if ($response->successful())
-                    {
-                        $data = $response->json();
-                        $interpretation = $data['content'][0]['text'] ?? null;
-                    }
-                } catch (\Exception $e)
-                {
-                    \Log::warning('MCP Claude request failed: '.$e->getMessage());
-                }
-            }
+        // Generate interpretation
+        $interpretation = $this->generateInterpretation($zodiacData, $northNodeData, $birthDateCarbon, $countryName);
 
-            // Use enhanced fallback interpretation if MCP is not available
-            if (! $interpretation)
-            {
-                $interpretation = $this->getEnhancedInterpretation($zodiacData, $northNodeData, $birthDateCarbon->age);
-            }
-
-            return [
-                'zodiac' => $zodiacData,
-                'north_node' => $northNodeData,
-                'human_design' => $humanDesignData,
-                'birth_date' => $birthDateCarbon->format('d/m/Y'),
-                'age' => $birthDateCarbon->age,
+        // Get or create profile
+        $profile = \App\Models\ContactAstralProfile::updateOrCreate(
+            ['contact_id' => $contact->id],
+            [
+                'birth_date' => $birthDateCarbon,
+                'zodiac_sign' => $zodiacData['sign'],
+                'zodiac_symbol' => $zodiacData['symbol'],
+                'zodiac_element' => $zodiacData['element'],
+                'north_node_sign' => $northNodeData['north'],
+                'human_design_data' => $humanDesignData,
                 'interpretation' => $interpretation,
-                'generated_at' => now()->format('Y-m-d H:i:s'),
-                'ai_generated' => $useMcp && $interpretation !== null,
-            ];
-        });
+                'generated_at' => now(),
+            ],
+        );
+
+        // Update completeness status
+        $profile->updateCompletenessStatus();
+
+        return $this->formatProfileForView($profile, $contact);
+    }
+
+    /**
+     * Generate interpretation text
+     */
+    private function generateInterpretation($zodiacData, $northNodeData, $birthDate, $countryName = null): string
+    {
+        // Try to use Claude via MCP if enabled
+        $useMcp = config('services.mcp.enabled', false);
+
+        if ($useMcp)
+        {
+            $prompt = $this->buildAstralPrompt($zodiacData, $northNodeData, $birthDate, $countryName);
+
+            try
+            {
+                $mcpEndpoint = config('services.mcp.endpoint', 'http://localhost:3000/mcp');
+
+                $response = Http::timeout(10)->post($mcpEndpoint, [
+                    'server' => 'user-idoneo-mcp',
+                    'tool' => 'claude-interaction',
+                    'arguments' => [
+                        'prompt' => $prompt,
+                        'max_tokens' => 2000,
+                        'temperature' => 0.7,
+                    ],
+                ]);
+
+                if ($response->successful())
+                {
+                    $data = $response->json();
+                    $interpretation = $data['content'][0]['text'] ?? null;
+
+                    if ($interpretation)
+                    {
+                        return $interpretation;
+                    }
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('MCP Claude request failed: '.$e->getMessage());
+            }
+        }
+
+        // Use enhanced fallback interpretation
+        return $this->getEnhancedInterpretation($zodiacData, $northNodeData, $birthDate->age);
+    }
+
+    /**
+     * Format database profile for view display
+     */
+    private function formatProfileForView($profile, $contact): array
+    {
+        return [
+            'zodiac' => [
+                'sign' => $profile->zodiac_sign,
+                'symbol' => $profile->zodiac_symbol,
+                'element' => $profile->zodiac_element,
+            ],
+            'north_node' => [
+                'north' => $profile->north_node_sign,
+                'south' => '', // Could be stored if needed
+            ],
+            'human_design' => $profile->human_design_data ?? [],
+            'birth_date' => $profile->birth_date->format('d/m/Y'),
+            'age' => $profile->birth_date->age,
+            'interpretation' => $profile->interpretation,
+            'generated_at' => $profile->generated_at ? $profile->generated_at->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+            'is_complete' => $profile->is_complete,
+            'has_time' => ! empty($profile->birth_time),
+            'has_location' => ! empty($profile->birth_city),
+        ];
+    }
+
+    /**
+     * Empty profile structure
+     */
+    private function getEmptyProfile(): array
+    {
+        return [
+            'zodiac' => ['sign' => 'Desconocido', 'symbol' => '?', 'element' => 'Desconocido'],
+            'north_node' => ['north' => 'No disponible', 'south' => ''],
+            'human_design' => [],
+            'birth_date' => '',
+            'age' => 0,
+            'interpretation' => '',
+            'generated_at' => '',
+            'is_complete' => false,
+        ];
     }
 
     /**

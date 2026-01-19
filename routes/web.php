@@ -233,6 +233,7 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
+    Route::post('/contact/{id}/update-astral-data', [contactController::class, 'updateAstralData'])->name('contact.update-astral-data');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
     Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
     Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
