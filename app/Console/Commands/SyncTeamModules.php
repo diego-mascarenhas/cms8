@@ -27,66 +27,8 @@ class SyncTeamModules extends Command
 			$teams = Team::all();
 		}
 
-		// Modules configuration - true = enabled by default, false = disabled by default
-		$modulesConfig = [
-			// Core modules
-			'dashboard' => true,
-			'users' => true,
-			'settings' => true,
-			'contacts' => true,
-			'clients' => true,
-			'list60' => true,
-			'services' => false,
-			'projects' => false,
-			'tasks' => true,
-			'notifications' => true,
-			'templates' => false,
-			// Additional modules (billing)
-			'invoices' => true,
-			'payments' => true,
-			'incomes' => false,
-			'expenses' => false,
-			'financial' => true,
-			'accounting' => false,
-			// Additional modules (ecommerce)
-			'products' => true,
-			'orders' => true,
-			'stores' => false,
-			// Additional modules (infrastructure)
-			'servers' => false,
-			'hosting' => false,
-			// Additional modules (general)
-			'notes' => false,
-			'collaborators' => true,
-			'communications' => false,
-			'enterprises' => true,
-			'events' => false,
-			'today' => false,
-			'times' => true,
-			'attendances' => false,
-			'documentation' => false,
-			'departments' => false,
-			// Additional modules (campaigns)
-			'mailer' => true,
-			// Additional modules (automation)
-			'funnel' => false,
-			'integrations' => true,
-			// Additional modules (content)
-			'multimedia' => false,
-			'academy' => false,
-			'landings' => false,
-			// Additional modules (support)
-			'tickets' => true,
-			'mailbox' => false,
-			'chat' => true,
-			// Additional modules (learning)
-			'languages' => false,
-			'language-variants' => false,
-			'fares' => false,
-			'softwares' => false,
-			'certifications' => false,
-			'stylebooks' => false,
-		];
+		// Get modules configuration from centralized config file
+		$modulesConfig = config('team-modules.defaults', []);
 
 		$allModules = Module::all();
 
