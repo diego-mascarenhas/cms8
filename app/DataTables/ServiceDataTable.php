@@ -178,15 +178,15 @@ class ServiceDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
-            Column::make('enterprise_id')->title('Client'),
-            Column::make('category_id')->title('Category'),
-            Column::make('domain')->title('Domain'),
-            Column::make('server')->title('Server'),
-            Column::make('calculated_price')->title('Price')->className('text-center'),
-            Column::make('next_billing')->title('Next Billing')->className('text-center'),
-            Column::make('status')->title('Status')->className('text-center'),
+            Column::make('enterprise_id')->title(__('Client')),
+            Column::make('category_id')->title(__('Category')),
+            Column::make('domain')->title(__('Domain')),
+            Column::make('server')->title(__('Server')),
+            Column::make('calculated_price')->title(__('Price'))->className('text-center'),
+            Column::make('next_billing')->title(__('Next Billing'))->className('text-center'),
+            Column::make('status')->title(__('Status'))->className('text-center'),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')

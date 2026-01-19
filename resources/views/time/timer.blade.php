@@ -19,7 +19,7 @@ $(document).ready(function() {
 
     // Initialize Select2
     $('#project_id, #task_id').select2({
-        placeholder: 'Selecciona una opción',
+        placeholder: '{{ __("Select an option") }}',
         allowClear: true
     });
 
@@ -39,7 +39,7 @@ $(document).ready(function() {
         $.get(url, params, function(tasks) {
             const taskSelect = $('#task_id');
             taskSelect.empty();
-            taskSelect.append('<option value="">Selecciona una tarea</option>');
+            taskSelect.append('<option value="">{{ __("Select a task") }}</option>');
 
             tasks.forEach(function(task) {
                 taskSelect.append(`<option value="${task.id}">${task.title}</option>`);
@@ -54,7 +54,7 @@ $(document).ready(function() {
 
         // Validate required fields
         if (!taskId) {
-            alert('{{ __("Por favor selecciona una tarea") }}');
+            alert('{{ __("Please select a task") }}');
             return;
         }
 
@@ -86,7 +86,7 @@ $(document).ready(function() {
                         $('#start-timer').prop('disabled', false);
                         $('#stop-timer').prop('disabled', true);
                         $('#project_id, #task_id, #description').prop('disabled', false);
-                        alert(`Timer detenido. Duración: ${stopResponse.duration}`);
+                        alert(`{{ __("Timer stopped. Duration") }}: ${stopResponse.duration}`);
                     }
                 });
             }
@@ -164,9 +164,9 @@ $(document).ready(function() {
                         <!-- Controls -->
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label" for="project_id">{{ __('Proyecto (Opcional)') }}</label>
+                                <label class="form-label" for="project_id">{{ __('Project (Optional)') }}</label>
                                 <select class="form-select" id="project_id" name="project_id">
-                                    <option value="">{{ __('Selecciona un proyecto') }}</option>
+                                    <option value="">{{ __('Select a project') }}</option>
                                     @foreach($projects as $project)
                                         <option value="{{ $project->id }}">{{ $project->name }}</option>
                                     @endforeach
@@ -174,24 +174,24 @@ $(document).ready(function() {
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label" for="task_id">{{ __('Tarea') }} <span class="text-danger">*</span></label>
+                                <label class="form-label" for="task_id">{{ __('Task') }} <span class="text-danger">*</span></label>
                                 <select class="form-select" id="task_id" name="task_id" required>
-                                    <option value="">{{ __('Selecciona una tarea') }}</option>
+                                    <option value="">{{ __('Select a task') }}</option>
                                 </select>
-                                <div class="form-text">{{ __('Solo se muestran tareas pendientes y en progreso') }}</div>
+                                <div class="form-text">{{ __('Only pending and in-progress tasks are shown') }}</div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label" for="description">{{ __('¿En qué estás trabajando?') }}</label>
-                                <input type="text" class="form-control" id="description" name="description" placeholder="{{ __('Descripción de la tarea') }}">
+                                <label class="form-label" for="description">{{ __('What are you working on?') }}</label>
+                                <input type="text" class="form-control" id="description" name="description" placeholder="{{ __('Task description') }}">
                             </div>
 
                             <div class="d-grid gap-2">
                                 <button type="button" class="btn btn-success btn-lg" id="start-timer">
-                                    <i class="ti ti-play me-2"></i>{{ __('Iniciar Timer') }}
+                                    <i class="ti ti-play me-2"></i>{{ __('Start Timer') }}
                                 </button>
                                 <button type="button" class="btn btn-danger btn-lg" id="stop-timer" disabled>
-                                    <i class="ti ti-stop me-2"></i>{{ __('Detener Timer') }}
+                                    <i class="ti ti-stop me-2"></i>{{ __('Stop Timer') }}
                                 </button>
                             </div>
                         </div>
