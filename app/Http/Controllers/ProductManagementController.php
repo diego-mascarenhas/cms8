@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Products\SyncStripeProducts;
-use App\DataTables\ProductDataTable;
+use App\DataTables\SubscriptionProductDataTable;
 use App\Models\SubscriptionProduct;
 use App\Services\Stripe\StripeProductService;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ class ProductManagementController extends Controller
     /**
      * Display a listing of subscription products.
      */
-    public function index(ProductDataTable $dataTable)
+    public function index(SubscriptionProductDataTable $dataTable)
     {
         return $dataTable->render('account.products.index');
     }
