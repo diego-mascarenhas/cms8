@@ -82,14 +82,14 @@
       "url": "product/list",
       "name": "Products",
       "icon": "menu-icon tf-icons ti ti-package",
-      "slug": "product-list",
+      "slug": "product.index",
       "module_key": "products"
     },
     {
       "url": "order/list",
       "name": "Orders",
       "icon": "menu-icon tf-icons ti ti-shopping-bag",
-      "slug": "order-list",
+      "slug": "order.index",
       "module_key": "orders"
     },
     {
@@ -99,7 +99,7 @@
       "url": "invoice/list",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",
-      "slug": "invoice-list",
+      "slug": "invoice.index",
       "module_key": "invoices"
     },
     {
@@ -113,7 +113,7 @@
       "url": "income/list",
       "name": "Incomes",
       "icon": "menu-icon tf-icons ti ti-trending-up",
-      "slug": "income-list",
+      "slug": "income.index",
       "module_key": "incomes"
     },
     {
@@ -127,7 +127,7 @@
       "url": "expense/list",
       "name": "Expenses",
       "icon": "menu-icon tf-icons ti ti-trending-down",
-      "slug": "expense-list",
+      "slug": "expense.index",
       "module_key": "expenses"
     },
     {
