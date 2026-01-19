@@ -71,30 +71,17 @@
                     <div class="card-body">
                         <!-- Zodiac & North Node Info -->
                         <div class="row mb-3 pb-3 border-bottom">
-                            <div class="{{ isset($astralProfile['human_design']) ? 'col-md-4' : 'col-md-6' }}">
+                            <div class="col-md-6">
                                 <small class="text-muted d-block">Signo Solar</small>
                                 <strong>{{ $astralProfile['zodiac']['sign'] }}</strong>
                                 <span class="badge bg-label-{{ $astralProfile['zodiac']['element'] === 'Fuego' ? 'danger' : ($astralProfile['zodiac']['element'] === 'Tierra' ? 'success' : ($astralProfile['zodiac']['element'] === 'Aire' ? 'info' : 'primary')) }} ms-2">
                                     {{ $astralProfile['zodiac']['element'] }}
                                 </span>
                             </div>
-                            <div class="{{ isset($astralProfile['human_design']) ? 'col-md-4' : 'col-md-6' }}">
+                            <div class="col-md-6">
                                 <small class="text-muted d-block">Nodo Norte</small>
                                 <strong>{{ $astralProfile['north_node']['north'] }}</strong>
                             </div>
-                            @if(isset($astralProfile['human_design']))
-                            <div class="col-md-4">
-                                <small class="text-muted d-block">Diseño Humano</small>
-                                @foreach($astralProfile['human_design']['top_types'] as $index => $type)
-                                    <div class="d-flex align-items-center {{ $index > 0 ? 'mt-1' : '' }}">
-                                        <span class="badge bg-label-{{ $index === 0 ? 'warning' : 'secondary' }} me-2">
-                                            {{ $type['probability'] }}%
-                                        </span>
-                                        <small class="{{ $index === 0 ? 'fw-bold' : '' }}">{{ $type['type'] }}</small>
-                                    </div>
-                                @endforeach
-                            </div>
-                            @endif
                         </div>
 
                         <!-- Human Design Types Details -->

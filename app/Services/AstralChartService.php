@@ -213,7 +213,6 @@ class AstralChartService
             $profileData['birth_city'] = $existingProfile->birth_city;
             $profileData['birth_latitude'] = $existingProfile->birth_latitude;
             $profileData['birth_longitude'] = $existingProfile->birth_longitude;
-            $profileData['birth_timezone'] = $existingProfile->birth_timezone;
         }
 
         // Update or create profile

@@ -647,7 +647,7 @@ class ContactController extends Controller
     {
         // Clean empty strings to null
         $data = $request->all();
-        foreach (['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude', 'birth_timezone'] as $field)
+        foreach (['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude'] as $field)
         {
             if (isset($data[$field]) && $data[$field] === '')
             {
@@ -660,7 +660,6 @@ class ContactController extends Controller
             'birth_city' => 'nullable|string|max:255',
             'birth_latitude' => 'nullable|numeric|between:-90,90',
             'birth_longitude' => 'nullable|numeric|between:-180,180',
-            'birth_timezone' => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails())
@@ -688,7 +687,6 @@ class ContactController extends Controller
                 'birth_city' => $data['birth_city'] ?? null,
                 'birth_latitude' => $data['birth_latitude'] ?? null,
                 'birth_longitude' => $data['birth_longitude'] ?? null,
-                'birth_timezone' => $data['birth_timezone'] ?? null,
             ],
         );
 

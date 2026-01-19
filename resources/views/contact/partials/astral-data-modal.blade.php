@@ -79,25 +79,6 @@
                                 placeholder="-3.7038"
                             >
                         </div>
-
-                        <!-- Zona Horaria -->
-                        <div class="col-12">
-                            <label for="birth_timezone" class="form-label">
-                                Zona Horaria <small class="text-muted">(opcional)</small>
-                            </label>
-                            <select class="form-select" id="birth_timezone" name="birth_timezone">
-                                <option value="">Seleccionar...</option>
-                                @php $currentTimezone = old('birth_timezone', optional($data->astralProfile)->birth_timezone); @endphp
-                                <option value="Europe/Madrid" {{ $currentTimezone === 'Europe/Madrid' ? 'selected' : '' }}>Europe/Madrid (GMT+1)</option>
-                                <option value="Europe/London" {{ $currentTimezone === 'Europe/London' ? 'selected' : '' }}>Europe/London (GMT+0)</option>
-                                <option value="America/New_York" {{ $currentTimezone === 'America/New_York' ? 'selected' : '' }}>America/New_York (GMT-5)</option>
-                                <option value="America/Los_Angeles" {{ $currentTimezone === 'America/Los_Angeles' ? 'selected' : '' }}>America/Los_Angeles (GMT-8)</option>
-                                <option value="America/Mexico_City" {{ $currentTimezone === 'America/Mexico_City' ? 'selected' : '' }}>America/Mexico_City (GMT-6)</option>
-                                <option value="America/Argentina/Buenos_Aires" {{ $currentTimezone === 'America/Argentina/Buenos_Aires' ? 'selected' : '' }}>America/Buenos_Aires (GMT-3)</option>
-                                <option value="America/Bogota" {{ $currentTimezone === 'America/Bogota' ? 'selected' : '' }}>America/Bogota (GMT-5)</option>
-                                <option value="America/Lima" {{ $currentTimezone === 'America/Lima' ? 'selected' : '' }}>America/Lima (GMT-5)</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="alert alert-info mt-3 mb-0" role="alert">
@@ -129,8 +110,7 @@ $(document).ready(function() {
             birth_time: $('#birth_time').val(),
             birth_city: $('#birth_city').val(),
             birth_latitude: $('#birth_latitude').val(),
-            birth_longitude: $('#birth_longitude').val(),
-            birth_timezone: $('#birth_timezone').val()
+            birth_longitude: $('#birth_longitude').val()
         };
 
         console.log('Modal opened with values:', originalValues);
@@ -151,7 +131,7 @@ $(document).ready(function() {
         });
 
         // If fields are empty but had original values, restore them
-        ['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude', 'birth_timezone'].forEach(function(field) {
+        ['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude'].forEach(function(field) {
             if (!formData[field] && originalValues[field]) {
                 formData[field] = originalValues[field];
             }
