@@ -101,8 +101,8 @@
                         @if(isset($astralProfile['human_design']))
                         <div class="mb-3 pb-3 border-bottom">
                             <small class="text-muted d-block mb-2">
-                                <i class="ti ti-alert-circle ti-xs me-1"></i>
-                                Tipos probables de Diseño Humano (estimación):
+                                <i class="ti ti-{{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'circle-check' : 'alert-circle' }} ti-xs me-1"></i>
+                                {{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'Diseño Humano' : 'Tipos probables de Diseño Humano (estimación)' }}:
                             </small>
                             @foreach($astralProfile['human_design']['top_types'] as $type)
                                 <div class="mb-2">
@@ -115,11 +115,19 @@
                                     </p>
                                 </div>
                             @endforeach
-                            <div class="alert alert-warning mt-2 mb-0 py-2 px-3" role="alert" style="font-size: 0.8rem;">
-                                <i class="ti ti-info-circle me-1"></i>
-                                <strong>Nota:</strong> {{ $astralProfile['human_design']['disclaimer'] }}
-                                <a href="javascript:;" class="alert-link" data-bs-toggle="modal" data-bs-target="#astralDataModal">Completar datos aquí</a>.
-                            </div>
+                            @if(!isset($astralProfile['is_complete']) || !$astralProfile['is_complete'])
+                                @php
+                                    $missingData = [];
+                                    if (empty($astralProfile['has_time'])) $missingData[] = 'hora de nacimiento';
+                                    if (empty($astralProfile['has_location'])) $missingData[] = 'lugar de nacimiento';
+                                    $missingText = !empty($missingData) ? 'Falta: ' . implode(' y ', $missingData) : 'Datos incompletos';
+                                @endphp
+                                <div class="alert alert-warning mt-2 mb-0 py-2 px-3" role="alert" style="font-size: 0.8rem;">
+                                    <i class="ti ti-alert-triangle me-1"></i>
+                                    <strong>Estimación:</strong> {{ $missingText }}. Para cálculo exacto del ascendente y diseño humano
+                                    <a href="javascript:;" class="alert-link" data-bs-toggle="modal" data-bs-target="#astralDataModal">completa los datos aquí</a>.
+                                </div>
+                            @endif
                         </div>
                         @endif
 
@@ -133,8 +141,10 @@
                         <!-- Metadata -->
                         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
                             <small class="text-muted">
-                                <i class="ti ti-calendar ti-xs me-1"></i>
-                                {{ $astralProfile['birth_date'] }} ({{ $astralProfile['age'] }} años)
+                                <a href="javascript:;" data-bs-toggle="modal" data-bs-target="#astralDataModal" class="text-muted text-decoration-none" title="{{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'Editar datos de nacimiento' : 'Completar datos de nacimiento' }}">
+                                    <i class="ti ti-calendar ti-xs me-1"></i>
+                                    {{ $astralProfile['birth_date'] }} ({{ $astralProfile['age'] }} años)
+                                </a>
                             </small>
                             <small class="text-muted">
                                 <i class="ti ti-sparkles ti-xs me-1"></i>

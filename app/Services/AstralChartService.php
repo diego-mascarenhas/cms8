@@ -191,19 +191,35 @@ class AstralChartService
         // Generate interpretation
         $interpretation = $this->generateInterpretation($zodiacData, $northNodeData, $birthDateCarbon, $countryName);
 
-        // Get or create profile
+        // Get existing profile to preserve birth data
+        $existingProfile = \App\Models\ContactAstralProfile::where('contact_id', $contact->id)->first();
+
+        // Prepare data for update (preserve existing birth data)
+        $profileData = [
+            'birth_date' => $birthDateCarbon,
+            'zodiac_sign' => $zodiacData['sign'],
+            'zodiac_symbol' => $zodiacData['symbol'],
+            'zodiac_element' => $zodiacData['element'],
+            'north_node_sign' => $northNodeData['north'],
+            'human_design_data' => $humanDesignData,
+            'interpretation' => $interpretation,
+            'generated_at' => now(),
+        ];
+
+        // If profile exists, preserve birth data fields
+        if ($existingProfile)
+        {
+            $profileData['birth_time'] = $existingProfile->birth_time;
+            $profileData['birth_city'] = $existingProfile->birth_city;
+            $profileData['birth_latitude'] = $existingProfile->birth_latitude;
+            $profileData['birth_longitude'] = $existingProfile->birth_longitude;
+            $profileData['birth_timezone'] = $existingProfile->birth_timezone;
+        }
+
+        // Update or create profile
         $profile = \App\Models\ContactAstralProfile::updateOrCreate(
             ['contact_id' => $contact->id],
-            [
-                'birth_date' => $birthDateCarbon,
-                'zodiac_sign' => $zodiacData['sign'],
-                'zodiac_symbol' => $zodiacData['symbol'],
-                'zodiac_element' => $zodiacData['element'],
-                'north_node_sign' => $northNodeData['north'],
-                'human_design_data' => $humanDesignData,
-                'interpretation' => $interpretation,
-                'generated_at' => now(),
-            ],
+            $profileData,
         );
 
         // Update completeness status
