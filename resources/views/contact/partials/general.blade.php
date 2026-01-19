@@ -70,19 +70,58 @@
                     </div>
                     <div class="card-body">
                         <!-- Zodiac & North Node Info -->
-                        <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                            <div>
+                        <div class="row mb-3 pb-3 border-bottom">
+                            <div class="{{ isset($astralProfile['human_design']) ? 'col-md-4' : 'col-md-6' }}">
                                 <small class="text-muted d-block">Signo Solar</small>
                                 <strong>{{ $astralProfile['zodiac']['sign'] }}</strong>
                                 <span class="badge bg-label-{{ $astralProfile['zodiac']['element'] === 'Fuego' ? 'danger' : ($astralProfile['zodiac']['element'] === 'Tierra' ? 'success' : ($astralProfile['zodiac']['element'] === 'Aire' ? 'info' : 'primary')) }} ms-2">
                                     {{ $astralProfile['zodiac']['element'] }}
                                 </span>
                             </div>
-                            <div class="text-end">
+                            <div class="{{ isset($astralProfile['human_design']) ? 'col-md-4' : 'col-md-6' }}">
                                 <small class="text-muted d-block">Nodo Norte</small>
                                 <strong>{{ $astralProfile['north_node']['north'] }}</strong>
                             </div>
+                            @if(isset($astralProfile['human_design']))
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Diseño Humano</small>
+                                @foreach($astralProfile['human_design']['top_types'] as $index => $type)
+                                    <div class="d-flex align-items-center {{ $index > 0 ? 'mt-1' : '' }}">
+                                        <span class="badge bg-label-{{ $index === 0 ? 'warning' : 'secondary' }} me-2">
+                                            {{ $type['probability'] }}%
+                                        </span>
+                                        <small class="{{ $index === 0 ? 'fw-bold' : '' }}">{{ $type['type'] }}</small>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @endif
                         </div>
+
+                        <!-- Human Design Types Details -->
+                        @if(isset($astralProfile['human_design']))
+                        <div class="mb-3 pb-3 border-bottom">
+                            <small class="text-muted d-block mb-2">
+                                <i class="ti ti-alert-circle ti-xs me-1"></i>
+                                Tipos probables de Diseño Humano (estimación):
+                            </small>
+                            @foreach($astralProfile['human_design']['top_types'] as $type)
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-sm">{{ $type['type'] }}</strong>
+                                        <span class="badge bg-label-primary">{{ $type['probability'] }}%</span>
+                                    </div>
+                                    <p class="text-muted mb-0" style="font-size: 0.875rem;">
+                                        {{ $type['description'] }}
+                                    </p>
+                                </div>
+                            @endforeach
+                            <div class="alert alert-warning mt-2 mb-0 py-2 px-3" role="alert" style="font-size: 0.8rem;">
+                                <i class="ti ti-info-circle me-1"></i>
+                                <strong>Nota:</strong> {{ $astralProfile['human_design']['disclaimer'] }}
+                                <a href="{{ route('contact.edit', $data->id) }}" class="alert-link">Completar datos aquí</a>.
+                            </div>
+                        </div>
+                        @endif
 
                         <!-- AI Interpretation -->
                         <div class="mb-3">
