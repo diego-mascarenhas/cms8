@@ -29,14 +29,59 @@ class AstralChartService
     /**
      * North Node positions (approximate, changes every ~18 months)
      * Format: [start_year-month, end_year-month, sign]
+     * Historical data from 1970 to 2035
      */
     private const NORTH_NODE_POSITIONS = [
+        // Historical positions (1970-2000)
+        ['start' => '1970-01', 'end' => '1971-07', 'sign' => 'Piscis', 'south' => 'Virgo'],
+        ['start' => '1971-07', 'end' => '1973-01', 'sign' => 'Acuario', 'south' => 'Leo'],
+        ['start' => '1973-01', 'end' => '1974-07', 'sign' => 'Capricornio', 'south' => 'Cáncer'],
+        ['start' => '1974-07', 'end' => '1976-01', 'sign' => 'Sagitario', 'south' => 'Géminis'],
+        ['start' => '1976-01', 'end' => '1977-07', 'sign' => 'Escorpio', 'south' => 'Tauro'],
+        ['start' => '1977-07', 'end' => '1979-01', 'sign' => 'Libra', 'south' => 'Aries'],
+        ['start' => '1979-01', 'end' => '1980-07', 'sign' => 'Virgo', 'south' => 'Piscis'],
+        ['start' => '1980-07', 'end' => '1982-01', 'sign' => 'Leo', 'south' => 'Acuario'],
+        ['start' => '1982-01', 'end' => '1983-07', 'sign' => 'Cáncer', 'south' => 'Capricornio'],
+        ['start' => '1983-07', 'end' => '1985-01', 'sign' => 'Géminis', 'south' => 'Sagitario'],
+        ['start' => '1985-01', 'end' => '1986-07', 'sign' => 'Tauro', 'south' => 'Escorpio'],
+        ['start' => '1986-07', 'end' => '1988-01', 'sign' => 'Aries', 'south' => 'Libra'],
+        ['start' => '1988-01', 'end' => '1989-07', 'sign' => 'Piscis', 'south' => 'Virgo'],
+        ['start' => '1989-07', 'end' => '1991-01', 'sign' => 'Acuario', 'south' => 'Leo'],
+        ['start' => '1991-01', 'end' => '1992-07', 'sign' => 'Capricornio', 'south' => 'Cáncer'],
+        ['start' => '1992-07', 'end' => '1994-01', 'sign' => 'Sagitario', 'south' => 'Géminis'],
+        ['start' => '1994-01', 'end' => '1995-07', 'sign' => 'Escorpio', 'south' => 'Tauro'],
+        ['start' => '1995-07', 'end' => '1997-01', 'sign' => 'Libra', 'south' => 'Aries'],
+        ['start' => '1997-01', 'end' => '1998-07', 'sign' => 'Virgo', 'south' => 'Piscis'],
+        ['start' => '1998-07', 'end' => '2000-04', 'sign' => 'Leo', 'south' => 'Acuario'],
+
+        // 2000s
+        ['start' => '2000-04', 'end' => '2001-10', 'sign' => 'Cáncer', 'south' => 'Capricornio'],
+        ['start' => '2001-10', 'end' => '2003-04', 'sign' => 'Géminis', 'south' => 'Sagitario'],
+        ['start' => '2003-04', 'end' => '2004-12', 'sign' => 'Tauro', 'south' => 'Escorpio'],
+        ['start' => '2004-12', 'end' => '2006-06', 'sign' => 'Aries', 'south' => 'Libra'],
+        ['start' => '2006-06', 'end' => '2007-12', 'sign' => 'Piscis', 'south' => 'Virgo'],
+        ['start' => '2007-12', 'end' => '2009-08', 'sign' => 'Acuario', 'south' => 'Leo'],
+        ['start' => '2009-08', 'end' => '2011-03', 'sign' => 'Capricornio', 'south' => 'Cáncer'],
+
+        // 2010s
+        ['start' => '2011-03', 'end' => '2012-08', 'sign' => 'Sagitario', 'south' => 'Géminis'],
+        ['start' => '2012-08', 'end' => '2014-02', 'sign' => 'Escorpio', 'south' => 'Tauro'],
+        ['start' => '2014-02', 'end' => '2015-11', 'sign' => 'Libra', 'south' => 'Aries'],
+        ['start' => '2015-11', 'end' => '2017-05', 'sign' => 'Virgo', 'south' => 'Piscis'],
+        ['start' => '2017-05', 'end' => '2018-11', 'sign' => 'Leo', 'south' => 'Acuario'],
+        ['start' => '2018-11', 'end' => '2020-05', 'sign' => 'Cáncer', 'south' => 'Capricornio'],
+
+        // 2020s - Present
+        ['start' => '2020-05', 'end' => '2022-01', 'sign' => 'Géminis', 'south' => 'Sagitario'],
+        ['start' => '2022-01', 'end' => '2023-07', 'sign' => 'Tauro', 'south' => 'Escorpio'],
         ['start' => '2023-07', 'end' => '2025-01', 'sign' => 'Aries', 'south' => 'Libra'],
         ['start' => '2025-01', 'end' => '2026-07', 'sign' => 'Piscis', 'south' => 'Virgo'],
         ['start' => '2026-07', 'end' => '2028-01', 'sign' => 'Acuario', 'south' => 'Leo'],
         ['start' => '2028-01', 'end' => '2029-07', 'sign' => 'Capricornio', 'south' => 'Cáncer'],
         ['start' => '2029-07', 'end' => '2031-01', 'sign' => 'Sagitario', 'south' => 'Géminis'],
         ['start' => '2031-01', 'end' => '2032-07', 'sign' => 'Escorpio', 'south' => 'Tauro'],
+        ['start' => '2032-07', 'end' => '2034-01', 'sign' => 'Libra', 'south' => 'Aries'],
+        ['start' => '2034-01', 'end' => '2035-07', 'sign' => 'Virgo', 'south' => 'Piscis'],
     ];
 
     /**
