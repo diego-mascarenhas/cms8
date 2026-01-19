@@ -55,29 +55,93 @@
             </div>
             @endcan
 
-            <!-- Files -->
-            <div class="col-12 opacity-50">
+            <!-- Astral Profile -->
+            @if($astralProfile)
+            <div class="col-12">
                 <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-stars me-2"></i>
+                            Perfil Astrológico
+                        </h5>
+                        <span class="badge bg-label-primary">
+                            {{ $astralProfile['zodiac']['symbol'] }} {{ $astralProfile['zodiac']['sign'] }}
+                        </span>
+                    </div>
                     <div class="card-body">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="ti ti-file-text me-2"></i>
-                                    <span>Contrato de alta Servicio Molón #1</span>
-                                    <small class="text-muted ms-auto">09-07-2024</small>
+                        <!-- Zodiac & North Node Info -->
+                        <div class="row mb-3 pb-3 border-bottom">
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Signo Solar</small>
+                                <strong>{{ $astralProfile['zodiac']['sign'] }}</strong>
+                                <span class="badge bg-label-{{ $astralProfile['zodiac']['element'] === 'Fuego' ? 'danger' : ($astralProfile['zodiac']['element'] === 'Tierra' ? 'success' : ($astralProfile['zodiac']['element'] === 'Aire' ? 'info' : 'primary')) }} ms-2">
+                                    {{ $astralProfile['zodiac']['element'] }}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Nodo Norte</small>
+                                <strong>{{ $astralProfile['north_node']['north'] }}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Human Design Types Details -->
+                        @if(isset($astralProfile['human_design']))
+                        <div class="mb-3 pb-3 border-bottom">
+                            <small class="text-muted d-block mb-2">
+                                <i class="ti ti-{{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'circle-check' : 'alert-circle' }} ti-xs me-1"></i>
+                                {{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'Diseño Humano' : 'Tipos probables de Diseño Humano (estimación)' }}:
+                            </small>
+                            @foreach($astralProfile['human_design']['top_types'] as $type)
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-sm">{{ $type['type'] }}</strong>
+                                        <span class="badge bg-label-primary">{{ $type['probability'] }}%</span>
+                                    </div>
+                                    <p class="text-muted mb-0" style="font-size: 0.875rem;">
+                                        {{ $type['description'] }}
+                                    </p>
                                 </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <i class="ti ti-file-text me-2"></i>
-                                    <span>Briefing para conocerte</span>
-                                    <small class="text-muted ms-auto">09-07-2024</small>
+                            @endforeach
+                            @if(!isset($astralProfile['is_complete']) || !$astralProfile['is_complete'])
+                                @php
+                                    $missingData = [];
+                                    if (empty($astralProfile['has_time'])) $missingData[] = 'hora de nacimiento';
+                                    if (empty($astralProfile['has_location'])) $missingData[] = 'lugar de nacimiento';
+                                    $missingText = !empty($missingData) ? 'Falta: ' . implode(' y ', $missingData) : 'Datos incompletos';
+                                @endphp
+                                <div class="alert alert-warning mt-2 mb-0 py-2 px-3" role="alert" style="font-size: 0.8rem;">
+                                    <i class="ti ti-alert-triangle me-1"></i>
+                                    <strong>Estimación:</strong> {{ $missingText }}. Para cálculo exacto del ascendente y diseño humano
+                                    <a href="javascript:;" class="alert-link" data-bs-toggle="modal" data-bs-target="#astralDataModal">completa los datos aquí</a>.
                                 </div>
-                            </li>
-                        </ul>
+                            @endif
+                        </div>
+                        @endif
+
+                        <!-- AI Interpretation -->
+                        <div class="mb-3">
+                            <p class="mb-0" style="line-height: 1.6; text-align: justify;">
+                                {{ $astralProfile['interpretation'] }}
+                            </p>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                            <small class="text-muted">
+                                <a href="javascript:;" data-bs-toggle="modal" data-bs-target="#astralDataModal" class="text-muted text-decoration-none" title="{{ isset($astralProfile['is_complete']) && $astralProfile['is_complete'] ? 'Editar datos de nacimiento' : 'Completar datos de nacimiento' }}">
+                                    <i class="ti ti-calendar ti-xs me-1"></i>
+                                    {{ $astralProfile['birth_date'] }} ({{ $astralProfile['age'] }} años)
+                                </a>
+                            </small>
+                            <small class="text-muted">
+                                <i class="ti ti-sparkles ti-xs me-1"></i>
+                                Generado con AI
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 

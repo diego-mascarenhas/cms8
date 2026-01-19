@@ -82,24 +82,24 @@
       "url": "product/list",
       "name": "Products",
       "icon": "menu-icon tf-icons ti ti-package",
-      "slug": "product-list",
+      "slug": "product.index",
       "module_key": "products"
     },
     {
       "url": "order/list",
       "name": "Orders",
       "icon": "menu-icon tf-icons ti ti-shopping-bag",
-      "slug": "order-list",
+      "slug": "order.index",
       "module_key": "orders"
     },
     {
       "menuHeader": "Billing"
     },
     {
-      "url": "invoices",
+      "url": "invoice/list",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",
-      "slug": "invoices",
+      "slug": "invoice.index",
       "module_key": "invoices"
     },
     {
@@ -110,11 +110,11 @@
       "module_key": "payments"
     },
     {
-      "url": "earning/list",
-      "name": "Earnings",
-      "icon": "menu-icon tf-icons ti ti-moneybag",
-      "slug": "earning-list",
-      "module_key": "earnings"
+      "url": "income/list",
+      "name": "Incomes",
+      "icon": "menu-icon tf-icons ti ti-trending-up",
+      "slug": "income.index",
+      "module_key": "incomes"
     },
     {
       "url": "fare",
@@ -126,22 +126,15 @@
     {
       "url": "expense/list",
       "name": "Expenses",
-      "icon": "menu-icon tf-icons ti ti-receipt",
-      "slug": "expense-list",
+      "icon": "menu-icon tf-icons ti ti-trending-down",
+      "slug": "expense.index",
       "module_key": "expenses"
     },
     {
-      "url": "accounting",
-      "name": "Accounting",
-      "icon": "menu-icon tf-icons ti ti-receipt-tax",
-      "slug": "accounting",
-      "module_key": "accounting"
-    },
-    {
-      "url": "financial/list",
-      "name": "Evolution",
-      "icon": "menu-icon tf-icons ti ti-graph",
-      "slug": "financial-list",
+      "url": "finance-dashboard",
+      "name": "Finanzas",
+      "icon": "menu-icon tf-icons ti ti-chart-line",
+      "slug": "finance-dashboard",
       "module_key": "financial"
     },
     {
@@ -176,7 +169,7 @@
       "name": "Templates",
       "icon": "menu-icon tf-icons ti ti-template",
       "slug": "template.index",
-      "module_key": "mailer"
+      "module_key": "templates"
     },
     {
       "menuHeader": "Automation"

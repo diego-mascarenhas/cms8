@@ -99,8 +99,8 @@
 
 <!-- Product List Table -->
 <div class="card">
-	<div class="card-datatable table-responsive">
-		{{ $dataTable->table(['class' => 'datatables-products table']) }}
+	<div class="card-body">
+		{{ $dataTable->table() }}
 	</div>
 </div>
 

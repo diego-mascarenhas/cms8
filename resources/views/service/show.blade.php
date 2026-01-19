@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Service Details')
+@section('title', __('Service Details'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
@@ -39,8 +39,8 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">Service/</span>
-            {{ isset($serviceData['domain']) ? $serviceData['domain'] : 'Service #' . $service->id }}
+            <span class="text-muted fw-light">{{ __('Service') }}/</span>
+            {{ isset($serviceData['domain']) ? $serviceData['domain'] : __('Service') . ' #' . $service->id }}
         </h4>
         <p class="text-muted">
             Created on {{ \Carbon\Carbon::parse($service->created_at)->format('F d, Y') }}
@@ -49,7 +49,7 @@
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('service.edit')
         <a href="{{ route('service.edit', $service->id) }}" class="btn btn-primary waves-effect waves-light">
-            <i class="ti ti-edit me-1"></i>Edit Service
+            <i class="ti ti-edit me-1"></i>{{ __('Edit Service') }}
         </a>
         @endcan
         @if($service->client && $service->client->responsible_id)
@@ -102,55 +102,55 @@
                     </div>
                 </div>
                 <div class="mt-4 info-container">
-                    <h5 class="mb-3">Service Details</h5>
+                    <h5 class="mb-3">{{ __('Service Details') }}</h5>
                     <ul class="list-unstyled">
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Client:</span>
-                            <span>{{ $service->client ? $service->client->name : 'Not assigned' }}</span>
+                            <span class="fw-medium me-1">{{ __('Client') }}:</span>
+                            <span>{{ $service->client ? $service->client->name : __('Not assigned') }}</span>
                         </li>
                         @if($service->client && $service->client->responsible_id)
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Responsible:</span>
-                            <span>{{ $service->client->responsible ? $service->client->responsible->name : 'User #' . $service->client->responsible_id }}</span>
+                            <span class="fw-medium me-1">{{ __('Responsible') }}:</span>
+                            <span>{{ $service->client->responsible ? $service->client->responsible->name : __('User') . ' #' . $service->client->responsible_id }}</span>
                         </li>
                         @endif
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Category:</span>
-                            <span>{{ $service->category ? $service->category->name : 'Not assigned' }}</span>
+                            <span class="fw-medium me-1">{{ __('Category') }}:</span>
+                            <span>{{ $service->category ? $service->category->name : __('Not assigned') }}</span>
                         </li>
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Operation:</span>
+                            <span class="fw-medium me-1">{{ __('Operation') }}:</span>
                             <span>{{ $service->operation }}</span>
                         </li>
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Price:</span>
-                            <span>{{ $service->price ? '$' . number_format($service->price, 2) : 'Not set' }}</span>
+                            <span class="fw-medium me-1">{{ __('Price') }}:</span>
+                            <span>{{ $service->price ? '$' . number_format($service->price, 2) : __('Not set') }}</span>
                         </li>
                         @if($service->discount)
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Discount:</span>
+                            <span class="fw-medium me-1">{{ __('Discount') }}:</span>
                             <span>{{ $service->discount }}%</span>
                         </li>
                         @endif
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Frequency:</span>
-                            <span>{{ $service->frequency ? $service->frequency . ' months' : 'Not set' }}</span>
+                            <span class="fw-medium me-1">{{ __('Frequency') }}:</span>
+                            <span>{{ $service->frequency ? $service->frequency . ' ' . __('months') : __('Not set') }}</span>
                         </li>
                         @if($service->next_billing)
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Next Billing:</span>
+                            <span class="fw-medium me-1">{{ __('Next Billing') }}:</span>
                             <span>{{ \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y') }}</span>
                         </li>
                         @endif
                         @if($service->last_billed)
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Last Billed:</span>
+                            <span class="fw-medium me-1">{{ __('Last Billed') }}:</span>
                             <span>{{ \Carbon\Carbon::parse($service->last_billed)->format('d/m/Y') }}</span>
                         </li>
                         @endif
                         @if($service->expires_at)
                         <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">Expires At:</span>
+                            <span class="fw-medium me-1">{{ __('Expires At') }}:</span>
                             <span>{{ \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y') }}</span>
                         </li>
                         @endif
@@ -168,12 +168,12 @@
                 <ul class="nav nav-pills flex-column flex-md-row mb-4">
                     <li class="nav-item">
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#service-overview">
-                            <i class="ti ti-user-check ti-xs me-1"></i>Overview
+                            <i class="ti ti-user-check ti-xs me-1"></i>{{ __('Overview') }}
                         </button>
                     </li>
                     <li class="nav-item">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#service-data">
-                            <i class="ti ti-file-text ti-xs me-1"></i>Service Data
+                            <i class="ti ti-file-text ti-xs me-1"></i>{{ __('Service Data') }}
                         </button>
                     </li>
                 </ul>
@@ -264,7 +264,7 @@
                     <div class="tab-pane fade" id="service-data">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="card-title">Raw Service Data</h5>
+                                <h5 class="card-title">{{ __('Raw Service Data') }}</h5>
                                 <div class="json-data-container">
                                     <div class="table-responsive">
                                         <table class="table table-bordered">

@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Income vs Expenses Chart
     const incomeExpenseChartEl = document.querySelector('#incomeExpenseChart');
     const monthlyData = @json($monthlyData);
-
+    
     const incomeExpenseConfig = {
         chart: {
             type: 'bar',

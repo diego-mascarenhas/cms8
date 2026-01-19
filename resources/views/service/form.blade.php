@@ -1,5 +1,5 @@
 @extends('layouts/layoutMaster')
-@section('title', isset($data) ? 'Edit Service' : 'Create Service')
+@section('title', isset($data) ? __('Edit Service') : __('Create Service'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
@@ -14,7 +14,7 @@
 @section('content')
 <div class="container-xxl flex-grow-1 container-p-y">
     <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Service /</span> {{ isset($data) ? 'Edit Service' : 'Create Service' }}
+        <span class="text-muted fw-light">{{ __('Service') }} /</span> {{ isset($data) ? __('Edit Service') : __('Create Service') }}
     </h4>
 
     @if ($errors->any())
@@ -52,7 +52,7 @@
 
         <!-- Basic Information Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Basic Information</h5>
+            <h5 class="card-header">{{ __('Basic Information') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -75,20 +75,20 @@
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="operation" class="form-label">Operation</label>
+                            <label for="operation" class="form-label">{{ __('Operation') }}</label>
                             <select id="operation" name="operation" class="form-select" required>
-                                <option value="">Select Operation</option>
-                                <option value="buy" {{ isset($data) && $data->operation == 'buy' ? 'selected' : '' }}>Buy</option>
-                                <option value="sell" {{ isset($data) && $data->operation == 'sell' ? 'selected' : '' }}>Sell</option>
+                                <option value="">{{ __('Select Operation') }}</option>
+                                <option value="buy" {{ isset($data) && $data->operation == 'buy' ? 'selected' : '' }}>{{ __('Buy') }}</option>
+                                <option value="sell" {{ isset($data) && $data->operation == 'sell' ? 'selected' : '' }}>{{ __('Sell') }}</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="status" class="form-label">Status</label>
+                            <label for="status" class="form-label">{{ __('Status') }}</label>
                             <select id="status" name="status" class="form-select" required>
-                                <option value="">Select Status</option>
+                                <option value="">{{ __('Select Status') }}</option>
                                 <option value="1" {{ isset($data) && $data->status == 1 ? 'selected' : '' }}>Suspendido</option>
                                 <option value="2" {{ isset($data) && $data->status == 2 ? 'selected' : '' }}>Suspender</option>
                                 <option value="3" {{ isset($data) && $data->status == 3 ? 'selected' : '' }}>Activar</option>
@@ -103,7 +103,7 @@
 
                     <div class="col-md-12">
                         <div class="form-group">
-                            <label for="description" class="form-label">Description</label>
+                            <label for="description" class="form-label">{{ __('Description') }}</label>
                             <textarea id="description" name="description" class="form-control" rows="3">{{ isset($data) ? $data->description : '' }}</textarea>
                         </div>
                     </div>
@@ -113,54 +113,54 @@
 
         <!-- Financial Information Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Financial Information</h5>
+            <h5 class="card-header">{{ __('Financial Information') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="currency_id" class="form-label">Currency (optional)</label>
+                            <label for="currency_id" class="form-label">{{ __('Currency') }} ({{ __('optional') }})</label>
                             <select id="currency_id" name="currency_id" class="select2 form-select" data-allow-clear="true">
-                                <option value="">Select Currency</option>
+                                <option value="">{{ __('Select Currency') }}</option>
 
                                 <option value="840" {{ isset($data) && $data->currency_id == 840 ? 'selected' : '' }}>USD - United States Dollar</option>
                                 <option value="978" {{ isset($data) && $data->currency_id == 978 ? 'selected' : '' }}>EUR - Euro</option>
                             </select>
-                            <small class="text-muted">If not selected, system default will be used</small>
+                            <small class="text-muted">{{ __('If not selected, system default will be used') }}</small>
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="price" class="form-label">Price</label>
+                            <label for="price" class="form-label">{{ __('Price') }}</label>
                             <input type="number" id="price" name="price" class="form-control" step="0.01" value="{{ isset($data) ? $data->price : '' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="discount" class="form-label">Discount (%)</label>
+                            <label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
                             <input type="number" id="discount" name="discount" class="form-control" step="1" max="30" value="{{ isset($data) ? $data->discount : '0' }}">
-                            <small class="text-muted">Maximum discount allowed: 30%</small>
+                            <small class="text-muted">{{ __('Maximum discount allowed: 30%') }}</small>
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="frequency" class="form-label">Frequency (months)</label>
+                            <label for="frequency" class="form-label">{{ __('Frequency') }} ({{ __('months') }})</label>
                             <input type="number" id="frequency" name="frequency" class="form-control" value="{{ isset($data) ? $data->frequency : '1' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="next_billing" class="form-label">Next Billing Date</label>
+                            <label for="next_billing" class="form-label">{{ __('Next Billing Date') }}</label>
                             <input type="text" id="next_billing" name="next_billing" class="form-control flatpickr-date" value="{{ isset($data) && $data->next_billing ? $data->next_billing->format('Y-m-d') : '' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="expires_at" class="form-label">Expiration Date</label>
+                            <label for="expires_at" class="form-label">{{ __('Expiration Date') }}</label>
                             <input type="text" id="expires_at" name="expires_at" class="form-control flatpickr-date" value="{{ isset($data) && $data->expires_at ? $data->expires_at->format('Y-m-d') : '' }}">
                         </div>
                     </div>
@@ -170,28 +170,28 @@
 
         <!-- Domain & Hosting Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Domain & Hosting</h5>
+            <h5 class="card-header">{{ __('Domain & Hosting') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="data_domain" class="form-label">Domain</label>
+                            <label for="data_domain" class="form-label">{{ __('Domain') }}</label>
                             <input type="text" id="data_domain" name="data[domain]" class="form-control" value="{{ isset($data) ? ($data->data['domain'] ?? '') : '' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="data_ip" class="form-label">IP Address</label>
+                            <label for="data_ip" class="form-label">{{ __('IP Address') }}</label>
                             <input type="text" id="data_ip" name="data[ip]" class="form-control" value="{{ isset($data) ? ($data->data['ip'] ?? '') : '' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="data_server_id" class="form-label">Server</label>
+                            <label for="data_server_id" class="form-label">{{ __('Server') }}</label>
                             <select id="data_server_id" name="data[server_id]" class="form-select">
-                                <option value="">Select Server</option>
+                                <option value="">{{ __('Select Server') }}</option>
                                 @foreach(\App\Models\Server::orderBy('name')->get() as $server)
                                     <option value="{{ $server->id }}" {{ isset($data) && isset($data->data['server_id']) && $data->data['server_id'] == $server->id ? 'selected' : '' }}>
                                         {{ $server->name }} ({{ $server->ip }})
@@ -203,17 +203,17 @@
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="data_plan" class="form-label">Plan</label>
+                            <label for="data_plan" class="form-label">{{ __('Plan') }}</label>
                             <input type="text" id="data_plan" name="data[plan]" class="form-control" value="{{ isset($data) ? ($data->data['plan'] ?? '') : '' }}">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="data_email_service" class="form-label">Email Service</label>
+                            <label for="data_email_service" class="form-label">{{ __('Email Service') }}</label>
                             <select id="data_email_service" name="data[email_service]" class="form-select">
-                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>No</option>
+                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>{{ __('No') }}</option>
                             </select>
                         </div>
                     </div>
@@ -223,20 +223,20 @@
 
         <!-- DNS Configuration Card -->
         <div class="card mb-4">
-            <h5 class="card-header">DNS Configuration</h5>
+            <h5 class="card-header">{{ __('DNS Configuration') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="data_dns" class="form-label">DNS Servers</label>
+                            <label for="data_dns" class="form-label">{{ __('DNS Servers') }}</label>
                             <input type="text" id="data_dns" name="data[dns]" class="form-control" value="{{ isset($data) ? ($data->data['dns'] ?? '') : '' }}">
-                            <small class="text-muted">Separate multiple values with commas</small>
+                            <small class="text-muted">{{ __('Separate multiple values with commas') }}</small>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="data_spf" class="form-label">SPF Record</label>
+                            <label for="data_spf" class="form-label">{{ __('SPF Record') }}</label>
                             <input type="text" id="data_spf" name="data[spf]" class="form-control" value="{{ isset($data) ? ($data->data['spf'] ?? '') : '' }}">
                         </div>
                     </div>
@@ -246,14 +246,14 @@
 
         <!-- Technology Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Technology Details</h5>
+            <h5 class="card-header">{{ __('Technology Details') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="data_os" class="form-label">Operating System</label>
+                            <label for="data_os" class="form-label">{{ __('Operating System') }}</label>
                             <select id="data_os" name="data[os]" class="form-select">
-                                <option value="">Select Operating System</option>
+                                <option value="">{{ __('Select Operating System') }}</option>
                                 <option value="CentOS 7" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'CentOS 7' ? 'selected' : '' }}>CentOS 7</option>
                                 <option value="CentOS 8" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'CentOS 8' ? 'selected' : '' }}>CentOS 8</option>
                                 <option value="AlmaLinux 8" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'AlmaLinux 8' ? 'selected' : '' }}>AlmaLinux 8</option>
@@ -271,9 +271,9 @@
 
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="data_control_panel" class="form-label">Control Panel</label>
+                            <label for="data_control_panel" class="form-label">{{ __('Control Panel') }}</label>
                             <select id="data_control_panel" name="data[control_panel]" class="form-select">
-                                <option value="">Select Control Panel</option>
+                                <option value="">{{ __('Select Control Panel') }}</option>
                                 <option value="cPanel" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'cPanel' ? 'selected' : '' }}>cPanel</option>
                                 <option value="Plesk" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'Plesk' ? 'selected' : '' }}>Plesk</option>
                                 <option value="aaPanel" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'aaPanel' ? 'selected' : '' }}>aaPanel</option>
@@ -284,9 +284,9 @@
 
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="data_db_version" class="form-label">Database Version</label>
+                            <label for="data_db_version" class="form-label">{{ __('Database Version') }}</label>
                             <select id="data_db_version" name="data[db_version]" class="form-select">
-                                <option value="">Select Database Version</option>
+                                <option value="">{{ __('Select Database Version') }}</option>
                                 <option value="MySQL 5.7" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MySQL 5.7' ? 'selected' : '' }}>MySQL 5.7</option>
                                 <option value="MySQL 8.0" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MySQL 8.0' ? 'selected' : '' }}>MySQL 8.0</option>
                                 <option value="MariaDB 10.5" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MariaDB 10.5' ? 'selected' : '' }}>MariaDB 10.5</option>
@@ -297,9 +297,9 @@
 
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="data_php_version" class="form-label">PHP Version</label>
+                            <label for="data_php_version" class="form-label">{{ __('PHP Version') }}</label>
                             <select id="data_php_version" name="data[php_version]" class="form-select">
-                                <option value="">Select PHP Version</option>
+                                <option value="">{{ __('Select PHP Version') }}</option>
                                 <option value="5.6" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '5.6' ? 'selected' : '' }}>PHP 5.6</option>
                                 <option value="7.0" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.0' ? 'selected' : '' }}>PHP 7.0</option>
                                 <option value="7.1" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.1' ? 'selected' : '' }}>PHP 7.1</option>
@@ -316,9 +316,9 @@
 
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="data_website_type" class="form-label">Website Type</label>
+                            <label for="data_website_type" class="form-label">{{ __('Website Type') }}</label>
                             <select id="data_website_type" name="data[website_type]" class="form-select">
-                                <option value="">Select Type</option>
+                                <option value="">{{ __('Select Type') }}</option>
                                 <option value="wordpress" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'wordpress' ? 'selected' : '' }}>WordPress</option>
                                 <option value="laravel" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'laravel' ? 'selected' : '' }}>Laravel</option>
                                 <option value="drupal" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'drupal' ? 'selected' : '' }}>Drupal</option>
@@ -335,20 +335,20 @@
 
         <!-- Server Access Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Server Access</h5>
+            <h5 class="card-header">{{ __('Server Access') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="data_email" class="form-label">Email</label>
+                            <label for="data_email" class="form-label">{{ __('Email') }}</label>
                             <input type="text" id="data_email" name="data[email]" class="form-control" value="{{ isset($data) ? ($data->data['email'] ?? '') : '' }}">
-                            <small class="text-muted">Separate multiple emails with commas</small>
+                            <small class="text-muted">{{ __('Separate multiple emails with commas') }}</small>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="data_user" class="form-label">Username</label>
+                            <label for="data_user" class="form-label">{{ __('Username') }}</label>
                             <input type="text" id="data_user" name="data[user]" class="form-control" value="{{ isset($data) ? ($data->data['user'] ?? '') : '' }}">
                         </div>
                     </div>
@@ -386,15 +386,15 @@
 
         <!-- Quotas & Limits Card -->
         <div class="card mb-4">
-            <h5 class="card-header">Quotas & Limits</h5>
+            <h5 class="card-header">{{ __('Quotas & Limits') }}</h5>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-2">
                         <div class="form-group">
-                            <label for="data_backup" class="form-label">Backup</label>
+                            <label for="data_backup" class="form-label">{{ __('Backup') }}</label>
                             <select id="data_backup" name="data[backup]" class="form-select">
-                                <option value="1" {{ isset($data) && isset($data->data['backup']) && $data->data['backup'] == 1 ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ isset($data) && isset($data->data['backup']) && $data->data['backup'] == 0 ? 'selected' : '' }}>No</option>
+                                <option value="1" {{ isset($data) && isset($data->data['backup']) && $data->data['backup'] == 1 ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ isset($data) && isset($data->data['backup']) && $data->data['backup'] == 0 ? 'selected' : '' }}>{{ __('No') }}</option>
                             </select>
                         </div>
                     </div>
@@ -476,8 +476,8 @@
     <!-- Submit Buttons -->
     <div class="row mt-4">
         <div class="col-md-12 text-start">
-            <button type="submit" form="serviceForm" class="btn btn-primary">Save</button>
-            <a href="{{ route('service-list') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" form="serviceForm" class="btn btn-primary">{{ __('Save') }}</button>
+            <a href="{{ route('service-list') }}" class="btn btn-secondary">{{ __('Cancel') }}</a>
         </div>
     </div>
 </div>

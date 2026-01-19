@@ -15,8 +15,11 @@ class SubscriptionProductSeeder extends Seeder
         // Mailer Products (from https://revisionalpha.com/emailer)
         $mailerProducts = [
             [
+                'stripe_id' => 'prod_TgFjxc4y8IGwPW',
+                'stripe_product' => 'prod_TgFjxc4y8IGwPW',
+                'stripe_price' => 'price_1SitE6RwN51ygFdeuoV0tTLf',
                 'name' => 'Mailer Basic',
-                'description' => 'Ideal para comenzar',
+                'description' => 'Perfecto para pequeñas empresas que están comenzando con email marketing',
                 'category' => 'mailer',
                 'plan' => 'basic',
                 'type' => 'mailer',
@@ -27,8 +30,11 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_TgFmhp9iYHH3Q4',
+                'stripe_product' => 'prod_TgFmhp9iYHH3Q4',
+                'stripe_price' => 'price_1SitGURwN51ygFdeoS4K9YDn',
                 'name' => 'Mailer Foundation',
-                'description' => 'Para empresas en crecimiento',
+                'description' => 'Ideal para empresas que necesitan escalar sus campañas de email marketing',
                 'category' => 'mailer',
                 'plan' => 'foundation',
                 'type' => 'mailer',
@@ -39,8 +45,11 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_TgFmbs3kRkpGxu',
+                'stripe_product' => 'prod_TgFmbs3kRkpGxu',
+                'stripe_price' => 'price_1SitHHRwN51ygFde3eMKuUtU',
                 'name' => 'Mailer Scale',
-                'description' => 'Para grandes empresas',
+                'description' => 'Solución completa para empresas que requieren máxima personalización y soporte',
                 'category' => 'mailer',
                 'plan' => 'scale',
                 'type' => 'mailer',
@@ -55,6 +64,9 @@ class SubscriptionProductSeeder extends Seeder
         // Mentoring Products (Strategic Growth Framework)
         $mentoringProducts = [
             [
+                'stripe_id' => 'prod_ToCuDuMzFmqiCq',
+                'stripe_product' => 'prod_ToCuDuMzFmqiCq',
+                'stripe_price' => 'price_1SqaV5RwN51ygFdeB67j70Hb',
                 'name' => 'Strategic Growth Framework Creation',
                 'description' => 'Fundamentos: Tu dossier comercial, Tu fachada digital, Entender tu juego',
                 'category' => 'mentoring',
@@ -67,6 +79,9 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_ToCvPOhqRhdGXF',
+                'stripe_product' => 'prod_ToCvPOhqRhdGXF',
+                'stripe_price' => 'price_1SqaVqRwN51ygFde4jBohE1d',
                 'name' => 'Strategic Growth Framework Operations',
                 'description' => 'Operaciones: Tu embudo en automático, Tu embudo de operaciones, Tu business playbook, Scale framework',
                 'category' => 'mentoring',
@@ -79,6 +94,9 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_ToCvJxvt9qUVWL',
+                'stripe_product' => 'prod_ToCvJxvt9qUVWL',
+                'stripe_price' => 'price_1SqaW2RwN51ygFdeV48zrJJ1',
                 'name' => 'Strategic Growth Framework Bussiness Exit',
                 'description' => 'Escalado: Simplificar tu negocio, Quitar al fundador, Crear tus managers, Generar tu cultura, Business exit',
                 'category' => 'mentoring',
@@ -91,6 +109,9 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_ToCw7vHmQqegT3',
+                'stripe_product' => 'prod_ToCw7vHmQqegT3',
+                'stripe_price' => 'price_1SqaWARwN51ygFde6FcSPhNE',
                 'name' => 'Strategic Growth Framework Complete',
                 'description' => 'Bundle completo: Incluye los 3 módulos (12 pasos)',
                 'category' => 'mentoring',
@@ -107,6 +128,9 @@ class SubscriptionProductSeeder extends Seeder
         // Hosting Products (from https://revisionalpha.com/wordpress)
         $hostingProducts = [
             [
+                'stripe_id' => 'prod_ToCwLemEsmyfdB',
+                'stripe_product' => 'prod_ToCwLemEsmyfdB',
+                'stripe_price' => 'price_1SqaWJRwN51ygFdew8AD7i0S',
                 'name' => 'WordPress Profesional',
                 'description' => 'Hosting WordPress Profesional: Dominio gratis el primer año, 100 GB almacenamiento, WordPress preinstalado, SSL gratis, backups diarios',
                 'category' => 'hosting',
@@ -119,6 +143,9 @@ class SubscriptionProductSeeder extends Seeder
                 'active' => true,
             ],
             [
+                'stripe_id' => 'prod_ToCwJGi0qi7S7x',
+                'stripe_product' => 'prod_ToCwJGi0qi7S7x',
+                'stripe_price' => 'price_1SqaWPRwN51ygFdeviaeCVOz',
                 'name' => 'WordPress Support',
                 'description' => 'Servicios adicionales: Asesoramiento técnico, Optimización SEO, Adaptación móvil, Soporte vía WhatsApp, Actualización de Plugins',
                 'category' => 'support',
@@ -138,9 +165,7 @@ class SubscriptionProductSeeder extends Seeder
         {
             SubscriptionProduct::updateOrCreate(
                 [
-                    'category' => $productData['category'],
-                    'plan' => $productData['plan'],
-                    'type' => $productData['type'],
+                    'stripe_id' => $productData['stripe_id'],
                 ],
                 $productData,
             );

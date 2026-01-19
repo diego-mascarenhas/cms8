@@ -2,14 +2,14 @@
 
 namespace App\DataTables;
 
-use App\Models\Product;
+use App\Models\SubscriptionProduct;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-class ProductDataTable extends DataTable
+class SubscriptionProductDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -19,54 +19,61 @@ class ProductDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->editColumn('status', function ($product)
+            ->editColumn('active', function ($product)
             {
-                return $product->status
+                return $product->active
                     ? '<span class="badge bg-success">Activo</span>'
                     : '<span class="badge bg-secondary">Inactivo</span>';
             })
-            ->editColumn('price', function ($product)
+            ->editColumn('unit_amount', function ($product)
             {
-                $currency = $product->currency ? $product->currency->code : 'USD';
-
-                return number_format($product->price, 2, ',', '.').' '.$currency;
+                return $product->getFormattedPrice();
             })
-            ->editColumn('category.name', function ($product)
+            ->addColumn('billing_frequency', function ($product)
             {
-                return $product->category ? $product->category->name : '—';
+                return $product->getBillingFrequency() ?? '—';
+            })
+            ->editColumn('category', function ($product)
+            {
+                return $product->category ?? '—';
+            })
+            ->editColumn('plan', function ($product)
+            {
+                return $product->plan ?? '—';
+            })
+            ->editColumn('type', function ($product)
+            {
+                return $product->type ?? '—';
             })
             ->addColumn('action', function ($product)
             {
                 $html = '<div class="d-flex justify-content-center align-items-center">';
-                if (auth()->user()->can('product.show'))
-                {
-                    $html .= '<a href="'.route('product.show', $product->id).'" class="text-body">
+                if (auth()->user()->hasRole('root')) {
+                    $html .= '<a href="'.route('account.products.edit', $product->id).'" class="text-body">
                         <i class="ti ti-edit ti-sm me-2"></i>
                     </a>';
                 }
                 $html .= '</div>';
-
                 return $html;
             })
             ->setRowId('id')
-            ->rawColumns(['status', 'action']);
+            ->rawColumns(['active', 'action']);
     }
 
-    public function query(Product $model): QueryBuilder
+    public function query(SubscriptionProduct $model): QueryBuilder
     {
-        return $model->newQuery()->with(['category', 'currency']);
+        return $model->newQuery()->orderBy('name', 'asc');
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('product-table')
+            ->setTableId('subscription-product-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
-            ->processing(false)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'pageLength' => 60,
@@ -79,28 +86,45 @@ class ProductDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title(__('Name'))
+                ->title('Nombre')
                 ->addClass('all')
                 ->orderable(true)
                 ->searchable(true),
-            Column::make('category.name')
-                ->title(__('Category'))
+            Column::make('category')
+                ->title('Categoría')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true)
                 ->searchable(true),
-            Column::make('price')
-                ->title(__('Price'))
+            Column::make('plan')
+                ->title('Plan')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('type')
+                ->title('Tipo')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('unit_amount')
+                ->title('Precio')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::computed('status')
-                ->title(__('Status'))
+            Column::computed('billing_frequency')
+                ->title('Frecuencia')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(false),
+            Column::computed('active')
+                ->title('Estado')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
             Column::computed('action')
-                ->title(__('Actions'))
+                ->title('Acciones')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(false)
@@ -110,6 +134,6 @@ class ProductDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Product_'.date('YmdHis');
+        return 'SubscriptionProduct_'.date('YmdHis');
     }
 }

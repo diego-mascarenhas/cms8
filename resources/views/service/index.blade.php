@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Services')
+@section('title', __('Services'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -43,8 +43,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Services</h4>
-        <p class="text-muted">Track your clients' services</p>
+        <h4 class="mb-1 mt-3">{{ __('Services') }}</h4>
+        <p class="text-muted">{{ __('Track your clients\' services') }}</p>
     </div>
 </div>
 
@@ -74,12 +74,12 @@
             <div class="card-body">
              <div class="d-flex align-items-start justify-content-between">
                 <div class="content-left">
-                    <span>Sales</span>
+                    <span>{{ __('Sales') }}</span>
                     <div class="d-flex align-items-end mt-2">
                         <h3 class="mb-0 me-2">{{ number_format($total_sell, 0, ',' ,'.') }}</h3>
                         <small class="text-success">({{ number_format($percentage_sell, 0) }}%)</small>
                     </div>
-                    <small>Total Sales</small>
+                    <small>{{ __('Total Sales') }}</small>
                 </div>
                 <span class="badge bg-label-success rounded p-2">
                     <i class="fas fa-chart-line ti-sm"></i>
@@ -88,18 +88,18 @@
         </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Purchases</span>
+                        <span>{{ __('Purchases') }}</span>
                         <div class="d-flex align-items-end mt-2">
                             <h3 class="mb-0 me-2">{{ number_format($total_buy, 0, ',' ,'.') }}</h3>
                             <small class="text-danger">({{ number_format($percentage_buy, 0) }}%)</small>
                         </div>
-                        <small>Total Purchases</small>
+                        <small>{{ __('Total Purchases') }}</small>
                     </div>
                     <span class="badge bg-label-primary rounded p-2">
                         <i class="fas fa-shopping-cart ti-sm"></i>
@@ -108,18 +108,18 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Profit</span>
+                        <span>{{ __('Profit') }}</span>
                         <div class="d-flex align-items-end mt-2">
                             <h3 class="mb-0 me-2">{{ number_format($total_profit, 0, ',' ,'.') }}</h3>
                             <small class="text-info">({{ number_format($percentage_profit, 0) }}%)</small>
                         </div>
-                        <small>Recent analytics</small>
+                        <small>{{ __('Recent analytics') }}</small>
                     </div>
                     <span class="badge bg-label-info rounded p-2">
                         <i class="ti ti-currency-dollar ti-sm"></i>
@@ -128,18 +128,18 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Pending Services</span>
+                        <span>{{ __('Pending Services') }}</span>
                         <div class="d-flex align-items-end mt-2">
                             <h3 class="mb-0 me-2">{{ $pending_services }}</h3>
                             <small class="text-warning">({{ number_format($percentage_pending, 2) }}%)</small>
                         </div>
-                        <small>Pending activation or suspension</small>
+                        <small>{{ __('Pending activation or suspension') }}</small>
                     </div>
                     <span class="badge bg-label-warning rounded p-2">
                         <i class="ti ti-clock ti-sm"></i>
@@ -159,13 +159,13 @@
 <script>
     function deleteRecord(id, element) {
         Swal.fire({
-            title: 'Are you sure you want to delete this record?',
-            text: 'This action cannot be undone',
+            title: '{{ __("Are you sure you want to delete this record?") }}',
+            text: '{{ __("This action cannot be undone") }}',
             icon: 'warning',
             showCloseButton: false,
             showCancelButton: false,
             confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete'
+            confirmButtonText: '{{ __("Yes, delete") }}'
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch("{{ route('service.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
