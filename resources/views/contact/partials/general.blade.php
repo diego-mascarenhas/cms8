@@ -55,29 +55,57 @@
             </div>
             @endcan
 
-            <!-- Files -->
-            <div class="col-12 opacity-50">
+            <!-- Astral Profile -->
+            @if($astralProfile)
+            <div class="col-12">
                 <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-stars me-2"></i>
+                            Perfil Astrológico
+                        </h5>
+                        <span class="badge bg-label-primary">
+                            {{ $astralProfile['zodiac']['symbol'] }} {{ $astralProfile['zodiac']['sign'] }}
+                        </span>
+                    </div>
                     <div class="card-body">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="ti ti-file-text me-2"></i>
-                                    <span>Contrato de alta Servicio Molón #1</span>
-                                    <small class="text-muted ms-auto">09-07-2024</small>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="d-flex align-items-center">
-                                    <i class="ti ti-file-text me-2"></i>
-                                    <span>Briefing para conocerte</span>
-                                    <small class="text-muted ms-auto">09-07-2024</small>
-                                </div>
-                            </li>
-                        </ul>
+                        <!-- Zodiac & North Node Info -->
+                        <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                            <div>
+                                <small class="text-muted d-block">Signo Solar</small>
+                                <strong>{{ $astralProfile['zodiac']['sign'] }}</strong>
+                                <span class="badge bg-label-{{ $astralProfile['zodiac']['element'] === 'Fuego' ? 'danger' : ($astralProfile['zodiac']['element'] === 'Tierra' ? 'success' : ($astralProfile['zodiac']['element'] === 'Aire' ? 'info' : 'primary')) }} ms-2">
+                                    {{ $astralProfile['zodiac']['element'] }}
+                                </span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block">Nodo Norte</small>
+                                <strong>{{ $astralProfile['north_node']['north'] }}</strong>
+                            </div>
+                        </div>
+
+                        <!-- AI Interpretation -->
+                        <div class="mb-3">
+                            <p class="mb-0" style="line-height: 1.6; text-align: justify;">
+                                {{ $astralProfile['interpretation'] }}
+                            </p>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                            <small class="text-muted">
+                                <i class="ti ti-calendar ti-xs me-1"></i>
+                                {{ $astralProfile['birth_date'] }} ({{ $astralProfile['age'] }} años)
+                            </small>
+                            <small class="text-muted">
+                                <i class="ti ti-sparkles ti-xs me-1"></i>
+                                Generado con AI
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 

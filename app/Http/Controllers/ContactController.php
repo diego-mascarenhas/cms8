@@ -13,6 +13,7 @@ use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\MessageDelivery;
 use App\Models\Source;
+use App\Services\AstralChartService;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -463,9 +464,18 @@ class ContactController extends Controller
         $enterpriseStatuses = ContactStatus::getOptions();
         $countries = Country::orderBy('name')->get();
 
+        // Generate astral profile if birthday is available
+        $astralProfile = null;
+        if ($data->birthday)
+        {
+            $astralService = new AstralChartService;
+            $countryName = $data->country ? \App\Models\Country::find($data->country)->name ?? null : null;
+            $astralProfile = $astralService->generateAstralProfile($data->id, $data->birthday, $countryName);
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile'),
         );
     }
 
