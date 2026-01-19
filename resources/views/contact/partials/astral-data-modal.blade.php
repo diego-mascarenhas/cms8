@@ -23,10 +23,10 @@
                                 <i class="ti ti-clock ti-xs me-1"></i>
                                 Hora de Nacimiento
                             </label>
-                            <input 
-                                type="time" 
-                                class="form-control" 
-                                id="birth_time" 
+                            <input
+                                type="time"
+                                class="form-control"
+                                id="birth_time"
                                 name="birth_time"
                                 value="{{ $data->astralProfile->birth_time ?? '' }}"
                             >
@@ -39,10 +39,10 @@
                                 <i class="ti ti-map-pin ti-xs me-1"></i>
                                 Ciudad de Nacimiento
                             </label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="birth_city" 
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="birth_city"
                                 name="birth_city"
                                 value="{{ $data->astralProfile->birth_city ?? '' }}"
                                 placeholder="Ej: Madrid, España"
@@ -54,11 +54,11 @@
                             <label for="birth_latitude" class="form-label">
                                 Latitud <small class="text-muted">(opcional)</small>
                             </label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 step="0.0000001"
-                                class="form-control" 
-                                id="birth_latitude" 
+                                class="form-control"
+                                id="birth_latitude"
                                 name="birth_latitude"
                                 value="{{ $data->astralProfile->birth_latitude ?? '' }}"
                                 placeholder="40.4168"
@@ -69,11 +69,11 @@
                             <label for="birth_longitude" class="form-label">
                                 Longitud <small class="text-muted">(opcional)</small>
                             </label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 step="0.0000001"
-                                class="form-control" 
-                                id="birth_longitude" 
+                                class="form-control"
+                                id="birth_longitude"
                                 name="birth_longitude"
                                 value="{{ $data->astralProfile->birth_longitude ?? '' }}"
                                 placeholder="-3.7038"
@@ -121,19 +121,19 @@
 $(document).ready(function() {
     $('#astralDataForm').on('submit', function(e) {
         e.preventDefault();
-        
+
         var form = $(this);
         var url = form.attr('action');
         var submitBtn = form.find('button[type="submit"]');
         var originalText = submitBtn.html();
-        
+
         // Reset previous errors
         form.find('.is-invalid').removeClass('is-invalid');
         form.find('.invalid-feedback').remove();
-        
+
         // Disable submit button
         submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Guardando...');
-        
+
         $.ajax({
             type: "POST",
             url: url,
@@ -141,7 +141,7 @@ $(document).ready(function() {
             success: function(response) {
                 $('#astralDataModal').modal('hide');
                 toastr.success(response.message || 'Datos guardados correctamente. Recalculando perfil astrológico...');
-                
+
                 // Reload page after 1 second to show updated profile
                 setTimeout(function() {
                     location.reload();
@@ -149,7 +149,7 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 submitBtn.prop('disabled', false).html(originalText);
-                
+
                 if (xhr.status === 422) {
                     var errors = xhr.responseJSON.errors;
                     $.each(errors, function(key, value) {

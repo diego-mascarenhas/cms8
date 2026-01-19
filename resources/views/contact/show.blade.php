@@ -385,7 +385,7 @@
     <!-- Modal -->
     {{-- @include('_partials/_modals/modal-edit-user') --}}
     {{-- @include('_partials/_modals/modal-upgrade-plan') --}}
-    
+
     @if($data->birthday)
         @include('contact.partials.astral-data-modal')
     @endif
