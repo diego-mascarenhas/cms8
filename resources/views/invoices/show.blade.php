@@ -175,7 +175,7 @@
   <div class="col-xl-3 col-md-4 col-12 invoice-actions">
     <div class="card">
       <div class="card-body">
-        <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoices.index') }}">
+        <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index') }}">
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
@@ -240,7 +240,7 @@ function deleteInvoice(id) {
             }
         }).then(response => {
             if (response.ok) {
-                window.location.href = '{{ route("invoices.index") }}';
+                window.location.href = '{{ route("invoice.index") }}';
             }
         });
     }

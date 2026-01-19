@@ -96,10 +96,10 @@
       "menuHeader": "Billing"
     },
     {
-      "url": "invoices",
+      "url": "invoice/list",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",
-      "slug": "invoices",
+      "slug": "invoice-list",
       "module_key": "invoices"
     },
     {
@@ -110,11 +110,11 @@
       "module_key": "payments"
     },
     {
-      "url": "earning/list",
-      "name": "Earnings",
-      "icon": "menu-icon tf-icons ti ti-moneybag",
-      "slug": "earning-list",
-      "module_key": "earnings"
+      "url": "income/list",
+      "name": "Incomes",
+      "icon": "menu-icon tf-icons ti ti-trending-up",
+      "slug": "income-list",
+      "module_key": "incomes"
     },
     {
       "url": "fare",
@@ -126,22 +126,15 @@
     {
       "url": "expense/list",
       "name": "Expenses",
-      "icon": "menu-icon tf-icons ti ti-receipt",
+      "icon": "menu-icon tf-icons ti ti-trending-down",
       "slug": "expense-list",
       "module_key": "expenses"
     },
     {
-      "url": "accounting",
-      "name": "Accounting",
-      "icon": "menu-icon tf-icons ti ti-receipt-tax",
-      "slug": "accounting",
-      "module_key": "accounting"
-    },
-    {
-      "url": "financial/list",
-      "name": "Evolution",
-      "icon": "menu-icon tf-icons ti ti-graph",
-      "slug": "financial-list",
+      "url": "finance-dashboard",
+      "name": "Finanzas",
+      "icon": "menu-icon tf-icons ti ti-chart-line",
+      "slug": "finance-dashboard",
       "module_key": "financial"
     },
     {

@@ -109,10 +109,10 @@ class ModuleSeeder extends Seeder
 			'group' => 'billing',
 			'order' => 4,
 		],
-		'earnings' => [
-			'name' => 'Earnings',
+		'incomes' => [
+			'name' => 'Incomes',
 			'icon' => 'coin',
-			'description' => 'Earnings management module',
+			'description' => 'Incomes management module',
 			'group' => 'billing',
 			'order' => 5,
 		],
@@ -335,7 +335,7 @@ class ModuleSeeder extends Seeder
 	];
 
 	protected $teamModules = [
-		1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+		1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
 	];
 
 	public function run()
