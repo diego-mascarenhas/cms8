@@ -53,7 +53,6 @@ class AstralChartService
         ['start' => '1995-07', 'end' => '1997-01', 'sign' => 'Libra', 'south' => 'Aries'],
         ['start' => '1997-01', 'end' => '1998-07', 'sign' => 'Virgo', 'south' => 'Piscis'],
         ['start' => '1998-07', 'end' => '2000-04', 'sign' => 'Leo', 'south' => 'Acuario'],
-
         // 2000s
         ['start' => '2000-04', 'end' => '2001-10', 'sign' => 'Cáncer', 'south' => 'Capricornio'],
         ['start' => '2001-10', 'end' => '2003-04', 'sign' => 'Géminis', 'south' => 'Sagitario'],
@@ -62,7 +61,6 @@ class AstralChartService
         ['start' => '2006-06', 'end' => '2007-12', 'sign' => 'Piscis', 'south' => 'Virgo'],
         ['start' => '2007-12', 'end' => '2009-08', 'sign' => 'Acuario', 'south' => 'Leo'],
         ['start' => '2009-08', 'end' => '2011-03', 'sign' => 'Capricornio', 'south' => 'Cáncer'],
-
         // 2010s
         ['start' => '2011-03', 'end' => '2012-08', 'sign' => 'Sagitario', 'south' => 'Géminis'],
         ['start' => '2012-08', 'end' => '2014-02', 'sign' => 'Escorpio', 'south' => 'Tauro'],
@@ -70,7 +68,6 @@ class AstralChartService
         ['start' => '2015-11', 'end' => '2017-05', 'sign' => 'Virgo', 'south' => 'Piscis'],
         ['start' => '2017-05', 'end' => '2018-11', 'sign' => 'Leo', 'south' => 'Acuario'],
         ['start' => '2018-11', 'end' => '2020-05', 'sign' => 'Cáncer', 'south' => 'Capricornio'],
-
         // 2020s - Present
         ['start' => '2020-05', 'end' => '2022-01', 'sign' => 'Géminis', 'south' => 'Sagitario'],
         ['start' => '2022-01', 'end' => '2023-07', 'sign' => 'Tauro', 'south' => 'Escorpio'],
@@ -274,7 +271,7 @@ class AstralChartService
             ],
             'north_node' => [
                 'north' => $profile->north_node_sign,
-                'south' => '', // Could be stored if needed
+                'south' => '',  // Could be stored if needed
             ],
             'human_design' => $profile->human_design_data ?? [],
             'birth_date' => $profile->birth_date->format('d/m/Y'),

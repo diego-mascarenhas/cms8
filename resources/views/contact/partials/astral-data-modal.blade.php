@@ -23,12 +23,12 @@
                                 <i class="ti ti-clock ti-xs me-1"></i>
                                 Hora de Nacimiento
                             </label>
-                            <input
-                                type="time"
-                                class="form-control"
-                                id="birth_time"
+                            <input 
+                                type="time" 
+                                class="form-control" 
+                                id="birth_time" 
                                 name="birth_time"
-                                value="{{ $data->astralProfile->birth_time ?? '' }}"
+                                value="{{ optional($data->astralProfile)->birth_time ? \Carbon\Carbon::parse(optional($data->astralProfile)->birth_time)->format('H:i') : '' }}"
                             >
                             <small class="text-muted">Hora exacta (formato 24h)</small>
                         </div>
@@ -39,12 +39,12 @@
                                 <i class="ti ti-map-pin ti-xs me-1"></i>
                                 Ciudad de Nacimiento
                             </label>
-                            <input
-                                type="text"
-                                class="form-control"
-                                id="birth_city"
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="birth_city" 
                                 name="birth_city"
-                                value="{{ $data->astralProfile->birth_city ?? '' }}"
+                                value="{{ old('birth_city', optional($data->astralProfile)->birth_city) }}"
                                 placeholder="Ej: Madrid, España"
                             >
                         </div>
@@ -54,13 +54,13 @@
                             <label for="birth_latitude" class="form-label">
                                 Latitud <small class="text-muted">(opcional)</small>
                             </label>
-                            <input
-                                type="number"
+                            <input 
+                                type="number" 
                                 step="0.0000001"
-                                class="form-control"
-                                id="birth_latitude"
+                                class="form-control" 
+                                id="birth_latitude" 
                                 name="birth_latitude"
-                                value="{{ $data->astralProfile->birth_latitude ?? '' }}"
+                                value="{{ old('birth_latitude', optional($data->astralProfile)->birth_latitude) }}"
                                 placeholder="40.4168"
                             >
                         </div>
@@ -69,13 +69,13 @@
                             <label for="birth_longitude" class="form-label">
                                 Longitud <small class="text-muted">(opcional)</small>
                             </label>
-                            <input
-                                type="number"
+                            <input 
+                                type="number" 
                                 step="0.0000001"
-                                class="form-control"
-                                id="birth_longitude"
+                                class="form-control" 
+                                id="birth_longitude" 
                                 name="birth_longitude"
-                                value="{{ $data->astralProfile->birth_longitude ?? '' }}"
+                                value="{{ old('birth_longitude', optional($data->astralProfile)->birth_longitude) }}"
                                 placeholder="-3.7038"
                             >
                         </div>
@@ -87,14 +87,15 @@
                             </label>
                             <select class="form-select" id="birth_timezone" name="birth_timezone">
                                 <option value="">Seleccionar...</option>
-                                <option value="Europe/Madrid" {{ ($data->astralProfile->birth_timezone ?? '') === 'Europe/Madrid' ? 'selected' : '' }}>Europe/Madrid (GMT+1)</option>
-                                <option value="Europe/London" {{ ($data->astralProfile->birth_timezone ?? '') === 'Europe/London' ? 'selected' : '' }}>Europe/London (GMT+0)</option>
-                                <option value="America/New_York" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/New_York' ? 'selected' : '' }}>America/New_York (GMT-5)</option>
-                                <option value="America/Los_Angeles" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/Los_Angeles' ? 'selected' : '' }}>America/Los_Angeles (GMT-8)</option>
-                                <option value="America/Mexico_City" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/Mexico_City' ? 'selected' : '' }}>America/Mexico_City (GMT-6)</option>
-                                <option value="America/Argentina/Buenos_Aires" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/Argentina/Buenos_Aires' ? 'selected' : '' }}>America/Buenos_Aires (GMT-3)</option>
-                                <option value="America/Bogota" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/Bogota' ? 'selected' : '' }}>America/Bogota (GMT-5)</option>
-                                <option value="America/Lima" {{ ($data->astralProfile->birth_timezone ?? '') === 'America/Lima' ? 'selected' : '' }}>America/Lima (GMT-5)</option>
+                                @php $currentTimezone = old('birth_timezone', optional($data->astralProfile)->birth_timezone); @endphp
+                                <option value="Europe/Madrid" {{ $currentTimezone === 'Europe/Madrid' ? 'selected' : '' }}>Europe/Madrid (GMT+1)</option>
+                                <option value="Europe/London" {{ $currentTimezone === 'Europe/London' ? 'selected' : '' }}>Europe/London (GMT+0)</option>
+                                <option value="America/New_York" {{ $currentTimezone === 'America/New_York' ? 'selected' : '' }}>America/New_York (GMT-5)</option>
+                                <option value="America/Los_Angeles" {{ $currentTimezone === 'America/Los_Angeles' ? 'selected' : '' }}>America/Los_Angeles (GMT-8)</option>
+                                <option value="America/Mexico_City" {{ $currentTimezone === 'America/Mexico_City' ? 'selected' : '' }}>America/Mexico_City (GMT-6)</option>
+                                <option value="America/Argentina/Buenos_Aires" {{ $currentTimezone === 'America/Argentina/Buenos_Aires' ? 'selected' : '' }}>America/Buenos_Aires (GMT-3)</option>
+                                <option value="America/Bogota" {{ $currentTimezone === 'America/Bogota' ? 'selected' : '' }}>America/Bogota (GMT-5)</option>
+                                <option value="America/Lima" {{ $currentTimezone === 'America/Lima' ? 'selected' : '' }}>America/Lima (GMT-5)</option>
                             </select>
                         </div>
                     </div>
@@ -119,29 +120,60 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Store original values when modal opens
+    var originalValues = {};
+    
+    $('#astralDataModal').on('show.bs.modal', function() {
+        // Store current values
+        originalValues = {
+            birth_time: $('#birth_time').val(),
+            birth_city: $('#birth_city').val(),
+            birth_latitude: $('#birth_latitude').val(),
+            birth_longitude: $('#birth_longitude').val(),
+            birth_timezone: $('#birth_timezone').val()
+        };
+        
+        console.log('Modal opened with values:', originalValues);
+    });
+    
     $('#astralDataForm').on('submit', function(e) {
         e.preventDefault();
-
+        
         var form = $(this);
         var url = form.attr('action');
         var submitBtn = form.find('button[type="submit"]');
         var originalText = submitBtn.html();
-
+        
+        // Get current form data
+        var formData = {};
+        form.serializeArray().forEach(function(item) {
+            formData[item.name] = item.value;
+        });
+        
+        // If fields are empty but had original values, restore them
+        ['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude', 'birth_timezone'].forEach(function(field) {
+            if (!formData[field] && originalValues[field]) {
+                formData[field] = originalValues[field];
+            }
+        });
+        
+        console.log('Submitting data:', formData);
+        
         // Reset previous errors
         form.find('.is-invalid').removeClass('is-invalid');
         form.find('.invalid-feedback').remove();
-
+        
         // Disable submit button
         submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Guardando...');
-
+        
         $.ajax({
             type: "POST",
             url: url,
-            data: form.serialize(),
+            data: formData,
             success: function(response) {
                 $('#astralDataModal').modal('hide');
                 toastr.success(response.message || 'Datos guardados correctamente. Recalculando perfil astrológico...');
-
+                
                 // Reload page after 1 second to show updated profile
                 setTimeout(function() {
                     location.reload();
@@ -149,7 +181,7 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 submitBtn.prop('disabled', false).html(originalText);
-
+                
                 if (xhr.status === 422) {
                     var errors = xhr.responseJSON.errors;
                     $.each(errors, function(key, value) {
