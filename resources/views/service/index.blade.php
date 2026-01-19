@@ -88,7 +88,7 @@
         </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">
@@ -108,7 +108,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">
@@ -128,7 +128,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-sm-6 col-xl-3">
         <div class="card">
             <div class="card-body">

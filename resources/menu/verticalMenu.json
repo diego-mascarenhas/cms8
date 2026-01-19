@@ -169,7 +169,7 @@
       "name": "Templates",
       "icon": "menu-icon tf-icons ti ti-template",
       "slug": "template.index",
-      "module_key": "mailer"
+      "module_key": "templates"
     },
     {
       "menuHeader": "Automation"
