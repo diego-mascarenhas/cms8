@@ -23,6 +23,11 @@ class TeamPolicy
      */
     public function view(User $user, Team $team): bool
     {
+        // Root users can view any team
+        if ($user->hasRole('root')) {
+            return true;
+        }
+
         return $user->belongsToTeam($team);
     }
 
@@ -39,6 +44,11 @@ class TeamPolicy
      */
     public function update(User $user, Team $team): bool
     {
+        // Root users can update any team
+        if ($user->hasRole('root')) {
+            return true;
+        }
+
         return $user->ownsTeam($team);
     }
 
