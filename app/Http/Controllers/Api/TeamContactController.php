@@ -36,17 +36,34 @@ class TeamContactController extends Controller
     {
         $team = $request->attributes->get('team');
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'surname' => 'nullable|string|max:255',
+            'email' => ['required_without:phone', 'nullable', 'email:rfc', 'max:255'],
+            'phone' => ['required_without:email', 'nullable', 'string', 'max:20', 'regex:/^[+\-\d\s()]+$/'],
+        ], [
+            'name.required' => 'El nombre es obligatorio',
+            'email.required_without' => 'Debe proporcionar al menos un email o teléfono',
+            'email.email' => 'El email debe ser válido',
+            'phone.required_without' => 'Debe proporcionar al menos un teléfono o email',
+            'phone.regex' => 'El teléfono solo puede contener números, espacios y los símbolos + -',
         ]);
+
+        // Clean phone number if provided
+        $cleanPhone = null;
+        if (! empty($validated['phone']))
+        {
+            $cleanPhone = preg_replace('/[^\d]/', '', $validated['phone']);
+        }
 
         $contact = Contact::create([
             'team_id' => $team->id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'name' => $validated['name'],
+            'surname' => $validated['surname'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'phone' => $cleanPhone,
+            'status_id' => 1,
+            'creator_id' => $team->user_id, // Owner of the team
         ]);
 
         return response()->json([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Contact;
 use App\Models\ContactSource;
+use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -35,6 +36,9 @@ class LeadController extends Controller
 
         try
         {
+            // Get the team to use its owner as creator
+            $team = Team::findOrFail($validated['team_id']);
+
             // Clean phone number: remove spaces, dashes, parentheses, plus signs (only if phone is provided)
             $cleanPhone = null;
             if (! empty($validated['phone']))
@@ -52,7 +56,7 @@ class LeadController extends Controller
                 'phone' => $cleanPhone, // Use cleaned phone number or null
                 'team_id' => $validated['team_id'],
                 'status_id' => 1,
-                'creator_id' => auth()->id() ?? 1,
+                'creator_id' => $team->user_id, // Owner of the team
                 'data' => $additionalData, // Store additional BBO data
             ]);
             // ContactSource::create([
