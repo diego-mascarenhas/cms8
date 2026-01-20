@@ -9,6 +9,11 @@ use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
+	public function __construct()
+	{
+		$this->authorizeResource(Invoice::class, 'invoice');
+	}
+
 	public function index(InvoiceDataTable $dataTable)
 	{
 		// Obtener tipos de cambio actuales

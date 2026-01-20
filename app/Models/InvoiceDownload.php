@@ -17,12 +17,16 @@ class InvoiceDownload extends Model
     protected $fillable = [
         'user_id',
         'team_id',
+        'invoice_id',
         'quarter',
         'year',
         'status',
         'file_path',
         'file_name',
         'error_message',
+        'ip_address',
+        'user_agent',
+        'downloaded_at',
     ];
 
     /**

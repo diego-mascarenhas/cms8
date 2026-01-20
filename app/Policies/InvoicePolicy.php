@@ -26,12 +26,8 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole(['admin', 'collaborator', 'client']))
-        {
-            return true;
-        }
-
-        return false;
+        // Only admin can manage invoices
+        return $user->hasRole('admin');
     }
 
     /**
@@ -39,37 +35,8 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        // Admin can see all invoices
-        if ($user->hasRole('admin'))
-        {
-            return true;
-        }
-
-        // Collaborator can see invoices of enterprises they are responsible for
-        if ($user->hasRole('collaborator'))
-        {
-            $enterprise = $invoice->enterprise;
-
-            return $enterprise && $enterprise->responsible_id === $user->id;
-        }
-
-        // Client can see invoices of their enterprise
-        if ($user->hasRole('client'))
-        {
-            // Get user's contact
-            $contact = $user->contact;
-            if (! $contact)
-            {
-                return false;
-            }
-
-            // Check if invoice belongs to any of the contact's enterprises
-            $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
-
-            return in_array($invoice->enterprise_id, $enterpriseIds);
-        }
-
-        return false;
+        // Only admin can view invoices
+        return $user->hasRole('admin');
     }
 
     /**
@@ -77,7 +44,7 @@ class InvoicePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['admin', 'collaborator']);
+        return $user->hasRole('admin');
     }
 
     /**
@@ -85,21 +52,8 @@ class InvoicePolicy
      */
     public function update(User $user, Invoice $invoice): bool
     {
-        // Admin can update all invoices
-        if ($user->hasRole('admin'))
-        {
-            return true;
-        }
-
-        // Collaborator can update invoices of enterprises they are responsible for
-        if ($user->hasRole('collaborator'))
-        {
-            $enterprise = $invoice->enterprise;
-
-            return $enterprise && $enterprise->responsible_id === $user->id;
-        }
-
-        return false;
+        // Only admin can update invoices
+        return $user->hasRole('admin');
     }
 
     /**
@@ -140,29 +94,6 @@ class InvoicePolicy
                 {
                     $q->where('team_id', $user->current_team_id);
                 });
-            }
-
-            if ($user->hasRole('collaborator'))
-            {
-                // Collaborator can see invoices of enterprises they are responsible for
-                return $query->whereHas('enterprise', function ($q) use ($user)
-                {
-                    $q->where('responsible_id', $user->id);
-                });
-            }
-
-            if ($user->hasRole('client'))
-            {
-                // Client can see invoices of their enterprises
-                $contact = $user->contact;
-                if (! $contact)
-                {
-                    return $query->whereRaw('1 = 0');  // Return no results
-                }
-
-                $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
-
-                return $query->whereIn('enterprise_id', $enterpriseIds);
             }
 
             // Other roles have no access

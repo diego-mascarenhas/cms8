@@ -46,6 +46,13 @@
         <h4 class="mb-1 mt-3">{{ __('Invoices') }}</h4>
         <p class="text-muted">{{ __('Manage your receipts') }}</p>
     </div>
+    @can('create', App\Models\Invoice::class)
+    <div class="mt-3 mt-md-0">
+        <a href="{{ route('invoice.create') }}" class="btn btn-primary">
+            <i class="ti ti-plus me-1"></i> Crear Factura
+        </a>
+    </div>
+    @endcan
 </div>
 
 @if(session('success'))
