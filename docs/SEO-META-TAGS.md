@@ -139,14 +139,14 @@ https://www.linkedin.com/post-inspector/
 
 Cada página ahora incluye:
 
-✅ **Title**: Dinámico según la página  
-✅ **Description**: Descripción del CRM  
-✅ **Keywords**: Palabras clave relevantes  
-✅ **Canonical**: URL canónica  
-✅ **Favicon**: Logo del proyecto  
-✅ **Open Graph**: Para redes sociales  
-✅ **Twitter Card**: Para Twitter  
-✅ **CSRF Token**: Seguridad Laravel  
+✅ **Title**: Dinámico según la página
+✅ **Description**: Descripción del CRM
+✅ **Keywords**: Palabras clave relevantes
+✅ **Canonical**: URL canónica
+✅ **Favicon**: Logo del proyecto
+✅ **Open Graph**: Para redes sociales
+✅ **Twitter Card**: Para Twitter
+✅ **CSRF Token**: Seguridad Laravel
 
 ---
 
@@ -192,11 +192,11 @@ php artisan cache:clear
 
 ## 📊 Beneficios
 
-✅ **Mejor SEO**: Descripciones claras y keywords relevantes  
-✅ **Previsualizaciones profesionales**: En WhatsApp, Facebook, Twitter, LinkedIn  
-✅ **Mayor CTR**: Previews atractivos generan más clics  
-✅ **Branding consistente**: Logo y descripción unificados  
-✅ **Experiencia de usuario mejorada**: Información clara desde el preview  
+✅ **Mejor SEO**: Descripciones claras y keywords relevantes
+✅ **Previsualizaciones profesionales**: En WhatsApp, Facebook, Twitter, LinkedIn
+✅ **Mayor CTR**: Previews atractivos generan más clics
+✅ **Branding consistente**: Logo y descripción unificados
+✅ **Experiencia de usuario mejorada**: Información clara desde el preview
 
 ---
 
@@ -206,7 +206,7 @@ php artisan cache:clear
 Edita: `config/variables.php` → `templateDescription`
 
 ### Para actualizar la imagen de preview:
-Reemplaza: `public/assets/logo.png`  
+Reemplaza: `public/assets/logo.png`
 O usa una imagen dedicada en `public/assets/img/og-image.png`
 
 ### Para páginas específicas con descripción personalizada:
