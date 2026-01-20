@@ -31,13 +31,37 @@
                             <pre><code class="language-http">Authorization: Bearer {{ $apiToken }}</code></pre>
 
                             <h5 class="mt-4">{{ __('Available Endpoints') }}</h5>
+                            
+                            <!-- Quick Navigation -->
+                            <div class="card bg-light mb-4">
+                                <div class="card-body">
+                                    <h6 class="mb-3">{{ __('Quick Navigation') }}</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><a href="#list-contacts" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('List Contacts') }}</a></li>
+                                                <li><a href="#get-contact" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Get Contact') }}</a></li>
+                                                <li><a href="#create-contact" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Create Contact') }}</a></li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><a href="#update-contact" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Update Contact') }}</a></li>
+                                                <li><a href="#delete-contact" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Delete Contact') }}</a></li>
+                                                <li><a href="#search-contacts" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Search Contacts') }}</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- List Contacts -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="list-contacts">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-primary me-2">GET</span>
                                         {{ __('List Contacts') }}
+                                        <a href="#list-contacts" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -110,11 +134,12 @@
                             </div>
 
                             <!-- Get Single Contact -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="get-contact">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-primary me-2">GET</span>
                                         {{ __('Get Contact') }}
+                                        <a href="#get-contact" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -130,11 +155,12 @@
                             </div>
 
                             <!-- Create Contact -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="create-contact">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-success me-2">POST</span>
                                         {{ __('Create Contact') }}
+                                        <a href="#create-contact" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -159,28 +185,34 @@
                                                 <td>{{ __('Contact full name') }}</td>
                                             </tr>
                                             <tr>
-                                                <td><code>email</code></td>
+                                                <td><code>surname</code></td>
                                                 <td>string</td>
                                                 <td>{{ __('No') }}</td>
-                                                <td>{{ __('Contact email address') }}</td>
+                                                <td>{{ __('Contact surname/last name') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>email</code></td>
+                                                <td>string</td>
+                                                <td>{{ __('No') }}*</td>
+                                                <td>{{ __('Contact email address (required if no phone)') }}</td>
                                             </tr>
                                             <tr>
                                                 <td><code>phone</code></td>
                                                 <td>string</td>
-                                                <td>{{ __('No') }}</td>
-                                                <td>{{ __('Contact phone number') }}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>company</code></td>
-                                                <td>string</td>
-                                                <td>{{ __('No') }}</td>
-                                                <td>{{ __('Company name') }}</td>
+                                                <td>{{ __('No') }}*</td>
+                                                <td>{{ __('Contact phone number (required if no email)') }}</td>
                                             </tr>
                                             <tr>
                                                 <td><code>category_id</code></td>
                                                 <td>integer</td>
                                                 <td>{{ __('No') }}</td>
-                                                <td>{{ __('Category ID') }}</td>
+                                                <td>{{ __('Category ID (single category)') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>category_ids</code></td>
+                                                <td>array</td>
+                                                <td>{{ __('No') }}</td>
+                                                <td>{{ __('Array of category IDs (multiple categories)') }}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -192,20 +224,25 @@
   -H "Accept: application/json" \
   -d '{
     "name": "Jane Smith",
+    "surname": "Doe",
     "email": "jane@example.com",
     "phone": "+1987654321",
-    "company": "Tech Solutions Inc",
-    "category_id": 1
+    "category_id": 433
   }'</code></pre>
+                                    
+                                    <div class="alert alert-info mt-3" role="alert">
+                                        <strong>{{ __('Note:') }}</strong> {{ __('You must provide at least email OR phone (or both). For multiple categories, use category_ids: [433, 434]') }}
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Update Contact -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="update-contact">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-warning me-2">PUT</span>
                                         {{ __('Update Contact') }}
+                                        <a href="#update-contact" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -225,11 +262,12 @@
                             </div>
 
                             <!-- Delete Contact -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="delete-contact">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-danger me-2">DELETE</span>
                                         {{ __('Delete Contact') }}
+                                        <a href="#delete-contact" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -245,11 +283,12 @@
                             </div>
 
                             <!-- Search Contacts -->
-                            <div class="card mt-4">
+                            <div class="card mt-4" id="search-contacts">
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">
                                         <span class="badge bg-info me-2">GET</span>
                                         {{ __('Search Contacts') }}
+                                        <a href="#search-contacts" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
                                     </h6>
                                 </div>
                                 <div class="card-body">

@@ -108,9 +108,13 @@ POST https://humano.test/lead
 
 {
   "name": "Jane Smith",
+  "surname": "Doe",
   "email": "jane@example.com",
   "phone": "+1987654321",
-  "team_id": 3  # El owner de este equipo será el creator
+  "team_id": 3,
+  "category_id": 433  # Opcional: ID de categoría única
+  # O múltiples categorías:
+  # "category_ids": [433, 434]
 }
 ```
 
@@ -121,8 +125,12 @@ Authorization: Bearer {token}
 
 {
   "name": "Jane Smith",
+  "surname": "Doe",
   "email": "jane@example.com",
-  "phone": "+1987654321"
+  "phone": "+1987654321",
+  "category_id": 433  # Opcional: ID de categoría única
+  # O múltiples categorías:
+  # "category_ids": [433, 434]
   # team_id se obtiene del token, creator_id del owner del equipo
 }
 ```
@@ -142,14 +150,29 @@ Authorization: Bearer {token}
 ## 🚀 Testing
 
 ```bash
-# Test con curl
+# Test con curl (webhook público)
 curl -X POST https://humano.test/lead \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Jane Smith",
+    "surname": "Doe",
     "email": "jane@example.com",
     "phone": "+1987654321",
-    "team_id": 3
+    "team_id": 3,
+    "category_id": 433
+  }'
+
+# Test con API Token
+curl -X POST https://humano.test/api/team/contacts \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "name": "Jane Smith",
+    "surname": "Doe",
+    "email": "jane@example.com",
+    "phone": "+1987654321",
+    "category_id": 433
   }'
 ```
 

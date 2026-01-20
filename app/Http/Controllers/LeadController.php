@@ -23,6 +23,9 @@ class LeadController extends Controller
             'email' => ['required_without:phone', 'nullable', 'email:rfc', 'max:255'],
             'phone' => ['required_without:email', 'nullable', 'string', 'max:20', 'regex:/^[+\-\d\s()]+$/'],
             'team_id' => 'required|exists:teams,id',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'integer|exists:categories,id',
         ], [
             'name.required' => 'El nombre es obligatorio',
             'surname.string' => 'El apellido debe ser texto válido',
@@ -32,6 +35,8 @@ class LeadController extends Controller
             'phone.regex' => 'El teléfono solo puede contener números, espacios y los símbolos + -',
             'team_id.required' => 'El equipo es obligatorio',
             'team_id.exists' => 'El equipo seleccionado no es válido',
+            'category_id.exists' => 'La categoría seleccionada no es válida',
+            'category_ids.*.exists' => 'Una o más categorías seleccionadas no son válidas',
         ]);
 
         try
@@ -59,6 +64,21 @@ class LeadController extends Controller
                 'creator_id' => $team->user_id, // Owner of the team
                 'data' => $additionalData, // Store additional BBO data
             ]);
+
+            // Attach categories if provided
+            $categoryIds = [];
+            if (! empty($validated['category_id']))
+            {
+                $categoryIds[] = $validated['category_id'];
+            }
+            if (! empty($validated['category_ids']))
+            {
+                $categoryIds = array_merge($categoryIds, $validated['category_ids']);
+            }
+            if (! empty($categoryIds))
+            {
+                $contact->categories()->sync(array_unique($categoryIds));
+            }
             // ContactSource::create([
             //	 'contact_id' => $contact->id,
             //	 'source_id' => 1,
