@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
 
 	<title>No Autorizado - {{ config('app.name') }}</title>
-	<meta name="description" content="No tienes permisos para acceder a esta página"/>
+	<meta name="description" content="Acceso no autorizado - No tienes los permisos necesarios para acceder a esta página."/>
 	<meta name="keywords" content="no autorizado, sin permisos">
 	<!-- laravel CRUD token -->
 	<meta name="csrf-token" content="{{ csrf_token() }}">

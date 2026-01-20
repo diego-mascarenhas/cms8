@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
 
 	<title>En Mantenimiento</title>
-	<meta name="description" content="Sitio en mantenimiento"/>
+	<meta name="description" content="Mantenimiento programado - Estamos mejorando nuestros servicios. Volveremos pronto."/>
 	<meta name="keywords" content="mantenimiento">
 	<!-- laravel CRUD token -->
 	<meta name="csrf-token" content="{{ csrf_token() }}">
