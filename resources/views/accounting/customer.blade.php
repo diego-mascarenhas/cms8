@@ -44,7 +44,7 @@
                 <div class="mb-3">
                     <h6 class="fw-semibold mb-2">{{ $stripeData['customer']['name'] ?? 'Unknown Customer' }}</h6>
                     <p class="mb-1">{{ $stripeData['customer']['email'] ?? '' }}</p>
-                    
+
                     @if(isset($enterprise) && $enterprise)
                     <div class="mt-2">
                         <a href="{{ route('contact.show', $enterprise->responsible_id) }}" class="btn btn-sm btn-outline-primary">

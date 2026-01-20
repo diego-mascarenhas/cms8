@@ -789,14 +789,13 @@ Route::prefix('test-cart')->group(function () {
 });
 
 // Accounting routes (Billing module) - Stripe integration
-Route::middleware(['web', 'auth'])->group(function ()
-{
-    Route::get('/accounting', [App\Http\Controllers\AccountingController::class, 'index'])->name('accounting.index');
-    Route::get('/accounting/invoice/{id}', [App\Http\Controllers\AccountingController::class, 'showInvoice'])->name('accounting.invoice');
-    Route::get('/accounting/invoice/{id}/download', [App\Http\Controllers\AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
-    Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
-    Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
-    Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+Route::middleware(['web', 'auth'])->group(function () {
+	Route::get('/accounting', [App\Http\Controllers\AccountingController::class, 'index'])->name('accounting.index');
+	Route::get('/accounting/invoice/{id}', [App\Http\Controllers\AccountingController::class, 'showInvoice'])->name('accounting.invoice');
+	Route::get('/accounting/invoice/{id}/download', [App\Http\Controllers\AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
+	Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
+	Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
+	Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
 });
 
 // Help Documentation Routes (Public - No Authentication Required)

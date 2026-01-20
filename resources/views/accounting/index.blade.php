@@ -11,7 +11,7 @@
         text-decoration: line-through;
         opacity: 0.7;
     }
-    
+
     tr.invoice-uncollectible {
         text-decoration: line-through;
         opacity: 0.7;
@@ -154,7 +154,7 @@
                            class="btn btn-sm btn-primary d-flex align-items-center me-2">
                             <i class="ti ti-file-zip me-1"></i> Generar ZIP
                         </a>
-                        <button 
+                        <button
                             @click="checkZipFile({{ $quarterNum }}, {{ $year }})"
                             class="btn btn-sm btn-outline-primary d-flex align-items-center me-2">
                             <i class="ti ti-download me-1"></i> Descargar ZIP
@@ -181,7 +181,7 @@
                             // Separar facturas activas y anuladas/incobrables
                             $activeInvoices = [];
                             $inactiveInvoices = [];
-                            
+
                             foreach ($invoices as $invoice) {
                                 if ($invoice['status'] === 'void' || $invoice['status'] === 'uncollectible') {
                                     $inactiveInvoices[] = $invoice;
@@ -190,7 +190,7 @@
                                 }
                             }
                         @endphp
-                        
+
                         {{-- Mostrar facturas activas --}}
                         @foreach($activeInvoices as $invoice)
                         <tr>
@@ -229,7 +229,7 @@
                             </td>
                         </tr>
                         @endforeach
-                        
+
                         {{-- Mostrar facturas anuladas/incobrables si existen --}}
                         @if(count($inactiveInvoices) > 0)
                         <tr class="bg-light border-top">
@@ -237,7 +237,7 @@
                                 <h6 class="mb-0 text-secondary fw-bold">FACTURAS ANULADAS E INCOBRABLES</h6>
                             </td>
                         </tr>
-                        
+
                         @foreach($inactiveInvoices as $invoice)
                         <tr class="{{ $invoice['status'] === 'void' ? 'invoice-void' : 'invoice-uncollectible' }}">
                             <td>{{ $invoice['number'] }}</td>
@@ -295,7 +295,7 @@
             checkZipFile(quarter, year) {
                 const userId = {{ auth()->id() }};
                 const zipUrl = `/storage/downloads/user_${userId}/facturas_Q${quarter}_${year}.zip`;
-                
+
                 // Verificar si el archivo existe
                 axios.head(zipUrl)
                     .then(response => {

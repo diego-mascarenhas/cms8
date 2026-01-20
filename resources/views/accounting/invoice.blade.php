@@ -52,7 +52,7 @@
                 <div class="p-3 bg-lighter rounded">
                     <p class="mb-1"><strong>{{ $invoiceData['customer_name'] ?? 'Unknown Customer' }}</strong></p>
                     <p class="mb-0">{{ $invoiceData['customer_email'] ?? '' }}</p>
-                    
+
                     @if(isset($enterprise) && $enterprise)
                     <div class="mt-2">
                         <a href="{{ route('contact.show', $enterprise->responsible_id) }}" class="btn btn-sm btn-outline-primary">
@@ -60,7 +60,7 @@
                         </a>
                     </div>
                     @endif
-                    
+
                     @if(isset($invoiceData['customer_address']))
                     <div class="mt-2">
                         <p class="mb-1">{{ $invoiceData['customer_address']['line1'] ?? '' }}</p>
@@ -68,8 +68,8 @@
                         <p class="mb-1">{{ $invoiceData['customer_address']['line2'] }}</p>
                         @endif
                         <p class="mb-1">
-                            {{ $invoiceData['customer_address']['city'] ?? '' }}, 
-                            {{ $invoiceData['customer_address']['state'] ?? '' }} 
+                            {{ $invoiceData['customer_address']['city'] ?? '' }},
+                            {{ $invoiceData['customer_address']['state'] ?? '' }}
                             {{ $invoiceData['customer_address']['postal_code'] ?? '' }}
                         </p>
                         <p class="mb-0">{{ $invoiceData['customer_address']['country'] ?? '' }}</p>
@@ -84,19 +84,19 @@
                         <span>Subtotal</span>
                         <span>${{ number_format($invoiceData['subtotal'] / 100, 2) }}</span>
                     </div>
-                    
+
                     @if(isset($invoiceData['tax']) && $invoiceData['tax'] > 0)
                     <div class="d-flex justify-content-between mb-2 border-top pt-2">
                         <span>Tax</span>
                         <span>${{ number_format($invoiceData['tax'] / 100, 2) }}</span>
                     </div>
                     @endif
-                    
+
                     <div class="d-flex justify-content-between mb-2 border-top pt-2">
                         <span class="fw-bold">Total</span>
                         <span class="fw-bold">${{ number_format($invoiceData['total'] / 100, 2) }}</span>
                     </div>
-                    
+
                     @if($invoiceData['status'] === 'paid')
                     <div class="d-flex justify-content-between border-top pt-2">
                         <span class="text-success">Paid</span>
