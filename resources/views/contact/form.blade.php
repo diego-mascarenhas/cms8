@@ -134,6 +134,10 @@
                                         value="{{ old('name', $data->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
+                                    <x-input-general id="surname" label="Apellidos"
+                                        value="{{ old('surname', $data->surname ?? '') }}" />
+                                </div>
+                                <div class="col-sm-4">
                                     <label for="email" class="form-label">Email (*)</label>
                                     <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}" required>
                                     @error('email')
@@ -159,7 +163,7 @@
                                     <label for="status_id" class="form-label">Tipo de contacto</label>
                                     <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')" />
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="col-sm-4" style="display: none;">
                                     <label for="user_id" class="form-label">Usuario vinculado</label>
                                     <select id="user_id" name="contact[user_id]" class="form-select select2">
                                         <option value="">-- Seleccionar usuario --</option>

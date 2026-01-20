@@ -482,7 +482,7 @@
                     </a>
                 </li>
 
-                @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
+                @if (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
                     {{-- Variables de configuración (Team Settings module) --}}
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">

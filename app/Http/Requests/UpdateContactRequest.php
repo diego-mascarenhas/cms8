@@ -17,6 +17,7 @@ class UpdateContactRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'surname' => 'nullable|string|max:255',
             'email' => 'required|email:rfc,dns|max:255',
             'phone' => 'nullable|numeric|digits_between:7,15',
             'birthday' => 'nullable|date',
@@ -49,6 +50,7 @@ class UpdateContactRequest extends FormRequest
 
         $contactData = [
             'name' => $validated['name'],
+            'surname' => $validated['surname'] ?? null,
             'birthday' => $validated['birthday'],
             'status_id' => $validated['status_id'],
             'country' => $validated['country'],

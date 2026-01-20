@@ -459,9 +459,7 @@ Route::middleware(['auth'])->group(function () {
 
 	// Legacy invoice routes already defined above
 	Route::prefix('invoice')->group(function () {
-		Route::get('/create', function () {
-			return redirect()->route('invoice.index');
-		})->name('invoice.create');
+		Route::get('/create', [App\Http\Controllers\apps\InvoiceAdd::class, 'index'])->name('invoice.create');
 
 		Route::delete('/destroy/{id}', function ($id) {
 			return redirect()->route('invoice.index');
@@ -790,17 +788,15 @@ Route::prefix('test-cart')->group(function () {
 	Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
 });
 
-// Accounting routes (Billing module) - COMMENTED: Controller doesn't exist
-// TODO: Create AccountingController if needed for invoice management
-// Route::middleware(['web', 'auth'])->group(function ()
-// {
-//     Route::get('/accounting', [App\Http\Controllers\AccountingController::class, 'index'])->name('accounting.index');
-//     Route::get('/accounting/invoice/{id}', [App\Http\Controllers\AccountingController::class, 'showInvoice'])->name('accounting.invoice');
-//     Route::get('/accounting/invoice/{id}/download', [App\Http\Controllers\AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
-//     Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
-//     Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
-//     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
-// });
+// Accounting routes (Billing module) - Stripe integration
+Route::middleware(['web', 'auth'])->group(function () {
+	Route::get('/accounting', [App\Http\Controllers\AccountingController::class, 'index'])->name('accounting.index');
+	Route::get('/accounting/invoice/{id}', [App\Http\Controllers\AccountingController::class, 'showInvoice'])->name('accounting.invoice');
+	Route::get('/accounting/invoice/{id}/download', [App\Http\Controllers\AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
+	Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
+	Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
+	Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+});
 
 // Help Documentation Routes (Public - No Authentication Required)
 Route::prefix('help')->name('help.')->group(function () {

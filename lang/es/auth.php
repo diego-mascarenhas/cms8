@@ -46,7 +46,7 @@ return [
         'sign_up' => 'Registrarse',
         'terms' => 'términos',
         'terms_agree' => 'Acepto la',
-        'title' => 'Página de Registro',
+        'title' => 'La aventura comienza aquí',
         'username' => 'Nombre de usuario',
         'username_placeholder' => 'juanperez',
     ],
