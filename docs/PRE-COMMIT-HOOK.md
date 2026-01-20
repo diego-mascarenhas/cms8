@@ -127,11 +127,11 @@ cat .git/hooks/pre-commit
 
 ## 🎨 **Beneficios del Auto-formatting**
 
-✅ **Código consistente**: Todo el equipo usa el mismo estilo  
-✅ **Menos conflictos**: No hay cambios de formato en PRs  
-✅ **Sin discusiones**: Las herramientas deciden el formato  
-✅ **Mejor legibilidad**: Código estandarizado es más fácil de leer  
-✅ **CI/CD feliz**: Los tests de formato siempre pasan  
+✅ **Código consistente**: Todo el equipo usa el mismo estilo
+✅ **Menos conflictos**: No hay cambios de formato en PRs
+✅ **Sin discusiones**: Las herramientas deciden el formato
+✅ **Mejor legibilidad**: Código estandarizado es más fácil de leer
+✅ **CI/CD feliz**: Los tests de formato siempre pasan
 
 ---
 
@@ -223,7 +223,7 @@ git commit -m "style: apply consistent formatting"
 
 **Causa**: Hook de pre-commit ejecuta Laravel Pint.
 
-**Solución**: 
+**Solución**:
 1. ✅ **Recomendado**: Configurar tu editor para usar espacios (4) en PHP
 2. ⚠️ **Alternativa**: Desactivar el hook con `git commit --no-verify`
 3. ❌ **No recomendado**: Eliminar `.hooks/pre-commit`
