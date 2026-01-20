@@ -31,7 +31,7 @@
                             <pre><code class="language-http">Authorization: Bearer {{ $apiToken }}</code></pre>
 
                             <h5 class="mt-4">{{ __('Available Endpoints') }}</h5>
-                            
+
                             <!-- Quick Navigation -->
                             <div class="card bg-light mb-4">
                                 <div class="card-body">
@@ -229,7 +229,7 @@
     "phone": "+1987654321",
     "category_id": 433
   }'</code></pre>
-                                    
+
                                     <div class="alert alert-info mt-3" role="alert">
                                         <strong>{{ __('Note:') }}</strong> {{ __('You must provide at least email OR phone (or both). For multiple categories, use category_ids: [433, 434]') }}
                                     </div>
