@@ -97,16 +97,16 @@ class ExampleAIService
         // Preparar datos
         $jsonData = json_encode($data);
         $jsonSize = strlen($jsonData);
-        
+
         // Comprimir con Toon
         $toonData = Toon::encode($data);
         $toonSize = strlen($toonData);
-        
+
         // Calcular métricas
         $jsonTokens = round($jsonSize / 4);
         $toonTokens = round($toonSize / 4);
         $savings = round((($jsonSize - $toonSize) / $jsonSize) * 100, 2);
-        
+
         // Registrar uso
         TokenUsageLog::create([
             'service' => 'ExampleAIService',
@@ -117,12 +117,12 @@ class ExampleAIService
             'savings_percentage' => $savings,
             'used_toon' => true,
         ]);
-        
+
         // Enviar a la API (usar toonData en lugar de jsonData)
         $response = Http::post('https://api.example.com/endpoint', [
             'data' => $toonData,
         ]);
-        
+
         return $response->body();
     }
 }

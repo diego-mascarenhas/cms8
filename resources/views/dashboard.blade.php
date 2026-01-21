@@ -104,7 +104,7 @@
                                 @else
                                     <p class="mb-2">¡Vas viento en popa!</p>
                                 @endif
-                                
+
                                 {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
@@ -168,11 +168,11 @@
                                 <span class="badge bg-label-success">{{ $tokenStats['averageSavings'] }}%</span>
                             </div>
                             <div class="progress mt-2" style="height: 8px;">
-                                <div class="progress-bar bg-success" 
-                                     role="progressbar" 
-                                     style="width: {{ $tokenStats['averageSavings'] }}%;" 
-                                     aria-valuenow="{{ $tokenStats['averageSavings'] }}" 
-                                     aria-valuemin="0" 
+                                <div class="progress-bar bg-success"
+                                     role="progressbar"
+                                     style="width: {{ $tokenStats['averageSavings'] }}%;"
+                                     aria-valuenow="{{ $tokenStats['averageSavings'] }}"
+                                     aria-valuemin="0"
                                      aria-valuemax="100">
                                 </div>
                             </div>

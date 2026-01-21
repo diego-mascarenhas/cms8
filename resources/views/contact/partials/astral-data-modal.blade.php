@@ -13,24 +13,41 @@
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-4">
-                        Para un cálculo exacto del ascendente y diseño humano, necesitamos la hora y lugar de nacimiento.
+                        Para un cálculo exacto del ascendente y diseño humano, necesitamos la fecha, hora y lugar de nacimiento.
                     </p>
 
                     <div class="row g-3">
-                        <!-- Hora de Nacimiento -->
-                        <div class="col-12">
+                        <!-- Fecha y Hora en una sola fila -->
+                        <div class="col-md-6">
+                            <label for="birth_date" class="form-label">
+                                <i class="ti ti-calendar ti-xs me-1"></i>
+                                Fecha de Nacimiento
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="birth_date"
+                                name="birth_date"
+                                value="{{ old('birth_date', $data->birthday ? \Carbon\Carbon::parse($data->birthday)->format('Y-m-d') : '') }}"
+                                placeholder="Selecciona la fecha"
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <div class="col-md-6">
                             <label for="birth_time" class="form-label">
                                 <i class="ti ti-clock ti-xs me-1"></i>
                                 Hora de Nacimiento
                             </label>
                             <input
-                                type="time"
+                                type="text"
                                 class="form-control"
                                 id="birth_time"
                                 name="birth_time"
                                 value="{{ optional($data->astralProfile)->birth_time ? \Carbon\Carbon::parse(optional($data->astralProfile)->birth_time)->format('H:i') : '' }}"
+                                placeholder="Selecciona la hora"
+                                autocomplete="off"
                             >
-                            <small class="text-muted">Hora exacta (formato 24h)</small>
                         </div>
 
                         <!-- Ciudad de Nacimiento -->
@@ -49,8 +66,8 @@
                             >
                         </div>
 
-                        <!-- Coordenadas (opcional, auto-completar si tienes API) -->
-                        <div class="col-md-6">
+                        {{-- Coordenadas (ocultas temporalmente) --}}
+                        {{-- <div class="col-md-6">
                             <label for="birth_latitude" class="form-label">
                                 Latitud <small class="text-muted">(opcional)</small>
                             </label>
@@ -78,7 +95,7 @@
                                 value="{{ old('birth_longitude', optional($data->astralProfile)->birth_longitude) }}"
                                 placeholder="-3.7038"
                             >
-                        </div>
+                        </div> --}}
                     </div>
 
                     <div class="alert alert-info mt-3 mb-0" role="alert">
@@ -98,19 +115,50 @@
     </div>
 </div>
 
+@push('styles')
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
+@endpush
+
 @push('scripts')
+<script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 <script>
 $(document).ready(function() {
-    // Store original values when modal opens
+    var birthDatePicker = null;
+    var birthTimePicker = null;
     var originalValues = {};
 
-    $('#astralDataModal').on('show.bs.modal', function() {
+    $('#astralDataModal').on('shown.bs.modal', function() {
+        // Destroy existing pickers if they exist
+        if (birthDatePicker) birthDatePicker.destroy();
+        if (birthTimePicker) birthTimePicker.destroy();
+
+        // Initialize Flatpickr for birth_date (date picker)
+        birthDatePicker = flatpickr('#birth_date', {
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            altInput: true,
+            altFormat: 'd-m-Y',
+            locale: 'es',
+            maxDate: 'today',
+            disableMobile: true
+        });
+
+        // Initialize Flatpickr for birth_time (time picker)
+        birthTimePicker = flatpickr('#birth_time', {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: 'H:i',
+            time_24hr: true,
+            allowInput: true,
+            disableMobile: true
+        });
+
         // Store current values
         originalValues = {
+            birth_date: $('#birth_date').val(),
             birth_time: $('#birth_time').val(),
-            birth_city: $('#birth_city').val(),
-            birth_latitude: $('#birth_latitude').val(),
-            birth_longitude: $('#birth_longitude').val()
+            birth_city: $('#birth_city').val()
         };
 
         console.log('Modal opened with values:', originalValues);
@@ -131,7 +179,7 @@ $(document).ready(function() {
         });
 
         // If fields are empty but had original values, restore them
-        ['birth_time', 'birth_city', 'birth_latitude', 'birth_longitude'].forEach(function(field) {
+        ['birth_date', 'birth_time', 'birth_city'].forEach(function(field) {
             if (!formData[field] && originalValues[field]) {
                 formData[field] = originalValues[field];
             }
