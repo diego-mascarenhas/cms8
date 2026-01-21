@@ -92,4 +92,9 @@ return [
         'target_currencies' => env('CURRENCYFREAKS_TARGET_CURRENCIES', 'ARS,EUR'),
     ],
 
+    'mcp' => [
+        'enabled' => env('MCP_ENABLED', false),
+        'endpoint' => env('MCP_ENDPOINT', 'http://localhost:3000/mcp'),
+    ],
+
 ];

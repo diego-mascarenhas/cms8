@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
 
 	<title>Próximamente - {{ config('app.name') }}</title>
-	<meta name="description" content="Estamos trabajando en esta funcionalidad"/>
+	<meta name="description" content="Página no encontrada - La página que buscas no existe o ha sido movida."/>
 	<meta name="keywords" content="próximamente, en desarrollo">
 	<!-- laravel CRUD token -->
 	<meta name="csrf-token" content="{{ csrf_token() }}">

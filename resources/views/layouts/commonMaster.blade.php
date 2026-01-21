@@ -24,6 +24,24 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Favicon -->
   <link rel="icon" href="{{ asset('assets/logo.png') }}" type="image/png">
 
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ url()->current() }}" />
+  <meta property="og:title" content="@yield('title') | {{ config('variables.templateName') }}" />
+  <meta property="og:description" content="{{ config('variables.templateDescription') }}" />
+  <meta property="og:image" content="{{ asset('assets/logo.png') }}" />
+  <meta property="og:site_name" content="{{ config('variables.templateName') }}" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="{{ url()->current() }}" />
+  <meta name="twitter:title" content="@yield('title') | {{ config('variables.templateName') }}" />
+  <meta name="twitter:description" content="{{ config('variables.templateDescription') }}" />
+  <meta name="twitter:image" content="{{ asset('assets/logo.png') }}" />
+  @if(config('variables.twitterUrl'))
+  <meta name="twitter:site" content="{{ config('variables.twitterUrl') }}" />
+  @endif
+
 
 
   <!-- Include Styles -->
