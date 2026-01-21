@@ -23,6 +23,7 @@
     "laravel/tinker": "^2.8",
     "livewire/livewire": "^3.0",
     "nyholm/psr7": "^1.8",
+    "sbsaga/toon": "^1.2",
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.20",
     "squareetlabs/laravel-verifactu": "^1.0",

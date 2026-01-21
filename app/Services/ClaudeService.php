@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Helpers\TokenHelper;
+use App\Models\TokenUsageLog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Sbsaga\Toon\Facades\Toon;
 
 class ClaudeService
 {
@@ -20,10 +22,11 @@ class ClaudeService
 
     public function __construct()
     {
-        $this->apiKey = config('services.claude.api_key');
-        $this->model = config('services.claude.model', 'claude-3-5-sonnet-20241022');
-        $this->baseUrl = config('services.claude.base_url', 'https://api.anthropic.com/v1');
-        $this->maxTokens = (int) config('services.claude.max_tokens', 1000);
+        // Use anthropic config (compatible with both services.claude and anthropic)
+        $this->apiKey = config('anthropic.api_key') ?? config('services.claude.api_key');
+        $this->model = config('anthropic.model') ?? config('services.claude.model', 'claude-3-5-sonnet-20241022');
+        $this->baseUrl = config('anthropic.api_url') ?? config('services.claude.base_url', 'https://api.anthropic.com/v1');
+        $this->maxTokens = (int) (config('anthropic.max_tokens') ?? config('services.claude.max_tokens', 4096));
         $this->systemPrompt = config('services.claude.system_prompt', $this->getDefaultSystemPrompt());
     }
 
@@ -82,11 +85,48 @@ class ClaudeService
                 $payload['system'] = $systemPrompt;
             }
 
+            // Calculate token metrics for logging
+            $jsonData = json_encode($payload);
+            $jsonSize = strlen($jsonData);
+            $jsonTokens = round($jsonSize / 4);
+
+            // Try to use Toon compression
+            $useToon = true;
+            $toonData = null;
+            $toonSize = 0;
+            $toonTokens = 0;
+
+            try
+            {
+                $toonData = Toon::encode($payload);
+                $toonSize = strlen($toonData);
+                $toonTokens = round($toonSize / 4);
+            } catch (\Exception $e)
+            {
+                Log::warning('Toon encoding failed in ClaudeService, using JSON: '.$e->getMessage());
+                $useToon = false;
+                $toonSize = $jsonSize;
+                $toonTokens = $jsonTokens;
+            }
+
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/messages", $payload);
+
+            // Log token usage
+            $savings = $useToon && $jsonSize > 0 ? round((($jsonSize - $toonSize) / $jsonSize) * 100, 2) : 0;
+
+            TokenUsageLog::create([
+                'service' => 'ClaudeService',
+                'json_size' => $jsonSize,
+                'toon_size' => $toonSize,
+                'json_tokens' => $jsonTokens,
+                'toon_tokens' => $toonTokens,
+                'savings_percentage' => $savings,
+                'used_toon' => $useToon,
+            ]);
 
             if (! $response->successful())
             {

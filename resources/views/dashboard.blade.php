@@ -130,6 +130,65 @@
     <div class="row">
         <!-- Emotional Balance and Dangerous Clients (right column) -->
         <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0">
+            <!-- Toon API Usage Widget -->
+            <div class="card mb-4">
+                <div class="card-header pb-0 d-flex justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Uso de API & Ahorro</h5>
+                        <small class="text-muted">Optimización con Toon</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <span class="bg-label-primary p-2 rounded me-2">
+                                    <i class='ti ti-api ti-sm'></i>
+                                </span>
+                                <div>
+                                    <small class="text-muted d-block">Llamadas</small>
+                                    <h5 class="mb-0">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalCalls']) }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <span class="bg-label-success p-2 rounded me-2">
+                                    <i class='ti ti-coin ti-sm'></i>
+                                </span>
+                                <div>
+                                    <small class="text-muted d-block">Ahorro</small>
+                                    <h5 class="mb-0 text-success">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensSaved']) }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <small class="text-muted">Tokens ahorrados</small>
+                                <span class="badge bg-label-success">{{ $tokenStats['averageSavings'] }}%</span>
+                            </div>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: {{ $tokenStats['averageSavings'] }}%;" 
+                                     aria-valuenow="{{ $tokenStats['averageSavings'] }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small class="text-muted">
+                                    Usados: {{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensUsed']) }}
+                                </small>
+                                <small class="text-muted">
+                                    Sin Toon: {{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensWithoutToon']) }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Emotional Balance -->
             <div class="card mb-4">
                 <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">

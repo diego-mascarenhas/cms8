@@ -281,4 +281,27 @@ class Helpers
     {
         return \Laravel\Cashier\Cashier::formatAmount($amount, $currency);
     }
+
+    /**
+     * Format large numbers in a compact way (1.2K, 1.5M, etc.)
+     */
+    public static function formatCompactNumber($number)
+    {
+        if ($number < 1000)
+        {
+            return number_format($number);
+        }
+
+        if ($number < 1000000)
+        {
+            return round($number / 1000, 1).'K';
+        }
+
+        if ($number < 1000000000)
+        {
+            return round($number / 1000000, 1).'M';
+        }
+
+        return round($number / 1000000000, 1).'B';
+    }
 }

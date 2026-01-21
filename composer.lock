@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "72acb78bbafe38d9e2796affb47daa94",
+    "content-hash": "6f90f38ce56b20606baf671cc10c9720",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -5207,6 +5207,132 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.2"
             },
             "time": "2025-12-14T04:43:48+00:00"
+        },
+        {
+            "name": "sbsaga/toon",
+            "version": "v1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sbsaga/toon.git",
+                "reference": "52e395750ed390cf472d6b720159e2bfe53e75b2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sbsaga/toon/zipball/52e395750ed390cf472d6b720159e2bfe53e75b2",
+                "reference": "52e395750ed390cf472d6b720159e2bfe53e75b2",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^9.0|^10.0|^11.0|^12.0",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^10.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Toon": "Sbsaga\\Toon\\Facades\\Toon"
+                    },
+                    "providers": [
+                        "Sbsaga\\Toon\\ToonServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Sbsaga\\Toon\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sagar S. Bhedodkar",
+                    "email": "sagarbhedodkar456@gmail.com",
+                    "homepage": "https://github.com/sbsaga",
+                    "role": "Developer"
+                }
+            ],
+            "description": "🧠 TOON for Laravel — a compact, human-readable, and token-efficient data format for AI prompts & LLM contexts. Perfect for ChatGPT, Gemini, Claude, Mistral, and OpenAI integrations (JSON ⇄ TOON).",
+            "homepage": "https://github.com/sbsaga/toon",
+            "keywords": [
+                "ChatGpt",
+                "Gemini",
+                "ai",
+                "ai-developer-tools",
+                "ai-for-laravel",
+                "ai-integration",
+                "ai-laravel-package",
+                "ai-prompt",
+                "ai-tools",
+                "anthropic",
+                "chatgpt-for-laravel",
+                "claude",
+                "claude-for-laravel",
+                "compact-json",
+                "context-compression",
+                "context-optimizer",
+                "converter",
+                "data",
+                "data-compression",
+                "data-formatter",
+                "data-transformer",
+                "formatter",
+                "gemini-for-laravel",
+                "gpt",
+                "gpt3",
+                "gpt4",
+                "human-readable-format",
+                "json",
+                "laravel",
+                "laravel-ai",
+                "laravel-anthropic",
+                "laravel-chatgpt",
+                "laravel-gemini",
+                "laravel-mistral",
+                "laravel-openai",
+                "laravel-package",
+                "laravel-toon",
+                "laravel10",
+                "laravel11",
+                "laravel12",
+                "laravel9",
+                "llm",
+                "llm-for-laravel",
+                "llm-tools",
+                "mistral",
+                "object-notation",
+                "openai",
+                "openai-for-laravel",
+                "parser",
+                "php",
+                "php8",
+                "prompt",
+                "prompt-compression",
+                "prompt-engineering",
+                "prompt-optimization",
+                "sbsaga",
+                "serialization",
+                "serialization-format",
+                "token",
+                "token-efficient",
+                "token-optimizer",
+                "token-saver",
+                "toon",
+                "toon-laravel",
+                "yaml-alternative"
+            ],
+            "support": {
+                "chat": "https://github.com/sbsaga",
+                "docs": "https://github.com/sbsaga/toon#readme",
+                "issues": "https://github.com/sbsaga/toon/issues",
+                "source": "https://github.com/sbsaga/toon"
+            },
+            "time": "2025-12-20T18:05:41+00:00"
         },
         {
             "name": "spatie/image",

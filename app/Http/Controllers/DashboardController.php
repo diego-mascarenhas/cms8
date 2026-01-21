@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
+use App\Models\TokenUsageLog;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
 use Stripe\Balance;
@@ -336,6 +337,15 @@ class DashboardController extends Controller
         //     }
         // }
 
+        // Toon Statistics for API Usage Widget
+        $tokenStats = [
+            'totalCalls' => TokenUsageLog::getTotalCalls(),
+            'totalTokensSaved' => TokenUsageLog::getTotalTokensSaved(),
+            'averageSavings' => TokenUsageLog::getAverageSavingsPercentage(),
+            'totalTokensUsed' => TokenUsageLog::getTotalTokensUsed(),
+            'totalTokensWithoutToon' => TokenUsageLog::getTotalTokensWithoutToon(),
+        ];
+
         return view('dashboard', compact(
             'totalTeamMinutes',
             'dangerousContacts',
@@ -352,6 +362,7 @@ class DashboardController extends Controller
             'mentoringLevelName',
             'mentoringMessage',
             'hasProjects',
+            'tokenStats',
         ));
     }
 }
