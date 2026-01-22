@@ -58,7 +58,7 @@ class SubscriptionProduct extends Model
 
         $currency = strtoupper($this->currency ?? 'USD');
 
-        return number_format($this->unit_amount, 2, ',', '.').' '.$currency;
+        return number_format((float) $this->unit_amount, 2, ',', '.').' '.$currency;
     }
 
     /**
@@ -89,5 +89,21 @@ class SubscriptionProduct extends Model
     public function getStripePriceId(): ?string
     {
         return $this->stripe_price;
+    }
+
+    /**
+     * Get the SLA for this subscription product.
+     */
+    public function sla()
+    {
+        return $this->hasOne(SLA::class)->where('is_active', true)->latest();
+    }
+
+    /**
+     * Get all SLAs for this subscription product.
+     */
+    public function slas()
+    {
+        return $this->hasMany(SLA::class);
     }
 }

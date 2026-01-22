@@ -4,13 +4,19 @@ namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
 use App\Helpers\TokenHelper;
+use App\Mail\AutologinInvitationMail;
 use App\Models\Module;
+use App\Models\Subscription;
 use App\Models\Team;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AccountController extends Controller
 {
+    use ConfiguresTeamMail;
     public function index(AccountDataTable $dataTable)
     {
         return $dataTable->render('account.index');
@@ -132,13 +138,116 @@ class AccountController extends Controller
      */
     public function showSubscriptions(string $id)
     {
-        $team = Team::with('subscriptions')->findOrFail($id);
+        $team = Team::with(['subscriptions.team.owner'])->findOrFail($id);
 
         // Get products for each subscription to display names
-        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription)
+        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription) use ($team)
         {
             $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
             $subscription->product = $product;
+            
+            // Ensure team relationship is loaded
+            if (! $subscription->relationLoaded('team'))
+            {
+                $subscription->load('team.owner');
+            }
+
+            // Get next billing date from Stripe
+            $nextBillingDate = null;
+            try
+            {
+                if ($subscription->stripe_id)
+                {
+                    $stripeSubscription = $subscription->asStripeSubscription();
+                    if ($stripeSubscription && isset($stripeSubscription->current_period_end))
+                    {
+                        $nextBillingDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+                    }
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('Error fetching Stripe subscription data', [
+                    'subscription_id' => $subscription->id,
+                    'stripe_id' => $subscription->stripe_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            $subscription->nextBillingDate = $nextBillingDate;
+
+            // Find pending SLA acceptance for this subscription
+            $pendingAcceptance = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                ->whereNull('accepted_at')
+                ->with(['sla.subscriptionProduct'])
+                ->first();
+
+            // Find accepted SLA acceptance for this subscription
+            // First try by subscription_id, then by product and team email
+            $acceptedSLA = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                ->whereNotNull('accepted_at')
+                ->with(['sla.subscriptionProduct'])
+                ->latest('accepted_at')
+                ->first();
+
+            // If not found by subscription_id, try to find by product and team owner email
+            if (! $acceptedSLA && $product && $subscription->team)
+            {
+                // Load team owner if not loaded
+                if (! $subscription->team->relationLoaded('owner'))
+                {
+                    $subscription->team->load('owner');
+                }
+
+                if ($subscription->team->owner)
+                {
+                    $acceptedSLA = \App\Models\SLAAcceptance::whereHas('sla.subscriptionProduct', function ($q) use ($product)
+                    {
+                        $q->where('id', $product->id);
+                    })
+                        ->where('accepted_by_email', $subscription->team->owner->email)
+                        ->whereNotNull('accepted_at')
+                        ->with(['sla.subscriptionProduct'])
+                        ->latest('accepted_at')
+                        ->first();
+                }
+            }
+
+            // Find products with SLA for this subscription
+            // Only show "Enviar SLA" if there's no pending acceptance AND no accepted SLA
+            $productForSending = null;
+            if (! $pendingAcceptance && ! $acceptedSLA && $product)
+            {
+                // Check if the product has an SLA
+                $productWithSLA = \App\Models\SubscriptionProduct::where('id', $product->id)
+                    ->whereHas('sla', function ($q)
+                    {
+                        $q->where('is_active', true);
+                    })
+                    ->with(['sla.acceptances' => function ($q) use ($subscription)
+                    {
+                        $q->whereNull('accepted_at')
+                            ->where('subscription_id', $subscription->id);
+                    }])
+                    ->first();
+
+                if ($productWithSLA && $productWithSLA->sla)
+                {
+                    // Check if there's a pending acceptance
+                    $pendingAcceptance = $productWithSLA->sla->acceptances()
+                        ->whereNull('accepted_at')
+                        ->where('subscription_id', $subscription->id)
+                        ->first();
+
+                    // If no pending acceptance and no accepted SLA, this product can send SLA
+                    if (! $pendingAcceptance && ! $acceptedSLA)
+                    {
+                        $productForSending = $productWithSLA;
+                    }
+                }
+            }
+
+            $subscription->pendingSlaAcceptance = $pendingAcceptance;
+            $subscription->acceptedSLA = $acceptedSLA;
+            $subscription->productForSendingSLA = $productForSending;
 
             return $subscription;
         });
@@ -146,6 +255,130 @@ class AccountController extends Controller
         return view('account.subscriptions', [
             'team' => $team,
             'subscriptionsWithProducts' => $subscriptionsWithProducts,
+        ]);
+    }
+
+    /**
+     * Show all subscriptions across all teams.
+     */
+    public function allSubscriptions()
+    {
+        // Get all subscriptions with their teams and products
+        // Use query builder to ensure we're using the correct model
+        $allSubscriptions = Subscription::query()
+            ->with(['team' => function ($query)
+            {
+                $query->with('owner');
+            }])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($subscription)
+            {
+                $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+                
+                // Ensure team relationship is loaded
+                if (! $subscription->relationLoaded('team'))
+                {
+                    $subscription->load(['team' => function ($query)
+                    {
+                        $query->with('owner');
+                    }]);
+                }
+                $subscription->product = $product;
+
+                // Get next billing date from Stripe
+                $nextBillingDate = null;
+                try
+                {
+                    if ($subscription->stripe_id)
+                    {
+                        $stripeSubscription = $subscription->asStripeSubscription();
+                        if ($stripeSubscription && isset($stripeSubscription->current_period_end))
+                        {
+                            $nextBillingDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+                        }
+                    }
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Error fetching Stripe subscription data', [
+                        'subscription_id' => $subscription->id,
+                        'stripe_id' => $subscription->stripe_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+                $subscription->nextBillingDate = $nextBillingDate;
+
+                // Find pending SLA acceptance for this subscription
+                $pendingAcceptance = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                    ->whereNull('accepted_at')
+                    ->with(['sla.subscriptionProduct'])
+                    ->first();
+
+                // Find accepted SLA acceptance for this subscription
+                // First try by subscription_id, then by product and team email
+                $acceptedSLA = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                    ->whereNotNull('accepted_at')
+                    ->with(['sla.subscriptionProduct'])
+                    ->latest('accepted_at')
+                    ->first();
+
+                // If not found by subscription_id, try to find by product and team owner email
+                if (! $acceptedSLA && $product && $subscription->team)
+                {
+                    // Load team owner if not loaded
+                    if (! $subscription->team->relationLoaded('owner'))
+                    {
+                        $subscription->team->load('owner');
+                    }
+
+                    if ($subscription->team->owner)
+                    {
+                        $acceptedSLA = \App\Models\SLAAcceptance::whereHas('sla.subscriptionProduct', function ($q) use ($product)
+                        {
+                            $q->where('id', $product->id);
+                        })
+                            ->where('accepted_by_email', $subscription->team->owner->email)
+                            ->whereNotNull('accepted_at')
+                            ->with(['sla.subscriptionProduct'])
+                            ->latest('accepted_at')
+                            ->first();
+                    }
+                }
+
+                // Find products with SLA for this subscription
+                $productForSending = null;
+                if (! $pendingAcceptance && ! $acceptedSLA && $product)
+                {
+                    $productWithSLA = \App\Models\SubscriptionProduct::where('id', $product->id)
+                        ->whereHas('sla', function ($q)
+                        {
+                            $q->where('is_active', true);
+                        })
+                        ->first();
+
+                    if ($productWithSLA && $productWithSLA->sla)
+                    {
+                        $pendingAcceptance = $productWithSLA->sla->acceptances()
+                            ->whereNull('accepted_at')
+                            ->where('subscription_id', $subscription->id)
+                            ->first();
+
+                        if (! $pendingAcceptance && ! $acceptedSLA)
+                        {
+                            $productForSending = $productWithSLA;
+                        }
+                    }
+                }
+
+                $subscription->pendingSlaAcceptance = $pendingAcceptance;
+                $subscription->acceptedSLA = $acceptedSLA;
+                $subscription->productForSendingSLA = $productForSending;
+
+                return $subscription;
+            });
+
+        return view('account.all-subscriptions', [
+            'allSubscriptions' => $allSubscriptions,
         ]);
     }
 
@@ -184,5 +417,66 @@ class AccountController extends Controller
             'success' => false,
             'message' => 'Error al revocar los tokens',
         ], 500);
+    }
+
+    /**
+     * Send autologin invitation email to account owner
+     */
+    public function sendAutologinInvitation(Request $request, string $id)
+    {
+        $team = Team::findOrFail($id);
+
+        if (! $team->owner)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cuenta no tiene propietario asignado',
+            ], 400);
+        }
+
+        if (! $team->owner->email)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'El propietario no tiene email configurado',
+            ], 400);
+        }
+
+        try
+        {
+            // Configure mail for the team (custom SMTP or system with advertising)
+            $this->configureMailForTeam($team);
+
+            // Generate autologin token
+            $token = TokenHelper::generateSignedToken($team->owner, 'account_owner_autologin', 720); // 30 days
+            $loginUrl = route('login.token', ['token' => $token]);
+            $fullUrl = url($loginUrl);
+
+            // Send email
+            Mail::to($team->owner->email)->send(new AutologinInvitationMail($team->owner, $team, $fullUrl));
+
+            Log::info('Autologin invitation email sent', [
+                'user_id' => $team->owner->id,
+                'user_email' => $team->owner->email,
+                'team_id' => $team->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invitación enviada exitosamente al propietario de la cuenta.',
+            ]);
+        } catch (\Exception $e)
+        {
+            Log::error('Error sending autologin invitation email', [
+                'user_id' => $team->owner->id,
+                'team_id' => $team->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al enviar la invitación: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -36,6 +36,9 @@
             <p class="text-muted">Gestión de cuentas</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
+            <a href="{{ route('account.subscriptions.all') }}" class="btn btn-primary waves-effect waves-light">
+                <i class="ti ti-list me-1"></i>Todas las Suscripciones
+            </a>
             <a href="{{ route('account.products.index') }}" class="btn btn-primary waves-effect waves-light">
                 <i class="ti ti-package me-1"></i>Productos
             </a>
@@ -165,6 +168,56 @@
             }
         }
 
+        function sendAutologinInvitation(accountId, element) {
+            Swal.fire({
+                title: '¿Enviar invitación?',
+                text: 'Se enviará un email al propietario de la cuenta con el link de acceso directo.',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: false,
+                confirmButtonText: 'Sí',
+                cancelButtonText: 'No',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('account.send-autologin-invitation', ['id' => ':ID']) }}".replace(':ID', accountId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Invitación enviada',
+                            text: 'El email ha sido enviado exitosamente al propietario de la cuenta.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al enviar la invitación',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    });
+                }
+            });
+        }
+
         function revokeAutologinToken(accountId, element) {
             Swal.fire({
                 title: '¿Revocar tokens de autologueo?',
@@ -198,18 +251,21 @@
                             icon: 'success',
                             title: 'Tokens revocados',
                             text: 'Todos los links de autologueo han sido revocados exitosamente. El propietario necesitará un nuevo link.',
-                            timer: 3000,
-                            showConfirmButton: true
+                            timer: 2000,
+                            showConfirmButton: false
                         });
                     }).catch(error => {
                         console.error('Error:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Ha ocurrido un error al revocar los tokens'
+                            text: 'Ha ocurrido un error al revocar los tokens',
+                            timer: 2000,
+                            showConfirmButton: false
                         });
                     });
                 }
+                // Si se cancela, no hacer nada (no mostrar ningún mensaje)
             });
         }
     </script>
