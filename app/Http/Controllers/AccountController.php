@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
+use App\Helpers\TokenHelper;
 use App\Models\Module;
 use App\Models\Team;
 use Illuminate\Http\Request;
@@ -154,5 +155,34 @@ class AccountController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    /**
+     * Revoke autologin tokens for account owner
+     */
+    public function revokeAutologinToken(Request $request, string $id)
+    {
+        $team = Team::findOrFail($id);
+
+        if (! $team->owner)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cuenta no tiene propietario asignado',
+            ], 400);
+        }
+
+        if (TokenHelper::revokeUserTokens($team->owner->id, 'account_owner_autologin'))
+        {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tokens de autologueo revocados exitosamente. El propietario necesitará un nuevo link.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al revocar los tokens',
+        ], 500);
     }
 }

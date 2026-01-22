@@ -182,6 +182,7 @@ Route::middleware(['auth'])->group(function () {
 		Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
 		Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
 		Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
+		Route::post('/account-management/{id}/revoke-autologin', [AccountController::class, 'revokeAutologinToken'])->name('account.revoke-autologin');
 
 		// Product Management (Root only)
 		Route::get('/account-management/products', [ProductManagementController::class, 'index'])->name('account.products.index');

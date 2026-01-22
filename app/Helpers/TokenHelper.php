@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TokenHelper
@@ -12,12 +13,16 @@ class TokenHelper
      */
     public static function generateSignedToken(User $user, string $purpose = 'autologin', int $hoursValid = 24): string
     {
+        // Generate unique token ID (jti - JWT ID)
+        $jti = bin2hex(random_bytes(16));
+
         $payload = [
             'user_id' => $user->id,
             'email' => $user->email,
             'exp' => now()->addHours($hoursValid)->timestamp,
             'iat' => now()->timestamp,
             'purpose' => $purpose,
+            'jti' => $jti, // Unique token identifier for revocation
         ];
 
         $jsonPayload = json_encode($payload);
@@ -70,6 +75,38 @@ class TokenHelper
                 return null;
             }
 
+            // Check if token is revoked by jti (individual token)
+            if (isset($payload['jti']))
+            {
+                $revokedKey = 'revoked_token_'.$payload['jti'];
+                if (Cache::has($revokedKey))
+                {
+                    Log::warning('Token has been revoked', ['jti' => $payload['jti']]);
+
+                    return null;
+                }
+            }
+
+            // Check if user tokens have been revoked (timestamp-based)
+            $userId = $payload['user_id'] ?? null;
+            $purpose = $payload['purpose'] ?? 'autologin';
+            if ($userId)
+            {
+                $revocationKey = "user_token_revocation_{$userId}_{$purpose}";
+                $revocationTimestamp = Cache::get($revocationKey);
+                if ($revocationTimestamp && isset($payload['iat']) && $payload['iat'] < $revocationTimestamp)
+                {
+                    Log::warning('Token invalidated by user revocation', [
+                        'user_id' => $userId,
+                        'purpose' => $purpose,
+                        'token_issued' => $payload['iat'],
+                        'revocation_time' => $revocationTimestamp,
+                    ]);
+
+                    return null;
+                }
+            }
+
             // Find user by email (works across databases)
             $user = User::where('email', $payload['email'])->first();
             if (! $user || $user->id != $payload['user_id'])
@@ -117,6 +154,73 @@ class TokenHelper
         } catch (\Exception $e)
         {
             return null;
+        }
+    }
+
+    /**
+     * Revoke a token by its ID (jti)
+     */
+    public static function revokeToken(string $token): bool
+    {
+        try
+        {
+            $payload = self::getTokenPayload($token);
+            if (! $payload || ! isset($payload['jti']))
+            {
+                Log::warning('Cannot revoke token: invalid token or missing jti');
+
+                return false;
+            }
+
+            // Calculate remaining time until expiration
+            $expirationTime = $payload['exp'] ?? null;
+            if ($expirationTime)
+            {
+                $remainingSeconds = max(0, $expirationTime - time());
+                // Store in cache until token expires
+                Cache::put('revoked_token_'.$payload['jti'], true, now()->addSeconds($remainingSeconds));
+                Log::info('Token revoked successfully', [
+                    'jti' => $payload['jti'],
+                    'user_id' => $payload['user_id'] ?? null,
+                    'email' => $payload['email'] ?? null,
+                ]);
+
+                return true;
+            }
+
+            return false;
+        } catch (\Exception $e)
+        {
+            Log::error('Error revoking token: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Revoke all tokens for a specific user and purpose
+     * Uses a timestamp-based approach: tokens issued before the revocation timestamp are invalid
+     */
+    public static function revokeUserTokens(int $userId, string $purpose = 'account_owner_autologin'): bool
+    {
+        try
+        {
+            $revocationKey = "user_token_revocation_{$userId}_{$purpose}";
+            // Store revocation timestamp - tokens issued before this will be invalid
+            Cache::put($revocationKey, now()->timestamp, now()->addDays(31)); // Store for 31 days (longer than token expiration)
+
+            Log::info('User tokens revoked', [
+                'user_id' => $userId,
+                'purpose' => $purpose,
+                'revocation_timestamp' => now()->timestamp,
+            ]);
+
+            return true;
+        } catch (\Exception $e)
+        {
+            Log::error('Error revoking user tokens: '.$e->getMessage());
+
+            return false;
         }
     }
 }
