@@ -198,18 +198,21 @@
                             icon: 'success',
                             title: 'Tokens revocados',
                             text: 'Todos los links de autologueo han sido revocados exitosamente. El propietario necesitará un nuevo link.',
-                            timer: 3000,
-                            showConfirmButton: true
+                            timer: 2000,
+                            showConfirmButton: false
                         });
                     }).catch(error => {
                         console.error('Error:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Ha ocurrido un error al revocar los tokens'
+                            text: 'Ha ocurrido un error al revocar los tokens',
+                            timer: 2000,
+                            showConfirmButton: false
                         });
                     });
                 }
+                // Si se cancela, no hacer nada (no mostrar ningún mensaje)
             });
         }
     </script>
