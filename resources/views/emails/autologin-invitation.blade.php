@@ -100,7 +100,7 @@
             <div class="access-icon">🔐</div>
             <h1>Acceso a tu cuenta</h1>
         </div>
-        
+
         <div class="content">
             <div class="welcome-message">
                 <h2>Hola {{ $user->name }},</h2>
