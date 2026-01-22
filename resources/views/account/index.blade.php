@@ -135,7 +135,7 @@
                     textarea.select();
                     document.execCommand('copy');
                     document.body.removeChild(textarea);
-                    
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Link copiado',
@@ -154,7 +154,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Link copiado',

@@ -69,15 +69,15 @@ class AccountDataTable extends DataTable
                     $loginUrl = route('login.token', ['token' => $token]);
                     $fullUrl = url($loginUrl);
 
-                    $autologinButtons = '<a href="javascript:;" 
-                                           class="text-body" 
-                                           onclick="copyAutologinLink(\''.addslashes($fullUrl).'\', this)" 
+                    $autologinButtons = '<a href="javascript:;"
+                                           class="text-body"
+                                           onclick="copyAutologinLink(\''.addslashes($fullUrl).'\', this)"
                                            title="Copiar link de autologueo">
                                             <i class="ti ti-link ti-sm me-2"></i>
                                         </a>
-                                        <a href="javascript:;" 
-                                           class="text-danger" 
-                                           onclick="revokeAutologinToken('.$account->id.', this)" 
+                                        <a href="javascript:;"
+                                           class="text-danger"
+                                           onclick="revokeAutologinToken('.$account->id.', this)"
                                            title="Revocar tokens de autologueo">
                                             <i class="ti ti-x ti-sm me-2"></i>
                                         </a>';

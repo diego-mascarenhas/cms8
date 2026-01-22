@@ -12,7 +12,7 @@ class RevokeAutologinToken extends Command
      *
      * @var string
      */
-    protected $signature = 'token:revoke 
+    protected $signature = 'token:revoke
                             {token : The autologin token to revoke (can be full URL or just the token)}
                             {--info : Show token information before revoking}';
 
