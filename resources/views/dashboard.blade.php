@@ -130,19 +130,20 @@
     <div class="row">
         <!-- Emotional Balance and Dangerous Clients (right column) -->
         <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0">
+            @if(auth()->user()->hasRole(['root', 'admin']))
             <!-- Toon API Usage Widget -->
             <div class="card mb-4">
-                <div class="card-header pb-0 d-flex justify-content-between">
+                <div class="card-header pb-0 d-flex justify-content-between mb-3">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">Uso de API & Ahorro</h5>
-                        <small class="text-muted">Optimización con Toon</small>
+                        <small class="text-muted">Optimización de costos</small>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body pt-0">
                     <div class="row">
                         <div class="col-6 mb-3">
                             <div class="d-flex align-items-center">
-                                <span class="bg-label-primary p-2 rounded me-2">
+                                <span class="bg-label-primary p-2 rounded me-3">
                                     <i class='ti ti-api ti-sm'></i>
                                 </span>
                                 <div>
@@ -153,7 +154,7 @@
                         </div>
                         <div class="col-6 mb-3">
                             <div class="d-flex align-items-center">
-                                <span class="bg-label-success p-2 rounded me-2">
+                                <span class="bg-label-success p-2 rounded me-3">
                                     <i class='ti ti-coin ti-sm'></i>
                                 </span>
                                 <div>
@@ -181,13 +182,14 @@
                                     Usados: {{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensUsed']) }}
                                 </small>
                                 <small class="text-muted">
-                                    Sin Toon: {{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensWithoutToon']) }}
+                                    Sin optimización: {{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensWithoutToon']) }}
                                 </small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            @endif
 
             <!-- Emotional Balance -->
             <div class="card mb-4">
