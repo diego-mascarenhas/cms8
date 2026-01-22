@@ -4,6 +4,7 @@ use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\language\LanguageController;
@@ -81,8 +82,8 @@ Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
-// Auto-login with token route (AuthController not implemented yet)
-// Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+// Auto-login with token route
+Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');

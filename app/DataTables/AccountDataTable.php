@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Helpers\TokenHelper;
 use App\Models\Account;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -61,10 +62,26 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('action', function ($account)
             {
+                $autologinButton = '';
+                if ($account->owner)
+                {
+                    $token = TokenHelper::generateSignedToken($account->owner, 'account_owner_autologin', 720); // 30 days
+                    $loginUrl = route('login.token', ['token' => $token]);
+                    $fullUrl = url($loginUrl);
+
+                    $autologinButton = '<a href="javascript:;" 
+                                           class="text-body" 
+                                           onclick="copyAutologinLink(\''.addslashes($fullUrl).'\', this)" 
+                                           title="Copiar link de autologueo">
+                                            <i class="ti ti-link ti-sm me-2"></i>
+                                        </a>';
+                }
+
                 return '<div class="d-flex justify-content-center align-items-center">
 					<a href="'.route('account.subscriptions', $account->id).'" class="text-body" title="Ver suscripciones">
 						<i class="ti ti-eye ti-sm me-2"></i>
 					</a>
+					'.$autologinButton.'
 					<a href="'.route('account.edit', $account->id).'" class="text-body" title="Editar">
 						<i class="ti ti-edit ti-sm"></i>
 					</a>
