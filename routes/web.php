@@ -48,6 +48,7 @@ use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SLAController;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
@@ -84,6 +85,10 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+
+// SLA Acceptance Routes (public - no auth required, autologin handled in controller)
+Route::get('/sla/accept/{token}', [SLAController::class, 'showAcceptance'])->name('sla.accept');
+Route::post('/sla/accept/{token}', [SLAController::class, 'accept'])->name('sla.accept');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
@@ -331,6 +336,13 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
 	Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
 	Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+	
+	// SLA Routes (for subscription products) - Management routes require auth
+	Route::get('/product/{productId}/sla/create', [SLAController::class, 'create'])->name('sla.create');
+	Route::post('/product/{productId}/sla', [SLAController::class, 'store'])->name('sla.store');
+	Route::get('/product/{productId}/sla/{slaId}/edit', [SLAController::class, 'edit'])->name('sla.edit');
+	Route::put('/product/{productId}/sla/{slaId}', [SLAController::class, 'update'])->name('sla.update');
+	Route::post('/product/{productId}/send-sla', [SLAController::class, 'sendSLA'])->name('sla.send');
 
 	// Projects - IMPORTANT: Specific routes MUST be before parameterized routes
 	Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');

@@ -49,8 +49,24 @@ class SubscriptionProductDataTable extends DataTable
             {
                 $html = '<div class="d-flex justify-content-center align-items-center">';
                 if (auth()->user()->hasRole('root')) {
-                    $html .= '<a href="'.route('account.products.edit', $product->id).'" class="text-body">
+                    $html .= '<a href="'.route('account.products.edit', $product->id).'" class="text-body" title="Editar producto">
                         <i class="ti ti-edit ti-sm me-2"></i>
+                    </a>';
+                }
+                // SLA actions
+                if ($product->sla) {
+                    $html .= '<a href="'.route('sla.edit', ['productId' => $product->id, 'slaId' => $product->sla->id]).'" class="text-body" title="Editar SLA">
+                        <i class="ti ti-file-text ti-sm me-2"></i>
+                    </a>';
+                } else {
+                    $html .= '<a href="'.route('sla.create', $product->id).'" class="text-body" title="Crear SLA">
+                        <i class="ti ti-file-plus ti-sm me-2"></i>
+                    </a>';
+                }
+                // Send SLA button
+                if ($product->sla) {
+                    $html .= '<a href="javascript:;" class="text-body send-sla-btn" data-product-id="'.$product->id.'" title="Enviar SLA">
+                        <i class="ti ti-send ti-sm me-2"></i>
                     </a>';
                 }
                 $html .= '</div>';
@@ -62,7 +78,7 @@ class SubscriptionProductDataTable extends DataTable
 
     public function query(SubscriptionProduct $model): QueryBuilder
     {
-        return $model->newQuery()->orderBy('name', 'asc');
+        return $model->newQuery()->with('sla')->orderBy('name', 'asc');
     }
 
     public function html(): HtmlBuilder

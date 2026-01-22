@@ -78,6 +78,42 @@ class SyncStripeCustomers extends Command
                 // Try to find the team by owner email
                 $team = $this->findTeamByEmail($customer->email);
 
+                // If team found by email but already has a different stripe_id, try to find by name
+                if ($team && $team->stripe_id && $team->stripe_id !== $customer->id)
+                {
+                    // Try to find another team without stripe_id that matches the customer name
+                    if ($customer->name)
+                    {
+                        $teamByName = Team::where('name', $customer->name)
+                            ->whereNull('stripe_id')
+                            ->first();
+                        if ($teamByName)
+                        {
+                            $team = $teamByName;
+                        } else
+                        {
+                            $this->warn("  ⚠️  Team already has different stripe_id: {$team->stripe_id}");
+                            $stats['skipped']++;
+
+                            continue;
+                        }
+                    } else
+                    {
+                        $this->warn("  ⚠️  Team already has different stripe_id: {$team->stripe_id}");
+                        $stats['skipped']++;
+
+                        continue;
+                    }
+                }
+
+                // If not found by email, try to find by customer name matching team name
+                if (! $team && $customer->name)
+                {
+                    $team = Team::where('name', $customer->name)
+                        ->whereNull('stripe_id')
+                        ->first();
+                }
+
                 if ($team)
                 {
                     // Team exists - update stripe_id if needed

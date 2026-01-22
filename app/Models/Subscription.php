@@ -66,4 +66,12 @@ class Subscription extends CashierSubscription
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * Get SLA acceptances for this subscription.
+     */
+    public function slaAcceptances()
+    {
+        return $this->hasMany(SLAAcceptance::class);
+    }
 }

@@ -140,10 +140,82 @@ class AccountController extends Controller
         $team = Team::with('subscriptions')->findOrFail($id);
 
         // Get products for each subscription to display names
-        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription)
+        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription) use ($team)
         {
             $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
             $subscription->product = $product;
+
+            // Get next billing date from Stripe
+            $nextBillingDate = null;
+            try
+            {
+                if ($subscription->stripe_id)
+                {
+                    $stripeSubscription = $subscription->asStripeSubscription();
+                    if ($stripeSubscription && isset($stripeSubscription->current_period_end))
+                    {
+                        $nextBillingDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+                    }
+                }
+            } catch (\Exception $e)
+            {
+                \Log::warning('Error fetching Stripe subscription data', [
+                    'subscription_id' => $subscription->id,
+                    'stripe_id' => $subscription->stripe_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            $subscription->nextBillingDate = $nextBillingDate;
+
+            // Find pending SLA acceptance for this subscription
+            $pendingAcceptance = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                ->whereNull('accepted_at')
+                ->with(['sla.subscriptionProduct'])
+                ->first();
+
+            // Find accepted SLA acceptance for this subscription
+            $acceptedSLA = \App\Models\SLAAcceptance::where('subscription_id', $subscription->id)
+                ->whereNotNull('accepted_at')
+                ->with(['sla.subscriptionProduct'])
+                ->latest('accepted_at')
+                ->first();
+
+            // Find products with SLA for this subscription
+            $productForSending = null;
+            if (! $pendingAcceptance && $product)
+            {
+                // Check if the product has an SLA
+                $productWithSLA = \App\Models\SubscriptionProduct::where('id', $product->id)
+                    ->whereHas('sla', function ($q)
+                    {
+                        $q->where('is_active', true);
+                    })
+                    ->with(['sla.acceptances' => function ($q) use ($subscription)
+                    {
+                        $q->whereNull('accepted_at')
+                            ->where('subscription_id', $subscription->id);
+                    }])
+                    ->first();
+
+                if ($productWithSLA && $productWithSLA->sla)
+                {
+                    // Check if there's a pending acceptance
+                    $pendingAcceptance = $productWithSLA->sla->acceptances()
+                        ->whereNull('accepted_at')
+                        ->where('subscription_id', $subscription->id)
+                        ->first();
+
+                    // If no pending acceptance, this product can send SLA
+                    if (! $pendingAcceptance)
+                    {
+                        $productForSending = $productWithSLA;
+                    }
+                }
+            }
+
+            $subscription->pendingSlaAcceptance = $pendingAcceptance;
+            $subscription->acceptedSLA = $acceptedSLA;
+            $subscription->productForSendingSLA = $productForSending;
 
             return $subscription;
         });
