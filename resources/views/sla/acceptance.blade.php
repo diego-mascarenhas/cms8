@@ -39,7 +39,7 @@
                         </div>
                     </div>
 
-                    <form action="{{ route('sla.accept', ['token' => $acceptance->token]) }}" method="POST">
+                    <form action="{{ route('sla.accept.store', ['token' => $acceptance->token]) }}" method="POST">
                         @csrf
                         <div class="mb-3">
                             <label for="accepted_by_name" class="form-label">Nombre completo (opcional)</label>

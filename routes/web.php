@@ -88,7 +88,7 @@ Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->n
 
 // SLA Acceptance Routes (public - no auth required, autologin handled in controller)
 Route::get('/sla/accept/{token}', [SLAController::class, 'showAcceptance'])->name('sla.accept');
-Route::post('/sla/accept/{token}', [SLAController::class, 'accept'])->name('sla.accept');
+Route::post('/sla/accept/{token}', [SLAController::class, 'accept'])->name('sla.accept.store');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
