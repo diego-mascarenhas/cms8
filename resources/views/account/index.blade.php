@@ -135,7 +135,7 @@
                     textarea.select();
                     document.execCommand('copy');
                     document.body.removeChild(textarea);
-                    
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Link copiado',
@@ -154,7 +154,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Link copiado',
@@ -163,6 +163,54 @@
                     showConfirmButton: false
                 });
             }
+        }
+
+        function revokeAutologinToken(accountId, element) {
+            Swal.fire({
+                title: '¿Revocar tokens de autologueo?',
+                text: 'Esto invalidará todos los links de autologueo existentes para el propietario de esta cuenta. Deberás generar un nuevo link.',
+                icon: 'warning',
+                showCancelButton: true,
+                showDenyButton: false,
+                confirmButtonText: 'Sí',
+                cancelButtonText: 'No',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger me-2 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('account.revoke-autologin', ['id' => ':ID']) }}".replace(':ID', accountId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Tokens revocados',
+                            text: 'Todos los links de autologueo han sido revocados exitosamente. El propietario necesitará un nuevo link.',
+                            timer: 3000,
+                            showConfirmButton: true
+                        });
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al revocar los tokens'
+                        });
+                    });
+                }
+            });
         }
     </script>
 @endpush

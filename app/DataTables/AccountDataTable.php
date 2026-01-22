@@ -62,18 +62,24 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('action', function ($account)
             {
-                $autologinButton = '';
+                $autologinButtons = '';
                 if ($account->owner)
                 {
                     $token = TokenHelper::generateSignedToken($account->owner, 'account_owner_autologin', 720); // 30 days
                     $loginUrl = route('login.token', ['token' => $token]);
                     $fullUrl = url($loginUrl);
 
-                    $autologinButton = '<a href="javascript:;" 
-                                           class="text-body" 
-                                           onclick="copyAutologinLink(\''.addslashes($fullUrl).'\', this)" 
+                    $autologinButtons = '<a href="javascript:;"
+                                           class="text-body"
+                                           onclick="copyAutologinLink(\''.addslashes($fullUrl).'\', this)"
                                            title="Copiar link de autologueo">
                                             <i class="ti ti-link ti-sm me-2"></i>
+                                        </a>
+                                        <a href="javascript:;"
+                                           class="text-danger"
+                                           onclick="revokeAutologinToken('.$account->id.', this)"
+                                           title="Revocar tokens de autologueo">
+                                            <i class="ti ti-x ti-sm me-2"></i>
                                         </a>';
                 }
 
@@ -81,7 +87,7 @@ class AccountDataTable extends DataTable
 					<a href="'.route('account.subscriptions', $account->id).'" class="text-body" title="Ver suscripciones">
 						<i class="ti ti-eye ti-sm me-2"></i>
 					</a>
-					'.$autologinButton.'
+					'.$autologinButtons.'
 					<a href="'.route('account.edit', $account->id).'" class="text-body" title="Editar">
 						<i class="ti ti-edit ti-sm"></i>
 					</a>

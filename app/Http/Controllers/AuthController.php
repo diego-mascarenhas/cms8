@@ -92,6 +92,34 @@ class AuthController extends Controller
     {
         try
         {
+            // First check if token was revoked before trying to validate
+            $payload = TokenHelper::getTokenPayload($token);
+            if ($payload)
+            {
+                $userId = $payload['user_id'] ?? null;
+                $purpose = $payload['purpose'] ?? 'autologin';
+                if ($userId)
+                {
+                    $revocationKey = "user_token_revocation_{$userId}_{$purpose}";
+                    $revocationTimestamp = \Illuminate\Support\Facades\Cache::get($revocationKey);
+                    if ($revocationTimestamp && isset($payload['iat']) && $payload['iat'] < $revocationTimestamp)
+                    {
+                        // Token was revoked - show 403
+                        abort(403, 'Este link de acceso ha sido revocado y ya no es válido.');
+                    }
+
+                    // Also check if individual token was revoked by jti
+                    if (isset($payload['jti']))
+                    {
+                        $revokedKey = 'revoked_token_'.$payload['jti'];
+                        if (\Illuminate\Support\Facades\Cache::has($revokedKey))
+                        {
+                            abort(403, 'Este link de acceso ha sido revocado y ya no es válido.');
+                        }
+                    }
+                }
+            }
+
             // First, try to parse as signed token (new format)
             $user = TokenHelper::validateSignedToken($token);
 
