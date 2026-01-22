@@ -187,6 +187,7 @@ Route::middleware(['auth'])->group(function () {
 		Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
 		Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
 		Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
+		Route::get('/account-management/subscriptions/all', [AccountController::class, 'allSubscriptions'])->name('account.subscriptions.all');
 		Route::post('/account-management/{id}/revoke-autologin', [AccountController::class, 'revokeAutologinToken'])->name('account.revoke-autologin');
 		Route::post('/account-management/{id}/send-autologin-invitation', [AccountController::class, 'sendAutologinInvitation'])->name('account.send-autologin-invitation');
 
@@ -336,7 +337,7 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
 	Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
 	Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
-	
+
 	// SLA Routes (for subscription products) - Management routes require auth
 	Route::get('/product/{productId}/sla/create', [SLAController::class, 'create'])->name('sla.create');
 	Route::post('/product/{productId}/sla', [SLAController::class, 'store'])->name('sla.store');

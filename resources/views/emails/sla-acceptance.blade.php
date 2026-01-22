@@ -108,7 +108,7 @@
             <div class="sla-icon">📋</div>
             <h1>Aceptación de SLA</h1>
         </div>
-        
+
         <div class="content">
             <div class="welcome-message">
                 <h2>Hola,</h2>

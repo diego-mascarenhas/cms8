@@ -36,7 +36,7 @@ class Team extends JetstreamTeam
      */
     public function subscriptions()
     {
-        return $this->hasMany(\Laravel\Cashier\Subscription::class, 'team_id')->orderByDesc('created_at');
+        return $this->hasMany(\App\Models\Subscription::class, 'team_id')->orderByDesc('created_at');
     }
 
     /**

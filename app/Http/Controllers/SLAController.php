@@ -363,11 +363,35 @@ class SLAController extends Controller
 
             if ($product && $product->stripe_price)
             {
-                // Find active subscription with this product's price
-                $subscription = Subscription::where('stripe_price', $product->stripe_price)
-                    ->where('stripe_status', 'active')
-                    ->latest()
-                    ->first();
+                // Try to find subscription by email first (more accurate)
+                $subscription = null;
+                if ($acceptance->accepted_by_email)
+                {
+                    // Find team by owner email
+                    $team = \App\Models\Team::whereHas('owner', function ($q) use ($acceptance)
+                    {
+                        $q->where('email', $acceptance->accepted_by_email);
+                    })->first();
+
+                    if ($team)
+                    {
+                        // Find subscription for this team with this product's price
+                        $subscription = Subscription::where('team_id', $team->id)
+                            ->where('stripe_price', $product->stripe_price)
+                            ->where('stripe_status', 'active')
+                            ->latest()
+                            ->first();
+                    }
+                }
+
+                // Fallback: Find any active subscription with this product's price
+                if (! $subscription)
+                {
+                    $subscription = Subscription::where('stripe_price', $product->stripe_price)
+                        ->where('stripe_status', 'active')
+                        ->latest()
+                        ->first();
+                }
 
                 if ($subscription)
                 {

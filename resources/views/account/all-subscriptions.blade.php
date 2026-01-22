@@ -1,10 +1,11 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Suscripciones')
+@section('title', 'Todas las Suscripciones')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
@@ -16,13 +17,10 @@
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Cuentas/</span> {{ $team->name }}</h4>
-            <p class="text-muted">Suscripciones activas</p>
+            <h4 class="mb-1 mt-3">Todas las Suscripciones</h4>
+            <p class="text-muted">Listado completo de suscripciones de todos los equipos</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
-            <a href="{{ route('account.subscriptions.all') }}" class="btn btn-primary waves-effect waves-light">
-                <i class="ti ti-list me-1"></i>Todas las Suscripciones
-            </a>
             <a href="{{ route('account-management') }}" class="btn btn-label-secondary waves-effect waves-light">
                 <i class="ti ti-arrow-left me-1"></i>Volver
             </a>
@@ -31,15 +29,16 @@
 
     <div class="card">
         <div class="card-body">
-            @if($team->subscriptions->isEmpty())
+            @if($allSubscriptions->isEmpty())
                 <div class="text-center py-5">
-                    <p class="text-muted">No hay suscripciones para este equipo.</p>
+                    <p class="text-muted">No hay suscripciones registradas.</p>
                 </div>
             @else
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
                             <tr>
+                                <th>Equipo</th>
                                 <th>Nombre</th>
                                 <th>Estado</th>
                                 <th>Precio</th>
@@ -50,8 +49,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($subscriptionsWithProducts as $subscription)
+                            @foreach($allSubscriptions as $subscription)
                                 <tr>
+                                    <td>
+                                        @if($subscription->team)
+                                            <a href="{{ route('account.subscriptions', $subscription->team->id) }}" class="text-body">
+                                                {{ $subscription->team->name }}
+                                            </a>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($subscription->product)
                                             {{ $subscription->product->name }}

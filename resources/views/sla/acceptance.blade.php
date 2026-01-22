@@ -43,10 +43,10 @@
                         @csrf
                         <div class="mb-3">
                             <label for="accepted_by_name" class="form-label">Nombre completo (opcional)</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="accepted_by_name" 
-                                   name="accepted_by_name" 
+                            <input type="text"
+                                   class="form-control"
+                                   id="accepted_by_name"
+                                   name="accepted_by_name"
                                    value="{{ old('accepted_by_name', $acceptance->accepted_by_name ?: ($ownerName ?? '')) }}"
                                    placeholder="Tu nombre completo">
                         </div>

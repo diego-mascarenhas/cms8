@@ -49,7 +49,7 @@
         quill.on('text-change', function() {
             var html = quill.root.innerHTML;
             var textContent = getTextContent(html).trim();
-            
+
             // Only update if there's actual text content
             if (textContent.length > 0) {
                 document.querySelector('#content').value = html;
@@ -64,14 +64,14 @@
             form.addEventListener('submit', function(e) {
                 var html = quill.root.innerHTML;
                 var textContent = getTextContent(html).trim();
-                
+
                 // Sync content before validation
                 if (textContent.length > 0) {
                     document.querySelector('#content').value = html;
                 } else {
                     document.querySelector('#content').value = '';
                 }
-                
+
                 // Validate that content is not empty
                 if (!textContent || textContent.length < 10) {
                     e.preventDefault();
@@ -109,8 +109,8 @@
 
 <div class="card mb-4">
     <h5 class="card-header">{{ isset($sla) ? 'Editar SLA' : 'Crear SLA' }}</h5>
-    <form class="card-body" 
-          action="{{ isset($sla) ? route('sla.update', ['productId' => $product->id, 'slaId' => $sla->id]) : route('sla.store', $product->id) }}" 
+    <form class="card-body"
+          action="{{ isset($sla) ? route('sla.update', ['productId' => $product->id, 'slaId' => $sla->id]) : route('sla.store', $product->id) }}"
           method="POST">
         @csrf
         @if(isset($sla))
@@ -119,18 +119,18 @@
 
         <div class="row g-3">
             <div class="col-md-12">
-                <x-input-general 
-                    id="title" 
-                    label="Título del SLA (*)" 
-                    value="{{ old('title', $sla->title ?? '') }}" 
+                <x-input-general
+                    id="title"
+                    label="Título del SLA (*)"
+                    value="{{ old('title', $sla->title ?? '') }}"
                 />
             </div>
 
             <div class="col-md-6">
-                <x-input-general 
-                    id="version" 
-                    label="Versión" 
-                    value="{{ old('version', $sla->version ?? '1.0') }}" 
+                <x-input-general
+                    id="version"
+                    label="Versión"
+                    value="{{ old('version', $sla->version ?? '1.0') }}"
                 />
             </div>
 
@@ -138,10 +138,10 @@
                 <div class="mb-3">
                     <label class="form-label">Estado</label>
                     <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="is_active" 
-                               name="is_active" 
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="is_active"
+                               name="is_active"
                                value="1"
                                {{ old('is_active', $sla->is_active ?? true) ? 'checked' : '' }}>
                         <label class="form-check-label" for="is_active">

@@ -36,6 +36,9 @@
             <p class="text-muted">Gestión de cuentas</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
+            <a href="{{ route('account.subscriptions.all') }}" class="btn btn-primary waves-effect waves-light">
+                <i class="ti ti-list me-1"></i>Todas las Suscripciones
+            </a>
             <a href="{{ route('account.products.index') }}" class="btn btn-primary waves-effect waves-light">
                 <i class="ti ti-package me-1"></i>Productos
             </a>
