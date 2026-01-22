@@ -76,6 +76,12 @@ class AccountDataTable extends DataTable
                                             <i class="ti ti-link ti-sm me-2"></i>
                                         </a>
                                         <a href="javascript:;"
+                                           class="text-info"
+                                           onclick="sendAutologinInvitation('.$account->id.', this)"
+                                           title="Enviar invitación por email">
+                                            <i class="ti ti-send ti-sm me-2"></i>
+                                        </a>
+                                        <a href="javascript:;"
                                            class="text-danger"
                                            onclick="revokeAutologinToken('.$account->id.', this)"
                                            title="Revocar tokens de autologueo">

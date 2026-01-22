@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
 use App\Helpers\TokenHelper;
+use App\Mail\AutologinInvitationMail;
 use App\Models\Module;
 use App\Models\Team;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AccountController extends Controller
 {
+    use ConfiguresTeamMail;
     public function index(AccountDataTable $dataTable)
     {
         return $dataTable->render('account.index');
@@ -184,5 +189,66 @@ class AccountController extends Controller
             'success' => false,
             'message' => 'Error al revocar los tokens',
         ], 500);
+    }
+
+    /**
+     * Send autologin invitation email to account owner
+     */
+    public function sendAutologinInvitation(Request $request, string $id)
+    {
+        $team = Team::findOrFail($id);
+
+        if (! $team->owner)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cuenta no tiene propietario asignado',
+            ], 400);
+        }
+
+        if (! $team->owner->email)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'El propietario no tiene email configurado',
+            ], 400);
+        }
+
+        try
+        {
+            // Configure mail for the team (custom SMTP or system with advertising)
+            $this->configureMailForTeam($team);
+
+            // Generate autologin token
+            $token = TokenHelper::generateSignedToken($team->owner, 'account_owner_autologin', 720); // 30 days
+            $loginUrl = route('login.token', ['token' => $token]);
+            $fullUrl = url($loginUrl);
+
+            // Send email
+            Mail::to($team->owner->email)->send(new AutologinInvitationMail($team->owner, $team, $fullUrl));
+
+            Log::info('Autologin invitation email sent', [
+                'user_id' => $team->owner->id,
+                'user_email' => $team->owner->email,
+                'team_id' => $team->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invitación enviada exitosamente al propietario de la cuenta.',
+            ]);
+        } catch (\Exception $e)
+        {
+            Log::error('Error sending autologin invitation email', [
+                'user_id' => $team->owner->id,
+                'team_id' => $team->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al enviar la invitación: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

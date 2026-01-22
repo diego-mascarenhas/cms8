@@ -165,6 +165,56 @@
             }
         }
 
+        function sendAutologinInvitation(accountId, element) {
+            Swal.fire({
+                title: '¿Enviar invitación?',
+                text: 'Se enviará un email al propietario de la cuenta con el link de acceso directo.',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: false,
+                confirmButtonText: 'Sí',
+                cancelButtonText: 'No',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('account.send-autologin-invitation', ['id' => ':ID']) }}".replace(':ID', accountId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Invitación enviada',
+                            text: 'El email ha sido enviado exitosamente al propietario de la cuenta.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al enviar la invitación',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    });
+                }
+            });
+        }
+
         function revokeAutologinToken(accountId, element) {
             Swal.fire({
                 title: '¿Revocar tokens de autologueo?',
