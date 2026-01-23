@@ -127,6 +127,8 @@ return [
     'Uploaded' => 'Subido',
     'Files uploaded successfully' => 'Archivos subidos correctamente',
     'Error uploading files' => 'Error al subir archivos',
+    'Failed to load multimedia data' => 'Error al cargar los datos del multimedia',
+    'Failed to update multimedia' => 'Error al actualizar el multimedia',
 
     // Category
     'Edit Category' => 'Editar Categoría',

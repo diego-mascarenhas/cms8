@@ -122,6 +122,27 @@ class MultimediaController extends Controller
     {
         $this->authorize('update', $multimedia);
 
+        // If AJAX request, return JSON
+        if (request()->ajax() || request()->wantsJson())
+        {
+            $selectedTags = $multimedia->tags->where('type', 'general')->pluck('name')->toArray();
+            $selectedGalleries = $multimedia->tags->where('type', 'gallery')->pluck('name')->toArray();
+
+            return response()->json([
+                'success' => true,
+                'multimedia' => [
+                    'id' => $multimedia->id,
+                    'title' => $multimedia->title,
+                    'description' => $multimedia->description,
+                    'category_id' => $multimedia->category_id,
+                    'status' => $multimedia->status?->value,
+                    'visibility' => $multimedia->visibility?->value,
+                    'tags' => $selectedTags,
+                    'galleries' => $selectedGalleries,
+                ],
+            ]);
+        }
+
         $categories = $this->getMultimediaCategories();
         $tags = Tag::getWithType('general')->sortBy('name')->values();
         $galleryTags = Tag::getWithType('gallery')->sortBy('name')->values();
@@ -176,9 +197,18 @@ class MultimediaController extends Controller
             $request->input('galleries', []),
         );
 
+        // If AJAX request, return JSON
+        if ($request->ajax() || $request->wantsJson())
+        {
+            return response()->json([
+                'success' => true,
+                'message' => __('app.Multimedia updated successfully.'),
+            ]);
+        }
+
         return redirect()
             ->route('multimedia.index')
-            ->with('success', __('Multimedia updated successfully.'));
+            ->with('success', __('app.Multimedia updated successfully.'));
     }
 
     public function destroy(Multimedia $multimedia)

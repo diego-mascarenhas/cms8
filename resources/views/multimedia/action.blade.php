@@ -7,7 +7,7 @@
         @endif
     @endcan
     @can('update', $multimedia)
-        <a href="{{ route('multimedia.edit', $multimedia->id) }}" class="text-body">
+        <a href="#" class="text-body" onclick="openEditMultimedia({{ $multimedia->id }})">
             <i class="ti ti-edit ti-sm me-2"></i>
         </a>
     @endcan

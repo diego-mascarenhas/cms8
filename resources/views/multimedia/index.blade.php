@@ -159,6 +159,98 @@
         {{ $dataTable->table() }}
     </div>
 </div>
+
+<!-- Edit Multimedia Offcanvas -->
+@can('create', \App\Models\Multimedia::class)
+<div class="offcanvas offcanvas-end multimedia-edit-sidebar" tabindex="-1" id="multimediaEditOffcanvas">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title">{{ __('app.Edit Media') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form id="multimediaEditForm">
+            @csrf
+            <input type="hidden" id="edit_multimedia_id" name="id">
+            
+            <div class="mb-3">
+                <label class="form-label" for="edit_title">{{ __('app.Title') }}</label>
+                <input type="text" id="edit_title" name="title" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_description">{{ __('app.Description') }}</label>
+                <textarea id="edit_description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="edit_status">{{ __('app.Status') }}</label>
+                    <select id="edit_status" name="status" class="form-select">
+                        @foreach($statusOptions as $status)
+                            <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edit_visibility">{{ __('app.Visibility') }}</label>
+                    <select id="edit_visibility" name="visibility" class="form-select">
+                        @foreach($visibilityOptions as $visibility)
+                            <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_category_id">{{ __('app.Category') }}</label>
+                <select id="edit_category_id" name="category_id" class="form-select select2">
+                    <option value="">{{ __('app.No category') }}</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_tags">{{ __('app.Tags') }}</label>
+                <select id="edit_tags" name="tags[]" class="form-select select2" multiple>
+                    @foreach($tags as $tag)
+                        <option value="{{ $tag->name }}">{{ $tag->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_galleries">{{ __('app.Galleries') }}</label>
+                <select id="edit_galleries" name="galleries[]" class="form-select select2" multiple>
+                    @foreach($galleryTags as $tag)
+                        <option value="{{ $tag->name }}">{{ $tag->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_media">{{ __('app.Replace File') }}</label>
+                <input type="file" id="edit_media" name="media" class="form-control">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="edit_poster">{{ __('app.Poster Image (Optional)') }}</label>
+                <input type="file" id="edit_poster" name="poster" class="form-control" accept="image/*">
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-check me-1"></i>{{ __('app.Save') }}
+                </button>
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">
+                    {{ __('app.Cancel') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endcan
 @endsection
 
 @push('scripts')
@@ -166,6 +258,12 @@
     <script>
         $(document).ready(function () {
             $('.select2').select2({ width: '100%' });
+            
+            // Ensure offcanvas is in body
+            const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
+            if (offcanvasEl && offcanvasEl.parentElement !== document.body) {
+                document.body.appendChild(offcanvasEl);
+            }
 
             function bindFilters(table) {
                 if (!table) {
@@ -304,14 +402,14 @@
                     setTimeout(() => {
                         uploadProgress.classList.add('d-none');
                         updateProgress(0, 0);
-                        
+
                         // Reload DataTable
                         if ($.fn.dataTable.isDataTable('#multimedia-table')) {
                             $('#multimedia-table').DataTable().ajax.reload(null, false);
                         }
-                        
+
                         fileInput.value = '';
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: '{{ __("app.Uploaded") }}',
@@ -324,7 +422,7 @@
                 .catch(error => {
                     console.error('Error uploading files:', error);
                     failedFiles = totalFiles;
-                    
+
                     setTimeout(() => {
                         uploadProgress.classList.add('d-none');
                         updateProgress(0, 0);
@@ -345,6 +443,186 @@
             }
         }
         @endcan
+
+        // Open edit multimedia offcanvas
+        function openEditMultimedia(id) {
+            const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
+            if (!offcanvasEl) return;
+
+            // Ensure offcanvas is in body
+            if (offcanvasEl.parentElement !== document.body) {
+                document.body.appendChild(offcanvasEl);
+            }
+
+            const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+            
+            // Load multimedia data
+            fetch(`{{ url('multimedia') }}/${id}/edit`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const multimedia = data.multimedia;
+                    
+                    // Fill form fields
+                    document.getElementById('edit_multimedia_id').value = multimedia.id;
+                    document.getElementById('edit_title').value = multimedia.title || '';
+                    document.getElementById('edit_description').value = multimedia.description || '';
+                    document.getElementById('edit_status').value = multimedia.status || '0';
+                    document.getElementById('edit_visibility').value = multimedia.visibility || '1';
+                    document.getElementById('edit_category_id').value = multimedia.category_id || '';
+                    
+                    // Set tags
+                    const tagsSelect = $('#edit_tags');
+                    tagsSelect.val(multimedia.tags || []).trigger('change');
+                    
+                    // Set galleries
+                    const galleriesSelect = $('#edit_galleries');
+                    galleriesSelect.val(multimedia.galleries || []).trigger('change');
+                    
+                    // Initialize Select2 if not already
+                    if (!tagsSelect.data('select2')) {
+                        tagsSelect.select2({
+                            width: '100%',
+                            tags: true,
+                            tokenSeparators: [','],
+                            language: {
+                                noResults: function() { return ''; },
+                                searching: function() { return 'Buscando...'; }
+                            },
+                            ajax: {
+                                url: '{{ route("tags.search") }}',
+                                dataType: 'json',
+                                delay: 250,
+                                data: function (params) {
+                                    return { q: params.term, type: 'general' };
+                                },
+                                processResults: function (data) {
+                                    return {
+                                        results: data.map(function(tag) {
+                                            return { id: tag.name, text: tag.name };
+                                        })
+                                    };
+                                },
+                                cache: true
+                            },
+                            minimumInputLength: 2
+                        });
+                    }
+                    
+                    if (!galleriesSelect.data('select2')) {
+                        galleriesSelect.select2({
+                            width: '100%',
+                            tags: true,
+                            tokenSeparators: [','],
+                            language: {
+                                noResults: function() { return ''; },
+                                searching: function() { return 'Buscando...'; }
+                            },
+                            ajax: {
+                                url: '{{ route("tags.search") }}',
+                                dataType: 'json',
+                                delay: 250,
+                                data: function (params) {
+                                    return { q: params.term, type: 'gallery' };
+                                },
+                                processResults: function (data) {
+                                    return {
+                                        results: data.map(function(tag) {
+                                            return { id: tag.name, text: tag.name };
+                                        })
+                                    };
+                                },
+                                cache: true
+                            },
+                            minimumInputLength: 2
+                        });
+                    }
+                    
+                    // Initialize category select2
+                    $('#edit_category_id').select2({ width: '100%' });
+                    
+                    // Open offcanvas
+                    offcanvas.show();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ __("app.Error") }}',
+                        text: data.message || '{{ __("app.Failed to load multimedia data") }}'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading multimedia:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '{{ __("app.Error") }}',
+                    text: '{{ __("app.Failed to load multimedia data") }}'
+                });
+            });
+        }
+
+        // Handle form submission
+        document.getElementById('multimediaEditForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const multimediaId = formData.get('id');
+            
+            // Add _method for Laravel to recognize PUT
+            formData.append('_method', 'PUT');
+            
+            fetch(`{{ url('multimedia') }}/${multimediaId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '{{ __("app.Saved") }}',
+                        text: data.message || '{{ __("app.Multimedia updated successfully.") }}',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    
+                    // Close offcanvas
+                    const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
+                    const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                    if (offcanvas) {
+                        offcanvas.hide();
+                    }
+                    
+                    // Reload DataTable
+                    if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                        $('#multimedia-table').DataTable().ajax.reload(null, false);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ __("app.Error") }}',
+                        text: data.message || '{{ __("app.Failed to update multimedia") }}'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error updating multimedia:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '{{ __("app.Error") }}',
+                    text: '{{ __("app.Failed to update multimedia") }}'
+                });
+            });
+        });
 
         function deleteRecord(id) {
             Swal.fire({

@@ -40,12 +40,12 @@ class MultimediaDataTable extends DataTable
 
                 if ($previewUrl)
                 {
-                    return '<div class="avatar avatar-sm"><img src="'.$previewUrl.'" class="rounded" alt="'.$multimedia->title.'"></div>';
+                    return '<div class="avatar me-3"><img src="'.$previewUrl.'" class="rounded" alt="'.$multimedia->title.'"></div>';
                 }
 
                 $icon = $this->getTypeIcon($multimedia->type);
 
-                return '<div class="avatar avatar-sm"><span class="avatar-initial rounded bg-label-secondary"><i class="'.$icon.'"></i></span></div>';
+                return '<div class="avatar me-3"><span class="avatar-initial rounded bg-label-secondary"><i class="'.$icon.'"></i></span></div>';
             })
             ->editColumn('category_id', function (Multimedia $multimedia)
             {
