@@ -62,6 +62,13 @@
       "module_key": "tasks"
     },
     {
+      "url": "multimedia/list",
+      "name": "Multimedia",
+      "icon": "menu-icon tf-icons ti ti-photo",
+      "slug": "multimedia",
+      "module_key": "multimedia"
+    },
+    {
       "url": "time/list",
       "name": "Times",
       "icon": "menu-icon tf-icons ti ti-hourglass-low",

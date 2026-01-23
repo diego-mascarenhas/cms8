@@ -97,6 +97,13 @@
           "slug": "app-chat"
         },
         {
+          "url": "multimedia/list",
+          "name": "Multimedia",
+          "icon": "menu-icon tf-icons ti ti-photo",
+          "slug": "multimedia",
+          "module_key": "multimedia"
+        },
+        {
           "url": "app/calendar",
           "name": "Calendar",
           "icon": "menu-icon tf-icons ti ti-calendar",

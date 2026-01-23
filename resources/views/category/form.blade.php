@@ -26,6 +26,9 @@
                         @method('PUT')
                         <input type="hidden" name="id" value="{{ $category->id }}">
                     @endif
+                    @php
+                        $categoryData = $category->data ?? [];
+                    @endphp
 
                     <div class="row mb-3">
                         <div class="col-md-8">
@@ -112,6 +115,99 @@
                         <div class="form-text">Lower numbers appear first. Leave as 0 for automatic ordering.</div>
                     </div>
 
+                    <div id="multimedia-options" class="border rounded p-3 mb-3 d-none">
+                        <h6 class="mb-3">Multimedia Settings</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="image_width" class="form-label">Image Width (px)</label>
+                                    <input type="number" class="form-control @error('image_width') is-invalid @enderror"
+                                        id="image_width" name="image_width"
+                                        value="{{ old('image_width', $categoryData['image_width'] ?? '') }}" min="1" max="10000">
+                                    @error('image_width')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="image_height" class="form-label">Image Height (px)</label>
+                                    <input type="number" class="form-control @error('image_height') is-invalid @enderror"
+                                        id="image_height" name="image_height"
+                                        value="{{ old('image_height', $categoryData['image_height'] ?? '') }}" min="1" max="10000">
+                                    @error('image_height')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="thumb_width" class="form-label">Thumbnail Width (px)</label>
+                                    <input type="number" class="form-control @error('thumb_width') is-invalid @enderror"
+                                        id="thumb_width" name="thumb_width"
+                                        value="{{ old('thumb_width', $categoryData['thumb_width'] ?? '') }}" min="1" max="10000">
+                                    @error('thumb_width')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="thumb_height" class="form-label">Thumbnail Height (px)</label>
+                                    <input type="number" class="form-control @error('thumb_height') is-invalid @enderror"
+                                        id="thumb_height" name="thumb_height"
+                                        value="{{ old('thumb_height', $categoryData['thumb_height'] ?? '') }}" min="1" max="10000">
+                                    @error('thumb_height')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="poster_width" class="form-label">Poster Width (px)</label>
+                                    <input type="number" class="form-control @error('poster_width') is-invalid @enderror"
+                                        id="poster_width" name="poster_width"
+                                        value="{{ old('poster_width', $categoryData['poster_width'] ?? '') }}" min="1" max="10000">
+                                    @error('poster_width')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="poster_height" class="form-label">Poster Height (px)</label>
+                                    <input type="number" class="form-control @error('poster_height') is-invalid @enderror"
+                                        id="poster_height" name="poster_height"
+                                        value="{{ old('poster_height', $categoryData['poster_height'] ?? '') }}" min="1" max="10000">
+                                    @error('poster_height')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="fit" class="form-label">Fit Mode</label>
+                            <select class="form-select @error('fit') is-invalid @enderror" id="fit" name="fit">
+                                <option value="">Use Default</option>
+                                <option value="crop" {{ old('fit', $categoryData['fit'] ?? '') === 'crop' ? 'selected' : '' }}>Crop</option>
+                                <option value="contain" {{ old('fit', $categoryData['fit'] ?? '') === 'contain' ? 'selected' : '' }}>Contain</option>
+                                <option value="max" {{ old('fit', $categoryData['fit'] ?? '') === 'max' ? 'selected' : '' }}>Max</option>
+                                <option value="stretch" {{ old('fit', $categoryData['fit'] ?? '') === 'stretch' ? 'selected' : '' }}>Stretch</option>
+                            </select>
+                            @error('fit')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Used for image, thumbnail, and poster resizing.</div>
+                        </div>
+                    </div>
+
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary me-2">Save</button>
                         <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -132,6 +228,26 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 for dropdowns
     $('#module_id, #parent_id').select2();
+
+    const multimediaModuleId = '{{ $multimediaModuleId ?? '' }}';
+    const multimediaOptions = document.getElementById('multimedia-options');
+    const moduleSelect = document.getElementById('module_id');
+
+    function toggleMultimediaOptions() {
+        if (!multimediaOptions || !moduleSelect) {
+            return;
+        }
+
+        const selectedModule = moduleSelect.value;
+        if (multimediaModuleId && selectedModule === multimediaModuleId.toString()) {
+            multimediaOptions.classList.remove('d-none');
+        } else {
+            multimediaOptions.classList.add('d-none');
+        }
+    }
+
+    toggleMultimediaOptions();
+    moduleSelect.addEventListener('change', toggleMultimediaOptions);
 });
 </script>
 @endsection

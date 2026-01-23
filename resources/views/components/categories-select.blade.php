@@ -23,6 +23,7 @@
                     'communications' => 'communications',
                     'mail' => 'mail',
                     'chat' => 'chat',
+                    'multimedia' => 'multimedia',
                 ];
 
                 // Comprobar la ruta por prefijo

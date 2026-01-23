@@ -71,6 +71,7 @@ class CategoryController extends Controller
 
         // Get modules for dropdown
         $modules = Module::orderBy('name')->get();
+        $multimediaModuleId = Module::where('key', 'multimedia')->value('id');
 
         // Get possible parent categories for dropdown
         $parentCategories = Category::where('team_id', $team->id)
@@ -78,7 +79,7 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team'));
+        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId'));
     }
 
     /**
@@ -95,6 +96,13 @@ class CategoryController extends Controller
             'module_id' => 'nullable|exists:modules,id',
             'parent_id' => 'nullable|exists:categories,id',
             'order' => 'nullable|integer|min:0|max:255',
+            'image_width' => 'nullable|integer|min:1|max:10000',
+            'image_height' => 'nullable|integer|min:1|max:10000',
+            'thumb_width' => 'nullable|integer|min:1|max:10000',
+            'thumb_height' => 'nullable|integer|min:1|max:10000',
+            'poster_width' => 'nullable|integer|min:1|max:10000',
+            'poster_height' => 'nullable|integer|min:1|max:10000',
+            'fit' => 'nullable|in:crop,contain,max,stretch',
         ]);
 
         // Check if parent belongs to the current team
@@ -121,6 +129,24 @@ class CategoryController extends Controller
             $category = Category::where('team_id', $team->id)->findOrFail($request->id);
         }
 
+        $categoryData = $category->data;
+        $module = $request->module_id ? Module::find($request->module_id) : null;
+        if ($module && $module->key === 'multimedia')
+        {
+            $categoryData = array_filter([
+                'image_width' => $request->input('image_width') ? (int) $request->input('image_width') : null,
+                'image_height' => $request->input('image_height') ? (int) $request->input('image_height') : null,
+                'thumb_width' => $request->input('thumb_width') ? (int) $request->input('thumb_width') : null,
+                'thumb_height' => $request->input('thumb_height') ? (int) $request->input('thumb_height') : null,
+                'poster_width' => $request->input('poster_width') ? (int) $request->input('poster_width') : null,
+                'poster_height' => $request->input('poster_height') ? (int) $request->input('poster_height') : null,
+                'fit' => $request->input('fit') ?: null,
+            ], function ($value)
+            {
+                return ! is_null($value);
+            });
+        }
+
         $category->fill([
             'name' => $request->name,
             'description' => $request->description,
@@ -129,6 +155,7 @@ class CategoryController extends Controller
             'order' => $request->order ?? 0,
             'status' => $request->has('status') ? 1 : 0,
             'team_id' => $team->id,
+            'data' => $categoryData,
         ]);
 
         $category->save();
@@ -165,6 +192,7 @@ class CategoryController extends Controller
 
         // Get modules for dropdown
         $modules = Module::orderBy('name')->get();
+        $multimediaModuleId = Module::where('key', 'multimedia')->value('id');
 
         // Get possible parent categories for dropdown, excluding self and descendants
         $excludeIds = $this->getAllChildrenIds($category);
@@ -176,7 +204,7 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'team'));
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'team', 'multimediaModuleId'));
     }
 
     /**
@@ -357,7 +385,8 @@ class CategoryController extends Controller
 
         // Get module if module_key is provided
         $module = null;
-        if ($request->module_key) {
+        if ($request->module_key)
+        {
             $module = Module::where('key', $request->module_key)->first();
         }
 
