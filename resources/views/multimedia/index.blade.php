@@ -168,10 +168,10 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-        <form id="multimediaEditForm">
+        <form id="multimediaEditForm" novalidate>
             @csrf
             <input type="hidden" id="edit_multimedia_id" name="id">
-            
+
             <div class="mb-3">
                 <label class="form-label" for="edit_title">{{ __('app.Title') }}</label>
                 <input type="text" id="edit_title" name="title" class="form-control" required>
@@ -258,7 +258,7 @@
     <script>
         $(document).ready(function () {
             $('.select2').select2({ width: '100%' });
-            
+
             // Ensure offcanvas is in body
             const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
             if (offcanvasEl && offcanvasEl.parentElement !== document.body) {
@@ -455,7 +455,7 @@
             }
 
             const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
-            
+
             // Load multimedia data
             fetch(`{{ url('multimedia') }}/${id}/edit`, {
                 headers: {
@@ -467,7 +467,7 @@
             .then(data => {
                 if (data.success) {
                     const multimedia = data.multimedia;
-                    
+
                     // Fill form fields
                     document.getElementById('edit_multimedia_id').value = multimedia.id;
                     document.getElementById('edit_title').value = multimedia.title || '';
@@ -475,15 +475,15 @@
                     document.getElementById('edit_status').value = multimedia.status || '0';
                     document.getElementById('edit_visibility').value = multimedia.visibility || '1';
                     document.getElementById('edit_category_id').value = multimedia.category_id || '';
-                    
+
                     // Set tags
                     const tagsSelect = $('#edit_tags');
                     tagsSelect.val(multimedia.tags || []).trigger('change');
-                    
+
                     // Set galleries
                     const galleriesSelect = $('#edit_galleries');
                     galleriesSelect.val(multimedia.galleries || []).trigger('change');
-                    
+
                     // Initialize Select2 if not already
                     if (!tagsSelect.data('select2')) {
                         tagsSelect.select2({
@@ -513,7 +513,7 @@
                             minimumInputLength: 2
                         });
                     }
-                    
+
                     if (!galleriesSelect.data('select2')) {
                         galleriesSelect.select2({
                             width: '100%',
@@ -542,10 +542,10 @@
                             minimumInputLength: 2
                         });
                     }
-                    
+
                     // Initialize category select2
                     $('#edit_category_id').select2({ width: '100%' });
-                    
+
                     // Open offcanvas
                     offcanvas.show();
                 } else {
@@ -570,12 +570,24 @@
         document.getElementById('multimediaEditForm')?.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Clear previous errors
+            clearValidationErrors();
+
             const formData = new FormData(this);
             const multimediaId = formData.get('id');
             
+            if (!multimediaId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: '{{ __("app.Error") }}',
+                    text: '{{ __("app.Multimedia ID is required") }}'
+                });
+                return;
+            }
+
             // Add _method for Laravel to recognize PUT
             formData.append('_method', 'PUT');
-            
+
             fetch(`{{ url('multimedia') }}/${multimediaId}`, {
                 method: 'POST',
                 headers: {
@@ -584,9 +596,30 @@
                 },
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(async response => {
+                const data = await response.json();
+                
+                // Handle validation errors (422)
+                if (response.status === 422 && data.errors) {
+                    displayValidationErrors(data.errors);
+                    return;
+                }
+                
+                // Handle other errors
+                if (!response.ok) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ __("app.Error") }}',
+                        text: data.message || '{{ __("app.Failed to update multimedia") }}'
+                    });
+                    return;
+                }
+                
+                // Success
                 if (data.success) {
+                    // Clear all validation errors
+                    clearValidationErrors();
+                    
                     Swal.fire({
                         icon: 'success',
                         title: '{{ __("app.Saved") }}',
@@ -594,24 +627,18 @@
                         timer: 2000,
                         showConfirmButton: false
                     });
-                    
+
                     // Close offcanvas
                     const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
                     const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
                     if (offcanvas) {
                         offcanvas.hide();
                     }
-                    
+
                     // Reload DataTable
                     if ($.fn.dataTable.isDataTable('#multimedia-table')) {
                         $('#multimedia-table').DataTable().ajax.reload(null, false);
                     }
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '{{ __("app.Error") }}',
-                        text: data.message || '{{ __("app.Failed to update multimedia") }}'
-                    });
                 }
             })
             .catch(error => {
@@ -623,6 +650,104 @@
                 });
             });
         });
+
+        // Display validation errors
+        function displayValidationErrors(errors) {
+            // Clear previous errors first
+            clearValidationErrors();
+            
+            // Iterate through errors and display them
+            Object.keys(errors).forEach(field => {
+                // Map field names (e.g., 'status' -> 'edit_status')
+                const fieldId = field.startsWith('edit_') ? field : `edit_${field}`;
+                const fieldElement = document.getElementById(fieldId);
+                
+                if (fieldElement) {
+                    // Add invalid class to the actual input/select
+                    fieldElement.classList.add('is-invalid');
+                    
+                    // Find the parent container (mb-3 div)
+                    let container = fieldElement.closest('.mb-3');
+                    if (!container) {
+                        container = fieldElement.parentElement;
+                    }
+                    
+                    // Remove existing error message if any
+                    const existingError = container.querySelector('.invalid-feedback');
+                    if (existingError) {
+                        existingError.remove();
+                    }
+                    
+                    // Create error message div
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'invalid-feedback d-block';
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
+                    
+                    // Append to container (after the field)
+                    container.appendChild(errorDiv);
+                    
+                    // For Select2, also add invalid class to the select2 container
+                    const select2Container = fieldElement.parentElement.querySelector('.select2-container');
+                    if (select2Container) {
+                        select2Container.classList.add('is-invalid');
+                        // Also add border color
+                        select2Container.style.borderColor = '#dc3545';
+                    }
+                }
+            });
+        }
+        
+        // Clear validation errors
+        function clearValidationErrors() {
+            const form = document.getElementById('multimediaEditForm');
+            if (!form) return;
+            
+            // Remove invalid classes from all form elements and select2 containers
+            form.querySelectorAll('.is-invalid').forEach(el => {
+                el.classList.remove('is-invalid');
+            });
+            
+            // Remove error messages
+            const offcanvas = document.getElementById('multimediaEditOffcanvas');
+            if (offcanvas) {
+                offcanvas.querySelectorAll('.invalid-feedback').forEach(el => {
+                    el.remove();
+                });
+            }
+        }
+        
+        // Clear errors on input/change
+        const form = document.getElementById('multimediaEditForm');
+        if (form) {
+            form.addEventListener('input', function(e) {
+                clearFieldError(e.target);
+            });
+            
+            form.addEventListener('change', function(e) {
+                clearFieldError(e.target);
+            });
+        }
+        
+        function clearFieldError(fieldElement) {
+            if (fieldElement.classList.contains('is-invalid')) {
+                fieldElement.classList.remove('is-invalid');
+                
+                // Find and remove error message
+                const container = fieldElement.closest('.mb-3') || fieldElement.parentElement;
+                const errorDiv = container.querySelector('.invalid-feedback');
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+                
+                // Clear Select2 invalid state
+                const select2Container = fieldElement.parentElement?.querySelector('.select2-container');
+                if (select2Container) {
+                    select2Container.classList.remove('is-invalid');
+                    select2Container.style.borderColor = '';
+                }
+            }
+        }
 
         function deleteRecord(id) {
             Swal.fire({

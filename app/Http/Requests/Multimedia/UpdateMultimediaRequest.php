@@ -30,7 +30,7 @@ class UpdateMultimediaRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:categories,id',
-            'status' => 'required|in:1,2',
+            'status' => 'required|in:0,1,2',
             'visibility' => 'required|in:1,2',
             'media' => 'nullable|file|max:51200',
             'poster' => 'nullable|image|max:10240',
