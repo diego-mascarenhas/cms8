@@ -41,7 +41,7 @@
             $selectedTags = old('tags', $selectedTags ?? []);
             $selectedGalleries = old('galleries', $selectedGalleries ?? []);
             $currentStatus = (int) old('status', $multimedia->status?->value ?? \App\Enums\MultimediaStatus::ACTIVE->value);
-            $currentVisibility = (int) old('visibility', $multimedia->visibility?->value ?? \App\Enums\MultimediaVisibility::PRIVATE->value);
+            $currentVisibility = (int) old('visibility', $multimedia->visibility?->value ?? \App\Enums\MultimediaVisibility::PUBLIC->value);
             $selectedTags = is_array($selectedTags) ? $selectedTags : [];
             $selectedGalleries = is_array($selectedGalleries) ? $selectedGalleries : [];
         @endphp
@@ -68,7 +68,7 @@
                 @enderror
             </div>
             <div class="col-md-3">
-                <label class="form-label" for="visibility">{{ __('Visibility') }}</label>
+                <label class="form-label" for="visibility">{{ __('app.Visibility') }}</label>
                 <select id="visibility" name="visibility" class="form-select select2">
                     @foreach($visibilityOptions as $visibility)
                         <option value="{{ $visibility->value }}" {{ $currentVisibility === $visibility->value ? 'selected' : '' }}>
@@ -134,7 +134,7 @@
 
             @if(isset($multimedia))
                 <div class="col-md-6">
-                    <label class="form-label">{{ __('Current File') }}</label>
+                    <label class="form-label">{{ __('app.Current File') }}</label>
                     <div class="d-flex align-items-center gap-2">
                         @php
                             $previewUrl = $multimedia->getFirstMediaUrl('poster')
@@ -146,36 +146,56 @@
                             <img src="{{ $previewUrl }}" alt="{{ $multimedia->title }}" class="rounded" width="80" height="80">
                         @endif
                         <a href="{{ $multimedia->getFirstMediaUrl('media') }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            <i class="ti ti-eye me-1"></i>{{ __('View') }}
+                            <i class="ti ti-eye me-1"></i>{{ __('app.View') }}
                         </a>
                     </div>
                 </div>
             @endif
 
-            <div class="col-md-6">
-                <label class="form-label" for="{{ isset($multimedia) ? 'media' : 'files' }}">
-                    {{ isset($multimedia) ? __('Replace File') : __('Files') }}
-                </label>
-                @if(isset($multimedia))
-                    <input type="file" id="media" name="media" class="form-control">
-                @else
-                    <input type="file" id="files" name="files[]" class="form-control" multiple required>
-                @endif
+            @if(!isset($multimedia))
+            <div class="col-12">
+                <label class="form-label mb-3">{{ __('app.Files') }}</label>
+                <!-- Drop Zone -->
+                <div class="drop-zone mb-3" id="dropZone">
+                    <div class="mb-3">
+                        <i class="ti ti-upload ti-lg text-muted"></i>
+                    </div>
+                    <h6 class="mb-2">{{ __('app.Drag files here or click to select') }}</h6>
+                    <p class="text-muted mb-3">{{ __('app.Supports images, videos, audio and documents') }}</p>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="files" name="files[]" class="file-input" multiple required accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.zip,.rar">
+                        <label for="files" class="file-input-label">
+                            <i class="ti ti-plus me-1"></i>{{ __('app.Select Files') }}
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Selected Files Preview -->
+                <div id="selectedFilesPreview" class="d-none">
+                    <h6 class="mb-3">{{ __('app.Selected Files') }}</h6>
+                    <div id="filesList" class="row g-2"></div>
+                </div>
                 @error('files')
                     <div class="text-danger mt-1">{{ $message }}</div>
                 @enderror
+            </div>
+            @else
+            <div class="col-md-6">
+                <label class="form-label" for="media">{{ __('app.Replace File') }}</label>
+                <input type="file" id="media" name="media" class="form-control">
                 @error('media')
                     <div class="text-danger mt-1">{{ $message }}</div>
                 @enderror
             </div>
+            @endif
 
             <div class="col-md-6">
-                <label class="form-label" for="poster">{{ __('Poster Image (Optional)') }}</label>
+                <label class="form-label" for="poster">{{ __('app.Poster Image (Optional)') }}</label>
                 <input type="file" id="poster" name="poster" class="form-control" accept="image/*">
                 @error('poster')
                     <div class="text-danger mt-1">{{ $message }}</div>
                 @enderror
-                <div class="form-text">{{ __('Poster is used for video previews. For multiple files, upload one by one to set a poster.') }}</div>
+                <div class="form-text">{{ __('app.Poster is used for video previews. For multiple files, upload one by one to set a poster.') }}</div>
             </div>
         </div>
 
@@ -198,6 +218,254 @@
             tags: true,
             tokenSeparators: [',']
         });
+
+        // Drag and drop functionality (only for create form)
+        @if(!isset($multimedia))
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('files');
+        const selectedFilesPreview = document.getElementById('selectedFilesPreview');
+        const filesList = document.getElementById('filesList');
+        const removeText = '{{ __('app.Remove') }}';
+        let selectedFiles = [];
+
+        if (dropZone && fileInput) {
+            // Drag and drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+            fileInput.addEventListener('change', handleFiles);
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            function highlight(e) {
+                dropZone.classList.add('dragover');
+            }
+
+            function unhighlight(e) {
+                dropZone.classList.remove('dragover');
+            }
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles({ target: { files } });
+            }
+
+            function handleFiles(e) {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    // Add new files to selectedFiles array
+                    files.forEach(file => {
+                        if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                            selectedFiles.push(file);
+                        }
+                    });
+                    updateFileInput();
+                    renderFilesList();
+                }
+            }
+
+            function updateFileInput() {
+                // Create a new DataTransfer object to update the file input
+                const dataTransfer = new DataTransfer();
+                selectedFiles.forEach(file => {
+                    dataTransfer.items.add(file);
+                });
+                fileInput.files = dataTransfer.files;
+            }
+
+            function renderFilesList() {
+                if (selectedFiles.length === 0) {
+                    selectedFilesPreview.classList.add('d-none');
+                    return;
+                }
+
+                selectedFilesPreview.classList.remove('d-none');
+                filesList.innerHTML = '';
+
+                selectedFiles.forEach((file, index) => {
+                    const fileCard = createFileCard(file, index);
+                    filesList.appendChild(fileCard);
+                });
+            }
+
+            function createFileCard(file, index) {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 col-lg-3';
+
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                const isAudio = file.type.startsWith('audio/');
+                const previewClass = isVideo ? 'video' : (isAudio ? 'audio' : 'document');
+                const previewIcon = isVideo ? 'ti ti-video' : (isAudio ? 'ti ti-music' : 'ti ti-file');
+                const fileSize = (file.size / 1024).toFixed(2);
+
+                let previewContent = '';
+                if (isImage) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = col.querySelector('.file-preview img');
+                        if (img) img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    previewContent = '<img src="" alt="' + file.name + '" class="file-preview-img">';
+                } else {
+                    previewContent = '<div class="file-preview ' + previewClass + '"><i class="' + previewIcon + ' ti-lg"></i></div>';
+                }
+
+                col.innerHTML = `
+                    <div class="card file-card">
+                        <div class="card-body p-2">
+                            <div class="file-preview-wrapper mb-2">
+                                ${isImage ? '<div class="file-preview">' + previewContent + '</div>' : previewContent}
+                            </div>
+                            <h6 class="file-name mb-1" title="${file.name}">${file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name}</h6>
+                            <small class="text-muted d-block mb-2">${fileSize} KB</small>
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-file" data-index="${index}">
+                                <i class="ti ti-trash me-1"></i>${removeText}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Add remove event listener
+                col.querySelector('.remove-file').addEventListener('click', function() {
+                    selectedFiles.splice(index, 1);
+                    updateFileInput();
+                    renderFilesList();
+                });
+
+                return col;
+            }
+
+            // Remove file handler
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.remove-file')) {
+                    const button = e.target.closest('.remove-file');
+                    const index = parseInt(button.getAttribute('data-index'));
+                    selectedFiles.splice(index, 1);
+                    updateFileInput();
+                    renderFilesList();
+                }
+            });
+        }
+        @endif
     });
 </script>
+
+<style>
+.drop-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background-color: #f9fafb;
+    cursor: pointer;
+}
+
+.drop-zone.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+.drop-zone:hover {
+    border-color: #9ca3af;
+    background-color: #f3f4f6;
+}
+
+.file-input-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.file-input {
+    position: absolute;
+    left: -9999px;
+}
+
+.file-input-label {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.file-input-label:hover {
+    background-color: #2563eb;
+}
+
+.file-card {
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.file-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.file-preview-wrapper {
+    width: 100%;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+    background-color: #f9fafb;
+}
+
+.file-preview {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.file-preview.video {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.file-preview.audio {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.file-preview.document {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.file-name {
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
 @endpush

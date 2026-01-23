@@ -231,6 +231,31 @@ class MultimediaController extends Controller
         ]);
     }
 
+    public function searchTags(Request $request)
+    {
+        $query = $request->get('q', '');
+        $type = $request->get('type', 'general');
+
+        if (strlen($query) < 2)
+        {
+            return response()->json([]);
+        }
+
+        $tags = Tag::where('type', $type)
+            ->where('name', 'like', "%{$query}%")
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(function ($tag)
+            {
+                return [
+                    'name' => $tag->name,
+                ];
+            });
+
+        return response()->json($tags);
+    }
+
     private function getMultimediaCategories(): Collection
     {
         $moduleId = Module::where('key', 'multimedia')->value('id');

@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', isset($category) ? 'Edit Category' : 'Create Category')
+@section('title', isset($category) ? __('app.Edit Category') : __('app.Create Category'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
@@ -11,7 +11,7 @@
     <div class="col-md-8 mx-auto">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">{{ isset($category) ? 'Edit Category' : 'Create Category' }}</h5>
+                <h5 class="mb-0">{{ isset($category) ? __('app.Edit Category') : __('app.Create Category') }}</h5>
             </div>
             <div class="card-body">
                 @if(session('error'))
@@ -33,8 +33,8 @@
                     <div class="row mb-3">
                         <div class="col-md-8">
                             <div class="mb-3">
-                                <label for="name" class="form-label">Name</label>
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" 
+                                <label for="name" class="form-label">{{ __('app.Name') }}</label>
+                                <input type="text" class="form-control @error('name') is-invalid @enderror"
                                     id="name" name="name" value="{{ old('name', $category->name ?? '') }}" required>
                                 @error('name')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -43,11 +43,11 @@
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="status" class="form-label d-block">Status</label>
+                                <label for="status" class="form-label d-block">{{ __('app.Status') }}</label>
                                 <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" id="status" name="status"
                                         {{ (old('status', isset($category) && $category->status) ? 'checked' : '') }}>
-                                    <label class="form-check-label" for="status">Active</label>
+                                    <label class="form-check-label" for="status">{{ __('app.Active') }}</label>
                                 </div>
                             </div>
                         </div>
@@ -56,11 +56,11 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="module_id" class="form-label">Module</label>
+                                <label for="module_id" class="form-label">{{ __('app.Module') }}</label>
                                 <select class="form-select @error('module_id') is-invalid @enderror" id="module_id" name="module_id">
-                                    <option value="">-- Select Module --</option>
+                                    <option value="">{{ __('app.Select Module') }}</option>
                                     @foreach($modules as $module)
-                                        <option value="{{ $module->id }}" 
+                                        <option value="{{ $module->id }}"
                                             {{ old('module_id', $category->module_id ?? request()->get('module_id')) == $module->id ? 'selected' : '' }}>
                                             {{ $module->name }}
                                         </option>
@@ -73,11 +73,11 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="parent_id" class="form-label">Parent Category</label>
+                                <label for="parent_id" class="form-label">{{ __('app.Parent Category') }}</label>
                                 <select class="form-select @error('parent_id') is-invalid @enderror" id="parent_id" name="parent_id">
-                                    <option value="">-- Top Level --</option>
+                                    <option value="">{{ __('app.Top Level') }}</option>
                                     @foreach($parentCategories as $parentCategory)
-                                        <option value="{{ $parentCategory->id }}" 
+                                        <option value="{{ $parentCategory->id }}"
                                             {{ old('parent_id', $category->parent_id ?? request()->get('parent_id')) == $parentCategory->id ? 'selected' : '' }}>
                                             {{ $parentCategory->name }}
                                         </option>
@@ -86,19 +86,19 @@
                                 @error('parent_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                
+
                                 @if(isset($parent))
                                     <div class="form-text mt-1">
-                                        Will be created as a subcategory of: <strong>{{ $parent->name }}</strong>
+                                        {{ __('app.Will be created as a subcategory of') }}: <strong>{{ $parent->name }}</strong>
                                     </div>
                                 @endif
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control @error('description') is-invalid @enderror" 
+                    <div class="mb-3 d-none">
+                        <label for="description" class="form-label">{{ __('app.Description') }}</label>
+                        <textarea class="form-control @error('description') is-invalid @enderror"
                             id="description" name="description" rows="3">{{ old('description', $category->description ?? '') }}</textarea>
                         @error('description')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -106,21 +106,21 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="order" class="form-label">Display Order</label>
-                        <input type="number" class="form-control @error('order') is-invalid @enderror" 
+                        <label for="order" class="form-label">{{ __('app.Display Order') }}</label>
+                        <input type="number" class="form-control @error('order') is-invalid @enderror"
                             id="order" name="order" value="{{ old('order', $category->order ?? 0) }}" min="0">
                         @error('order')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <div class="form-text">Lower numbers appear first. Leave as 0 for automatic ordering.</div>
+                        <div class="form-text">{{ __('app.Lower numbers appear first. Leave as 0 for automatic ordering.') }}</div>
                     </div>
 
                     <div id="multimedia-options" class="border rounded p-3 mb-3 d-none">
-                        <h6 class="mb-3">Multimedia Settings</h6>
+                        <h6 class="mb-3">{{ __('app.Multimedia Settings') }}</h6>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="image_width" class="form-label">Image Width (px)</label>
+                                    <label for="image_width" class="form-label">{{ __('app.Image Width') }} (px)</label>
                                     <input type="number" class="form-control @error('image_width') is-invalid @enderror"
                                         id="image_width" name="image_width"
                                         value="{{ old('image_width', $categoryData['image_width'] ?? '') }}" min="1" max="10000">
@@ -131,7 +131,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="image_height" class="form-label">Image Height (px)</label>
+                                    <label for="image_height" class="form-label">{{ __('app.Image Height') }} (px)</label>
                                     <input type="number" class="form-control @error('image_height') is-invalid @enderror"
                                         id="image_height" name="image_height"
                                         value="{{ old('image_height', $categoryData['image_height'] ?? '') }}" min="1" max="10000">
@@ -145,7 +145,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="thumb_width" class="form-label">Thumbnail Width (px)</label>
+                                    <label for="thumb_width" class="form-label">{{ __('app.Thumbnail Width') }} (px)</label>
                                     <input type="number" class="form-control @error('thumb_width') is-invalid @enderror"
                                         id="thumb_width" name="thumb_width"
                                         value="{{ old('thumb_width', $categoryData['thumb_width'] ?? '') }}" min="1" max="10000">
@@ -156,7 +156,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="thumb_height" class="form-label">Thumbnail Height (px)</label>
+                                    <label for="thumb_height" class="form-label">{{ __('app.Thumbnail Height') }} (px)</label>
                                     <input type="number" class="form-control @error('thumb_height') is-invalid @enderror"
                                         id="thumb_height" name="thumb_height"
                                         value="{{ old('thumb_height', $categoryData['thumb_height'] ?? '') }}" min="1" max="10000">
@@ -170,7 +170,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="poster_width" class="form-label">Poster Width (px)</label>
+                                    <label for="poster_width" class="form-label">{{ __('app.Poster Width') }} (px)</label>
                                     <input type="number" class="form-control @error('poster_width') is-invalid @enderror"
                                         id="poster_width" name="poster_width"
                                         value="{{ old('poster_width', $categoryData['poster_width'] ?? '') }}" min="1" max="10000">
@@ -181,7 +181,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="poster_height" class="form-label">Poster Height (px)</label>
+                                    <label for="poster_height" class="form-label">{{ __('app.Poster Height') }} (px)</label>
                                     <input type="number" class="form-control @error('poster_height') is-invalid @enderror"
                                         id="poster_height" name="poster_height"
                                         value="{{ old('poster_height', $categoryData['poster_height'] ?? '') }}" min="1" max="10000">
@@ -193,24 +193,45 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="fit" class="form-label">Fit Mode</label>
+                            <label for="fit" class="form-label">{{ __('app.Fit Mode') }}</label>
                             <select class="form-select @error('fit') is-invalid @enderror" id="fit" name="fit">
-                                <option value="">Use Default</option>
-                                <option value="crop" {{ old('fit', $categoryData['fit'] ?? '') === 'crop' ? 'selected' : '' }}>Crop</option>
-                                <option value="contain" {{ old('fit', $categoryData['fit'] ?? '') === 'contain' ? 'selected' : '' }}>Contain</option>
-                                <option value="max" {{ old('fit', $categoryData['fit'] ?? '') === 'max' ? 'selected' : '' }}>Max</option>
-                                <option value="stretch" {{ old('fit', $categoryData['fit'] ?? '') === 'stretch' ? 'selected' : '' }}>Stretch</option>
+                                <option value="">{{ __('app.Use Default') }}</option>
+                                <option value="crop" {{ old('fit', $categoryData['fit'] ?? '') === 'crop' ? 'selected' : '' }}>{{ __('app.Crop') }}</option>
+                                <option value="contain" {{ old('fit', $categoryData['fit'] ?? '') === 'contain' ? 'selected' : '' }}>{{ __('app.Contain') }}</option>
+                                <option value="max" {{ old('fit', $categoryData['fit'] ?? '') === 'max' ? 'selected' : '' }}>{{ __('app.Max') }}</option>
+                                <option value="stretch" {{ old('fit', $categoryData['fit'] ?? '') === 'stretch' ? 'selected' : '' }}>{{ __('app.Stretch') }}</option>
                             </select>
                             @error('fit')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <div class="form-text">Used for image, thumbnail, and poster resizing.</div>
+                            <div class="form-text">{{ __('app.Used for image, thumbnail, and poster resizing.') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3 d-none">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tags" class="form-label">Etiquetas</label>
+                                <select id="tags" name="tags[]" class="form-select select2" multiple>
+                                    @php
+                                        $selectedTags = old('tags', isset($category) ? $category->tags->pluck('name')->toArray() : []);
+                                    @endphp
+                                    @foreach($tags as $tag)
+                                        <option value="{{ $tag->name }}" {{ in_array($tag->name, $selectedTags, true) ? 'selected' : '' }}>
+                                            {{ $tag->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('tags')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 
                     <div class="mt-4">
-                        <button type="submit" class="btn btn-primary me-2">Save</button>
-                        <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary me-2">{{ __('app.Save') }}</button>
+                        <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">{{ __('app.Cancel') }}</a>
                     </div>
                 </form>
             </div>
@@ -221,6 +242,12 @@
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+    <style>
+        /* Hide "No results found" message for tags select */
+        #select2-tags-results .select2-results__message {
+            display: none !important;
+        }
+    </style>
 @endsection
 
 @section('page-script')
@@ -228,6 +255,76 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 for dropdowns
     $('#module_id, #parent_id').select2();
+
+    // Initialize Select2 for tags with autocomplete and creation
+    const tagsSelect = $('#tags');
+    tagsSelect.select2({
+        width: '100%',
+        tags: true,
+        tokenSeparators: [','],
+        placeholder: 'Buscar o crear etiquetas...',
+        language: {
+            noResults: function() {
+                return '';
+            },
+            searching: function() {
+                return 'Buscando...';
+            }
+        },
+        ajax: {
+            url: '{{ route("tags.search") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term, // search term
+                    type: 'general'
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.map(function(tag) {
+                        return {
+                            id: tag.name,
+                            text: tag.name
+                        };
+                    })
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 2,
+        createTag: function (params) {
+            const term = $.trim(params.term);
+            if (term === '') {
+                return null;
+            }
+            return {
+                id: term,
+                text: term,
+                newTag: true
+            };
+        }
+    });
+
+    // Hide "No results found" message
+    tagsSelect.on('select2:open', function() {
+        setTimeout(function() {
+            const dropdown = $('.select2-results');
+            dropdown.find('.select2-results__message').hide();
+        }, 10);
+    });
+
+    tagsSelect.on('select2:selecting', function() {
+        $('.select2-results__message').hide();
+    });
+
+    // Also hide on results update
+    tagsSelect.on('results:message', function() {
+        setTimeout(function() {
+            $('.select2-results__message').hide();
+        }, 10);
+    });
 
     const multimediaModuleId = '{{ $multimediaModuleId ?? '' }}';
     const multimediaOptions = document.getElementById('multimedia-options');

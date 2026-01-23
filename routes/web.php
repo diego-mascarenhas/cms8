@@ -460,6 +460,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/multimedia/{multimedia}', [MultimediaController::class, 'destroy'])->name('multimedia.destroy');
     Route::get('/multimedia/gallery/{tag}', [MultimediaController::class, 'gallery'])->name('multimedia.gallery');
     Route::post('/multimedia/gallery/order', [MultimediaController::class, 'updateGalleryOrder'])->name('multimedia.gallery.order');
+    Route::get('/tags/search', [MultimediaController::class, 'searchTags'])->name('tags.search');
 
     // Public routes for client responses (no auth required)
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])

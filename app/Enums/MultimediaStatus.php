@@ -11,8 +11,8 @@ enum MultimediaStatus: int
     {
         return match ($this)
         {
-            self::INACTIVE => __('Inactive'),
-            self::ACTIVE => __('Active'),
+            self::INACTIVE => __('app.Inactive'),
+            self::ACTIVE => __('app.Active'),
         };
     }
 }

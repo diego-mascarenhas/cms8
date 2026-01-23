@@ -11,8 +11,8 @@ enum MultimediaVisibility: int
     {
         return match ($this)
         {
-            self::PRIVATE => __('Private'),
-            self::PUBLIC => __('Public'),
+            self::PRIVATE => __('app.Private'),
+            self::PUBLIC => __('app.Public'),
         };
     }
 }

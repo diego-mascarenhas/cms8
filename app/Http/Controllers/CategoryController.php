@@ -9,6 +9,7 @@ use App\Models\Module;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Tags\Tag;
 
 class CategoryController extends Controller
 {
@@ -79,7 +80,10 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId'));
+        // Get tags for autocomplete
+        $tags = Tag::getWithType('general')->sortBy('name')->values();
+
+        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
     }
 
     /**
@@ -160,6 +164,19 @@ class CategoryController extends Controller
 
         $category->save();
 
+        // Sync tags
+        if ($request->has('tags') && is_array($request->tags))
+        {
+            $normalizedTags = array_map(function ($tagName)
+            {
+                return trim($tagName);
+            }, array_filter($request->tags));
+            $category->syncTagsWithType($normalizedTags, 'general');
+        } else
+        {
+            $category->syncTagsWithType([], 'general');
+        }
+
         return redirect()
             ->route('categories.index')
             ->with('success', 'Category saved successfully.');
@@ -204,7 +221,10 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'team', 'multimediaModuleId'));
+        // Get tags for autocomplete
+        $tags = Tag::getWithType('general')->sortBy('name')->values();
+
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'team', 'multimediaModuleId', 'tags'));
     }
 
     /**
