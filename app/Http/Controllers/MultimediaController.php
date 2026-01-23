@@ -63,6 +63,7 @@ class MultimediaController extends Controller
 
         $files = $request->file('files', []);
         $createdCount = 0;
+        $uploadedItems = [];
 
         foreach ($files as $file)
         {
@@ -74,8 +75,8 @@ class MultimediaController extends Controller
                 'category_id' => $request->input('category_id'),
                 'title' => $title,
                 'description' => $request->input('description'),
-                'status' => (int) $request->input('status'),
-                'visibility' => (int) $request->input('visibility'),
+                'status' => (int) ($request->input('status') ?? MultimediaStatus::UNCLASSIFIED->value),
+                'visibility' => (int) ($request->input('visibility') ?? MultimediaVisibility::PUBLIC->value),
                 'type' => $type,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
@@ -98,6 +99,18 @@ class MultimediaController extends Controller
             );
 
             $createdCount++;
+            $uploadedItems[] = $multimedia;
+        }
+
+        // If AJAX request, return JSON
+        if ($request->ajax() || $request->wantsJson())
+        {
+            return response()->json([
+                'success' => true,
+                'message' => trans_choice(':count file uploaded successfully.|:count files uploaded successfully.', $createdCount, ['count' => $createdCount]),
+                'count' => $createdCount,
+                'items' => $uploadedItems,
+            ]);
         }
 
         return redirect()

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->string('title', 255);
             $table->text('description')->nullable();
-            $table->unsignedTinyInteger('status')->default(2);
+            $table->unsignedTinyInteger('status')->default(0);
             $table->unsignedTinyInteger('visibility')->default(1);
             $table->string('type', 50)->default('file');
             $table->timestamps();

@@ -122,6 +122,11 @@ return [
     'Select Files' => 'Seleccionar Archivos',
     'Selected Files' => 'Archivos Seleccionados',
     'Remove' => 'Eliminar',
+    'Unclassified' => 'Sin Clasificar',
+    'Uploading files...' => 'Subiendo archivos...',
+    'Uploaded' => 'Subido',
+    'Files uploaded successfully' => 'Archivos subidos correctamente',
+    'Error uploading files' => 'Error al subir archivos',
 
     // Category
     'Edit Category' => 'Editar Categoría',

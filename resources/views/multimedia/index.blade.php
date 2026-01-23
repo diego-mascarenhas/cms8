@@ -118,6 +118,42 @@
     </div>
 </div>
 
+@can('create', \App\Models\Multimedia::class)
+<div class="card mb-4">
+    <div class="card-body">
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <div class="mb-3">
+                <i class="ti ti-upload ti-lg text-muted"></i>
+            </div>
+            <h6 class="mb-2">{{ __('app.Drag files here or click to select') }}</h6>
+            <p class="text-muted mb-3">{{ __('app.Supports images, videos, audio and documents') }}</p>
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" class="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.zip,.rar">
+                <label for="fileInput" class="file-input-label">
+                    <i class="ti ti-plus me-1"></i>{{ __('app.Select Files') }}
+                </label>
+            </div>
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="upload-progress d-none" id="uploadProgress">
+            <div class="d-flex align-items-center mb-2">
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-medium">{{ __('app.Uploading files...') }}</span>
+                        <span class="text-muted" id="uploadCount">0/0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%" id="progressBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
+
 <div class="card">
     <div class="card-body">
         {{ $dataTable->table() }}
@@ -169,6 +205,147 @@
             }
         });
 
+        // Drag and drop functionality
+        @can('create', \App\Models\Multimedia::class)
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const uploadCount = document.getElementById('uploadCount');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        if (dropZone && fileInput) {
+            // Drag and drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            dropZone.addEventListener('drop', handleDrop, false);
+            fileInput.addEventListener('change', handleFiles);
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            function highlight(e) {
+                dropZone.classList.add('dragover');
+            }
+
+            function unhighlight(e) {
+                dropZone.classList.remove('dragover');
+            }
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles({ target: { files } });
+            }
+
+            function handleFiles(e) {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    uploadFiles(files);
+                }
+            }
+
+            function uploadFiles(files) {
+                const totalFiles = files.length;
+                let uploadedFiles = 0;
+                let failedFiles = 0;
+
+                uploadProgress.classList.remove('d-none');
+                updateProgress(0, totalFiles);
+
+                // Send all files in a single request
+                const formData = new FormData();
+                files.forEach((file) => {
+                    formData.append('files[]', file);
+                });
+                formData.append('_token', csrfToken);
+                formData.append('status', '0'); // UNCLASSIFIED
+                formData.append('visibility', '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}');
+
+                // Add AJAX header to get JSON response
+                fetch('{{ route("multimedia.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            try {
+                                const json = JSON.parse(text);
+                                throw new Error(json.message || `HTTP ${response.status}`);
+                            } catch (e) {
+                                throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+                            }
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    uploadedFiles = totalFiles;
+                    updateProgress(uploadedFiles, totalFiles);
+
+                    setTimeout(() => {
+                        uploadProgress.classList.add('d-none');
+                        updateProgress(0, 0);
+                        
+                        // Reload DataTable
+                        if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                            $('#multimedia-table').DataTable().ajax.reload(null, false);
+                        }
+                        
+                        fileInput.value = '';
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: '{{ __("app.Uploaded") }}',
+                            text: data.message || '{{ __("app.Files uploaded successfully") }}',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }, 500);
+                })
+                .catch(error => {
+                    console.error('Error uploading files:', error);
+                    failedFiles = totalFiles;
+                    
+                    setTimeout(() => {
+                        uploadProgress.classList.add('d-none');
+                        updateProgress(0, 0);
+                    }, 2000);
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: '{{ __("app.Error") }}',
+                        text: error.message || '{{ __("app.Error uploading files") }}'
+                    });
+                });
+            }
+
+            function updateProgress(current, total) {
+                const percentage = total > 0 ? (current / total) * 100 : 0;
+                progressBar.style.width = percentage + '%';
+                uploadCount.textContent = `${current}/${total}`;
+            }
+        }
+        @endcan
+
         function deleteRecord(id) {
             Swal.fire({
                 title: '{{ __("app.Are you sure you want to delete this record?") }}',
@@ -204,4 +381,54 @@
             });
         }
     </script>
+
+    <style>
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background-color: #f9fafb;
+            cursor: pointer;
+        }
+
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        .drop-zone:hover {
+            border-color: #9ca3af;
+            background-color: #f3f4f6;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background-color: #2563eb;
+        }
+
+        .upload-progress {
+            margin-top: 1rem;
+        }
+    </style>
 @endpush
