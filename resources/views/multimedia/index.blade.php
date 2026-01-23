@@ -569,13 +569,13 @@
         // Handle form submission
         document.getElementById('multimediaEditForm')?.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             // Clear previous errors
             clearValidationErrors();
 
             const formData = new FormData(this);
             const multimediaId = formData.get('id');
-            
+
             if (!multimediaId) {
                 Swal.fire({
                     icon: 'error',
@@ -598,13 +598,13 @@
             })
             .then(async response => {
                 const data = await response.json();
-                
+
                 // Handle validation errors (422)
                 if (response.status === 422 && data.errors) {
                     displayValidationErrors(data.errors);
                     return;
                 }
-                
+
                 // Handle other errors
                 if (!response.ok) {
                     Swal.fire({
@@ -614,12 +614,12 @@
                     });
                     return;
                 }
-                
+
                 // Success
                 if (data.success) {
                     // Clear all validation errors
                     clearValidationErrors();
-                    
+
                     Swal.fire({
                         icon: 'success',
                         title: '{{ __("app.Saved") }}',
@@ -655,38 +655,38 @@
         function displayValidationErrors(errors) {
             // Clear previous errors first
             clearValidationErrors();
-            
+
             // Iterate through errors and display them
             Object.keys(errors).forEach(field => {
                 // Map field names (e.g., 'status' -> 'edit_status')
                 const fieldId = field.startsWith('edit_') ? field : `edit_${field}`;
                 const fieldElement = document.getElementById(fieldId);
-                
+
                 if (fieldElement) {
                     // Add invalid class to the actual input/select
                     fieldElement.classList.add('is-invalid');
-                    
+
                     // Find the parent container (mb-3 div)
                     let container = fieldElement.closest('.mb-3');
                     if (!container) {
                         container = fieldElement.parentElement;
                     }
-                    
+
                     // Remove existing error message if any
                     const existingError = container.querySelector('.invalid-feedback');
                     if (existingError) {
                         existingError.remove();
                     }
-                    
+
                     // Create error message div
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'invalid-feedback d-block';
                     errorDiv.style.display = 'block';
                     errorDiv.textContent = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
-                    
+
                     // Append to container (after the field)
                     container.appendChild(errorDiv);
-                    
+
                     // For Select2, also add invalid class to the select2 container
                     const select2Container = fieldElement.parentElement.querySelector('.select2-container');
                     if (select2Container) {
@@ -697,17 +697,17 @@
                 }
             });
         }
-        
+
         // Clear validation errors
         function clearValidationErrors() {
             const form = document.getElementById('multimediaEditForm');
             if (!form) return;
-            
+
             // Remove invalid classes from all form elements and select2 containers
             form.querySelectorAll('.is-invalid').forEach(el => {
                 el.classList.remove('is-invalid');
             });
-            
+
             // Remove error messages
             const offcanvas = document.getElementById('multimediaEditOffcanvas');
             if (offcanvas) {
@@ -716,30 +716,30 @@
                 });
             }
         }
-        
+
         // Clear errors on input/change
         const form = document.getElementById('multimediaEditForm');
         if (form) {
             form.addEventListener('input', function(e) {
                 clearFieldError(e.target);
             });
-            
+
             form.addEventListener('change', function(e) {
                 clearFieldError(e.target);
             });
         }
-        
+
         function clearFieldError(fieldElement) {
             if (fieldElement.classList.contains('is-invalid')) {
                 fieldElement.classList.remove('is-invalid');
-                
+
                 // Find and remove error message
                 const container = fieldElement.closest('.mb-3') || fieldElement.parentElement;
                 const errorDiv = container.querySelector('.invalid-feedback');
                 if (errorDiv) {
                     errorDiv.remove();
                 }
-                
+
                 // Clear Select2 invalid state
                 const select2Container = fieldElement.parentElement?.querySelector('.select2-container');
                 if (select2Container) {
