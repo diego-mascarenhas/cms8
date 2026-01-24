@@ -114,13 +114,13 @@
                     </a>
                 @endif
                 <div class="btn-group" role="group">
-                    <input type="radio" class="btn-check" name="viewMode" id="viewModeTable" value="table" checked>
-                    <label class="btn btn-outline-primary" for="viewModeTable" title="{{ __('app.Table View') }}">
-                        <i class="ti ti-table"></i>
-                    </label>
-                    <input type="radio" class="btn-check" name="viewMode" id="viewModeCards" value="cards">
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeCards" value="cards" checked>
                     <label class="btn btn-outline-primary" for="viewModeCards" title="{{ __('app.Cards View') }}">
                         <i class="ti ti-layout-grid"></i>
+                    </label>
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeTable" value="table">
+                    <label class="btn btn-outline-primary" for="viewModeTable" title="{{ __('app.Table View') }}">
+                        <i class="ti ti-table"></i>
                     </label>
                 </div>
             </div>
@@ -165,14 +165,14 @@
 @endcan
 
 <!-- Table View -->
-<div class="card" id="tableView">
+<div class="card d-none" id="tableView">
     <div class="card-body">
         {{ $dataTable->table() }}
     </div>
 </div>
 
 <!-- Cards View -->
-<div class="card d-none" id="cardsView">
+<div class="card" id="cardsView">
     <div class="card-body">
         <div class="row gy-4 mb-4" id="multimediaCardsContainer">
             <!-- Cards will be loaded here via AJAX -->
@@ -285,6 +285,7 @@
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
     <script>
         $(document).ready(function () {
+            // Initialize all selects the same way
             $('.select2').select2({ width: '100%' });
 
             // Ensure offcanvas is in body
@@ -321,6 +322,11 @@
                     loadMultimediaCards();
                 }
             });
+            
+            // Load cards by default
+            if ($('#viewModeCards').is(':checked')) {
+                loadMultimediaCards();
+            }
             
             // Load cards when filters change (only if cards view is active)
             $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type')
