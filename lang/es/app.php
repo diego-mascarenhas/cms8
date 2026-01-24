@@ -135,6 +135,10 @@ return [
     'No multimedia found' => 'No se encontró multimedia',
     'Error loading multimedia' => 'Error al cargar multimedia',
     'Untitled' => 'Sin título',
+    'Search or create tags...' => 'Buscar o crear etiquetas...',
+    'Search or create galleries...' => 'Buscar o crear galerías...',
+    'Saving...' => 'Guardando...',
+    'Uploading...' => 'Subiendo...',
 
     // Category
     'Edit Category' => 'Editar Categoría',
