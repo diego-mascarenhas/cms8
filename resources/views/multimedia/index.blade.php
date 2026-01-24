@@ -285,8 +285,8 @@
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
     <script>
         $(document).ready(function () {
-            // Initialize all selects the same way
-            $('.select2').select2({ width: '100%' });
+            // Initialize all selects the same way (except offcanvas selects)
+            $('.select2').not('#edit_category_id, #edit_tags, #edit_galleries').select2({ width: '100%' });
 
             // Ensure offcanvas is in body
             const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
@@ -650,11 +650,28 @@
                         });
                     }
 
-                    // Initialize category select2
-                    $('#edit_category_id').select2({ width: '100%' });
-
-                    // Open offcanvas
+                    // Open offcanvas first
                     offcanvas.show();
+                    
+                    // Initialize category select2 after offcanvas is shown
+                    setTimeout(function() {
+                        // Destroy existing Select2 instance if any
+                        const categorySelect = $('#edit_category_id');
+                        if (categorySelect.data('select2')) {
+                            categorySelect.select2('destroy');
+                        }
+                        
+                        // Reinitialize Select2 with proper configuration
+                        categorySelect.select2({ 
+                            width: '100%',
+                            placeholder: '{{ __("app.No category") }}',
+                            dropdownParent: $('#multimediaEditOffcanvas'),
+                            allowClear: true
+                        });
+                        
+                        // Trigger change to update display
+                        categorySelect.trigger('change');
+                    }, 150);
                 } else {
                     Swal.fire({
                         icon: 'error',
