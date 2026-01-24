@@ -129,6 +129,12 @@ return [
     'Error uploading files' => 'Error al subir archivos',
     'Failed to load multimedia data' => 'Error al cargar los datos del multimedia',
     'Failed to update multimedia' => 'Error al actualizar el multimedia',
+    'Table View' => 'Vista de Tabla',
+    'Cards View' => 'Vista de Tarjetas',
+    'Loading...' => 'Cargando...',
+    'No multimedia found' => 'No se encontró multimedia',
+    'Error loading multimedia' => 'Error al cargar multimedia',
+    'Untitled' => 'Sin título',
 
     // Category
     'Edit Category' => 'Editar Categoría',

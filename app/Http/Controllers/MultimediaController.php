@@ -29,6 +29,12 @@ class MultimediaController extends Controller
         $statusOptions = MultimediaStatus::cases();
         $visibilityOptions = MultimediaVisibility::cases();
 
+        // If AJAX request for cards view
+        if (request()->ajax() && request()->get('view') === 'cards')
+        {
+            return $this->getCardsData();
+        }
+
         return $dataTable->render('multimedia.index', compact(
             'categories',
             'tags',
@@ -36,6 +42,102 @@ class MultimediaController extends Controller
             'statusOptions',
             'visibilityOptions',
         ));
+    }
+
+    private function getCardsData()
+    {
+        $query = Multimedia::query()->with(['category', 'tags', 'media']);
+        $request = request();
+
+        // Apply filters (same as DataTable)
+        if ($request->filled('category_id'))
+        {
+            $query->where('category_id', $request->get('category_id'));
+        }
+
+        if ($request->filled('status'))
+        {
+            $query->where('status', $request->get('status'));
+        }
+
+        if ($request->filled('visibility'))
+        {
+            $query->where('visibility', $request->get('visibility'));
+        }
+
+        if ($request->filled('type'))
+        {
+            $query->where('type', $request->get('type'));
+        }
+
+        if ($request->filled('tag_id'))
+        {
+            $tagId = $request->get('tag_id');
+            $query->whereHas('tags', function ($tagQuery) use ($tagId)
+            {
+                $tagQuery->where('tags.id', $tagId)
+                    ->where('tags.type', 'general');
+            });
+        }
+
+        if ($request->filled('gallery_tag_id'))
+        {
+            $tagId = $request->get('gallery_tag_id');
+            $query->whereHas('tags', function ($tagQuery) use ($tagId)
+            {
+                $tagQuery->where('tags.id', $tagId)
+                    ->where('tags.type', 'gallery');
+            });
+        }
+
+        $perPage = $request->get('per_page', 12);
+        $multimedia = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        $cards = $multimedia->map(function ($item)
+        {
+            $previewUrl = $item->getFirstMediaUrl('poster')
+                ?: $item->getFirstMediaUrl('media', 'poster')
+                ?: $item->getFirstMediaUrl('media', 'thumb')
+                ?: $item->getFirstMediaUrl('media');
+
+            $icon = match ($item->type)
+            {
+                'image' => 'ti ti-photo',
+                'video' => 'ti ti-video',
+                'audio' => 'ti ti-music',
+                default => 'ti ti-file',
+            };
+
+            return [
+                'id' => $item->id,
+                'title' => $item->title,
+                'description' => $item->description,
+                'type' => $item->type,
+                'preview_url' => $previewUrl,
+                'icon' => $icon,
+                'category' => $item->category?->name,
+                'status' => $item->status?->label(),
+                'status_value' => $item->status?->value,
+                'visibility' => $item->visibility?->label(),
+                'visibility_value' => $item->visibility?->value,
+                'tags' => $item->tags->where('type', 'general')->pluck('name')->toArray(),
+                'created_at' => $item->created_at?->format('d-m-Y H:i'),
+                'can_view' => auth()->user()?->can('view', $item) ?? false,
+                'can_update' => auth()->user()?->can('update', $item) ?? false,
+                'can_delete' => auth()->user()?->can('delete', $item) ?? false,
+                'media_url' => $item->getFirstMediaUrl('media'),
+            ];
+        });
+
+        return response()->json([
+            'cards' => $cards,
+            'pagination' => [
+                'current_page' => $multimedia->currentPage(),
+                'last_page' => $multimedia->lastPage(),
+                'per_page' => $multimedia->perPage(),
+                'total' => $multimedia->total(),
+            ],
+        ]);
     }
 
     public function create()

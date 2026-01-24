@@ -104,7 +104,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4 d-flex gap-2">
+            <div class="col-md-4 d-flex gap-2 align-items-end">
                 <button type="button" class="btn btn-outline-secondary" id="resetFilters">
                     <i class="ti ti-refresh me-1"></i> {{ __('app.Reset') }}
                 </button>
@@ -113,6 +113,16 @@
                         <i class="ti ti-sort-ascending me-1"></i> {{ __('app.Order Gallery') }}
                     </a>
                 @endif
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeTable" value="table" checked>
+                    <label class="btn btn-outline-primary" for="viewModeTable" title="{{ __('app.Table View') }}">
+                        <i class="ti ti-table"></i>
+                    </label>
+                    <input type="radio" class="btn-check" name="viewMode" id="viewModeCards" value="cards">
+                    <label class="btn btn-outline-primary" for="viewModeCards" title="{{ __('app.Cards View') }}">
+                        <i class="ti ti-layout-grid"></i>
+                    </label>
+                </div>
             </div>
         </div>
     </div>
@@ -154,9 +164,27 @@
 </div>
 @endcan
 
-<div class="card">
+<!-- Table View -->
+<div class="card" id="tableView">
     <div class="card-body">
         {{ $dataTable->table() }}
+    </div>
+</div>
+
+<!-- Cards View -->
+<div class="card d-none" id="cardsView">
+    <div class="card-body">
+        <div class="row gy-4 mb-4" id="multimediaCardsContainer">
+            <!-- Cards will be loaded here via AJAX -->
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">{{ __('app.Loading...') }}</span>
+                </div>
+            </div>
+        </div>
+        <div id="multimediaCardsPagination" class="d-flex justify-content-center">
+            <!-- Pagination will be loaded here -->
+        </div>
     </div>
 </div>
 
@@ -264,6 +292,27 @@
             if (offcanvasEl && offcanvasEl.parentElement !== document.body) {
                 document.body.appendChild(offcanvasEl);
             }
+            
+            // View mode toggle
+            $('input[name="viewMode"]').on('change', function() {
+                const viewMode = $(this).val();
+                if (viewMode === 'table') {
+                    $('#tableView').removeClass('d-none');
+                    $('#cardsView').addClass('d-none');
+                } else {
+                    $('#tableView').addClass('d-none');
+                    $('#cardsView').removeClass('d-none');
+                    loadMultimediaCards();
+                }
+            });
+            
+            // Load cards when filters change (only if cards view is active)
+            $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type')
+                .on('change', function() {
+                    if ($('#viewModeCards').is(':checked')) {
+                        loadMultimediaCards();
+                    }
+                });
 
             function bindFilters(table) {
                 if (!table) {
@@ -403,10 +452,14 @@
                         uploadProgress.classList.add('d-none');
                         updateProgress(0, 0);
 
-                        // Reload DataTable
-                        if ($.fn.dataTable.isDataTable('#multimedia-table')) {
-                            $('#multimedia-table').DataTable().ajax.reload(null, false);
-                        }
+                                // Reload current view
+                                if ($('#viewModeCards').is(':checked')) {
+                                    loadMultimediaCards();
+                                } else {
+                                    if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                                        $('#multimedia-table').DataTable().ajax.reload(null, false);
+                                    }
+                                }
 
                         fileInput.value = '';
 
@@ -635,9 +688,13 @@
                         offcanvas.hide();
                     }
 
-                    // Reload DataTable
-                    if ($.fn.dataTable.isDataTable('#multimedia-table')) {
-                        $('#multimedia-table').DataTable().ajax.reload(null, false);
+                    // Reload DataTable or Cards
+                    if ($('#viewModeCards').is(':checked')) {
+                        loadMultimediaCards();
+                    } else {
+                        if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                            $('#multimedia-table').DataTable().ajax.reload(null, false);
+                        }
                     }
                 }
             })
@@ -749,6 +806,167 @@
             }
         }
 
+        // Load multimedia cards
+        function loadMultimediaCards(page = 1) {
+            const container = $('#multimediaCardsContainer');
+            const pagination = $('#multimediaCardsPagination');
+            
+            container.html(`
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">{{ __('app.Loading...') }}</span>
+                    </div>
+                </div>
+            `);
+            
+            // Get filter values
+            const filters = {
+                status: $('#filter_status').val(),
+                visibility: $('#filter_visibility').val(),
+                category_id: $('#filter_category').val(),
+                tag_id: $('#filter_tag').val(),
+                gallery_tag_id: $('#filter_gallery').val(),
+                type: $('#filter_type').val(),
+                view: 'cards',
+                page: page,
+                per_page: 12
+            };
+            
+            const queryString = $.param(filters);
+            
+            fetch(`{{ route('multimedia.index') }}?${queryString}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.cards && data.cards.length > 0) {
+                    renderCards(data.cards);
+                    renderPagination(data.pagination);
+                } else {
+                    container.html(`
+                        <div class="col-12 text-center">
+                            <p class="text-muted">{{ __('app.No multimedia found') }}</p>
+                        </div>
+                    `);
+                    pagination.html('');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cards:', error);
+                container.html(`
+                    <div class="col-12 text-center">
+                        <p class="text-danger">{{ __('app.Error loading multimedia') }}</p>
+                    </div>
+                `);
+            });
+        }
+        
+        // Render cards
+        function renderCards(cards) {
+            const container = $('#multimediaCardsContainer');
+            container.html('');
+            
+            cards.forEach(card => {
+                const previewHtml = card.preview_url 
+                    ? `<img class="img-fluid rounded" src="${card.preview_url}" alt="${card.title}" style="max-height: 200px; object-fit: cover; width: 100%;">`
+                    : `<div class="d-flex align-items-center justify-content-center bg-label-secondary rounded" style="height: 200px;">
+                        <i class="${card.icon} ti-2xl text-muted"></i>
+                    </div>`;
+                
+                const statusClass = card.status_value === 2 ? 'bg-label-success' : card.status_value === 1 ? 'bg-label-warning' : 'bg-label-secondary';
+                const visibilityClass = card.visibility_value === 2 ? 'bg-label-info' : 'bg-label-secondary';
+                
+                const tagsHtml = card.tags && card.tags.length > 0
+                    ? card.tags.slice(0, 3).map(tag => `<span class="badge bg-label-info me-1">${tag}</span>`).join('')
+                    : '<span class="text-muted">{{ __("app.No tags") }}</span>';
+                
+                const actionsHtml = `
+                    ${card.can_view && card.media_url ? `<a href="${card.media_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="ti ti-eye"></i></a>` : ''}
+                    ${card.can_update ? `<a href="#" class="btn btn-sm btn-outline-primary" onclick="openEditMultimedia(${card.id})"><i class="ti ti-edit"></i></a>` : ''}
+                    ${card.can_delete ? `<a href="#" class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${card.id})"><i class="ti ti-trash"></i></a>` : ''}
+                `;
+                
+                const cardHtml = `
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="card p-2 h-100 shadow-none border">
+                            <div class="rounded-2 text-center mb-3">
+                                ${previewHtml}
+                            </div>
+                            <div class="card-body p-3 pt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="badge ${statusClass}">${card.status || '{{ __("app.Unknown") }}'}</span>
+                                    <span class="badge ${visibilityClass}">${card.visibility || '{{ __("app.Unknown") }}'}</span>
+                                </div>
+                                <h5 class="mb-2">${card.title || '{{ __("app.Untitled") }}'}</h5>
+                                <p class="text-muted mb-2 small">${card.description ? (card.description.length > 80 ? card.description.substring(0, 80) + '...' : card.description) : ''}</p>
+                                <div class="mb-2">
+                                    <small class="text-muted"><i class="ti ti-tag me-1"></i>${tagsHtml}</small>
+                                </div>
+                                ${card.category ? `<div class="mb-2"><small class="text-muted"><i class="ti ti-folder me-1"></i>${card.category}</small></div>` : ''}
+                                <div class="mb-3">
+                                    <small class="text-muted"><i class="ti ti-calendar me-1"></i>${card.created_at || ''}</small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    ${actionsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.append(cardHtml);
+            });
+        }
+        
+        // Render pagination
+        function renderPagination(pagination) {
+            const paginationEl = $('#multimediaCardsPagination');
+            paginationEl.html('');
+            
+            if (pagination.last_page <= 1) {
+                return;
+            }
+            
+            let paginationHtml = '<nav><ul class="pagination">';
+            
+            // Previous button
+            paginationHtml += `
+                <li class="page-item ${pagination.current_page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadMultimediaCards(${pagination.current_page - 1}); return false;">
+                        <i class="ti ti-chevron-left"></i>
+                    </a>
+                </li>
+            `;
+            
+            // Page numbers
+            for (let i = 1; i <= pagination.last_page; i++) {
+                if (i === 1 || i === pagination.last_page || (i >= pagination.current_page - 2 && i <= pagination.current_page + 2)) {
+                    paginationHtml += `
+                        <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadMultimediaCards(${i}); return false;">${i}</a>
+                        </li>
+                    `;
+                } else if (i === pagination.current_page - 3 || i === pagination.current_page + 3) {
+                    paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+            
+            // Next button
+            paginationHtml += `
+                <li class="page-item ${pagination.current_page === pagination.last_page ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadMultimediaCards(${pagination.current_page + 1}); return false;">
+                        <i class="ti ti-chevron-right"></i>
+                    </a>
+                </li>
+            `;
+            
+            paginationHtml += '</ul></nav>';
+            paginationEl.html(paginationHtml);
+        }
+
         function deleteRecord(id) {
             Swal.fire({
                 title: '{{ __("app.Are you sure you want to delete this record?") }}',
@@ -772,7 +990,14 @@
                             title: '{{ __("app.Deleted") }}',
                             text: data.success
                         });
-                        $('#multimedia-table').DataTable().ajax.reload();
+                        // Reload current view
+                        if ($('#viewModeCards').is(':checked')) {
+                            loadMultimediaCards();
+                        } else {
+                            if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                                $('#multimedia-table').DataTable().ajax.reload();
+                            }
+                        }
                     }).catch(() => {
                         Swal.fire({
                             icon: 'error',
