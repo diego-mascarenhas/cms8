@@ -62,13 +62,6 @@
       "module_key": "tasks"
     },
     {
-      "url": "multimedia/list",
-      "name": "Multimedia",
-      "icon": "menu-icon tf-icons ti ti-photo",
-      "slug": "multimedia",
-      "module_key": "multimedia"
-    },
-    {
       "url": "time/list",
       "name": "Times",
       "icon": "menu-icon tf-icons ti ti-hourglass-low",
@@ -219,6 +212,13 @@
       "slug": "page-edit",
       "target": "blank",
       "module_key": "website"
+    },
+    {
+      "url": "multimedia/list",
+      "name": "Multimedia",
+      "icon": "menu-icon tf-icons ti ti-photo",
+      "slug": "multimedia",
+      "module_key": "multimedia"
     },
     {
       "url": "academy/list",
