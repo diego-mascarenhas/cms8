@@ -435,14 +435,46 @@
                 uploadProgress.classList.remove('d-none');
                 updateProgress(0, totalFiles);
 
+                // Get current filter values
+                const filterStatus = $('#filter_status').val() || '0'; // Default to UNCLASSIFIED if empty
+                const filterVisibility = $('#filter_visibility').val() || '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}';
+                const filterCategory = $('#filter_category').val() || '';
+                
+                // Get selected tags (can be multiple)
+                const filterTags = [];
+                $('#filter_tag option:selected').each(function() {
+                    filterTags.push($(this).text());
+                });
+                
+                // Get selected galleries (can be multiple)
+                const filterGalleries = [];
+                $('#filter_gallery option:selected').each(function() {
+                    filterGalleries.push($(this).text());
+                });
+
                 // Send all files in a single request
                 const formData = new FormData();
                 files.forEach((file) => {
                     formData.append('files[]', file);
                 });
                 formData.append('_token', csrfToken);
-                formData.append('status', '0'); // UNCLASSIFIED
-                formData.append('visibility', '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}');
+                formData.append('status', filterStatus);
+                formData.append('visibility', filterVisibility);
+                
+                // Add category if selected
+                if (filterCategory) {
+                    formData.append('category_id', filterCategory);
+                }
+                
+                // Add tags if selected (as array)
+                filterTags.forEach((tag) => {
+                    formData.append('tags[]', tag);
+                });
+                
+                // Add galleries if selected (as array)
+                filterGalleries.forEach((gallery) => {
+                    formData.append('galleries[]', gallery);
+                });
 
                 // Add AJAX header to get JSON response
                 fetch('{{ route("multimedia.store") }}', {
