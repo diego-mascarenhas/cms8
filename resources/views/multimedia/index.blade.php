@@ -213,7 +213,7 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label" for="edit_status">{{ __('app.Status') }}</label>
-                    <select id="edit_status" name="status" class="form-select">
+                    <select id="edit_status" name="status" class="form-select select2">
                         @foreach($statusOptions as $status)
                             <option value="{{ $status->value }}">{{ $status->label() }}</option>
                         @endforeach
@@ -221,7 +221,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="edit_visibility">{{ __('app.Visibility') }}</label>
-                    <select id="edit_visibility" name="visibility" class="form-select">
+                    <select id="edit_visibility" name="visibility" class="form-select select2">
                         @foreach($visibilityOptions as $visibility)
                             <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
                         @endforeach
@@ -286,7 +286,7 @@
     <script>
         $(document).ready(function () {
             // Initialize all selects the same way (except offcanvas selects)
-            $('.select2').not('#edit_category_id, #edit_tags, #edit_galleries').select2({ width: '100%' });
+            $('.select2').not('#edit_category_id, #edit_tags, #edit_galleries, #edit_status, #edit_visibility').select2({ width: '100%' });
 
             // Ensure offcanvas is in body
             const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
@@ -653,15 +653,35 @@
                     // Open offcanvas first
                     offcanvas.show();
                     
-                    // Initialize category select2 after offcanvas is shown
+                    // Initialize all offcanvas selects after offcanvas is shown
                     setTimeout(function() {
-                        // Destroy existing Select2 instance if any
+                        // Initialize status select
+                        const statusSelect = $('#edit_status');
+                        if (statusSelect.data('select2')) {
+                            statusSelect.select2('destroy');
+                        }
+                        statusSelect.select2({ 
+                            width: '100%',
+                            dropdownParent: $('#multimediaEditOffcanvas'),
+                            minimumResultsForSearch: Infinity
+                        });
+                        
+                        // Initialize visibility select
+                        const visibilitySelect = $('#edit_visibility');
+                        if (visibilitySelect.data('select2')) {
+                            visibilitySelect.select2('destroy');
+                        }
+                        visibilitySelect.select2({ 
+                            width: '100%',
+                            dropdownParent: $('#multimediaEditOffcanvas'),
+                            minimumResultsForSearch: Infinity
+                        });
+                        
+                        // Initialize category select
                         const categorySelect = $('#edit_category_id');
                         if (categorySelect.data('select2')) {
                             categorySelect.select2('destroy');
                         }
-                        
-                        // Reinitialize Select2 with proper configuration
                         categorySelect.select2({ 
                             width: '100%',
                             placeholder: '{{ __("app.No category") }}',
@@ -670,6 +690,8 @@
                         });
                         
                         // Trigger change to update display
+                        statusSelect.trigger('change');
+                        visibilitySelect.trigger('change');
                         categorySelect.trigger('change');
                     }, 150);
                 } else {
