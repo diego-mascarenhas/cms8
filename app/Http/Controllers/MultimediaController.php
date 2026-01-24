@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\Module;
 use App\Models\Multimedia;
 use App\Models\MultimediaGalleryItem;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -174,7 +175,7 @@ class MultimediaController extends Controller
 
             $multimedia = Multimedia::create([
                 'team_id' => auth()->user()->currentTeam->id,
-                'category_id' => $request->input('category_id'),
+                'category_id' => $request->input('category_id') ?: null,
                 'title' => $title,
                 'description' => $request->input('description'),
                 'status' => (int) ($request->input('status') ?? MultimediaStatus::UNCLASSIFIED->value),
@@ -272,7 +273,7 @@ class MultimediaController extends Controller
         $multimedia->update([
             'title' => $request->input('title'),
             'description' => $request->input('description'),
-            'category_id' => $request->input('category_id'),
+            'category_id' => $request->input('category_id') ?: null,
             'status' => (int) $request->input('status'),
             'visibility' => (int) $request->input('visibility'),
         ]);

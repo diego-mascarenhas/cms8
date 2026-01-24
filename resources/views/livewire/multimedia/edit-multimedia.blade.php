@@ -24,7 +24,7 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label" for="status">{{ __('app.Status') }}</label>
-                    <select id="status" name="status" wire:model.blur="status" class="form-select select2 @error('status') is-invalid @enderror">
+                    <select id="status" name="status" wire:model.blur="status" class="form-select @error('status') is-invalid @enderror">
                         @foreach($statusOptions as $status)
                             <option value="{{ $status->value }}">{{ $status->label() }}</option>
                         @endforeach
@@ -35,7 +35,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="visibility">{{ __('app.Visibility') }}</label>
-                    <select id="visibility" name="visibility" wire:model.blur="visibility" class="form-select select2 @error('visibility') is-invalid @enderror">
+                    <select id="visibility" name="visibility" wire:model.blur="visibility" class="form-select @error('visibility') is-invalid @enderror">
                         @foreach($visibilityOptions as $visibility)
                             <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
                         @endforeach
@@ -48,7 +48,7 @@
 
             <div class="mb-3">
                 <label class="form-label" for="categoryId">{{ __('app.Category') }}</label>
-                <select id="categoryId" name="categoryId" wire:model.blur="categoryId" class="form-select select2 @error('categoryId') is-invalid @enderror">
+                <select id="categoryId" name="categoryId" wire:model.blur="categoryId" class="form-select @error('categoryId') is-invalid @enderror">
                     <option value="">{{ __('app.No category') }}</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -61,12 +61,8 @@
 
             <div class="mb-3">
                 <label class="form-label" for="tags">{{ __('app.Tags') }}</label>
-                <select id="tags" name="tags[]" wire:model="tags" class="form-select select2 @error('tags') is-invalid @enderror" multiple>
-                    @if(!empty($tags))
-                        @foreach($tags as $tag)
-                            <option value="{{ $tag }}" selected>{{ $tag }}</option>
-                        @endforeach
-                    @endif
+                <select id="tags" name="tags[]" wire:model="tags" class="form-select @error('tags') is-invalid @enderror" multiple>
+                    {{-- Options will be added dynamically by Select2 and Livewire --}}
                 </select>
                 @error('tags')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -75,12 +71,8 @@
 
             <div class="mb-3">
                 <label class="form-label" for="galleries">{{ __('app.Galleries') }}</label>
-                <select id="galleries" name="galleries[]" wire:model="galleries" class="form-select select2 @error('galleries') is-invalid @enderror" multiple>
-                    @if(!empty($galleries))
-                        @foreach($galleries as $gallery)
-                            <option value="{{ $gallery }}" selected>{{ $gallery }}</option>
-                        @endforeach
-                    @endif
+                <select id="galleries" name="galleries[]" wire:model="galleries" class="form-select @error('galleries') is-invalid @enderror" multiple>
+                    {{-- Options will be added dynamically by Select2 and Livewire --}}
                 </select>
                 @error('galleries')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -192,6 +184,17 @@
                 
                 // Wait for Livewire to update the DOM and offcanvas to be visible
                 setTimeout(() => {
+                    // Destroy any existing Select2 instances to avoid conflicts
+                    if ($('#status').hasClass('select2-hidden-accessible')) {
+                        $('#status').select2('destroy');
+                    }
+                    if ($('#visibility').hasClass('select2-hidden-accessible')) {
+                        $('#visibility').select2('destroy');
+                    }
+                    if ($('#categoryId').hasClass('select2-hidden-accessible')) {
+                        $('#categoryId').select2('destroy');
+                    }
+                    
                     // Initialize Select2 after offcanvas is shown
                     // Initialize status and visibility
                     $('#status, #visibility').select2({
@@ -200,36 +203,83 @@
                         minimumResultsForSearch: Infinity
                     });
                     
-                    // Initialize category
+                    // Initialize category - same pattern as categories-select component
+                    // Destroy existing instance first
+                    if ($('#categoryId').hasClass('select2-hidden-accessible')) {
+                        $('#categoryId').select2('destroy');
+                    }
+                    
                     $('#categoryId').select2({
                         width: '100%',
                         dropdownParent: $('#multimediaEditOffcanvas'),
                         placeholder: '{{ __("app.No category") }}',
-                        allowClear: true
+                        allowClear: true,
+                        closeOnSelect: false
                     });
                     
-                    // Initialize tags with autocomplete and creation
-                    $('#tags').select2({
+                    // Get initial values BEFORE initializing Select2
+                    const initialTags = @this.get('tags') || [];
+                    const initialGalleries = @this.get('galleries') || [];
+                    
+                    // Add initial tags to the select element before Select2 initialization
+                    if (initialTags.length > 0) {
+                        initialTags.forEach(function(tag) {
+                            if ($('#tags option[value="' + tag + '"]').length === 0) {
+                                const newOption = new Option(tag, tag, true, true);
+                                $('#tags').append(newOption);
+                            }
+                        });
+                    }
+                    
+                    // Add initial galleries to the select element before Select2 initialization
+                    if (initialGalleries.length > 0) {
+                        initialGalleries.forEach(function(gallery) {
+                            if ($('#galleries option[value="' + gallery + '"]').length === 0) {
+                                const newOption = new Option(gallery, gallery, true, true);
+                                $('#galleries').append(newOption);
+                            }
+                        });
+                    }
+                    
+                    // Initialize tags with autocomplete and creation - same pattern as category/form.blade.php
+                    // First, destroy any existing Select2 instance
+                    if ($('#tags').hasClass('select2-hidden-accessible')) {
+                        $('#tags').select2('destroy');
+                    }
+                    
+                    const tagsSelect = $('#tags');
+                    tagsSelect.select2({
                         width: '100%',
                         dropdownParent: $('#multimediaEditOffcanvas'),
                         tags: true,
                         tokenSeparators: [','],
                         placeholder: '{{ __("app.Search or create tags...") }}',
+                        allowClear: false,
                         language: {
-                            noResults: function() { return ''; },
-                            searching: function() { return 'Buscando...'; }
+                            noResults: function() {
+                                return '';
+                            },
+                            searching: function() {
+                                return 'Buscando...';
+                            }
                         },
                         ajax: {
                             url: '{{ route("tags.search") }}',
                             dataType: 'json',
                             delay: 250,
                             data: function (params) {
-                                return { q: params.term, type: 'general' };
+                                return {
+                                    q: params.term, // search term
+                                    type: 'general'
+                                };
                             },
                             processResults: function (data) {
                                 return {
                                     results: data.map(function(tag) {
-                                        return { id: tag.name, text: tag.name };
+                                        return {
+                                            id: tag.name,
+                                            text: tag.name
+                                        };
                                     })
                                 };
                             },
@@ -249,28 +299,71 @@
                         }
                     });
                     
-                    // Initialize galleries with autocomplete and creation
-                    $('#galleries').select2({
+                    // Hide "No results found" message for tags
+                    tagsSelect.on('select2:open', function() {
+                        setTimeout(function() {
+                            const dropdown = $('.select2-results');
+                            dropdown.find('.select2-results__message').hide();
+                        }, 10);
+                    });
+                    
+                    tagsSelect.on('select2:selecting', function() {
+                        $('.select2-results__message').hide();
+                    });
+                    
+                    // Also hide on results update
+                    tagsSelect.on('results:message', function() {
+                        setTimeout(function() {
+                            $('.select2-results__message').hide();
+                        }, 10);
+                    });
+                    
+                    // Ensure initial values are set after Select2 initialization
+                    if (initialTags.length > 0) {
+                        setTimeout(function() {
+                            tagsSelect.val(initialTags).trigger('change');
+                        }, 50);
+                    }
+                    
+                    // Initialize galleries with autocomplete and creation - same pattern as category/form.blade.php
+                    // First, destroy any existing Select2 instance
+                    if ($('#galleries').hasClass('select2-hidden-accessible')) {
+                        $('#galleries').select2('destroy');
+                    }
+                    
+                    const galleriesSelect = $('#galleries');
+                    galleriesSelect.select2({
                         width: '100%',
                         dropdownParent: $('#multimediaEditOffcanvas'),
                         tags: true,
                         tokenSeparators: [','],
                         placeholder: '{{ __("app.Search or create galleries...") }}',
+                        allowClear: false,
                         language: {
-                            noResults: function() { return ''; },
-                            searching: function() { return 'Buscando...'; }
+                            noResults: function() {
+                                return '';
+                            },
+                            searching: function() {
+                                return 'Buscando...';
+                            }
                         },
                         ajax: {
                             url: '{{ route("tags.search") }}',
                             dataType: 'json',
                             delay: 250,
                             data: function (params) {
-                                return { q: params.term, type: 'gallery' };
+                                return {
+                                    q: params.term, // search term
+                                    type: 'gallery'
+                                };
                             },
                             processResults: function (data) {
                                 return {
                                     results: data.map(function(tag) {
-                                        return { id: tag.name, text: tag.name };
+                                        return {
+                                            id: tag.name,
+                                            text: tag.name
+                                        };
                                     })
                                 };
                             },
@@ -289,6 +382,32 @@
                             };
                         }
                     });
+                    
+                    // Hide "No results found" message for galleries
+                    galleriesSelect.on('select2:open', function() {
+                        setTimeout(function() {
+                            const dropdown = $('.select2-results');
+                            dropdown.find('.select2-results__message').hide();
+                        }, 10);
+                    });
+                    
+                    galleriesSelect.on('select2:selecting', function() {
+                        $('.select2-results__message').hide();
+                    });
+                    
+                    // Also hide on results update
+                    galleriesSelect.on('results:message', function() {
+                        setTimeout(function() {
+                            $('.select2-results__message').hide();
+                        }, 10);
+                    });
+                    
+                    // Ensure initial values are set after Select2 initialization
+                    if (initialGalleries.length > 0) {
+                        setTimeout(function() {
+                            galleriesSelect.val(initialGalleries).trigger('change');
+                        }, 50);
+                    }
                     
                     // Sync Select2 changes with Livewire
                     $('#status').on('change', function() {
@@ -304,13 +423,13 @@
                     });
                     
                     $('#tags').on('change', function() {
-                        const values = $(this).val() || [];
-                        @this.set('tags', values);
+                        const values = $(this).val();
+                        @this.set('tags', Array.isArray(values) ? values : []);
                     });
                     
                     $('#galleries').on('change', function() {
-                        const values = $(this).val() || [];
-                        @this.set('galleries', values);
+                        const values = $(this).val();
+                        @this.set('galleries', Array.isArray(values) ? values : []);
                     });
                 }, 300);
             }
@@ -323,6 +442,26 @@
                 if (component && component.__instance && component.__instance.name === 'multimedia.edit-multimedia') {
                     const show = component.get('show');
                     const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
+                    
+                    // If show is false, allow hide and close the offcanvas
+                    if (!show && offcanvasEl) {
+                        offcanvasEl._allowHide = true;
+                        const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                        if (offcanvas && offcanvasEl.classList.contains('show')) {
+                            offcanvas.hide();
+                        } else if (offcanvasEl.classList.contains('show')) {
+                            // Fallback: hide manually
+                            offcanvasEl.classList.remove('show');
+                            offcanvasEl.style.visibility = 'hidden';
+                            const backdrop = document.querySelector('.offcanvas-backdrop');
+                            if (backdrop) {
+                                backdrop.remove();
+                            }
+                            document.body.classList.remove('offcanvas-backdrop');
+                        }
+                        return;
+                    }
+                    
                     if (show && offcanvasEl) {
                         // Check if listener still exists, re-add if needed
                         if (!offcanvasEl._hideHandler || !offcanvasEl._isLivewireManaged) {
@@ -375,11 +514,40 @@
                         
                         // Update Select2 values when Livewire updates
                         setTimeout(function() {
-                            $('#status').val(component.get('status')).trigger('change');
-                            $('#visibility').val(component.get('visibility')).trigger('change');
-                            $('#categoryId').val(component.get('categoryId') || '').trigger('change');
-                            $('#tags').val(component.get('tags') || []).trigger('change');
-                            $('#galleries').val(component.get('galleries') || []).trigger('change');
+                            const currentStatus = component.get('status');
+                            const currentVisibility = component.get('visibility');
+                            const currentCategoryId = component.get('categoryId') || '';
+                            const currentTags = component.get('tags') || [];
+                            const currentGalleries = component.get('galleries') || [];
+                            
+                            $('#status').val(currentStatus).trigger('change');
+                            $('#visibility').val(currentVisibility).trigger('change');
+                            $('#categoryId').val(currentCategoryId).trigger('change');
+                            
+                            // For tags and galleries with AJAX, we need to add options first if they don't exist
+                            if (currentTags.length > 0) {
+                                currentTags.forEach(function(tag) {
+                                    if ($('#tags option[value="' + tag + '"]').length === 0) {
+                                        const newOption = new Option(tag, tag, true, true);
+                                        $('#tags').append(newOption);
+                                    }
+                                });
+                                $('#tags').val(currentTags).trigger('change');
+                            } else {
+                                $('#tags').val([]).trigger('change');
+                            }
+                            
+                            if (currentGalleries.length > 0) {
+                                currentGalleries.forEach(function(gallery) {
+                                    if ($('#galleries option[value="' + gallery + '"]').length === 0) {
+                                        const newOption = new Option(gallery, gallery, true, true);
+                                        $('#galleries').append(newOption);
+                                    }
+                                });
+                                $('#galleries').val(currentGalleries).trigger('change');
+                            } else {
+                                $('#galleries').val([]).trigger('change');
+                            }
                         }, 100);
                     }
                 }
@@ -388,11 +556,29 @@
             }
         });
         
-        // Also hook into before morph to prevent closing
+        // Also hook into before morph to prevent closing (only if show is true)
         Livewire.hook('morph.before', function(data) {
             const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
             if (offcanvasEl && offcanvasEl._isLivewireManaged) {
-                offcanvasEl._allowHide = false;
+                // Check if component exists and show is true before blocking
+                try {
+                    const component = data?.component;
+                    if (component && component.__instance?.name === 'multimedia.edit-multimedia') {
+                        const show = component.get('show');
+                        // Only block if show is true
+                        if (show) {
+                            offcanvasEl._allowHide = false;
+                        } else {
+                            offcanvasEl._allowHide = true;
+                        }
+                    } else {
+                        // If we can't determine, allow hide to be safe
+                        offcanvasEl._allowHide = true;
+                    }
+                } catch (e) {
+                    // If there's an error, allow hide to be safe
+                    offcanvasEl._allowHide = true;
+                }
             }
         });
         
@@ -401,6 +587,12 @@
             const offcanvasEl = document.getElementById('multimediaEditOffcanvas');
             if (offcanvasEl && offcanvasEl._isLivewireManaged && component.__instance?.name === 'multimedia.edit-multimedia') {
                 const show = component.get('show');
+                // If show is false, allow hide
+                if (!show) {
+                    offcanvasEl._allowHide = true;
+                    return;
+                }
+                
                 if (show) {
                     offcanvasEl._allowHide = false;
                     // Force offcanvas to stay open immediately and in setTimeout
@@ -439,8 +631,12 @@
                     offcanvasEl.removeEventListener('hide.bs.offcanvas', offcanvasEl._hideHandler, true);
                 }
                 
+                // Reset Livewire managed flag
+                offcanvasEl._isLivewireManaged = false;
+                
                 const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
                 if (offcanvas) {
+                    // Use Bootstrap's hide method
                     offcanvas.hide();
                 } else {
                     // Fallback: hide manually
@@ -453,11 +649,15 @@
                     document.body.classList.remove('offcanvas-backdrop');
                 }
                 
-                // Re-add listener after hide completes
+                // Clean up after hide animation completes
                 setTimeout(() => {
-                    if (offcanvasEl._hideHandler && offcanvasEl._isLivewireManaged) {
-                        offcanvasEl.addEventListener('hide.bs.offcanvas', offcanvasEl._hideHandler, true);
+                    // Remove any remaining handlers
+                    if (offcanvasEl._hideHandler) {
+                        offcanvasEl.removeEventListener('hide.bs.offcanvas', offcanvasEl._hideHandler, true);
+                        offcanvasEl._hideHandler = null;
                     }
+                    offcanvasEl._isLivewireManaged = false;
+                    offcanvasEl._allowHide = true;
                 }, 500);
             }
         });

@@ -89,12 +89,12 @@ class EditMultimedia extends Component
         $this->description = $multimedia->description ?? '';
         $this->status = $multimedia->status?->value ?? 0;
         $this->visibility = $multimedia->visibility?->value ?? 2;
-        $this->categoryId = $multimedia->category_id;
+        $this->categoryId = $multimedia->category_id ?: null;
         $this->tags = $multimedia->tags->where('type', 'general')->pluck('name')->toArray();
         $this->galleries = $multimedia->tags->where('type', 'gallery')->pluck('name')->toArray();
 
         $this->show = true;
-        
+
         // Dispatch event to show offcanvas
         $this->dispatch('offcanvas:show');
     }
@@ -118,7 +118,7 @@ class EditMultimedia extends Component
         $multimedia->update([
             'title' => $this->title,
             'description' => $this->description,
-            'category_id' => $this->categoryId,
+            'category_id' => $this->categoryId ?: null,
             'status' => (int) $this->status,
             'visibility' => (int) $this->visibility,
             'updated_by' => auth()->id(),
@@ -140,7 +140,7 @@ class EditMultimedia extends Component
             $multimedia->addMedia($this->poster->getRealPath())->toMediaCollection('poster');
         }
 
-        $this->syncTags($multimedia, $this->tags, $this->galleries);
+        $this->syncTags($multimedia, is_array($this->tags) ? $this->tags : [], is_array($this->galleries) ? $this->galleries : []);
 
         $this->dispatch('multimedia:updated');
         session()->flash('message', __('app.Multimedia updated successfully.'));
@@ -156,32 +156,28 @@ class EditMultimedia extends Component
 
     private function syncTags(Multimedia $multimedia, array $tags, array $galleries): void
     {
-        // Normalize tag names
-        $normalizedTags = array_filter(array_map(function ($tag)
+        // Normalize tag names - return array of strings, not Tag objects
+        $normalizedTags = array_values(array_filter(array_map(function ($tag)
         {
             return $this->normalizeTagName($tag);
-        }, $tags));
+        }, $tags), function ($tag)
+        {
+            return ! empty($tag);
+        }));
 
-        $normalizedGalleries = array_filter(array_map(function ($gallery)
+        $normalizedGalleries = array_values(array_filter(array_map(function ($gallery)
         {
             return $this->normalizeTagName($gallery);
-        }, $galleries));
-
-        // Sync general tags
-        $tagModels = collect($normalizedTags)->map(function ($name)
+        }, $galleries), function ($gallery)
         {
-            return Tag::findOrCreate($name, 'general');
-        });
+            return ! empty($gallery);
+        }));
 
-        $multimedia->syncTagsWithType($tagModels, 'general');
+        // Sync general tags - syncTagsWithType expects array of strings (tag names)
+        $multimedia->syncTagsWithType($normalizedTags, 'general');
 
-        // Sync gallery tags
-        $galleryTagModels = collect($normalizedGalleries)->map(function ($name)
-        {
-            return Tag::findOrCreate($name, 'gallery');
-        });
-
-        $multimedia->syncTagsWithType($galleryTagModels, 'gallery');
+        // Sync gallery tags - syncTagsWithType expects array of strings (tag names)
+        $multimedia->syncTagsWithType($normalizedGalleries, 'gallery');
     }
 
     private function normalizeTagName(?string $name): ?string
