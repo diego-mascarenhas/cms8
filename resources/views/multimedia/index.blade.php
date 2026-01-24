@@ -25,9 +25,9 @@
     </div>
     @can('create', \App\Models\Multimedia::class)
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('multimedia.create') }}" class="btn btn-primary">
+        <button type="button" class="btn btn-primary" id="toggleUploadZone">
             <i class="ti ti-plus me-1"></i> {{ __('app.Add Media') }}
-        </a>
+        </button>
     </div>
     @endcan
 </div>
@@ -129,7 +129,7 @@
 </div>
 
 @can('create', \App\Models\Multimedia::class)
-<div class="card mb-4">
+<div class="card mb-4 d-none" id="uploadZoneCard">
     <div class="card-body">
         <!-- Drop Zone -->
         <div class="drop-zone" id="dropZone">
@@ -292,6 +292,22 @@
             if (offcanvasEl && offcanvasEl.parentElement !== document.body) {
                 document.body.appendChild(offcanvasEl);
             }
+            
+            // Toggle upload zone
+            $('#toggleUploadZone').on('click', function() {
+                const uploadZone = $('#uploadZoneCard');
+                const icon = $(this).find('i');
+                
+                if (uploadZone.hasClass('d-none')) {
+                    uploadZone.removeClass('d-none').hide().slideDown(300);
+                    icon.removeClass('ti-plus').addClass('ti-minus');
+                } else {
+                    uploadZone.slideUp(300, function() {
+                        $(this).addClass('d-none');
+                    });
+                    icon.removeClass('ti-minus').addClass('ti-plus');
+                }
+            });
             
             // View mode toggle
             $('input[name="viewMode"]').on('change', function() {
@@ -870,12 +886,6 @@
             container.html('');
             
             cards.forEach(card => {
-                const previewHtml = card.preview_url 
-                    ? `<img class="img-fluid rounded" src="${card.preview_url}" alt="${card.title}" style="max-height: 200px; object-fit: cover; width: 100%;">`
-                    : `<div class="d-flex align-items-center justify-content-center bg-label-secondary rounded" style="height: 200px;">
-                        <i class="${card.icon} ti-2xl text-muted"></i>
-                    </div>`;
-                
                 const statusClass = card.status_value === 2 ? 'bg-label-success' : card.status_value === 1 ? 'bg-label-warning' : 'bg-label-secondary';
                 const visibilityClass = card.visibility_value === 2 ? 'bg-label-info' : 'bg-label-secondary';
                 
@@ -883,11 +893,16 @@
                     ? card.tags.slice(0, 3).map(tag => `<span class="badge bg-label-info me-1">${tag}</span>`).join('')
                     : '<span class="text-muted">{{ __("app.No tags") }}</span>';
                 
-                const actionsHtml = `
-                    ${card.can_view && card.media_url ? `<a href="${card.media_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="ti ti-eye"></i></a>` : ''}
-                    ${card.can_update ? `<a href="#" class="btn btn-sm btn-outline-primary" onclick="openEditMultimedia(${card.id})"><i class="ti ti-edit"></i></a>` : ''}
-                    ${card.can_delete ? `<a href="#" class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${card.id})"><i class="ti ti-trash"></i></a>` : ''}
-                `;
+                // Make preview clickable if user can update
+                const previewClickable = card.can_update 
+                    ? `style="cursor: pointer;" onclick="openEditMultimedia(${card.id})"`
+                    : '';
+                
+                const previewHtml = card.preview_url 
+                    ? `<img class="img-fluid rounded" src="${card.preview_url}" alt="${card.title}" style="max-height: 200px; object-fit: cover; width: 100%;" ${previewClickable}>`
+                    : `<div class="d-flex align-items-center justify-content-center bg-label-secondary rounded" style="height: 200px; ${card.can_update ? 'cursor: pointer;' : ''}" ${previewClickable}>
+                        <i class="${card.icon} ti-2xl text-muted"></i>
+                    </div>`;
                 
                 const cardHtml = `
                     <div class="col-sm-6 col-lg-4 col-xl-3">
@@ -906,11 +921,8 @@
                                     <small class="text-muted"><i class="ti ti-tag me-1"></i>${tagsHtml}</small>
                                 </div>
                                 ${card.category ? `<div class="mb-2"><small class="text-muted"><i class="ti ti-folder me-1"></i>${card.category}</small></div>` : ''}
-                                <div class="mb-3">
+                                <div class="mb-0">
                                     <small class="text-muted"><i class="ti ti-calendar me-1"></i>${card.created_at || ''}</small>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    ${actionsHtml}
                                 </div>
                             </div>
                         </div>
