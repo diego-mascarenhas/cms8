@@ -300,7 +300,7 @@
             // Update suggestions as user types
             tagifyTags.on('input', function(e) {
                 const value = e.detail.value;
-                
+
                 fetch('{{ route("tags.search") }}?' + new URLSearchParams({
                     q: value,
                     type: 'general'
@@ -346,7 +346,7 @@
             // Update suggestions as user types
             tagifyGalleries.on('input', function(e) {
                 const value = e.detail.value;
-                
+
                 fetch('{{ route("tags.search") }}?' + new URLSearchParams({
                     q: value,
                     type: 'gallery'
@@ -411,7 +411,7 @@
                 // Remove any existing cards listeners first
                 $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                     .off('change.cards keyup.cards');
-                
+
                 // Bind cards filter listeners
                 $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                     .on('change.cards keyup.cards', function(e) {
@@ -455,12 +455,12 @@
                             table.ajax.reload();
                         }
                     });
-                
+
                 // Listen for Tagify changes for DataTables
                 tagifyTags.on('add remove', function() {
                     table.ajax.reload();
                 });
-                
+
                 tagifyGalleries.on('add remove', function() {
                     table.ajax.reload();
                 });
@@ -742,7 +742,7 @@
                     const adjustFiltersMsg = '{{ __("Try adjusting your filters or upload new media files") }}';
                     const uploadMediaBtn = '{{ __("Upload Media") }}';
                     const canCreate = {{ auth()->user()->can('create', \App\Models\Multimedia::class) ? 'true' : 'false' }};
-                    
+
                     let html = `
                         <div class="col-12">
                             <div class="card shadow-none border-0 bg-transparent">
@@ -753,7 +753,7 @@
                                     <h4 class="mb-2">${noMultimediaMsg}</h4>
                                     <p class="text-muted mb-4">${adjustFiltersMsg}</p>
                     `;
-                    
+
                     if (canCreate) {
                         html += `
                                     <button type="button" class="btn btn-primary" onclick="$('#toggleUploadZone').click();">
@@ -761,25 +761,25 @@
                                     </button>
                         `;
                     }
-                    
+
                     html += `
                                 </div>
                             </div>
                         </div>
                     `;
-                    
+
                     container.html(html);
                     pagination.html('');
                 }
             })
             .catch(error => {
                 console.error('Error loading cards:', error);
-                
+
                 // Prepare translations outside template string
                 const errorMsg = '{{ __("Error loading multimedia") }}';
                 const tryAgainMsg = '{{ __("Please try again or contact support if the problem persists") }}';
                 const retryBtn = '{{ __("Retry") }}';
-                
+
                 container.html(`
                     <div class="col-12">
                         <div class="card shadow-none border-0 bg-transparent">
