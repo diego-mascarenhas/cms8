@@ -360,14 +360,12 @@
 
             // Listen for tag/gallery changes to reload cards
             tagifyTags.on('add remove', function() {
-                console.log('Tags changed:', tagifyTags.value);
                 if ($('#viewModeCards').is(':checked')) {
                     loadMultimediaCards();
                 }
             });
 
             tagifyGalleries.on('add remove', function() {
-                console.log('Galleries changed:', tagifyGalleries.value);
                 if ($('#viewModeCards').is(':checked')) {
                     loadMultimediaCards();
                 }
@@ -397,38 +395,47 @@
                 if (viewMode === 'table') {
                     $('#tableView').removeClass('d-none');
                     $('#cardsView').addClass('d-none');
+                    // Unbind cards listeners and bind table listeners
+                    unbindCardsFilters();
                 } else {
                     $('#tableView').addClass('d-none');
                     $('#cardsView').removeClass('d-none');
+                    // Bind cards listeners
+                    bindCardsFilters();
                     loadMultimediaCards();
                 }
             });
 
-            // Load cards by default
-            if ($('#viewModeCards').is(':checked')) {
-                loadMultimediaCards();
-            }
-
-            // Load cards when filters change (only if cards view is active)
-            $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
-                .on('change keyup', function(e) {
-                    console.log('Filter changed:', $(this).attr('id'), '=', $(this).val());
-                    
-                    // For search input, add debounce
-                    if ($(this).attr('id') === 'filter_search') {
-                        clearTimeout(window.searchTimeout);
-                        window.searchTimeout = setTimeout(function() {
-                            console.log('Executing search after debounce...');
-                            if ($('#viewModeCards').is(':checked')) {
+            // Function to bind filter listeners for cards view
+            function bindCardsFilters() {
+                // Remove any existing cards listeners first
+                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
+                    .off('change.cards keyup.cards');
+                
+                // Bind cards filter listeners
+                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
+                    .on('change.cards keyup.cards', function(e) {
+                        // For search input, add debounce
+                        if ($(this).attr('id') === 'filter_search') {
+                            clearTimeout(window.searchTimeout);
+                            window.searchTimeout = setTimeout(function() {
                                 loadMultimediaCards();
-                            }
-                        }, 500);
-                    } else {
-                        if ($('#viewModeCards').is(':checked')) {
+                            }, 500);
+                        } else {
                             loadMultimediaCards();
                         }
-                    }
-                });
+                    });
+            }
+
+            // Function to unbind filter listeners for cards view
+            function unbindCardsFilters() {
+                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
+                    .off('change.cards keyup.cards');
+            }
+
+            // Initialize cards filters and load by default
+            bindCardsFilters();
+            loadMultimediaCards();
 
             function bindFilters(table) {
                 if (!table) {
@@ -461,9 +468,10 @@
                 $('#resetFilters')
                     .off('click.multimedia')
                     .on('click.multimedia', function () {
-                        $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
+                        $('#filter_status, #filter_visibility, #filter_category, #filter_type')
                             .val(null)
                             .trigger('change');
+                        $('#filter_search').val('').trigger('change');
                         // Clear Tagify inputs
                         tagifyTags.removeAllTags();
                         tagifyGalleries.removeAllTags();
@@ -692,12 +700,8 @@
             // Get filter values - handle arrays for tags and galleries
             const filterTags = tagifyTags.value.map(tag => tag.value);
             const filterGalleries = tagifyGalleries.value.map(tag => tag.value);
-            const filterSearch = $('#filter_search').val() || '';
-            
-            console.log('=== loadMultimediaCards ===');
-            console.log('Search value:', filterSearch);
-            console.log('Tags:', filterTags);
-            console.log('Galleries:', filterGalleries);
+            const searchVal = $('#filter_search').val();
+            const filterSearch = (searchVal && searchVal !== 'undefined') ? searchVal : '';
 
             const filters = {
                 status: $('#filter_status').val(),
@@ -992,22 +996,27 @@
             margin-top: 0 !important;
             padding-top: 0 !important;
         }
-        
+
         .select2-dropdown-no-jump .select2-results {
             padding-top: 0 !important;
         }
-        
+
         .select2-dropdown-no-jump .select2-results__options {
             padding-top: 0 !important;
             margin-top: 0 !important;
         }
-        
+
         .select2-dropdown-no-jump .select2-results__message {
             display: none !important;
         }
-        
+
         .select2-container--open .select2-dropdown--below {
             margin-top: -1px;
+        }
+
+        /* Hide default DataTables search box */
+        #multimedia-table_filter {
+            display: none !important;
         }
     </style>
 @endpush

@@ -118,6 +118,45 @@ class MultimediaDataTable extends DataTable
             $query->where('type', $request->get('type'));
         }
 
+        // Search filter
+        if ($request->filled('search'))
+        {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search)
+            {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by tags array (from multi-select)
+        if ($request->filled('tags') && is_array($request->get('tags')))
+        {
+            $tags = array_filter($request->get('tags'));
+            if (!empty($tags))
+            {
+                $query->whereHas('tags', function ($tagQuery) use ($tags)
+                {
+                    $tagQuery->whereIn('name->es', $tags)
+                        ->where('type', 'general');
+                });
+            }
+        }
+
+        // Filter by galleries array (from multi-select)
+        if ($request->filled('galleries') && is_array($request->get('galleries')))
+        {
+            $galleries = array_filter($request->get('galleries'));
+            if (!empty($galleries))
+            {
+                $query->whereHas('tags', function ($tagQuery) use ($galleries)
+                {
+                    $tagQuery->whereIn('name->es', $galleries)
+                        ->where('type', 'gallery');
+                });
+            }
+        }
+
         if ($request->filled('tag_id'))
         {
             $tagId = $request->get('tag_id');
