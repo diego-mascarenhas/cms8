@@ -30,6 +30,18 @@ class EditMultimedia extends Component
     public $tags = [];
 
     public $galleries = [];
+    
+    #[\Livewire\Attributes\On('tags-updated')]
+    public function handleTagsUpdated($selected): void
+    {
+        $this->tags = is_array($selected) ? $selected : [];
+    }
+    
+    #[\Livewire\Attributes\On('galleries-updated')]
+    public function handleGalleriesUpdated($selected): void
+    {
+        $this->galleries = is_array($selected) ? $selected : [];
+    }
 
     public $media;
 
@@ -96,6 +108,7 @@ class EditMultimedia extends Component
         $this->show = true;
 
         // Dispatch event to show offcanvas
+        // Use $dispatch to ensure it works with Livewire 3
         $this->dispatch('offcanvas:show');
     }
 
