@@ -177,18 +177,24 @@ window.confirmDelete = function() {
         offcanvasEl._isLivewireManaged = true;
         offcanvasEl._allowHide = false;
 
-        // Prevent Bootstrap from closing during Livewire updates
+        // Prevent Bootstrap from closing during Livewire updates, but allow manual close
         const existingHandler = offcanvasEl._hideHandler;
         if (existingHandler) {
             offcanvasEl.removeEventListener('hide.bs.offcanvas', existingHandler);
         }
 
         offcanvasEl._hideHandler = function(e) {
-            if (!offcanvasEl._allowHide) {
+            // Allow closing if triggered by user action (backdrop click or close button)
+            // Block only if it's an automatic hide during Livewire updates
+            if (!offcanvasEl._allowHide && !e.isTrusted) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 return false;
+            }
+            // User wants to close, notify Livewire
+            if (e.isTrusted) {
+                @this.set('show', false);
             }
         };
         offcanvasEl.addEventListener('hide.bs.offcanvas', offcanvasEl._hideHandler, true);
@@ -214,6 +220,20 @@ window.confirmDelete = function() {
             const backdrop = document.querySelector('.offcanvas-backdrop');
             if (backdrop) {
                 backdrop.style.display = 'block';
+                
+                // Add click handler to backdrop to close offcanvas
+                if (!backdrop._hasClickHandler) {
+                    backdrop.addEventListener('click', function(e) {
+                        console.log('Backdrop clicked, closing offcanvas');
+                        offcanvasEl._allowHide = true;
+                        @this.set('show', false);
+                        const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                        if (offcanvasInstance) {
+                            offcanvasInstance.hide();
+                        }
+                    });
+                    backdrop._hasClickHandler = true;
+                }
             }
         }, 100);
 
@@ -502,11 +522,17 @@ window.confirmDelete = function() {
                     if (!offcanvasEl._hideHandler || !offcanvasEl._isLivewireManaged) {
                         offcanvasEl._isLivewireManaged = true;
                         offcanvasEl._hideHandler = function(e) {
-                            if (!offcanvasEl._allowHide) {
+                            // Allow closing if triggered by user action (backdrop click or close button)
+                            // Block only if it's an automatic hide during Livewire updates
+                            if (!offcanvasEl._allowHide && !e.isTrusted) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 e.stopImmediatePropagation();
                                 return false;
+                            }
+                            // User wants to close, notify Livewire
+                            if (e.isTrusted) {
+                                @this.set('show', false);
                             }
                         };
                         offcanvasEl.addEventListener('hide.bs.offcanvas', offcanvasEl._hideHandler, true);
@@ -534,6 +560,20 @@ window.confirmDelete = function() {
                         document.body.appendChild(backdrop);
                     } else {
                         backdrop.classList.add('show');
+                    }
+                    
+                    // Add click handler to backdrop to close offcanvas
+                    if (backdrop && !backdrop._hasClickHandler) {
+                        backdrop.addEventListener('click', function(e) {
+                            console.log('Backdrop clicked, closing offcanvas');
+                            offcanvasEl._allowHide = true;
+                            @this.set('show', false);
+                            const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                            if (offcanvasInstance) {
+                                offcanvasInstance.hide();
+                            }
+                        });
+                        backdrop._hasClickHandler = true;
                     }
 
                     // Ensure body has offcanvas class
