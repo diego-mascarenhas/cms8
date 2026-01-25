@@ -266,21 +266,39 @@
                 $('#filter_status').val('2').trigger('change');
             }
 
-            // Initialize Tagify for tags with inline suggestions
+            // Initialize Tagify for tags with inline suggestions (matching example)
             const tagifyTagsEl = document.querySelector('#filter_tag');
             tagifyTags = new Tagify(tagifyTagsEl, {
                 whitelist: [],
                 maxTags: 10,
                 dropdown: {
-                    enabled: 0,              // Mostrar sugerencias inmediatamente
                     maxItems: 20,
-                    classname: 'tags-inline', // Clase para estilo inline
-                    enabled: 0,              // 0 = mostrar al escribir
-                    closeOnSelect: false
+                    classname: 'tags-inline',
+                    enabled: 0,                 // Show immediately
+                    closeOnSelect: false        // Don't close on select
                 }
             });
 
-            // Load initial whitelist on focus
+            // Open dropdown on click
+            tagifyTagsEl.addEventListener('click', function() {
+                if (tagifyTags.whitelist.length === 0) {
+                    // Load all tags if not loaded yet
+                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                        q: '',
+                        type: 'general'
+                    }))
+                    .then(response => response.json())
+                    .then(data => {
+                        tagifyTags.whitelist = data.map(tag => tag.name);
+                        tagifyTags.dropdown.show();
+                    });
+                } else {
+                    // Show dropdown with existing options
+                    tagifyTags.dropdown.show();
+                }
+            });
+
+            // Load on focus as fallback
             tagifyTagsEl.addEventListener('focus', function() {
                 if (tagifyTags.whitelist.length === 0) {
                     fetch('{{ route("tags.search") }}?' + new URLSearchParams({
@@ -292,6 +310,8 @@
                         tagifyTags.whitelist = data.map(tag => tag.name);
                         tagifyTags.dropdown.show();
                     });
+                } else {
+                    tagifyTags.dropdown.show();
                 }
             });
 
@@ -310,21 +330,39 @@
                 });
             });
 
-            // Initialize Tagify for galleries with inline suggestions
+            // Initialize Tagify for galleries with inline suggestions (matching example)
             const tagifyGalleriesEl = document.querySelector('#filter_gallery');
             tagifyGalleries = new Tagify(tagifyGalleriesEl, {
                 whitelist: [],
                 maxTags: 10,
                 dropdown: {
-                    enabled: 0,              // Mostrar sugerencias inmediatamente
                     maxItems: 20,
-                    classname: 'tags-inline', // Clase para estilo inline
-                    enabled: 0,              // 0 = mostrar al escribir
-                    closeOnSelect: false
+                    classname: 'tags-inline',
+                    enabled: 0,                 // Show immediately
+                    closeOnSelect: false        // Don't close on select
                 }
             });
 
-            // Load initial whitelist on focus
+            // Open dropdown on click
+            tagifyGalleriesEl.addEventListener('click', function() {
+                if (tagifyGalleries.whitelist.length === 0) {
+                    // Load all galleries if not loaded yet
+                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                        q: '',
+                        type: 'gallery'
+                    }))
+                    .then(response => response.json())
+                    .then(data => {
+                        tagifyGalleries.whitelist = data.map(tag => tag.name);
+                        tagifyGalleries.dropdown.show();
+                    });
+                } else {
+                    // Show dropdown with existing options
+                    tagifyGalleries.dropdown.show();
+                }
+            });
+
+            // Load on focus as fallback
             tagifyGalleriesEl.addEventListener('focus', function() {
                 if (tagifyGalleries.whitelist.length === 0) {
                     fetch('{{ route("tags.search") }}?' + new URLSearchParams({
@@ -336,6 +374,8 @@
                         tagifyGalleries.whitelist = data.map(tag => tag.name);
                         tagifyGalleries.dropdown.show();
                     });
+                } else {
+                    tagifyGalleries.dropdown.show();
                 }
             });
 
@@ -1004,38 +1044,6 @@
         
         .select2-container--open .select2-dropdown--below {
             margin-top: -1px;
-        }
-
-        /* Tagify inline suggestions style */
-        .tagify__dropdown.tags-inline {
-            border: 1px solid #d4d7e3;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 0.75rem;
-            background: white;
-        }
-        
-        .tagify__dropdown.tags-inline .tagify__dropdown__item {
-            display: inline-block;
-            margin: 0.25rem;
-            padding: 0.5rem 1rem;
-            border: 1px solid #d4d7e3;
-            border-radius: 4px;
-            background: white;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        
-        .tagify__dropdown.tags-inline .tagify__dropdown__item:hover {
-            background: #696cff;
-            color: white;
-            border-color: #696cff;
-        }
-        
-        .tagify__dropdown.tags-inline .tagify__dropdown__item--active {
-            background: #696cff;
-            color: white;
-            border-color: #696cff;
         }
     </style>
 @endpush
