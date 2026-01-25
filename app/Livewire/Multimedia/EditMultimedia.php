@@ -96,6 +96,10 @@ class EditMultimedia extends Component
             abort(403);
         }
 
+        // #region agent log
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'E', 'location' => 'EditMultimedia.php:99', 'message' => 'loadMultimedia - DB values', 'data' => ['multimedia_id' => $multimedia->id, 'db_category_id' => $multimedia->category_id, 'category_object' => $multimedia->category ? ['id' => $multimedia->category->id, 'name' => $multimedia->category->name] : null], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
+
         $this->multimediaId = $multimedia->id;
         $this->title = $multimedia->title;
         $this->description = $multimedia->description ?? '';
@@ -104,6 +108,10 @@ class EditMultimedia extends Component
         $this->categoryId = $multimedia->category_id ?: null;
         $this->tags = $multimedia->tags->where('type', 'general')->pluck('name')->toArray();
         $this->galleries = $multimedia->tags->where('type', 'gallery')->pluck('name')->toArray();
+
+        // #region agent log
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'E', 'location' => 'EditMultimedia.php:119', 'message' => 'loadMultimedia - After assignment', 'data' => ['this_categoryId' => $this->categoryId], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
 
         $this->show = true;
 
@@ -119,7 +127,21 @@ class EditMultimedia extends Component
 
     public function update(): void
     {
+        // #region agent log
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'B', 'location' => 'EditMultimedia.php:122', 'message' => 'update() called - BEFORE validate', 'data' => ['categoryId' => $this->categoryId, 'tags' => $this->tags, 'galleries' => $this->galleries], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
+        
+        \Log::info('EditMultimedia::update called', [
+            'tags' => $this->tags,
+            'galleries' => $this->galleries,
+            'categoryId' => $this->categoryId,
+        ]);
+        
         $this->validate();
+
+        // #region agent log
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'C', 'location' => 'EditMultimedia.php:136', 'message' => 'update() - AFTER validate', 'data' => ['categoryId' => $this->categoryId], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
 
         $multimedia = Multimedia::findOrFail($this->multimediaId);
 
@@ -127,6 +149,10 @@ class EditMultimedia extends Component
         {
             abort(403);
         }
+
+        // #region agent log
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'B', 'location' => 'EditMultimedia.php:148', 'message' => 'update() - BEFORE DB update', 'data' => ['categoryId_to_save' => $this->categoryId ?: null, 'current_db_category_id' => $multimedia->category_id], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
 
         $multimedia->update([
             'title' => $this->title,
@@ -136,6 +162,11 @@ class EditMultimedia extends Component
             'visibility' => (int) $this->visibility,
             'updated_by' => auth()->id(),
         ]);
+
+        // #region agent log
+        $multimedia->refresh();
+        file_put_contents('/Users/magoo/Sites/humano/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'C', 'location' => 'EditMultimedia.php:162', 'message' => 'update() - AFTER DB update', 'data' => ['saved_category_id' => $multimedia->category_id], 'timestamp' => round(microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        // #endregion
 
         if ($this->media)
         {
@@ -155,6 +186,8 @@ class EditMultimedia extends Component
 
         $this->syncTags($multimedia, is_array($this->tags) ? $this->tags : [], is_array($this->galleries) ? $this->galleries : []);
 
+        \Log::info('EditMultimedia::update completed');
+        
         $this->dispatch('multimedia:updated');
         session()->flash('message', __('app.Multimedia updated successfully.'));
         $this->close();
@@ -162,13 +195,22 @@ class EditMultimedia extends Component
 
     public function close(): void
     {
+        \Log::info('EditMultimedia::close called');
+        
         $this->reset(['multimediaId', 'title', 'description', 'status', 'visibility', 'categoryId', 'tags', 'galleries', 'media', 'poster', 'show']);
         $this->resetValidation();
+        
+        \Log::info('EditMultimedia::close dispatching offcanvas:hide');
         $this->dispatch('offcanvas:hide');
     }
 
     private function syncTags(Multimedia $multimedia, array $tags, array $galleries): void
     {
+        \Log::info('syncTags called', [
+            'tags' => $tags,
+            'galleries' => $galleries,
+        ]);
+        
         // Normalize tag names - return array of strings, not Tag objects
         $normalizedTags = array_values(array_filter(array_map(function ($tag)
         {
@@ -186,6 +228,11 @@ class EditMultimedia extends Component
             return ! empty($gallery);
         }));
 
+        \Log::info('Normalized tags', [
+            'normalizedTags' => $normalizedTags,
+            'normalizedGalleries' => $normalizedGalleries,
+        ]);
+
         // Sync general tags - syncTagsWithType expects array of strings (tag names)
         $multimedia->syncTagsWithType($normalizedTags, 'general');
 
@@ -200,7 +247,16 @@ class EditMultimedia extends Component
             return null;
         }
 
-        return trim($name);
+        $normalized = trim($name);
+        
+        // Filter out placeholder/invalid values
+        $invalidValues = ['Todos', 'todos', 'all', 'All', ''];
+        if (in_array($normalized, $invalidValues, true))
+        {
+            return null;
+        }
+
+        return $normalized;
     }
 
     private function buildStorageFileName($file): string

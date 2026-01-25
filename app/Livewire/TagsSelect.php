@@ -36,6 +36,13 @@ class TagsSelect extends Component
         $this->dispatch('tags-updated', $this->selected);
     }
     
+    // This method is called when the parent component updates the :selected prop
+    public function updateSelected($newSelected)
+    {
+        $this->selected = is_array($newSelected) ? $newSelected : [];
+        $this->dispatch('tags-updated', $this->selected);
+    }
+    
     public function render()
     {
         return view('livewire.tags-select');

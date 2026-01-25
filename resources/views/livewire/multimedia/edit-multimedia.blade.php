@@ -4,7 +4,7 @@
         <button type="button" class="btn-close" wire:click="close" onclick="event.stopPropagation();" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-        <form wire:submit="update">
+        <form wire:submit.prevent="update" onsubmit="console.log('Form submit triggered'); return true;">
             <div class="mb-3">
                 <label class="form-label" for="title">{{ __('app.Title') }}</label>
                 <input type="text" id="title" name="title" wire:model.blur="title" class="form-control @error('title') is-invalid @enderror" required>
@@ -66,6 +66,7 @@
                 :label="__('app.Tags')" 
                 :required="false"
                 :multiple="true"
+                wire:key="tags-select-{{ $multimediaId ?? 'new' }}-{{ implode(',', $tags) }}"
             />
 
             <livewire:galleries-select 
@@ -75,6 +76,7 @@
                 :label="__('app.Galleries')" 
                 :required="false"
                 :multiple="true"
+                wire:key="galleries-select-{{ $multimediaId ?? 'new' }}-{{ implode(',', $galleries) }}"
             />
 
             <div class="mb-3">
@@ -100,11 +102,11 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" onclick="console.log('Save button clicked');">
                     <span wire:loading.remove><i class="ti ti-check me-1"></i>{{ __('app.Save') }}</span>
                     <span wire:loading>{{ __('app.Saving...') }}</span>
                 </button>
-                <button type="button" class="btn btn-label-secondary" wire:click="close">
+                <button type="button" class="btn btn-label-secondary" wire:click="close" onclick="console.log('Cancel button clicked');">
                     {{ __('app.Cancel') }}
                 </button>
             </div>
@@ -210,8 +212,24 @@
                 closeOnSelect: false
             });
             
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:213',message:'categoryId Select2 initialized',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            // Add change event listener to sync with Livewire
+            $('#categoryId').on('change', function() {
+                const value = $(this).val();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:218',message:'categoryId Select2 changed',data:{newValue:value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                @this.set('categoryId', value || null);
+            });
+            
             setTimeout(function() {
                 const currentCategoryId = @this.get('categoryId');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:225',message:'Setting initial categoryId',data:{currentCategoryId:currentCategoryId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
                 if (currentCategoryId) {
                     $('#categoryId').val(currentCategoryId).trigger('change');
                 } else {
@@ -253,8 +271,11 @@
                 const show = component.get('show');
                 let offcanvasEl = document.getElementById('multimediaEditOffcanvas');
                 
-                // If show is false, allow hide and close the offcanvas
+                console.log('morph.updated - show:', show);
+                
+                // If show is false, allow hide and close the offcanvas IMMEDIATELY
                 if (!show && offcanvasEl) {
+                    console.log('Show is false, allowing hide and closing offcanvas');
                     offcanvasEl._allowHide = true;
                     const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
                     if (offcanvas && offcanvasEl.classList.contains('show')) {
@@ -269,7 +290,7 @@
                         }
                         document.body.classList.remove('offcanvas-backdrop');
                     }
-                    return;
+                    return; // CRITICAL: Exit early to prevent keeping it open
                 }
                 
                 if (show && offcanvasEl) {
@@ -328,6 +349,10 @@
                         const currentVisibility = component.get('visibility');
                         const currentCategoryId = component.get('categoryId') || '';
                         
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:357',message:'morph.updated - Updating Select2',data:{currentCategoryId:currentCategoryId,currentStatus:currentStatus,currentVisibility:currentVisibility},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                        // #endregion
+                        
                         $('#status').val(currentStatus).trigger('change');
                         $('#visibility').val(currentVisibility).trigger('change');
                         $('#categoryId').val(currentCategoryId).trigger('change');
@@ -364,9 +389,13 @@
         let offcanvasEl = document.getElementById('multimediaEditOffcanvas');
         if (offcanvasEl && offcanvasEl._isLivewireManaged && component.__instance?.name === 'multimedia.edit-multimedia') {
             const show = component.get('show');
+            console.log('commit hook - show:', show);
+            
+            // If show is false, allow hide IMMEDIATELY
             if (!show) {
+                console.log('Show is false in commit, allowing hide');
                 offcanvasEl._allowHide = true;
-                return;
+                return; // Exit early
             }
             
             if (show) {
@@ -395,8 +424,10 @@
     });
     
     Livewire.on('offcanvas:hide', () => {
+        console.log('offcanvas:hide event received');
         let offcanvasEl = document.getElementById('multimediaEditOffcanvas');
         if (offcanvasEl) {
+            console.log('Hiding offcanvas...');
             offcanvasEl._allowHide = true;
             
             if (offcanvasEl._hideHandler) {
@@ -408,7 +439,9 @@
             const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
             if (offcanvas) {
                 offcanvas.hide();
+                console.log('Offcanvas.hide() called');
             } else {
+                console.log('No offcanvas instance, hiding manually');
                 offcanvasEl.classList.remove('show');
                 offcanvasEl.style.visibility = 'hidden';
                 const backdrop = document.querySelector('.offcanvas-backdrop');
@@ -425,7 +458,10 @@
                 }
                 offcanvasEl._isLivewireManaged = false;
                 offcanvasEl._allowHide = true;
+                console.log('Offcanvas cleanup completed');
             }, 500);
+        } else {
+            console.error('Offcanvas element not found when trying to hide');
         }
     });
     

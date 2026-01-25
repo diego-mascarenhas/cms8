@@ -36,6 +36,13 @@ class GalleriesSelect extends Component
         $this->dispatch('galleries-updated', $this->selected);
     }
     
+    // This method is called when the parent component updates the :selected prop
+    public function updateSelected($newSelected)
+    {
+        $this->selected = is_array($newSelected) ? $newSelected : [];
+        $this->dispatch('galleries-updated', $this->selected);
+    }
+    
     public function render()
     {
         return view('livewire.galleries-select');
