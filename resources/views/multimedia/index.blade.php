@@ -266,17 +266,17 @@
                 $('#filter_status').val('2').trigger('change');
             }
 
-            // Initialize Tagify for tags
+            // Initialize Tagify for tags with inline suggestions
             const tagifyTagsEl = document.querySelector('#filter_tag');
             tagifyTags = new Tagify(tagifyTagsEl, {
                 whitelist: [],
                 maxTags: 10,
                 dropdown: {
-                    enabled: 0, // Show suggestions on input
+                    enabled: 0,              // Mostrar sugerencias inmediatamente
                     maxItems: 20,
-                    classname: '',
-                    closeOnSelect: false,
-                    highlightFirst: true
+                    classname: 'tags-inline', // Clase para estilo inline
+                    enabled: 0,              // 0 = mostrar al escribir
+                    closeOnSelect: false
                 }
             });
 
@@ -310,17 +310,17 @@
                 });
             });
 
-            // Initialize Tagify for galleries
+            // Initialize Tagify for galleries with inline suggestions
             const tagifyGalleriesEl = document.querySelector('#filter_gallery');
             tagifyGalleries = new Tagify(tagifyGalleriesEl, {
                 whitelist: [],
                 maxTags: 10,
                 dropdown: {
-                    enabled: 0, // Show suggestions on input
+                    enabled: 0,              // Mostrar sugerencias inmediatamente
                     maxItems: 20,
-                    classname: '',
-                    closeOnSelect: false,
-                    highlightFirst: true
+                    classname: 'tags-inline', // Clase para estilo inline
+                    enabled: 0,              // 0 = mostrar al escribir
+                    closeOnSelect: false
                 }
             });
 
@@ -1004,6 +1004,38 @@
         
         .select2-container--open .select2-dropdown--below {
             margin-top: -1px;
+        }
+
+        /* Tagify inline suggestions style */
+        .tagify__dropdown.tags-inline {
+            border: 1px solid #d4d7e3;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 0.75rem;
+            background: white;
+        }
+        
+        .tagify__dropdown.tags-inline .tagify__dropdown__item {
+            display: inline-block;
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #d4d7e3;
+            border-radius: 4px;
+            background: white;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .tagify__dropdown.tags-inline .tagify__dropdown__item:hover {
+            background: #696cff;
+            color: white;
+            border-color: #696cff;
+        }
+        
+        .tagify__dropdown.tags-inline .tagify__dropdown__item--active {
+            background: #696cff;
+            color: white;
+            border-color: #696cff;
         }
     </style>
 @endpush
