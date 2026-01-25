@@ -257,7 +257,7 @@
             $('#filter_status, #filter_visibility, #filter_category, #filter_type').select2({
                 width: '100%',
                 placeholder: '{{ __("app.All") }}',
-                allowClear: false,
+                allowClear: true,
                 minimumResultsForSearch: Infinity
             });
 
