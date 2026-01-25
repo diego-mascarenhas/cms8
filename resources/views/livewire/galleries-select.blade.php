@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return '';
                 },
                 searching: function() {
-                    return 'Buscando...';
+                    return '';  // Don't show "Buscando..." message
                 },
                 inputTooShort: function() {
                     return '';  // Don't show "Please enter 2 or more characters"
@@ -116,6 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 : [];
             console.log('Galleries syncing to Livewire:', values);
             @this.set('selected', values);
+            
+            // Also dispatch to parent component
+            Livewire.dispatch('galleries-updated', values);
         });
         
         // Set initial values after Select2 is initialized

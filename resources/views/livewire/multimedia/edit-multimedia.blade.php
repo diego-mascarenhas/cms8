@@ -65,25 +65,23 @@
                 @enderror
             </div>
 
-            <livewire:tags-select 
-                :selected="$tags" 
-                name="tags" 
-                id="tags" 
-                :label="__('app.Tags')" 
-                :required="false"
-                :multiple="true"
-                wire:key="tags-select-{{ $multimediaId ?? 'new' }}-{{ implode(',', $tags) }}"
-            />
+            <div class="mb-3">
+                <label class="form-label" for="tags">{{ __('app.Tags') }}</label>
+                <div wire:ignore>
+                    <select id="tags" name="tags[]" class="form-select" multiple>
+                        {{-- Options will be populated by Select2 AJAX --}}
+                    </select>
+                </div>
+            </div>
 
-            <livewire:galleries-select 
-                :selected="$galleries" 
-                name="galleries" 
-                id="galleries" 
-                :label="__('app.Galleries')" 
-                :required="false"
-                :multiple="true"
-                wire:key="galleries-select-{{ $multimediaId ?? 'new' }}-{{ implode(',', $galleries) }}"
-            />
+            <div class="mb-3">
+                <label class="form-label" for="galleries">{{ __('app.Galleries') }}</label>
+                <div wire:ignore>
+                    <select id="galleries" name="galleries[]" class="form-select" multiple>
+                        {{-- Options will be populated by Select2 AJAX --}}
+                    </select>
+                </div>
+            </div>
 
             <div class="mb-3">
                 <label class="form-label" for="media">{{ __('app.Replace File') }}</label>
@@ -198,114 +196,132 @@
     
     // Centralized function to initialize Select2 on form selects
     function initializeFormSelect2() {
-        console.log('initializeFormSelect2 called');
-        
         // Ensure elements exist
         const statusEl = $('#status');
         const visibilityEl = $('#visibility');
         const categoryEl = $('#categoryId');
+        const tagsEl = $('#tags');
+        const galleriesEl = $('#galleries');
         
-        console.log('Elements found:', {
-            status: statusEl.length,
-            visibility: visibilityEl.length,
-            category: categoryEl.length
-        });
-        
-        if (statusEl.length === 0 || visibilityEl.length === 0 || categoryEl.length === 0) {
-            console.warn('Some elements not found, retrying...');
-            setTimeout(initializeFormSelect2, 100);
+        if (statusEl.length === 0 || visibilityEl.length === 0 || categoryEl.length === 0 || tagsEl.length === 0 || galleriesEl.length === 0) {
+            setTimeout(initializeFormSelect2, 50);
             return;
         }
         
-        setTimeout(() => {
-            // Destroy existing Select2 instances
-            if (statusEl.hasClass('select2-hidden-accessible')) {
-                console.log('Destroying existing status Select2');
-                statusEl.select2('destroy');
+        // Destroy existing Select2 instances
+        [statusEl, visibilityEl, categoryEl, tagsEl, galleriesEl].forEach(el => {
+            if (el.hasClass('select2-hidden-accessible')) {
+                el.select2('destroy');
             }
-            if (visibilityEl.hasClass('select2-hidden-accessible')) {
-                console.log('Destroying existing visibility Select2');
-                visibilityEl.select2('destroy');
-            }
-            if (categoryEl.hasClass('select2-hidden-accessible')) {
-                console.log('Destroying existing category Select2');
-                categoryEl.select2('destroy');
-            }
-            
-            console.log('Initializing Select2 for status and visibility');
-            // Initialize Select2 for status and visibility (no search)
-            statusEl.select2({
-                width: '100%',
-                dropdownParent: $('#multimediaEditOffcanvas'),
-                minimumResultsForSearch: Infinity
+        });
+        
+        // Initialize Select2 for status and visibility (no search)
+        statusEl.select2({
+            width: '100%',
+            dropdownParent: $('#multimediaEditOffcanvas'),
+            minimumResultsForSearch: Infinity
+        });
+        
+        visibilityEl.select2({
+            width: '100%',
+            dropdownParent: $('#multimediaEditOffcanvas'),
+            minimumResultsForSearch: Infinity
+        });
+        
+        // Initialize Select2 for categoryId (with search)
+        categoryEl.select2({
+            width: '100%',
+            dropdownParent: $('#multimediaEditOffcanvas'),
+            placeholder: '{{ __("app.No category") }}',
+            allowClear: true,
+            closeOnSelect: false
+        });
+        
+        // Initialize Select2 for tags - simple, no AJAX
+        tagsEl.select2({
+            width: '100%',
+            dropdownParent: $('#multimediaEditOffcanvas'),
+            tags: true,
+            placeholder: 'Buscar o crear etiquetas...',
+            allowClear: true
+        });
+        
+        // Initialize Select2 for galleries - simple, no AJAX
+        galleriesEl.select2({
+            width: '100%',
+            dropdownParent: $('#multimediaEditOffcanvas'),
+            tags: true,
+            placeholder: 'Buscar o crear galerías...',
+            allowClear: true
+        });
+        
+        // Add change event listeners to sync with Livewire
+        statusEl.off('change').on('change', function() {
+            @this.set('status', $(this).val());
+        });
+        
+        visibilityEl.off('change').on('change', function() {
+            @this.set('visibility', $(this).val());
+        });
+        
+        categoryEl.off('change').on('change', function() {
+            @this.set('categoryId', $(this).val() || null);
+        });
+        
+        // Sync tags with Livewire - use select2:select and select2:unselect for proper handling
+        tagsEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
+            let values = $(this).val() || [];
+            const invalidValues = ['Todos', 'todos', 'all', 'All', ''];
+            values = Array.isArray(values) ? values.filter(v => v && !invalidValues.includes(v.trim())) : [];
+            @this.set('tags', values);
+        });
+        
+        // Sync galleries with Livewire - use select2:select and select2:unselect for proper handling
+        galleriesEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
+            let values = $(this).val() || [];
+            const invalidValues = ['Todos', 'todos', 'all', 'All', ''];
+            values = Array.isArray(values) ? values.filter(v => v && !invalidValues.includes(v.trim())) : [];
+            @this.set('galleries', values);
+        });
+        
+        // Set initial values from Livewire component
+        const currentStatus = @this.get('status');
+        const currentVisibility = @this.get('visibility');
+        const currentCategoryId = @this.get('categoryId');
+        const currentTags = @this.get('tags') || [];
+        const currentGalleries = @this.get('galleries') || [];
+        
+        if (currentStatus !== undefined && currentStatus !== null) {
+            statusEl.val(currentStatus).trigger('change.select2');
+        }
+        if (currentVisibility !== undefined && currentVisibility !== null) {
+            visibilityEl.val(currentVisibility).trigger('change.select2');
+        }
+        if (currentCategoryId) {
+            categoryEl.val(currentCategoryId).trigger('change.select2');
+        } else {
+            categoryEl.val('').trigger('change.select2');
+        }
+        
+        // Set tags
+        if (currentTags.length > 0) {
+            tagsEl.empty();
+            currentTags.forEach(function(tag) {
+                const newOption = new Option(tag, tag, true, true);
+                tagsEl.append(newOption);
             });
-            
-            visibilityEl.select2({
-                width: '100%',
-                dropdownParent: $('#multimediaEditOffcanvas'),
-                minimumResultsForSearch: Infinity
+            tagsEl.trigger('change.select2');
+        }
+        
+        // Set galleries
+        if (currentGalleries.length > 0) {
+            galleriesEl.empty();
+            currentGalleries.forEach(function(gallery) {
+                const newOption = new Option(gallery, gallery, true, true);
+                galleriesEl.append(newOption);
             });
-            
-            console.log('Initializing Select2 for category');
-            // Initialize Select2 for categoryId (with search)
-            categoryEl.select2({
-                width: '100%',
-                dropdownParent: $('#multimediaEditOffcanvas'),
-                placeholder: '{{ __("app.No category") }}',
-                allowClear: true,
-                closeOnSelect: false
-            });
-            
-            console.log('Select2 initialized. Checking classes:', {
-                statusHasSelect2: statusEl.hasClass('select2-hidden-accessible'),
-                visibilityHasSelect2: visibilityEl.hasClass('select2-hidden-accessible'),
-                categoryHasSelect2: categoryEl.hasClass('select2-hidden-accessible')
-            });
-            
-            // Add change event listeners to sync with Livewire
-            statusEl.off('change').on('change', function() {
-                const value = $(this).val();
-                console.log('Status changed to:', value);
-                @this.set('status', value);
-            });
-            
-            visibilityEl.off('change').on('change', function() {
-                const value = $(this).val();
-                console.log('Visibility changed to:', value);
-                @this.set('visibility', value);
-            });
-            
-            categoryEl.off('change').on('change', function() {
-                const value = $(this).val();
-                console.log('Category changed to:', value);
-                @this.set('categoryId', value || null);
-            });
-            
-            // Set initial values from Livewire component
-            setTimeout(function() {
-                const currentStatus = @this.get('status');
-                const currentVisibility = @this.get('visibility');
-                const currentCategoryId = @this.get('categoryId');
-                
-                console.log('Setting initial values:', {
-                    status: currentStatus,
-                    visibility: currentVisibility,
-                    categoryId: currentCategoryId
-                });
-                
-                if (currentStatus !== undefined && currentStatus !== null) {
-                    statusEl.val(currentStatus).trigger('change.select2');
-                }
-                if (currentVisibility !== undefined && currentVisibility !== null) {
-                    visibilityEl.val(currentVisibility).trigger('change.select2');
-                }
-                if (currentCategoryId) {
-                    categoryEl.val(currentCategoryId).trigger('change.select2');
-                } else {
-                    categoryEl.val('').trigger('change.select2');
-                }
-            }, 200);
-        }, 100);
+            galleriesEl.trigger('change.select2');
+        }
     }
     
     // Register event listener as soon as possible

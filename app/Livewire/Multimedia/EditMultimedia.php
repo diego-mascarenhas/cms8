@@ -30,18 +30,6 @@ class EditMultimedia extends Component
     public $tags = [];
 
     public $galleries = [];
-    
-    #[\Livewire\Attributes\On('tags-updated')]
-    public function handleTagsUpdated($selected): void
-    {
-        $this->tags = is_array($selected) ? $selected : [];
-    }
-    
-    #[\Livewire\Attributes\On('galleries-updated')]
-    public function handleGalleriesUpdated($selected): void
-    {
-        $this->galleries = is_array($selected) ? $selected : [];
-    }
 
     public $media;
 
