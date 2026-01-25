@@ -24,22 +24,26 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label" for="status">{{ __('app.Status') }}</label>
-                    <select id="status" name="status" wire:model.blur="status" class="form-select @error('status') is-invalid @enderror">
-                        @foreach($statusOptions as $status)
-                            <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                        @endforeach
-                    </select>
+                    <div wire:ignore>
+                        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror">
+                            @foreach($statusOptions as $status)
+                                <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @error('status')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="visibility">{{ __('app.Visibility') }}</label>
-                    <select id="visibility" name="visibility" wire:model.blur="visibility" class="form-select @error('visibility') is-invalid @enderror">
-                        @foreach($visibilityOptions as $visibility)
-                            <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
-                        @endforeach
-                    </select>
+                    <div wire:ignore>
+                        <select id="visibility" name="visibility" class="form-select @error('visibility') is-invalid @enderror">
+                            @foreach($visibilityOptions as $visibility)
+                                <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @error('visibility')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
@@ -48,12 +52,14 @@
 
             <div class="mb-3">
                 <label class="form-label" for="categoryId">{{ __('app.Category') }}</label>
-                <select id="categoryId" name="categoryId" wire:model.blur="categoryId" class="form-select @error('categoryId') is-invalid @enderror">
-                    <option value="">{{ __('app.No category') }}</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}">{{ $category->name }}</option>
-                    @endforeach
-                </select>
+                <div wire:ignore>
+                    <select id="categoryId" name="categoryId" class="form-select @error('categoryId') is-invalid @enderror">
+                        <option value="">{{ __('app.No category') }}</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 @error('categoryId')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
@@ -187,24 +193,62 @@
         }, 100);
         
         // Initialize Select2 for status, visibility, and category
+        initializeFormSelect2();
+    }
+    
+    // Centralized function to initialize Select2 on form selects
+    function initializeFormSelect2() {
+        console.log('initializeFormSelect2 called');
+        
+        // Ensure elements exist
+        const statusEl = $('#status');
+        const visibilityEl = $('#visibility');
+        const categoryEl = $('#categoryId');
+        
+        console.log('Elements found:', {
+            status: statusEl.length,
+            visibility: visibilityEl.length,
+            category: categoryEl.length
+        });
+        
+        if (statusEl.length === 0 || visibilityEl.length === 0 || categoryEl.length === 0) {
+            console.warn('Some elements not found, retrying...');
+            setTimeout(initializeFormSelect2, 100);
+            return;
+        }
+        
         setTimeout(() => {
-            if ($('#status').hasClass('select2-hidden-accessible')) {
-                $('#status').select2('destroy');
+            // Destroy existing Select2 instances
+            if (statusEl.hasClass('select2-hidden-accessible')) {
+                console.log('Destroying existing status Select2');
+                statusEl.select2('destroy');
             }
-            if ($('#visibility').hasClass('select2-hidden-accessible')) {
-                $('#visibility').select2('destroy');
+            if (visibilityEl.hasClass('select2-hidden-accessible')) {
+                console.log('Destroying existing visibility Select2');
+                visibilityEl.select2('destroy');
             }
-            if ($('#categoryId').hasClass('select2-hidden-accessible')) {
-                $('#categoryId').select2('destroy');
+            if (categoryEl.hasClass('select2-hidden-accessible')) {
+                console.log('Destroying existing category Select2');
+                categoryEl.select2('destroy');
             }
             
-            $('#status, #visibility').select2({
+            console.log('Initializing Select2 for status and visibility');
+            // Initialize Select2 for status and visibility (no search)
+            statusEl.select2({
                 width: '100%',
                 dropdownParent: $('#multimediaEditOffcanvas'),
                 minimumResultsForSearch: Infinity
             });
             
-            $('#categoryId').select2({
+            visibilityEl.select2({
+                width: '100%',
+                dropdownParent: $('#multimediaEditOffcanvas'),
+                minimumResultsForSearch: Infinity
+            });
+            
+            console.log('Initializing Select2 for category');
+            // Initialize Select2 for categoryId (with search)
+            categoryEl.select2({
                 width: '100%',
                 dropdownParent: $('#multimediaEditOffcanvas'),
                 placeholder: '{{ __("app.No category") }}',
@@ -212,31 +256,56 @@
                 closeOnSelect: false
             });
             
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:213',message:'categoryId Select2 initialized',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
+            console.log('Select2 initialized. Checking classes:', {
+                statusHasSelect2: statusEl.hasClass('select2-hidden-accessible'),
+                visibilityHasSelect2: visibilityEl.hasClass('select2-hidden-accessible'),
+                categoryHasSelect2: categoryEl.hasClass('select2-hidden-accessible')
+            });
             
-            // Add change event listener to sync with Livewire
-            $('#categoryId').on('change', function() {
+            // Add change event listeners to sync with Livewire
+            statusEl.off('change').on('change', function() {
                 const value = $(this).val();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:218',message:'categoryId Select2 changed',data:{newValue:value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
+                console.log('Status changed to:', value);
+                @this.set('status', value);
+            });
+            
+            visibilityEl.off('change').on('change', function() {
+                const value = $(this).val();
+                console.log('Visibility changed to:', value);
+                @this.set('visibility', value);
+            });
+            
+            categoryEl.off('change').on('change', function() {
+                const value = $(this).val();
+                console.log('Category changed to:', value);
                 @this.set('categoryId', value || null);
             });
             
+            // Set initial values from Livewire component
             setTimeout(function() {
+                const currentStatus = @this.get('status');
+                const currentVisibility = @this.get('visibility');
                 const currentCategoryId = @this.get('categoryId');
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:225',message:'Setting initial categoryId',data:{currentCategoryId:currentCategoryId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
+                
+                console.log('Setting initial values:', {
+                    status: currentStatus,
+                    visibility: currentVisibility,
+                    categoryId: currentCategoryId
+                });
+                
+                if (currentStatus !== undefined && currentStatus !== null) {
+                    statusEl.val(currentStatus).trigger('change.select2');
+                }
+                if (currentVisibility !== undefined && currentVisibility !== null) {
+                    visibilityEl.val(currentVisibility).trigger('change.select2');
+                }
                 if (currentCategoryId) {
-                    $('#categoryId').val(currentCategoryId).trigger('change');
+                    categoryEl.val(currentCategoryId).trigger('change.select2');
                 } else {
-                    $('#categoryId').val('').trigger('change');
+                    categoryEl.val('').trigger('change.select2');
                 }
             }, 200);
-        }, 200);
+        }, 100);
     }
     
     // Register event listener as soon as possible
@@ -343,20 +412,19 @@
                         offcanvas._isShown = true;
                     }
                     
+                    // Re-initialize Select2 after Livewire updates to prevent losing styles
+                    initializeFormSelect2();
+                    
                     // Update Select2 values when Livewire updates
                     setTimeout(function() {
                         const currentStatus = component.get('status');
                         const currentVisibility = component.get('visibility');
                         const currentCategoryId = component.get('categoryId') || '';
                         
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/57e8ce89-f077-4e07-ba4d-ba1e4526b466',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'edit-multimedia.blade.php:357',message:'morph.updated - Updating Select2',data:{currentCategoryId:currentCategoryId,currentStatus:currentStatus,currentVisibility:currentVisibility},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                        // #endregion
-                        
                         $('#status').val(currentStatus).trigger('change');
                         $('#visibility').val(currentVisibility).trigger('change');
                         $('#categoryId').val(currentCategoryId).trigger('change');
-                    }, 100);
+                    }, 300);
                 }
             }
         } catch (error) {

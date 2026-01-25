@@ -382,9 +382,22 @@ class MultimediaController extends Controller
         $query = $request->get('q', '');
         $type = $request->get('type', 'general');
 
+        // If query is empty or less than 2 chars, return all tags of the specified type (limit 20)
+        // This allows the dropdown to show options immediately when opened
         if (strlen($query) < 2)
         {
-            return response()->json([]);
+            $tags = Tag::where('type', $type)
+                ->orderBy('name')
+                ->limit(20)
+                ->get()
+                ->map(function ($tag)
+                {
+                    return [
+                        'name' => $tag->name,
+                    ];
+                });
+
+            return response()->json($tags);
         }
 
         $tags = Tag::where('type', $type)

@@ -41,12 +41,17 @@ document.addEventListener('DOMContentLoaded', function() {
             tokenSeparators: [','],
             placeholder: '{{ $placeholder }}',
             allowClear: false,
+            minimumInputLength: 0,  // Changed from 2 to 0 to allow dropdown without typing
+            minimumResultsForSearch: 0,  // CRITICAL: Always show search box (never hide it)
             language: {
                 noResults: function() {
                     return '';
                 },
                 searching: function() {
                     return 'Buscando...';
+                },
+                inputTooShort: function() {
+                    return '';  // Don't show "Please enter 2 or more characters"
                 }
             },
             ajax: {
@@ -55,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 delay: 250,
                 data: function (params) {
                     return {
-                        q: params.term,
+                        q: params.term || '',  // Send empty string if no search term
                         type: 'gallery'
                     };
                 },
@@ -71,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 cache: true
             },
-            minimumInputLength: 2,
             createTag: function (params) {
                 const term = $.trim(params.term);
                 if (term === '') {
