@@ -44,7 +44,7 @@
                 <select id="filter_status" class="form-select select2">
                     <option value="">{{ __('app.All') }}</option>
                     @foreach($statusOptions as $status)
-                        <option value="{{ $status->value }}" {{ request('status') == $status->value ? 'selected' : '' }}>
+                        <option value="{{ $status->value }}" {{ (request('status') !== null ? request('status') == $status->value : $status->value == 2) ? 'selected' : '' }}>
                             {{ $status->label() }}
                         </option>
                     @endforeach
@@ -257,6 +257,11 @@
                 width: '100%',
                 minimumResultsForSearch: Infinity
             });
+
+            // Set default filter to Active (value 2) if no filter is applied
+            if (!{{ request('status') !== null ? 'true' : 'false' }}) {
+                $('#filter_status').val('2').trigger('change');
+            }
 
             // Initialize tags selector with AJAX (same as sidebar)
             $('#filter_tag').select2({
