@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}">
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/tagify/tagify.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
@@ -14,6 +15,7 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/tagify/tagify.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
@@ -41,7 +43,7 @@
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label" for="filter_status">{{ __('app.Status') }}</label>
-                <select id="filter_status" class="form-select select2">
+                <select id="filter_status" class="form-select select2" data-placeholder="{{ __('app.All') }}">
                     <option value="">{{ __('app.All') }}</option>
                     @foreach($statusOptions as $status)
                         <option value="{{ $status->value }}" {{ (request('status') !== null ? request('status') == $status->value : $status->value == 2) ? 'selected' : '' }}>
@@ -52,7 +54,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="filter_visibility">{{ __('app.Visibility') }}</label>
-                <select id="filter_visibility" class="form-select select2">
+                <select id="filter_visibility" class="form-select select2" data-placeholder="{{ __('app.All') }}">
                     <option value="">{{ __('app.All') }}</option>
                     @foreach($visibilityOptions as $visibility)
                         <option value="{{ $visibility->value }}" {{ request('visibility') == $visibility->value ? 'selected' : '' }}>
@@ -63,7 +65,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="filter_category">{{ __('app.Category') }}</label>
-                <select id="filter_category" class="form-select select2">
+                <select id="filter_category" class="form-select select2" data-placeholder="{{ __('app.All') }}">
                     <option value="">{{ __('app.All') }}</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
@@ -74,7 +76,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="filter_type">{{ __('app.Type') }}</label>
-                <select id="filter_type" class="form-select select2">
+                <select id="filter_type" class="form-select select2" data-placeholder="{{ __('app.All') }}">
                     <option value="">{{ __('app.All') }}</option>
                     <option value="image" {{ request('type') === 'image' ? 'selected' : '' }}>{{ __('app.Image') }}</option>
                     <option value="video" {{ request('type') === 'video' ? 'selected' : '' }}>{{ __('app.Video') }}</option>
@@ -84,15 +86,11 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="filter_tag">{{ __('app.Tags') }}</label>
-                <select id="filter_tag" class="form-select" multiple>
-                    {{-- Options will be loaded via AJAX --}}
-                </select>
+                <input id="filter_tag" class="form-control" placeholder="{{ __('Select tags...') }}" value="">
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="filter_gallery">{{ __('Galleries') }}</label>
-                <select id="filter_gallery" class="form-select" multiple>
-                    {{-- Options will be loaded via AJAX --}}
-                </select>
+                <input id="filter_gallery" class="form-control" placeholder="{{ __('Select galleries...') }}" value="">
             </div>
             <div class="col-md-4 d-flex gap-2 align-items-end">
                 <div class="flex-grow-1">
@@ -251,10 +249,15 @@
             });
         });
 
+        // Global variables for Tagify instances
+        let tagifyTags, tagifyGalleries;
+
         $(document).ready(function () {
             // Initialize simple selects (status, visibility, category, type)
             $('#filter_status, #filter_visibility, #filter_category, #filter_type').select2({
                 width: '100%',
+                placeholder: '{{ __("app.All") }}',
+                allowClear: false,
                 minimumResultsForSearch: Infinity
             });
 
@@ -263,67 +266,106 @@
                 $('#filter_status').val('2').trigger('change');
             }
 
-            // Initialize tags selector with AJAX (same as sidebar)
-            $('#filter_tag').select2({
-                width: '100%',
-                tags: true,
-                allowClear: true,
-                dropdownCssClass: 'select2-dropdown-no-jump',
-                ajax: {
-                    url: '{{ route("tags.search") }}',
-                    dataType: 'json',
-                    delay: 0,
-                    data: function (params) {
-                        return {
-                            q: params.term || '',
-                            type: 'general'
-                        };
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.map(function(tag) {
-                                return { id: tag.name, text: tag.name };
-                            })
-                        };
-                    },
-                    cache: true
-                },
-                createTag: function (params) {
-                    const term = $.trim(params.term);
-                    if (term === '') return null;
-                    return { id: term, text: term, newTag: true };
+            // Initialize Tagify for tags
+            const tagifyTagsEl = document.querySelector('#filter_tag');
+            tagifyTags = new Tagify(tagifyTagsEl, {
+                whitelist: [],
+                maxTags: 10,
+                dropdown: {
+                    enabled: 0, // Show suggestions on input
+                    maxItems: 20,
+                    classname: '',
+                    closeOnSelect: false,
+                    highlightFirst: true
                 }
             });
 
-            // Initialize galleries selector with AJAX (same as sidebar)
-            $('#filter_gallery').select2({
-                width: '100%',
-                tags: true,
-                allowClear: true,
-                dropdownCssClass: 'select2-dropdown-no-jump',
-                ajax: {
-                    url: '{{ route("tags.search") }}',
-                    dataType: 'json',
-                    delay: 150,
-                    data: function (params) {
-                        return {
-                            q: params.term || '',
-                            type: 'gallery'
-                        };
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.map(function(tag) {
-                                return { id: tag.name, text: tag.name };
-                            })
-                        };
-                    },
-                    cache: true
-                },
-                createTag: function (params) {
-                    const term = $.trim(params.term);
-                    if (term === '') return null;
-                    return { id: term, text: term, newTag: true };
+            // Load initial whitelist on focus
+            tagifyTagsEl.addEventListener('focus', function() {
+                if (tagifyTags.whitelist.length === 0) {
+                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                        q: '',
+                        type: 'general'
+                    }))
+                    .then(response => response.json())
+                    .then(data => {
+                        tagifyTags.whitelist = data.map(tag => tag.name);
+                        tagifyTags.dropdown.show();
+                    });
+                }
+            });
+
+            // Update suggestions as user types
+            tagifyTags.on('input', function(e) {
+                const value = e.detail.value;
+                
+                fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                    q: value,
+                    type: 'general'
+                }))
+                .then(response => response.json())
+                .then(data => {
+                    tagifyTags.whitelist = data.map(tag => tag.name);
+                    tagifyTags.dropdown.show(value);
+                });
+            });
+
+            // Initialize Tagify for galleries
+            const tagifyGalleriesEl = document.querySelector('#filter_gallery');
+            tagifyGalleries = new Tagify(tagifyGalleriesEl, {
+                whitelist: [],
+                maxTags: 10,
+                dropdown: {
+                    enabled: 0, // Show suggestions on input
+                    maxItems: 20,
+                    classname: '',
+                    closeOnSelect: false,
+                    highlightFirst: true
+                }
+            });
+
+            // Load initial whitelist on focus
+            tagifyGalleriesEl.addEventListener('focus', function() {
+                if (tagifyGalleries.whitelist.length === 0) {
+                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                        q: '',
+                        type: 'gallery'
+                    }))
+                    .then(response => response.json())
+                    .then(data => {
+                        tagifyGalleries.whitelist = data.map(tag => tag.name);
+                        tagifyGalleries.dropdown.show();
+                    });
+                }
+            });
+
+            // Update suggestions as user types
+            tagifyGalleries.on('input', function(e) {
+                const value = e.detail.value;
+                
+                fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                    q: value,
+                    type: 'gallery'
+                }))
+                .then(response => response.json())
+                .then(data => {
+                    tagifyGalleries.whitelist = data.map(tag => tag.name);
+                    tagifyGalleries.dropdown.show(value);
+                });
+            });
+
+            // Listen for tag/gallery changes to reload cards
+            tagifyTags.on('add remove', function() {
+                console.log('Tags changed:', tagifyTags.value);
+                if ($('#viewModeCards').is(':checked')) {
+                    loadMultimediaCards();
+                }
+            });
+
+            tagifyGalleries.on('add remove', function() {
+                console.log('Galleries changed:', tagifyGalleries.value);
+                if ($('#viewModeCards').is(':checked')) {
+                    loadMultimediaCards();
                 }
             });
 
@@ -364,12 +406,15 @@
             }
 
             // Load cards when filters change (only if cards view is active)
-            $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type, #filter_search')
+            $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                 .on('change keyup', function(e) {
+                    console.log('Filter changed:', $(this).attr('id'), '=', $(this).val());
+                    
                     // For search input, add debounce
                     if ($(this).attr('id') === 'filter_search') {
                         clearTimeout(window.searchTimeout);
                         window.searchTimeout = setTimeout(function() {
+                            console.log('Executing search after debounce...');
                             if ($('#viewModeCards').is(':checked')) {
                                 loadMultimediaCards();
                             }
@@ -386,7 +431,7 @@
                     return;
                 }
 
-                $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type, #filter_search')
+                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                     .off('change.multimedia keyup.multimedia')
                     .on('change.multimedia keyup.multimedia', function () {
                         // For search input, add debounce
@@ -399,6 +444,15 @@
                             table.ajax.reload();
                         }
                     });
+                
+                // Listen for Tagify changes for DataTables
+                tagifyTags.on('add remove', function() {
+                    table.ajax.reload();
+                });
+                
+                tagifyGalleries.on('add remove', function() {
+                    table.ajax.reload();
+                });
 
                 $('#resetFilters')
                     .off('click.multimedia')
@@ -406,19 +460,18 @@
                         $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                             .val(null)
                             .trigger('change');
-                        // Clear multiple selects properly
-                        $('#filter_tag, #filter_gallery')
-                            .val(null)
-                            .trigger('change');
+                        // Clear Tagify inputs
+                        tagifyTags.removeAllTags();
+                        tagifyGalleries.removeAllTags();
                     });
 
                 table.off('preXhr.dt.multimedia').on('preXhr.dt.multimedia', function (e, settings, data) {
                     data.status = $('#filter_status').val();
                     data.visibility = $('#filter_visibility').val();
                     data.category_id = $('#filter_category').val();
-                    // Send arrays for tags and galleries
-                    data.tags = $('#filter_tag').val() || [];
-                    data.galleries = $('#filter_gallery').val() || [];
+                    // Send arrays for tags and galleries from Tagify
+                    data.tags = tagifyTags.value.map(tag => tag.value);
+                    data.galleries = tagifyGalleries.value.map(tag => tag.value);
                     data.type = $('#filter_type').val();
                     data.search = $('#filter_search').val();
                 });
@@ -499,8 +552,8 @@
                 const filterVisibility = $('#filter_visibility').val() || '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}';
                 const filterCategory = $('#filter_category').val() || '';
 
-                // Get selected tags and filter invalid values
-                let filterTags = $('#filter_tag').val() || [];
+                // Get selected tags from Tagify and filter invalid values
+                let filterTags = tagifyTags.value.map(tag => tag.value);
                 const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
                 filterTags = filterTags.filter(tag => {
                     if (!tag) return false;
@@ -510,8 +563,8 @@
                     return true;
                 });
 
-                // Get selected galleries and filter invalid values
-                let filterGalleries = $('#filter_gallery').val() || [];
+                // Get selected galleries from Tagify and filter invalid values
+                let filterGalleries = tagifyGalleries.value.map(tag => tag.value);
                 filterGalleries = filterGalleries.filter(gallery => {
                     if (!gallery) return false;
                     const trimmed = gallery.trim();
@@ -633,9 +686,14 @@
             `);
 
             // Get filter values - handle arrays for tags and galleries
-            const filterTags = $('#filter_tag').val() || [];
-            const filterGalleries = $('#filter_gallery').val() || [];
+            const filterTags = tagifyTags.value.map(tag => tag.value);
+            const filterGalleries = tagifyGalleries.value.map(tag => tag.value);
             const filterSearch = $('#filter_search').val() || '';
+            
+            console.log('=== loadMultimediaCards ===');
+            console.log('Search value:', filterSearch);
+            console.log('Tags:', filterTags);
+            console.log('Galleries:', filterGalleries);
 
             const filters = {
                 status: $('#filter_status').val(),
@@ -657,6 +715,7 @@
             });
 
             const queryString = $.param(filters);
+            console.log('Query string:', queryString);
 
             fetch(`{{ route('multimedia.index') }}?${queryString}`, {
                 headers: {
@@ -670,19 +729,63 @@
                     renderCards(data.cards);
                     renderPagination(data.pagination);
                 } else {
-                    container.html(`
-                        <div class="col-12 text-center">
-                            <p class="text-muted">{{ __('app.No multimedia found') }}</p>
+                    // Prepare translations and permission check outside template string
+                    const noMultimediaMsg = '{{ __("No multimedia found") }}';
+                    const adjustFiltersMsg = '{{ __("Try adjusting your filters or upload new media files") }}';
+                    const uploadMediaBtn = '{{ __("Upload Media") }}';
+                    const canCreate = {{ auth()->user()->can('create', \App\Models\Multimedia::class) ? 'true' : 'false' }};
+                    
+                    let html = `
+                        <div class="col-12">
+                            <div class="card shadow-none border-0 bg-transparent">
+                                <div class="card-body text-center py-5">
+                                    <div class="mb-4">
+                                        <i class="ti ti-photo-off display-1 text-muted" style="font-size: 5rem;"></i>
+                                    </div>
+                                    <h4 class="mb-2">${noMultimediaMsg}</h4>
+                                    <p class="text-muted mb-4">${adjustFiltersMsg}</p>
+                    `;
+                    
+                    if (canCreate) {
+                        html += `
+                                    <button type="button" class="btn btn-primary" onclick="$('#toggleUploadZone').click();">
+                                        <i class="ti ti-upload me-1"></i> ${uploadMediaBtn}
+                                    </button>
+                        `;
+                    }
+                    
+                    html += `
+                                </div>
+                            </div>
                         </div>
-                    `);
+                    `;
+                    
+                    container.html(html);
                     pagination.html('');
                 }
             })
             .catch(error => {
                 console.error('Error loading cards:', error);
+                
+                // Prepare translations outside template string
+                const errorMsg = '{{ __("Error loading multimedia") }}';
+                const tryAgainMsg = '{{ __("Please try again or contact support if the problem persists") }}';
+                const retryBtn = '{{ __("Retry") }}';
+                
                 container.html(`
-                    <div class="col-12 text-center">
-                        <p class="text-danger">{{ __('app.Error loading multimedia') }}</p>
+                    <div class="col-12">
+                        <div class="card shadow-none border-0 bg-transparent">
+                            <div class="card-body text-center py-5">
+                                <div class="mb-4">
+                                    <i class="ti ti-alert-triangle display-1 text-danger" style="font-size: 5rem;"></i>
+                                </div>
+                                <h4 class="mb-2 text-danger">${errorMsg}</h4>
+                                <p class="text-muted mb-4">${tryAgainMsg}</p>
+                                <button type="button" class="btn btn-outline-secondary" onclick="loadMultimediaCards();">
+                                    <i class="ti ti-refresh me-1"></i> ${retryBtn}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `);
             });
