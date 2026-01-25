@@ -106,6 +106,7 @@ class MultimediaController extends Controller
                 'image' => 'ti ti-photo',
                 'video' => 'ti ti-video',
                 'audio' => 'ti ti-music',
+                'pdf' => 'ti ti-file-type-pdf',
                 default => 'ti ti-file',
             };
 
@@ -390,6 +391,10 @@ class MultimediaController extends Controller
                 ->orderBy('name')
                 ->limit(20)
                 ->get()
+                ->filter(function ($tag) {
+                    // Filter out invalid tag names
+                    return $this->isValidTagName($tag->name);
+                })
                 ->map(function ($tag)
                 {
                     return [
@@ -397,7 +402,7 @@ class MultimediaController extends Controller
                     ];
                 });
 
-            return response()->json($tags);
+            return response()->json($tags->values());
         }
 
         $tags = Tag::where('type', $type)
@@ -405,6 +410,10 @@ class MultimediaController extends Controller
             ->orderBy('name')
             ->limit(20)
             ->get()
+            ->filter(function ($tag) {
+                // Filter out invalid tag names
+                return $this->isValidTagName($tag->name);
+            })
             ->map(function ($tag)
             {
                 return [
@@ -412,7 +421,29 @@ class MultimediaController extends Controller
                 ];
             });
 
-        return response()->json($tags);
+        return response()->json($tags->values());
+    }
+    
+    private function isValidTagName(?string $name): bool
+    {
+        if (empty($name)) {
+            return false;
+        }
+        
+        $normalized = trim($name);
+        
+        // Filter out placeholder/invalid values including JSON strings
+        $invalidValues = ['Todos', 'todos', 'all', 'All', 'null', 'undefined'];
+        if (in_array($normalized, $invalidValues, true)) {
+            return false;
+        }
+        
+        // Also filter out if it's a JSON string containing "Todos"
+        if (str_starts_with($normalized, '{') && str_contains($normalized, 'Todos')) {
+            return false;
+        }
+        
+        return true;
     }
 
     private function getMultimediaCategories(): Collection

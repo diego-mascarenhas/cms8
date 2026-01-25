@@ -333,16 +333,34 @@
         // Sync tags with Livewire - use select2:select and select2:unselect for proper handling
         tagsEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
             let values = $(this).val() || [];
-            const invalidValues = ['Todos', 'todos', 'all', 'All', ''];
-            values = Array.isArray(values) ? values.filter(v => v && !invalidValues.includes(v.trim())) : [];
+            // Filter invalid values including JSON strings
+            const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
+            values = Array.isArray(values) ? values.filter(v => {
+                if (!v) return false;
+                const trimmed = v.trim();
+                // Check if it's an invalid value
+                if (invalidValues.includes(trimmed)) return false;
+                // Check if it's a JSON string containing "Todos"
+                if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
+                return true;
+            }) : [];
             @this.set('tags', values);
         });
 
         // Sync galleries with Livewire - use select2:select and select2:unselect for proper handling
         galleriesEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
             let values = $(this).val() || [];
-            const invalidValues = ['Todos', 'todos', 'all', 'All', ''];
-            values = Array.isArray(values) ? values.filter(v => v && !invalidValues.includes(v.trim())) : [];
+            // Filter invalid values including JSON strings
+            const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
+            values = Array.isArray(values) ? values.filter(v => {
+                if (!v) return false;
+                const trimmed = v.trim();
+                // Check if it's an invalid value
+                if (invalidValues.includes(trimmed)) return false;
+                // Check if it's a JSON string containing "Todos"
+                if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
+                return true;
+            }) : [];
             @this.set('galleries', values);
         });
 

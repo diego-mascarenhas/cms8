@@ -190,9 +190,15 @@ class EditMultimedia extends Component
 
         $normalized = trim($name);
         
-        // Filter out placeholder/invalid values
-        $invalidValues = ['Todos', 'todos', 'all', 'All', ''];
+        // Filter out placeholder/invalid values including JSON strings
+        $invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
         if (in_array($normalized, $invalidValues, true))
+        {
+            return null;
+        }
+        
+        // Also filter out if it's a JSON string containing "Todos"
+        if (str_starts_with($normalized, '{') && str_contains($normalized, 'Todos'))
         {
             return null;
         }
@@ -215,6 +221,7 @@ class EditMultimedia extends Component
             str_starts_with($mimeType, 'image/') => 'image',
             str_starts_with($mimeType, 'video/') => 'video',
             str_starts_with($mimeType, 'audio/') => 'audio',
+            $mimeType === 'application/pdf' => 'pdf',
             default => 'document',
         };
     }

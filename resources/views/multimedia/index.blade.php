@@ -84,24 +84,14 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="filter_tag">{{ __('app.Tags') }}</label>
-                <select id="filter_tag" class="form-select select2">
-                    <option value="">{{ __('app.All') }}</option>
-                    @foreach($tags as $tag)
-                        <option value="{{ $tag->id }}" {{ request('tag_id') == $tag->id ? 'selected' : '' }}>
-                            {{ $tag->name }}
-                        </option>
-                    @endforeach
+                <select id="filter_tag" class="form-select" multiple>
+                    {{-- Options will be loaded via AJAX --}}
                 </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="filter_gallery">{{ __('app.Gallery') }}</label>
-                <select id="filter_gallery" class="form-select select2">
-                    <option value="">{{ __('app.All') }}</option>
-                    @foreach($galleryTags as $tag)
-                        <option value="{{ $tag->id }}" {{ request('gallery_tag_id') == $tag->id ? 'selected' : '' }}>
-                            {{ $tag->name }}
-                        </option>
-                    @endforeach
+                <select id="filter_gallery" class="form-select" multiple>
+                    {{-- Options will be loaded via AJAX --}}
                 </select>
             </div>
             <div class="col-md-4 d-flex gap-2 align-items-end">
@@ -237,8 +227,81 @@
         };
         
         $(document).ready(function () {
-            // Initialize all selects the same way (except offcanvas selects)
-            $('.select2').not('#edit_category_id, #edit_tags, #edit_galleries, #edit_status, #edit_visibility').select2({ width: '100%' });
+            // Initialize simple selects (status, visibility, category, type)
+            $('#filter_status, #filter_visibility, #filter_category, #filter_type').select2({ 
+                width: '100%',
+                minimumResultsForSearch: Infinity
+            });
+            
+            // Initialize tags selector with AJAX (same as sidebar)
+            $('#filter_tag').select2({
+                width: '100%',
+                tags: true,
+                placeholder: '{{ __("app.All") }}',
+                allowClear: true,
+                language: {
+                    searching: function() { return ''; }
+                },
+                ajax: {
+                    url: '{{ route("tags.search") }}',
+                    dataType: 'json',
+                    delay: 150,
+                    data: function (params) {
+                        return {
+                            q: params.term || '',
+                            type: 'general'
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.map(function(tag) {
+                                return { id: tag.name, text: tag.name };
+                            })
+                        };
+                    },
+                    cache: true
+                },
+                createTag: function (params) {
+                    const term = $.trim(params.term);
+                    if (term === '') return null;
+                    return { id: term, text: term, newTag: true };
+                }
+            });
+            
+            // Initialize galleries selector with AJAX (same as sidebar)
+            $('#filter_gallery').select2({
+                width: '100%',
+                tags: true,
+                placeholder: '{{ __("app.All") }}',
+                allowClear: true,
+                language: {
+                    searching: function() { return ''; }
+                },
+                ajax: {
+                    url: '{{ route("tags.search") }}',
+                    dataType: 'json',
+                    delay: 150,
+                    data: function (params) {
+                        return {
+                            q: params.term || '',
+                            type: 'gallery'
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.map(function(tag) {
+                                return { id: tag.name, text: tag.name };
+                            })
+                        };
+                    },
+                    cache: true
+                },
+                createTag: function (params) {
+                    const term = $.trim(params.term);
+                    if (term === '') return null;
+                    return { id: term, text: term, newTag: true };
+                }
+            });
 
             // Ensure Livewire offcanvas is in body (will be handled by Livewire)
             
@@ -298,7 +361,11 @@
                 $('#resetFilters')
                     .off('click.multimedia')
                     .on('click.multimedia', function () {
-                        $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type')
+                        $('#filter_status, #filter_visibility, #filter_category, #filter_type')
+                            .val(null)
+                            .trigger('change');
+                        // Clear multiple selects properly
+                        $('#filter_tag, #filter_gallery')
                             .val(null)
                             .trigger('change');
                     });
@@ -307,8 +374,9 @@
                     data.status = $('#filter_status').val();
                     data.visibility = $('#filter_visibility').val();
                     data.category_id = $('#filter_category').val();
-                    data.tag_id = $('#filter_tag').val();
-                    data.gallery_tag_id = $('#filter_gallery').val();
+                    // Send arrays for tags and galleries
+                    data.tags = $('#filter_tag').val() || [];
+                    data.galleries = $('#filter_gallery').val() || [];
                     data.type = $('#filter_type').val();
                 });
             }
@@ -388,17 +456,11 @@
                 const filterVisibility = $('#filter_visibility').val() || '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}';
                 const filterCategory = $('#filter_category').val() || '';
                 
-                // Get selected tags (can be multiple)
-                const filterTags = [];
-                $('#filter_tag option:selected').each(function() {
-                    filterTags.push($(this).text());
-                });
+                // Get selected tags (now multiple)
+                const filterTags = $('#filter_tag').val() || [];
                 
-                // Get selected galleries (can be multiple)
-                const filterGalleries = [];
-                $('#filter_gallery option:selected').each(function() {
-                    filterGalleries.push($(this).text());
-                });
+                // Get selected galleries (now multiple)
+                const filterGalleries = $('#filter_gallery').val() || [];
 
                 // Send all files in a single request
                 const formData = new FormData();
@@ -512,18 +574,27 @@
                 </div>
             `);
             
-            // Get filter values
+            // Get filter values - handle arrays for tags and galleries
+            const filterTags = $('#filter_tag').val() || [];
+            const filterGalleries = $('#filter_gallery').val() || [];
+            
             const filters = {
                 status: $('#filter_status').val(),
                 visibility: $('#filter_visibility').val(),
                 category_id: $('#filter_category').val(),
-                tag_id: $('#filter_tag').val(),
-                gallery_tag_id: $('#filter_gallery').val(),
                 type: $('#filter_type').val(),
                 view: 'cards',
                 page: page,
                 per_page: 12
             };
+            
+            // Add array parameters properly
+            filterTags.forEach((tag, index) => {
+                filters[`tags[${index}]`] = tag;
+            });
+            filterGalleries.forEach((gallery, index) => {
+                filters[`galleries[${index}]`] = gallery;
+            });
             
             const queryString = $.param(filters);
             
@@ -575,10 +646,11 @@
                     ? `style="cursor: pointer;" onclick="openEditMultimedia(${card.id})"`
                     : '';
                 
-                const previewHtml = card.preview_url 
+                // Only show image preview for actual images, use icon for everything else
+                const previewHtml = card.type === 'image' && card.preview_url
                     ? `<img class="img-fluid rounded" src="${card.preview_url}" alt="${card.title}" style="max-height: 200px; object-fit: cover; width: 100%;" ${previewClickable}>`
                     : `<div class="d-flex align-items-center justify-content-center bg-label-secondary rounded" style="height: 200px; ${card.can_update ? 'cursor: pointer;' : ''}" ${previewClickable}>
-                        <i class="${card.icon} ti-2xl text-muted"></i>
+                        <i class="${card.icon}" style="font-size: 120px; color: #a8aaae;"></i>
                     </div>`;
                 
                 const cardHtml = `
