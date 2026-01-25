@@ -12,7 +12,7 @@
 		<label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
 	@endif
 	<select id="{{ $id ?? $name }}" name="{{ $name }}"
-		class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
+		class="select2 form-select @error($name) is-invalid @enderror" data-placeholder="{{ $placeholder ?? 'Seleccione una variante de idioma' }}" {{ $required ? 'required' : '' }}>
 		<option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
 				@foreach ($options as $option)
 			<option value="{{ $option->value }}"
