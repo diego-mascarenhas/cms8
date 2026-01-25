@@ -89,27 +89,31 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label" for="filter_gallery">{{ __('app.Gallery') }}</label>
+                <label class="form-label" for="filter_gallery">{{ __('Galleries') }}</label>
                 <select id="filter_gallery" class="form-select" multiple>
                     {{-- Options will be loaded via AJAX --}}
                 </select>
             </div>
             <div class="col-md-4 d-flex gap-2 align-items-end">
-                <button type="button" class="btn btn-outline-secondary" id="resetFilters">
-                    <i class="ti ti-refresh me-1"></i> {{ __('app.Reset') }}
+                <div class="flex-grow-1">
+                    <label class="form-label" for="filter_search">{{ __('Search') }}</label>
+                    <input type="text" id="filter_search" class="form-control" placeholder="{{ __('Search by title or description...') }}">
+                </div>
+                <button type="button" class="btn btn-icon btn-outline-secondary" id="resetFilters" title="{{ __('Reset') }}">
+                    <i class="ti ti-refresh"></i>
                 </button>
                 @if(request('gallery_tag_id') && auth()->user()->can('create', \App\Models\Multimedia::class))
                     <a href="{{ route('multimedia.gallery', request('gallery_tag_id')) }}" class="btn btn-outline-primary">
-                        <i class="ti ti-sort-ascending me-1"></i> {{ __('app.Order Gallery') }}
+                        <i class="ti ti-sort-ascending me-1"></i> {{ __('Order Gallery') }}
                     </a>
                 @endif
                 <div class="btn-group" role="group">
                     <input type="radio" class="btn-check" name="viewMode" id="viewModeCards" value="cards" checked>
-                    <label class="btn btn-outline-primary" for="viewModeCards" title="{{ __('app.Cards View') }}">
+                    <label class="btn btn-outline-primary" for="viewModeCards" title="{{ __('Cards View') }}">
                         <i class="ti ti-layout-grid"></i>
                     </label>
                     <input type="radio" class="btn-check" name="viewMode" id="viewModeTable" value="table">
-                    <label class="btn btn-outline-primary" for="viewModeTable" title="{{ __('app.Table View') }}">
+                    <label class="btn btn-outline-primary" for="viewModeTable" title="{{ __('Table View') }}">
                         <i class="ti ti-table"></i>
                     </label>
                 </div>
@@ -340,10 +344,20 @@
             }
             
             // Load cards when filters change (only if cards view is active)
-            $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type')
-                .on('change', function() {
-                    if ($('#viewModeCards').is(':checked')) {
-                        loadMultimediaCards();
+            $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type, #filter_search')
+                .on('change keyup', function(e) {
+                    // For search input, add debounce
+                    if ($(this).attr('id') === 'filter_search') {
+                        clearTimeout(window.searchTimeout);
+                        window.searchTimeout = setTimeout(function() {
+                            if ($('#viewModeCards').is(':checked')) {
+                                loadMultimediaCards();
+                            }
+                        }, 500);
+                    } else {
+                        if ($('#viewModeCards').is(':checked')) {
+                            loadMultimediaCards();
+                        }
                     }
                 });
 
@@ -352,16 +366,24 @@
                     return;
                 }
 
-                $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type')
-                    .off('change.multimedia')
-                    .on('change.multimedia', function () {
-                        table.ajax.reload();
+                $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type, #filter_search')
+                    .off('change.multimedia keyup.multimedia')
+                    .on('change.multimedia keyup.multimedia', function () {
+                        // For search input, add debounce
+                        if ($(this).attr('id') === 'filter_search') {
+                            clearTimeout(window.searchTimeout);
+                            window.searchTimeout = setTimeout(function() {
+                                table.ajax.reload();
+                            }, 500);
+                        } else {
+                            table.ajax.reload();
+                        }
                     });
 
                 $('#resetFilters')
                     .off('click.multimedia')
                     .on('click.multimedia', function () {
-                        $('#filter_status, #filter_visibility, #filter_category, #filter_type')
+                        $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
                             .val(null)
                             .trigger('change');
                         // Clear multiple selects properly
@@ -378,6 +400,7 @@
                     data.tags = $('#filter_tag').val() || [];
                     data.galleries = $('#filter_gallery').val() || [];
                     data.type = $('#filter_type').val();
+                    data.search = $('#filter_search').val();
                 });
             }
 
@@ -577,12 +600,14 @@
             // Get filter values - handle arrays for tags and galleries
             const filterTags = $('#filter_tag').val() || [];
             const filterGalleries = $('#filter_gallery').val() || [];
+            const filterSearch = $('#filter_search').val() || '';
             
             const filters = {
                 status: $('#filter_status').val(),
                 visibility: $('#filter_visibility').val(),
                 category_id: $('#filter_category').val(),
                 type: $('#filter_type').val(),
+                search: filterSearch,
                 view: 'cards',
                 page: page,
                 per_page: 12

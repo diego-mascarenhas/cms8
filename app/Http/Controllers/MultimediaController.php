@@ -70,6 +70,15 @@ class MultimediaController extends Controller
         {
             $query->where('type', $request->get('type'));
         }
+        
+        if ($request->filled('search'))
+        {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
 
         if ($request->filled('tag_id'))
         {
