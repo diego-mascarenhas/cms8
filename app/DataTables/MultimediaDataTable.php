@@ -119,9 +119,9 @@ class MultimediaDataTable extends DataTable
         }
 
         // Search filter
-        if ($request->filled('search'))
+        $search = $request->input('search.value', $request->input('search'));
+        if (is_string($search) && $search !== '')
         {
-            $search = $request->get('search');
             $query->where(function ($q) use ($search)
             {
                 $q->where('title', 'like', "%{$search}%")
@@ -133,7 +133,7 @@ class MultimediaDataTable extends DataTable
         if ($request->filled('tags') && is_array($request->get('tags')))
         {
             $tags = array_filter($request->get('tags'));
-            if (!empty($tags))
+            if (! empty($tags))
             {
                 $query->whereHas('tags', function ($tagQuery) use ($tags)
                 {
@@ -147,7 +147,7 @@ class MultimediaDataTable extends DataTable
         if ($request->filled('galleries') && is_array($request->get('galleries')))
         {
             $galleries = array_filter($request->get('galleries'));
-            if (!empty($galleries))
+            if (! empty($galleries))
             {
                 $query->whereHas('tags', function ($tagQuery) use ($galleries)
                 {

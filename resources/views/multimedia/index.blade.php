@@ -358,17 +358,13 @@
                 });
             });
 
-            // Listen for tag/gallery changes to reload cards
+            // Listen for tag/gallery changes to reload current view
             tagifyTags.on('add remove', function() {
-                if ($('#viewModeCards').is(':checked')) {
-                    loadMultimediaCards();
-                }
+                applyFilters();
             });
 
             tagifyGalleries.on('add remove', function() {
-                if ($('#viewModeCards').is(':checked')) {
-                    loadMultimediaCards();
-                }
+                applyFilters();
             });
 
             // Ensure Livewire offcanvas is in body (will be handled by Livewire)
@@ -395,107 +391,73 @@
                 if (viewMode === 'table') {
                     $('#tableView').removeClass('d-none');
                     $('#cardsView').addClass('d-none');
-                    // Unbind cards listeners and bind table listeners
-                    unbindCardsFilters();
                 } else {
                     $('#tableView').addClass('d-none');
                     $('#cardsView').removeClass('d-none');
-                    // Bind cards listeners
-                    bindCardsFilters();
-                    loadMultimediaCards();
                 }
+
+                applyFilters();
             });
 
-            // Function to bind filter listeners for cards view
-            function bindCardsFilters() {
-                // Remove any existing cards listeners first
-                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
-                    .off('change.cards keyup.cards');
-
-                // Bind cards filter listeners
-                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
-                    .on('change.cards keyup.cards', function(e) {
-                        // For search input, add debounce
-                        if ($(this).attr('id') === 'filter_search') {
-                            clearTimeout(window.searchTimeout);
-                            window.searchTimeout = setTimeout(function() {
-                                loadMultimediaCards();
-                            }, 500);
-                        } else {
-                            loadMultimediaCards();
-                        }
-                    });
-            }
-
-            // Function to unbind filter listeners for cards view
-            function unbindCardsFilters() {
-                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
-                    .off('change.cards keyup.cards');
-            }
-
-            // Initialize cards filters and load by default
-            bindCardsFilters();
-            loadMultimediaCards();
-
-            function bindFilters(table) {
-                if (!table) {
+            function applyFilters() {
+                if ($('#viewModeCards').is(':checked')) {
+                    loadMultimediaCards();
                     return;
                 }
 
-                $('#filter_status, #filter_visibility, #filter_category, #filter_type, #filter_search')
-                    .off('change.multimedia keyup.multimedia')
-                    .on('change.multimedia keyup.multimedia', function () {
-                        // For search input, add debounce
-                        if ($(this).attr('id') === 'filter_search') {
-                            clearTimeout(window.searchTimeout);
-                            window.searchTimeout = setTimeout(function() {
-                                table.ajax.reload();
-                            }, 500);
-                        } else {
-                            table.ajax.reload();
-                        }
-                    });
-
-                // Listen for Tagify changes for DataTables
-                tagifyTags.on('add remove', function() {
-                    table.ajax.reload();
-                });
-
-                tagifyGalleries.on('add remove', function() {
-                    table.ajax.reload();
-                });
-
-                $('#resetFilters')
-                    .off('click.multimedia')
-                    .on('click.multimedia', function () {
-                        $('#filter_status, #filter_visibility, #filter_category, #filter_type')
-                            .val(null)
-                            .trigger('change');
-                        $('#filter_search').val('').trigger('change');
-                        // Clear Tagify inputs
-                        tagifyTags.removeAllTags();
-                        tagifyGalleries.removeAllTags();
-                    });
-
-                table.off('preXhr.dt.multimedia').on('preXhr.dt.multimedia', function (e, settings, data) {
-                    data.status = $('#filter_status').val();
-                    data.visibility = $('#filter_visibility').val();
-                    data.category_id = $('#filter_category').val();
-                    // Send arrays for tags and galleries from Tagify
-                    data.tags = tagifyTags.value.map(tag => tag.value);
-                    data.galleries = tagifyGalleries.value.map(tag => tag.value);
-                    data.type = $('#filter_type').val();
-                    data.search = $('#filter_search').val();
-                });
+                if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                    $('#multimedia-table').DataTable().ajax.reload();
+                }
             }
 
-            if ($.fn.dataTable.isDataTable('#multimedia-table')) {
-                bindFilters($('#multimedia-table').DataTable());
-            } else {
-                $('#multimedia-table').on('init.dt', function () {
-                    bindFilters($('#multimedia-table').DataTable());
-                });
+            function applySearchWithDebounce() {
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(function() {
+                    applyFilters();
+                }, 500);
             }
+
+            $('#filter_status, #filter_visibility, #filter_category, #filter_type')
+                .on('change', function() {
+                    applyFilters();
+                });
+
+            $('#filter_search')
+                .on('keyup', function() {
+                    applySearchWithDebounce();
+                })
+                .on('change', function() {
+                    applyFilters();
+                });
+
+            $('#resetFilters').on('click', function () {
+                $('#filter_status, #filter_visibility, #filter_category, #filter_type')
+                    .val(null)
+                    .trigger('change');
+                $('#filter_search').val('').trigger('change');
+                tagifyTags.removeAllTags();
+                tagifyGalleries.removeAllTags();
+                applyFilters();
+            });
+
+            $('#multimedia-table').on('preXhr.dt.multimedia', function (e, settings, data) {
+                data.status = $('#filter_status').val();
+                data.visibility = $('#filter_visibility').val();
+                data.category_id = $('#filter_category').val();
+                data.tags = tagifyTags.value.map(tag => tag.value);
+                data.galleries = tagifyGalleries.value.map(tag => tag.value);
+                data.type = $('#filter_type').val();
+
+                const searchValue = $('#filter_search').val();
+                if (data.search && typeof data.search === 'object') {
+                    data.search.value = searchValue;
+                } else {
+                    data.search = { value: searchValue };
+                }
+            });
+
+            // Initialize cards view by default
+            loadMultimediaCards();
         });
 
         // Drag and drop functionality

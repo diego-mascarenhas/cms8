@@ -71,9 +71,9 @@ class MultimediaController extends Controller
             $query->where('type', $request->get('type'));
         }
 
-        if ($request->filled('search'))
+        $search = $request->input('search.value', $request->input('search'));
+        if (is_string($search) && $search !== '')
         {
-            $search = $request->get('search');
             $query->where(function ($q) use ($search)
             {
                 $q->where('title', 'like', "%{$search}%")
