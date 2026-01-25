@@ -135,9 +135,10 @@ class MultimediaDataTable extends DataTable
             $tags = array_filter($request->get('tags'));
             if (! empty($tags))
             {
-                $query->whereHas('tags', function ($tagQuery) use ($tags)
+                $locale = app()->getLocale();
+                $query->whereHas('tags', function ($tagQuery) use ($tags, $locale)
                 {
-                    $tagQuery->whereIn('name->es', $tags)
+                    $tagQuery->whereIn("name->{$locale}", $tags)
                         ->where('type', 'general');
                 });
             }
@@ -149,9 +150,10 @@ class MultimediaDataTable extends DataTable
             $galleries = array_filter($request->get('galleries'));
             if (! empty($galleries))
             {
-                $query->whereHas('tags', function ($tagQuery) use ($galleries)
+                $locale = app()->getLocale();
+                $query->whereHas('tags', function ($tagQuery) use ($galleries, $locale)
                 {
-                    $tagQuery->whereIn('name->es', $galleries)
+                    $tagQuery->whereIn("name->{$locale}", $galleries)
                         ->where('type', 'gallery');
                 });
             }

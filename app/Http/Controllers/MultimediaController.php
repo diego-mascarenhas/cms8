@@ -85,9 +85,10 @@ class MultimediaController extends Controller
         if ($request->filled('tags') && is_array($request->get('tags')))
         {
             $tagNames = $request->get('tags');
-            $query->whereHas('tags', function ($tagQuery) use ($tagNames)
+            $locale = app()->getLocale();
+            $query->whereHas('tags', function ($tagQuery) use ($tagNames, $locale)
             {
-                $tagQuery->whereIn('name', $tagNames)
+                $tagQuery->whereIn("name->{$locale}", $tagNames)
                     ->where('type', 'general');
             });
         }
@@ -96,9 +97,10 @@ class MultimediaController extends Controller
         if ($request->filled('galleries') && is_array($request->get('galleries')))
         {
             $galleryNames = $request->get('galleries');
-            $query->whereHas('tags', function ($tagQuery) use ($galleryNames)
+            $locale = app()->getLocale();
+            $query->whereHas('tags', function ($tagQuery) use ($galleryNames, $locale)
             {
-                $tagQuery->whereIn('name', $galleryNames)
+                $tagQuery->whereIn("name->{$locale}", $galleryNames)
                     ->where('type', 'gallery');
             });
         }

@@ -113,6 +113,53 @@ class MultimediaTest extends TestCase
             ->assertJsonMissing(['id' => $differentTitle->id]);
     }
 
+    public function test_cards_tag_and_gallery_filters(): void
+    {
+        $user = $this->createUserWithRole('collaborator');
+        $category = $this->createMultimediaCategory($user->currentTeam);
+
+        $matching = Multimedia::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'category_id' => $category->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+        $matching->syncTagsWithType(['Featured'], 'general');
+        $matching->syncTagsWithType(['Homepage'], 'gallery');
+
+        $wrongTag = Multimedia::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'category_id' => $category->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+        $wrongTag->syncTagsWithType(['Other'], 'general');
+        $wrongTag->syncTagsWithType(['Homepage'], 'gallery');
+
+        $wrongGallery = Multimedia::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'category_id' => $category->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+        $wrongGallery->syncTagsWithType(['Featured'], 'general');
+        $wrongGallery->syncTagsWithType(['OtherGallery'], 'gallery');
+
+        $response = $this->actingAs($user)
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->getJson(route('multimedia.index', [
+                'view' => 'cards',
+                'tags' => ['Featured'],
+                'galleries' => ['Homepage'],
+            ]));
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'cards')
+            ->assertJsonFragment(['id' => $matching->id])
+            ->assertJsonMissing(['id' => $wrongTag->id])
+            ->assertJsonMissing(['id' => $wrongGallery->id]);
+    }
+
     public function test_multimedia_update_replaces_media_and_syncs_tags(): void
     {
         Storage::fake('public');
