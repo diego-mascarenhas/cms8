@@ -266,7 +266,7 @@
                 $('#filter_status').val('2').trigger('change');
             }
 
-            // Initialize Tagify for tags with inline suggestions (matching example)
+            // Initialize Tagify for tags with inline suggestions
             const tagifyTagsEl = document.querySelector('#filter_tag');
             tagifyTags = new Tagify(tagifyTagsEl, {
                 whitelist: [],
@@ -274,32 +274,14 @@
                 dropdown: {
                     maxItems: 20,
                     classname: 'tags-inline',
-                    enabled: 0,                 // Show immediately
-                    closeOnSelect: false        // Don't close on select
+                    enabled: 0,
+                    closeOnSelect: false
                 }
             });
 
-            // Open dropdown on click
-            tagifyTagsEl.addEventListener('click', function() {
-                if (tagifyTags.whitelist.length === 0) {
-                    // Load all tags if not loaded yet
-                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
-                        q: '',
-                        type: 'general'
-                    }))
-                    .then(response => response.json())
-                    .then(data => {
-                        tagifyTags.whitelist = data.map(tag => tag.name);
-                        tagifyTags.dropdown.show();
-                    });
-                } else {
-                    // Show dropdown with existing options
-                    tagifyTags.dropdown.show();
-                }
-            });
-
-            // Load on focus as fallback
-            tagifyTagsEl.addEventListener('focus', function() {
+            // Open dropdown on click in the Tagify container
+            const tagifyTagsContainer = tagifyTags.DOM.scope;
+            tagifyTagsContainer.addEventListener('click', function(e) {
                 if (tagifyTags.whitelist.length === 0) {
                     fetch('{{ route("tags.search") }}?' + new URLSearchParams({
                         q: '',
@@ -330,7 +312,7 @@
                 });
             });
 
-            // Initialize Tagify for galleries with inline suggestions (matching example)
+            // Initialize Tagify for galleries with inline suggestions
             const tagifyGalleriesEl = document.querySelector('#filter_gallery');
             tagifyGalleries = new Tagify(tagifyGalleriesEl, {
                 whitelist: [],
@@ -338,32 +320,14 @@
                 dropdown: {
                     maxItems: 20,
                     classname: 'tags-inline',
-                    enabled: 0,                 // Show immediately
-                    closeOnSelect: false        // Don't close on select
+                    enabled: 0,
+                    closeOnSelect: false
                 }
             });
 
-            // Open dropdown on click
-            tagifyGalleriesEl.addEventListener('click', function() {
-                if (tagifyGalleries.whitelist.length === 0) {
-                    // Load all galleries if not loaded yet
-                    fetch('{{ route("tags.search") }}?' + new URLSearchParams({
-                        q: '',
-                        type: 'gallery'
-                    }))
-                    .then(response => response.json())
-                    .then(data => {
-                        tagifyGalleries.whitelist = data.map(tag => tag.name);
-                        tagifyGalleries.dropdown.show();
-                    });
-                } else {
-                    // Show dropdown with existing options
-                    tagifyGalleries.dropdown.show();
-                }
-            });
-
-            // Load on focus as fallback
-            tagifyGalleriesEl.addEventListener('focus', function() {
+            // Open dropdown on click in the Tagify container
+            const tagifyGalleriesContainer = tagifyGalleries.DOM.scope;
+            tagifyGalleriesContainer.addEventListener('click', function(e) {
                 if (tagifyGalleries.whitelist.length === 0) {
                     fetch('{{ route("tags.search") }}?' + new URLSearchParams({
                         q: '',

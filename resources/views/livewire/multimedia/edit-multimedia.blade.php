@@ -70,18 +70,14 @@
             <div class="mb-3">
                 <label class="form-label" for="tags">{{ __('app.Tags') }}</label>
                 <div wire:ignore>
-                    <select id="tags" name="tags[]" class="form-select" multiple>
-                        {{-- Options will be populated by Select2 AJAX --}}
-                    </select>
+                    <input id="tags" class="form-control" placeholder="{{ __('Select tags...') }}" value="">
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label" for="galleries">{{ __('app.Galleries') }}</label>
                 <div wire:ignore>
-                    <select id="galleries" name="galleries[]" class="form-select" multiple>
-                        {{-- Options will be populated by Select2 AJAX --}}
-                    </select>
+                    <input id="galleries" class="form-control" placeholder="{{ __('Select galleries...') }}" value="">
                 </div>
             </div>
 
@@ -122,6 +118,9 @@
 
 @push('scripts')
 <script>
+// Global Tagify instances for sidebar
+let sidebarTagifyTags, sidebarTagifyGalleries;
+
 // Global function for delete confirmation (must be outside IIFE)
 window.confirmDelete = function() {
     Swal.fire({
@@ -228,20 +227,28 @@ window.confirmDelete = function() {
         const statusEl = $('#status');
         const visibilityEl = $('#visibility');
         const categoryEl = $('#categoryId');
-        const tagsEl = $('#tags');
-        const galleriesEl = $('#galleries');
+        const tagsEl = document.querySelector('#tags');
+        const galleriesEl = document.querySelector('#galleries');
 
-        if (statusEl.length === 0 || visibilityEl.length === 0 || categoryEl.length === 0 || tagsEl.length === 0 || galleriesEl.length === 0) {
+        if (statusEl.length === 0 || visibilityEl.length === 0 || categoryEl.length === 0 || !tagsEl || !galleriesEl) {
             setTimeout(initializeFormSelect2, 50);
             return;
         }
 
-        // Destroy existing Select2 instances
-        [statusEl, visibilityEl, categoryEl, tagsEl, galleriesEl].forEach(el => {
+        // Destroy existing Select2 instances (only for status, visibility, category)
+        [statusEl, visibilityEl, categoryEl].forEach(el => {
             if (el.hasClass('select2-hidden-accessible')) {
                 el.select2('destroy');
             }
         });
+
+        // Destroy existing Tagify instances
+        if (sidebarTagifyTags) {
+            sidebarTagifyTags.destroy();
+        }
+        if (sidebarTagifyGalleries) {
+            sidebarTagifyGalleries.destroy();
+        }
 
         // Initialize Select2 for status and visibility (no search)
         statusEl.select2({
@@ -265,80 +272,96 @@ window.confirmDelete = function() {
             closeOnSelect: false
         });
 
-        // Initialize Select2 for tags with AJAX
-        tagsEl.select2({
-            width: '100%',
-            dropdownParent: $('#multimediaEditOffcanvas'),
-            tags: true,
-            placeholder: 'Buscar o crear etiquetas...',
-            allowClear: true,
-            dropdownCssClass: 'select2-dropdown-no-jump',
-            ajax: {
-                url: '{{ route("tags.search") }}',
-                dataType: 'json',
-                delay: 0,
-                data: function (params) {
-                    return {
-                        q: params.term || '',
-                        type: 'general'
-                    };
-                },
-                processResults: function (data) {
-                    // Return all results - Select2 will mark selected ones automatically
-                    return {
-                        results: data.map(function(tag) {
-                            return { id: tag.name, text: tag.name };
-                        })
-                    };
-                },
-                cache: true
-            },
-            createTag: function (params) {
-                const term = $.trim(params.term);
-                if (term === '') return null;
-                return { id: term, text: term, newTag: true };
+        // Initialize Tagify for tags with inline suggestions
+        sidebarTagifyTags = new Tagify(tagsEl, {
+            whitelist: [],
+            maxTags: 10,
+            dropdown: {
+                maxItems: 20,
+                classname: 'tags-inline',
+                enabled: 0,
+                closeOnSelect: false,
+                appendTarget: document.querySelector('#multimediaEditOffcanvas')
             }
-        }).on('select2:select', function(e) {
-            // Close only when selecting (not when unselecting)
-            $(this).select2('close');
         });
 
-        // Initialize Select2 for galleries with AJAX
-        galleriesEl.select2({
-            width: '100%',
-            dropdownParent: $('#multimediaEditOffcanvas'),
-            tags: true,
-            placeholder: 'Buscar o crear galerías...',
-            allowClear: true,
-            dropdownCssClass: 'select2-dropdown-no-jump',
-            ajax: {
-                url: '{{ route("tags.search") }}',
-                dataType: 'json',
-                delay: 0,
-                data: function (params) {
-                    return {
-                        q: params.term || '',
-                        type: 'gallery'
-                    };
-                },
-                processResults: function (data) {
-                    // Return all results - Select2 will mark selected ones automatically
-                    return {
-                        results: data.map(function(tag) {
-                            return { id: tag.name, text: tag.name };
-                        })
-                    };
-                },
-                cache: true
-            },
-            createTag: function (params) {
-                const term = $.trim(params.term);
-                if (term === '') return null;
-                return { id: term, text: term, newTag: true };
+        // Open dropdown on click
+        const tagsContainer = sidebarTagifyTags.DOM.scope;
+        tagsContainer.addEventListener('click', function(e) {
+            if (sidebarTagifyTags.whitelist.length === 0) {
+                fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                    q: '',
+                    type: 'general'
+                }))
+                .then(response => response.json())
+                .then(data => {
+                    sidebarTagifyTags.whitelist = data.map(tag => tag.name);
+                    sidebarTagifyTags.dropdown.show();
+                });
+            } else {
+                sidebarTagifyTags.dropdown.show();
             }
-        }).on('select2:select', function(e) {
-            // Close only when selecting (not when unselecting)
-            $(this).select2('close');
+        });
+
+        // Update suggestions as user types
+        sidebarTagifyTags.on('input', function(e) {
+            const value = e.detail.value;
+            
+            fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                q: value,
+                type: 'general'
+            }))
+            .then(response => response.json())
+            .then(data => {
+                sidebarTagifyTags.whitelist = data.map(tag => tag.name);
+                sidebarTagifyTags.dropdown.show(value);
+            });
+        });
+
+        // Initialize Tagify for galleries with inline suggestions
+        sidebarTagifyGalleries = new Tagify(galleriesEl, {
+            whitelist: [],
+            maxTags: 10,
+            dropdown: {
+                maxItems: 20,
+                classname: 'tags-inline',
+                enabled: 0,
+                closeOnSelect: false,
+                appendTarget: document.querySelector('#multimediaEditOffcanvas')
+            }
+        });
+
+        // Open dropdown on click
+        const galleriesContainer = sidebarTagifyGalleries.DOM.scope;
+        galleriesContainer.addEventListener('click', function(e) {
+            if (sidebarTagifyGalleries.whitelist.length === 0) {
+                fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                    q: '',
+                    type: 'gallery'
+                }))
+                .then(response => response.json())
+                .then(data => {
+                    sidebarTagifyGalleries.whitelist = data.map(tag => tag.name);
+                    sidebarTagifyGalleries.dropdown.show();
+                });
+            } else {
+                sidebarTagifyGalleries.dropdown.show();
+            }
+        });
+
+        // Update suggestions as user types
+        sidebarTagifyGalleries.on('input', function(e) {
+            const value = e.detail.value;
+            
+            fetch('{{ route("tags.search") }}?' + new URLSearchParams({
+                q: value,
+                type: 'gallery'
+            }))
+            .then(response => response.json())
+            .then(data => {
+                sidebarTagifyGalleries.whitelist = data.map(tag => tag.name);
+                sidebarTagifyGalleries.dropdown.show(value);
+            });
         });
 
         // Add change event listeners to sync with Livewire
@@ -354,38 +377,34 @@ window.confirmDelete = function() {
             @this.set('categoryId', $(this).val() || null);
         });
 
-        // Sync tags with Livewire - use select2:select and select2:unselect for proper handling
-        tagsEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
-            let values = $(this).val() || [];
-            // Filter invalid values including JSON strings
+        // Sync tags with Livewire
+        sidebarTagifyTags.on('add remove', function(e) {
+            const tags = sidebarTagifyTags.value.map(tag => tag.value);
+            // Filter invalid values
             const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
-            values = Array.isArray(values) ? values.filter(v => {
+            const filteredTags = tags.filter(v => {
                 if (!v) return false;
                 const trimmed = v.trim();
-                // Check if it's an invalid value
                 if (invalidValues.includes(trimmed)) return false;
-                // Check if it's a JSON string containing "Todos"
                 if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
                 return true;
-            }) : [];
-            @this.set('tags', values);
+            });
+            @this.set('tags', filteredTags);
         });
 
-        // Sync galleries with Livewire - use select2:select and select2:unselect for proper handling
-        galleriesEl.off('select2:select select2:unselect').on('select2:select select2:unselect', function() {
-            let values = $(this).val() || [];
-            // Filter invalid values including JSON strings
+        // Sync galleries with Livewire
+        sidebarTagifyGalleries.on('add remove', function(e) {
+            const galleries = sidebarTagifyGalleries.value.map(tag => tag.value);
+            // Filter invalid values
             const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
-            values = Array.isArray(values) ? values.filter(v => {
+            const filteredGalleries = galleries.filter(v => {
                 if (!v) return false;
                 const trimmed = v.trim();
-                // Check if it's an invalid value
                 if (invalidValues.includes(trimmed)) return false;
-                // Check if it's a JSON string containing "Todos"
                 if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
                 return true;
-            }) : [];
-            @this.set('galleries', values);
+            });
+            @this.set('galleries', filteredGalleries);
         });
 
         // Set initial values from Livewire component
@@ -407,36 +426,20 @@ window.confirmDelete = function() {
             categoryEl.val('').trigger('change.select2');
         }
 
-        // Set tags - don't empty, just set the values directly
+        // Set tags for Tagify
         if (currentTags.length > 0) {
-            // Clear existing options first
-            tagsEl.find('option').remove();
-            // Add new options as selected
-            currentTags.forEach(function(tag) {
-                const newOption = new Option(tag, tag, true, true);
-                tagsEl.append(newOption);
-            });
-            tagsEl.trigger('change.select2');
+            sidebarTagifyTags.removeAllTags();
+            sidebarTagifyTags.addTags(currentTags);
         } else {
-            // Clear all if no tags
-            tagsEl.find('option').remove();
-            tagsEl.val(null).trigger('change.select2');
+            sidebarTagifyTags.removeAllTags();
         }
 
-        // Set galleries - don't empty, just set the values directly
+        // Set galleries for Tagify
         if (currentGalleries.length > 0) {
-            // Clear existing options first
-            galleriesEl.find('option').remove();
-            // Add new options as selected
-            currentGalleries.forEach(function(gallery) {
-                const newOption = new Option(gallery, gallery, true, true);
-                galleriesEl.append(newOption);
-            });
-            galleriesEl.trigger('change.select2');
+            sidebarTagifyGalleries.removeAllTags();
+            sidebarTagifyGalleries.addTags(currentGalleries);
         } else {
-            // Clear all if no galleries
-            galleriesEl.find('option').remove();
-            galleriesEl.val(null).trigger('change.select2');
+            sidebarTagifyGalleries.removeAllTags();
         }
     }
 
