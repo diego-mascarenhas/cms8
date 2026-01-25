@@ -267,8 +267,8 @@
             $('#filter_tag').select2({
                 width: '100%',
                 tags: true,
-                placeholder: '{{ __("app.All") }}',
                 allowClear: true,
+                dropdownCssClass: 'select2-dropdown-no-jump',
                 language: {
                     searching: function() { return ''; }
                 },
@@ -302,8 +302,8 @@
             $('#filter_gallery').select2({
                 width: '100%',
                 tags: true,
-                placeholder: '{{ __("app.All") }}',
                 allowClear: true,
+                dropdownCssClass: 'select2-dropdown-no-jump',
                 language: {
                     searching: function() { return ''; }
                 },
@@ -884,6 +884,25 @@
 
         .upload-progress {
             margin-top: 1rem;
+        }
+
+        /* Prevent Select2 dropdown jump */
+        .select2-dropdown-no-jump {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        .select2-dropdown-no-jump .select2-results {
+            padding-top: 0 !important;
+        }
+        
+        .select2-dropdown-no-jump .select2-results__options {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        .select2-container--open .select2-dropdown--below {
+            margin-top: -1px;
         }
     </style>
 @endpush
