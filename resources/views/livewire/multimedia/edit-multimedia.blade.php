@@ -272,13 +272,11 @@ window.confirmDelete = function() {
             tags: true,
             placeholder: 'Buscar o crear etiquetas...',
             allowClear: true,
-            language: {
-                searching: function() { return ''; }
-            },
+            dropdownCssClass: 'select2-dropdown-no-jump',
             ajax: {
                 url: '{{ route("tags.search") }}',
                 dataType: 'json',
-                delay: 150,
+                delay: 0,
                 data: function (params) {
                     return {
                         q: params.term || '',
@@ -312,13 +310,11 @@ window.confirmDelete = function() {
             tags: true,
             placeholder: 'Buscar o crear galerías...',
             allowClear: true,
-            language: {
-                searching: function() { return ''; }
-            },
+            dropdownCssClass: 'select2-dropdown-no-jump',
             ajax: {
                 url: '{{ route("tags.search") }}',
                 dataType: 'json',
-                delay: 150,
+                delay: 0,
                 data: function (params) {
                     return {
                         q: params.term || '',
@@ -684,4 +680,27 @@ window.confirmDelete = function() {
     });
 })();
 </script>
+@endpush
+
+@push('styles')
+<style>
+    /* Prevent Select2 dropdown jump in offcanvas */
+    .select2-dropdown-no-jump {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    .select2-dropdown-no-jump .select2-results {
+        padding-top: 0 !important;
+    }
+    
+    .select2-dropdown-no-jump .select2-results__options {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    .select2-dropdown-no-jump .select2-results__message {
+        display: none !important;
+    }
+</style>
 @endpush

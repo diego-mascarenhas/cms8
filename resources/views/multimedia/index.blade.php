@@ -269,13 +269,10 @@
                 tags: true,
                 allowClear: true,
                 dropdownCssClass: 'select2-dropdown-no-jump',
-                language: {
-                    searching: function() { return ''; }
-                },
                 ajax: {
                     url: '{{ route("tags.search") }}',
                     dataType: 'json',
-                    delay: 150,
+                    delay: 0,
                     data: function (params) {
                         return {
                             q: params.term || '',
@@ -304,9 +301,6 @@
                 tags: true,
                 allowClear: true,
                 dropdownCssClass: 'select2-dropdown-no-jump',
-                language: {
-                    searching: function() { return ''; }
-                },
                 ajax: {
                     url: '{{ route("tags.search") }}',
                     dataType: 'json',
@@ -899,6 +893,10 @@
         .select2-dropdown-no-jump .select2-results__options {
             padding-top: 0 !important;
             margin-top: 0 !important;
+        }
+        
+        .select2-dropdown-no-jump .select2-results__message {
+            display: none !important;
         }
         
         .select2-container--open .select2-dropdown--below {
