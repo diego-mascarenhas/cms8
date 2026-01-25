@@ -1072,5 +1072,9 @@
   "Document": "Documento",
   "Image": "Imagen",
   "Video": "Video",
-  "Audio": "Audio"
+  "Audio": "Audio",
+  "Are you sure you want to delete this multimedia?": "¿Estás seguro de que deseas eliminar este multimedia?",
+  "Deleting...": "Eliminando...",
+  "Multimedia deleted successfully.": "Multimedia eliminado correctamente.",
+  "Multimedia updated successfully.": "Multimedia actualizado correctamente."
 }

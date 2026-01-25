@@ -67,6 +67,11 @@ class MultimediaPolicy
      */
     public function delete(User $user, Multimedia $multimedia): bool
     {
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return $multimedia->team_id === $user->currentTeam->id;
+        }
+
         return false;
     }
 

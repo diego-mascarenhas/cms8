@@ -1,7 +1,9 @@
 <div class="offcanvas offcanvas-end multimedia-edit-sidebar" tabindex="-1" id="multimediaEditOffcanvas" data-bs-backdrop="true" data-bs-scroll="true" style="visibility: hidden;" wire:ignore.self>
     <div class="offcanvas-header border-bottom">
         <h5 class="offcanvas-title">{{ __('app.Edit Media') }}</h5>
-        <button type="button" class="btn-close" wire:click="close" onclick="event.stopPropagation();" aria-label="Close"></button>
+        <button type="button" class="btn btn-sm btn-icon btn-danger" onclick="confirmDelete()" aria-label="Delete">
+            <i class="ti ti-trash"></i>
+        </button>
     </div>
     <div class="offcanvas-body">
         <form wire:submit.prevent="update" onsubmit="console.log('Form submit triggered'); return true;">
@@ -120,6 +122,32 @@
 
 @push('scripts')
 <script>
+// Global function for delete confirmation (must be outside IIFE)
+window.confirmDelete = function() {
+    Swal.fire({
+        title: '{{ __("app.Are you sure you want to delete this record?") }}',
+        text: '{{ __("app.This action cannot be undone") }}',
+        icon: 'warning',
+        showCancelButton: true,
+        showDenyButton: false,
+        confirmButtonText: '{{ __("app.Yes, delete") }}',
+        cancelButtonText: '{{ __("app.Cancel") }}',
+        buttonsStyling: false,
+        customClass: {
+            confirmButton: 'btn btn-danger me-2 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (typeof Livewire !== 'undefined') {
+                Livewire.dispatch('multimedia:delete-confirmed');
+            } else {
+                console.error('Livewire not available');
+            }
+        }
+    });
+};
+
 (function() {
     'use strict';
 
@@ -276,7 +304,7 @@
             // Close only when selecting (not when unselecting)
             $(this).select2('close');
         });
-        
+
         // Initialize Select2 for galleries with AJAX
         galleriesEl.select2({
             width: '100%',

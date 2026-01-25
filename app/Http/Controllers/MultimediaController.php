@@ -70,16 +70,40 @@ class MultimediaController extends Controller
         {
             $query->where('type', $request->get('type'));
         }
-        
+
         if ($request->filled('search'))
         {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search)
+            {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
+        // Handle tags array (from frontend multi-select)
+        if ($request->filled('tags') && is_array($request->get('tags')))
+        {
+            $tagNames = $request->get('tags');
+            $query->whereHas('tags', function ($tagQuery) use ($tagNames)
+            {
+                $tagQuery->whereIn('name', $tagNames)
+                    ->where('type', 'general');
+            });
+        }
+
+        // Handle galleries array (from frontend multi-select)
+        if ($request->filled('galleries') && is_array($request->get('galleries')))
+        {
+            $galleryNames = $request->get('galleries');
+            $query->whereHas('tags', function ($tagQuery) use ($galleryNames)
+            {
+                $tagQuery->whereIn('name', $galleryNames)
+                    ->where('type', 'gallery');
+            });
+        }
+
+        // Legacy single tag_id support (for backward compatibility)
         if ($request->filled('tag_id'))
         {
             $tagId = $request->get('tag_id');
@@ -90,6 +114,7 @@ class MultimediaController extends Controller
             });
         }
 
+        // Legacy single gallery_tag_id support (for backward compatibility)
         if ($request->filled('gallery_tag_id'))
         {
             $tagId = $request->get('gallery_tag_id');
@@ -400,7 +425,8 @@ class MultimediaController extends Controller
                 ->orderBy('name')
                 ->limit(20)
                 ->get()
-                ->filter(function ($tag) {
+                ->filter(function ($tag)
+                {
                     // Filter out invalid tag names
                     return $this->isValidTagName($tag->name);
                 })
@@ -419,7 +445,8 @@ class MultimediaController extends Controller
             ->orderBy('name')
             ->limit(20)
             ->get()
-            ->filter(function ($tag) {
+            ->filter(function ($tag)
+            {
                 // Filter out invalid tag names
                 return $this->isValidTagName($tag->name);
             })
@@ -432,26 +459,29 @@ class MultimediaController extends Controller
 
         return response()->json($tags->values());
     }
-    
+
     private function isValidTagName(?string $name): bool
     {
-        if (empty($name)) {
+        if (empty($name))
+        {
             return false;
         }
-        
+
         $normalized = trim($name);
-        
+
         // Filter out placeholder/invalid values including JSON strings
         $invalidValues = ['Todos', 'todos', 'all', 'All', 'null', 'undefined'];
-        if (in_array($normalized, $invalidValues, true)) {
+        if (in_array($normalized, $invalidValues, true))
+        {
             return false;
         }
-        
+
         // Also filter out if it's a JSON string containing "Todos"
-        if (str_starts_with($normalized, '{') && str_contains($normalized, 'Todos')) {
+        if (str_starts_with($normalized, '{') && str_contains($normalized, 'Todos'))
+        {
             return false;
         }
-        
+
         return true;
     }
 

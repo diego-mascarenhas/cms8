@@ -52,6 +52,44 @@ class EditMultimedia extends Component
         }
     }
 
+    #[\Livewire\Attributes\On('multimedia:delete-confirmed')]
+    public function delete(): void
+    {
+        try
+        {
+            if (! $this->multimediaId)
+            {
+                return;
+            }
+
+            $multimedia = Multimedia::findOrFail($this->multimediaId);
+
+            if (! auth()->user()->can('delete', $multimedia))
+            {
+                session()->flash('error', 'No tienes permisos para eliminar este multimedia.');
+                $this->close();
+
+                return;
+            }
+
+            // Delete all media files
+            $multimedia->clearMediaCollection('media');
+            $multimedia->clearMediaCollection('poster');
+
+            // Delete the record
+            $multimedia->delete();
+
+            $this->dispatch('multimedia:deleted');
+            session()->flash('message', __('app.Multimedia deleted successfully.'));
+            $this->close();
+        } catch (\Exception $e)
+        {
+            \Log::error('Error deleting multimedia: '.$e->getMessage());
+            session()->flash('error', 'Error al eliminar el multimedia: '.$e->getMessage());
+            $this->close();
+        }
+    }
+
     protected function rules(): array
     {
         return [
@@ -189,14 +227,14 @@ class EditMultimedia extends Component
         }
 
         $normalized = trim($name);
-        
+
         // Filter out placeholder/invalid values including JSON strings
         $invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
         if (in_array($normalized, $invalidValues, true))
         {
             return null;
         }
-        
+
         // Also filter out if it's a JSON string containing "Todos"
         if (str_starts_with($normalized, '{') && str_contains($normalized, 'Todos'))
         {

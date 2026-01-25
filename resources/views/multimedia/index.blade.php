@@ -229,14 +229,35 @@
                 }, { once: true });
             }
         };
-        
+
+        // Listen for Livewire events
+        document.addEventListener('livewire:init', () => {
+            // Listen for multimedia updates
+            Livewire.on('multimedia:updated', () => {
+                // Reload cards and DataTable
+                loadMultimediaCards(1);
+                if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                    $('#multimedia-table').DataTable().ajax.reload(null, false);
+                }
+            });
+
+            // Listen for multimedia deletions
+            Livewire.on('multimedia:deleted', () => {
+                // Reload cards and DataTable
+                loadMultimediaCards(1);
+                if ($.fn.dataTable.isDataTable('#multimedia-table')) {
+                    $('#multimedia-table').DataTable().ajax.reload(null, false);
+                }
+            });
+        });
+
         $(document).ready(function () {
             // Initialize simple selects (status, visibility, category, type)
-            $('#filter_status, #filter_visibility, #filter_category, #filter_type').select2({ 
+            $('#filter_status, #filter_visibility, #filter_category, #filter_type').select2({
                 width: '100%',
                 minimumResultsForSearch: Infinity
             });
-            
+
             // Initialize tags selector with AJAX (same as sidebar)
             $('#filter_tag').select2({
                 width: '100%',
@@ -271,7 +292,7 @@
                     return { id: term, text: term, newTag: true };
                 }
             });
-            
+
             // Initialize galleries selector with AJAX (same as sidebar)
             $('#filter_gallery').select2({
                 width: '100%',
@@ -308,12 +329,12 @@
             });
 
             // Ensure Livewire offcanvas is in body (will be handled by Livewire)
-            
+
             // Toggle upload zone
             $('#toggleUploadZone').on('click', function() {
                 const uploadZone = $('#uploadZoneCard');
                 const icon = $(this).find('i');
-                
+
                 if (uploadZone.hasClass('d-none')) {
                     uploadZone.removeClass('d-none').hide().slideDown(300);
                     icon.removeClass('ti-plus').addClass('ti-minus');
@@ -324,7 +345,7 @@
                     icon.removeClass('ti-minus').addClass('ti-plus');
                 }
             });
-            
+
             // View mode toggle
             $('input[name="viewMode"]').on('change', function() {
                 const viewMode = $(this).val();
@@ -337,12 +358,12 @@
                     loadMultimediaCards();
                 }
             });
-            
+
             // Load cards by default
             if ($('#viewModeCards').is(':checked')) {
                 loadMultimediaCards();
             }
-            
+
             // Load cards when filters change (only if cards view is active)
             $('#filter_status, #filter_visibility, #filter_category, #filter_tag, #filter_gallery, #filter_type, #filter_search')
                 .on('change keyup', function(e) {
@@ -478,12 +499,27 @@
                 const filterStatus = $('#filter_status').val() || '0'; // Default to UNCLASSIFIED if empty
                 const filterVisibility = $('#filter_visibility').val() || '{{ \App\Enums\MultimediaVisibility::PUBLIC->value }}';
                 const filterCategory = $('#filter_category').val() || '';
-                
-                // Get selected tags (now multiple)
-                const filterTags = $('#filter_tag').val() || [];
-                
-                // Get selected galleries (now multiple)
-                const filterGalleries = $('#filter_gallery').val() || [];
+
+                // Get selected tags and filter invalid values
+                let filterTags = $('#filter_tag').val() || [];
+                const invalidValues = ['Todos', 'todos', 'all', 'All', '', 'null', 'undefined'];
+                filterTags = filterTags.filter(tag => {
+                    if (!tag) return false;
+                    const trimmed = tag.trim();
+                    if (invalidValues.includes(trimmed)) return false;
+                    if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
+                    return true;
+                });
+
+                // Get selected galleries and filter invalid values
+                let filterGalleries = $('#filter_gallery').val() || [];
+                filterGalleries = filterGalleries.filter(gallery => {
+                    if (!gallery) return false;
+                    const trimmed = gallery.trim();
+                    if (invalidValues.includes(trimmed)) return false;
+                    if (trimmed.startsWith('{') && trimmed.includes('Todos')) return false;
+                    return true;
+                });
 
                 // Send all files in a single request
                 const formData = new FormData();
@@ -493,17 +529,17 @@
                 formData.append('_token', csrfToken);
                 formData.append('status', filterStatus);
                 formData.append('visibility', filterVisibility);
-                
+
                 // Add category if selected
                 if (filterCategory) {
                     formData.append('category_id', filterCategory);
                 }
-                
+
                 // Add tags if selected (as array)
                 filterTags.forEach((tag) => {
                     formData.append('tags[]', tag);
                 });
-                
+
                 // Add galleries if selected (as array)
                 filterGalleries.forEach((gallery) => {
                     formData.append('galleries[]', gallery);
@@ -588,7 +624,7 @@
         function loadMultimediaCards(page = 1) {
             const container = $('#multimediaCardsContainer');
             const pagination = $('#multimediaCardsPagination');
-            
+
             container.html(`
                 <div class="col-12 text-center">
                     <div class="spinner-border text-primary" role="status">
@@ -596,12 +632,12 @@
                     </div>
                 </div>
             `);
-            
+
             // Get filter values - handle arrays for tags and galleries
             const filterTags = $('#filter_tag').val() || [];
             const filterGalleries = $('#filter_gallery').val() || [];
             const filterSearch = $('#filter_search').val() || '';
-            
+
             const filters = {
                 status: $('#filter_status').val(),
                 visibility: $('#filter_visibility').val(),
@@ -612,7 +648,7 @@
                 page: page,
                 per_page: 12
             };
-            
+
             // Add array parameters properly
             filterTags.forEach((tag, index) => {
                 filters[`tags[${index}]`] = tag;
@@ -620,9 +656,9 @@
             filterGalleries.forEach((gallery, index) => {
                 filters[`galleries[${index}]`] = gallery;
             });
-            
+
             const queryString = $.param(filters);
-            
+
             fetch(`{{ route('multimedia.index') }}?${queryString}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -652,32 +688,32 @@
                 `);
             });
         }
-        
+
         // Render cards
         function renderCards(cards) {
             const container = $('#multimediaCardsContainer');
             container.html('');
-            
+
             cards.forEach(card => {
                 const statusClass = card.status_value === 2 ? 'bg-label-success' : card.status_value === 1 ? 'bg-label-warning' : 'bg-label-secondary';
                 const visibilityClass = card.visibility_value === 2 ? 'bg-label-info' : 'bg-label-secondary';
-                
+
                 const tagsHtml = card.tags && card.tags.length > 0
                     ? card.tags.slice(0, 3).map(tag => `<span class="badge bg-label-info me-1">${tag}</span>`).join('')
                     : '<span class="text-muted">{{ __("app.No tags") }}</span>';
-                
+
                 // Make preview clickable if user can update
-                const previewClickable = card.can_update 
+                const previewClickable = card.can_update
                     ? `style="cursor: pointer;" onclick="openEditMultimedia(${card.id})"`
                     : '';
-                
+
                 // Only show image preview for actual images, use icon for everything else
                 const previewHtml = card.type === 'image' && card.preview_url
                     ? `<img class="img-fluid rounded" src="${card.preview_url}" alt="${card.title}" style="max-height: 200px; object-fit: cover; width: 100%;" ${previewClickable}>`
                     : `<div class="d-flex align-items-center justify-content-center bg-label-secondary rounded" style="height: 200px; ${card.can_update ? 'cursor: pointer;' : ''}" ${previewClickable}>
                         <i class="${card.icon}" style="font-size: 120px; color: #a8aaae;"></i>
                     </div>`;
-                
+
                 const cardHtml = `
                     <div class="col-sm-6 col-lg-4 col-xl-3">
                         <div class="card p-2 h-100 shadow-none border">
@@ -702,22 +738,22 @@
                         </div>
                     </div>
                 `;
-                
+
                 container.append(cardHtml);
             });
         }
-        
+
         // Render pagination
         function renderPagination(pagination) {
             const paginationEl = $('#multimediaCardsPagination');
             paginationEl.html('');
-            
+
             if (pagination.last_page <= 1) {
                 return;
             }
-            
+
             let paginationHtml = '<nav><ul class="pagination">';
-            
+
             // Previous button
             paginationHtml += `
                 <li class="page-item ${pagination.current_page === 1 ? 'disabled' : ''}">
@@ -726,7 +762,7 @@
                     </a>
                 </li>
             `;
-            
+
             // Page numbers
             for (let i = 1; i <= pagination.last_page; i++) {
                 if (i === 1 || i === pagination.last_page || (i >= pagination.current_page - 2 && i <= pagination.current_page + 2)) {
@@ -739,7 +775,7 @@
                     paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
             }
-            
+
             // Next button
             paginationHtml += `
                 <li class="page-item ${pagination.current_page === pagination.last_page ? 'disabled' : ''}">
@@ -748,7 +784,7 @@
                     </a>
                 </li>
             `;
-            
+
             paginationHtml += '</ul></nav>';
             paginationEl.html(paginationHtml);
         }
