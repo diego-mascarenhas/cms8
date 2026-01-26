@@ -2,7 +2,7 @@
 
 <div>
     <label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="form-select select2 @error($name) is-invalid @enderror">
+    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="form-select select2 @error($name) is-invalid @enderror" data-placeholder="Seleccione un país">
         <option value="">Seleccione un país</option>
         @foreach($countries as $country)
             <option value="{{ $country->id }}" data-flag="{{ strtolower($country->code) }}" {{ old($name, $value) == $country->id ? 'selected' : '' }}>

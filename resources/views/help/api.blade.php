@@ -126,6 +126,11 @@
                                             <td><code>/api/message</code></td>
                                             <td>{{ __('Email and SMS campaign management (user auth)') }}</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Contents') }}</strong></td>
+                                            <td><code>/api/team/contents</code></td>
+                                            <td>{{ __('Website content management with multi-language support (team token auth)') }}</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -159,6 +164,10 @@
                                 <a href="{{ route('help.api.contacts') }}" class="btn btn-success">
                                     <i class="ti ti-users me-2"></i>
                                     {{ __('Contacts API Guide') }}
+                                </a>
+                                <a href="{{ route('help.api.contents') }}" class="btn btn-info">
+                                    <i class="ti ti-file-text me-2"></i>
+                                    {{ __('Contents API Guide') }}
                                 </a>
                             </div>
                         </div>

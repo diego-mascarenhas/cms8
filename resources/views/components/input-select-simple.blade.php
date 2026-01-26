@@ -2,7 +2,7 @@
 
 <div class="form-group">
     <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-allow-clear="false">
+    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-placeholder="Seleccione una opción" data-allow-clear="false">
         @foreach ($options as $option)
             <option value="{{ $option }}" @if (old($id, $value) == $option) selected @endif>{{ $option }}</option>
         @endforeach

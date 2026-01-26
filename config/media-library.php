@@ -93,6 +93,7 @@ return [
     'custom_path_generators' => [
         \App\Models\Contact::class => \App\Services\CollaboratorMediaPathGenerator::class,
         \App\Models\Task::class => \App\Services\TaskMediaPathGenerator::class,
+        \App\Models\Multimedia::class => \App\Services\MultimediaMediaPathGenerator::class,
     ],
 
     /*

@@ -2,7 +2,7 @@
 
 <div class="form-group">
     <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="categories[]" class="form-control select2 @error($id) is-invalid @enderror" multiple>
+    <select id="{{ $id }}" name="categories[]" class="form-control select2 @error($id) is-invalid @enderror" multiple data-placeholder="Select categories">
         @if($showNull)
             <option value="">Seleccione una categoría</option>
         @endif
@@ -23,6 +23,7 @@
                     'communications' => 'communications',
                     'mail' => 'mail',
                     'chat' => 'chat',
+                    'multimedia' => 'multimedia',
                 ];
 
                 // Comprobar la ruta por prefijo

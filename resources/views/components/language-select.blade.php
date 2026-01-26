@@ -2,7 +2,7 @@
 
 <div>
     <label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="form-select select2 @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
+    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="form-select select2 @error($name) is-invalid @enderror" data-placeholder="Seleccione un idioma" {{ $required ? 'required' : '' }}>
         <option value="">Seleccione un idioma</option>
         @foreach($languages as $language)
             <option value="{{ $language->code }}" data-flag="{{ $language->flag }}" {{ old($name, $value) == $language->code ? 'selected' : '' }}>

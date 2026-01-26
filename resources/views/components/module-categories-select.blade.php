@@ -2,7 +2,7 @@
 
 <div class="form-group">
     <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }} @if($disabled) disabled @endif>
+    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-placeholder="{{ $emptyText }}" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }} @if($disabled) disabled @endif>
         @if($showNull || $allowEmpty)
             <option value="">{{ $emptyText }}</option>
         @endif
@@ -23,6 +23,7 @@
                     'communications' => 'communications',
                     'mail' => 'mail',
                     'chat' => 'chat',
+                    'multimedia' => 'multimedia',
                 ];
 
                 // Comprobar la ruta por prefijo

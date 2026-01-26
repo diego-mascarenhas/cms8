@@ -214,6 +214,20 @@
       "module_key": "website"
     },
     {
+      "url": "contents",
+      "name": "Contents",
+      "icon": "menu-icon tf-icons ti ti-file-text",
+      "slug": "contents.index",
+      "module_key": "contents"
+    },
+    {
+      "url": "multimedia/list",
+      "name": "Multimedia",
+      "icon": "menu-icon tf-icons ti ti-photo",
+      "slug": "multimedia",
+      "module_key": "multimedia"
+    },
+    {
       "url": "academy/list",
       "name": "Academy",
       "icon": "menu-icon tf-icons ti ti-book",

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
+use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamContactController;
+use App\Http\Controllers\Api\TeamContentController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
@@ -453,6 +455,15 @@ Route::middleware('auth:sanctum')->group(function ()
         'update' => 'api.fares.update',
         'destroy' => 'api.fares.destroy',
     ]);
+
+    // Contents - for user-based authentication (Sanctum tokens)
+    Route::apiResource('contents', ContentController::class)->names([
+        'index' => 'api.contents.index',
+        'store' => 'api.contents.store',
+        'show' => 'api.contents.show',
+        'update' => 'api.contents.update',
+        'destroy' => 'api.contents.destroy',
+    ]);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);
@@ -471,6 +482,15 @@ Route::middleware('team.token')->prefix('team')->group(function ()
 
     // Team projects
     Route::resource('projects', TeamProjectController::class);
+
+    // Team contents
+    Route::apiResource('contents', TeamContentController::class)->names([
+        'index' => 'api.team.contents.index',
+        'store' => 'api.team.contents.store',
+        'show' => 'api.team.contents.show',
+        'update' => 'api.team.contents.update',
+        'destroy' => 'api.team.contents.destroy',
+    ]);
 });
 
 Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);

@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Tags\HasTags;
 
 class Category extends Model
 {
     use HasFactory;
+    use HasTags;
     use SoftDeletes;
 
     public $timestamps = true;
@@ -111,6 +113,123 @@ class Category extends Model
     public function contacts()
     {
         return $this->belongsToMany(\App\Models\Contact::class, 'contact_category', 'category_id', 'contact_id');
+    }
+
+    /**
+     * Get contents associated with this category as section.
+     */
+    public function contents()
+    {
+        $query = $this->hasMany(\App\Models\Content::class, 'section_category_id');
+        
+        // Get ordering configuration from category data
+        $ordering = $this->getContentOrdering();
+        
+        // Apply ordering based on configuration
+        foreach ($ordering as $orderBy)
+        {
+            if (isset($orderBy['column']) && isset($orderBy['direction']))
+            {
+                $query->orderBy($orderBy['column'], $orderBy['direction']);
+            }
+        }
+        
+        return $query;
+    }
+    
+    /**
+     * Get content ordering configuration for this category.
+     * Returns array of ordering rules from category data or default.
+     */
+    public function getContentOrdering(): array
+    {
+        // Check if custom ordering is configured in category data
+        if (isset($this->data['content_ordering']) && is_array($this->data['content_ordering']))
+        {
+            return $this->data['content_ordering'];
+        }
+        
+        // Default ordering: order field first, then created_at desc
+        return [
+            ['column' => 'order', 'direction' => 'asc'],
+            ['column' => 'created_at', 'direction' => 'desc'],
+        ];
+    }
+    
+    /**
+     * Set content ordering configuration for this category.
+     */
+    public function setContentOrdering(array $ordering): void
+    {
+        $data = $this->data ?? [];
+        $data['content_ordering'] = $ordering;
+        $this->data = $data;
+    }
+
+    /**
+     * Get active contents associated with this category as section.
+     */
+    public function activeContents()
+    {
+        return $this->contents()->where('status', 3);
+    }
+
+    /**
+     * Get content field configs associated with this category as section.
+     */
+    public function contentFieldConfigs()
+    {
+        return $this->hasMany(\App\Models\ContentFieldConfig::class, 'section_category_id')
+            ->where('is_active', true)
+            ->orderBy('order');
+    }
+
+    /**
+     * Get slug from data JSON.
+     */
+    public function getSlugAttribute(): ?string
+    {
+        return $this->data['slug'] ?? null;
+    }
+
+    /**
+     * Set slug in data JSON.
+     */
+    public function setSlugAttribute(?string $value): void
+    {
+        $data = $this->data ?? [];
+        if ($value === null)
+        {
+            unset($data['slug']);
+        } else
+        {
+            $data['slug'] = $value;
+        }
+        $this->attributes['data'] = json_encode($data);
+    }
+
+    /**
+     * Get template from data JSON.
+     */
+    public function getTemplateAttribute(): ?string
+    {
+        return $this->data['template'] ?? null;
+    }
+
+    /**
+     * Set template in data JSON.
+     */
+    public function setTemplateAttribute(?string $value): void
+    {
+        $data = $this->data ?? [];
+        if ($value === null)
+        {
+            unset($data['template']);
+        } else
+        {
+            $data['template'] = $value;
+        }
+        $this->attributes['data'] = json_encode($data);
     }
 
     /**

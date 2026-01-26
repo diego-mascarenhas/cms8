@@ -102,6 +102,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display contents API documentation
+     */
+    public function apiContents()
+    {
+        return view('help.api-contents', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display general usage documentation
      */
     public function usage()

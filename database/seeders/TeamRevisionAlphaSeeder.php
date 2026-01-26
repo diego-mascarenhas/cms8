@@ -69,6 +69,9 @@ class TeamRevisionAlphaSeeder extends Seeder
 		// 3.1. Create Revision Alpha task categories
 		$this->createRevisionAlphaTaskCategories();
 
+		// 3.2. Create Revision Alpha content categories
+		$this->createRevisionAlphaContentCategories();
+
 		// 4. Create professional email template
 		$this->createProfessionalEmailTemplate();
 
@@ -403,6 +406,95 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$this->getCommand()->info("   - Proyectos: {$proyectosCategory->name} (ID: {$proyectosCategory->id})");
 		$this->getCommand()->info('     Subcategories: ' . count($proyectosSubcategories) . ' categories');
 		$this->getCommand()->info('   - Total subcategories: ' . (count($administracionSubcategories) + count($proyectosSubcategories)) . ' categories created');
+	}
+
+	/**
+	 * Create basic website content categories for Revision Alpha
+	 */
+	private function createRevisionAlphaContentCategories(): void
+	{
+		$this->getCommand()->info('🌐 Creating Revision Alpha content categories...');
+
+		$contentsModule = Module::where('key', 'contents')->first();
+
+		if (! $contentsModule)
+		{
+			$this->getCommand()->warn('⚠️  Contents module not found. Skipping content categories creation.');
+
+			return;
+		}
+
+		$basicCategories = [
+			[
+				'name' => 'Home',
+				'slug' => 'home',
+				'description' => 'Página principal del sitio web',
+				'order' => 1,
+			],
+			[
+				'name' => 'Quienes Somos',
+				'slug' => 'quienes-somos',
+				'description' => 'Sección sobre la empresa o organización',
+				'order' => 2,
+			],
+			[
+				'name' => 'Servicios',
+				'slug' => 'servicios',
+				'description' => 'Sección de servicios ofrecidos',
+				'order' => 3,
+			],
+			[
+				'name' => 'Contáctenos',
+				'slug' => 'contactenos',
+				'description' => 'Página de contacto',
+				'order' => 4,
+			],
+		];
+
+		$created = 0;
+		$updated = 0;
+
+		foreach ($basicCategories as $categoryData)
+		{
+			$existing = Category::where('team_id', $this->teamId)
+				->where('name', $categoryData['name'])
+				->where('module_id', $contentsModule->id)
+				->first();
+
+			if ($existing)
+			{
+				$existing->update([
+					'description' => $categoryData['description'],
+					'order' => $categoryData['order'],
+					'status' => 1,
+					'data' => [
+						'slug' => $categoryData['slug'],
+					],
+				]);
+				$updated++;
+				$this->getCommand()->info("🔄 Updated content category: {$categoryData['name']}");
+			} else
+			{
+				Category::create([
+					'team_id' => $this->teamId,
+					'module_id' => $contentsModule->id,
+					'name' => $categoryData['name'],
+					'description' => $categoryData['description'],
+					'parent_id' => null,
+					'order' => $categoryData['order'],
+					'status' => 1,
+					'data' => [
+						'slug' => $categoryData['slug'],
+					],
+				]);
+				$created++;
+				$this->getCommand()->info("✅ Created content category: {$categoryData['name']}");
+			}
+		}
+
+		$this->getCommand()->info('✅ Created Revision Alpha content categories');
+		$this->getCommand()->info("   - Categories created: {$created}");
+		$this->getCommand()->info("   - Categories updated: {$updated}");
 	}
 
 	/**
