@@ -51,6 +51,17 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Include Scripts for customizer, helper, analytics, config -->
   <!-- $isFront is used to append the front layout scriptsIncludes only on the front layout otherwise the variable will be blank -->
   @include('layouts/sections/scriptsIncludes' . $isFront)
+
+  <!-- Google Analytics - Only in production -->
+  @if(app()->environment('production') && config('app.google_analytics_id'))
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ config('app.google_analytics_id') }}');
+  </script>
+  @endif
 </head>
 
 <body>

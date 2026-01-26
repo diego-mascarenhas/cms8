@@ -74,3 +74,23 @@
     </div>
 </div>
 @endsection
+
+@section('page-script')
+@if(app()->environment('production'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Track content view in Google Analytics (only in production)
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'content_view', {
+            'content_id': {{ $content->id }},
+            'content_title': '{{ addslashes($content->getTranslatable('title') ?? '') }}',
+            'content_category': '{{ addslashes($content->sectionCategory->name ?? '') }}',
+            'content_status': '{{ $content->status }}',
+            'event_category': 'Content',
+            'event_label': 'View'
+        });
+    }
+});
+</script>
+@endif
+@endsection

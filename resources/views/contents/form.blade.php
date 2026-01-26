@@ -51,7 +51,7 @@
             @method('PUT')
         @endif
 
-        <div class="row g-3">
+        <div class="row g-2">
             <div class="col-md-6">
                 <label for="section_category_id" class="form-label">{{ __('app.Category') }} (*)</label>
                 <select id="section_category_id" name="section_category_id" class="form-select select2" required>
@@ -83,7 +83,7 @@
 
             {{-- Multi-language Content Fields --}}
             <div class="col-12">
-                <ul class="nav nav-tabs mb-3" role="tablist">
+                <ul class="nav nav-tabs mb-0" role="tablist">
                     @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
                         <li class="nav-item">
                             <button type="button" class="nav-link {{ $loop->first ? 'active' : '' }}" 
@@ -98,13 +98,13 @@
                         </li>
                     @endforeach
                 </ul>
-                <div class="tab-content">
+                <div class="tab-content mt-0">
                     @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
                         <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
                             id="content-pane-{{ $localeCode }}" 
                             role="tabpanel" 
                             aria-labelledby="content-tab-{{ $localeCode }}">
-                            <div class="row g-3">
+                            <div class="row g-2 mt-0">
                                 <div class="col-md-12">
                                     <x-input-general
                                         id="title_{{ $localeCode }}"
@@ -131,7 +131,7 @@
                                 </div>
                                 <div class="col-md-12">
                                     <label for="content_{{ $localeCode }}" class="form-label">{{ __('app.Content') }}</label>
-                                    <div id="content-editor-{{ $localeCode }}" style="height: 200px;"></div>
+                                    <div id="content-editor-{{ $localeCode }}" style="min-height: 400px;"></div>
                                     <input type="hidden" id="content_{{ $localeCode }}" name="content_{{ $localeCode }}" 
                                         value="{{ old("content_{$localeCode}", isset($content) ? ($content->content[$localeCode] ?? '') : '') }}">
                                     @error("content_{$localeCode}")
@@ -179,23 +179,23 @@
 
             @if(isset($fieldConfigs) && $fieldConfigs->count() > 0)
                 <div class="col-12">
-                    <hr>
-                    <h6 class="mb-3">{{ __('app.Additional Fields') }}</h6>
+                    <hr class="my-1">
+                    <h6 class="mb-1">{{ __('app.Additional Fields') }}</h6>
                     @include('components.dynamic-content-fields', ['fieldConfigs' => $fieldConfigs, 'content' => $content ?? null])
                 </div>
             @endif
 
             <div class="col-12">
-                <hr>
-                <h6 class="mb-3">{{ __('app.Multimedia') }}</h6>
+                <hr class="my-1">
+                <h6 class="mb-1">{{ __('app.Multimedia') }}</h6>
                 @include('components.content-multimedia-selector', ['selectedMultimedia' => $selectedMultimedia ?? []])
             </div>
 
             {{-- Multi-language SEO Fields --}}
             <div class="col-12">
-                <hr>
-                <h6 class="mb-3">{{ __('app.SEO') }}</h6>
-                <ul class="nav nav-tabs mb-3" role="tablist">
+                <hr class="my-1">
+                <h6 class="mb-1">{{ __('app.SEO') }}</h6>
+                <ul class="nav nav-tabs mb-1" role="tablist">
                     @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
                         <li class="nav-item">
                             <button type="button" class="nav-link {{ $loop->first ? 'active' : '' }}" 
@@ -210,13 +210,13 @@
                         </li>
                     @endforeach
                 </ul>
-                <div class="tab-content">
+                <div class="tab-content mt-0">
                     @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
                         <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
                             id="seo-pane-{{ $localeCode }}" 
                             role="tabpanel" 
                             aria-labelledby="seo-tab-{{ $localeCode }}">
-                            <div class="row g-3">
+                            <div class="row g-2 mt-0">
                                 <div class="col-md-12">
                                     <x-input-general
                                         id="seo_title_{{ $localeCode }}"
@@ -247,7 +247,7 @@
             </div>
         </div>
 
-        <div class="pt-4">
+        <div class="pt-3 mt-3">
             <div class="col-12 d-flex">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">{{ __('app.Save') }}</button>
                 <a href="{{ route('contents.index') }}" class="btn btn-label-secondary">{{ __('app.Cancel') }}</a>
@@ -255,6 +255,17 @@
         </div>
     </form>
 </div>
+@endsection
+
+@section('page-style')
+<style>
+.tab-content {
+    padding: 0 !important;
+}
+.tab-pane {
+    padding-top: 0 !important;
+}
+</style>
 @endsection
 
 @section('page-script')

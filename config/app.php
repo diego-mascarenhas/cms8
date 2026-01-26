@@ -215,4 +215,15 @@ return [
     */
     'whatsapp_support' => env('WHATSAPP_SUPPORT_NUMBER', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Analytics Measurement ID
+    |--------------------------------------------------------------------------
+    |
+    | This value is your Google Analytics Measurement ID (e.g., G-XXXXXXXXXX).
+    | Set this in your ".env" file.
+    |
+    */
+    'google_analytics_id' => env('GOOGLE_ANALYTICS_ID', ''),
+
 ];

@@ -1,6 +1,6 @@
 @props(['selectedMultimedia' => []])
 
-<div class="mb-3">
+<div class="mb-1">
     <label class="form-label">{{ __('app.Associated Multimedia') }}</label>
     <select id="multimedia_selector" name="multimedia[]" class="form-select select2" multiple>
         @foreach($selectedMultimedia as $multimediaId)
@@ -17,7 +17,7 @@
     <div class="form-text">{{ __('app.Select multimedia items to associate with this content') }}</div>
 </div>
 
-<div id="multimedia_preview" class="row g-2 mt-2">
+<div id="multimedia_preview" class="row g-2 mt-1">
     @foreach($selectedMultimedia as $multimediaId)
         @php
             $multimedia = \App\Models\Multimedia::find($multimediaId);
