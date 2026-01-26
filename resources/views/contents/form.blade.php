@@ -81,37 +81,67 @@
                 @enderror
             </div>
 
-            <div class="col-md-12">
-                <x-input-general
-                    id="title"
-                    label="{{ __('app.Title') }}"
-                    value="{{ old('title', isset($content) ? $content->getTranslatable('title') : '') }}"
-                />
-            </div>
-
-            <div class="col-md-6">
-                <x-input-general
-                    id="subtitle"
-                    label="{{ __('app.Subtitle') }}"
-                    value="{{ old('subtitle', isset($content) ? $content->getTranslatable('subtitle') : '') }}"
-                />
-            </div>
-
-            <div class="col-md-6">
-                <x-input-general
-                    id="url"
-                    label="{{ __('app.URL') }}"
-                    value="{{ old('url', isset($content) ? $content->getTranslatable('url') : '') }}"
-                />
-            </div>
-
-            <div class="col-md-12">
-                <label for="content" class="form-label">{{ __('app.Content') }}</label>
-                <div id="content-editor" style="height: 200px;"></div>
-                <input type="hidden" id="content" name="content" value="{{ old('content', isset($content) ? $content->getTranslatable('content') : '') }}">
-                @error('content')
-                    <div class="text-danger mt-1">{{ $message }}</div>
-                @enderror
+            {{-- Multi-language Content Fields --}}
+            <div class="col-12">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
+                        <li class="nav-item">
+                            <button type="button" class="nav-link {{ $loop->first ? 'active' : '' }}" 
+                                id="content-tab-{{ $localeCode }}" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#content-pane-{{ $localeCode }}" 
+                                role="tab" 
+                                aria-controls="content-pane-{{ $localeCode }}" 
+                                aria-selected="{{ $loop->first ? 'true' : 'false' }}">
+                                {{ $localeName }}
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+                <div class="tab-content">
+                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
+                        <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
+                            id="content-pane-{{ $localeCode }}" 
+                            role="tabpanel" 
+                            aria-labelledby="content-tab-{{ $localeCode }}">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <x-input-general
+                                        id="title_{{ $localeCode }}"
+                                        name="title_{{ $localeCode }}"
+                                        label="{{ __('app.Title') }}"
+                                        value="{{ old("title_{$localeCode}", isset($content) ? ($content->title[$localeCode] ?? '') : '') }}"
+                                    />
+                                </div>
+                                <div class="col-md-6">
+                                    <x-input-general
+                                        id="subtitle_{{ $localeCode }}"
+                                        name="subtitle_{{ $localeCode }}"
+                                        label="{{ __('app.Subtitle') }}"
+                                        value="{{ old("subtitle_{$localeCode}", isset($content) ? ($content->subtitle[$localeCode] ?? '') : '') }}"
+                                    />
+                                </div>
+                                <div class="col-md-6">
+                                    <x-input-general
+                                        id="url_{{ $localeCode }}"
+                                        name="url_{{ $localeCode }}"
+                                        label="{{ __('app.URL') }}"
+                                        value="{{ old("url_{$localeCode}", isset($content) ? ($content->url[$localeCode] ?? '') : '') }}"
+                                    />
+                                </div>
+                                <div class="col-md-12">
+                                    <label for="content_{{ $localeCode }}" class="form-label">{{ __('app.Content') }}</label>
+                                    <div id="content-editor-{{ $localeCode }}" style="height: 200px;"></div>
+                                    <input type="hidden" id="content_{{ $localeCode }}" name="content_{{ $localeCode }}" 
+                                        value="{{ old("content_{$localeCode}", isset($content) ? ($content->content[$localeCode] ?? '') : '') }}">
+                                    @error("content_{$localeCode}")
+                                        <div class="text-danger mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
             </div>
 
             <div class="col-md-3">
@@ -161,31 +191,58 @@
                 @include('components.content-multimedia-selector', ['selectedMultimedia' => $selectedMultimedia ?? []])
             </div>
 
+            {{-- Multi-language SEO Fields --}}
             <div class="col-12">
                 <hr>
                 <h6 class="mb-3">{{ __('app.SEO') }}</h6>
-                <div class="row g-3">
-                    <div class="col-md-12">
-                        <x-input-general
-                            id="seo_title"
-                            label="{{ __('app.SEO Title') }}"
-                            value="{{ old('seo_title', isset($content) ? $content->getTranslatable('seo_title') : '') }}"
-                        />
-                    </div>
-                    <div class="col-md-12">
-                        <x-input-general
-                            id="seo_keywords"
-                            label="{{ __('app.SEO Keywords') }}"
-                            value="{{ old('seo_keywords', isset($content) ? $content->getTranslatable('seo_keywords') : '') }}"
-                        />
-                    </div>
-                    <div class="col-md-12">
-                        <label for="seo_description" class="form-label">{{ __('app.SEO Description') }}</label>
-                        <textarea class="form-control" id="seo_description" name="seo_description" rows="3">{{ old('seo_description', isset($content) ? $content->getTranslatable('seo_description') : '') }}</textarea>
-                        @error('seo_description')
-                            <div class="text-danger mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
+                        <li class="nav-item">
+                            <button type="button" class="nav-link {{ $loop->first ? 'active' : '' }}" 
+                                id="seo-tab-{{ $localeCode }}" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#seo-pane-{{ $localeCode }}" 
+                                role="tab" 
+                                aria-controls="seo-pane-{{ $localeCode }}" 
+                                aria-selected="{{ $loop->first ? 'true' : 'false' }}">
+                                {{ $localeName }}
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+                <div class="tab-content">
+                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
+                        <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
+                            id="seo-pane-{{ $localeCode }}" 
+                            role="tabpanel" 
+                            aria-labelledby="seo-tab-{{ $localeCode }}">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <x-input-general
+                                        id="seo_title_{{ $localeCode }}"
+                                        name="seo_title_{{ $localeCode }}"
+                                        label="{{ __('app.SEO Title') }}"
+                                        value="{{ old("seo_title_{$localeCode}", isset($content) ? ($content->seo_title[$localeCode] ?? '') : '') }}"
+                                    />
+                                </div>
+                                <div class="col-md-12">
+                                    <x-input-general
+                                        id="seo_keywords_{{ $localeCode }}"
+                                        name="seo_keywords_{{ $localeCode }}"
+                                        label="{{ __('app.SEO Keywords') }}"
+                                        value="{{ old("seo_keywords_{$localeCode}", isset($content) ? ($content->seo_keywords[$localeCode] ?? '') : '') }}"
+                                    />
+                                </div>
+                                <div class="col-md-12">
+                                    <label for="seo_description_{{ $localeCode }}" class="form-label">{{ __('app.SEO Description') }}</label>
+                                    <textarea class="form-control" id="seo_description_{{ $localeCode }}" name="seo_description_{{ $localeCode }}" rows="3">{{ old("seo_description_{$localeCode}", isset($content) ? ($content->seo_description[$localeCode] ?? '') : '') }}</textarea>
+                                    @error("seo_description_{$localeCode}")
+                                        <div class="text-danger mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -218,28 +275,44 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
-    // Initialize Quill editor
-    const contentEditor = new Quill('#content-editor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                ['link', 'image'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }]
-            ]
+    // Initialize Quill editors for each language
+    const contentEditors = {};
+    const availableLocales = @json(array_keys($availableLocales ?? ['es' => 'Español']));
+    
+    availableLocales.forEach(function(locale) {
+        const editorId = '#content-editor-' + locale;
+        const inputId = '#content_' + locale;
+        
+        if (document.querySelector(editorId)) {
+            contentEditors[locale] = new Quill(editorId, {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline'],
+                        ['link', 'image'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+                    ]
+                }
+            });
+
+            // Load existing content
+            const contentInput = document.querySelector(inputId);
+            if (contentInput && contentInput.value) {
+                contentEditors[locale].root.innerHTML = contentInput.value;
+            }
         }
     });
 
-    // Load existing content
-    const contentValue = document.getElementById('content').value;
-    if (contentValue) {
-        contentEditor.root.innerHTML = contentValue;
-    }
-
-    // Update hidden input on form submit
+    // Update hidden inputs on form submit
     document.querySelector('form').addEventListener('submit', function() {
-        document.getElementById('content').value = contentEditor.root.innerHTML;
+        availableLocales.forEach(function(locale) {
+            const inputId = '#content_' + locale;
+            const input = document.querySelector(inputId);
+            if (input && contentEditors[locale]) {
+                input.value = contentEditors[locale].root.innerHTML;
+            }
+        });
     });
 });
 </script>

@@ -46,7 +46,17 @@ class ContentController extends Controller
         $selectedSection = $sectionId ? Category::find($sectionId) : null;
         $fieldConfigs = $selectedSection ? $selectedSection->contentFieldConfigs()->active()->ordered()->get() : collect();
 
-        return view('contents.form', compact('sectionCategories', 'selectedSection', 'fieldConfigs', 'team'));
+        // Get available locales for multi-language support
+        $availableLocales = [
+            'es' => 'Español',
+            'en' => 'English',
+            'it' => 'Italiano',
+            'pt' => 'Português',
+            'fr' => 'Français',
+            'de' => 'Deutsch',
+        ];
+
+        return view('contents.form', compact('sectionCategories', 'selectedSection', 'fieldConfigs', 'team', 'availableLocales'));
     }
 
     public function store(StoreContentRequest $request)
@@ -61,15 +71,24 @@ class ContentController extends Controller
         $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
         $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
-        // Prepare translatable fields
-        $locale = app()->getLocale();
+        // Prepare translatable fields for all locales
         $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
+        $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
 
         foreach ($translatableFields as $field)
         {
-            if ($request->has($field))
+            $fieldData = [];
+            foreach ($availableLocales as $locale)
             {
-                $data[$field] = [$locale => $request->input($field)];
+                $fieldKey = "{$field}_{$locale}";
+                if ($request->has($fieldKey) && $request->input($fieldKey) !== null && $request->input($fieldKey) !== '')
+                {
+                    $fieldData[$locale] = $request->input($fieldKey);
+                }
+            }
+            if (! empty($fieldData))
+            {
+                $data[$field] = $fieldData;
             }
         }
 
@@ -130,7 +149,17 @@ class ContentController extends Controller
         $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
 
-        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team'));
+        // Get available locales for multi-language support
+        $availableLocales = [
+            'es' => 'Español',
+            'en' => 'English',
+            'it' => 'Italiano',
+            'pt' => 'Português',
+            'fr' => 'Français',
+            'de' => 'Deutsch',
+        ];
+
+        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales'));
     }
 
     public function update(UpdateContentRequest $request, Content $content)
@@ -144,20 +173,29 @@ class ContentController extends Controller
         $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
         $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
-        // Prepare translatable fields
-        $locale = app()->getLocale();
+        // Prepare translatable fields for all locales
         $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
+        $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
 
         foreach ($translatableFields as $field)
         {
-            if ($request->has($field))
+            $current = $content->$field ?? [];
+            if (! is_array($current))
             {
-                $current = $content->$field ?? [];
-                if (! is_array($current))
+                $current = [];
+            }
+
+            foreach ($availableLocales as $locale)
+            {
+                $fieldKey = "{$field}_{$locale}";
+                if ($request->has($fieldKey) && $request->input($fieldKey) !== null && $request->input($fieldKey) !== '')
                 {
-                    $current = [];
+                    $current[$locale] = $request->input($fieldKey);
                 }
-                $current[$locale] = $request->input($field);
+            }
+
+            if (! empty($current))
+            {
                 $data[$field] = $current;
             }
         }
