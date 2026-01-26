@@ -26,6 +26,7 @@ class ContentController extends Controller
         $sectionCategories = Category::where('team_id', $team->id)
             ->where('module_id', $contentsModuleId)
             ->where('status', true)
+            ->orderBy('order')
             ->orderBy('name')
             ->get();
 
@@ -48,6 +49,7 @@ class ContentController extends Controller
         $sectionCategories = Category::where('team_id', $team->id)
             ->where('module_id', $contentsModuleId)
             ->where('status', true)
+            ->orderBy('order')
             ->orderBy('name')
             ->get();
 
@@ -131,6 +133,7 @@ class ContentController extends Controller
         $sectionCategories = Category::where('team_id', $team->id)
             ->where('module_id', $contentsModuleId)
             ->where('status', true)
+            ->orderBy('order')
             ->orderBy('name')
             ->get();
 

@@ -133,11 +133,12 @@ class CategoryController extends Controller
             $category = Category::where('team_id', $team->id)->findOrFail($request->id);
         }
 
-        $categoryData = $category->data;
+        $categoryData = $category->data ?? [];
         $module = $request->module_id ? Module::find($request->module_id) : null;
+        
         if ($module && $module->key === 'multimedia')
         {
-            $categoryData = array_filter([
+            $categoryData = array_merge($categoryData, array_filter([
                 'image_width' => $request->input('image_width') ? (int) $request->input('image_width') : null,
                 'image_height' => $request->input('image_height') ? (int) $request->input('image_height') : null,
                 'thumb_width' => $request->input('thumb_width') ? (int) $request->input('thumb_width') : null,
@@ -148,7 +149,37 @@ class CategoryController extends Controller
             ], function ($value)
             {
                 return ! is_null($value);
-            });
+            }));
+        }
+        
+        if ($module && $module->key === 'contents')
+        {
+            // Handle content ordering configuration
+            $contentOrdering = [];
+            if ($request->has('content_ordering') && is_array($request->input('content_ordering')))
+            {
+                foreach ($request->input('content_ordering') as $ordering)
+                {
+                    if (! empty($ordering['column']) && ! empty($ordering['direction']))
+                    {
+                        $contentOrdering[] = [
+                            'column' => $ordering['column'],
+                            'direction' => $ordering['direction'],
+                        ];
+                    }
+                }
+            }
+            
+            // If no custom ordering, use default
+            if (empty($contentOrdering))
+            {
+                $contentOrdering = [
+                    ['column' => 'order', 'direction' => 'asc'],
+                    ['column' => 'created_at', 'direction' => 'desc'],
+                ];
+            }
+            
+            $categoryData['content_ordering'] = $contentOrdering;
         }
 
         $category->fill([
@@ -224,7 +255,10 @@ class CategoryController extends Controller
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'team', 'multimediaModuleId', 'tags'));
+        // Parent is not needed in edit, only in create when creating a subcategory
+        $parent = null;
+
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
     }
 
     /**

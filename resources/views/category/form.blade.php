@@ -115,6 +115,51 @@
                         <div class="form-text">{{ __('app.Lower numbers appear first. Leave as 0 for automatic ordering.') }}</div>
                     </div>
 
+                    <div id="content-options" class="border rounded p-3 mb-3 d-none">
+                        <h6 class="mb-3">Configuración de Ordenamiento de Contenidos</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Ordenamiento por defecto</label>
+                            <div class="form-text mb-2">Configura cómo se ordenarán los contenidos en esta categoría</div>
+                            
+                            <div class="row g-3" id="content-ordering-rules">
+                                <div class="col-md-6">
+                                    <label class="form-label">Primer orden</label>
+                                    <select class="form-select" name="content_ordering[0][column]">
+                                        <option value="order" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? 'order') === 'order' ? 'selected' : '' }}>Orden manual</option>
+                                        <option value="created_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
+                                        <option value="updated_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
+                                        <option value="title" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Dirección</label>
+                                    <select class="form-select" name="content_ordering[0][direction]">
+                                        <option value="asc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? 'asc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
+                                        <option value="desc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? '') === 'desc' ? 'selected' : '' }}>Descendente</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">Segundo orden (opcional)</label>
+                                    <select class="form-select" name="content_ordering[1][column]">
+                                        <option value="">-- Sin segundo orden --</option>
+                                        <option value="order" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'order' ? 'selected' : '' }}>Orden manual</option>
+                                        <option value="created_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
+                                        <option value="updated_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
+                                        <option value="title" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Dirección</label>
+                                    <select class="form-select" name="content_ordering[1][direction]">
+                                        <option value="asc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
+                                        <option value="desc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'desc' ? 'selected' : '' }}>Descendente</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="multimedia-options" class="border rounded p-3 mb-3 d-none">
                         <h6 class="mb-3">{{ __('app.Multimedia Settings') }}</h6>
                         <div class="row">
@@ -327,24 +372,39 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const multimediaModuleId = '{{ $multimediaModuleId ?? '' }}';
+    const contentsModuleId = '{{ \App\Models\Module::where("key", "contents")->value("id") ?? "" }}';
     const multimediaOptions = document.getElementById('multimedia-options');
+    const contentOptions = document.getElementById('content-options');
     const moduleSelect = document.getElementById('module_id');
 
-    function toggleMultimediaOptions() {
-        if (!multimediaOptions || !moduleSelect) {
+    function toggleModuleOptions() {
+        if (!moduleSelect) {
             return;
         }
 
         const selectedModule = moduleSelect.value;
-        if (multimediaModuleId && selectedModule === multimediaModuleId.toString()) {
-            multimediaOptions.classList.remove('d-none');
-        } else {
-            multimediaOptions.classList.add('d-none');
+        
+        // Toggle multimedia options
+        if (multimediaOptions) {
+            if (multimediaModuleId && selectedModule === multimediaModuleId.toString()) {
+                multimediaOptions.classList.remove('d-none');
+            } else {
+                multimediaOptions.classList.add('d-none');
+            }
+        }
+        
+        // Toggle content options
+        if (contentOptions) {
+            if (contentsModuleId && selectedModule === contentsModuleId.toString()) {
+                contentOptions.classList.remove('d-none');
+            } else {
+                contentOptions.classList.add('d-none');
+            }
         }
     }
 
-    toggleMultimediaOptions();
-    moduleSelect.addEventListener('change', toggleMultimediaOptions);
+    toggleModuleOptions();
+    moduleSelect.addEventListener('change', toggleModuleOptions);
 });
 </script>
 @endsection

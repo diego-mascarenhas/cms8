@@ -120,9 +120,50 @@ class Category extends Model
      */
     public function contents()
     {
-        return $this->hasMany(\App\Models\Content::class, 'section_category_id')
-            ->orderBy('order')
-            ->orderBy('created_at', 'desc');
+        $query = $this->hasMany(\App\Models\Content::class, 'section_category_id');
+        
+        // Get ordering configuration from category data
+        $ordering = $this->getContentOrdering();
+        
+        // Apply ordering based on configuration
+        foreach ($ordering as $orderBy)
+        {
+            if (isset($orderBy['column']) && isset($orderBy['direction']))
+            {
+                $query->orderBy($orderBy['column'], $orderBy['direction']);
+            }
+        }
+        
+        return $query;
+    }
+    
+    /**
+     * Get content ordering configuration for this category.
+     * Returns array of ordering rules from category data or default.
+     */
+    public function getContentOrdering(): array
+    {
+        // Check if custom ordering is configured in category data
+        if (isset($this->data['content_ordering']) && is_array($this->data['content_ordering']))
+        {
+            return $this->data['content_ordering'];
+        }
+        
+        // Default ordering: order field first, then created_at desc
+        return [
+            ['column' => 'order', 'direction' => 'asc'],
+            ['column' => 'created_at', 'direction' => 'desc'],
+        ];
+    }
+    
+    /**
+     * Set content ordering configuration for this category.
+     */
+    public function setContentOrdering(array $ordering): void
+    {
+        $data = $this->data ?? [];
+        $data['content_ordering'] = $ordering;
+        $this->data = $data;
     }
 
     /**

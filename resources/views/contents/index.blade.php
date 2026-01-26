@@ -85,7 +85,22 @@
 @section('page-script')
 <script>
 $(function() {
-    $('#filter_section, #filter_status, #filter_featured').select2();
+    $('#filter_status, #filter_featured').select2();
+    
+    // Configurar Select2 para el filtro de categoría sin mostrar el nombre del módulo
+    $('#filter_section').select2({
+        templateResult: function(data) {
+            // Solo mostrar el nombre de la categoría, sin el nombre del módulo
+            if (!data.id) {
+                return data.text;
+            }
+            return data.text;
+        },
+        templateSelection: function(data) {
+            // Solo mostrar el nombre de la categoría en la selección
+            return data.text;
+        }
+    });
 
     let table = window.LaravelDataTables['content-table'];
 

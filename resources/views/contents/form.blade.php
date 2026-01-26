@@ -199,7 +199,19 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    $('#section_category_id, #status').select2();
+    $('#section_category_id, #status').select2({
+        templateResult: function(data) {
+            // Solo mostrar el nombre de la categoría, sin el nombre del módulo
+            if (!data.id) {
+                return data.text;
+            }
+            return data.text;
+        },
+        templateSelection: function(data) {
+            // Solo mostrar el nombre de la categoría en la selección
+            return data.text;
+        }
+    });
 
 
     // Initialize Quill editors
