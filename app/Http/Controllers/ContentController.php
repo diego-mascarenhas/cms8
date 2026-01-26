@@ -23,12 +23,7 @@ class ContentController extends Controller
         $categoryId = $request->get('category_id');
 
         $contentsModuleId = Module::where('key', 'contents')->value('id');
-        $sectionCategories = Category::where('team_id', $team->id)
-            ->where('module_id', $contentsModuleId)
-            ->where('status', true)
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
+        $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
         if ($request->ajax())
         {
@@ -46,12 +41,7 @@ class ContentController extends Controller
         $sectionId = $request->get('section_id');
 
         $contentsModuleId = Module::where('key', 'contents')->value('id');
-        $sectionCategories = Category::where('team_id', $team->id)
-            ->where('module_id', $contentsModuleId)
-            ->where('status', true)
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
+        $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
         $selectedSection = $sectionId ? Category::find($sectionId) : null;
         $fieldConfigs = $selectedSection ? $selectedSection->contentFieldConfigs()->active()->ordered()->get() : collect();
@@ -130,12 +120,7 @@ class ContentController extends Controller
         $team = Auth::user()->currentTeam;
 
         $contentsModuleId = Module::where('key', 'contents')->value('id');
-        $sectionCategories = Category::where('team_id', $team->id)
-            ->where('module_id', $contentsModuleId)
-            ->where('status', true)
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
+        $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
         $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
@@ -240,6 +225,55 @@ class ContentController extends Controller
         }
 
         return response()->json(['success' => __('app.Order updated successfully.')], 200);
+    }
+
+    /**
+     * Get filtered section categories for content selectors.
+     * Top level categories only appear if they have less than 2 active subcategories.
+     * If they have 2+ subcategories, show the subcategories directly instead of the top level.
+     */
+    private function getFilteredSectionCategories(int $teamId, int $moduleId): \Illuminate\Support\Collection
+    {
+        // Get all top level categories for this module
+        $topLevelCategories = Category::where('team_id', $teamId)
+            ->where('module_id', $moduleId)
+            ->whereNull('parent_id')
+            ->where('status', true)
+            ->with(['children' => function ($query)
+            {
+                $query->where('status', true)
+                    ->orderBy('order')
+                    ->orderBy('name');
+            }])
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
+
+        $result = collect();
+
+        foreach ($topLevelCategories as $topLevel)
+        {
+            // Children are already filtered by status in eager loading
+            $activeChildren = $topLevel->children;
+
+            if ($activeChildren->count() >= 2)
+            {
+                // Top level has 2+ subcategories → show subcategories directly (not the top level)
+                $result = $result->merge($activeChildren);
+            } else
+            {
+                // Top level has < 2 subcategories → include the top level itself
+                // If it has 1 subcategory, also include that subcategory
+                $result->push($topLevel);
+                if ($activeChildren->count() === 1)
+                {
+                    $result = $result->merge($activeChildren);
+                }
+            }
+        }
+
+        // Sort the final collection by order and then by name
+        return $result->sortBy('order')->sortBy('name')->values();
     }
 
     private function syncMultimedia(Content $content, array $multimediaData): void
