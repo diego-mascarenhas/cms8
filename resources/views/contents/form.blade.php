@@ -20,8 +20,21 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
             <span class="text-muted fw-light">{{ __('app.Contents') }}/</span>
-            {{ isset($content) ? __('app.Edit') : __('app.Create') }}
+            @if(isset($content))
+                {{ $content->getTranslatable('title') ?: __('app.Edit Content') }}
+            @else
+                {{ __('app.Create Content') }}
+            @endif
         </h4>
+        <p class="text-muted">
+            @if(isset($content) && $content->sectionCategory)
+                {{ __('app.Edit content in category') }}: <strong>{{ $content->sectionCategory->name }}</strong>
+            @elseif(isset($selectedSection))
+                {{ __('app.Create new content in category') }}: <strong>{{ $selectedSection->name }}</strong>
+            @else
+                {{ __('app.Manage website contents') }}
+            @endif
+        </p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ route('contents.index') }}" class="btn btn-label-secondary waves-effect waves-light">
@@ -93,19 +106,10 @@
             </div>
 
             <div class="col-md-12">
-                <label for="content1" class="form-label">{{ __('app.Content 1') }}</label>
-                <div id="content1-editor" style="height: 200px;"></div>
-                <input type="hidden" id="content1" name="content1" value="{{ old('content1', isset($content) ? $content->getTranslatable('content1') : '') }}">
-                @error('content1')
-                    <div class="text-danger mt-1">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="col-md-12">
-                <label for="content2" class="form-label">{{ __('app.Content 2') }}</label>
-                <div id="content2-editor" style="height: 200px;"></div>
-                <input type="hidden" id="content2" name="content2" value="{{ old('content2', isset($content) ? $content->getTranslatable('content2') : '') }}">
-                @error('content2')
+                <label for="content" class="form-label">{{ __('app.Content') }}</label>
+                <div id="content-editor" style="height: 200px;"></div>
+                <input type="hidden" id="content" name="content" value="{{ old('content', isset($content) ? $content->getTranslatable('content') : '') }}">
+                @error('content')
                     <div class="text-danger mt-1">{{ $message }}</div>
                 @enderror
             </div>
@@ -214,20 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
-    // Initialize Quill editors
-    const content1Editor = new Quill('#content1-editor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                ['link', 'image'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }]
-            ]
-        }
-    });
-
-    const content2Editor = new Quill('#content2-editor', {
+    // Initialize Quill editor
+    const contentEditor = new Quill('#content-editor', {
         theme: 'snow',
         modules: {
             toolbar: [
@@ -240,20 +232,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Load existing content
-    const content1Value = document.getElementById('content1').value;
-    if (content1Value) {
-        content1Editor.root.innerHTML = content1Value;
+    const contentValue = document.getElementById('content').value;
+    if (contentValue) {
+        contentEditor.root.innerHTML = contentValue;
     }
 
-    const content2Value = document.getElementById('content2').value;
-    if (content2Value) {
-        content2Editor.root.innerHTML = content2Value;
-    }
-
-    // Update hidden inputs on form submit
+    // Update hidden input on form submit
     document.querySelector('form').addEventListener('submit', function() {
-        document.getElementById('content1').value = content1Editor.root.innerHTML;
-        document.getElementById('content2').value = content2Editor.root.innerHTML;
+        document.getElementById('content').value = contentEditor.root.innerHTML;
     });
 });
 </script>

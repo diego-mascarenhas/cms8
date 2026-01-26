@@ -58,7 +58,7 @@ class ContentController extends Controller
 
         // Prepare translatable fields
         $locale = app()->getLocale();
-        $translatableFields = ['title', 'subtitle', 'url', 'content1', 'content2', 'content3', 'content4', 'content5', 'seo_title', 'seo_keywords', 'seo_description'];
+        $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
 
         foreach ($translatableFields as $field)
         {
@@ -136,7 +136,7 @@ class ContentController extends Controller
 
         // Prepare translatable fields
         $locale = app()->getLocale();
-        $translatableFields = ['title', 'subtitle', 'url', 'content1', 'content2', 'content3', 'content4', 'content5', 'seo_title', 'seo_keywords', 'seo_description'];
+        $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
 
         foreach ($translatableFields as $field)
         {
