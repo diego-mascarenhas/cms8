@@ -892,6 +892,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api', [HelpController::class, 'api'])->name('api');
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');
     Route::get('/api/contacts', [HelpController::class, 'apiContacts'])->name('api.contacts');
+    Route::get('/api/contents', [HelpController::class, 'apiContents'])->name('api.contents');
 });
 
 // Fallback route for 404 errors - must be at the end

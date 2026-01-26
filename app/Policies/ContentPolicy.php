@@ -12,7 +12,7 @@ class ContentPolicy
 
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin'))
+        if ($user->hasRole(['admin', 'root']))
         {
             return true;
         }
@@ -29,7 +29,13 @@ class ContentPolicy
     {
         if ($user->hasRole(['collaborator', 'developer', 'editor', 'technical']))
         {
-            return $content->team_id === $user->currentTeam->id;
+            $currentTeam = $user->currentTeam;
+            if (! $currentTeam)
+            {
+                return false;
+            }
+
+            return $content->team_id === $currentTeam->id;
         }
 
         return false;
@@ -44,7 +50,13 @@ class ContentPolicy
     {
         if ($user->hasRole(['collaborator', 'developer', 'editor', 'technical']))
         {
-            return $content->team_id === $user->currentTeam->id;
+            $currentTeam = $user->currentTeam;
+            if (! $currentTeam)
+            {
+                return false;
+            }
+
+            return $content->team_id === $currentTeam->id;
         }
 
         return false;
@@ -54,7 +66,13 @@ class ContentPolicy
     {
         if ($user->hasRole(['developer', 'editor', 'technical']))
         {
-            return $content->team_id === $user->currentTeam->id;
+            $currentTeam = $user->currentTeam;
+            if (! $currentTeam)
+            {
+                return false;
+            }
+
+            return $content->team_id === $currentTeam->id;
         }
 
         return false;

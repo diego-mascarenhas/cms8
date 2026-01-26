@@ -146,7 +146,11 @@ class ContentController extends Controller
         $contentsModuleId = Module::where('key', 'contents')->value('id');
         $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
-        $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
+        $fieldConfigs = collect();
+        if ($content->sectionCategory)
+        {
+            $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
+        }
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
 
         // Get available locales for multi-language support

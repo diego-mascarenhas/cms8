@@ -59,7 +59,7 @@ class Content extends Model
     {
         static::addGlobalScope('team', function (Builder $builder)
         {
-            if (auth()->check())
+            if (auth()->check() && auth()->user()->currentTeam)
             {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
@@ -185,5 +185,16 @@ class Content extends Model
         $data = $this->data ?? [];
         $data[$key] = $value;
         $this->data = $data;
+    }
+
+    /**
+     * Retrieve the model for route model binding.
+     * This ensures the global scope is applied correctly.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?: $this->getRouteKeyName();
+
+        return $this->where($field, $value)->first();
     }
 }
