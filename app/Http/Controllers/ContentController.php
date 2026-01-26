@@ -253,27 +253,42 @@ class ContentController extends Controller
 
         foreach ($topLevelCategories as $topLevel)
         {
-            // Children are already filtered by status in eager loading
+            // Children are already filtered by status and ordered in eager loading
             $activeChildren = $topLevel->children;
 
             if ($activeChildren->count() >= 2)
             {
                 // Top level has 2+ subcategories → show subcategories directly (not the top level)
+                // Add parent order as a temporary attribute to maintain parent ordering
+                foreach ($activeChildren as $child)
+                {
+                    $child->parent_order = $topLevel->order;
+                }
                 $result = $result->merge($activeChildren);
             } else
             {
                 // Top level has < 2 subcategories → include the top level itself
-                // If it has 1 subcategory, also include that subcategory
+                // Set parent_order to its own order for consistent sorting
+                $topLevel->parent_order = $topLevel->order;
                 $result->push($topLevel);
                 if ($activeChildren->count() === 1)
                 {
+                    $activeChildren->first()->parent_order = $topLevel->order;
                     $result = $result->merge($activeChildren);
                 }
             }
         }
 
-        // Sort the final collection by order and then by name
-        return $result->sortBy('order')->sortBy('name')->values();
+        // Sort the final collection: first by parent order, then by category order, then by name
+        // This maintains the relative order within each parent group
+        return $result->sortBy(function ($item)
+        {
+            return [
+                $item->parent_order ?? $item->order ?? 999,
+                $item->order ?? 999,
+                $item->name ?? '',
+            ];
+        })->values();
     }
 
     private function syncMultimedia(Content $content, array $multimediaData): void
