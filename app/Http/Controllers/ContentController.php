@@ -56,6 +56,11 @@ class ContentController extends Controller
         $team = Auth::user()->currentTeam;
         $data = $request->validated();
 
+        // Handle boolean checkboxes - set to false if not present
+        $data['featured'] = $request->has('featured') && $request->input('featured') == '1';
+        $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
+        $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
+
         // Prepare translatable fields
         $locale = app()->getLocale();
         $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
@@ -133,6 +138,11 @@ class ContentController extends Controller
         $this->authorize('update', $content);
 
         $data = $request->validated();
+
+        // Handle boolean checkboxes - set to false if not present
+        $data['featured'] = $request->has('featured') && $request->input('featured') == '1';
+        $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
+        $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
         // Prepare translatable fields
         $locale = app()->getLocale();
