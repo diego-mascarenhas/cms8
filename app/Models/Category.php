@@ -116,6 +116,82 @@ class Category extends Model
     }
 
     /**
+     * Get contents associated with this category as section.
+     */
+    public function contents()
+    {
+        return $this->hasMany(\App\Models\Content::class, 'section_category_id')
+            ->orderBy('order')
+            ->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Get active contents associated with this category as section.
+     */
+    public function activeContents()
+    {
+        return $this->contents()->where('status', 3);
+    }
+
+    /**
+     * Get content field configs associated with this category as section.
+     */
+    public function contentFieldConfigs()
+    {
+        return $this->hasMany(\App\Models\ContentFieldConfig::class, 'section_category_id')
+            ->where('is_active', true)
+            ->orderBy('order');
+    }
+
+    /**
+     * Get slug from data JSON.
+     */
+    public function getSlugAttribute(): ?string
+    {
+        return $this->data['slug'] ?? null;
+    }
+
+    /**
+     * Set slug in data JSON.
+     */
+    public function setSlugAttribute(?string $value): void
+    {
+        $data = $this->data ?? [];
+        if ($value === null)
+        {
+            unset($data['slug']);
+        } else
+        {
+            $data['slug'] = $value;
+        }
+        $this->attributes['data'] = json_encode($data);
+    }
+
+    /**
+     * Get template from data JSON.
+     */
+    public function getTemplateAttribute(): ?string
+    {
+        return $this->data['template'] ?? null;
+    }
+
+    /**
+     * Set template in data JSON.
+     */
+    public function setTemplateAttribute(?string $value): void
+    {
+        $data = $this->data ?? [];
+        if ($value === null)
+        {
+            unset($data['template']);
+        } else
+        {
+            $data['template'] = $value;
+        }
+        $this->attributes['data'] = json_encode($data);
+    }
+
+    /**
      * Get formatted status.
      */
     public function getStatusLabelAttribute()

@@ -12,6 +12,8 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ContentController;
+use App\Http\Controllers\ContentFieldConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -461,6 +463,25 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/multimedia/gallery/{tag}', [MultimediaController::class, 'gallery'])->name('multimedia.gallery');
     Route::post('/multimedia/gallery/order', [MultimediaController::class, 'updateGalleryOrder'])->name('multimedia.gallery.order');
     Route::get('/tags/search', [MultimediaController::class, 'searchTags'])->name('tags.search');
+
+    // Contents Routes
+    Route::get('/contents', [ContentController::class, 'index'])->name('contents.index');
+    Route::get('/contents/create', [ContentController::class, 'create'])->name('contents.create');
+    Route::post('/contents', [ContentController::class, 'store'])->name('contents.store');
+    Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
+    Route::get('/contents/{content}/edit', [ContentController::class, 'edit'])->name('contents.edit');
+    Route::put('/contents/{content}', [ContentController::class, 'update'])->name('contents.update');
+    Route::delete('/contents/{content}', [ContentController::class, 'destroy'])->name('contents.destroy');
+    Route::post('/contents/order', [ContentController::class, 'updateOrder'])->name('contents.order');
+
+    // Content Field Configs Routes
+    Route::get('/content-field-configs', [ContentFieldConfigController::class, 'index'])->name('content-field-configs.index');
+    Route::get('/content-field-configs/create', [ContentFieldConfigController::class, 'create'])->name('content-field-configs.create');
+    Route::post('/content-field-configs', [ContentFieldConfigController::class, 'store'])->name('content-field-configs.store');
+    Route::get('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'show'])->name('content-field-configs.show');
+    Route::get('/content-field-configs/{content_field_config}/edit', [ContentFieldConfigController::class, 'edit'])->name('content-field-configs.edit');
+    Route::put('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'update'])->name('content-field-configs.update');
+    Route::delete('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'destroy'])->name('content-field-configs.destroy');
 
     // Public routes for client responses (no auth required)
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])

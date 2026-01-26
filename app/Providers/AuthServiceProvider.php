@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Certification;
 use App\Models\Contact;
+use App\Models\Content;
 use App\Models\Enterprise;
 use App\Models\Fare;
 use App\Models\Invoice;
@@ -16,6 +17,7 @@ use App\Models\Stylebook;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
+use App\Policies\ContentPolicy;
 use App\Policies\FarePolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
@@ -41,6 +43,7 @@ class AuthServiceProvider extends ServiceProvider
         Multimedia::class => MultimediaPolicy::class,
         Software::class => SoftwarePolicy::class,
         Stylebook::class => StyleBookPolicy::class,
+        Content::class => ContentPolicy::class,
     ];
 
     public function boot()
