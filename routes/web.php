@@ -896,6 +896,10 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');
     Route::get('/api/contacts', [HelpController::class, 'apiContacts'])->name('api.contacts');
     Route::get('/api/contents', [HelpController::class, 'apiContents'])->name('api.contents');
+    Route::get('/api/enterprises', [HelpController::class, 'apiEnterprises'])->name('api.enterprises');
+    Route::get('/api/payments', [HelpController::class, 'apiPayments'])->name('api.payments');
+    Route::get('/api/products', [HelpController::class, 'apiProducts'])->name('api.products');
+    Route::get('/api/orders', [HelpController::class, 'apiOrders'])->name('api.orders');
 });
 
 // Fallback route for 404 errors - must be at the end

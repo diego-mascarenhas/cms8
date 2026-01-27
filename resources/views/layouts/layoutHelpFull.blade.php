@@ -83,7 +83,42 @@ $isFront = false;
         <li class="menu-item {{ request()->routeIs('help.api.contacts') ? 'active' : '' }}">
           <a href="{{ route('help.api.contacts') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-users"></i>
-            <div>{{ __('Contacts API') }}</div>
+            <div>{{ __('Contacts') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.contents') ? 'active' : '' }}">
+          <a href="{{ route('help.api.contents') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-file-text"></i>
+            <div>{{ __('Contents') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.enterprises') ? 'active' : '' }}">
+          <a href="{{ route('help.api.enterprises') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-building"></i>
+            <div>{{ __('Enterprises') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.payments') ? 'active' : '' }}">
+          <a href="{{ route('help.api.payments') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-credit-card"></i>
+            <div>{{ __('Payments') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.products') ? 'active' : '' }}">
+          <a href="{{ route('help.api.products') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-package"></i>
+            <div>{{ __('Products') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.orders') ? 'active' : '' }}">
+          <a href="{{ route('help.api.orders') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-shopping-bag"></i>
+            <div>{{ __('Orders') }}</div>
           </a>
         </li>
       </ul>
