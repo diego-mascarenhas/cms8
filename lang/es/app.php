@@ -11,6 +11,7 @@ return [
     'services' => 'Servicios',
     'contacts' => 'Contactos',
     'clients' => 'Clientes',
+    'enterprises' => 'Empresas',
     'list60' => 'Lista de 60',
 
     // Messages

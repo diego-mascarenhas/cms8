@@ -321,6 +321,9 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
+    // Enterprises
+    Route::get('/enterprise/list', [\App\Http\Controllers\EnterpriseController::class, 'index'])->name('enterprise.index');
+
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
     Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
