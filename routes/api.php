@@ -506,29 +506,38 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::resource('enterprises', TeamEnterpriseController::class);
 
     // Team payments
-    Route::resource('payments', TeamPaymentController::class);
+    Route::resource('payments', TeamPaymentController::class)->names([
+        'index' => 'api.team.payments.index',
+        'show' => 'api.team.payments.show',
+    ]);
 
     // Team products
-    Route::resource('products', TeamProductController::class);
+    Route::resource('products', TeamProductController::class)->names([
+        'index' => 'api.team.products.index',
+        'show' => 'api.team.products.show',
+    ]);
 
     // Team orders
-    Route::resource('orders', TeamOrderController::class);
+    Route::resource('orders', TeamOrderController::class)->names([
+        'index' => 'api.team.orders.index',
+        'show' => 'api.team.orders.show',
+    ]);
 });
 
 // Additional routes with team.token middleware but without /team prefix
 Route::middleware('team.token')->group(function ()
 {
     // Payments - available at /api/payments (using team token)
-    Route::get('payments', [TeamPaymentController::class, 'index']);
-    Route::get('payments/{id}', [TeamPaymentController::class, 'show']);
+    Route::get('payments', [TeamPaymentController::class, 'index'])->name('api.payments.index');
+    Route::get('payments/{id}', [TeamPaymentController::class, 'show'])->name('api.payments.show');
 
     // Products - available at /api/products (using team token)
-    Route::get('products', [TeamProductController::class, 'index']);
-    Route::get('products/{id}', [TeamProductController::class, 'show']);
+    Route::get('products', [TeamProductController::class, 'index'])->name('api.products.index');
+    Route::get('products/{id}', [TeamProductController::class, 'show'])->name('api.products.show');
 
     // Orders - available at /api/orders (using team token)
-    Route::get('orders', [TeamOrderController::class, 'index']);
-    Route::get('orders/{id}', [TeamOrderController::class, 'show']);
+    Route::get('orders', [TeamOrderController::class, 'index'])->name('api.orders.index');
+    Route::get('orders/{id}', [TeamOrderController::class, 'show'])->name('api.orders.show');
 });
 
 Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);
