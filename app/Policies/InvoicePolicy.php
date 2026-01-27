@@ -26,8 +26,12 @@ class InvoicePolicy
 	 */
 	public function viewAny(User $user): bool
 	{
-		// Only admin can manage invoices
-		return $user->hasRole('admin');
+		if ($user->hasRole(['admin', 'collaborator', 'client']))
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -35,8 +39,40 @@ class InvoicePolicy
 	 */
 	public function view(User $user, Invoice $invoice): bool
 	{
-		// Only admin can view invoices
-		return $user->hasRole('admin');
+		// Admin can see all invoices in their team
+		if ($user->hasRole('admin'))
+		{
+			return $invoice->team_id === $user->currentTeam->id;
+		}
+
+		// Collaborator can see invoices of enterprises they are responsible for
+		if ($user->hasRole('collaborator'))
+		{
+			if (!$invoice->enterprise)
+			{
+				return false;
+			}
+
+			return $invoice->enterprise->responsible_id === $user->id && $invoice->team_id === $user->currentTeam->id;
+		}
+
+		// Client can see invoices of their enterprises
+		if ($user->hasRole('client'))
+		{
+			// Get user's contact
+			$contact = $user->contact;
+			if (!$contact)
+			{
+				return false;
+			}
+
+			// Check if invoice belongs to any of the contact's enterprises
+			$enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
+
+			return in_array($invoice->enterprise_id, $enterpriseIds) && $invoice->team_id === $user->currentTeam->id;
+		}
+
+		return false;
 	}
 
 	/**
@@ -86,11 +122,37 @@ class InvoicePolicy
 	public static function getQueryFilter(User $user): \Closure
 	{
 		return function (Builder $query) use ($user) {
-			if ($user->hasRole('admin')) {
-				// Admin can see all invoices in their team
-				return $query->whereHas('enterprise', function ($q) use ($user) {
-					$q->where('team_id', $user->current_team_id);
-				});
+			// Admin can see all invoices in their team
+			if ($user->hasRole('admin'))
+			{
+				return $query->where('team_id', $user->currentTeam->id);
+			}
+
+			// Collaborator can see invoices of enterprises they are responsible for
+			if ($user->hasRole('collaborator'))
+			{
+				return $query->where('team_id', $user->currentTeam->id)
+					->whereHas('enterprise', function ($q) use ($user)
+					{
+						$q->where('responsible_id', $user->id);
+					});
+			}
+
+			// Client can see invoices of their enterprises
+			if ($user->hasRole('client'))
+			{
+				// Get user's contact
+				$contact = $user->contact;
+				if (!$contact)
+				{
+					return $query->whereRaw('1 = 0'); // Return no results
+				}
+
+				// Check if invoice belongs to any of the contact's enterprises
+				$enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
+
+				return $query->where('team_id', $user->currentTeam->id)
+					->whereIn('enterprise_id', $enterpriseIds);
 			}
 
 			// Other roles have no access

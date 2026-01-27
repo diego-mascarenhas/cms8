@@ -18,6 +18,10 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamContentController;
 use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\TeamEnterpriseController;
+use App\Http\Controllers\Api\TeamOrderController;
+use App\Http\Controllers\Api\TeamPaymentController;
+use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
@@ -393,6 +397,12 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::get('contacts', [ContactController::class, 'index']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
+    // Enterprises - for user-based authentication (Sanctum tokens)
+    Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
+    Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
+
+    // Payments, Products, Orders - moved to team.token middleware (see below)
+
     // Projects - for user-based authentication (Sanctum tokens)
     Route::get('projects', [ProjectController::class, 'index']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
@@ -491,6 +501,43 @@ Route::middleware('team.token')->prefix('team')->group(function ()
         'update' => 'api.team.contents.update',
         'destroy' => 'api.team.contents.destroy',
     ]);
+
+    // Team enterprises
+    Route::resource('enterprises', TeamEnterpriseController::class);
+
+    // Team payments
+    Route::resource('payments', TeamPaymentController::class)->names([
+        'index' => 'api.team.payments.index',
+        'show' => 'api.team.payments.show',
+    ]);
+
+    // Team products
+    Route::resource('products', TeamProductController::class)->names([
+        'index' => 'api.team.products.index',
+        'show' => 'api.team.products.show',
+    ]);
+
+    // Team orders
+    Route::resource('orders', TeamOrderController::class)->names([
+        'index' => 'api.team.orders.index',
+        'show' => 'api.team.orders.show',
+    ]);
+});
+
+// Additional routes with team.token middleware but without /team prefix
+Route::middleware('team.token')->group(function ()
+{
+    // Payments - available at /api/payments (using team token)
+    Route::get('payments', [TeamPaymentController::class, 'index'])->name('api.payments.index');
+    Route::get('payments/{id}', [TeamPaymentController::class, 'show'])->name('api.payments.show');
+
+    // Products - available at /api/products (using team token)
+    Route::get('products', [TeamProductController::class, 'index'])->name('api.products.index');
+    Route::get('products/{id}', [TeamProductController::class, 'show'])->name('api.products.show');
+
+    // Orders - available at /api/orders (using team token)
+    Route::get('orders', [TeamOrderController::class, 'index'])->name('api.orders.index');
+    Route::get('orders/{id}', [TeamOrderController::class, 'show'])->name('api.orders.show');
 });
 
 Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);

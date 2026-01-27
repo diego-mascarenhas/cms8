@@ -22,7 +22,7 @@ class PaymentDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'payments.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'transaction_indicator'])
+            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'transaction_indicator'])
             ->addColumn('transaction_indicator', function ($data)
             {
                 return $data->transaction_type?->badge() ?? '';

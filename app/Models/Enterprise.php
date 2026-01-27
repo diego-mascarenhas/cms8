@@ -114,6 +114,11 @@ class Enterprise extends Model
         return $this->hasMany(Invoice::class, 'enterprise_id');
     }
 
+    public function contacts()
+    {
+        return $this->belongsToMany(Contact::class, 'contact_enterprise');
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)

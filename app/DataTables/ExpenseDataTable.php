@@ -21,7 +21,7 @@ class ExpenseDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'expense.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount'])
+            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount'])
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d/m/Y');

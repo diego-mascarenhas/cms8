@@ -526,14 +526,32 @@ class ImportDataCommand extends Command
             $bar = $this->output->createProgressBar(count($contacts));
             $bar->start();
 
-            // Obtener el ID de la categoría 'Importado de CMS+' para el módulo de contactos y el equipo
+            // Obtener o crear la categoría 'Legacy' para el módulo de contactos y el equipo
             $contactsModuleId = DB::table('modules')->where('key', 'contacts')->value('id');
-            $importedCategory = DB::table('categories')
-                ->where('name', 'CMS+')
+            $teamId = env('CMS_TEAM_ID', 2);
+            
+            // Buscar la categoría principal "Contactos" para usar como parent
+            $mainContactCategory = DB::table('categories')
+                ->where('name', 'Contactos')
                 ->where('module_id', $contactsModuleId)
-                ->where('team_id', env('CMS_TEAM_ID', 2))
+                ->where('team_id', $teamId)
+                ->whereNull('parent_id')
                 ->first();
-            $importedCategoryId = $importedCategory ? $importedCategory->id : null;
+            
+            // Crear o obtener la categoría 'Legacy'
+            $legacyCategory = Category::updateOrCreate(
+                [
+                    'name' => 'Legacy',
+                    'module_id' => $contactsModuleId,
+                    'team_id' => $teamId,
+                ],
+                [
+                    'description' => 'Contactos importados del sistema legacy',
+                    'parent_id' => $mainContactCategory?->id,
+                    'status' => 1,
+                ]
+            );
+            $importedCategoryId = $legacyCategory->id;
 
             foreach ($contacts as $data)
             {
@@ -1603,6 +1621,8 @@ class ImportDataCommand extends Command
         $stats = [
             'imported' => 0,
             'updated' => 0,
+            'skipped' => 0,
+            'skipped_no_invoice' => 0,
             'message' => null,
         ];
 
@@ -1631,6 +1651,7 @@ class ImportDataCommand extends Command
             $bar->start();
 
             $skipped = 0;
+            $skippedNoInvoice = 0;
             foreach ($invoiceItems as $data)
             {
                 try
@@ -1639,6 +1660,13 @@ class ImportDataCommand extends Command
                     $invoiceExists = DB::table('invoices')->where('id', $data->id_factura)->exists();
                     if (! $invoiceExists)
                     {
+                        $skippedNoInvoice++;
+                        $stats['skipped_no_invoice']++;
+                        if ($skippedNoInvoice <= 10)
+                        {
+                            $this->newLine();
+                            $this->warn("     Skipped invoice item {$data->id}: Invoice {$data->id_factura} does not exist");
+                        }
                         $bar->advance();
 
                         continue;
@@ -1702,6 +1730,14 @@ class ImportDataCommand extends Command
             {
                 $this->warn("   ⚠️  Skipped {$skipped} invoice items due to errors");
             }
+
+            if ($skippedNoInvoice > 0)
+            {
+                $this->warn("   ⚠️  Skipped {$skippedNoInvoice} invoice items because their invoices don't exist");
+                $this->info("   💡 Tip: Make sure invoices are imported before importing invoice items");
+            }
+
+            $stats['skipped'] = $skipped;
         } catch (\Exception $e)
         {
             $this->newLine();

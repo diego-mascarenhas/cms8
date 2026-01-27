@@ -112,6 +112,46 @@ class HelpController extends Controller
     }
 
     /**
+     * Display enterprises API documentation
+     */
+    public function apiEnterprises()
+    {
+        return view('help.api-enterprises', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display payments API documentation
+     */
+    public function apiPayments()
+    {
+        return view('help.api-payments', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display products API documentation
+     */
+    public function apiProducts()
+    {
+        return view('help.api-products', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display orders API documentation
+     */
+    public function apiOrders()
+    {
+        return view('help.api-orders', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display general usage documentation
      */
     public function usage()

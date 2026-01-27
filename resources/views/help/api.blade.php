@@ -131,6 +131,26 @@
                                             <td><code>/api/team/contents</code></td>
                                             <td>{{ __('Website content management with multi-language support (team token auth)') }}</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Enterprises') }}</strong></td>
+                                            <td><code>/api/enterprises</code></td>
+                                            <td>{{ __('Enterprise and client management (user auth)') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Payments') }}</strong></td>
+                                            <td><code>/api/payments</code></td>
+                                            <td>{{ __('Payment and transaction management (user auth)') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Products') }}</strong></td>
+                                            <td><code>/api/products</code></td>
+                                            <td>{{ __('Product catalog management (user auth)') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Orders') }}</strong></td>
+                                            <td><code>/api/orders</code></td>
+                                            <td>{{ __('Order management and tracking (user auth)') }}</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -168,6 +188,10 @@
                                 <a href="{{ route('help.api.contents') }}" class="btn btn-info">
                                     <i class="ti ti-file-text me-2"></i>
                                     {{ __('Contents API Guide') }}
+                                </a>
+                                <a href="{{ route('help.api.enterprises') }}" class="btn btn-secondary">
+                                    <i class="ti ti-building me-2"></i>
+                                    {{ __('Enterprises API Guide') }}
                                 </a>
                             </div>
                         </div>
