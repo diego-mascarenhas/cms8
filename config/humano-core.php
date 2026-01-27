@@ -79,4 +79,5 @@ return [
         'sidebar_collapsed' => false,
         'show_breadcrumbs' => true,
     ],
+
 ];

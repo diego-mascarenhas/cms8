@@ -1451,7 +1451,8 @@
 			const currencySymbols = {
 				'EUR': '€',
 				'USD': '$',
-				'GBP': '£'
+				'GBP': '£',
+				'ARS': '$'
 			};
 
 			// Store rates data for each language combination

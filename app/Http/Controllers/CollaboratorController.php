@@ -37,18 +37,29 @@ class CollaboratorController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $hasLanguageVariantsModule = auth()->user()->currentTeam->hasModule('language-variants');
+
+        $validationRules = [
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
             'birthday' => 'nullable|date',
-            'language' => 'required|string|exists:languages,code',
             'profile' => 'nullable|string',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
             'fare_ids' => 'nullable|array',
-        ]);
+        ];
+
+        if ($hasLanguageVariantsModule)
+        {
+            $validationRules['language'] = 'required|string|exists:languages,code';
+        } else
+        {
+            $validationRules['language'] = 'nullable|string|exists:languages,code';
+        }
+
+        $validated = $request->validate($validationRules);
 
         // Add creator_id and team_id automatically
         $validated['creator_id'] = auth()->user()->id;
@@ -70,7 +81,7 @@ class CollaboratorController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'birthday' => $validated['birthday'] ?? null,
-            'language' => $validated['language'],
+            'language' => $validated['language'] ?? null,
             'profile' => $validated['profile'] ?? null,
             'creator_id' => $validated['creator_id'],
             'team_id' => $validated['team_id'],
@@ -212,18 +223,29 @@ class CollaboratorController extends Controller
         // Use the Contact Policy for authorization
         $this->authorize('update', $collaborator);
 
-        $validated = $request->validate([
+        $hasLanguageVariantsModule = auth()->user()->currentTeam->hasModule('language-variants');
+
+        $validationRules = [
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
             'birthday' => 'nullable|date',
-            'language' => 'required|string|exists:languages,code',
             'profile' => 'nullable|string',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
             'fare_ids' => 'nullable|array',
-        ]);
+        ];
+
+        if ($hasLanguageVariantsModule)
+        {
+            $validationRules['language'] = 'required|string|exists:languages,code';
+        } else
+        {
+            $validationRules['language'] = 'nullable|string|exists:languages,code';
+        }
+
+        $validated = $request->validate($validationRules);
 
         // Prepare extras data
         $currentData = $collaborator->data ?? (object) [];
@@ -258,7 +280,7 @@ class CollaboratorController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'birthday' => $validated['birthday'] ?? null,
-            'language' => $validated['language'],
+            'language' => $validated['language'] ?? null,
             'profile' => $validated['profile'] ?? null,
             'data' => $currentData,
         ]);
@@ -916,18 +938,26 @@ class CollaboratorController extends Controller
             'valoration',
         ])->findOrFail($id);
 
+        // Use the Contact Policy for authorization
+        $this->authorize('view', $collaborator);
+
         // Get activities for this collaborator
-        $activities = Activity::where('subject_type', Contact::class)
-            ->where('subject_id', $id)
-            ->orWhere(function ($query) use ($collaborator)
+        $activities = Activity::where(function ($query) use ($id, $collaborator)
+        {
+            // Activities on the contact
+            $query->where('subject_type', Contact::class)
+                ->where('subject_id', $id);
+
+            // Also get activities from the linked user if exists
+            if ($collaborator->user_id)
             {
-                // Also get activities from the linked user if exists
-                if ($collaborator->user_id)
+                $query->orWhere(function ($subQuery) use ($collaborator)
                 {
-                    $query->where('subject_type', \App\Models\User::class)
+                    $subQuery->where('subject_type', \App\Models\User::class)
                         ->where('subject_id', $collaborator->user_id);
-                }
-            })
+                });
+            }
+        })
             ->with(['causer', 'subject'])
             ->orderBy('created_at', 'desc')
             ->limit(50)
@@ -958,15 +988,13 @@ class CollaboratorController extends Controller
      */
     public function media($id)
     {
-        if (! auth()->user()->can('collaborator.show'))
-        {
-            abort(403, 'No tienes permisos para ver esta página.');
-        }
-
         $collaborator = Contact::with([
             'user.roles',
             'valoration',
         ])->findOrFail($id);
+
+        // Use the Contact Policy for authorization
+        $this->authorize('view', $collaborator);
 
         return view('collaborator.media', compact('collaborator'));
     }

@@ -165,17 +165,11 @@ class ModuleSeeder extends Seeder
             'description' => 'Notes management module',
             'order' => 7,
         ],
-        'collaborators' => [
-            'name' => 'Collaborators',
-            'icon' => 'users-group',
-            'description' => 'Collaborators management module',
-            'order' => 8,
-        ],
         'communications' => [
             'name' => 'Communications',
             'icon' => 'message-circle',
             'description' => 'Communications management module',
-            'order' => 9,
+            'order' => 8,
         ],
         // CAMPAIGNS GROUP
         'mailer' => [
@@ -208,19 +202,12 @@ class ModuleSeeder extends Seeder
             'group' => 'content',
             'order' => 1,
         ],
-        'content-sections' => [
-            'name' => 'Content Sections',
-            'icon' => 'layout-grid',
-            'description' => 'Content sections management module',
-            'group' => 'content',
-            'order' => 2,
-        ],
         'contents' => [
             'name' => 'Contents',
             'icon' => 'file-text',
             'description' => 'Website contents management module',
             'group' => 'content',
-            'order' => 3,
+            'order' => 2,
         ],
         'academy' => [
             'name' => 'Academy',
@@ -301,6 +288,12 @@ class ModuleSeeder extends Seeder
             'icon' => 'users-group',
             'description' => 'Department management module',
             'order' => 7,
+        ],
+        'collaborators' => [
+            'name' => 'Collaborators',
+            'icon' => 'users-group',
+            'description' => 'Collaborators management module',
+            'order' => 8,
         ],
         // LEARNING & DEVELOPMENT
         'languages' => [
