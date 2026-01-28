@@ -274,7 +274,7 @@ class AstralChartService
     {
         // Prepare payload
         $payload = [
-            'model' => config('anthropic.model', 'claude-3-5-sonnet-20241022'),
+            'model' => config('anthropic.model', 'claude-sonnet-4-5-20250929'),
             'max_tokens' => config('anthropic.max_tokens', 2000),
             'temperature' => config('anthropic.temperature', 0.7),
             'messages' => [

@@ -630,6 +630,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
     Route::get('/prompt/{prompt}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
     Route::get('/prompt/{prompt}', [PromptController::class, 'show'])->name('prompt.show');
+    Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
 

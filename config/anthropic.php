@@ -14,7 +14,15 @@ return [
 
     'api_key' => env('ANTHROPIC_API_KEY'),
 
-    'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+    'model' => (function () {
+        $m = env('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929');
+        // Map old/invalid model names to valid ones
+        $modelMap = [
+            'claude-3-5-sonnet-20241022' => 'claude-sonnet-4-5-20250929',
+            'claude-3-5-sonnet-latest' => 'claude-sonnet-4-5-20250929',
+        ];
+        return $modelMap[$m] ?? $m;
+    })(),
 
     'api_url' => env('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1'),
 

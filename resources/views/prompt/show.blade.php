@@ -56,4 +56,73 @@
         @endif
     </div>
 </div>
+
+<div class="card mb-4">
+    <h5 class="card-header">{{ __('Probar prompt') }}</h5>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label" for="testInput">{{ __('Escribe aquí tu propuesta o texto a mejorar') }}</label>
+            <textarea id="testInput" class="form-control" name="test_message" rows="15" placeholder="{{ __('Escribe aquí tu propuesta...') }}"></textarea>
+        </div>
+        <button type="button" id="btnGenerateSuggestion" class="btn btn-primary">
+            <i class="ti ti-sparkles me-1"></i>{{ __('Generar sugerencia con IA') }}
+        </button>
+        <div id="promptPreviewResponse" class="mt-4" style="display: none;">
+            <label class="form-label text-muted">{{ __('Respuesta de la IA') }}</label>
+            <div id="promptPreviewLoader" class="text-muted small mb-2" style="display: none;"><span class="spinner-border spinner-border-sm me-1" role="status"></span>{{ __('Procesando...') }}</div>
+            <div id="promptPreviewContent" class="border rounded p-3 bg-light"><pre class="mb-0 small text-dark" style="white-space: pre-wrap;"></pre></div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('btnGenerateSuggestion');
+    var testInput = document.getElementById('testInput');
+    var responseContainer = document.getElementById('promptPreviewResponse');
+    var loader = document.getElementById('promptPreviewLoader');
+    var content = document.getElementById('promptPreviewContent');
+
+    if (btn && testInput) {
+        btn.addEventListener('click', function() {
+            var message = testInput.value.trim();
+            if (!message) {
+                alert('{{ __("Escribe algo en el cuadro de texto para probar el prompt.") }}');
+                return;
+            }
+            responseContainer.style.display = 'block';
+            loader.style.display = 'block';
+            content.querySelector('pre').textContent = '';
+            btn.disabled = true;
+
+            fetch('{{ route("prompt.preview", $prompt) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ test_message: message })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                loader.style.display = 'none';
+                btn.disabled = false;
+                if (data.success) {
+                    content.querySelector('pre').textContent = data.response || '';
+                } else {
+                    content.querySelector('pre').textContent = '{{ __("Error") }}: ' + (data.message || '{{ __("No se pudo obtener la respuesta.") }}');
+                }
+            })
+            .catch(function(err) {
+                loader.style.display = 'none';
+                btn.disabled = false;
+                content.querySelector('pre').textContent = '{{ __("Error") }}: ' + (err.message || '{{ __("Error de conexión.") }}');
+            });
+        });
+    }
+});
+</script>
+@endpush
