@@ -186,7 +186,10 @@ class TokenUsageLog extends Model
                 return [
                     'module_name' => $logs->first()->module->name ?? 'Unknown',
                     'count' => $logs->count(),
-                    'tokens_used' => $logs->sum('toon_tokens'),
+                    'tokens_used' => $logs->sum(function ($log)
+                    {
+                        return $log->used_toon ? $log->toon_tokens : $log->json_tokens;
+                    }),
                     'tokens_saved' => $logs->where('used_toon', true)->sum(function ($log)
                     {
                         return $log->json_tokens - $log->toon_tokens;

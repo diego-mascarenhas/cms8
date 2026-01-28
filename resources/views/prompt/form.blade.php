@@ -21,6 +21,11 @@
     </div>
     @if(isset($prompt))
     <div class="d-flex align-content-center flex-wrap gap-3">
+        @can('view', $prompt)
+        <a href="{{ route('prompt.show', $prompt) }}" class="btn btn-primary waves-effect waves-light">
+            <i class="ti ti-sparkles me-1"></i>{{ __('Probar') }}
+        </a>
+        @endcan
         @can('delete', $prompt)
         <form action="{{ route('prompt.destroy', $prompt) }}" method="POST" class="d-inline btn-delete-form">
             @csrf
