@@ -51,6 +51,13 @@ class PromptController extends Controller
         return redirect()->route('prompt-list')->with('success', __('Prompt creado correctamente.'));
     }
 
+    public function show(Prompt $prompt)
+    {
+        $prompt->load('module');
+
+        return view('prompt.show', compact('prompt'));
+    }
+
     public function edit(Prompt $prompt)
     {
         $modules = Module::orderBy('name')->get();

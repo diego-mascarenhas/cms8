@@ -629,6 +629,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
     Route::get('/prompt/{prompt}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
+    Route::get('/prompt/{prompt}', [PromptController::class, 'show'])->name('prompt.show');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
 
