@@ -34,11 +34,11 @@
                 @endcan
             </div>
 
-            <!-- Projects with bbo -->
+            <!-- Projects -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Proyectos con bbo</h5>
+                        <h5 class="mb-0">Proyectos</h5>
                         <div class="d-flex">
                             <div class="input-group input-group-merge me-2">
                                 <span class="input-group-text"><i class="ti ti-search"></i></span>
@@ -811,6 +811,7 @@
                             <label class="form-label">Año</label>
                             <input type="number" class="form-control" name="year" placeholder="Año" min="1900" max="${new Date().getFullYear() + 10}" value="${portfolioData.year || ''}">
                         </div>
+                        @if(auth()->user()->currentTeam->hasModule('language-variants'))
                         <div class="col-12">
                             <label class="form-label">Variantes de idioma</label>
                             <div class="row mb-3">
@@ -860,6 +861,7 @@
                                 <!-- Language pairs will be added here -->
                             </div>
                         </div>
+                        @endif
                         <div class="col-12">
                             <label class="form-label">Notas</label>
                             <textarea class="form-control" name="notes" rows="3" placeholder="Notas adicionales">${portfolioData.notes || ''}</textarea>
@@ -1159,10 +1161,17 @@
 
     // Initialize language pairs functionality
     function initializeLanguagePairs() {
+        // Check if language variant module is active
+        const addButton = document.getElementById('add_language_pair_portfolio');
+        const sourceSelect = document.getElementById('source_language_portfolio');
+        const targetSelect = document.getElementById('target_language_portfolio');
+        
+        if (!addButton || !sourceSelect || !targetSelect) {
+            return; // Language variants module not active, skip initialization
+        }
+        
         // Add language pair button click handler
-        document.getElementById('add_language_pair_portfolio').addEventListener('click', function() {
-            const sourceSelect = document.getElementById('source_language_portfolio');
-            const targetSelect = document.getElementById('target_language_portfolio');
+        addButton.addEventListener('click', function() {
 
             const sourceValue = sourceSelect.value;
             const targetValue = targetSelect.value;

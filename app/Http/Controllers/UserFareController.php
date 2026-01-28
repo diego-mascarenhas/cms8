@@ -148,8 +148,32 @@ class UserFareController extends Controller
         $currentLanguagePair = $request->get('language_pair');
         $currentRatesData = [];
         $currentCurrency = $request->get('currency', 'EUR');
+        $hasLanguageVariantsModule = auth()->user()->currentTeam->hasModule('language-variants');
 
-        if ($currentLanguagePair && $collaborator->languageVariants->count() > 0)
+        if (! $hasLanguageVariantsModule)
+        {
+            // Cargar las tarifas sin combinaciones de idiomas (source_language_code y target_language_code en null)
+            $specificRates = $collaborator->fares()
+                ->wherePivotNull('source_language_code')
+                ->wherePivotNull('target_language_code')
+                ->with('units')
+                ->get();
+
+            foreach ($specificRates as $fare)
+            {
+                $currentRatesData[$fare->id] = [
+                    'price' => $fare->pivot->price,
+                    'unit_id' => $fare->pivot->unit_id,
+                    'currency_code' => $fare->pivot->currency_code,
+                ];
+
+                // Usar la moneda de las tarifas existentes si no se especifica
+                if (! $request->has('currency') && $fare->pivot->currency_code)
+                {
+                    $currentCurrency = $fare->pivot->currency_code;
+                }
+            }
+        } elseif ($currentLanguagePair && $collaborator->languageVariants->count() > 0)
         {
             [$sourceCode, $targetCode] = explode('|', $currentLanguagePair);
 
@@ -233,12 +257,17 @@ class UserFareController extends Controller
 
         $currency = $validated['currency'];
         $sameRates = $request->has('same_rates') && in_array($request->get('same_rates'), ['on', '1', 'true', true, 1]);
+        $hasLanguageVariantsModule = auth()->user()->currentTeam->hasModule('language-variants');
 
         try
         {
             DB::beginTransaction();
 
-            if ($sameRates)
+            // If language variants module is not active, save rates without language pairs
+            if (! $hasLanguageVariantsModule)
+            {
+                $this->saveRatesWithoutLanguagePairs($collaborator, $validated, $currency);
+            } elseif ($sameRates)
             {
                 // Same rates for all language combinations - OVERWRITE ALL
                 $this->saveSameRatesForAllLanguages($collaborator, $validated, $currency);
@@ -429,6 +458,38 @@ class UserFareController extends Controller
                         'updated_at' => now(),
                     ]);
                 }
+            }
+        }
+    }
+
+    /**
+     * Save rates without language pairs (when language-variants module is not active)
+     */
+    private function saveRatesWithoutLanguagePairs($collaborator, $validated, $currency)
+    {
+        $rates = $validated['rates'] ?? [];
+        $units = $validated['units'] ?? [];
+
+        // Delete existing rates without language pairs (where source_language_code and target_language_code are null)
+        $collaborator->fares()
+            ->wherePivotNull('source_language_code')
+            ->wherePivotNull('target_language_code')
+            ->detach();
+
+        // Save new rates without language pairs
+        foreach ($rates as $fareId => $price)
+        {
+            if (! empty($price) && $price > 0)
+            {
+                $collaborator->fares()->attach($fareId, [
+                    'price' => $price,
+                    'currency_code' => $currency,
+                    'unit_id' => $units[$fareId] ?? null,
+                    'source_language_code' => null,
+                    'target_language_code' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
         }
     }

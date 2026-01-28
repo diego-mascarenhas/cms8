@@ -18,12 +18,102 @@
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/swiper/swiper.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
 @endsection
 
 @section('page-script')
     <script src="{{ asset('assets/js/dashboards-analytics.js') }}"></script>
+
+    @if(auth()->user()->hasRole(['root', 'admin']) && !empty($tokenStats['byModule']))
+    <script>
+        (function() {
+            const moduleData = @json($tokenStats['byModule']);
+            const labels = [];
+            const series = [];
+            const colors = ['#696cff', '#8592a3', '#71dd37', '#ffab00', '#ff3e1d', '#03c3ec'];
+
+            Object.values(moduleData).forEach(module => {
+                if (module.tokens_used > 0) {
+                    labels.push(module.module_name);
+                    series.push(module.tokens_used);
+                }
+            });
+
+            if (series.length > 0) {
+                const chart = new ApexCharts(document.querySelector("#tokensByModuleChart"), {
+                    chart: {
+                        type: 'donut',
+                        height: 200
+                    },
+                    series: series,
+                    labels: labels,
+                    colors: colors,
+                    stroke: { width: 0 },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: val => Math.round(val) + '%',
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 600
+                        }
+                    },
+                    legend: {
+                        show: true,
+                        position: 'bottom',
+                        horizontalAlign: 'center',
+                        fontSize: '13px',
+                        fontFamily: 'Public Sans',
+                        markers: {
+                            width: 10,
+                            height: 10,
+                            offsetX: -3
+                        },
+                        itemMargin: {
+                            horizontal: 8,
+                            vertical: 4
+                        }
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '70%',
+                                labels: {
+                                    show: true,
+                                    name: {
+                                        show: false
+                                    },
+                                    value: {
+                                        show: true,
+                                        fontSize: '1.5rem',
+                                        fontWeight: 600,
+                                        color: '#697a8d',
+                                        offsetY: -5,
+                                        formatter: val => parseInt(val).toLocaleString()
+                                    },
+                                    total: {
+                                        show: true,
+                                        fontSize: '0.875rem',
+                                        color: '#697a8d',
+                                        label: 'Total tokens',
+                                        formatter: w => w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString()
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: val => val.toLocaleString() + ' tokens'
+                        }
+                    }
+                });
+                chart.render();
+            }
+        })();
+    </script>
+    @endif
 @endsection
 
 @section('content')
@@ -140,29 +230,43 @@
                     </div>
                 </div>
                 <div class="card-body pt-0">
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <span class="bg-label-primary p-2 rounded me-3">
-                                    <i class='ti ti-api ti-sm'></i>
-                                </span>
-                                <div>
-                                    <small class="text-muted d-block">Llamadas</small>
-                                    <h5 class="mb-0">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalCalls']) }}</h5>
+                    <div class="row g-3">
+                        <!-- Stats Section -->
+                        <div class="col-12">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="d-flex align-items-center">
+                                        <span class="bg-label-primary p-2 rounded me-2">
+                                            <i class='ti ti-api ti-sm'></i>
+                                        </span>
+                                        <div>
+                                            <small class="text-muted d-block mb-1">Llamadas</small>
+                                            <h5 class="mb-0">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalCalls']) }}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="d-flex align-items-center">
+                                        <span class="bg-label-success p-2 rounded me-2">
+                                            <i class='ti ti-coin ti-sm'></i>
+                                        </span>
+                                        <div>
+                                            <small class="text-muted d-block mb-1">Ahorro</small>
+                                            <h5 class="mb-0 text-success">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensSaved']) }}</h5>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-6 mb-3">
-                            <div class="d-flex align-items-center">
-                                <span class="bg-label-success p-2 rounded me-3">
-                                    <i class='ti ti-coin ti-sm'></i>
-                                </span>
-                                <div>
-                                    <small class="text-muted d-block">Ahorro</small>
-                                    <h5 class="mb-0 text-success">{{ \App\Helpers\Helpers::formatCompactNumber($tokenStats['totalTokensSaved']) }}</h5>
-                                </div>
-                            </div>
+
+                        <!-- Chart Section -->
+                        @if(!empty($tokenStats['byModule']))
+                        <div class="col-12">
+                            <div id="tokensByModuleChart"></div>
                         </div>
+                        @endif
+
+                        <!-- Progress Bar Section -->
                         <div class="col-12">
                             <div class="d-flex align-items-center justify-content-between">
                                 <small class="text-muted">Tokens ahorrados</small>

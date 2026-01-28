@@ -87,6 +87,7 @@
                         />
                     </div>
 
+                    @if(auth()->user()->currentTeam->hasModule('language-variants'))
                     <div class="col-md-6 mb-3">
                         <x-language-select
                             name="language"
@@ -98,6 +99,7 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -164,6 +166,7 @@
             </div>
         </div>
 
+        @if(auth()->user()->currentTeam->hasModule('language-variants'))
         <!-- Language Pairs Card -->
         <div class="card mb-4">
             <h5 class="card-header">{{ __('Language Pairs') }}</h5>
@@ -200,6 +203,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <div class="pt-4">
             <div class="col-12 d-flex">
@@ -216,6 +220,7 @@
             // Initialize Select2 for basic fields (excluding language which uses x-language-select component)
             $('#enterprise_id, #responsible_id').select2();
 
+            @if(auth()->user()->currentTeam->hasModule('language-variants'))
             // Initialize Select2 for language selectors with custom template
             $('.select2').select2({
                 templateResult: formatLanguageOption,
@@ -374,49 +379,51 @@
 
             // If editing, load existing pairs
             // This would be populated from the backend with actual data
-            @if(isset($collaborator) && isset($collaborator->languagePairs) && count($collaborator->languagePairs) > 0)
-                @foreach($collaborator->languagePairs as $index => $pair)
-                    // Add each pair from the database
-                    try {
-                        const pairSource = "{{ $pair['source_language'] }}";
-                        const pairTarget = "{{ $pair['target_language'] }}";
-                        const pairSourceText = "{{ $pair['source_language_text'] }}";
-                                                const pairTargetText = "{{ $pair['target_language_text'] }}";
+            @if(auth()->user()->currentTeam->hasModule('language-variants'))
+                @if(isset($collaborator) && isset($collaborator->languagePairs) && count($collaborator->languagePairs) > 0)
+                    @foreach($collaborator->languagePairs as $index => $pair)
+                        // Add each pair from the database
+                        try {
+                            const pairSource = "{{ $pair['source_language'] }}";
+                            const pairTarget = "{{ $pair['target_language'] }}";
+                            const pairSourceText = "{{ $pair['source_language_text'] }}";
+                                                    const pairTargetText = "{{ $pair['target_language_text'] }}";
 
-                        // Extract flag codes safely
-                        const sourceParts = pairSource.split('-');
-                        const targetParts = pairTarget.split('-');
-                        const sourceFlag = sourceParts.length > 1 ? sourceParts[1].toLowerCase() : sourceParts[0].toLowerCase();
-                        const targetFlag = targetParts.length > 1 ? targetParts[1].toLowerCase() : targetParts[0].toLowerCase();
+                            // Extract flag codes safely
+                            const sourceParts = pairSource.split('-');
+                            const targetParts = pairTarget.split('-');
+                            const sourceFlag = sourceParts.length > 1 ? sourceParts[1].toLowerCase() : sourceParts[0].toLowerCase();
+                            const targetFlag = targetParts.length > 1 ? targetParts[1].toLowerCase() : targetParts[0].toLowerCase();
 
-                        // Create new pair badge
-                        const savedPair = $(`
-                            <div class="col-md-6 col-lg-4">
-                                <div class="border rounded d-flex align-items-center p-3" style="background-color: #f8f8f8; height: 100%;">
-                                    <div class="d-flex flex-column flex-grow-1">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <i class="fi fi-${sourceFlag} me-2"></i>
-                                            <span class="fw-medium">${pairSourceText}</span>
+                            // Create new pair badge
+                            const savedPair = $(`
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="border rounded d-flex align-items-center p-3" style="background-color: #f8f8f8; height: 100%;">
+                                        <div class="d-flex flex-column flex-grow-1">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <i class="fi fi-${sourceFlag} me-2"></i>
+                                                <span class="fw-medium">${pairSourceText}</span>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <i class="ti ti-arrow-right me-2 text-muted"></i>
+                                                <i class="fi fi-${targetFlag} me-2"></i>
+                                                                                            <span class="fw-medium">${pairTargetText}</span>
+                                            </div>
                                         </div>
-                                        <div class="d-flex align-items-center">
-                                            <i class="ti ti-arrow-right me-2 text-muted"></i>
-                                            <i class="fi fi-${targetFlag} me-2"></i>
-                                                                                        <span class="fw-medium">${pairTargetText}</span>
+                                        <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
+                                            <i class="ti ti-x"></i>
+                                        </a>
+                                                                                <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
                                         </div>
-                                    </div>
-                                    <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
-                                        <i class="ti ti-x"></i>
-                                    </a>
-                                                                            <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
-                                    </div>
-                            </div>
-                        `);
+                                </div>
+                            `);
 
-                        $('.language-pairs-list').append(savedPair);
-                    } catch (e) {
-                        console.error('Error adding language pair:', e);
-                    }
-                @endforeach
+                            $('.language-pairs-list').append(savedPair);
+                        } catch (e) {
+                            console.error('Error adding language pair:', e);
+                        }
+                    @endforeach
+                @endif
             @endif
 
             // Form submit handler - removed client-side validation to rely on Laravel validation

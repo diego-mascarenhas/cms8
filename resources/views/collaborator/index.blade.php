@@ -285,6 +285,7 @@
 		<div class="card-body">
 			<h5 class="mb-3">Filtros</h5>
 			<div class="row g-3 mb-3">
+				@if(auth()->user()->currentTeam->hasModule('language-variants'))
 				<div class="col">
 					<label for="source-language" class="form-label">{{ __('Idioma origen') }}</label>
 					<x-variant-language-select name="source-language" id="source-language" label="" :required="false"
@@ -295,6 +296,7 @@
 					<x-variant-language-select name="target-language" id="target-language" label="" :required="false"
 						placeholder="{{ __('Idioma destino') }}" :show-base-languages="true" />
 				</div>
+				@endif
 				<div class="col">
 					<label for="service" class="form-label">{{ __('Servicio') }}</label>
 					<x-fare-select name="service" id="service" label="" :required="false"
@@ -563,8 +565,8 @@
 					var table = $('#collaborator-table').DataTable();
 
 					// Get current filter values
-					var sourceLanguage = $('#source-language').val();
-					var targetLanguage = $('#target-language').val();
+					var sourceLanguage = $('#source-language').length ? $('#source-language').val() : '';
+					var targetLanguage = $('#target-language').length ? $('#target-language').val() : '';
 					var service = $('#service').val();
 					var status = $('#status').val();
 					var days = $('#days').val();
@@ -598,7 +600,10 @@
 			}
 
 			// Table filters
-			$('#source-language, #target-language, #service, #status, #days, #delivery-date').on('change', function () {
+			var languageFilters = $('#source-language, #target-language');
+			var otherFilters = $('#service, #status, #days, #delivery-date');
+			var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+			allFilters.on('change', function () {
 				// Add event listener for delivery date changes (for date picker)
 				if (this.id === 'delivery-date') {
 					console.log('Delivery date changed:', $(this).val());
@@ -614,7 +619,10 @@
 			$(document).on('change', '#delivery-date', function() {
 				console.log('Delivery date changed:', $(this).val());
 				// Trigger the same filter logic as other filters
-				$('#source-language, #target-language, #service, #days').trigger('change');
+				var languageFilters = $('#source-language, #target-language');
+				var otherFilters = $('#service, #days');
+				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+				allFilters.trigger('change');
 			});
 
 			// Dashboard filters
@@ -624,7 +632,10 @@
 				var table = $('#collaborator-table').DataTable();
 
 				// Clear other filters first
-				$('#source-language, #target-language, #service, #status, #days, #delivery-date').val('');
+				var languageFilters = $('#source-language, #target-language');
+				var otherFilters = $('#service, #status, #days, #delivery-date');
+				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+				allFilters.val('');
 
 				// Add the custom filter parameter
 				table.settings()[0].ajax.data = function (d) {
@@ -648,7 +659,10 @@
 				var table = $('#collaborator-table').DataTable();
 
 				// Clear all form filters
-				$('#source-language, #target-language, #service, #status, #days, #delivery-date').val('');
+				var languageFilters = $('#source-language, #target-language');
+				var otherFilters = $('#service, #status, #days, #delivery-date');
+				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+				allFilters.val('');
 				$('#search').val('');
 
 				// Clear dashboard filter active state
@@ -773,8 +787,8 @@
 			console.log('Fetching statistics for service ID:', serviceId);
 
 			// Get current filter values to pass to statistics API
-			var sourceLanguage = $('#source-language').val();
-			var targetLanguage = $('#target-language').val();
+			var sourceLanguage = $('#source-language').length ? $('#source-language').val() : '';
+			var targetLanguage = $('#target-language').length ? $('#target-language').val() : '';
 			var status = $('#status').val();
 			var days = $('#days').val();
 			var deliveryDate = $('#delivery-date').val();
@@ -1100,23 +1114,26 @@
 					});
 				}
 			if ($.fn.select2) {
-				if ($('#source-language').hasClass('select2-hidden-accessible')) {
-					$('#source-language').select2('destroy');
+				if ($('#source-language').length) {
+					if ($('#source-language').hasClass('select2-hidden-accessible')) {
+						$('#source-language').select2('destroy');
+					}
+					$('#source-language').select2({
+						allowClear: true,
+						placeholder: '{{ __("Idioma origen") }}',
+						width: '100%',
+						templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+						templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+					});
 				}
-				$('#source-language').select2({
-					allowClear: true,
-					placeholder: '{{ __("Idioma origen") }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
 
-				if ($('#target-language').hasClass('select2-hidden-accessible')) {
-					$('#target-language').select2('destroy');
-				}
-				$('#target-language').select2({
-					allowClear: true,
-					placeholder: '{{ __("Idioma destino") }}',
+				if ($('#target-language').length) {
+					if ($('#target-language').hasClass('select2-hidden-accessible')) {
+						$('#target-language').select2('destroy');
+					}
+					$('#target-language').select2({
+						allowClear: true,
+						placeholder: '{{ __("Idioma destino") }}',
 					width: '100%',
 					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
 					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }

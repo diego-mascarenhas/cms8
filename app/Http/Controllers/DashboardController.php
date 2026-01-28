@@ -344,6 +344,7 @@ class DashboardController extends Controller
             'averageSavings' => TokenUsageLog::getAverageSavingsPercentage(),
             'totalTokensUsed' => TokenUsageLog::getTotalTokensUsed(),
             'totalTokensWithoutToon' => TokenUsageLog::getTotalTokensWithoutToon(),
+            'byModule' => TokenUsageLog::getCallsByModule(),
         ];
 
         return view('dashboard', compact(

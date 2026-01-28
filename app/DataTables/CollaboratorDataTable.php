@@ -15,6 +15,7 @@ class CollaboratorDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         $table = (new EloquentDataTable($query));
+        $hasLanguageVariantsModule = auth()->check() && auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('language-variants');
 
         // Add action column (blade view will handle policy-based permissions)
         $table = $table->addColumn('action', function ($contact)
@@ -51,8 +52,12 @@ class CollaboratorDataTable extends DataTable
             {
                 // Order by valoration_id (lower ID = higher priority, NULL values last)
                 $query->orderByRaw("valoration_id IS NULL, valoration_id $order");
-            })
-            ->addColumn('language_combinations', function ($contact)
+            });
+
+        // Only add language_combinations column if language-variants module is active
+        if ($hasLanguageVariantsModule)
+        {
+            $table = $table->addColumn('language_combinations', function ($contact)
             {
                 // Get language combinations from the contact's language variants
                 $combinations = [];
@@ -67,36 +72,50 @@ class CollaboratorDataTable extends DataTable
 
                 return empty($combinations) ? '' : implode('', $combinations);
             })
-            ->addColumn('services', function ($contact)
-            {
-                // Get unique services from the contact's fares (group by fare_id)
-                $services = [];
-
-                if ($contact->fares && $contact->fares->count() > 0)
+                ->filterColumn('language_combinations', function ($query, $keyword)
                 {
-                    $uniqueFares = $contact->fares->unique('id');
-                    foreach ($uniqueFares as $fare)
+                    if ($keyword !== '')
                     {
-                        $serviceName = $fare->name;
-                        if ($fare->type)
+                        // Filter by source or target language variant code
+                        $query->whereHas('languageVariants', function ($q) use ($keyword)
                         {
-                            $serviceName .= ' ('.$fare->type->name.')';
-                        }
-                        $services[] = $serviceName;
+                            $q->where('source_language_code', $keyword)
+                                ->orWhere('target_language_code', $keyword);
+                        });
                     }
-                }
+                });
+        }
 
-                if (empty($services))
+        $table = $table->addColumn('services', function ($contact)
+        {
+            // Get unique services from the contact's fares (group by fare_id)
+            $services = [];
+
+            if ($contact->fares && $contact->fares->count() > 0)
+            {
+                $uniqueFares = $contact->fares->unique('id');
+                foreach ($uniqueFares as $fare)
                 {
-                    return '';
+                    $serviceName = $fare->name;
+                    if ($fare->type)
+                    {
+                        $serviceName .= ' ('.$fare->type->name.')';
+                    }
+                    $services[] = $serviceName;
                 }
+            }
 
-                $count = count($services);
-                $servicesList = implode(', ', $services);
-                $label = $count === 1 ? 'servicio' : 'servicios';
+            if (empty($services))
+            {
+                return '';
+            }
 
-                return '<span class="badge bg-label-info rounded-pill" title="'.htmlspecialchars($servicesList).'" data-bs-toggle="tooltip" data-bs-placement="auto">'.$count.' '.$label.'</span>';
-            })
+            $count = count($services);
+            $servicesList = implode(', ', $services);
+            $label = $count === 1 ? 'servicio' : 'servicios';
+
+            return '<span class="badge bg-label-info rounded-pill" title="'.htmlspecialchars($servicesList).'" data-bs-toggle="tooltip" data-bs-placement="auto">'.$count.' '.$label.'</span>';
+        })
             ->orderColumn('services', function ($query, $order)
             {
                 // Count unique fares (services) for proper ordering
@@ -117,18 +136,6 @@ class CollaboratorDataTable extends DataTable
                 $query->orderBy('projects_count', $order);
             })
             ->setRowId('id')
-            ->filterColumn('language_combinations', function ($query, $keyword)
-            {
-                if ($keyword !== '')
-                {
-                    // Filter by source or target language variant code
-                    $query->whereHas('languageVariants', function ($q) use ($keyword)
-                    {
-                        $q->where('source_language_code', $keyword)
-                            ->orWhere('target_language_code', $keyword);
-                    });
-                }
-            })
             ->filterColumn('services', function ($query, $keyword)
             {
                 if ($keyword !== '')
@@ -140,23 +147,35 @@ class CollaboratorDataTable extends DataTable
                     });
                 }
             })
-            ->rawColumns(['name', 'action', 'rating', 'language_combinations', 'services', 'projects']);
+            ->rawColumns(array_merge(
+                ['name', 'action', 'rating', 'services', 'projects'],
+                $hasLanguageVariantsModule ? ['language_combinations'] : [],
+            ));
 
         return $table;
     }
 
     public function query(Contact $model): QueryBuilder
     {
+        $hasLanguageVariantsModule = auth()->check() && auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('language-variants');
+
+        $withRelations = [
+            'valoration',
+            'fares.type',
+            'weeklyAvailability',
+            'user.roles',
+            'user.teams',
+        ];
+
+        // Only load languageVariants if the module is active
+        if ($hasLanguageVariantsModule)
+        {
+            $withRelations[] = 'languageVariants.sourceLanguage';
+            $withRelations[] = 'languageVariants.targetLanguage';
+        }
+
         $query = $model->newQuery()
-            ->with([
-                'valoration',
-                'languageVariants.sourceLanguage',
-                'languageVariants.targetLanguage',
-                'fares.type',
-                'weeklyAvailability',
-                'user.roles',
-                'user.teams'
-            ])
+            ->with($withRelations)
             ->withCount([
                 'projects',
                 'fares as unique_fares_count' => function ($q)
@@ -182,8 +201,8 @@ class CollaboratorDataTable extends DataTable
             $query = $this->applyDashboardFilter($query, $request->dashboard_filter);
         }
 
-        // Filter by source language (base or variant)
-        if ($request->has('source_language') && $request->source_language)
+        // Filter by source language (base or variant) - only if module is active
+        if ($hasLanguageVariantsModule && $request->has('source_language') && $request->source_language)
         {
             $source = $request->source_language;
             if (strlen($source) === 2)
@@ -204,8 +223,8 @@ class CollaboratorDataTable extends DataTable
             }
         }
 
-        // Filter by target language (base or variant)
-        if ($request->has('target_language') && $request->target_language)
+        // Filter by target language (base or variant) - only if module is active
+        if ($hasLanguageVariantsModule && $request->has('target_language') && $request->target_language)
         {
             $target = $request->target_language;
             if (strlen($target) === 2)
@@ -558,7 +577,9 @@ class CollaboratorDataTable extends DataTable
 
     public function getColumns(): array
     {
-        return [
+        $hasLanguageVariantsModule = auth()->check() && auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('language-variants');
+
+        $columns = [
             Column::make('id')->hidden(),
             Column::make('name')
                 ->title(__('Collaborator'))
@@ -570,13 +591,21 @@ class CollaboratorDataTable extends DataTable
                 ->searchable(false)
                 ->orderable(true)
                 ->width(120),
-            Column::make('language_combinations')
+        ];
+
+        // Only add language_combinations column if language-variants module is active
+        if ($hasLanguageVariantsModule)
+        {
+            $columns[] = Column::make('language_combinations')
                 ->title(__('Combination'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false)
-                ->width(180),
+                ->width(180);
+        }
+
+        $columns = array_merge($columns, [
             Column::make('services')
                 ->title(__('Services'))
                 ->className('text-center')
@@ -596,7 +625,9 @@ class CollaboratorDataTable extends DataTable
                 ->printable(false)
                 ->orderable(false)
                 ->width(30),
-        ];
+        ]);
+
+        return $columns;
     }
 
     protected function filename(): string

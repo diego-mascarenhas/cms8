@@ -312,7 +312,7 @@ class ContactSkillsSeeder extends Seeder
                                 : null;
 
                             // Random currency based on profile (some specialists prefer certain currencies)
-                            $currencies = ['EUR', 'USD', 'GBP'];
+                            $currencies = ['EUR', 'USD', 'ARS'];
                             if (in_array($profileType, ['medical_specialist', 'legal_specialist']))
                             {
                                 $currency = $faker->randomElement(['EUR', 'USD']); // Premium specialists prefer EUR/USD

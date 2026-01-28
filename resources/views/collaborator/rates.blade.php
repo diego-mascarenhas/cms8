@@ -75,6 +75,7 @@
 				<form id="rates-form" method="POST" action="{{ route('collaborator.rates.save', $collaborator->id) }}">
 					@csrf
 					<!-- Language selection -->
+					@if(auth()->user()->currentTeam->hasModule('language-variants'))
 					<div class="mb-3">
 						<h5 class="mb-3">Combinaciones de idiomas</h5>
 
@@ -146,12 +147,13 @@
 							</div>
 						@endif
 					</div>
+					@endif
 
 					<!-- Currency selection -->
 					<div class="mb-3 row">
 						<label class="col-form-label col-md-2">Divisa (*)</label>
 						<div class="col-md-4">
-							<select class="form-select" name="currency" required>
+							<select class="form-select" name="currency" id="currency-select" required>
 								@foreach($currencies as $currency)
 									<option value="{{ $currency->code }}" {{ $currency->code === $currentCurrency ? 'selected' : '' }}>
 										{{ $currency->code }} - {{ $currency->name }}
@@ -163,12 +165,20 @@
 					<hr>
 
 					<!-- Dynamic Fares by Type -->
-					@if($allFares && $allFares->count() > 0 && $collaborator->languageVariants && $collaborator->languageVariants->count() > 0)
-						@php
-							$defaultLanguagePair = $collaborator->languageVariants->first();
-							$defaultSourceCode = $defaultLanguagePair->source_language_code;
-							$defaultTargetCode = $defaultLanguagePair->target_language_code;
-						@endphp
+					@php
+						$hasLanguageVariantsModule = auth()->user()->currentTeam->hasModule('language-variants');
+						$hasLanguageVariants = $hasLanguageVariantsModule && $collaborator->languageVariants && $collaborator->languageVariants->count() > 0;
+						// Show fares if: module is not active OR (module is active AND has language variants)
+						$shouldShowFares = $allFares && $allFares->count() > 0 && (!$hasLanguageVariantsModule || $hasLanguageVariants);
+					@endphp
+					@if($shouldShowFares)
+						@if($hasLanguageVariantsModule && $hasLanguageVariants)
+							@php
+								$defaultLanguagePair = $collaborator->languageVariants->first();
+								$defaultSourceCode = $defaultLanguagePair->source_language_code;
+								$defaultTargetCode = $defaultLanguagePair->target_language_code;
+							@endphp
+						@endif
 
 						@foreach($allFares as $typeName => $fares)
 							<h5 class="mt-4 mb-3">{{ $typeName ?: 'Sin categoría' }}</h5>
@@ -242,8 +252,12 @@
 							<div class="d-flex align-items-center">
 								<i class="ti ti-info-circle me-2"></i>
 								<span>
-									@if(!$collaborator->languageVariants || $collaborator->languageVariants->count() == 0)
-										No hay combinaciones de idiomas registradas para este colaborador.
+									@if($hasLanguageVariantsModule)
+										@if(!$collaborator->languageVariants || $collaborator->languageVariants->count() == 0)
+											No hay combinaciones de idiomas registradas para este colaborador.
+										@else
+											No hay tarifas disponibles para configurar.
+										@endif
 									@else
 										No hay tarifas disponibles para configurar.
 									@endif
@@ -273,14 +287,26 @@
 		const currencySymbols = {
 			'EUR': '€',
 			'USD': '$',
-			'GBP': '£'
+			'GBP': '£',
+			'ARS': '$'
 		};
 
 		// Store rates data for each language combination
 		let ratesData = {};
 
+		// Function to update currency symbols without triggering events
+		function updateCurrencySymbols(currency) {
+			const symbol = currencySymbols[currency] || '€';
+			$('.currency-symbol').text(symbol);
+		}
+
+		// Initialize currency symbols IMMEDIATELY on page load using PHP value
+		const initialCurrency = @json($currentCurrency ?? 'EUR');
+		updateCurrencySymbols(initialCurrency);
+
 		// Function to save current form state
 		function saveCurrentRatesState() {
+			@if(auth()->user()->currentTeam->hasModule('language-variants'))
 			const currentPair = $('#current_language_pair').val();
 			if (!currentPair) return;
 
@@ -329,12 +355,6 @@
 				// Load from server
 				loadRatesFromServer(sourceCode, targetCode);
 			}
-		}
-
-		// Function to update currency symbols without triggering events
-		function updateCurrencySymbols(currency) {
-			const symbol = currencySymbols[currency] || '€';
-			$('.currency-symbol').text(symbol);
 		}
 
 		// Function to load rates from server for specific language combination
@@ -390,8 +410,10 @@
 					$('.fare-input:not(:disabled)').val('0.00');
 				}
 			});
+			@endif
 		}
 
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		// Language combination button click handler
 		$('[data-source][data-target]').on('click', function() {
 			const sourceCode = $(this).data('source');
@@ -442,23 +464,27 @@
 				}
 			}
 		});
+		@endif
 
 		// Handle currency change - Update ALL records for this collaborator
-		$('select[name="currency"]').on('change', function() {
+		$('select[name="currency"], #currency-select').on('change', function() {
 			const selectedCurrency = $(this).val();
 			const symbol = currencySymbols[selectedCurrency] || '€';
 
 			// Update all currency symbols in the form
 			$('.currency-symbol').text(symbol);
 
+			@if(auth()->user()->currentTeam->hasModule('language-variants'))
 			// Update stored data for ALL language combinations
 			for (let key in ratesData) {
 				if (ratesData[key]) {
 					ratesData[key].currency = selectedCurrency;
 				}
 			}
+			@endif
 		});
 
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		// Set initial language combination FIRST
 		const activeBtn = $('[data-source][data-target].active');
 		if (activeBtn.length) {
@@ -479,27 +505,42 @@
 				}
 			}
 		}
+		@endif
 
 		// Get parameters from URL for initial state
 		const urlParams = new URLSearchParams(window.location.search);
 		const urlCurrency = urlParams.get('currency');
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		const urlLanguagePair = urlParams.get('language_pair');
 		const urlSameRates = urlParams.get('same_rates');
+		@endif
 
 		// Set currency from URL or default to EUR
+		let selectedCurrency = urlCurrency || @json($currentCurrency ?? 'EUR');
 		if (urlCurrency) {
 			$('select[name="currency"]').val(urlCurrency);
+			selectedCurrency = urlCurrency;
 		} else {
 			// Check if there's an existing rate with currency
 			const firstRateWithCurrency = @json($collaborator->fares->first());
 			if (firstRateWithCurrency && firstRateWithCurrency.pivot && firstRateWithCurrency.pivot.currency_code) {
-				$('select[name="currency"]').val(firstRateWithCurrency.pivot.currency_code);
+				selectedCurrency = firstRateWithCurrency.pivot.currency_code;
+				$('select[name="currency"]').val(selectedCurrency);
 			} else {
-				// Default to EUR if no existing currency
-				$('select[name="currency"]').val('EUR');
+				// Use current currency from PHP or default to EUR
+				const phpCurrency = @json($currentCurrency ?? 'EUR');
+				selectedCurrency = phpCurrency;
+				$('select[name="currency"]').val(selectedCurrency);
 			}
 		}
 
+		// Update currency symbols after setting currency (in case it changed from URL or existing rates)
+		setTimeout(function() {
+			const finalCurrency = $('select[name="currency"]').val() || selectedCurrency || @json($currentCurrency ?? 'EUR');
+			updateCurrencySymbols(finalCurrency);
+		}, 100);
+
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		// Set checkbox state from URL
 		if (urlSameRates === '1') {
 			$('#sameRates').prop('checked', true);
@@ -518,17 +559,19 @@
 				}
 			}
 		}
-
-		// Initialize currency symbols WITHOUT triggering events
-		const currentCurrency = $('select[name="currency"]').val();
-		updateCurrencySymbols(currentCurrency);
+		@endif
 
 		// Clean URL parameters immediately after setting initial state
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		if (urlCurrency || urlLanguagePair || urlSameRates) {
+		@else
+		if (urlCurrency) {
+		@endif
 			const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
 			window.history.replaceState({path: cleanUrl}, '', cleanUrl);
 		}
 
+		@if(auth()->user()->currentTeam->hasModule('language-variants'))
 		// Initialize checkbox state LAST (this will trigger proper visual behavior)
 		setTimeout(() => {
 			$('#sameRates').trigger('change');
@@ -550,13 +593,16 @@
 				}
 			}, 50); // Small delay to avoid flicker during initialization
 		}
+		@endif
 
 		// Form submission handler
 		$('#rates-form').on('submit', function(e) {
+			@if(auth()->user()->currentTeam->hasModule('language-variants'))
 			const isSameRates = $('#sameRates').is(':checked');
 
 			// Save current state before submitting (always do this)
 			saveCurrentRatesState();
+			@endif
 
 			let hasRates = false;
 
@@ -578,6 +624,7 @@
 				return false;
 			}
 
+			@if(auth()->user()->currentTeam->hasModule('language-variants'))
 			// If using different rates per combination, add stored data
 			if (!isSameRates) {
 				// Create hidden inputs for each language combination's rates
@@ -613,6 +660,7 @@
 					}
 				}
 			}
+			@endif
 		});
 
 

@@ -49,6 +49,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PromptController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
@@ -622,6 +623,16 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
     Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
+
+    // Prompts (linked by module_id, table module_prompts)
+    Route::get('/prompt/list', [PromptController::class, 'index'])->name('prompt-list');
+    Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
+    Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
+    Route::get('/prompt/{prompt}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
+    Route::get('/prompt/{prompt}', [PromptController::class, 'show'])->name('prompt.show');
+    Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
+    Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
+    Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
 
     // Software Management
     Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');

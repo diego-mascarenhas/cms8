@@ -34,6 +34,13 @@
       "module_key": "clients"
     },
     {
+      "url": "collaborator/list",
+      "name": "Collaborators",
+      "icon": "menu-icon tf-icons ti ti-users-group",
+      "slug": "collaborator-list",
+      "module_key": "collaborators"
+    },
+    {
       "url": "list60/list",
       "name": "List of 60",
       "icon": "menu-icon tf-icons ti ti-list-check",
@@ -180,6 +187,13 @@
     },
     {
       "menuHeader": "Automation"
+    },
+    {
+      "url": "prompt/list",
+      "name": "Prompts",
+      "icon": "menu-icon tf-icons ti ti-cpu",
+      "slug": "prompt-list",
+      "module_key": "prompts"
     },
     {
       "url": "funnel/list",
