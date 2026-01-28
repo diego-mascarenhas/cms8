@@ -119,6 +119,8 @@ class ClaudeService
             $savings = $useToon && $jsonSize > 0 ? round((($jsonSize - $toonSize) / $jsonSize) * 100, 2) : 0;
 
             TokenUsageLog::create([
+                'team_id' => auth()->user()->currentTeam->id,
+                'module_id' => TokenUsageLog::inferModuleId(),
                 'service' => 'ClaudeService',
                 'json_size' => $jsonSize,
                 'toon_size' => $toonSize,

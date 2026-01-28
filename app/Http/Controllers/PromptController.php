@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\DataTables\PromptDataTable;
 use App\Models\Module;
 use App\Models\Prompt;
+use App\Models\TokenUsageLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class PromptController extends Controller
 {
@@ -114,6 +116,33 @@ class PromptController extends Controller
 
         $data = $response->json();
         $text = $data['content'][0]['text'] ?? '';
+
+        // Log token usage from API response
+        $usage = $data['usage'] ?? [];
+        $inputTokens = $usage['input_tokens'] ?? 0;
+        $outputTokens = $usage['output_tokens'] ?? 0;
+        $totalTokens = $inputTokens + $outputTokens;
+
+        try
+        {
+            TokenUsageLog::create([
+                'team_id' => auth()->user()->currentTeam->id,
+                'module_id' => $prompt->module_id ?? TokenUsageLog::inferModuleId(),
+                'service' => 'PromptController',
+                'json_size' => strlen($userMessage),
+                'toon_size' => 0,
+                'json_tokens' => $totalTokens,
+                'toon_tokens' => 0,
+                'savings_percentage' => 0,
+                'used_toon' => false,
+            ]);
+        } catch (\Exception $e)
+        {
+            \Log::error('Failed to log token usage', [
+                'error' => $e->getMessage(),
+                'prompt_id' => $prompt->id,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

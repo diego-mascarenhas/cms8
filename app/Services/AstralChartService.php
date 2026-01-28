@@ -321,6 +321,8 @@ class AstralChartService
         $savings = $useToon && $jsonSize > 0 ? round((($jsonSize - $toonSize) / $jsonSize) * 100, 2) : 0;
 
         TokenUsageLog::create([
+            'team_id' => auth()->user()->currentTeam->id,
+            'module_id' => TokenUsageLog::inferModuleId(),
             'service' => 'AstralChartService',
             'json_size' => $jsonSize,
             'toon_size' => $toonSize,

@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('token_usage_logs', function (Blueprint $table) {
+        Schema::create('token_usage_logs', function (Blueprint $table)
+        {
             $table->id();
+            $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            $table->unsignedTinyInteger('module_id')->nullable();
             $table->string('service')->index(); // AIAssistanceService, ClaudeProposalValidator
             $table->integer('json_size')->default(0);
             $table->integer('toon_size')->default(0);
@@ -21,6 +24,8 @@ return new class extends Migration
             $table->integer('savings_percentage')->default(0);
             $table->boolean('used_toon')->default(false);
             $table->timestamps();
+
+            $table->foreign('module_id')->references('id')->on('modules')->onDelete('set null');
         });
     }
 
