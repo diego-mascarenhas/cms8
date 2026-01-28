@@ -289,6 +289,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Department management module',
             'order' => 7,
         ],
+        'prompts' => [
+            'name' => 'Prompts',
+            'icon' => 'cpu',
+            'description' => 'Module prompts for AI instructions (linked by module_id)',
+            'order' => 9,
+        ],
         'collaborators' => [
             'name' => 'Collaborators',
             'icon' => 'users-group',

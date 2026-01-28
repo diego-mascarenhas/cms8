@@ -11,40 +11,32 @@ use Yajra\DataTables\Services\DataTable;
 
 class PromptDataTable extends DataTable
 {
-    /**
-     * Build the DataTable class.
-     *
-     * @param  QueryBuilder  $query  Results from query() method.
-     */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'prompt.action')
-            ->setRowId('id')
-            ->rawColumns(['name', 'action', 'status'])
-            ->editColumn('type_id', function ($data)
+            ->addColumn('action', function ($prompt)
             {
-                return $data->type->name ?? null;
+                return view('prompt.action', compact('prompt'));
             })
-            ->editColumn('status', function ($data)
+            ->editColumn('is_active', function ($prompt)
             {
-                return $data->status_label;
+                return $prompt->is_active
+                    ? '<span class="badge rounded-pill bg-label-success">Activo</span>'
+                    : '<span class="badge rounded-pill bg-label-secondary">Inactivo</span>';
             })
-            ->editColumn('status', function ($data)
+            ->addColumn('module_name', function ($prompt)
             {
-                if ($data->status)
-                {
-                    return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                } else
-                {
-                    return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                }
-            });
+                return $prompt->module
+                    ? '<span class="badge bg-label-info">'.e($prompt->module->name).'</span>'
+                    : '';
+            })
+            ->rawColumns(['action', 'is_active', 'module_name'])
+            ->setRowId('id');
     }
 
     public function query(Prompt $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->with('module');
     }
 
     public function html(): HtmlBuilder
@@ -54,27 +46,36 @@ class PromptDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(0);
+            ->orderBy(4, 'asc')
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->parameters([
+                'select' => false,
+            ]);
     }
 
-    public function getColumns(): array
+    protected function getColumns(): array
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Name')->orderable(false),
-            Column::make('type_id')->title('Type')->orderable(false),
-            Column::make('content')->title('Content')->hidden(),
-            Column::make('status')->title('Status')->className('text-center'),
-            Column::computed('action')->title('Actions')->width(20)->className('text-center')
+            Column::make('section_label')->title(__('Sección'))->searchable(true)->orderable(true),
+            Column::make('section_key')->title(__('Clave'))->searchable(true)->orderable(true),
+            Column::computed('module_name')->title(__('Módulo'))->searchable(false)->orderable(false),
+            Column::make('order')->title(__('Orden'))->orderable(true)->className('text-center'),
+            Column::make('is_active')->title(__('Activo'))->orderable(true)->className('text-center'),
+            Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
-                ->width(30)
-                ->addClass('text-center'),
+                ->addClass('text-center')
+                ->title(__('Acciones')),
         ];
     }
 
     protected function filename(): string
     {
-        return 'Prompt_'.date('YmdHis');
+        return 'Prompts_'.date('YmdHis');
     }
 }

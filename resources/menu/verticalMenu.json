@@ -189,6 +189,13 @@
       "menuHeader": "Automation"
     },
     {
+      "url": "prompt/list",
+      "name": "Prompts",
+      "icon": "menu-icon tf-icons ti ti-cpu",
+      "slug": "prompt-list",
+      "module_key": "prompts"
+    },
+    {
       "url": "funnel/list",
       "name": "Funnel",
       "icon": "menu-icon tf-icons ti ti-filter",
