@@ -160,4 +160,24 @@ class HelpController extends Controller
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
+
+    /**
+     * Display environment variables and team configuration documentation index
+     */
+    public function environmentVariables()
+    {
+        return view('help.environment-variables-index', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display Google Analytics configuration documentation
+     */
+    public function environmentVariablesGoogleAnalytics()
+    {
+        return view('help.environment-variables-google-analytics', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
 }

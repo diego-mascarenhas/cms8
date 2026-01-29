@@ -58,6 +58,24 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
         </li>
 
         <li class="menu-header small text-uppercase">
+          <span class="menu-header-text">{{ __('Variables de Entorno') }}</span>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.environment-variables') && !request()->routeIs('help.environment-variables.google-analytics') ? 'active' : '' }}">
+          <a href="{{ route('help.environment-variables') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-settings"></i>
+            <div>{{ __('Configuraciones') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.environment-variables.google-analytics') ? 'active' : '' }}">
+          <a href="{{ route('help.environment-variables.google-analytics') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-chart-line"></i>
+            <div>{{ __('Google Analytics') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-header small text-uppercase">
           <span class="menu-header-text">{{ __('API Documentation') }}</span>
         </li>
 

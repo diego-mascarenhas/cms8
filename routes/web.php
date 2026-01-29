@@ -911,6 +911,9 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api/payments', [HelpController::class, 'apiPayments'])->name('api.payments');
     Route::get('/api/products', [HelpController::class, 'apiProducts'])->name('api.products');
     Route::get('/api/orders', [HelpController::class, 'apiOrders'])->name('api.orders');
+
+    Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
+    Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
 });
 
 // Fallback route for 404 errors - must be at the end
