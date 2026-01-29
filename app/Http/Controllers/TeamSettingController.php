@@ -53,7 +53,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'type' => $this->getSettingType($key),
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'analytics_credentials_json']),
                     ]);
                 }
             }
@@ -573,6 +573,28 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'section' => 'reset',
                         'row' => 5,
+                    ],
+                ],
+            ],
+            'analytics' => [
+                'title' => 'Google Analytics',
+                'icon' => 'ti ti-chart-line',
+                'settings' => [
+                    'analytics_property_id' => [
+                        'label' => 'GA4 Property ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('analytics_property_id'),
+                        'is_encrypted' => false,
+                        'placeholder' => '123456789',
+                        'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
+                    ],
+                    'analytics_credentials_json' => [
+                        'label' => 'Service account credentials (JSON)',
+                        'type' => 'textarea',
+                        'value' => $team->getSetting('analytics_credentials_json'),
+                        'is_encrypted' => true,
+                        'placeholder' => 'Paste the full JSON key from Google Cloud Console...',
+                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API, download the JSON key, and add the service account email as a viewer in GA4 Property Access Management.',
                     ],
                 ],
             ],

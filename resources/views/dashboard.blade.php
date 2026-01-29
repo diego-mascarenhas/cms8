@@ -45,19 +45,17 @@
                 const chart = new ApexCharts(document.querySelector("#tokensByModuleChart"), {
                     chart: {
                         type: 'donut',
-                        height: 200
+                        height: 240,
+                        fontFamily: 'Public Sans'
                     },
                     series: series,
                     labels: labels,
                     colors: colors,
-                    stroke: { width: 0 },
+                    stroke: {
+                        width: 0
+                    },
                     dataLabels: {
-                        enabled: true,
-                        formatter: val => Math.round(val) + '%',
-                        style: {
-                            fontSize: '12px',
-                            fontWeight: 600
-                        }
+                        enabled: false
                     },
                     legend: {
                         show: true,
@@ -72,13 +70,14 @@
                         },
                         itemMargin: {
                             horizontal: 8,
-                            vertical: 4
-                        }
+                            vertical: 5
+                        },
+                        offsetY: 0
                     },
                     plotOptions: {
                         pie: {
                             donut: {
-                                size: '70%',
+                                size: '75%',
                                 labels: {
                                     show: true,
                                     name: {
@@ -86,16 +85,18 @@
                                     },
                                     value: {
                                         show: true,
-                                        fontSize: '1.5rem',
+                                        fontSize: '24px',
                                         fontWeight: 600,
-                                        color: '#697a8d',
-                                        offsetY: -5,
+                                        color: '#566a7f',
+                                        offsetY: 5,
                                         formatter: val => parseInt(val).toLocaleString()
                                     },
                                     total: {
                                         show: true,
-                                        fontSize: '0.875rem',
-                                        color: '#697a8d',
+                                        showAlways: true,
+                                        fontSize: '13px',
+                                        fontWeight: 400,
+                                        color: '#a1acb8',
                                         label: 'Total tokens',
                                         formatter: w => w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString()
                                     }
@@ -107,11 +108,62 @@
                         y: {
                             formatter: val => val.toLocaleString() + ' tokens'
                         }
-                    }
+                    },
+                    responsive: [{
+                        breakpoint: 480,
+                        options: {
+                            chart: {
+                                height: 200
+                            },
+                            legend: {
+                                fontSize: '12px'
+                            }
+                        }
+                    }]
                 });
                 chart.render();
             }
         })();
+    </script>
+    @endif
+
+    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const analyticsChartEl = document.querySelector('#analyticsChart');
+            if (analyticsChartEl) {
+                const chartData = @json($analyticsChartData);
+                new ApexCharts(analyticsChartEl, {
+                    chart: {
+                        type: 'line',
+                        height: 280,
+                        fontFamily: 'Public Sans',
+                        toolbar: { show: false },
+                        zoom: { enabled: false }
+                    },
+                    stroke: { curve: 'smooth', width: 2 },
+                    series: [
+                        { name: 'Visitors', data: chartData.visitors },
+                        { name: 'Page Views', data: chartData.pageViews }
+                    ],
+                    xaxis: {
+                        categories: chartData.dates,
+                        labels: {
+                            formatter: function(val) {
+                                return val ? new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : val;
+                            }
+                        }
+                    },
+                    yaxis: {
+                        labels: { formatter: function(val) { return val ? parseInt(val, 10) : val; } }
+                    },
+                    legend: { position: 'top', horizontalAlign: 'right' },
+                    colors: ['#696cff', '#71dd37'],
+                    dataLabels: { enabled: false },
+                    grid: { borderColor: '#e7e7e7', strokeDashArray: 4 }
+                }).render();
+            }
+        });
     </script>
     @endif
 @endsection
@@ -186,21 +238,21 @@
                                         <p class="mb-2">{{ $mentoringMessage }}</p>
                                     @endif
                                     @if($mentoringLevelName)
-                                        <p class="mb-2"><strong>{{ $mentoringLevelName }}</strong></p>
+                                        <p class="mb-4"><strong>{{ $mentoringLevelName }}</strong></p>
                                     @endif
                                 @elseif($subscriptionLevel)
                                     <p class="mb-2">¡Vas viento en popa!</p>
-                                    <p class="mb-2"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
+                                    <p class="mb-4"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
                                 @else
-                                    <p class="mb-2">¡Vas viento en popa!</p>
+                                    <p class="mb-4">¡Vas viento en popa!</p>
                                 @endif
 
                                 {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
-                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Strategia</a>
-                                <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary ms-2">Organización</a>
+                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Strategia</a>
+                                <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
                             </div>
                         </div>
                         <div class="col-5 text-center text-sm-left">
@@ -216,6 +268,26 @@
         </div>
     </div>
     <!-- Hour chart End  -->
+
+    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
+    <!-- Google Analytics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0 d-flex justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Google Analytics</h5>
+                        <small class="text-muted">Visitors and page views (last 7 days)</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="analyticsChart" style="min-height: 280px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- / Google Analytics -->
+    @endif
 
     <div class="row">
         <!-- Emotional Balance and Dangerous Clients (right column) -->

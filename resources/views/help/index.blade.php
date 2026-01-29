@@ -45,6 +45,17 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-secondary">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-settings display-4 text-secondary mb-3"></i>
+                                            <h5 class="card-title">{{ __('Variables de Entorno') }}</h5>
+                                            <p class="card-text">{{ __('Documentación de configuraciones por equipo: Google Analytics, Stripe, Email, Twilio y más.') }}</p>
+                                            <a href="{{ route('help.environment-variables') }}" class="btn btn-secondary">{{ __('Ver configuraciones') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="alert alert-info mt-4" role="alert">
