@@ -126,6 +126,46 @@
         })();
     </script>
     @endif
+
+    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const analyticsChartEl = document.querySelector('#analyticsChart');
+            if (analyticsChartEl) {
+                const chartData = @json($analyticsChartData);
+                new ApexCharts(analyticsChartEl, {
+                    chart: {
+                        type: 'line',
+                        height: 280,
+                        fontFamily: 'Public Sans',
+                        toolbar: { show: false },
+                        zoom: { enabled: false }
+                    },
+                    stroke: { curve: 'smooth', width: 2 },
+                    series: [
+                        { name: 'Visitors', data: chartData.visitors },
+                        { name: 'Page Views', data: chartData.pageViews }
+                    ],
+                    xaxis: {
+                        categories: chartData.dates,
+                        labels: {
+                            formatter: function(val) {
+                                return val ? new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : val;
+                            }
+                        }
+                    },
+                    yaxis: {
+                        labels: { formatter: function(val) { return val ? parseInt(val, 10) : val; } }
+                    },
+                    legend: { position: 'top', horizontalAlign: 'right' },
+                    colors: ['#696cff', '#71dd37'],
+                    dataLabels: { enabled: false },
+                    grid: { borderColor: '#e7e7e7', strokeDashArray: 4 }
+                }).render();
+            }
+        });
+    </script>
+    @endif
 @endsection
 
 @section('content')
@@ -228,6 +268,26 @@
         </div>
     </div>
     <!-- Hour chart End  -->
+
+    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
+    <!-- Google Analytics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0 d-flex justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Google Analytics</h5>
+                        <small class="text-muted">Visitors and page views (last 7 days)</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="analyticsChart" style="min-height: 280px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- / Google Analytics -->
+    @endif
 
     <div class="row">
         <!-- Emotional Balance and Dangerous Clients (right column) -->

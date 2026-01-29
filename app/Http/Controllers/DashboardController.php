@@ -10,6 +10,8 @@ use App\Models\SubscriptionProduct;
 use App\Models\TokenUsageLog;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
+use Spatie\Analytics\Facades\Analytics;
+use Spatie\Analytics\Period;
 use Stripe\Balance;
 use Stripe\Stripe;
 
@@ -347,6 +349,35 @@ class DashboardController extends Controller
             'byModule' => TokenUsageLog::getCallsByModule(),
         ];
 
+        // Google Analytics: fetch chart data only when team has GA4 configured
+        $analyticsChartData = null;
+        if ($activeTeam
+            && $activeTeam->getSetting('analytics_property_id')
+            && $activeTeam->getSetting('analytics_credentials_json')
+        ) {
+            $credentialsJson = $activeTeam->getSetting('analytics_credentials_json');
+            $credentials = is_string($credentialsJson) ? json_decode($credentialsJson, true) : $credentialsJson;
+            if (is_array($credentials))
+            {
+                config([
+                    'analytics.property_id' => $activeTeam->getSetting('analytics_property_id'),
+                    'analytics.service_account_credentials_json' => $credentials,
+                ]);
+                try
+                {
+                    $collection = Analytics::fetchTotalVisitorsAndPageViews(Period::days(7), 7);
+                    $analyticsChartData = [
+                        'dates' => $collection->pluck('date')->map(fn ($d) => $d instanceof \Carbon\Carbon ? $d->format('Y-m-d') : $d)->values()->all(),
+                        'visitors' => $collection->pluck('activeUsers')->values()->all(),
+                        'pageViews' => $collection->pluck('screenPageViews')->values()->all(),
+                    ];
+                } catch (\Throwable $e)
+                {
+                    \Log::warning('Dashboard Google Analytics fetch failed: '.$e->getMessage());
+                }
+            }
+        }
+
         return view('dashboard', compact(
             'totalTeamMinutes',
             'dangerousContacts',
@@ -364,6 +395,7 @@ class DashboardController extends Controller
             'mentoringMessage',
             'hasProjects',
             'tokenStats',
+            'analyticsChartData',
         ));
     }
 }

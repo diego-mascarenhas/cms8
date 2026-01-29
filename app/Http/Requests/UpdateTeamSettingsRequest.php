@@ -57,6 +57,10 @@ class UpdateTeamSettingsRequest extends FormRequest
             'email.imap_username' => 'nullable|string|max:255',
             'email.imap_password' => 'nullable|string|max:255',
             'email.imap_encryption' => 'nullable|string|in:ssl,tls,none',
+
+            // Analytics settings
+            'analytics.analytics_property_id' => 'nullable|string|max:255',
+            'analytics.analytics_credentials_json' => 'nullable|string',
         ];
     }
 }

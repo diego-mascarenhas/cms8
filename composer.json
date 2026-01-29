@@ -26,6 +26,7 @@
     "php-ffmpeg/php-ffmpeg": "^1.4",
     "sbsaga/toon": "^1.2",
     "spatie/image": "^3.9",
+    "spatie/laravel-analytics": "^5.6",
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.20",
     "spatie/laravel-tags": "^4.10",

@@ -135,6 +135,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-chart-line mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Google Analytics</h5>
+                            <p class="card-text">Configure GA4 Property ID and service account for dashboard analytics</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'analytics']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
