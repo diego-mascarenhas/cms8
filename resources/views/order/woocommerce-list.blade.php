@@ -18,11 +18,22 @@
             <p class="text-muted">{{ __('Orders from your WooCommerce store') }}</p>
         </div>
         <div class="mt-3 mt-md-0">
-            <a href="{{ $storeUrl }}/wp-admin/post-new.php?post_type=shop_order" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                <i class="ti ti-plus me-1"></i> {{ __('Add order in WooCommerce') }}
-            </a>
+            {{-- Orders are created via WooCommerce checkout; edit only from CMS --}}
         </div>
     </div>
+
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
     <div class="card">
         <div class="card-body">
@@ -70,12 +81,16 @@
                                     </td>
                                     <td class="text-end">{{ $order['total'] ?? '—' }}</td>
                                     <td class="text-end">
-                                        <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $order['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Edit in WooCommerce') }}">
-                                            <i class="ti ti-pencil ti-sm me-2"></i>
-                                        </a>
-                                        <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $order['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View') }}">
-                                            <i class="ti ti-eye ti-sm"></i>
-                                        </a>
+                                        <div class="d-flex justify-content-end align-items-center">
+                                            @can('update', new \App\Models\Order(['team_id' => auth()->user()->currentTeam?->id]))
+                                                <a href="{{ route('order.edit', $order['id']) }}" class="text-body" title="{{ __('Edit') }}">
+                                                    <i class="ti ti-pencil ti-sm me-2"></i>
+                                                </a>
+                                            @endcan
+                                            <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $order['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View in WooCommerce') }}">
+                                                <i class="ti ti-eye ti-sm"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

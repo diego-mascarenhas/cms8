@@ -124,4 +124,95 @@ class WooCommerceService
     {
         return $this->baseUrl();
     }
+
+    protected function request(string $method, string $path, array $data = []): ?array
+    {
+        if (! $this->isConfigured())
+        {
+            return null;
+        }
+
+        $url = $this->baseUrl().'/wp-json/'.$this->apiVersion().$path;
+        $consumerKey = $this->team->getSetting('woocommerce_consumer_key');
+        $consumerSecret = $this->team->getSetting('woocommerce_consumer_secret');
+
+        try
+        {
+            $http = Http::withBasicAuth($consumerKey, $consumerSecret)
+                ->withOptions(['verify' => $this->verifySsl()]);
+
+            $response = match (strtoupper($method))
+            {
+                'GET' => $http->get($url, $data),
+                'POST' => $http->asJson()->post($url, $data),
+                'PUT' => $http->asJson()->put($url, $data),
+                default => null,
+            };
+
+            if ($response && $response->successful())
+            {
+                return $response->json();
+            }
+
+            if ($response)
+            {
+                Log::warning('WooCommerce API request failed', [
+                    'method' => $method,
+                    'path' => $path,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WooCommerce API error', ['message' => $e->getMessage(), 'path' => $path]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getProduct(int $id): ?array
+    {
+        return $this->request('GET', '/products/'.$id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function updateProduct(int $id, array $data): ?array
+    {
+        return $this->request('PUT', '/products/'.$id, $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createProduct(array $data): ?array
+    {
+        return $this->request('POST', '/products', $data);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getOrder(int $id): ?array
+    {
+        return $this->request('GET', '/orders/'.$id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function updateOrder(int $id, array $data): ?array
+    {
+        return $this->request('PUT', '/orders/'.$id, $data);
+    }
 }

@@ -18,11 +18,26 @@
             <p class="text-muted">{{ __('Products from your WooCommerce store') }}</p>
         </div>
         <div class="mt-3 mt-md-0">
-            <a href="{{ $storeUrl }}/wp-admin/post-new.php?post_type=product" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                <i class="ti ti-plus me-1"></i> {{ __('Add product in WooCommerce') }}
-            </a>
+            @can('product.create')
+                <a href="{{ route('product.create') }}" class="btn btn-primary">
+                    <i class="ti ti-plus me-1"></i> {{ __('Create product') }}
+                </a>
+            @endcan
         </div>
     </div>
+
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
     <div class="card">
         <div class="card-body">
@@ -69,14 +84,21 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $product['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Edit in WooCommerce') }}">
-                                            <i class="ti ti-pencil ti-sm me-2"></i>
-                                        </a>
-                                        @if (!empty($product['permalink']))
-                                            <a href="{{ $product['permalink'] }}" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View') }}">
-                                                <i class="ti ti-eye ti-sm"></i>
+                                        <div class="d-flex justify-content-end align-items-center">
+                                            @can('update', new \App\Models\Product(['team_id' => auth()->user()->currentTeam?->id]))
+                                                <a href="{{ route('product.edit', $product['id']) }}" class="text-body" title="{{ __('Edit') }}">
+                                                    <i class="ti ti-pencil ti-sm me-2"></i>
+                                                </a>
+                                            @endcan
+                                            @if (!empty($product['permalink']))
+                                                <a href="{{ $product['permalink'] }}" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View') }}">
+                                                    <i class="ti ti-eye ti-sm me-2"></i>
+                                                </a>
+                                            @endif
+                                            <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $product['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View in WooCommerce') }}">
+                                                <i class="ti ti-external-link ti-sm"></i>
                                             </a>
-                                        @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
