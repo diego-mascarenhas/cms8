@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProductDataTable;
 use App\Models\Product;
+use App\Services\WooCommerceService;
 
 class ProductController extends Controller
 {
@@ -17,15 +18,25 @@ class ProductController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource (local products or WooCommerce products when API is configured).
      */
     public function index(ProductDataTable $dataTable)
     {
         $this->authorize('viewAny', Product::class);
 
-        if (! auth()->user()->currentTeam)
+        $team = auth()->user()->currentTeam;
+        if (! $team)
         {
             return redirect()->route('error-without-team');
+        }
+
+        $woo = new WooCommerceService($team);
+        if ($woo->isConfigured())
+        {
+            $products = $woo->getProducts(1, 100);
+            $storeUrl = $woo->getStoreUrl();
+
+            return view('product.woocommerce-list', compact('products', 'storeUrl'));
         }
 
         return $dataTable->render('product.list');

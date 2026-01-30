@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\OrderDataTable;
 use App\Models\Order;
+use App\Services\WooCommerceService;
 
 class OrderController extends Controller
 {
@@ -17,15 +18,25 @@ class OrderController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource (local orders or WooCommerce orders when API is configured).
      */
     public function index(OrderDataTable $dataTable)
     {
         $this->authorize('viewAny', Order::class);
 
-        if (! auth()->user()->currentTeam)
+        $team = auth()->user()->currentTeam;
+        if (! $team)
         {
             return redirect()->route('error-without-team');
+        }
+
+        $woo = new WooCommerceService($team);
+        if ($woo->isConfigured())
+        {
+            $orders = $woo->getOrders(1, 100);
+            $storeUrl = $woo->getStoreUrl();
+
+            return view('order.woocommerce-list', compact('orders', 'storeUrl'));
         }
 
         return $dataTable->render('order.list');
