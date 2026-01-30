@@ -75,6 +75,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.woocommerce-configuration') ? 'active' : '' }}">
+          <a href="{{ route('help.woocommerce-configuration') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-brand-wordpress"></i>
+            <div>{{ __('WooCommerce') }}</div>
+          </a>
+        </li>
+
         <li class="menu-header small text-uppercase">
           <span class="menu-header-text">{{ __('API Documentation') }}</span>
         </li>

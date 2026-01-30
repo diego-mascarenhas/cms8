@@ -20,6 +20,7 @@ use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EmailPlanController;
 use App\Http\Controllers\EmailPlansManagementController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EnterpriseDepartmentController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
@@ -512,6 +513,14 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
 
+    // WordPress (posts & pages) - content from WordPress site
+    Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
+    Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
+    Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');
+    Route::get('/wordpress/pages', [App\Http\Controllers\WordPressController::class, 'pages'])->name('wordpress.pages');
+    Route::get('/wordpress/pages/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPage'])->name('wordpress.pages.edit');
+    Route::put('/wordpress/pages/{id}', [App\Http\Controllers\WordPressController::class, 'updatePage'])->name('wordpress.pages.update');
+
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
     Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
@@ -730,6 +739,13 @@ Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
 Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
+Route::get('/department/list', [EnterpriseDepartmentController::class, 'index'])->name('department.index');
+Route::get('/department/create', [EnterpriseDepartmentController::class, 'create'])->name('department.create');
+Route::post('/department', [EnterpriseDepartmentController::class, 'store'])->name('department.store');
+Route::get('/department/{department}/edit', [EnterpriseDepartmentController::class, 'edit'])->name('department.edit');
+Route::put('/department/{department}', [EnterpriseDepartmentController::class, 'update'])->name('department.update');
+Route::delete('/department/{department}', [EnterpriseDepartmentController::class, 'destroy'])->name('department.destroy');
+
 Route::get('/notes', function ()
 {
     return view('notes.index');
@@ -914,6 +930,7 @@ Route::prefix('help')->name('help.')->group(function ()
 
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
+    Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
 });
 
 // Fallback route for 404 errors - must be at the end

@@ -180,4 +180,14 @@ class HelpController extends Controller
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
+
+    /**
+     * Display WooCommerce configuration documentation
+     */
+    public function woocommerceConfiguration()
+    {
+        return view('help.woocommerce-configuration', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
 }

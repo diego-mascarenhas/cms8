@@ -62,7 +62,7 @@
       "module_key": "projects"
     },
     {
-      "url": "task/list",
+      "url": "kanban",
       "name": "Tasks",
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
       "slug": "task",
@@ -224,7 +224,21 @@
       "module_key": "notifications"
     },
     {
-      "menuHeader": "Web Site"
+      "menuHeader": "Sitio web"
+    },
+    {
+      "url": "wordpress/posts",
+      "name": "Posts",
+      "icon": "menu-icon tf-icons ti ti-article",
+      "slug": "wordpress.posts",
+      "module_key": "website"
+    },
+    {
+      "url": "wordpress/pages",
+      "name": "Pages",
+      "icon": "menu-icon tf-icons ti ti-file-description",
+      "slug": "wordpress.pages",
+      "module_key": "website"
     },
     {
       "url": "pages/1/editor",
@@ -232,7 +246,7 @@
       "icon": "menu-icon tf-icons ti ti-globe",
       "slug": "page-edit",
       "target": "blank",
-      "module_key": "website"
+      "module_key": "landings"
     },
     {
       "url": "contents",

@@ -60,6 +60,7 @@ return [
         'multimedia' => false,
         'content-sections' => false,
         'contents' => false,
+        'website' => true,
         'academy' => false,
         'landings' => false,
         // Additional modules (support)

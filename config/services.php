@@ -97,4 +97,10 @@ return [
         'endpoint' => env('MCP_ENDPOINT', 'http://localhost:3000/mcp'),
     ],
 
+    'woocommerce' => [
+        'url' => env('WOOCOMMERCE_URL'),
+        'consumer_key' => env('WOOCOMMERCE_CONSUMER_KEY'),
+        'consumer_secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
+    ],
+
 ];

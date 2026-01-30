@@ -56,6 +56,17 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-success">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-brand-wordpress display-4 text-success mb-3"></i>
+                                            <h5 class="card-title">{{ __('WooCommerce') }}</h5>
+                                            <p class="card-text">{{ __('Configure the connection with your WooCommerce store to manage products and orders from Humano.') }}</p>
+                                            <a href="{{ route('help.woocommerce-configuration') }}" class="btn btn-success">{{ __('View instructivo') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="alert alert-info mt-4" role="alert">

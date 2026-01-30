@@ -6,6 +6,7 @@ use App\Models\Certification;
 use App\Models\Contact;
 use App\Models\Content;
 use App\Models\Enterprise;
+use App\Models\EnterpriseDepartment;
 use App\Models\Fare;
 use App\Models\Invoice;
 use App\Models\LanguageVariant;
@@ -19,6 +20,7 @@ use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
 use App\Policies\ContentPolicy;
+use App\Policies\EnterpriseDepartmentPolicy;
 use App\Policies\FarePolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
@@ -35,6 +37,7 @@ class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
         Certification::class => CertificationPolicy::class,
+        EnterpriseDepartment::class => EnterpriseDepartmentPolicy::class,
         Enterprise::class => ClientPolicy::class,
         Contact::class => ContactPolicy::class,
         Fare::class => FarePolicy::class,

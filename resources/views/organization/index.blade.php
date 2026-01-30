@@ -1,47 +1,37 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Notas')
+@section('title', __('Organización'))
 
 @section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
-
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave-phone.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
-
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sortablejs/sortable.js') }}"></script>
 @endsection
 
 @section('page-script')
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
     <script>
-        // Display success message if exists
-        @if(session('success'))
-            toastr.success('{{ session('success') }}');
-        @endif
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(session('success'))
+                toastr.success('{{ session('success') }}');
+            @endif
+        });
 
-        // Confirmation for delete
         $(document).on('click', '.btn-delete', function(e) {
             e.preventDefault();
             var form = $(this).closest('form');
-            
             Swal.fire({
                 title: 'Are you sure?',
                 text: "You won't be able to revert this!",
@@ -60,7 +50,6 @@
             });
         });
 
-        // Function to open content modal
         function openContentModal(title, content) {
             content = content.replace(/\\n/g, '<br>');
             Swal.fire({
@@ -80,12 +69,8 @@
     </script>
 @endsection
 
+@section('page-style')
 <style>
-    .fade-out {
-        opacity: 0;
-        transition: opacity 0.5s ease-out;
-    }
-
     .post-it {
         background-color: #feff9c;
         padding: 20px;
@@ -99,33 +84,13 @@
         flex-direction: column;
         position: relative;
     }
-
     .post-it:hover {
         transform: rotate(0deg) scale(1.05);
     }
-
-    .post-it-header {
-        font-size: 1.2em;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-
-    .post-it-date {
-        font-size: 0.8em;
-        color: #666;
-        margin-bottom: 10px;
-    }
-
-    .post-it-content {
-        flex-grow: 1;
-    }
-
-    .post-it-tag {
-        align-self: flex-end;
-        font-size: 0.9em;
-        color: #007bff;
-    }
-
+    .post-it-header { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+    .post-it-date { font-size: 0.8em; color: #666; margin-bottom: 10px; }
+    .post-it-content { flex-grow: 1; }
+    .post-it-tag { align-self: flex-end; font-size: 0.9em; color: #007bff; }
     .post-it-actions {
         position: absolute;
         top: 10px;
@@ -133,97 +98,82 @@
         display: none;
         gap: 8px;
     }
-
-    .post-it:hover .post-it-actions {
-        display: flex;
-    }
-
-    .post-it-actions i {
-        font-size: 16px;
-        color: #666;
-        cursor: pointer;
-        transition: color 0.2s ease;
-    }
-
-    .post-it-actions i:hover {
-        color: #333;
-    }
-
-    .post-it-actions form {
-        margin: 0;
-        padding: 0;
-        display: inline;
-    }
-
-    .swal2-modal-custom {
-        padding-top: 1em !important;
-    }
-
-    .swal2-modal-custom .swal2-title {
-        margin-top: 0;
-        padding-top: 0;
-    }
+    .post-it:hover .post-it-actions { display: flex; }
+    .post-it-actions i { font-size: 16px; color: #666; cursor: pointer; transition: color 0.2s ease; }
+    .post-it-actions i:hover { color: #333; }
+    .post-it-actions form { margin: 0; padding: 0; display: inline; }
+    .swal2-modal-custom { padding-top: 1em !important; }
+    .swal2-modal-custom .swal2-title { margin-top: 0; padding-top: 0; }
+    .organization-post-it.sortable-ghost { opacity: 0.4; }
+    .organization-post-it.sortable-chosen { transform: rotate(0deg) scale(1.02); }
 </style>
+@endsection
 
 @section('content')
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-        <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">Organización</h4>
-            <p class="text-muted">Organización por departamentos</p>
-        </div>
-        <div class="mt-3 mt-md-0">
-            <a href="{{ route('organization.create') }}" class="btn btn-primary">
-                <i class="ti ti-plus me-1"></i> Create New Task
-            </a>
-        </div>
-    </div>
-
-    @foreach ($departmentPostits as $departmentName => $postits)
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">{{ $departmentName }}</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap">
-                    @foreach ($postits as $postit)
-                        <div class="post-it" style="background-color: {{ $postit['color'] }};">
-                            <div class="post-it-header">{{ $postit['header'] }}</div>
-                            <div class="post-it-date">{{ $postit['author'] }}</div>
-                            <div class="post-it-content" onclick="openContentModal('{{ $postit['header'] }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)">
-                                {{ Str::limit($postit['content'], 100, '...') }}
-                            </div>
-                            <div class="post-it-tag">
-                                {{ $postit['time_allocation'] }}
-                                @if (!empty($postit['availability']))
-                                    ({{ $postit['availability'] }})
-                                @endif
-                            </div>
-                            
-                            <div class="post-it-actions">
-                                <i class="ti ti-eye" onclick="openContentModal('{{ $postit['header'] }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)"></i>
-                                <a href="{{ route('organization.edit', $postit['id']) }}">
-                                    <i class="ti ti-pencil"></i>
-                                </a>
-                                <form action="{{ route('organization.destroy', $postit['id']) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <i class="ti ti-trash btn-delete" style="color: #dc3545;"></i>
-                                </form>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    @endforeach
-
+    @livewire('organization-board')
 @endsection
 
-{{-- vendor scripts --}}
-@section('vendor-script')
-    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
-    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
-@endsection
+@push('scripts')
+<script>
+    function getOrderedIds(container) {
+        var ids = [];
+        if (!container) return ids;
+        container.querySelectorAll('.organization-post-it[data-id]').forEach(function(el) {
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) ids.push(id);
+        });
+        return ids;
+    }
+
+    function getDepartmentId(container) {
+        if (!container) return null;
+        var id = parseInt(container.getAttribute('data-department-id'), 10);
+        return isNaN(id) ? null : id;
+    }
+
+    function initOrganizationSortables() {
+        document.querySelectorAll('.organization-postits-container').forEach(function(container) {
+            if (container.dataset.sortableInited === '1') return;
+            var departmentId = getDepartmentId(container);
+            if (departmentId === null) return;
+            container.dataset.sortableInited = '1';
+            Sortable.create(container, {
+                group: 'organization-departments',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function(evt) {
+                    var toEl = evt.to;
+                    var fromEl = evt.from;
+                    var toDeptId = getDepartmentId(toEl);
+                    var fromDeptId = getDepartmentId(fromEl);
+                    var idsInTo = getOrderedIds(toEl);
+                    var idsInFrom = getOrderedIds(fromEl);
+                    var movedId = evt.item ? parseInt(evt.item.getAttribute('data-id'), 10) : null;
+                    if (typeof Livewire === 'undefined' || !idsInTo.length) return;
+                    var wireEl = toEl.closest('[wire\\:id]');
+                    if (!wireEl) return;
+                    var component = Livewire.find(wireEl.getAttribute('wire:id'));
+                    if (!component) return;
+                    if (fromDeptId !== toDeptId && movedId) {
+                        component.call('moveToDepartment', movedId, toDeptId, idsInTo, fromDeptId, idsInFrom);
+                    } else {
+                        component.call('reorder', toDeptId, idsInTo);
+                    }
+                }
+            });
+        });
+    }
+    document.addEventListener('livewire:init', function() {
+        setTimeout(initOrganizationSortables, 50);
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initOrganizationSortables, 100);
+        if (typeof Livewire !== 'undefined') {
+            Livewire.hook('morph.updated', function() {
+                initOrganizationSortables();
+            });
+        }
+    });
+</script>
+@endpush

@@ -53,7 +53,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'type' => $this->getSettingType($key),
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'analytics_credentials_json']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
                     ]);
                 }
             }
@@ -281,6 +281,42 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
                         'readonly' => true,
+                    ],
+                ],
+            ],
+            'wordpress' => [
+                'title' => 'WordPress Connection',
+                'icon' => 'ti ti-world',
+                'settings' => [
+                    'wordpress_url' => [
+                        'label' => 'Site URL',
+                        'type' => 'text',
+                        'value' => $team->getSetting('wordpress_url'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'https://tu-sitio.com',
+                        'help' => 'URL completa del sitio WordPress (sin /wp-json ni barra final).',
+                        'section' => 'connection',
+                        'row' => 1,
+                    ],
+                    'wordpress_username' => [
+                        'label' => 'Username',
+                        'type' => 'text',
+                        'value' => $team->getSetting('wordpress_username'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'admin',
+                        'help' => 'Usuario de WordPress con permisos para editar entradas y páginas.',
+                        'section' => 'connection',
+                        'row' => 2,
+                    ],
+                    'wordpress_application_password' => [
+                        'label' => 'Application Password',
+                        'type' => 'password',
+                        'value' => $team->getSetting('wordpress_application_password'),
+                        'is_encrypted' => true,
+                        'placeholder' => 'xxxx xxxx xxxx xxxx xxxx xxxx',
+                        'help' => 'Generado en WordPress: Usuarios → tu usuario → Contraseñas de aplicación. Se almacena cifrado.',
+                        'section' => 'connection',
+                        'row' => 2,
                     ],
                 ],
             ],
