@@ -177,6 +177,13 @@
   "Delete Team": "Borrar equipo",
   "Delivery Information": "Información de entrega",
   "Departments": "Departamentos",
+  "Define organization departments": "Definir departamentos de la organización",
+  "Back to organization": "Volver",
+  "Create department": "Crear departamento",
+  "Department created successfully.": "Departamento creado correctamente.",
+  "Department updated successfully.": "Departamento actualizado correctamente.",
+  "Department deleted successfully.": "Departamento eliminado correctamente.",
+  "No departments yet.": "Aún no hay departamentos.",
   "Detach": "Desvincular",
   "Details": "Detalles",
   "Disable": "Deshabilitar",
@@ -1085,5 +1092,13 @@
   "Try adjusting your filters or upload new media files": "Intenta ajustar tus filtros o sube nuevos archivos multimedia",
   "Upload Media": "Subir Multimedia",
   "Please try again or contact support if the problem persists": "Por favor, inténtalo de nuevo o contacta con soporte si el problema persiste",
-  "Retry": "Reintentar"
+  "Retry": "Reintentar",
+  "Cyan": "Cian",
+  "Green": "Verde",
+  "Light blue": "Azul claro",
+  "Orange": "Naranja",
+  "Primary": "Principal",
+  "Red": "Rojo",
+  "Success": "Éxito",
+  "Yellow": "Amarillo"
 }

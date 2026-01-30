@@ -10,34 +10,7 @@ class EnterpriseOrganizationController extends Controller
 {
     public function index()
     {
-        $departments = EnterpriseDepartment::all();
-
-        $departmentPostits = [];
-
-        foreach ($departments as $department)
-        {
-            $postits = EnterpriseOrganization::where('department_id', $department->id)
-                ->where('team_id', auth()->user()->currentTeam->id)
-                ->with('responsible')
-                ->orderBy('order')
-                ->get()
-                ->map(function ($organization) use ($department)
-                {
-                    return [
-                        'id' => $organization->id,
-                        'header' => $organization->name,
-                        'author' => $organization->responsible->name ?? 'N/A',
-                        'content' => $organization->description,
-                        'time_allocation' => $organization->time_allocation,
-                        'color' => $department->color ?? 'yellow',
-                        'availability' => $organization->availability,
-                    ];
-                });
-
-            $departmentPostits[$department->name] = $postits;
-        }
-
-        return view('organization.index', compact('departmentPostits'));
+        return view('organization.index');
     }
 
     /**
