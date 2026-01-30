@@ -25,7 +25,7 @@
                                 <th>{{ __('Title') }}</th>
                                 <th class="text-center">{{ __('Date') }}</th>
                                 <th class="text-center">{{ __('Status') }}</th>
-                                <th class="text-end">{{ __('Actions') }}</th>
+                                <th class="text-center">{{ __('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -57,7 +57,7 @@
                                             <span class="badge bg-label-secondary">{{ $status ?: '—' }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-center">
                                         <div class="d-flex justify-content-center align-items-center">
                                             @if (!empty($page['link']))
                                                 <a href="{{ $page['link'] }}" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('View') }}">
@@ -65,7 +65,7 @@
                                                 </a>
                                             @endif
                                             <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $page['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Edit in WordPress') }}">
-                                                <i class="ti ti-pencil ti-sm me-2"></i>
+                                                <i class="ti ti-edit ti-sm me-2"></i>
                                             </a>
                                             <a href="{{ $storeUrl }}/wp-admin/edit.php?post_type=page" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Open in WordPress') }}">
                                                 <i class="ti ti-external-link ti-sm"></i>
