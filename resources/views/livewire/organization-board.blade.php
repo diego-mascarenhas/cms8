@@ -36,15 +36,19 @@
                                     ({{ $postit['availability'] }})
                                 @endif
                             </div>
-                            <div class="post-it-actions">
-                                <i class="ti ti-eye" onclick="openContentModal('{{ addslashes($postit['header']) }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)"></i>
-                                <a href="{{ route('organization.edit', $postit['id']) }}">
-                                    <i class="ti ti-pencil"></i>
+                            <div class="post-it-actions d-flex align-items-center gap-1">
+                                <a href="javascript:;" class="text-body" onclick="openContentModal('{{ addslashes($postit['header']) }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)" title="{{ __('View') }}">
+                                    <i class="ti ti-eye ti-sm me-1"></i>
+                                </a>
+                                <a href="{{ route('organization.edit', $postit['id']) }}" class="text-body" title="{{ __('Edit') }}">
+                                    <i class="ti ti-pencil ti-sm me-1"></i>
                                 </a>
                                 <form action="{{ route('organization.destroy', $postit['id']) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <i class="ti ti-trash btn-delete" style="color: #dc3545;"></i>
+                                    <a href="#" class="text-danger btn-delete" title="{{ __('Delete') }}">
+                                        <i class="ti ti-trash ti-sm"></i>
+                                    </a>
                                 </form>
                             </div>
                         </div>
