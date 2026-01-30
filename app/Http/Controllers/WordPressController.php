@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\WordPressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -22,7 +23,7 @@ class WordPressController extends Controller
     }
 
     /**
-     * List WordPress posts (placeholder until WordPressService is implemented).
+     * List WordPress posts from the REST API.
      */
     public function posts(): View|RedirectResponse
     {
@@ -39,14 +40,19 @@ class WordPressController extends Controller
             ]);
         }
 
+        $service = new WordPressService($team);
+        $posts = $service->getPosts(1, 100);
+        $storeUrl = $service->getSiteUrl();
+
         return view('wordpress.posts-list', [
             'team' => $team,
-            'storeUrl' => rtrim($team->getSetting('wordpress_url'), '/'),
+            'storeUrl' => $storeUrl,
+            'posts' => $posts,
         ]);
     }
 
     /**
-     * List WordPress pages (placeholder until WordPressService is implemented).
+     * List WordPress pages from the REST API.
      */
     public function pages(): View|RedirectResponse
     {
@@ -63,9 +69,14 @@ class WordPressController extends Controller
             ]);
         }
 
+        $service = new WordPressService($team);
+        $pages = $service->getPages(1, 100);
+        $storeUrl = $service->getSiteUrl();
+
         return view('wordpress.pages-list', [
             'team' => $team,
-            'storeUrl' => rtrim($team->getSetting('wordpress_url'), '/'),
+            'storeUrl' => $storeUrl,
+            'pages' => $pages,
         ]);
     }
 }
