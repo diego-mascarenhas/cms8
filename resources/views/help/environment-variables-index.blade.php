@@ -38,6 +38,18 @@
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-brand-wordpress me-2 text-success"></i>
+                                    {{ __('WooCommerce') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Conectar tu tienda WooCommerce para gestionar productos y pedidos desde Humano. URL, Consumer Key y Consumer Secret.') }}</p>
+                                <a href="{{ route('help.woocommerce-configuration') }}" class="btn btn-sm btn-success">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <div class="card border h-100 opacity-75">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
