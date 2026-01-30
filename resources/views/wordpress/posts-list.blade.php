@@ -13,6 +13,18 @@
         </div>
     </div>
 
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
     <div class="card">
         <div class="card-body">
             @if (count($posts) === 0)
@@ -64,10 +76,10 @@
                                                     <i class="ti ti-eye ti-sm me-2"></i>
                                                 </a>
                                             @endif
-                                            <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $post['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Edit in WordPress') }}">
+                                            <a href="{{ route('wordpress.posts.edit', $post['id']) }}" class="text-body" title="{{ __('Edit') }}">
                                                 <i class="ti ti-edit ti-sm me-2"></i>
                                             </a>
-                                            <a href="{{ $storeUrl }}/wp-admin/edit.php" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Open in WordPress') }}">
+                                            <a href="{{ $storeUrl }}/wp-admin/post.php?post={{ $post['id'] }}&action=edit" target="_blank" rel="noopener noreferrer" class="text-body" title="{{ __('Edit in WordPress') }}">
                                                 <i class="ti ti-external-link ti-sm"></i>
                                             </a>
                                         </div>

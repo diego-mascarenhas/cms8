@@ -515,7 +515,11 @@ Route::middleware(['auth'])->group(function ()
 
     // WordPress (posts & pages) - content from WordPress site
     Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
+    Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
+    Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');
     Route::get('/wordpress/pages', [App\Http\Controllers\WordPressController::class, 'pages'])->name('wordpress.pages');
+    Route::get('/wordpress/pages/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPage'])->name('wordpress.pages.edit');
+    Route::put('/wordpress/pages/{id}', [App\Http\Controllers\WordPressController::class, 'updatePage'])->name('wordpress.pages.update');
 
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');

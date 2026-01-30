@@ -74,6 +74,80 @@ class WordPressService
         }
     }
 
+    protected function getOne(string $path): ?array
+    {
+        if (! $this->isConfigured())
+        {
+            return null;
+        }
+
+        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->get($url);
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress API request failed', [
+                'path' => $path,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress API error', ['path' => $path, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>|null
+     */
+    protected function put(string $path, array $body): ?array
+    {
+        if (! $this->isConfigured())
+        {
+            return null;
+        }
+
+        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->put($url, $body);
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress API PUT failed', [
+                'path' => $path,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress API PUT error', ['path' => $path, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -97,5 +171,43 @@ class WordPressService
     public function getSiteUrl(): string
     {
         return $this->baseUrl();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getPost(int $id): ?array
+    {
+        $data = $this->getOne('/posts/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getPage(int $id): ?array
+    {
+        $data = $this->getOne('/pages/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @param  array{title?: string, content?: string, excerpt?: string, status?: string}  $data
+     * @return array<string, mixed>|null
+     */
+    public function updatePost(int $id, array $data): ?array
+    {
+        return $this->put('/posts/'.$id, $data);
+    }
+
+    /**
+     * @param  array{title?: string, content?: string, status?: string}  $data
+     * @return array<string, mixed>|null
+     */
+    public function updatePage(int $id, array $data): ?array
+    {
+        return $this->put('/pages/'.$id, $data);
     }
 }
