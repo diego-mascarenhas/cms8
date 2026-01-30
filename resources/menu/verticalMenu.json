@@ -62,7 +62,7 @@
       "module_key": "projects"
     },
     {
-      "url": "task/list",
+      "url": "kanban",
       "name": "Tasks",
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
       "slug": "task",
