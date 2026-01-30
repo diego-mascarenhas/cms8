@@ -115,30 +115,50 @@
 
 @push('scripts')
 <script>
+    function getOrderedIds(container) {
+        var ids = [];
+        if (!container) return ids;
+        container.querySelectorAll('.organization-post-it[data-id]').forEach(function(el) {
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) ids.push(id);
+        });
+        return ids;
+    }
+
+    function getDepartmentId(container) {
+        if (!container) return null;
+        var id = parseInt(container.getAttribute('data-department-id'), 10);
+        return isNaN(id) ? null : id;
+    }
+
     function initOrganizationSortables() {
         document.querySelectorAll('.organization-postits-container').forEach(function(container) {
             if (container.dataset.sortableInited === '1') return;
-            var departmentId = parseInt(container.getAttribute('data-department-id'), 10);
-            if (isNaN(departmentId)) return;
+            var departmentId = getDepartmentId(container);
+            if (departmentId === null) return;
             container.dataset.sortableInited = '1';
             Sortable.create(container, {
+                group: 'organization-departments',
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
                 onEnd: function(evt) {
-                    var ids = [];
-                    container.querySelectorAll('.organization-post-it[data-id]').forEach(function(el) {
-                        var id = parseInt(el.getAttribute('data-id'), 10);
-                        if (!isNaN(id)) ids.push(id);
-                    });
-                    if (ids.length && typeof Livewire !== 'undefined') {
-                        var wireEl = container.closest('[wire\\:id]');
-                        if (wireEl) {
-                            var component = Livewire.find(wireEl.getAttribute('wire:id'));
-                            if (component) {
-                                component.call('reorder', departmentId, ids);
-                            }
-                        }
+                    var toEl = evt.to;
+                    var fromEl = evt.from;
+                    var toDeptId = getDepartmentId(toEl);
+                    var fromDeptId = getDepartmentId(fromEl);
+                    var idsInTo = getOrderedIds(toEl);
+                    var idsInFrom = getOrderedIds(fromEl);
+                    var movedId = evt.item ? parseInt(evt.item.getAttribute('data-id'), 10) : null;
+                    if (typeof Livewire === 'undefined' || !idsInTo.length) return;
+                    var wireEl = toEl.closest('[wire\\:id]');
+                    if (!wireEl) return;
+                    var component = Livewire.find(wireEl.getAttribute('wire:id'));
+                    if (!component) return;
+                    if (fromDeptId !== toDeptId && movedId) {
+                        component.call('moveToDepartment', movedId, toDeptId, idsInTo, fromDeptId, idsInFrom);
+                    } else {
+                        component.call('reorder', toDeptId, idsInTo);
                     }
                 }
             });

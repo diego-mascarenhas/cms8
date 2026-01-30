@@ -77,6 +77,44 @@ class OrganizationBoard extends Component
         }
     }
 
+    /**
+     * Move a task to another department and update order in both departments.
+     *
+     * @param  array  $orderedIdsInTo  All task ids in the target department (new order including the moved task)
+     * @param  int|null  $fromDepartmentId  Source department (optional, to reorder remaining items)
+     * @param  array  $orderedIdsInFrom  Remaining task ids in source department (new order)
+     */
+    public function moveToDepartment(int $taskId, int $toDepartmentId, array $orderedIdsInTo, ?int $fromDepartmentId = null, array $orderedIdsInFrom = []): void
+    {
+        $teamId = auth()->user()->currentTeam->id;
+
+        if (! EnterpriseDepartment::find($toDepartmentId))
+        {
+            return;
+        }
+
+        $orderedIdsInTo = array_map('intval', $orderedIdsInTo);
+
+        foreach ($orderedIdsInTo as $pos => $id)
+        {
+            EnterpriseOrganization::where('id', $id)
+                ->where('team_id', $teamId)
+                ->update(['department_id' => $toDepartmentId, 'order' => $pos]);
+        }
+
+        if ($fromDepartmentId !== null && $fromDepartmentId !== $toDepartmentId && count($orderedIdsInFrom) > 0)
+        {
+            $orderedIdsInFrom = array_map('intval', $orderedIdsInFrom);
+            foreach ($orderedIdsInFrom as $pos => $id)
+            {
+                EnterpriseOrganization::where('id', $id)
+                    ->where('team_id', $teamId)
+                    ->where('department_id', $fromDepartmentId)
+                    ->update(['order' => $pos]);
+            }
+        }
+    }
+
     public function render()
     {
         return view('livewire.organization-board', [
