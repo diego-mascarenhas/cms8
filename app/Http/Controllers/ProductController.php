@@ -175,10 +175,6 @@ class ProductController extends Controller
             'type' => 'simple',
         ];
 
-        if (isset($validated['price']))
-        {
-            $payload['price'] = (string) $validated['price'];
-        }
         if (isset($validated['regular_price']))
         {
             $payload['regular_price'] = (string) $validated['regular_price'];

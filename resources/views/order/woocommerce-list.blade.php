@@ -81,7 +81,7 @@
                                     </td>
                                     <td class="text-end">{{ $order['total'] ?? '—' }}</td>
                                     <td class="text-end">
-                                        <div class="d-flex justify-content-end align-items-center">
+                                        <div class="d-flex justify-content-center align-items-center">
                                             @can('update', new \App\Models\Order(['team_id' => auth()->user()->currentTeam?->id]))
                                                 <a href="{{ route('order.edit', $order['id']) }}" class="text-body" title="{{ __('Edit') }}">
                                                     <i class="ti ti-pencil ti-sm me-2"></i>

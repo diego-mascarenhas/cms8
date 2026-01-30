@@ -84,7 +84,7 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        <div class="d-flex justify-content-end align-items-center">
+                                        <div class="d-flex justify-content-center align-items-center">
                                             @can('update', new \App\Models\Product(['team_id' => auth()->user()->currentTeam?->id]))
                                                 <a href="{{ route('product.edit', $product['id']) }}" class="text-body" title="{{ __('Edit') }}">
                                                     <i class="ti ti-pencil ti-sm me-2"></i>
