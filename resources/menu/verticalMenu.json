@@ -228,14 +228,14 @@
     },
     {
       "url": "wordpress/posts",
-      "name": "Posts (WordPress)",
+      "name": "Posts",
       "icon": "menu-icon tf-icons ti ti-article",
       "slug": "wordpress.posts",
       "module_key": "website"
     },
     {
       "url": "wordpress/pages",
-      "name": "Pages (WordPress)",
+      "name": "Pages",
       "icon": "menu-icon tf-icons ti ti-file-description",
       "slug": "wordpress.pages",
       "module_key": "website"
@@ -246,7 +246,7 @@
       "icon": "menu-icon tf-icons ti ti-globe",
       "slug": "page-edit",
       "target": "blank",
-      "module_key": "website"
+      "module_key": "landings"
     },
     {
       "url": "contents",

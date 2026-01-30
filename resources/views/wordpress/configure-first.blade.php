@@ -1,11 +1,11 @@
 @extends('layouts/layoutMaster')
 
-@section('title', $type === 'posts' ? __('Posts (WordPress)') : __('Pages (WordPress)'))
+@section('title', $type === 'posts' ? __('Posts') : __('Pages'))
 
 @section('content')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ $type === 'posts' ? __('Posts (WordPress)') : __('Pages (WordPress)') }}</h4>
+            <h4 class="mb-1 mt-3">{{ $type === 'posts' ? __('Posts') : __('Pages') }}</h4>
             <p class="text-muted">{{ __('Content from your WordPress site') }}</p>
         </div>
     </div>

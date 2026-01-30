@@ -209,6 +209,13 @@ class ModuleSeeder extends Seeder
             'group' => 'content',
             'order' => 2,
         ],
+        'website' => [
+            'name' => 'Sitio web',
+            'icon' => 'world',
+            'description' => 'WordPress posts and pages, landing page',
+            'group' => 'content',
+            'order' => 3,
+        ],
         'academy' => [
             'name' => 'Academy',
             'icon' => 'book',
@@ -347,7 +354,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()
