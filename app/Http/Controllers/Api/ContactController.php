@@ -51,6 +51,21 @@ class ContactController extends Controller
             $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
             $query = $filterCallback($query);
 
+            // Optional search by name, surname, email
+            $search = $request->get('search');
+            if (is_string($search) && trim($search) !== '')
+            {
+                $term = '%'.trim($search).'%';
+                $query->where(function ($q) use ($term)
+                {
+                    $q->where('name', 'like', $term)
+                        ->orWhere('surname', 'like', $term)
+                        ->orWhere('email', 'like', $term);
+                });
+            }
+
+            $query->orderBy('name')->orderBy('surname');
+
             $contacts = $query->paginate($request->get('per_page', 20));
 
             return response()->json([

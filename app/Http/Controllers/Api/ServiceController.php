@@ -12,7 +12,7 @@ class ServiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
 
@@ -31,9 +31,20 @@ class ServiceController extends Controller
         $filter = ServicePolicy::getQueryFilter($user);
         $filter($query);
 
+        $search = $request->get('search');
+        if (is_string($search) && trim($search) !== '')
+        {
+            $term = '%'.trim($search).'%';
+            $query->where(function ($q) use ($term)
+            {
+                $q->where('description', 'like', $term)
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.serviceName')) LIKE ?", [$term]);
+            });
+        }
+
         $services = $query->with(['client:id,name', 'responsible:id,name'])
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate($request->get('per_page', 20));
 
         return response()->json([
             'success' => true,

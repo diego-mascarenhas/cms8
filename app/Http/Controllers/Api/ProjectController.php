@@ -51,6 +51,19 @@ class ProjectController extends Controller
             $filterCallback = \App\Policies\ProjectPolicy::getQueryFilter($user);
             $query = $filterCallback($query);
 
+            $search = $request->get('search');
+            if (is_string($search) && trim($search) !== '')
+            {
+                $term = '%'.trim($search).'%';
+                $query->where(function ($q) use ($term)
+                {
+                    $q->where('name', 'like', $term)
+                        ->orWhere('description', 'like', $term);
+                });
+            }
+
+            $query->orderBy('name');
+
             $projects = $query->paginate($request->get('per_page', 20));
 
             return response()->json([
