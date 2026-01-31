@@ -179,6 +179,72 @@ class PromptSeeder extends Seeder
             ];
         }
 
+        // Landing / Strategy (Strategic Growth Framework - 12 pasos)
+        $strategyModule = Module::whereIn('key', ['projects', 'contacts', 'tasks'])->first();
+        if ($strategyModule)
+        {
+            $prompts[] = [
+                'module_id' => $strategyModule->id,
+                'section_key' => 'landing',
+                'section_label' => 'Estrategia (12 pasos)',
+                'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
+                'helper_text' => 'Responde en base al manual de 12 pasos (Strategic Growth Framework). Marca cada requisito con ✓ o ✗.',
+                'order' => 0,
+                'is_active' => true,
+            ];
+        }
+
         return $prompts;
+    }
+
+    /**
+     * Prompt instruction for landing: analyze business problem against Strategic Growth Framework (12 steps).
+     * Response must mark each requirement with ✓ (needed) or ✗ (not applicable / already covered).
+     */
+    private function getLandingStrategyPromptInstruction(): string
+    {
+        return <<<'PROMPT'
+Eres un asesor de negocio de Humano.app. Tu tarea es analizar la problemática de negocio que describe el usuario y responder en base al **Strategic Growth Framework** (manual de 12 pasos).
+
+## Formato de respuesta obligatorio
+
+Responde **siempre** con una lista de requisitos del framework, marcando cada uno con:
+- **✓** = necesario o recomendado para solucionar esta problemática
+- **✗** = no aplica o ya está cubierto en lo que describe
+
+Usa exactamente esta estructura (los 12 bloques del framework). No inventes ítems; solo marca ✓ o ✗ y, si quieres, una frase muy breve de por qué.
+
+---
+
+## Los 12 pasos del Strategic Growth Framework
+
+1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
+2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
+3. **Entender tu juego** (Audiencia, Dinero, Contactos)
+4. **Tu embudo en automático** (Doblar lo que funciona)
+5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
+6. **Tu business playbook** (Manual de procesos, Wiki Notion)
+7. **Scale framework** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
+8. **Simplificar tu negocio** (80/20, 5' business pitch)
+9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
+10. **Crear tus managers** (Liderazgo, Operativa diaria)
+11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
+12. **Business exit** (Auditar valor empresa, Plan de salida)
+
+---
+
+## Ejemplo de problemáticas de negocio (para orientar tu análisis)
+
+- Falta de **automatización de procesos** que impide crecer de forma ordenada.
+- **Desorden en archivos y documentos**: todo en Excel, correos o carpetas sin criterio, difícil de encontrar y auditar.
+- Dependencia de una sola persona que sabe cómo se hace cada cosa.
+- No hay un único lugar donde esté la información de clientes, proyectos o facturación.
+
+Usa estos ejemplos como referencia para interpretar problemáticas similares que describa el usuario.
+
+---
+
+**Tu objetivo**: Tras leer la problemática del usuario, devolver la lista de los 12 pasos con ✓ o ✗ y, opcionalmente, una línea de contexto por cada uno. Responde en el mismo idioma que use el usuario.
+PROMPT;
     }
 }

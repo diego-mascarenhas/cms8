@@ -79,6 +79,22 @@ class TeamPromptController extends Controller
         }
 
         $name = $promptName ?? 'default';
+
+        // Try DB prompt by section_key (module must be enabled for team)
+        $dbPrompt = Prompt::query()
+            ->active()
+            ->where('section_key', $name)
+            ->whereHas('module', function ($q) use ($teamId) {
+                $q->whereHas('teams', function ($t) use ($teamId) {
+                    $t->where('team_id', $teamId)->where('module_team.status', 1);
+                });
+            })
+            ->first();
+
+        if ($dbPrompt !== null) {
+            return $this->invokeDbPrompt($dbPrompt->id, $testMessage, $teamId);
+        }
+
         return $this->invokeFilePrompt($name, $testMessage, $teamId);
     }
 
