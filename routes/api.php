@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\TeamOrderController;
 use App\Http\Controllers\Api\TeamPaymentController;
 use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
+use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
@@ -493,6 +494,11 @@ Route::middleware('team.token')->prefix('team')->group(function ()
 {
     // Team information
     Route::get('/', [TeamController::class, 'index']);
+
+    // List prompts available for the team (module_prompts, modules enabled for team)
+    Route::get('prompts', [TeamPromptController::class, 'list'])->name('api.team.prompts.list');
+    // Invoke prompt by prompt_id (DB) or prompt_name (file); body: test_message required
+    Route::post('prompt', TeamPromptController::class)->name('api.team.prompt');
     Route::get('/settings', [TeamController::class, 'settings']);
 
     // Team contacts
