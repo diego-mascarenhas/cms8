@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
+use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
@@ -359,6 +360,9 @@ Route::group(['prefix' => 'auth'], function ()
 
 Route::middleware('auth:sanctum')->group(function ()
 {
+    // Menu for mobile app (filtered by user permissions and team modules)
+    Route::get('menu', [MenuController::class, 'index']);
+
     // Time tracking / Fichaje
     Route::prefix('time')->group(function ()
     {
