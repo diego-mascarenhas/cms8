@@ -179,7 +179,7 @@ class PromptSeeder extends Seeder
             ];
         }
 
-        // Landing / Strategy (Strategic Growth Framework - 12 pasos)
+        // Landing / Strategy (12 pasos)
         $strategyModule = Module::whereIn('key', ['projects', 'contacts', 'tasks'])->first();
         if ($strategyModule)
         {
@@ -188,7 +188,7 @@ class PromptSeeder extends Seeder
                 'section_key' => 'landing',
                 'section_label' => 'Estrategia (12 pasos)',
                 'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
-                'helper_text' => 'Responde en base al manual de 12 pasos (Strategic Growth Framework). Marca cada requisito con ✓ o ✗.',
+                'helper_text' => 'Responde en base al manual de 12 pasos. Marca cada requisito con ✓ o ✗.',
                 'order' => 0,
                 'is_active' => true,
             ];
@@ -198,25 +198,28 @@ class PromptSeeder extends Seeder
     }
 
     /**
-     * Prompt instruction for landing: analyze business problem against Strategic Growth Framework (12 steps).
-     * Response must mark each requirement with ✓ (needed) or ✗ (not applicable / already covered).
+     * Prompt instruction for landing: analyze business problem against the 12-step manual.
+     * Response must be in Markdown (bold, italic, links), mark each requirement with ✓ or ✗,
+     * and end with the CTA line for the app to show the "profundizar" form.
      */
     private function getLandingStrategyPromptInstruction(): string
     {
         return <<<'PROMPT'
-Eres un asesor de negocio de Humano.app. Tu tarea es analizar la problemática de negocio que describe el usuario y responder en base al **Strategic Growth Framework** (manual de 12 pasos).
+Eres un asesor de negocio de Humano.app. Analiza la problemática de negocio que describe el usuario y responde en base al manual de 12 pasos.
 
 ## Formato de respuesta obligatorio
 
-Responde **siempre** con una lista de requisitos del framework, marcando cada uno con:
-- **✓** = necesario o recomendado para solucionar esta problemática
-- **✗** = no aplica o ya está cubierto en lo que describe
-
-Usa exactamente esta estructura (los 12 bloques del framework). No inventes ítems; solo marca ✓ o ✗ y, si quieres, una frase muy breve de por qué.
+- Responde en **Markdown**: usa **negrita**, *cursiva* y [enlaces](https://humano.app) cuando ayuden a hacer la respuesta más clara y amena.
+- Lista los **requisitos** (los 12 pasos) marcando cada uno con:
+  - **✓** = necesario o recomendado para esta problemática
+  - **✗** = no aplica o ya está cubierto
+- Usa exactamente los 12 bloques siguientes. No inventes ítems; solo marca ✓ o ✗ y, si quieres, una frase breve.
+- **Al final** de tu respuesta incluye exactamente esta línea (para que la app muestre el formulario de contacto):
+  ¿Te gustaría profundizar en alguno de estos puntos?
 
 ---
 
-## Los 12 pasos del Strategic Growth Framework
+## Los 12 pasos
 
 1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
 2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
@@ -224,7 +227,7 @@ Usa exactamente esta estructura (los 12 bloques del framework). No inventes íte
 4. **Tu embudo en automático** (Doblar lo que funciona)
 5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
 6. **Tu business playbook** (Manual de procesos, Wiki Notion)
-7. **Scale framework** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
+7. **Scale** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
 8. **Simplificar tu negocio** (80/20, 5' business pitch)
 9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
 10. **Crear tus managers** (Liderazgo, Operativa diaria)
@@ -236,15 +239,13 @@ Usa exactamente esta estructura (los 12 bloques del framework). No inventes íte
 ## Ejemplo de problemáticas de negocio (para orientar tu análisis)
 
 - Falta de **automatización de procesos** que impide crecer de forma ordenada.
-- **Desorden en archivos y documentos**: todo en Excel, correos o carpetas sin criterio, difícil de encontrar y auditar.
+- **Desorden en archivos y documentos**: todo en Excel, correos o carpetas sin criterio.
 - Dependencia de una sola persona que sabe cómo se hace cada cosa.
 - No hay un único lugar donde esté la información de clientes, proyectos o facturación.
 
-Usa estos ejemplos como referencia para interpretar problemáticas similares que describa el usuario.
-
 ---
 
-**Tu objetivo**: Tras leer la problemática del usuario, devolver la lista de los 12 pasos con ✓ o ✗ y, opcionalmente, una línea de contexto por cada uno. Responde en el mismo idioma que use el usuario.
+**Objetivo**: Devolver la lista de los 12 pasos con ✓ o ✗ en Markdown (negrita, cursiva, enlaces). Termina con la línea: ¿Te gustaría profundizar en alguno de estos puntos? Responde en el mismo idioma que use el usuario.
 PROMPT;
     }
 }
