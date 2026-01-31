@@ -51,6 +51,21 @@ class ContactController extends Controller
             $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
             $query = $filterCallback($query);
 
+            // Optional search by name, surname, email
+            $search = $request->get('search');
+            if (is_string($search) && trim($search) !== '')
+            {
+                $term = '%'.trim($search).'%';
+                $query->where(function ($q) use ($term)
+                {
+                    $q->where('name', 'like', $term)
+                        ->orWhere('surname', 'like', $term)
+                        ->orWhere('email', 'like', $term);
+                });
+            }
+
+            $query->orderBy('name')->orderBy('surname');
+
             $contacts = $query->paginate($request->get('per_page', 20));
 
             return response()->json([
@@ -103,7 +118,7 @@ class ContactController extends Controller
         {
             // Find the contact first
             $contact = Contact::where('id', $id)
-                ->with(['status', 'country', 'language', 'creator', 'responsible', 'enterprise', 'user.roles', 'user.teams'])
+                ->with(['status', 'creator', 'responsible', 'currentEnterprise'])
                 ->firstOrFail();
 
             // Check if user can view this specific contact
@@ -115,9 +130,21 @@ class ContactController extends Controller
                 ], 403);
             }
 
+            // Return a plain array to avoid serialization errors (accessors, media, etc.)
+            $data = [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'surname' => $contact->surname,
+                'email' => $contact->email,
+                'phone' => $contact->phone,
+                'status' => $contact->status ? ['id' => $contact->status->id, 'name' => $contact->status->name] : null,
+                'responsible' => $contact->responsible ? ['id' => $contact->responsible->id, 'name' => $contact->responsible->name] : null,
+                'enterprise' => $contact->currentEnterprise ? ['id' => $contact->currentEnterprise->id, 'name' => $contact->currentEnterprise->name] : null,
+            ];
+
             return response()->json([
                 'success' => true,
-                'data' => $contact,
+                'data' => $data,
                 'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)

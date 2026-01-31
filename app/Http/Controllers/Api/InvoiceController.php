@@ -12,7 +12,7 @@ class InvoiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
 
@@ -31,10 +31,17 @@ class InvoiceController extends Controller
         $filter = InvoicePolicy::getQueryFilter($user);
         $filter($query);
 
+        $search = $request->get('search');
+        if (is_string($search) && trim($search) !== '')
+        {
+            $term = '%'.trim($search).'%';
+            $query->where('number', 'like', $term);
+        }
+
         $invoices = $query
             ->with(['enterprise:id,name', 'type:id,name'])
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate($request->get('per_page', 20));
 
         return response()->json([
             'success' => true,

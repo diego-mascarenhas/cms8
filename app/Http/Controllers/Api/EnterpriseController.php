@@ -16,7 +16,7 @@ class EnterpriseController extends Controller
         // Get the authenticated user
         $user = $request->user();
 
-        if (!$user)
+        if (! $user)
         {
             return response()->json([
                 'success' => false,
@@ -25,7 +25,7 @@ class EnterpriseController extends Controller
         }
 
         // Check if user has a current team
-        if (!$user->currentTeam)
+        if (! $user->currentTeam)
         {
             return response()->json([
                 'success' => false,
@@ -36,7 +36,7 @@ class EnterpriseController extends Controller
         try
         {
             // Check if user can view any enterprises
-            if (!$user->can('viewAny', Enterprise::class))
+            if (! $user->can('viewAny', Enterprise::class))
             {
                 return response()->json([
                     'success' => false,
@@ -50,6 +50,15 @@ class EnterpriseController extends Controller
             // Apply role-based filtering using Policy
             $filterCallback = \App\Policies\ClientPolicy::getQueryFilter($user);
             $query = $filterCallback($query);
+
+            $search = $request->get('search');
+            if (is_string($search) && trim($search) !== '')
+            {
+                $term = '%'.trim($search).'%';
+                $query->where('name', 'like', $term);
+            }
+
+            $query->orderBy('name');
 
             $enterprises = $query->paginate($request->get('per_page', 20));
 
@@ -91,7 +100,7 @@ class EnterpriseController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || !$user->currentTeam)
+        if (! $user || ! $user->currentTeam)
         {
             return response()->json([
                 'success' => false,
@@ -107,7 +116,7 @@ class EnterpriseController extends Controller
                 ->firstOrFail();
 
             // Check if user can view this specific enterprise
-            if (!$user->can('view', $enterprise))
+            if (! $user->can('view', $enterprise))
             {
                 return response()->json([
                     'success' => false,

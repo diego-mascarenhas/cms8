@@ -36,9 +36,10 @@ class ClaudeService
      * @param  string  $message  The user's message
      * @param  array  $history  Previous conversation history (optional)
      * @param  string|null  $customSystemPrompt  Optional custom system prompt for this specific request
+     * @param  int|null  $teamIdForLog  Optional team ID for token usage log (e.g. when called from API with team token)
      * @return array Response with text and metadata
      */
-    public function chat($message, $history = [], $customSystemPrompt = null)
+    public function chat($message, $history = [], $customSystemPrompt = null, $teamIdForLog = null)
     {
         try
         {
@@ -115,20 +116,22 @@ class ClaudeService
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/messages", $payload);
 
-            // Log token usage
+            // Log token usage (when team is known: auth user or API team token)
             $savings = $useToon && $jsonSize > 0 ? round((($jsonSize - $toonSize) / $jsonSize) * 100, 2) : 0;
-
-            TokenUsageLog::create([
-                'team_id' => auth()->user()->currentTeam->id,
-                'module_id' => TokenUsageLog::inferModuleId(),
-                'service' => 'ClaudeService',
-                'json_size' => $jsonSize,
-                'toon_size' => $toonSize,
-                'json_tokens' => $jsonTokens,
-                'toon_tokens' => $toonTokens,
-                'savings_percentage' => $savings,
-                'used_toon' => $useToon,
-            ]);
+            $teamId = $teamIdForLog ?? (auth()->check() && auth()->user()->currentTeam ? auth()->user()->currentTeam->id : null);
+            if ($teamId !== null) {
+                TokenUsageLog::withoutGlobalScope('team')->create([
+                    'team_id' => $teamId,
+                    'module_id' => TokenUsageLog::inferModuleId(),
+                    'service' => 'ClaudeService',
+                    'json_size' => $jsonSize,
+                    'toon_size' => $toonSize,
+                    'json_tokens' => $jsonTokens,
+                    'toon_tokens' => $toonTokens,
+                    'savings_percentage' => $savings,
+                    'used_toon' => $useToon,
+                ]);
+            }
 
             if (! $response->successful())
             {

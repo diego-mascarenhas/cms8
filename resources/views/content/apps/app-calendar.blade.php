@@ -26,7 +26,17 @@
 
 @section('page-script')
 <script src="{{asset('assets/js/app-calendar-events.js')}}"></script>
+@if($hasGoogleCredentials ?? false)
+<script>
+  // Load calendar events from Google Calendar API instead of hardcoded list
+  window.calendarEventsApiUrl = '{{ url("/app/calendar/google/events") }}';
+  window.googleCalendarEnabled = true;
+</script>
+@endif
 <script src="{{asset('assets/js/app-calendar.js')}}"></script>
+@if($hasGoogleCredentials ?? false)
+<script src="{{asset('assets/js/app-calendar-google.js')}}"></script>
+@endif
 @endsection
 
 @section('content')
@@ -41,6 +51,21 @@
             <span class="align-middle">Add Event</span>
           </button>
         </div>
+        @if($hasGoogleCredentials ?? false)
+        <div class="d-grid mt-2">
+          <button class="btn btn-outline-primary" id="syncGoogleCalendar" onclick="syncWithGoogle()">
+            <i class="ti ti-brand-google me-1"></i>
+            <span class="align-middle">Sync Google Calendar</span>
+          </button>
+        </div>
+        @else
+        <div class="alert alert-warning mt-3 mb-0 small" role="alert">
+          <i class="ti ti-alert-triangle me-1"></i>
+          <a href="{{ route('team-settings.edit', ['team' => auth()->user()->currentTeam, 'group' => 'analytics']) }}" class="alert-link">
+            Configure Google Calendar
+          </a>
+        </div>
+        @endif
       </div>
       <div class="p-3">
         <!-- inline calendar (flatpicker) -->

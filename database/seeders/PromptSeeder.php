@@ -179,6 +179,73 @@ class PromptSeeder extends Seeder
             ];
         }
 
+        // Landing / Strategy (12 pasos)
+        $strategyModule = Module::whereIn('key', ['projects', 'contacts', 'tasks'])->first();
+        if ($strategyModule)
+        {
+            $prompts[] = [
+                'module_id' => $strategyModule->id,
+                'section_key' => 'landing',
+                'section_label' => 'Estrategia (12 pasos)',
+                'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
+                'helper_text' => 'Responde en base al manual de 12 pasos. Marca cada requisito con ✓ o ✗.',
+                'order' => 0,
+                'is_active' => true,
+            ];
+        }
+
         return $prompts;
+    }
+
+    /**
+     * Prompt instruction for landing: analyze business problem against the 12-step manual.
+     * Response must be in Markdown (bold, italic, links), mark each requirement with ✓ or ✗,
+     * and end with the CTA line for the app to show the "profundizar" form.
+     */
+    private function getLandingStrategyPromptInstruction(): string
+    {
+        return <<<'PROMPT'
+Eres un asesor de negocio de Humano.app. Analiza la problemática de negocio que describe el usuario y responde en base al manual de 12 pasos.
+
+## Formato de respuesta obligatorio
+
+- Responde en **Markdown**: usa **negrita**, *cursiva* y [enlaces](https://humano.app) cuando ayuden a hacer la respuesta más clara y amena.
+- Lista los **requisitos** (los 12 pasos) marcando cada uno con **exactamente un** símbolo:
+  - **✓** (uno solo) = necesario o recomendado para esta problemática
+  - **✗** (uno solo) = no aplica o ya está cubierto
+- Usa exactamente los 12 bloques siguientes. No inventes ítems; solo un ✓ o un ✗ por ítem y, si quieres, una frase breve. No uses ✓✓ ni dos tildes.
+- **Al final** de tu respuesta incluye exactamente esta línea (para que la app muestre el formulario de contacto):
+  ¿Te gustaría profundizar en alguno de estos puntos?
+
+---
+
+## Los 12 pasos
+
+1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
+2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
+3. **Entender tu juego** (Audiencia, Dinero, Contactos)
+4. **Tu embudo en automático** (Doblar lo que funciona)
+5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
+6. **Tu business playbook** (Manual de procesos, Wiki Notion)
+7. **Scale** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
+8. **Simplificar tu negocio** (80/20, 5' business pitch)
+9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
+10. **Crear tus managers** (Liderazgo, Operativa diaria)
+11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
+12. **Business exit** (Auditar valor empresa, Plan de salida)
+
+---
+
+## Ejemplo de problemáticas de negocio (para orientar tu análisis)
+
+- Falta de **automatización de procesos** que impide crecer de forma ordenada.
+- **Desorden en archivos y documentos**: todo en Excel, correos o carpetas sin criterio.
+- Dependencia de una sola persona que sabe cómo se hace cada cosa.
+- No hay un único lugar donde esté la información de clientes, proyectos o facturación.
+
+---
+
+**Objetivo**: Devolver la lista de los 12 pasos con un solo ✓ o un solo ✗ por ítem en Markdown (negrita, cursiva, enlaces). Termina con la línea: ¿Te gustaría profundizar en alguno de estos puntos? Responde en el mismo idioma que use el usuario. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia".
+PROMPT;
     }
 }
