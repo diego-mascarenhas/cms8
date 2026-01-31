@@ -717,6 +717,16 @@ Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
 // Public routes
 Route::get('/app/calendar', [Calendar::class, 'index'])->name('app-calendar');
+
+// Google Calendar Integration
+Route::middleware(['auth'])->prefix('app')->group(function () {
+    Route::get('/calendar/google/events', [\App\Http\Controllers\CalendarController::class, 'getEvents'])->name('calendar.google.events');
+    Route::post('/calendar/google/events', [\App\Http\Controllers\CalendarController::class, 'store'])->name('calendar.google.store');
+    Route::put('/calendar/google/events/{eventId}', [\App\Http\Controllers\CalendarController::class, 'update'])->name('calendar.google.update');
+    Route::delete('/calendar/google/events/{eventId}', [\App\Http\Controllers\CalendarController::class, 'destroy'])->name('calendar.google.destroy');
+    Route::post('/calendar/google/quick-add', [\App\Http\Controllers\CalendarController::class, 'quickAdd'])->name('calendar.google.quick-add');
+});
+
 Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
 Route::get('/pages/account-settings-account', [AccountSettingsAccount::class, 'index'])->name('pages-account-settings-account');
 

@@ -49,7 +49,8 @@ document.addEventListener('DOMContentLoaded', function () {
       inlineCalendar = document.querySelector('.inline-calendar');
 
     let eventToUpdate,
-      currentEvents = events, // Assign app-calendar-events.js file events (assume events from API) to currentEvents (browser store/object) to manage and update calender events
+      // Use API events when calendarEventsApiUrl is set (e.g. Google Calendar), otherwise use hardcoded events
+      currentEvents = typeof window.calendarEventsApiUrl !== 'undefined' ? [] : events,
       isFormValid = false,
       inlineCalInstance;
 
@@ -215,37 +216,69 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --------------------------------------------------------------------------------------------------
-    // AXIOS: fetchEvents
-    // * This will be called by fullCalendar to fetch events. Also this can be used to refetch events.
+    // fetchEvents
+    // * When calendarEventsApiUrl is set (Google Calendar), fetch from API. Otherwise use local events.
     // --------------------------------------------------------------------------------------------------
-    function fetchEvents(info, successCallback) {
-      // Fetch Events from API endpoint reference
-      /* $.ajax(
-        {
-          url: '../../../app-assets/data/app-calendar-events.js',
-          type: 'GET',
-          success: function (result) {
-            // Get requested calendars as Array
-            var calendars = selectedCalendars();
+    function fetchEvents(info, successCallback, failureCallback) {
+      if (typeof window.calendarEventsApiUrl !== 'undefined' && window.calendarEventsApiUrl) {
+        const url = `${window.calendarEventsApiUrl}?start=${encodeURIComponent(info.startStr)}&end=${encodeURIComponent(info.endStr)}`;
+        fetch(url, {
+          headers: { Accept: 'application/json' },
+          credentials: 'same-origin'
+        })
+          .then((response) => {
+            if (!response.ok) {
+              console.warn('Calendar API error:', response.status, response.statusText);
+              successCallback([...currentEvents]);
+              return null;
+            }
+            return response.json();
+          })
+          .then((apiEvents) => {
+            if (apiEvents === null) return;
+            if (!Array.isArray(apiEvents)) {
+              if (apiEvents && apiEvents.error) {
+                console.warn('Calendar API error:', apiEvents.error);
+              }
+              successCallback([...currentEvents]);
+              return;
+            }
+            const merged = [...currentEvents];
+            apiEvents.forEach((ev) => {
+              if (!merged.find((e) => String(e.id) === String(ev.id))) {
+                merged.push({
+                  id: ev.id,
+                  title: ev.title,
+                  start: ev.start,
+                  end: ev.end,
+                  allDay: ev.allDay || false,
+                  extendedProps: {
+                    calendar: ev.extendedProps?.calendar || 'Business',
+                    location: ev.location || '',
+                    description: ev.description || ''
+                  }
+                });
+              }
+            });
+            successCallback(merged);
+          })
+          .catch((err) => {
+            console.error('Calendar API error:', err);
+            if (typeof failureCallback === 'function') {
+              failureCallback(err);
+            }
+            successCallback([...currentEvents]);
+          });
+        return;
+      }
 
-            return [result.events.filter(event => calendars.includes(event.extendedProps.calendar))];
-          },
-          error: function (error) {
-            console.log(error);
-          }
-        }
-      ); */
-
+      // Local events: filter by selected calendars
       let calendars = selectedCalendars();
-      // We are reading event object from app-calendar-events.js file directly by including that file above app-calendar file.
-      // You should make an API call, look into above commented API call for reference
       let selectedEvents = currentEvents.filter(function (event) {
-        // console.log(event.extendedProps.calendar.toLowerCase());
-        return calendars.includes(event.extendedProps.calendar.toLowerCase());
+        const cal = event.extendedProps && event.extendedProps.calendar;
+        return cal && calendars.includes(cal.toLowerCase());
       });
-      // if (selectedEvents.length > 0) {
       successCallback(selectedEvents);
-      // }
     }
 
     // Init FullCalendar
@@ -304,6 +337,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Render calendar
     calendar.render();
+    // Expose calendar instance globally for Google sync and other integrations
+    window.calendar = calendar;
     // Modify sidebar toggler
     modifyToggler();
 

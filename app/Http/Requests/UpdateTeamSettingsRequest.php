@@ -66,6 +66,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Analytics settings
             'analytics.analytics_property_id' => 'nullable|string|max:255',
             'analytics.analytics_credentials_json' => 'nullable|string',
+            'analytics.google_calendar_id' => 'nullable|string|max:255',
         ];
     }
 }

@@ -613,9 +613,17 @@ class TeamSettingController extends Controller
                 ],
             ],
             'analytics' => [
-                'title' => 'Google Analytics',
-                'icon' => 'ti ti-chart-line',
+                'title' => 'Google Services',
+                'icon' => 'ti ti-brand-google',
                 'settings' => [
+                    'analytics_credentials_json' => [
+                        'label' => 'Service account credentials (JSON)',
+                        'type' => 'textarea',
+                        'value' => $team->getSetting('analytics_credentials_json'),
+                        'is_encrypted' => true,
+                        'placeholder' => 'Paste the full JSON key from Google Cloud Console...',
+                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API and Google Calendar API, download the JSON key. These credentials will be used for both Analytics and Calendar.',
+                    ],
                     'analytics_property_id' => [
                         'label' => 'GA4 Property ID',
                         'type' => 'text',
@@ -624,13 +632,13 @@ class TeamSettingController extends Controller
                         'placeholder' => '123456789',
                         'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
                     ],
-                    'analytics_credentials_json' => [
-                        'label' => 'Service account credentials (JSON)',
-                        'type' => 'textarea',
-                        'value' => $team->getSetting('analytics_credentials_json'),
-                        'is_encrypted' => true,
-                        'placeholder' => 'Paste the full JSON key from Google Cloud Console...',
-                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API, download the JSON key, and add the service account email as a viewer in GA4 Property Access Management.',
+                    'google_calendar_id' => [
+                        'label' => 'Google Calendar ID (Optional)',
+                        'type' => 'text',
+                        'value' => $team->getSetting('google_calendar_id'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'primary or your-calendar@group.calendar.google.com',
+                        'help' => 'Leave empty to use "primary" calendar. To use a specific calendar, share it with the service account email and paste the calendar ID here.',
                     ],
                 ],
             ],
