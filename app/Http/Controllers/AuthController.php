@@ -43,7 +43,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('CMS8 Access Token')->plainTextToken;
+        $token = $user->createToken('IDONEO Access Token')->plainTextToken;
 
         $response = ['email' => $user->email, 'token' => $token];
 
@@ -56,6 +56,7 @@ class AuthController extends Controller
             'email' => 'required',
             'password' => 'required|string',
             'remember_me' => 'boolean',
+            'team_id' => 'nullable|integer|exists:teams,id',
         ];
 
         $request->validate($rules);
@@ -64,9 +65,31 @@ class AuthController extends Controller
 
         if ($user && Hash::check($request->password, $user->password))
         {
-            $token = $user->createToken('CMS8 Access Token')->plainTextToken;
+            if ($request->filled('team_id'))
+            {
+                $belongsToTeam = $user->teams()->where('teams.id', $request->team_id)->exists();
+                if ($belongsToTeam)
+                {
+                    $user->forceFill(['current_team_id' => $request->team_id])->save();
+                }
+            }
 
-            $response = ['email' => $user->email, 'token' => $token];
+            $user->load('currentTeam');
+            $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+
+            $response = [
+                'email' => $user->email,
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'current_team' => $user->currentTeam ? [
+                    'id' => $user->currentTeam->id,
+                    'name' => $user->currentTeam->name,
+                ] : null,
+            ];
 
             return response()->json($response, 200);
         }
@@ -83,6 +106,27 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Su sesión se ha cerrado correctamente',
         ]);
+    }
+
+    /**
+     * Return authenticated user with current team (for API clients e.g. IDONEO app).
+     */
+    public function user(Request $request)
+    {
+        $user = $request->user();
+        $user->load('currentTeam');
+
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'current_team' => $user->currentTeam ? [
+                'id' => $user->currentTeam->id,
+                'name' => $user->currentTeam->name,
+            ] : null,
+        ];
+
+        return response()->json($data);
     }
 
     /**
