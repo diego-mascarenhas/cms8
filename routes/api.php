@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
+use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
+use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\AuthController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -359,6 +361,12 @@ Route::group(['prefix' => 'auth'], function ()
 
 Route::middleware('auth:sanctum')->group(function ()
 {
+    // Menu for mobile app (filtered by user permissions and team modules)
+    Route::get('menu', [MenuController::class, 'index']);
+
+    // Users of current team (for IDONEO app)
+    Route::get('users', [ApiUserController::class, 'index']);
+
     // Time tracking / Fichaje
     Route::prefix('time')->group(function ()
     {
