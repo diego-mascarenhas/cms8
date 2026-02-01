@@ -100,6 +100,45 @@ class ContactController extends Controller
     }
 
     /**
+     * Contact stats by status (Leads, En seguimiento, Clientes, Finalizados) for dashboard.
+     */
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado',
+            ], 401);
+        }
+
+        if (! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no tiene equipo asignado',
+            ], 400);
+        }
+
+        if (! $user->can('viewAny', Contact::class))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver contactos',
+            ], 403);
+        }
+
+        $data = Contact::getContactStats($user->currentTeam->id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    /**
      * Display the specified contact.
      */
     public function show(Request $request, string $id)
