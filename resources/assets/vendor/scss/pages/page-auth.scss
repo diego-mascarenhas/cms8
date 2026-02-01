@@ -104,6 +104,19 @@ $authentication-1-inner-max-width: 400px !default;
     padding-right: 0.4rem;
     font-size: light.$large-font-size;
   }
+
+  // Full logo on auth: override demo fixed size so the image is not cropped
+  .app-brand-logo.demo.logo-full {
+    width: auto;
+    height: auto;
+    min-height: 40px;
+
+    img {
+      height: 40px;
+      width: auto;
+      display: block;
+    }
+  }
 }
 
 // authentication multisteps responsive styles

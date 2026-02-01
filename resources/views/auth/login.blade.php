@@ -24,7 +24,7 @@ $configData = Helper::appClasses();
       <div class="w-px-400 mx-auto">
         <!-- Logo -->
         <div class="app-brand mb-4">
-            <span id="logo" class="app-brand-logo demo">@include('_partials.macros',["height"=>20,"withbg"=>'fill: #fff;'])</span>
+            @include('auth.partials.logo-full', ['logoId' => 'logo'])
         </div>
         <!-- /Logo -->
         <h3 class="mb-1">
