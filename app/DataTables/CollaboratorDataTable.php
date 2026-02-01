@@ -554,24 +554,6 @@ class CollaboratorDataTable extends DataTable
                     'orientation' => 'landscape',
                     'pageSize' => 'A4',
                 ],
-            ])
-            ->parameters([
-                'initComplete' => "function() {
-					var api = this.api();
-					api.columns('.select-filter').every(function() {
-						var column = this;
-						$('#CategoryFilter').on('change', function() {
-							let selectedValue = $(this).val();
-							api.column(3).search(selectedValue ? selectedValue : '', true, false).draw();
-						});
-					});
-				}",
-                'drawCallback' => "function() {
-					$('#CategoryFilter').off('change').on('change', function() {
-						let selectedValue = $(this).val();
-						$('#collaborator-table').DataTable().column(3).search(selectedValue ? selectedValue : '', true, false).draw();
-					});
-				}",
             ]);
     }
 

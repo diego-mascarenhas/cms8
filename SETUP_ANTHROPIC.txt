@@ -4,24 +4,24 @@ CONFIGURACIÓN DE ANTHROPIC PARA HUMANO
 
 Para que los logs de Toon se guarden correctamente, agrega estas líneas a tu archivo .env:
 
-# Anthropic Claude API (mismo que CLAUDE_API_KEY)
+# Anthropic (Claude API)
 ANTHROPIC_API_KEY=tu_api_key_aquí
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 ANTHROPIC_API_URL=https://api.anthropic.com/v1
 ANTHROPIC_MAX_TOKENS=4096
 ANTHROPIC_TEMPERATURE=0.7
 ANTHROPIC_TIMEOUT=30
+# ANTHROPIC_SYSTEM_PROMPT=  (opcional; si vacío se usa storage/app/claude_prompts/default.txt)
 
 ========================================
 PASOS RÁPIDOS:
 ========================================
 
 1. Abre tu archivo .env en el proyecto humano
-2. Si ya tienes CLAUDE_API_KEY configurado, copia ese valor
-3. Agrega: ANTHROPIC_API_KEY=el_mismo_valor_de_CLAUDE_API_KEY
-4. Guarda el archivo
-5. Ejecuta: php artisan config:clear
-6. Ejecuta: php artisan optimize:clear
+2. Agrega ANTHROPIC_API_KEY=tu_api_key (obtenerla en https://console.anthropic.com/)
+3. Guarda el archivo
+4. Ejecuta: php artisan config:clear
+5. Ejecuta: php artisan optimize:clear
 
 ========================================
 VERIFICAR QUE FUNCIONA:

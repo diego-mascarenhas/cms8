@@ -1,0 +1,3170 @@
+1|<style>
+2|	.fade-out {
+3|		opacity: 0;
+4|		transition: opacity 0.5s ease-out;
+5|	}
+6|
+7|	/* Hide native DataTables export buttons */
+8|	.dt-buttons,
+9|	.buttons-html5,
+10|	.buttons-print,
+11|	.btn-secondary {
+12|		display: none !important;
+13|	}
+14|
+15|	/* Tooltip styling for better visibility */
+16|	.tooltip {
+17|		z-index: 9999 !important;
+18|	}
+19|
+20|	.tooltip-inner {
+21|		max-width: 300px;
+22|		background-color: #495057;
+23|		color: white;
+24|		text-align: left;
+25|		font-size: 12px;
+26|		line-height: 1.4;
+27|	}
+28|
+29|	/* Active filter styling */
+30|	.filter-status.active-filter {
+31|		transform: scale(1.1);
+32|		box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25);
+33|		transition: all 0.2s ease-in-out;
+34|	}
+35|
+36|	.filter-status {
+37|		transition: all 0.2s ease-in-out;
+38|		cursor: pointer;
+39|	}
+40|
+41|	.filter-status:hover {
+42|		transform: scale(1.05);
+43|	}
+44|
+45|	/* Statistics section animations */
+46|	#service-statistics {
+47|		opacity: 0;
+48|		transform: translateY(-20px);
+49|		transition: all 0.3s ease-in-out;
+50|	}
+51|
+52|	#service-statistics.show {
+53|		opacity: 1;
+54|		transform: translateY(0);
+55|	}
+56|
+57|	/* Statistics cards hover effects */
+58|	#service-statistics .avatar-initial {
+59|		transition: all 0.2s ease-in-out;
+60|	}
+61|
+62|	#service-statistics .d-flex:hover .avatar-initial {
+63|		transform: scale(1.1);
+64|	}
+65|
+66|	/* DataTable column centering */
+67|	#collaborator-table .text-center {
+68|		text-align: center !important;
+69|	}
+70|
+71|	/* Language combination styling */
+72|	.language-combination {
+73|		text-align: center !important;
+74|	}
+75|
+76|	/* Date input styling */
+77|	.flatpickr-input {
+78|		background-color: #fff !important;
+79|		border: 1px solid #d9dee3 !important;
+80|		border-radius: 0.375rem !important;
+81|		padding: 0.4375rem 0.875rem !important;
+82|		font-size: 0.9375rem !important;
+83|		line-height: 1.53 !important;
+84|		color: #697a8d !important;
+85|	}
+86|
+87|	.flatpickr-input:focus {
+88|		border-color: #696cff !important;
+89|		box-shadow: 0 0 0.25rem rgba(105, 108, 255, 0.1) !important;
+90|	}
+91|
+92|	/* Flatpickr calendar styling */
+93|	.flatpickr-calendar {
+94|		background: #fff !important;
+95|		border: 1px solid #d9dee3 !important;
+96|		border-radius: 0.375rem !important;
+97|		box-shadow: 0 0.25rem 1.125rem rgba(75, 70, 92, 0.1) !important;
+98|	}
+99|
+100|	.flatpickr-day.selected {
+101|		background: #696cff !important;
+102|		border-color: #696cff !important;
+103|	}
+104|
+105|	.flatpickr-day:hover {
+106|		background: #e7e7ff !important;
+107|	}
+108|
+109|	/* Responsive adjustments for smaller screens */
+110|	@media (max-width: 768px) {
+111|		#collaborator-table .min-desktop {
+112|			display: none !important;
+113|		}
+114|
+115|		#collaborator-table .min-tablet {
+116|			width: auto !important;
+117|		}
+118|
+119|		/* Adjust language combinations for mobile */
+120|		.language-combination {
+121|			font-size: 0.9em !important;
+122|			word-break: break-word !important;
+123|		}
+124|	}
+125|
+126|	@media (max-width: 576px) {
+127|		#collaborator-table .min-phone {
+128|			width: auto !important;
+129|		}
+130|
+131|		/* Make table more compact on very small screens */
+132|		#collaborator-table td, #collaborator-table th {
+133|			padding: 0.5rem 0.25rem !important;
+134|		}
+135|	}
+136|</style>
+137|
+138|
+139|
+140|<!DOCTYPE html>
+141|
+142|<html lang="es" class="light-style layout-compact layout-navbar-fixed layout-menu-fixed   " dir="ltr" data-theme="theme-default" data-assets-path="https://humano.test/assets/" data-base-url="https://humano.test" data-framework="laravel" data-template="vertical-menu-theme-default-light">
+143|
+144|<head>
+145|  <meta charset="utf-8" />
+146|  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+147|
+148|  <title>Colaboradores |
+149|    Humano
+150|  </title>
+151|  <meta name="description" content="Sistema de gestión de relaciones con clientes (CRM) completo y profesional. Gestiona contactos, proyectos, facturación y comunicaciones en una sola plataforma." />
+152|  <meta name="keywords" content="crm, gestión de clientes, contactos, proyectos, facturación, laravel, dashboard">
+153|  <!-- laravel CRUD token -->
+154|  <meta name="csrf-token" content="CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3">
+155|  <!-- Canonical SEO -->
+156|  <link rel="canonical" href="https://revisionalpha.es">
+157|  <!-- Favicon -->
+158|  <link rel="icon" href="https://humano.test/assets/logo.png" type="image/png">
+159|
+160|  <!-- Open Graph / Facebook / WhatsApp -->
+161|  <meta property="og:type" content="website" />
+162|  <meta property="og:url" content="https://humano.test/collaborator/list" />
+163|  <meta property="og:title" content="Colaboradores | Humano" />
+164|  <meta property="og:description" content="Sistema de gestión de relaciones con clientes (CRM) completo y profesional. Gestiona contactos, proyectos, facturación y comunicaciones en una sola plataforma." />
+165|  <meta property="og:image" content="https://humano.test/assets/logo.png" />
+166|  <meta property="og:site_name" content="Humano" />
+167|
+168|  <!-- Twitter Card -->
+169|  <meta name="twitter:card" content="summary_large_image" />
+170|  <meta name="twitter:url" content="https://humano.test/collaborator/list" />
+171|  <meta name="twitter:title" content="Colaboradores | Humano" />
+172|  <meta name="twitter:description" content="Sistema de gestión de relaciones con clientes (CRM) completo y profesional. Gestiona contactos, proyectos, facturación y comunicaciones en una sola plataforma." />
+173|  <meta name="twitter:image" content="https://humano.test/assets/logo.png" />
+174|    <meta name="twitter:site" content="https://x.com/devcraftsman" />
+175|  
+176|
+177|
+178|  <!-- Include Styles -->
+179|  <!-- $isFront is used to append the front layout styles only on the front layout otherwise the variable will be blank -->
+180|  <!-- BEGIN: Theme CSS-->
+181|<!-- Fonts -->
+182|<link rel="preconnect" href="https://fonts.googleapis.com">
+183|<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+184|<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+185|<noscript><link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet"></noscript>
+186|
+187|<!-- Preload critical CSS -->
+188|<link rel="preload" href="https://humano.test/assets/vendor/css/rtl/core.css" as="style">
+189|<link rel="preload" href="https://humano.test/assets/vendor/css/rtl/theme-default.css" as="style">
+190|
+191|<link rel="stylesheet" href="https://humano.test/assets/vendor/fonts/tabler-icons.css" media="print" onload="this.media='all'" />
+192|<link rel="stylesheet" href="https://humano.test/assets/vendor/fonts/fontawesome.css" media="print" onload="this.media='all'" />
+193|<link rel="stylesheet" href="https://humano.test/assets/vendor/fonts/flag-icons.css" media="print" onload="this.media='all'" />
+194|<!-- Core CSS -->
+195|<link rel="stylesheet" href="https://humano.test/assets/vendor/css/rtl/core.css" class="template-customizer-core-css" />
+196|<link rel="stylesheet" href="https://humano.test/assets/vendor/css/rtl/theme-default.css" class="template-customizer-theme-css" />
+197|<link rel="stylesheet" href="https://humano.test/assets/css/custom.css" />
+198|<link rel="stylesheet" href="https://humano.test/assets/css/demo.css" />
+199|<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/node-waves/node-waves.css" />
+200|<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+201|<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/select2/select2.css" />
+202|<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/typeahead-js/typeahead.css" />
+203|
+204|<!-- Vendor Styles -->
+205|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css">
+206|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css">
+207|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css">
+208|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/sweetalert2/sweetalert2.css" />
+209|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/toastr/toastr.css" />
+210|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/select2/select2.css">
+211|	<link rel="stylesheet" href="https://humano.test/assets/vendor/libs/flatpickr/flatpickr.css" />
+212|
+213|
+214|<!-- Page Styles -->
+215|
+216|<!-- Livewire Styles --><style >[wire\:loading][wire\:loading], [wire\:loading\.delay][wire\:loading\.delay], [wire\:loading\.inline-block][wire\:loading\.inline-block], [wire\:loading\.inline][wire\:loading\.inline], [wire\:loading\.block][wire\:loading\.block], [wire\:loading\.flex][wire\:loading\.flex], [wire\:loading\.table][wire\:loading\.table], [wire\:loading\.grid][wire\:loading\.grid], [wire\:loading\.inline-flex][wire\:loading\.inline-flex] {display: none;}[wire\:loading\.delay\.none][wire\:loading\.delay\.none], [wire\:loading\.delay\.shortest][wire\:loading\.delay\.shortest], [wire\:loading\.delay\.shorter][wire\:loading\.delay\.shorter], [wire\:loading\.delay\.short][wire\:loading\.delay\.short], [wire\:loading\.delay\.default][wire\:loading\.delay\.default], [wire\:loading\.delay\.long][wire\:loading\.delay\.long], [wire\:loading\.delay\.longer][wire\:loading\.delay\.longer], [wire\:loading\.delay\.longest][wire\:loading\.delay\.longest] {display: none;}[wire\:offline][wire\:offline] {display: none;}[wire\:dirty]:not(textarea):not(input):not(select) {display: none;}:root {--livewire-progress-bar-color: #2299dd;}[x-cloak] {display: none !important;}[wire\:cloak] {display: none !important;}dialog#livewire-error::backdrop {background-color: rgba(0, 0, 0, .6);}</style>
+217|
+218|  <!-- Include Scripts for customizer, helper, analytics, config -->
+219|  <!-- $isFront is used to append the front layout scriptsIncludes only on the front layout otherwise the variable will be blank -->
+220|  <!-- laravel style -->
+221|<script src="https://humano.test/assets/vendor/js/helpers.js"></script>
+222|
+223|  <!--! Template customizer: required for theme switching -->
+224|  <script src="https://humano.test/assets/vendor/js/template-customizer.js"></script>
+225|
+226|<!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+227|<script src="https://humano.test/assets/js/config.js"></script>
+228|
+229|<script>
+230|  window.templateCustomizer = new TemplateCustomizer({
+231|    cssPath: '',
+232|    themesPath: '',
+233|    defaultStyle: "system",
+234|    defaultShowDropdownOnHover: "1", // true/false (for horizontal layout only)
+235|    displayCustomizer: "",
+236|    lang: 'es',
+237|    pathResolver: function(path) {
+238|      var resolvedPaths = {
+239|        // Core stylesheets
+240|                  'core.css': 'https://humano.test/assets/vendor/css/rtl/core.css',
+241|          'core-dark.css': 'https://humano.test/assets/vendor/css/rtl/core-dark.css',
+242|        
+243|        // Themes
+244|                  'theme-default.css': 'https://humano.test/assets/vendor/css/rtl/theme-default.css',
+245|          'theme-default-dark.css':
+246|          'https://humano.test/assets/vendor/css/rtl/theme-default-dark.css',
+247|                  'theme-bordered.css': 'https://humano.test/assets/vendor/css/rtl/theme-bordered.css',
+248|          'theme-bordered-dark.css':
+249|          'https://humano.test/assets/vendor/css/rtl/theme-bordered-dark.css',
+250|                  'theme-semi-dark.css': 'https://humano.test/assets/vendor/css/rtl/theme-semi-dark.css',
+251|          'theme-semi-dark-dark.css':
+252|          'https://humano.test/assets/vendor/css/rtl/theme-semi-dark-dark.css',
+253|              }
+254|      return resolvedPaths[path] || path;
+255|    },
+256|    'controls': ["rtl","style","headerType","contentLayout","layoutCollapsed","layoutNavbarOptions","themes"],
+257|  });
+258|</script>
+259|
+260|  <!-- Google Analytics - Only in production -->
+261|  </head>
+262|
+263|<body>
+264|
+265|
+266|  <!-- Layout Content -->
+267|  <div class="layout-wrapper layout-content-navbar ">
+268|  <div class="layout-container">
+269|
+270|        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+271|
+272|  <!-- ! Hide app brand if navbar-full -->
+273|    <div class="app-brand demo">
+274|    <a href="https://humano.test" class="app-brand-link">
+275|      <span id="menu-logo" class="app-brand-logo demo app-brand-img">
+276|        <img src="https://humano.test/assets/logo-dark.svg" alt="Humano" style="height: 44px; width: auto;">
+277|      </span>
+278|      <span class="app-brand-logo demo app-brand-img-collapsed">
+279|        <svg width="32" height="20" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+280|  <defs>
+281|    <pattern id="imgPattern" patternUnits="userSpaceOnUse" width="32" height="22">
+282|      <image href="https://humano.test/assets/logo-iso.svg" x="0" y="0" width="32" height="22" preserveAspectRatio="xMidYMid meet" />
+283|    </pattern>
+284|  </defs>
+285|  <rect width="32" height="22" fill="url(#imgPattern)" />
+286|</svg>      </span>
+287|    </a>
+288|
+289|    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
+290|      <i class="ti menu-toggle-icon d-none d-xl-block ti-sm align-middle"></i>
+291|      <i class="ti ti-x d-block d-xl-none ti-sm align-middle"></i>
+292|    </a>
+293|  </div>
+294|  
+295|
+296|  <div class="menu-inner-shadow"></div>
+297|
+298|  <ul class="menu-inner py-1">
+299|    
+300|    
+301|
+302|    
+303|        <li class="menu-header small text-uppercase">
+304|      <span class="menu-header-text"></span>
+305|    </li>
+306|
+307|        
+308|    
+309|
+310|    
+311|    
+312|    
+313|    
+314|    
+315|    <li class="menu-item ">
+316|      <a href="https://humano.test/dashboard" class="menu-link" >
+317|                <i class="menu-icon tf-icons ti ti-layout-grid"></i>
+318|                <div>Panel</div>
+319|              </a>
+320|
+321|      
+322|          </li>
+323|        
+324|    
+325|
+326|    
+327|        <li class="menu-header small text-uppercase">
+328|      <span class="menu-header-text">Operativa</span>
+329|    </li>
+330|
+331|        
+332|    
+333|
+334|    
+335|    
+336|    
+337|    
+338|    
+339|    <li class="menu-item ">
+340|      <a href="https://humano.test/today" class="menu-link" >
+341|                <i class="menu-icon tf-icons ti ti-calendar-time"></i>
+342|                <div>Hoy</div>
+343|              </a>
+344|
+345|      
+346|          </li>
+347|        
+348|    
+349|
+350|    
+351|    
+352|    
+353|    
+354|    
+355|    <li class="menu-item ">
+356|      <a href="https://humano.test/contact/list" class="menu-link" >
+357|                <i class="menu-icon tf-icons ti ti-users"></i>
+358|                <div>Contactos</div>
+359|              </a>
+360|
+361|      
+362|          </li>
+363|        
+364|    
+365|
+366|    
+367|    
+368|    
+369|    
+370|    
+371|    <li class="menu-item ">
+372|      <a href="https://humano.test/client/list" class="menu-link" >
+373|                <i class="menu-icon tf-icons ti ti-user-heart"></i>
+374|                <div>Clientes</div>
+375|              </a>
+376|
+377|      
+378|          </li>
+379|        
+380|    
+381|
+382|    
+383|    
+384|    
+385|    
+386|    
+387|    <li class="menu-item active">
+388|      <a href="https://humano.test/collaborator/list" class="menu-link" >
+389|                <i class="menu-icon tf-icons ti ti-users-group"></i>
+390|                <div>Colaboradores</div>
+391|              </a>
+392|
+393|      
+394|          </li>
+395|        
+396|    
+397|
+398|    
+399|    
+400|    
+401|    
+402|    
+403|    <li class="menu-item ">
+404|      <a href="https://humano.test/list60/list" class="menu-link" >
+405|                <i class="menu-icon tf-icons ti ti-list-check"></i>
+406|                <div>Lista de 60</div>
+407|              </a>
+408|
+409|      
+410|          </li>
+411|        
+412|    
+413|
+414|    
+415|    
+416|    
+417|    
+418|    
+419|    <li class="menu-item ">
+420|      <a href="https://humano.test/service/list" class="menu-link" >
+421|                <i class="menu-icon tf-icons ti ti-rocket"></i>
+422|                <div>Servicios</div>
+423|              </a>
+424|
+425|      
+426|          </li>
+427|        
+428|    
+429|
+430|    
+431|    
+432|    
+433|    
+434|    
+435|    <li class="menu-item ">
+436|      <a href="https://humano.test/project/list" class="menu-link" >
+437|                <i class="menu-icon tf-icons ti ti-folder"></i>
+438|                <div>Proyectos</div>
+439|              </a>
+440|
+441|      
+442|          </li>
+443|        
+444|    
+445|
+446|    
+447|    
+448|    
+449|    
+450|    
+451|    <li class="menu-item ">
+452|      <a href="https://humano.test/kanban" class="menu-link" >
+453|                <i class="menu-icon tf-icons ti ti-layout-kanban"></i>
+454|                <div>Tareas</div>
+455|              </a>
+456|
+457|      
+458|          </li>
+459|        
+460|    
+461|
+462|    
+463|    
+464|    
+465|    
+466|    
+467|    <li class="menu-item ">
+468|      <a href="https://humano.test/time/list" class="menu-link" >
+469|                <i class="menu-icon tf-icons ti ti-hourglass-low"></i>
+470|                <div>Tiempos</div>
+471|              </a>
+472|
+473|      
+474|          </li>
+475|        
+476|    
+477|
+478|    
+479|    
+480|    
+481|    
+482|    
+483|    <li class="menu-item ">
+484|      <a href="https://humano.test/documentation/list" class="menu-link" >
+485|                <i class="menu-icon tf-icons ti ti-files"></i>
+486|                <div>Documentación</div>
+487|              </a>
+488|
+489|      
+490|          </li>
+491|        
+492|    
+493|
+494|    
+495|        <li class="menu-header small text-uppercase">
+496|      <span class="menu-header-text">E-commerce</span>
+497|    </li>
+498|
+499|        
+500|    
+501|
+502|    
+503|    
+504|    
+505|    
+506|    
+507|    <li class="menu-item ">
+508|      <a href="https://humano.test/product/list" class="menu-link" >
+509|                <i class="menu-icon tf-icons ti ti-package"></i>
+510|                <div>Productos</div>
+511|              </a>
+512|
+513|      
+514|          </li>
+515|        
+516|    
+517|
+518|    
+519|    
+520|    
+521|    
+522|    
+523|    <li class="menu-item ">
+524|      <a href="https://humano.test/order/list" class="menu-link" >
+525|                <i class="menu-icon tf-icons ti ti-shopping-bag"></i>
+526|                <div>Orders</div>
+527|              </a>
+528|
+529|      
+530|          </li>
+531|        
+532|    
+533|
+534|    
+535|        <li class="menu-header small text-uppercase">
+536|      <span class="menu-header-text">Facturación</span>
+537|    </li>
+538|
+539|        
+540|    
+541|
+542|    
+543|    
+544|    
+545|    
+546|    
+547|    <li class="menu-item ">
+548|      <a href="https://humano.test/invoice/list" class="menu-link" >
+549|                <i class="menu-icon tf-icons ti ti-file-invoice"></i>
+550|                <div>Facturas</div>
+551|              </a>
+552|
+553|      
+554|          </li>
+555|        
+556|    
+557|
+558|    
+559|    
+560|    
+561|    
+562|    
+563|    <li class="menu-item ">
+564|      <a href="https://humano.test/payments" class="menu-link" >
+565|                <i class="menu-icon tf-icons ti ti-credit-card"></i>
+566|                <div>Pagos</div>
+567|              </a>
+568|
+569|      
+570|          </li>
+571|        
+572|    
+573|
+574|    
+575|    
+576|    
+577|    
+578|    
+579|    <li class="menu-item ">
+580|      <a href="https://humano.test/income/list" class="menu-link" >
+581|                <i class="menu-icon tf-icons ti ti-trending-up"></i>
+582|                <div>Ingresos</div>
+583|              </a>
+584|
+585|      
+586|          </li>
+587|        
+588|    
+589|
+590|    
+591|    
+592|    
+593|    
+594|    
+595|    <li class="menu-item ">
+596|      <a href="https://humano.test/expense/list" class="menu-link" >
+597|                <i class="menu-icon tf-icons ti ti-trending-down"></i>
+598|                <div>Gastos</div>
+599|              </a>
+600|
+601|      
+602|          </li>
+603|        
+604|    
+605|
+606|    
+607|    
+608|    
+609|    
+610|    
+611|    <li class="menu-item ">
+612|      <a href="https://humano.test/fare" class="menu-link" >
+613|                <i class="menu-icon tf-icons ti ti-currency-dollar"></i>
+614|                <div>Tarifas</div>
+615|              </a>
+616|
+617|      
+618|          </li>
+619|        
+620|    
+621|
+622|    
+623|    
+624|    
+625|    
+626|    
+627|    <li class="menu-item ">
+628|      <a href="https://humano.test/enterprise/list" class="menu-link" >
+629|                <i class="menu-icon tf-icons ti ti-building"></i>
+630|                <div>Empresas</div>
+631|              </a>
+632|
+633|      
+634|          </li>
+635|        
+636|    
+637|
+638|    
+639|    
+640|    
+641|    
+642|    
+643|    <li class="menu-item ">
+644|      <a href="https://humano.test/finance-dashboard" class="menu-link" >
+645|                <i class="menu-icon tf-icons ti ti-chart-line"></i>
+646|                <div>Finanzas</div>
+647|              </a>
+648|
+649|      
+650|          </li>
+651|        
+652|    
+653|
+654|    
+655|        <li class="menu-header small text-uppercase">
+656|      <span class="menu-header-text">Equipo</span>
+657|    </li>
+658|
+659|        
+660|    
+661|
+662|    
+663|    
+664|    
+665|    
+666|    
+667|    <li class="menu-item ">
+668|      <a href="https://humano.test/user-management" class="menu-link" >
+669|                <i class="menu-icon tf-icons ti ti-users"></i>
+670|                <div>Usuarios</div>
+671|              </a>
+672|
+673|      
+674|          </li>
+675|        
+676|    
+677|
+678|    
+679|    
+680|    
+681|    
+682|    
+683|    <li class="menu-item ">
+684|      <a href="https://humano.test/department/list" class="menu-link" >
+685|                <i class="menu-icon tf-icons ti ti-users-group"></i>
+686|                <div>Departamentos</div>
+687|              </a>
+688|
+689|      
+690|          </li>
+691|        
+692|    
+693|
+694|    
+695|        <li class="menu-header small text-uppercase">
+696|      <span class="menu-header-text">Campañas</span>
+697|    </li>
+698|
+699|        
+700|    
+701|
+702|    
+703|    
+704|    
+705|    
+706|    
+707|    <li class="menu-item ">
+708|      <a href="https://humano.test/message/list" class="menu-link" >
+709|                <i class="menu-icon tf-icons ti ti-send"></i>
+710|                <div>Mensajes</div>
+711|              </a>
+712|
+713|      
+714|          </li>
+715|        
+716|    
+717|
+718|    
+719|    
+720|    
+721|    
+722|    
+723|    <li class="menu-item ">
+724|      <a href="https://humano.test/template/list" class="menu-link" >
+725|                <i class="menu-icon tf-icons ti ti-template"></i>
+726|                <div>Plantillas</div>
+727|              </a>
+728|
+729|      
+730|          </li>
+731|        
+732|    
+733|
+734|    
+735|        <li class="menu-header small text-uppercase">
+736|      <span class="menu-header-text">Automatismo</span>
+737|    </li>
+738|
+739|        
+740|    
+741|
+742|    
+743|    
+744|    
+745|    
+746|    
+747|    <li class="menu-item ">
+748|      <a href="https://humano.test/prompt/list" class="menu-link" >
+749|                <i class="menu-icon tf-icons ti ti-cpu"></i>
+750|                <div>Prompts</div>
+751|              </a>
+752|
+753|      
+754|          </li>
+755|        
+756|    
+757|
+758|    
+759|    
+760|    
+761|    
+762|    
+763|    <li class="menu-item ">
+764|      <a href="https://humano.test/funnel/list" class="menu-link" >
+765|                <i class="menu-icon tf-icons ti ti-filter"></i>
+766|                <div>Embudo</div>
+767|              </a>
+768|
+769|      
+770|          </li>
+771|        
+772|    
+773|
+774|    
+775|    
+776|    
+777|    
+778|    
+779|    <li class="menu-item ">
+780|      <a href="https://humano.test/integration/list" class="menu-link" >
+781|                <i class="menu-icon tf-icons ti ti-api-app"></i>
+782|                <div>Integraciones</div>
+783|              </a>
+784|
+785|      
+786|          </li>
+787|        
+788|    
+789|
+790|    
+791|    
+792|    
+793|    
+794|    
+795|    <li class="menu-item ">
+796|      <a href="https://humano.test/notification/list" class="menu-link" >
+797|                <i class="menu-icon tf-icons ti ti-speakerphone"></i>
+798|                <div>Notificaciones</div>
+799|              </a>
+800|
+801|      
+802|          </li>
+803|        
+804|    
+805|
+806|    
+807|        <li class="menu-header small text-uppercase">
+808|      <span class="menu-header-text">Sitio web</span>
+809|    </li>
+810|
+811|        
+812|    
+813|
+814|    
+815|    
+816|    
+817|    
+818|    
+819|    <li class="menu-item ">
+820|      <a href="https://humano.test/wordpress/posts" class="menu-link" >
+821|                <i class="menu-icon tf-icons ti ti-article"></i>
+822|                <div>Entradas</div>
+823|              </a>
+824|
+825|      
+826|          </li>
+827|        
+828|    
+829|
+830|    
+831|    
+832|    
+833|    
+834|    
+835|    <li class="menu-item ">
+836|      <a href="https://humano.test/wordpress/pages" class="menu-link" >
+837|                <i class="menu-icon tf-icons ti ti-file-description"></i>
+838|                <div>Páginas</div>
+839|              </a>
+840|
+841|      
+842|          </li>
+843|        
+844|    
+845|
+846|    
+847|    
+848|    
+849|    
+850|    
+851|    <li class="menu-item ">
+852|      <a href="https://humano.test/contents" class="menu-link" >
+853|                <i class="menu-icon tf-icons ti ti-file-text"></i>
+854|                <div>Contents</div>
+855|              </a>
+856|
+857|      
+858|          </li>
+859|        
+860|    
+861|
+862|    
+863|    
+864|    
+865|    
+866|    
+867|    <li class="menu-item ">
+868|      <a href="https://humano.test/multimedia/list" class="menu-link" >
+869|                <i class="menu-icon tf-icons ti ti-photo"></i>
+870|                <div>Multimedia</div>
+871|              </a>
+872|
+873|      
+874|          </li>
+875|        
+876|    
+877|
+878|    
+879|    
+880|    
+881|    
+882|    
+883|    <li class="menu-item ">
+884|      <a href="https://humano.test/academy/list" class="menu-link" >
+885|                <i class="menu-icon tf-icons ti ti-book"></i>
+886|                <div>Academia</div>
+887|              </a>
+888|
+889|      
+890|          </li>
+891|        
+892|    
+893|
+894|    
+895|        <li class="menu-header small text-uppercase">
+896|      <span class="menu-header-text">Infraestructure</span>
+897|    </li>
+898|
+899|        
+900|    
+901|
+902|    
+903|    
+904|    
+905|    
+906|    
+907|    <li class="menu-item ">
+908|      <a href="https://humano.test/server" class="menu-link" >
+909|                <i class="menu-icon tf-icons ti ti-server-2"></i>
+910|                <div>Servers</div>
+911|              </a>
+912|
+913|      
+914|          </li>
+915|        
+916|    
+917|
+918|    
+919|    
+920|    
+921|    
+922|    
+923|    <li class="menu-item ">
+924|      <a href="https://humano.test/hosting" class="menu-link" >
+925|                <i class="menu-icon tf-icons ti ti-server"></i>
+926|                <div>Hosting</div>
+927|              </a>
+928|
+929|      
+930|          </li>
+931|          </ul>
+932|
+933|</aside>
+934|
+935|<style>
+936|  @keyframes vibrate {
+937|    0% { transform: translate(0); }
+938|    25% { transform: translate(-2px, 2px); }
+939|    50% { transform: translate(2px, -2px); }
+940|    75% { transform: translate(-2px, -2px); }
+941|    100% { transform: translate(0); }
+942|  }
+943|  .vibrate {
+944|    animation: vibrate 0.5s infinite;
+945|  }
+946|</style>
+947|
+948|<script>
+949|  const animateLogo = false;
+950|  if (animateLogo) {
+951|    setInterval(() => {
+952|      const logo = document.getElementById('menu-logo');
+953|      logo.classList.add('vibrate');
+954|      setTimeout(() => {
+955|        logo.classList.remove('vibrate');
+956|      }, 500);
+957|    }, 3600000);
+958|  }
+959|</script>
+960|    
+961|
+962|    <!-- Layout page -->
+963|    <div class="layout-page">
+964|
+965|      
+966|      <div class="alert alert-banner mb-0 rounded-0"
+967|     :class="{'bg-success': style == 'success', 'bg-danger': style == 'danger', 'bg-secondary': style != 'success' && style != 'danger'}"
+968|     role="alert"
+969|     x-data="{show: true, style: 'success', message: ''}"
+970|     x-show="show && message"
+971|     x-init="
+972|        document.addEventListener('banner-message', event => {
+973|            style = event.detail.style;
+974|            message = event.detail.message;
+975|            show = true;
+976|        });
+977|     " style="display: none;">
+978|     <div class="d-flex justify-content-between align-items-center">
+979|         <div>
+980|             <span class="badge rounded-pill py-2" :class="{'bg-success': style == 'success', 'bg-danger': style == 'danger'}">
+981|               <svg x-show="style == 'success'" class="h-px-20 w-px-20 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+982|                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+983|             </svg>
+984|             <svg x-show="style == 'danger'" class="h-px-20 w-px-20 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+985|                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+986|             </svg>
+987|             <svg x-show="style != 'success' && style != 'danger'" class="h-px-20 w-px-20 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+988|                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+989|             </svg>
+990|             </span>
+991|             <span class="text-white" x-text="message"></span>
+992|         </div>
+993|
+994|         <div class="text-end">
+995|             <button type="button"
+996|                     class="btn btn-icon btn-sm"
+997|                     :class="{'btn-success': style == 'success', 'btn-danger': style == 'danger'}"
+998|                     aria-label="Dismiss"
+999|                     x-on:click="show = false">
+1000|                     <svg class="h-px-20 w-px-20 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+1001|                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+1002|                   </svg>
+1003|             </button>
+1004|         </div>
+1005|     </div>
+1006|</div>
+1007|
+1008|      <!-- BEGIN: Navbar-->
+1009|            <!-- Navbar -->
+1010|    <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
+1011|        id="layout-navbar">
+1012|
+1013|<!--  Brand demo (display only for navbar-full and hide on below xl) -->
+1014|
+1015|<!-- ! Not required for layout-without-menu -->
+1016|    <div
+1017|        class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0  d-xl-none ">
+1018|        <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)">
+1019|            <i class="ti ti-menu-2 ti-sm"></i>
+1020|        </a>
+1021|    </div>
+1022|
+1023|<div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse" x-data="globalSearch()" x-init="init()">
+1024|
+1025|            <!-- Search -->
+1026|        <div class="navbar-nav align-items-center">
+1027|            <div class="nav-item navbar-search-wrapper mb-0">
+1028|                <!-- Search Toggle Link - Hidden when search is active -->
+1029|                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0"
+1030|                   href="javascript:void(0);"
+1031|                   :class="{ 'd-none': !isHidden }"
+1032|                   @click="open()"
+1033|                   x-cloak>
+1034|                    <i class="ti ti-search ti-md me-2"></i>
+1035|                    <span class="d-none d-md-inline-block text-muted">Buscar (Ctrl+/)</span>
+1036|                </a>
+1037|
+1038|                <!-- Search Input - Shown when search is active -->
+1039|                <div class="navbar-search-wrapper search-input-wrapper "
+1040|                     :class="{ 'd-none': isHidden }"
+1041|                     x-cloak>
+1042|                    <input type="text"
+1043|                        class="form-control search-input container-xxl border-0"
+1044|                           placeholder="Buscar..."
+1045|                           aria-label="Search..."
+1046|                           style="color: inherit !important;"
+1047|                           x-model="query"
+1048|                           @input.debounce.300ms="search()"
+1049|                           @keydown.arrow-down.prevent="navigateDown()"
+1050|                           @keydown.arrow-up.prevent="navigateUp()"
+1051|                           @keydown.enter.prevent="selectCurrent()"
+1052|                           @keydown.escape="close()"
+1053|                           x-ref="searchInput">
+1054|                    <i class="ti ti-x ti-sm search-toggler cursor-pointer" @click="close()"></i>
+1055|
+1056|                    <!-- Search Results Dropdown -->
+1057|                    <div class="twitter-typeahead">
+1058|                        <div class="tt-menu navbar-search-suggestion"
+1059|                                 x-cloak
+1060|                                 x-ref="resultsContainer"
+1061|                                 x-bind:style="(showResults && hasResults) ? 'display: block !important; visibility: visible !important;' : 'display: none !important;'">
+1062|                                <!-- Members (Contactos) -->
+1063|                                <template x-if="results.members && results.members.length > 0">
+1064|                                    <div>
+1065|                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>
+1066|                                        <template x-for="(item, index) in results.members" :key="index">
+1067|                                            <a :href="item.url || '#'"
+1068|                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+1069|                                               :class="{ 'active': selectedItem && selectedItem.category === 'members' && selectedItem.index === index }"
+1070|                                               @mouseenter="selectedItem = { category: 'members', index: index }"
+1071|                                               @click.prevent="navigateTo(item.url)">
+1072|                                                <div class="d-flex align-items-center">
+1073|                                                    <i class="ti ti-user me-2"></i>
+1074|                                                    <div class="user-info">
+1075|                                                        <h6 class="mb-0" x-text="item.name"></h6>
+1076|                                                        <small class="text-muted" x-text="item.subtitle"></small>
+1077|                                                    </div>
+1078|                                                </div>
+1079|                                            </a>
+1080|                                        </template>
+1081|                                    </div>
+1082|                                </template>
+1083|
+1084|                                <!-- Enterprises (Empresas) -->
+1085|                                <template x-if="results.enterprises && results.enterprises.length > 0">
+1086|                                    <div>
+1087|                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>
+1088|                                        <template x-for="(item, index) in results.enterprises" :key="index">
+1089|                                            <a :href="item.url || '#'"
+1090|                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+1091|                                               :class="{ 'active': selectedItem && selectedItem.category === 'enterprises' && selectedItem.index === index }"
+1092|                                               @mouseenter="selectedItem = { category: 'enterprises', index: index }"
+1093|                                               @click.prevent="navigateTo(item.url)">
+1094|                                                <div class="d-flex align-items-center">
+1095|                                                    <i class="ti ti-building me-2"></i>
+1096|                                                    <div class="user-info">
+1097|                                                        <h6 class="mb-0" x-text="item.name"></h6>
+1098|                                                        <small class="text-muted" x-text="item.subtitle"></small>
+1099|                                                    </div>
+1100|                                                </div>
+1101|                                            </a>
+1102|                                        </template>
+1103|                                    </div>
+1104|                                </template>
+1105|
+1106|                                <!-- Services (Servicios) -->
+1107|                                <template x-if="results.services && results.services.length > 0">
+1108|                                    <div>
+1109|                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>
+1110|                                        <template x-for="(item, index) in results.services" :key="index">
+1111|                                            <a :href="item.url || '#'"
+1112|                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+1113|                                               :class="{ 'active': selectedItem && selectedItem.category === 'services' && selectedItem.index === index }"
+1114|                                               @mouseenter="selectedItem = { category: 'services', index: index }"
+1115|                                               @click.prevent="navigateTo(item.url)">
+1116|                                                <div class="d-flex align-items-center">
+1117|                                                    <i class="ti ti-world me-2"></i>
+1118|                                                    <div class="user-info">
+1119|                                                        <h6 class="mb-0" x-text="item.name"></h6>
+1120|                                                        <small class="text-muted" x-text="item.subtitle"></small>
+1121|                                                    </div>
+1122|                                                </div>
+1123|                                            </a>
+1124|                                        </template>
+1125|                                    </div>
+1126|                                </template>
+1127|
+1128|                                <!-- Projects (Proyectos) -->
+1129|                                <template x-if="results.projects && results.projects.length > 0">
+1130|                                    <div>
+1131|                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>
+1132|                                        <template x-for="(item, index) in results.projects" :key="index">
+1133|                                            <a :href="item.url || '#'"
+1134|                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+1135|                                               :class="{ 'active': selectedItem && selectedItem.category === 'projects' && selectedItem.index === index }"
+1136|                                               @mouseenter="selectedItem = { category: 'projects', index: index }"
+1137|                                               @click.prevent="navigateTo(item.url)">
+1138|                                                <div class="d-flex align-items-center">
+1139|                                                    <i class="ti ti-folder me-2"></i>
+1140|                                                    <div class="user-info">
+1141|                                                        <h6 class="mb-0" x-text="item.name"></h6>
+1142|                                                        <small class="text-muted" x-text="item.subtitle"></small>
+1143|                                                    </div>
+1144|                                                </div>
+1145|                                            </a>
+1146|                                        </template>
+1147|                                    </div>
+1148|                                </template>
+1149|
+1150|                                <!-- Invoices (Facturas) -->
+1151|                                <template x-if="results.invoices && results.invoices.length > 0">
+1152|                                    <div>
+1153|                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>
+1154|                                        <template x-for="(item, index) in results.invoices" :key="index">
+1155|                                            <a :href="item.url || '#'"
+1156|                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+1157|                                               :class="{ 'active': selectedItem && selectedItem.category === 'invoices' && selectedItem.index === index }"
+1158|                                               @mouseenter="selectedItem = { category: 'invoices', index: index }"
+1159|                                               @click.prevent="navigateTo(item.url)">
+1160|                                                <div class="d-flex align-items-center">
+1161|                                                    <i class="ti ti-file-invoice me-2"></i>
+1162|                                                    <div class="user-info">
+1163|                                                        <h6 class="mb-0" x-text="item.name"></h6>
+1164|                                                        <small class="text-muted" x-text="item.subtitle"></small>
+1165|                                                    </div>
+1166|                                                </div>
+1167|                                            </a>
+1168|                                        </template>
+1169|                                    </div>
+1170|                                </template>
+1171|                        </div>
+1172|                    </div>
+1173|                </div>
+1174|            </div>
+1175|        </div>
+1176|        <!-- /Search -->
+1177|        <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
+1178|        
+1179|                <li class="nav-item dropdown me-2" id="quick-timer"
+1180|            data-running-url="https://humano.test/attendance/running"
+1181|            data-start-url="https://humano.test/attendance/start"
+1182|            data-stop-url="/attendance/:ID/stop">
+1183|            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+1184|               aria-expanded="false" aria-label="Attendance clock">
+1185|                <i class="ti ti-clock ti-md text-muted" id="quick-timer-icon"></i>
+1186|            </a>
+1187|            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+1188|                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
+1189|                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
+1190|                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+1191|                </li>
+1192|                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
+1193|                    <a href="https://humano.test/time/list" class="text-decoration-none">
+1194|                        <i class="ti ti-hourglass-low me-1"></i>
+1195|                        <span id="project-running-name">—</span>
+1196|                    </a>
+1197|                </li>
+1198|                <li><div class="dropdown-divider"></div></li>
+1199|                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>Inicio de jornada</a></li>
+1200|                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>Pausar</a></li>
+1201|                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>Reanudar</a></li>
+1202|                <li><a class="dropdown-item text-danger" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>Fin de jornada</a></li>
+1203|            </ul>
+1204|        </li>
+1205|                <!-- Language -->
+1206|                <!--/ Language -->
+1207|
+1208|                            <!-- Style Switcher -->
+1209|            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0">
+1210|                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
+1211|                    <i class='ti ti-md'></i>
+1212|                </a>
+1213|                <ul class="dropdown-menu dropdown-menu-end dropdown-styles">
+1214|                    <li>
+1215|                        <a class="dropdown-item" href="javascript:void(0);" data-theme="light">
+1216|                            <span class="align-middle">Claro</span>
+1217|                        </a>
+1218|                    </li>
+1219|                    <li>
+1220|                        <a class="dropdown-item" href="javascript:void(0);" data-theme="dark">
+1221|                            <span class="align-middle">Oscuro</span>
+1222|                        </a>
+1223|                    </li>
+1224|                    <li>
+1225|                        <a class="dropdown-item" href="javascript:void(0);" data-theme="system">
+1226|                            <span class="align-middle">Sistema</span>
+1227|                        </a>
+1228|                    </li>
+1229|                </ul>
+1230|            </li>
+1231|            <!--/ Style Switcher -->
+1232|        
+1233|        <!-- Quick links  -->
+1234|                    <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
+1235|                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+1236|                    data-bs-auto-close="outside" aria-expanded="false">
+1237|                    <i class='ti ti-layout-grid-add ti-md'></i>
+1238|                </a>
+1239|                <div class="dropdown-menu dropdown-menu-end py-0">
+1240|                    <div class="dropdown-menu-header border-bottom">
+1241|                        <div class="dropdown-header d-flex align-items-center py-3">
+1242|                            <h5 class="text-body mb-0 me-auto">Accesos directos</h5>
+1243|                        </div>
+1244|                    </div>
+1245|                    <div class="dropdown-shortcuts-list scrollable-container">
+1246|                        
+1247|                                                                                                                        <div class="row row-bordered overflow-visible g-0">
+1248|                                
+1249|                                <div class="dropdown-shortcuts-item col">
+1250|                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+1251|                                        <i class="ti ti-link fs-4"></i>
+1252|                                    </span>
+1253|                                    <a href="https://cms.revisionalpha.com"
+1254|                                       class="stretched-link"
+1255|                                        target="_blank" >
+1256|                                        CMS
+1257|                                    </a>
+1258|                                    <small class="text-muted mb-0">CMS7</small>
+1259|                                </div>
+1260|
+1261|                                                                                            
+1262|                                <div class="dropdown-shortcuts-item col">
+1263|                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+1264|                                        <i class="ti ti-cloud fs-4"></i>
+1265|                                    </span>
+1266|                                    <a href="https://odin.revisionalpha.cloud:2087"
+1267|                                       class="stretched-link"
+1268|                                        target="_blank" >
+1269|                                        Odín
+1270|                                    </a>
+1271|                                    <small class="text-muted mb-0">Server</small>
+1272|                                </div>
+1273|
+1274|                                                                    </div>
+1275|                                                                                                                                <div class="row row-bordered overflow-visible g-0">
+1276|                                
+1277|                                <div class="dropdown-shortcuts-item col">
+1278|                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+1279|                                        <i class="ti ti-cloud fs-4"></i>
+1280|                                    </span>
+1281|                                    <a href="https://huginn.revisionalpha.cloud:2087"
+1282|                                       class="stretched-link"
+1283|                                        target="_blank" >
+1284|                                        Huginn
+1285|                                    </a>
+1286|                                    <small class="text-muted mb-0">Server</small>
+1287|                                </div>
+1288|
+1289|                                                                                            
+1290|                                <div class="dropdown-shortcuts-item col">
+1291|                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+1292|                                        <i class="ti ti-cloud fs-4"></i>
+1293|                                    </span>
+1294|                                    <a href="https://muninn.revisionalpha.cloud:2087"
+1295|                                       class="stretched-link"
+1296|                                        target="_blank" >
+1297|                                        Muninn
+1298|                                    </a>
+1299|                                    <small class="text-muted mb-0">Server</small>
+1300|                                </div>
+1301|
+1302|                                                                    </div>
+1303|                                                                                                        </div>
+1304|                </div>
+1305|            </li>
+1306|                <!-- Quick links -->
+1307|
+1308|        <!-- Notification -->
+1309|                    <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
+1310|    <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+1311|        data-bs-auto-close="outside" aria-expanded="false">
+1312|        <i class="ti ti-bell ti-md"></i>
+1313|            </a>
+1314|    <ul class="dropdown-menu dropdown-menu-end py-0">
+1315|        <li class="dropdown-menu-header border-bottom">
+1316|            <div class="dropdown-header d-flex align-items-center py-3">
+1317|                <h5 class="text-body mb-0 me-auto">Mis Tareas</h5>
+1318|                
+1319|            </div>
+1320|        </li>
+1321|        <li class="dropdown-notifications-list scrollable-container">
+1322|            <ul class="list-group list-group-flush">
+1323|                                    <li class="list-group-item list-group-item-action dropdown-notifications-item">
+1324|                        <div class="d-flex">
+1325|                            <div class="flex-grow-1 text-center py-3">
+1326|                                <p class="mb-0">No hay tareas pendientes para mí</p>
+1327|                            </div>
+1328|                        </div>
+1329|                    </li>
+1330|                            </ul>
+1331|        </li>
+1332|        <li class="dropdown-menu-footer border-top">
+1333|            <div class="d-flex justify-content-between p-2">
+1334|                <a href="https://humano.test/task/create" class="dropdown-item d-flex align-items-center px-3">
+1335|                    <i class="ti ti-plus me-2"></i>
+1336|                    Agregar tarea
+1337|                </a>
+1338|                <a href="https://humano.test/task/list" class="dropdown-item d-flex align-items-center px-3">
+1339|                    <i class="ti ti-list me-2"></i>
+1340|                    Ver todas
+1341|                </a>
+1342|            </div>
+1343|        </li>
+1344|    </ul>
+1345|</li>
+1346|                <!--/ Notification -->
+1347|
+1348|        <!-- WhatsApp Support -->
+1349|        
+1350|        <!-- Help Center -->
+1351|					<div wire:snapshot="{&quot;data&quot;:{&quot;inboundCount&quot;:0},&quot;memo&quot;:{&quot;id&quot;:&quot;HWqREri7HQFvNyz5jho1&quot;,&quot;name&quot;:&quot;help-center-icon&quot;,&quot;path&quot;:&quot;collaborator\/list&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;release&quot;:&quot;a-a-a&quot;,&quot;children&quot;:[],&quot;scripts&quot;:[],&quot;assets&quot;:[],&quot;errors&quot;:[],&quot;locale&quot;:&quot;es&quot;},&quot;checksum&quot;:&quot;83bf2371fdf7bd656510478a6a69c43c6a62ea13cf25b04a259de6793a277b96&quot;}" wire:effects="[]" wire:id="HWqREri7HQFvNyz5jho1" wire:poll.60s>
+1352|	<li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
+1353|		<a class="nav-link dropdown-toggle hide-arrow" href="https://humano.test/chat">
+1354|			<i class="ti ti-lifebuoy ti-md"></i>
+1355|			<!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->		</a>
+1356|	</li>
+1357|</div>
+1358|		        <!-- /Help Center -->
+1359|
+1360|        <!-- User -->
+1361|        <li class="nav-item navbar-dropdown dropdown-user dropdown">
+1362|            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
+1363|                <div class="avatar avatar-online">
+1364|                    <img src="https://ui-avatars.com/api/?name=D+M&amp;color=7F9CF5&amp;background=EBF4FF"
+1365|                        alt class="h-auto rounded-circle">
+1366|                </div>
+1367|            </a>
+1368|            <ul class="dropdown-menu dropdown-menu-end">
+1369|                <li>
+1370|                    <a class="dropdown-item"
+1371|                        href="https://humano.test/user/profile">
+1372|                        <div class="d-flex">
+1373|                            <div class="flex-shrink-0 me-3">
+1374|                                <div class="avatar avatar-online">
+1375|                                    <img src="https://ui-avatars.com/api/?name=D+M&amp;color=7F9CF5&amp;background=EBF4FF"
+1376|                                        alt class="h-auto rounded-circle">
+1377|                                </div>
+1378|                            </div>
+1379|                            <div class="flex-grow-1">
+1380|                                <span class="fw-medium d-block">
+1381|                                                                            Diego Mascarenhas
+1382|                                                                    </span>
+1383|                                <small class="text-muted">
+1384|                                                                                                                        Root
+1385|                                                                                            ,
+1386|                                                                                                                                Admin
+1387|                                                                                                                                                        </small>
+1388|                            </div>
+1389|                        </div>
+1390|                    </a>
+1391|                </li>
+1392|                <li>
+1393|                    <div class="dropdown-divider"></div>
+1394|                </li>
+1395|                <li>
+1396|                    <a class="dropdown-item"
+1397|                        href="https://humano.test/user/profile">
+1398|                        <i class="ti ti-user-check me-2 ti-sm"></i>
+1399|                        <span class="align-middle">Mi Perfil</span>
+1400|                    </a>
+1401|                </li>
+1402|
+1403|                <li>
+1404|                    <a class="dropdown-item" href="https://humano.test/billing">
+1405|                        <i class="ti ti-credit-card me-2 ti-sm"></i>
+1406|                        <span class="align-middle">Facturación y Planes</span>
+1407|                    </a>
+1408|                </li>
+1409|
+1410|                <li>
+1411|                    <a class="dropdown-item" href="https://humano.test/help" target="_blank">
+1412|                        <i class="ti ti-help me-2 ti-sm"></i>
+1413|                        <span class="align-middle">Ayuda y Documentación</span>
+1414|                    </a>
+1415|                </li>
+1416|
+1417|                                    
+1418|                    <li>
+1419|                        <a class="dropdown-item" href="https://humano.test/team/2/settings">
+1420|                            <i class="ti ti-adjustments-alt me-2 ti-sm"></i>
+1421|                            <span class="align-middle">Variables de Entorno</span>
+1422|                        </a>
+1423|                    </li>
+1424|                
+1425|            
+1426|                            <li>
+1427|                    <a class="dropdown-item" href="https://humano.test/account-management">
+1428|                        <i class="ti ti-shield-lock me-2 ti-sm"></i>
+1429|                        <span class="align-middle">Gestión de Cuentas</span>
+1430|                    </a>
+1431|                </li>
+1432|            
+1433|                                <!--
+1434|              <li>
+1435|                <a class="dropdown-item" href="https://humano.test/app/invoice/list">
+1436|                  <span class="d-flex align-items-center align-middle">
+1437|                    <i class="flex-shrink-0 ti ti-credit-card me-2 ti-sm"></i>
+1438|                    <span class="flex-grow-1 align-middle">Billing</span>
+1439|                    <span class="flex-shrink-0 badge badge-center rounded-pill bg-label-danger w-px-20 h-px-20">2</span>
+1440|                  </span></a>
+1441|              </li>
+1442|              -->
+1443|                                    <li>
+1444|                        <div class="dropdown-divider"></div>
+1445|                    </li>
+1446|                    <li>
+1447|                        <h6 class="dropdown-header">Gestionar Equipo</h6>
+1448|                    </li>
+1449|                    <li>
+1450|                        <div class="dropdown-divider"></div>
+1451|                    </li>
+1452|                                            <li>
+1453|                            <a class="dropdown-item" href="https://humano.test/teams/2">
+1454|                                <i class='ti ti-settings me-2'></i>
+1455|                                <span class="align-middle">Ajustes del Equipo</span>
+1456|                            </a>
+1457|                        </li>
+1458|                                                                <li>
+1459|                            <a class="dropdown-item" href="https://humano.test/teams/create">
+1460|                                <i class='ti ti-user me-2'></i>
+1461|                                <span class="align-middle">Crear Nuevo Equipo</span>
+1462|                            </a>
+1463|                        </li>
+1464|                                                                <li>
+1465|                            <div class="dropdown-divider"></div>
+1466|                        </li>
+1467|                        <li>
+1468|                            <h6 class="dropdown-header">Cambiar de Equipo</h6>
+1469|                        </li>
+1470|                        <li>
+1471|                            <div class="dropdown-divider"></div>
+1472|                        </li>
+1473|                                                                                            
+1474|
+1475|                            <form method="POST" action="https://humano.test/current-team" id="switch-team-form-3">
+1476|  <input type="hidden" name="_method" value="PUT">  <input type="hidden" name="_token" value="CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3" autocomplete="off">
+1477|  <!-- Hidden Team ID -->
+1478|  <input type="hidden" name="team_id" value="3">
+1479|
+1480|  <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById(&#039;switch-team-form-3&#039;).submit();"><div class="d-flex align-content-center">
+1481|      
+1482|      <div>Humano&#039;s Team</div>
+1483|    </div></a>
+1484|</form>
+1485|                                                    
+1486|
+1487|                            <form method="POST" action="https://humano.test/current-team" id="switch-team-form-2">
+1488|  <input type="hidden" name="_method" value="PUT">  <input type="hidden" name="_token" value="CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3" autocomplete="off">
+1489|  <!-- Hidden Team ID -->
+1490|  <input type="hidden" name="team_id" value="2">
+1491|
+1492|  <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById(&#039;switch-team-form-2&#039;).submit();"><div class="d-flex align-content-center">
+1493|              <svg class="me-2 text-success" width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"
+1494|          stroke-width="2" stroke="currentColor" viewBox="0 0 24 24">
+1495|          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+1496|        </svg>
+1497|      
+1498|      <div>REVISION ALPHA&#039;s Team</div>
+1499|    </div></a>
+1500|</form>
+1501|                                                                            <li>
+1502|                    <div class="dropdown-divider"></div>
+1503|                </li>
+1504|                                    <li>
+1505|                        <a class="dropdown-item" href="https://humano.test/logout"
+1506|                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+1507|                            <i class='ti ti-logout me-2'></i>
+1508|                            <span class="align-middle">Cerrar sesión</span>
+1509|                        </a>
+1510|                    </li>
+1511|                    <form method="POST" id="logout-form" action="https://humano.test/logout">
+1512|                        <input type="hidden" name="_token" value="CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3" autocomplete="off">                    </form>
+1513|                            </ul>
+1514|        </li>
+1515|        <!--/ User -->
+1516|    </ul>
+1517|</div>
+1518|
+1519|<script>
+1520|document.addEventListener('DOMContentLoaded', function() {
+1521|    const container = document.getElementById('quick-timer');
+1522|    if (!container) return;
+1523|
+1524|    const displayEl = document.getElementById('quick-timer-display');
+1525|    const startEl = document.getElementById('att-start');
+1526|    const pauseEl = document.getElementById('att-pause');
+1527|    const resumeEl = document.getElementById('att-resume');
+1528|    const stopEl = document.getElementById('att-stop');
+1529|    const runningUrl = container.getAttribute('data-running-url');
+1530|    const startUrl = container.getAttribute('data-start-url');
+1531|    const stopUrlTpl = container.getAttribute('data-stop-url');
+1532|    const timeRunningUrl = 'https://humano.test/time/running';
+1533|
+1534|    let running = false;
+1535|    let paused = false;
+1536|    let startTs = null;
+1537|    let pausedTs = null;
+1538|    let pausedSeconds = 0;
+1539|    let timerId = null;
+1540|    let timerInterval = null;
+1541|
+1542|    function fmt(n){ return String(n).padStart(2,'0'); }
+1543|    function ts(input){
+1544|        if (!input) return null;
+1545|        if (typeof input === 'number') return Math.floor(input);
+1546|        // Try native ISO first
+1547|        let d = new Date(input);
+1548|        if (!isNaN(d.getTime())) return Math.floor(d.getTime()/1000);
+1549|        // Fallback for 'YYYY-MM-DD HH:MM:SS'
+1550|        const m = String(input).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+1551|        if (m){
+1552|            const year = parseInt(m[1],10), mon = parseInt(m[2],10)-1, day = parseInt(m[3],10);
+1553|            const hh = parseInt(m[4],10), mm = parseInt(m[5],10), ss = parseInt(m[6],10);
+1554|            const local = new Date(year, mon, day, hh, mm, ss);
+1555|            return Math.floor(local.getTime()/1000);
+1556|        }
+1557|        return null;
+1558|    }
+1559|    function render(){
+1560|        if (!running || !startTs) { displayEl.textContent = '00:00:00'; return; }
+1561|        const now = Math.floor(Date.now() / 1000);
+1562|        const effectiveNow = paused && pausedTs ? pausedTs : now;
+1563|        const elapsedRaw = Math.max(0, effectiveNow - startTs);
+1564|        const elapsed = Math.max(0, elapsedRaw - (pausedSeconds || 0));
+1565|        const h = Math.floor(elapsed / 3600);
+1566|        const m = Math.floor((elapsed % 3600) / 60);
+1567|        const s = elapsed % 60;
+1568|        displayEl.textContent = `${fmt(h)}:${fmt(m)}:${fmt(s)}`;
+1569|    }
+1570|
+1571|    function startTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(render, 1000); render(); }
+1572|    function stopTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+1573|
+1574|    function setButton(){
+1575|        const icon = document.getElementById('quick-timer-icon');
+1576|        const iconInline = document.getElementById('quick-timer-icon-inline');
+1577|        const applyIconState = (el) => {
+1578|            if (!el) return;
+1579|            el.classList.remove('text-success', 'text-muted', 'text-warning');
+1580|            if (!running) {
+1581|                el.classList.add('text-muted');
+1582|            } else if (paused) {
+1583|                el.classList.add('text-warning');
+1584|            } else {
+1585|                el.classList.add('text-success');
+1586|            }
+1587|        };
+1588|        applyIconState(icon);
+1589|        applyIconState(iconInline);
+1590|		const setDisabled = (el, isDisabled) => {
+1591|			if (!el) return;
+1592|			if (isDisabled) {
+1593|				el.classList.add('disabled');
+1594|				el.classList.add('text-muted');
+1595|				if (el.id === 'att-stop') el.classList.remove('text-danger');
+1596|				el.setAttribute('aria-disabled', 'true');
+1597|				el.setAttribute('tabindex', '-1');
+1598|			} else {
+1599|				el.classList.remove('disabled');
+1600|				el.classList.remove('text-muted');
+1601|				if (el.id === 'att-stop') el.classList.add('text-danger');
+1602|				el.removeAttribute('aria-disabled');
+1603|				el.removeAttribute('tabindex');
+1604|			}
+1605|		};
+1606|        setDisabled(startEl, running);
+1607|        setDisabled(pauseEl, !running || paused);
+1608|        setDisabled(resumeEl, !running || !paused);
+1609|        setDisabled(stopEl, !running);
+1610|    }
+1611|
+1612|    function fetchRunning(){
+1613|        fetch(runningUrl, { headers: { 'Accept': 'application/json' } })
+1614|            .then(r => r.json())
+1615|            .then(data => {
+1616|                if (data && data.running && data.attendance) {
+1617|                    running = true;
+1618|                    timerId = data.attendance.id;
+1619|                    startTs = ts(data.attendance.start_at);
+1620|                    paused = !!data.attendance.paused_at;
+1621|                    pausedTs = paused ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : null;
+1622|                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
+1623|                    startTick();
+1624|                } else {
+1625|                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render();
+1626|                }
+1627|                setButton();
+1628|            })
+1629|            .catch(() => {});
+1630|
+1631|                // Fetch running time and show task title above
+1632|        fetch(timeRunningUrl, { headers: { 'Accept': 'application/json' } })
+1633|            .then(r => r.json())
+1634|            .then(data => {
+1635|                const row = document.getElementById('project-running-row');
+1636|                const nameEl = document.getElementById('project-running-name');
+1637|                if (data && data.running && data.time) {
+1638|                    const taskTitle = data.time.task ? data.time.task.title : 'Tiempo en proyecto';
+1639|                    if (row && nameEl) {
+1640|                        nameEl.textContent = taskTitle;
+1641|                        row.classList.remove('d-none');
+1642|                    }
+1643|                } else if (row) {
+1644|                    row.classList.add('d-none');
+1645|                }
+1646|            })
+1647|            .catch(() => {});
+1648|    }
+1649|
+1650|    if (startEl) startEl.addEventListener('click', function(){
+1651|        if (!running) {
+1652|            fetch(startUrl, {
+1653|                method: 'POST',
+1654|                headers: {
+1655|                    'Content-Type': 'application/json',
+1656|                    'Accept': 'application/json',
+1657|                    'X-CSRF-TOKEN': 'CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3'
+1658|                },
+1659|                body: JSON.stringify({})
+1660|            })
+1661|            .then(r => r.json())
+1662|            .then(data => {
+1663|                if (data && data.success && data.attendance) {
+1664|                    running = true;
+1665|                    paused = false;
+1666|                    timerId = data.attendance.id;
+1667|                    startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
+1668|                    pausedTs = null;
+1669|                    pausedSeconds = 0;
+1670|                    setButton();
+1671|                    startTick();
+1672|                }
+1673|            });
+1674|        }
+1675|    });
+1676|
+1677|    if (pauseEl) pauseEl.addEventListener('click', function(){
+1678|        if (running && timerId) {
+1679|            const pauseUrl = 'https://humano.test/attendance/:ID/pause'.replace(':ID', timerId);
+1680|            fetch(pauseUrl, {
+1681|                method: 'POST',
+1682|                headers: {
+1683|                    'Content-Type': 'application/json',
+1684|                    'Accept': 'application/json',
+1685|                    'X-CSRF-TOKEN': 'CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3'
+1686|                }
+1687|            }).then(r => r.json()).then(data => {
+1688|                if (data && data.success && data.attendance) {
+1689|                    paused = true;
+1690|                    pausedTs = data.attendance.paused_at ? ts(data.attendance.paused_at) : Math.floor(Date.now()/1000);
+1691|                    // pausedSeconds remains the cumulative value before this pause
+1692|                    setButton();
+1693|                    render();
+1694|                }
+1695|            });
+1696|        }
+1697|    });
+1698|
+1699|    if (resumeEl) resumeEl.addEventListener('click', function(){
+1700|        if (running && timerId) {
+1701|            const resumeUrl = 'https://humano.test/attendance/:ID/resume'.replace(':ID', timerId);
+1702|            fetch(resumeUrl, {
+1703|                method: 'POST',
+1704|                headers: {
+1705|                    'Content-Type': 'application/json',
+1706|                    'Accept': 'application/json',
+1707|                    'X-CSRF-TOKEN': 'CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3'
+1708|                }
+1709|            }).then(r => r.json()).then(data => {
+1710|                if (data && data.success && data.attendance) {
+1711|                    paused = false;
+1712|                    pausedTs = null;
+1713|                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
+1714|                    setButton();
+1715|                }
+1716|            });
+1717|        }
+1718|    });
+1719|
+1720|    if (stopEl) stopEl.addEventListener('click', function(){
+1721|        if (running && timerId) {
+1722|            const stopUrl = stopUrlTpl.replace(':ID', timerId);
+1723|            fetch(stopUrl, {
+1724|                method: 'POST',
+1725|                headers: {
+1726|                    'Content-Type': 'application/json',
+1727|                    'Accept': 'application/json',
+1728|                    'X-CSRF-TOKEN': 'CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3'
+1729|                }
+1730|            })
+1731|            .then(r => r.json())
+1732|            .then(data => {
+1733|                if (data && data.success) {
+1734|                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render(); setButton();
+1735|                }
+1736|            });
+1737|        }
+1738|    });
+1739|
+1740|    // Defer loading by 1 second to avoid blocking initial page load
+1741|    setTimeout(fetchRunning, 1000);
+1742|});
+1743|</script>
+1744|
+1745|</nav>
+1746|<!-- / Navbar -->
+1747|
+1748|<div id="search-spinner" class="spinner-border text-primary d-none" role="status">
+1749|    <span class="visually-hidden">Buscando......</span>
+1750|</div>
+1751|
+1752|<script>
+1753|function globalSearch() {
+1754|    return {
+1755|        query: '',
+1756|        results: {},
+1757|        isHidden: true,
+1758|        showResults: false,
+1759|        selectedItem: null,
+1760|        psInstance: null,
+1761|        baseUrl: '',
+1762|        isLoading: false,
+1763|        ajaxCache: {
+1764|            lastQuery: null,
+1765|            lastResponse: null,
+1766|            inflight: null
+1767|        },
+1768|
+1769|        init() {
+1770|            // Get baseUrl from HTML attribute
+1771|            const htmlEl = document.documentElement;
+1772|            this.baseUrl = (htmlEl.getAttribute('data-base-url') || '') + '/';
+1773|
+1774|            // Setup keyboard shortcut CTRL+/ or CMD+/
+1775|            document.addEventListener('keydown', (e) => {
+1776|                if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.keyCode === 191)) {
+1777|                    e.preventDefault();
+1778|                    this.open();
+1779|                }
+1780|            });
+1781|
+1782|            // Setup click handlers for search togglers
+1783|            document.querySelectorAll('.search-toggler').forEach(btn => {
+1784|                if (!btn.closest('.search-input-wrapper')) {
+1785|                    btn.addEventListener('click', (e) => {
+1786|                        e.preventDefault();
+1787|                        this.open();
+1788|                    });
+1789|                }
+1790|            });
+1791|
+1792|            // Setup click outside handler to close search
+1793|            const handleClickOutside = (e) => {
+1794|                if (this.isHidden) return; // Search is already closed
+1795|
+1796|                const searchWrapper = this.$el?.querySelector('.search-input-wrapper');
+1797|                const resultsContainer = this.$el?.querySelector('.tt-menu.navbar-search-suggestion');
+1798|                const searchToggler = this.$el?.querySelector('.search-toggler:not(.search-input-wrapper .search-toggler)');
+1799|
+1800|                // Check if click is outside search area
+1801|                const clickedInsideSearch = searchWrapper?.contains(e.target) ||
+1802|                                          resultsContainer?.contains(e.target) ||
+1803|                                          searchToggler?.contains(e.target);
+1804|
+1805|                if (!clickedInsideSearch) {
+1806|                    this.close();
+1807|                }
+1808|            };
+1809|
+1810|            document.addEventListener('mousedown', handleClickOutside);
+1811|        },
+1812|
+1813|        get hasResults() {
+1814|            return (this.results.members && this.results.members.length > 0) ||
+1815|                   (this.results.enterprises && this.results.enterprises.length > 0) ||
+1816|                   (this.results.services && this.results.services.length > 0) ||
+1817|                   (this.results.projects && this.results.projects.length > 0) ||
+1818|                   (this.results.invoices && this.results.invoices.length > 0);
+1819|        },
+1820|
+1821|        open() {
+1822|            this.isHidden = false;
+1823|            this.$nextTick(() => {
+1824|                this.$refs.searchInput?.focus();
+1825|            });
+1826|        },
+1827|
+1828|        close() {
+1829|            this.isHidden = true;
+1830|            this.query = '';
+1831|            this.results = {};
+1832|            this.showResults = false;
+1833|            this.selectedItem = null;
+1834|            this.updateBackdrop(false);
+1835|
+1836|            // Destroy PerfectScrollbar if initialized
+1837|            if (this.psInstance) {
+1838|                try {
+1839|                    this.psInstance.destroy();
+1840|                } catch (e) {}
+1841|                this.psInstance = null;
+1842|            }
+1843|        },
+1844|
+1845|        async search() {
+1846|            const query = this.query.trim();
+1847|
+1848|            if (!query || query.length < 3) {
+1849|                this.results = {};
+1850|                this.showResults = false;
+1851|                this.selectedItem = null;
+1852|                this.updateBackdrop(false);
+1853|                if (this.psInstance) {
+1854|                    try {
+1855|                        this.psInstance.destroy();
+1856|                    } catch (e) {}
+1857|                    this.psInstance = null;
+1858|                }
+1859|                return;
+1860|            }
+1861|
+1862|            // Check cache first
+1863|            if (this.ajaxCache.lastQuery === query && this.ajaxCache.lastResponse) {
+1864|                this.results = this.ajaxCache.lastResponse;
+1865|                this.showResults = true;
+1866|                this.selectedItem = null;
+1867|                this.updateBackdrop(true);
+1868|                this.$nextTick(() => {
+1869|                    this.forceDisplayUpdate();
+1870|                    this.initPerfectScrollbar();
+1871|                });
+1872|                return;
+1873|            }
+1874|
+1875|            // Cancel previous request if in-flight
+1876|            if (this.ajaxCache.inflight) {
+1877|                this.ajaxCache.inflight.abort();
+1878|            }
+1879|
+1880|            this.isLoading = true;
+1881|            this.ajaxCache.lastQuery = query;
+1882|
+1883|            const controller = new AbortController();
+1884|            this.ajaxCache.inflight = controller;
+1885|
+1886|            try {
+1887|                const url = this.baseUrl + 'contact/search?q=' + encodeURIComponent(query);
+1888|                const response = await fetch(url, {
+1889|                    signal: controller.signal,
+1890|                    headers: {
+1891|                        'X-Requested-With': 'XMLHttpRequest',
+1892|                        'Accept': 'application/json'
+1893|                    }
+1894|                });
+1895|
+1896|                if (!response.ok) throw new Error('Network response was not ok');
+1897|
+1898|                const data = await response.json();
+1899|                this.ajaxCache.lastResponse = data;
+1900|                this.results = data;
+1901|                this.showResults = true;
+1902|                this.selectedItem = null;
+1903|                this.updateBackdrop(true);
+1904|                this.$nextTick(() => {
+1905|                    this.forceDisplayUpdate();
+1906|                    this.initPerfectScrollbar();
+1907|                });
+1908|            } catch (error) {
+1909|                if (error.name !== 'AbortError') {
+1910|                    console.error('[Search] AJAX Error!', error);
+1911|                    this.results = {};
+1912|                    this.showResults = false;
+1913|                    this.updateBackdrop(false);
+1914|                }
+1915|            } finally {
+1916|                this.isLoading = false;
+1917|                if (this.ajaxCache.inflight === controller) {
+1918|                    this.ajaxCache.inflight = null;
+1919|                }
+1920|            }
+1921|        },
+1922|
+1923|        updateBackdrop(show) {
+1924|            this.$nextTick(() => {
+1925|                const backdrop = document.querySelector('.content-backdrop');
+1926|                if (backdrop) {
+1927|                    if (show && this.hasResults) {
+1928|                        backdrop.classList.add('show');
+1929|                        backdrop.classList.remove('fade');
+1930|                    } else {
+1931|                        backdrop.classList.add('fade');
+1932|                        backdrop.classList.remove('show');
+1933|                    }
+1934|                }
+1935|            });
+1936|        },
+1937|
+1938|        initPerfectScrollbar() {
+1939|            if (typeof PerfectScrollbar === 'undefined') return;
+1940|
+1941|            const container = this.$refs.resultsContainer;
+1942|            if (!container) return;
+1943|
+1944|            // Destroy existing instance
+1945|            if (this.psInstance) {
+1946|                try {
+1947|                    this.psInstance.destroy();
+1948|                } catch (e) {}
+1949|                this.psInstance = null;
+1950|            }
+1951|
+1952|            // Create new instance
+1953|            try {
+1954|                this.psInstance = new PerfectScrollbar(container, {
+1955|                    wheelPropagation: false,
+1956|                    suppressScrollX: true
+1957|                });
+1958|            } catch (e) {
+1959|                console.error('[Search] PerfectScrollbar initialization error:', e);
+1960|            }
+1961|        },
+1962|
+1963|        // Force display update after Alpine renders
+1964|        forceDisplayUpdate() {
+1965|            const container = this.$refs.resultsContainer;
+1966|            if (container && this.showResults && this.hasResults) {
+1967|                // Force display block to override Typeahead CSS
+1968|                container.style.setProperty('display', 'block', 'important');
+1969|            }
+1970|        },
+1971|
+1972|        getAllItemsFlat() {
+1973|            const items = [];
+1974|            if (this.results.members) {
+1975|                this.results.members.forEach((item, i) => {
+1976|                    items.push({ ...item, category: 'members', index: i });
+1977|                });
+1978|            }
+1979|            if (this.results.enterprises) {
+1980|                this.results.enterprises.forEach((item, i) => {
+1981|                    items.push({ ...item, category: 'enterprises', index: i });
+1982|                });
+1983|            }
+1984|            if (this.results.services) {
+1985|                this.results.services.forEach((item, i) => {
+1986|                    items.push({ ...item, category: 'services', index: i });
+1987|                });
+1988|            }
+1989|            if (this.results.projects) {
+1990|                this.results.projects.forEach((item, i) => {
+1991|                    items.push({ ...item, category: 'projects', index: i });
+1992|                });
+1993|            }
+1994|            if (this.results.invoices) {
+1995|                this.results.invoices.forEach((item, i) => {
+1996|                    items.push({ ...item, category: 'invoices', index: i });
+1997|                });
+1998|            }
+1999|            return items;
+2000|        },
+2001|
+2002|        navigateDown() {
+2003|            if (!this.showResults || !this.hasResults) return;
+2004|            const items = this.getAllItemsFlat();
+2005|            if (items.length === 0) return;
+2006|
+2007|            const currentIndex = this.selectedItem
+2008|                ? items.findIndex(item => item.category === this.selectedItem.category && item.index === this.selectedItem.index)
+2009|                : -1;
+2010|
+2011|            const nextIndex = (currentIndex + 1) % items.length;
+2012|            this.selectedItem = {
+2013|                category: items[nextIndex].category,
+2014|                index: items[nextIndex].index
+2015|            };
+2016|            this.scrollToSelected();
+2017|        },
+2018|
+2019|        navigateUp() {
+2020|            if (!this.showResults || !this.hasResults) return;
+2021|            const items = this.getAllItemsFlat();
+2022|            if (items.length === 0) return;
+2023|
+2024|            const currentIndex = this.selectedItem
+2025|                ? items.findIndex(item => item.category === this.selectedItem.category && item.index === this.selectedItem.index)
+2026|                : -1;
+2027|
+2028|            const prevIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+2029|            this.selectedItem = {
+2030|                category: items[prevIndex].category,
+2031|                index: items[prevIndex].index
+2032|            };
+2033|            this.scrollToSelected();
+2034|        },
+2035|
+2036|        scrollToSelected() {
+2037|            this.$nextTick(() => {
+2038|                if (!this.selectedItem) return;
+2039|                const container = this.$refs.resultsContainer;
+2040|                if (!container) return;
+2041|
+2042|                const active = container.querySelector('.suggestion.active');
+2043|                if (active) {
+2044|                    active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+2045|                    if (this.psInstance) {
+2046|                        try {
+2047|                            this.psInstance.update();
+2048|                        } catch (e) {}
+2049|                    }
+2050|                }
+2051|            });
+2052|        },
+2053|
+2054|        selectCurrent() {
+2055|            if (!this.showResults || !this.hasResults || !this.selectedItem) return;
+2056|
+2057|            const items = this.getAllItemsFlat();
+2058|            const selected = items.find(item =>
+2059|                item.category === this.selectedItem.category &&
+2060|                item.index === this.selectedItem.index
+2061|            );
+2062|
+2063|            if (selected && selected.url && selected.url !== 'javascript:;' && selected.url !== '#') {
+2064|                this.navigateTo(selected.url);
+2065|            }
+2066|        },
+2067|
+2068|        navigateTo(url) {
+2069|            if (url && url !== 'javascript:;' && url !== '#') {
+2070|                window.location.href = url;
+2071|            }
+2072|        }
+2073|    };
+2074|}
+2075|</script>
+2076|            <!-- END: Navbar-->
+2077|
+2078|
+2079|      <!-- Content wrapper -->
+2080|      <div class="content-wrapper">
+2081|
+2082|        <!-- Content -->
+2083|                  <div class="container-xxl flex-grow-1 container-p-y">
+2084|            
+2085|            	
+2086|	<!-- Stats Cards -->
+2087|	<div class="row mb-4">
+2088|		<div class="col-md-3 col-sm-6 mb-3">
+2089|			<div class="card shadow-sm">
+2090|				<div class="card-body">
+2091|					<div class="d-flex justify-content-between">
+2092|						<div>
+2093|							<h6 class="text-muted mb-0">Por aceptar</h6>
+2094|							<div class="d-flex align-items-center mt-1">
+2095|								<h3 class="mb-0 me-1">715</h3>
+2096|							</div>
+2097|							<small class="text-muted">Contactos sin usuario</small>
+2098|						</div>
+2099|						<div class="avatar">
+2100|							<a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-filter="pending-acceptance">
+2101|								<i class="ti ti-clock"></i>
+2102|							</a>
+2103|						</div>
+2104|					</div>
+2105|				</div>
+2106|			</div>
+2107|		</div>
+2108|
+2109|		<div class="col-md-3 col-sm-6 mb-3">
+2110|			<div class="card shadow-sm">
+2111|				<div class="card-body">
+2112|					<div class="d-flex justify-content-between">
+2113|						<div>
+2114|							<h6 class="text-muted mb-0">Colaboradoras</h6>
+2115|							<div class="d-flex align-items-center mt-1">
+2116|								<h3 class="mb-0 me-1">2</h3>
+2117|							</div>
+2118|							<small class="text-muted">Con rol colaborador</small>
+2119|						</div>
+2120|						<div class="avatar">
+2121|							<a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-filter="collaborators">
+2122|								<i class="ti ti-users"></i>
+2123|							</a>
+2124|						</div>
+2125|					</div>
+2126|				</div>
+2127|			</div>
+2128|		</div>
+2129|
+2130|		<div class="col-md-3 col-sm-6 mb-3">
+2131|			<div class="card shadow-sm">
+2132|				<div class="card-body">
+2133|					<div class="d-flex justify-content-between">
+2134|						<div>
+2135|							<h6 class="text-muted mb-0">Nuevos</h6>
+2136|							<div class="d-flex align-items-center mt-1">
+2137|								<h3 class="mb-0 me-1">0</h3>
+2138|							</div>
+2139|							<small class="text-muted">Última semana</small>
+2140|						</div>
+2141|						<div class="avatar">
+2142|							<a href="#" class="avatar-initial rounded bg-label-success filter-status" data-filter="new-this-week">
+2143|								<i class="ti ti-user-plus"></i>
+2144|							</a>
+2145|						</div>
+2146|					</div>
+2147|				</div>
+2148|			</div>
+2149|		</div>
+2150|
+2151|		<div class="col-md-3 col-sm-6 mb-3">
+2152|			<div class="card shadow-sm">
+2153|				<div class="card-body">
+2154|					<div class="d-flex justify-content-between">
+2155|						<div>
+2156|							<h6 class="text-muted mb-0">Sin actualizar</h6>
+2157|							<div class="d-flex align-items-center mt-1">
+2158|								<h3 class="mb-0 me-1">1,074</h3>
+2159|							</div>
+2160|							<small class="text-muted">Últimos 6 meses</small>
+2161|						</div>
+2162|						<div class="avatar">
+2163|							<a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-filter="not-updated-six-months">
+2164|								<i class="ti ti-user-check"></i>
+2165|							</a>
+2166|						</div>
+2167|					</div>
+2168|				</div>
+2169|			</div>
+2170|		</div>
+2171|	</div>
+2172|
+2173|	<!-- Add New Collaborator Button -->
+2174|	<div class="d-flex justify-content-start mb-3">
+2175|			</div>
+2176|
+2177|	<div class="card shadow">
+2178|		<div class="card-body">
+2179|			<h5 class="mb-3">Filtros</h5>
+2180|			<div class="row g-3 mb-3">
+2181|								<div class="col">
+2182|					<label for="source-language" class="form-label">Idioma origen</label>
+2183|					<div>
+2184|		<select id="source-language" name="source-language"
+2185|		class="select2 form-select " data-placeholder="Idioma origen" >
+2186|		<option value="">Idioma origen</option>
+2187|					</select>
+2188|	</div>
+2189|
+2190|	
+2191|				</div>
+2192|				<div class="col">
+2193|					<label for="target-language" class="form-label">Idioma destino</label>
+2194|					<div>
+2195|		<select id="target-language" name="target-language"
+2196|		class="select2 form-select " data-placeholder="Idioma destino" >
+2197|		<option value="">Idioma destino</option>
+2198|					</select>
+2199|	</div>
+2200|
+2201|
+2202|				</div>
+2203|								<div class="col">
+2204|					<label for="service" class="form-label">Servicio</label>
+2205|					<div>
+2206|        <select id="service" name="service" class="select2 form-select " data-placeholder="Servicio"  >
+2207|        <option value="">Servicio</option>
+2208|        
+2209|                
+2210|            </select>
+2211|    
+2212|    </div>
+2213|
+2214| 				</div>
+2215|				<div class="col">
+2216|					<label for="status" class="form-label">Estado</label>
+2217|					<select class="form-select" id="status">
+2218|						<option value="" selected>Todos los estados</option>
+2219|						<option value="1">✅ Revisado</option>
+2220|						<option value="2">❓ Para revisión</option>
+2221|						<option value="3">⚠️ Pendiente</option>
+2222|					</select>
+2223|				</div>
+2224|				<div class="col" style="display: none;">
+2225|					<label for="days" class="form-label">Días</label>
+2226|					<select class="form-select" id="days">
+2227|						<option value="" selected>Días</option>
+2228|						<option value="5">5 días</option>
+2229|						<option value="10">10 días</option>
+2230|						<option value="15">15 días</option>
+2231|						<option value="30">30 días</option>
+2232|					</select>
+2233|				</div>
+2234|				<div class="col" style="display: none;">
+2235|					<div class="form-group">
+2236|    <label for="delivery-date" class="form-label">Fecha entrega</label>
+2237|    <input 
+2238|        type="text" 
+2239|        id="delivery-date" 
+2240|        name="delivery-date" 
+2241|        class="form-control " 
+2242|        value="" 
+2243|        autocomplete="off"
+2244|    />
+2245|    </div>
+2246|
+2247|				</div>
+2248|			</div>
+2249|			<div class="row align-items-center mb-4">
+2250|				<div class="col-md-1">
+2251|					<select class="form-select" id="entries-length">
+2252|						<option value="25">25</option>
+2253|						<option value="50">50</option>
+2254|						<option value="100">100</option>
+2255|					</select>
+2256|				</div>
+2257|				<div class="col-md-6"></div>
+2258|				<div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
+2259|					<input type="text" class="form-control w-auto me-2" id="search" placeholder="Buscar"
+2260|						style="width: 350px;">
+2261|					<div class="dropdown">
+2262|						<button class="btn btn-outline-primary dropdown-toggle me-2" type="button" id="exportDropdown"
+2263|							data-bs-toggle="dropdown" aria-expanded="false" style="height: 40px; min-width: 110px;">
+2264|							<i class="ti ti-download me-1"></i>
+2265|							<span style="white-space: nowrap;">Exportar</span>
+2266|						</button>
+2267|						<ul class="dropdown-menu" aria-labelledby="exportDropdown">
+2268|							<li><a class="dropdown-item" href="#" id="export-csv"><i
+2269|										class="ti ti-file-text me-2"></i>CSV</a></li>
+2270|							<li><a class="dropdown-item" href="#" id="export-pdf"><i
+2271|										class="ti ti-file-text me-2"></i>PDF</a></li>
+2272|						</ul>
+2273|					</div>
+2274|					<button class="btn btn-outline-secondary ms-2" id="clear-filters" style="height: 40px;" title="Limpiar filtros">
+2275|						<i class="ti ti-refresh"></i>
+2276|					</button>
+2277|				</div>
+2278|			</div>
+2279|
+2280|			<hr>
+2281|
+2282|			<table class="table table-hover table-striped dt-responsive nowrap w-100" id="collaborator-table"><thead><tr><th title="Id">Id</th><th title="Colaborador">Colaborador</th><th title="Valoración" width="120">Valoración</th><th title="Combinación" width="180">Combinación</th><th title="Servicios">Servicios</th><th title="Proyectos" width="100">Proyectos</th><th title="Acciones" width="30">Acciones</th></tr></thead></table>
+2283|
+2284|			<!-- Statistics Section -->
+2285|			<div id="service-statistics" class="mt-4" style="display: none;">
+2286|				<div class="card">
+2287|					<div class="card-header">
+2288|						<h5 class="mb-0">
+2289|							<i class="ti ti-chart-bar me-2"></i>
+2290|							<span id="statistics-service-name">Estadísticas del servicio</span>
+2291|						</h5>
+2292|						<small class="text-muted">
+2293|							<i class="ti ti-check text-success ti-xs me-1"></i>
+2294|							Calculadas únicamente sobre colaboradores con estado "Revisado"
+2295|						</small>
+2296|					</div>
+2297|					<div class="card-body">
+2298|						<div class="row">
+2299|							<div class="col-md-3 col-sm-6 mb-3">
+2300|								<div class="d-flex align-items-center">
+2301|									<div class="avatar avatar-sm me-3">
+2302|										<span class="avatar-initial rounded bg-label-primary">
+2303|											<i class="ti ti-calculator"></i>
+2304|										</span>
+2305|									</div>
+2306|									<div>
+2307|										<h6 class="mb-0" id="statistics-media">-</h6>
+2308|										<small class="text-muted">Media</small>
+2309|									</div>
+2310|								</div>
+2311|							</div>
+2312|							<div class="col-md-3 col-sm-6 mb-3">
+2313|								<div class="d-flex align-items-center">
+2314|									<div class="avatar avatar-sm me-3">
+2315|										<span class="avatar-initial rounded bg-label-success">
+2316|											<i class="ti ti-chart-line"></i>
+2317|										</span>
+2318|									</div>
+2319|									<div>
+2320|										<h6 class="mb-0" id="statistics-mediana">-</h6>
+2321|										<small class="text-muted">Mediana</small>
+2322|									</div>
+2323|								</div>
+2324|							</div>
+2325|							<div class="col-md-3 col-sm-6 mb-3">
+2326|								<div class="d-flex align-items-center">
+2327|									<div class="avatar avatar-sm me-3">
+2328|										<span class="avatar-initial rounded bg-label-warning">
+2329|											<i class="ti ti-chart-pie"></i>
+2330|										</span>
+2331|									</div>
+2332|									<div>
+2333|										<h6 class="mb-0" id="statistics-moda">-</h6>
+2334|										<small class="text-muted">Moda</small>
+2335|									</div>
+2336|								</div>
+2337|							</div>
+2338|							<div class="col-md-3 col-sm-6 mb-3">
+2339|								<div class="d-flex align-items-center">
+2340|									<div class="avatar avatar-sm me-3">
+2341|										<span class="avatar-initial rounded bg-label-info">
+2342|											<i class="ti ti-users"></i>
+2343|										</span>
+2344|									</div>
+2345|									<div>
+2346|										<h6 class="mb-0" id="statistics-count">-</h6>
+2347|										<small class="text-muted">Colaboradores</small>
+2348|									</div>
+2349|								</div>
+2350|							</div>
+2351|						</div>
+2352|						<div class="row mt-3">
+2353|							<div class="col-md-3 col-sm-6 mb-3">
+2354|								<div class="d-flex align-items-center">
+2355|									<div class="avatar avatar-sm me-3">
+2356|										<span class="avatar-initial rounded bg-label-danger">
+2357|											<i class="ti ti-arrow-down"></i>
+2358|										</span>
+2359|									</div>
+2360|									<div>
+2361|										<h6 class="mb-0" id="statistics-min">-</h6>
+2362|										<small class="text-muted">Mínimo</small>
+2363|									</div>
+2364|								</div>
+2365|							</div>
+2366|							<div class="col-md-3 col-sm-6 mb-3">
+2367|								<div class="d-flex align-items-center">
+2368|									<div class="avatar avatar-sm me-3">
+2369|										<span class="avatar-initial rounded bg-label-success">
+2370|											<i class="ti ti-arrow-up"></i>
+2371|										</span>
+2372|									</div>
+2373|									<div>
+2374|										<h6 class="mb-0" id="statistics-max">-</h6>
+2375|										<small class="text-muted">Máximo</small>
+2376|									</div>
+2377|								</div>
+2378|							</div>
+2379|							<div class="col-md-3 col-sm-6 mb-3">
+2380|								<div class="d-flex align-items-center">
+2381|									<div class="avatar avatar-sm me-3">
+2382|										<span class="avatar-initial rounded bg-label-secondary">
+2383|											<i class="ti ti-arrows-horizontal"></i>
+2384|										</span>
+2385|									</div>
+2386|									<div>
+2387|										<h6 class="mb-0" id="statistics-range">-</h6>
+2388|										<small class="text-muted">Rango</small>
+2389|									</div>
+2390|								</div>
+2391|							</div>
+2392|							<div class="col-md-3 col-sm-6 mb-3">
+2393|								<div class="d-flex align-items-center">
+2394|									<div class="avatar avatar-sm me-3">
+2395|										<span class="avatar-initial rounded bg-label-dark">
+2396|											<i class="ti ti-chart-dots"></i>
+2397|										</span>
+2398|									</div>
+2399|									<div>
+2400|										<h6 class="mb-0" id="statistics-std-dev">-</h6>
+2401|										<small class="text-muted">Desv. Estándar</small>
+2402|									</div>
+2403|								</div>
+2404|							</div>
+2405|						</div>
+2406|					</div>
+2407|				</div>
+2408|			</div>
+2409|		</div>
+2410|	</div>
+2411|
+2412|          </div>
+2413|          <!-- / Content -->
+2414|
+2415|          <!-- Footer -->
+2416|                                        <!-- / Footer -->
+2417|          <div class="content-backdrop fade"></div>
+2418|        </div>
+2419|        <!--/ Content wrapper -->
+2420|      </div>
+2421|      <!-- / Layout page -->
+2422|    </div>
+2423|
+2424|        <!-- Overlay -->
+2425|    <div class="layout-overlay layout-menu-toggle"></div>
+2426|        <!-- Drag Target Area To SlideIn Menu On Small Screens -->
+2427|    <div class="drag-target"></div>
+2428|  </div>
+2429|  <!-- / Layout wrapper -->
+2430|    <!--/ Layout Content -->
+2431|
+2432|
+2433|
+2434|  <!-- Include Scripts -->
+2435|  <!-- $isFront is used to append the front layout scripts only on the front layout otherwise the variable will be blank -->
+2436|  <!-- BEGIN: Vendor JS-->
+2437|<script src="https://humano.test/assets/vendor/libs/jquery/jquery.js"></script>
+2438|<script src="https://humano.test/assets/vendor/libs/popper/popper.js"></script>
+2439|<script src="https://humano.test/assets/vendor/js/bootstrap.js"></script>
+2440|<script src="https://humano.test/assets/vendor/libs/node-waves/node-waves.js"></script>
+2441|<script src="https://humano.test/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+2442|<script src="https://humano.test/assets/vendor/libs/hammer/hammer.js"></script>
+2443|<script src="https://humano.test/assets/vendor/libs/select2/select2.js"></script>
+2444|<script src="https://humano.test/assets/vendor/libs/typeahead-js/typeahead.js"></script>
+2445|<script src="https://humano.test/assets/vendor/js/menu.js"></script>
+2446|	<script src="https://humano.test/assets/vendor/libs/moment/moment.js"></script>
+2447|	<script src="https://humano.test/assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+2448|	<script src="https://humano.test/assets/vendor/libs/sweetalert2/sweetalert2.js"></script>
+2449|	<script src="https://humano.test/assets/vendor/libs/toastr/toastr.js"></script>
+2450|	<script src="https://humano.test/assets/vendor/libs/select2/select2.js"></script>
+2451|	<script src="https://humano.test/assets/vendor/libs/flatpickr/flatpickr.js"></script>
+2452|<!-- END: Page Vendor JS-->
+2453|<!-- BEGIN: Theme JS-->
+2454|<script src="https://humano.test/assets/js/main.js"></script>
+2455|
+2456|<!-- END: Theme JS-->
+2457|<!-- Pricing Modal JS-->
+2458|<!-- END: Pricing Modal JS-->
+2459|<!-- BEGIN: Page JS-->
+2460|	<script src="https://humano.test/assets/js/ui-toasts.js"></script>
+2461|<!-- END: Page JS-->
+2462|
+2463|<!-- Livewire Scripts -->
+2464|<script src="/livewire/livewire.js?id=0f6341c0"   data-csrf="CZLc7Kzhkj2UTtY6SCHm9WTkhSnQxwBjGdPB9tn3" data-update-uri="/livewire/update" data-navigate-once="true"></script>
+2465|
+2466|  <script>
+2467|    document.addEventListener('DOMContentLoaded', function() {
+2468|        const locale = 'es';
+2469|        const dateFormat = 'd-m-Y';
+2470|        const initialValue = '';
+2471|        
+2472|        function loadLocale(locale, callback) {
+2473|            if (locale === 'en') {
+2474|                callback();
+2475|            } else {
+2476|                const script = document.createElement('script');
+2477|                script.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
+2478|                script.onload = callback;
+2479|                script.onerror = () => {
+2480|                    console.warn(`Failed to load ${locale} locale for Flatpickr. Falling back to default.`);
+2481|                    callback();
+2482|                };
+2483|                document.head.appendChild(script);
+2484|            }
+2485|        }
+2486|
+2487|        loadLocale(locale, function() {
+2488|            if (locale !== 'en' && flatpickr.l10ns[locale]) {
+2489|                flatpickr.localize(flatpickr.l10ns[locale]);
+2490|            }
+2491|            
+2492|            flatpickr('#delivery-date', {
+2493|                dateFormat: 'Y-m-d',
+2494|                allowInput: true,
+2495|                altInput: true,
+2496|                altFormat: dateFormat,
+2497|                defaultDate: initialValue,
+2498|                monthSelectorType: 'static',
+2499|                onReady: function(selectedDates, dateStr, instance) {
+2500|                    if (initialValue) {
+2501|                        instance.setDate(initialValue, true);
+2502|                    }
+2503|                }
+2504|            });
+2505|        });
+2506|    });
+2507|</script>
+2508|	<script type="module">document.addEventListener("DOMContentLoaded",function(){window.LaravelDataTables=window.LaravelDataTables||{};window.LaravelDataTables["collaborator-table"]=$("#collaborator-table").DataTable({"serverSide":true,"processing":false,"ajax":{"url":"https:\/\/humano.test\/collaborator\/list","type":"GET","data":function(data) {
+2509|            for (var i = 0, len = data.columns.length; i < len; i++) {
+2510|                if (!data.columns[i].search.value) delete data.columns[i].search;
+2511|                if (data.columns[i].searchable === true) delete data.columns[i].searchable;
+2512|                if (data.columns[i].orderable === true) delete data.columns[i].orderable;
+2513|                if (data.columns[i].data === data.columns[i].name) delete data.columns[i].name;
+2514|            }
+2515|            delete data.search.regex;}},"columns":[{"data":"id","name":"id","title":"Id","orderable":true,"searchable":true,"visible":false},{"data":"name","name":"name","title":"Colaborador","orderable":true,"searchable":true,"className":"all"},{"data":"rating","name":"rating","title":"Valoraci\u00f3n","orderable":true,"searchable":false,"className":"text-center min-phone","width":120},{"data":"language_combinations","name":"language_combinations","title":"Combinaci\u00f3n","orderable":false,"searchable":true,"className":"text-center min-tablet","width":180},{"data":"services","name":"services","title":"Servicios","orderable":true,"searchable":true,"className":"text-center min-desktop"},{"data":"projects","name":"projects","title":"Proyectos","orderable":true,"searchable":false,"className":"text-center min-desktop","width":100},{"data":"action","name":"action","title":"Acciones","orderable":false,"searchable":false,"className":"text-center min-desktop","width":30}],"dom":"Brtip","order":[[2,"asc"]],"responsive":true,"pageLength":25,"language":{"url":"\/js\/datatables\/es.json"},"buttons":[{"extend":"csv","text":"<i class=\"ti ti-file-text me-1\"><\/i> CSV","className":"btn btn-outline-info","title":"Collaborators","filename":"collaborators_2026-02-01_15-07-44","exportOptions":{"columns":[1,2,3,4,5]}},{"extend":"pdf","text":"<i class=\"ti ti-file-text me-1\"><\/i> PDF","className":"btn btn-outline-danger","title":"Collaborators","filename":"collaborators_2026-02-01_15-07-44","exportOptions":{"columns":[1,2,3,4,5]},"orientation":"landscape","pageSize":"A4"}]});});</script>
+2516|
+2517|	<script>
+2518|		$(document).ready(function () {
+2519|			// Hide duplicate search box and DataTables buttons
+2520|			$('.dataTables_filter').hide();
+2521|			$('.dt-buttons').hide();
+2522|			$('.buttons-html5').hide();
+2523|			$('.buttons-print').hide();
+2524|
+2525|			// Initialize tooltips
+2526|			function initializeTooltips() {
+2527|				$('[data-bs-toggle="tooltip"]').tooltip({
+2528|					boundary: 'viewport',
+2529|					placement: 'auto',
+2530|					container: 'body'
+2531|				});
+2532|			}
+2533|
+2534|			// Initialize tooltips on page load
+2535|			initializeTooltips();
+2536|
+2537|			// Validation function for days vs delivery date
+2538|			function validateDeliveryOptions() {
+2539|				var selectedDays = parseInt($('#days').val()) || 0;
+2540|				var deliveryDate = $('#delivery-date').val();
+2541|
+2542|				// If days are selected, ensure delivery date is also selected
+2543|				if (selectedDays > 0 && !deliveryDate) {
+2544|					console.log('Days selected but no delivery date. Both are required for availability filtering.');
+2545|				}
+2546|
+2547|				// If delivery date is selected, ensure days are also selected
+2548|				if (deliveryDate && !selectedDays) {
+2549|					console.log('Delivery date selected but no days. Both are required for availability filtering.');
+2550|				}
+2551|
+2552|				// Check if delivery date is in the past
+2553|				if (deliveryDate && selectedDays > 0) {
+2554|					var today = new Date();
+2555|					today.setHours(0, 0, 0, 0); // Reset time to start of day
+2556|
+2557|					var deliveryDateObj = new Date(deliveryDate);
+2558|
+2559|					if (deliveryDateObj < today) {
+2560|						// Show warning message
+2561|						toastr.warning('La fecha de entrega no puede ser anterior a hoy. No se encontrarán colaboradores disponibles.', 'Fecha inválida', {
+2562|							timeOut: 5000,
+2563|							extendedTimeOut: 2000,
+2564|							closeButton: true,
+2565|							progressBar: true
+2566|						});
+2567|
+2568|						// Clear the delivery date
+2569|						$('#delivery-date').val('');
+2570|						return false;
+2571|					}
+2572|				}
+2573|
+2574|				return true;
+2575|			}
+2576|
+2577|			// Debounce function to prevent multiple rapid calls
+2578|			let filterTimeout;
+2579|			function debouncedApplyFilters() {
+2580|				clearTimeout(filterTimeout);
+2581|				filterTimeout = setTimeout(function() {
+2582|					// Validate delivery options when days change
+2583|					if (this.id === 'days') {
+2584|						validateDeliveryOptions();
+2585|					}
+2586|
+2587|					var table = $('#collaborator-table').DataTable();
+2588|
+2589|					// Get current filter values
+2590|					var sourceLanguage = $('#source-language').length ? $('#source-language').val() : '';
+2591|					var targetLanguage = $('#target-language').length ? $('#target-language').val() : '';
+2592|					var service = $('#service').val();
+2593|					var status = $('#status').val();
+2594|					var days = $('#days').val();
+2595|					var deliveryDate = $('#delivery-date').val();
+2596|
+2597|					// Clear dashboard filter when using regular filters
+2598|					$('.filter-status').removeClass('active-filter');
+2599|
+2600|					// Add parameters to ajax request
+2601|					table.settings()[0].ajax.data = function (d) {
+2602|						d.source_language = sourceLanguage;
+2603|						d.target_language = targetLanguage;
+2604|						d.service = service;
+2605|						d.status = status;
+2606|						d.days = days;
+2607|						d.delivery_date = deliveryDate;
+2608|						// Don't include dashboard_filter when using regular filters
+2609|					};
+2610|
+2611|					// Reload table with new parameters
+2612|					table.draw();
+2613|
+2614|					// Fetch service statistics if a service is selected
+2615|					console.log('Service filter changed to:', service);
+2616|					if (service) {
+2617|						fetchServiceStatistics(service);
+2618|					} else {
+2619|						hideServiceStatistics();
+2620|					}
+2621|				}, 300); // 300ms delay
+2622|			}
+2623|
+2624|			// Table filters
+2625|			var languageFilters = $('#source-language, #target-language');
+2626|			var otherFilters = $('#service, #status, #days, #delivery-date');
+2627|			var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+2628|			allFilters.on('change', function () {
+2629|				// Add event listener for delivery date changes (for date picker)
+2630|				if (this.id === 'delivery-date') {
+2631|					console.log('Delivery date changed:', $(this).val());
+2632|				}
+2633|
+2634|				debouncedApplyFilters();
+2635|			});
+2636|
+2637|			// Initialize validation on page load
+2638|			validateDeliveryOptions();
+2639|
+2640|			// Add event listener for delivery date changes (for date picker component)
+2641|			$(document).on('change', '#delivery-date', function() {
+2642|				console.log('Delivery date changed:', $(this).val());
+2643|				// Trigger the same filter logic as other filters
+2644|				var languageFilters = $('#source-language, #target-language');
+2645|				var otherFilters = $('#service, #days');
+2646|				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+2647|				allFilters.trigger('change');
+2648|			});
+2649|
+2650|			// Dashboard filters
+2651|			$('.filter-status').on('click', function(e) {
+2652|				e.preventDefault();
+2653|				var filter = $(this).data('filter');
+2654|				var table = $('#collaborator-table').DataTable();
+2655|
+2656|				// Clear other filters first
+2657|				var languageFilters = $('#source-language, #target-language');
+2658|				var otherFilters = $('#service, #status, #days, #delivery-date');
+2659|				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+2660|				allFilters.val('');
+2661|
+2662|				// Add the custom filter parameter
+2663|				table.settings()[0].ajax.data = function (d) {
+2664|					d.dashboard_filter = filter;
+2665|				};
+2666|
+2667|				// Reload table with new filter
+2668|				table.draw();
+2669|
+2670|				// Visual feedback - add active state
+2671|				$('.filter-status').removeClass('active-filter');
+2672|				$(this).addClass('active-filter');
+2673|
+2674|				// Hide service statistics when using dashboard filters
+2675|				hideServiceStatistics();
+2676|			});
+2677|
+2678|			// Clear all filters
+2679|			$('#clear-filters').on('click', function(e) {
+2680|				e.preventDefault();
+2681|				var table = $('#collaborator-table').DataTable();
+2682|
+2683|				// Clear all form filters
+2684|				var languageFilters = $('#source-language, #target-language');
+2685|				var otherFilters = $('#service, #status, #days, #delivery-date');
+2686|				var allFilters = languageFilters.length ? languageFilters.add(otherFilters) : otherFilters;
+2687|				allFilters.val('');
+2688|				$('#search').val('');
+2689|
+2690|				// Clear dashboard filter active state
+2691|				$('.filter-status').removeClass('active-filter');
+2692|
+2693|				// Reset table filters
+2694|				table.settings()[0].ajax.data = function (d) {
+2695|					// No additional parameters
+2696|				};
+2697|
+2698|				// Clear search and reload table
+2699|				table.search('').draw();
+2700|
+2701|				// Hide service statistics when filters are cleared
+2702|				hideServiceStatistics();
+2703|			});
+2704|
+2705|		// Re-initialize tooltips and dropdowns after table draw
+2706|		$('#collaborator-table').on('draw.dt', function () {
+2707|			initializeTooltips();
+2708|			// Initialize Bootstrap dropdowns
+2709|			var dropdowns = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+2710|			dropdowns.forEach(function(dropdown) {
+2711|				if (!dropdown._dropdown) {
+2712|					dropdown._dropdown = new bootstrap.Dropdown(dropdown);
+2713|				}
+2714|			});
+2715|		});
+2716|
+2717|
+2718|
+2719|			// Entries length
+2720|			$('#entries-length').on('change', function () {
+2721|				$('#collaborator-table').DataTable().page.len($(this).val()).draw();
+2722|			});
+2723|
+2724|			// Search
+2725|			$('#search').on('keyup', function () {
+2726|				$('#collaborator-table').DataTable().search($(this).val()).draw();
+2727|			});
+2728|
+2729|			// Export functionality
+2730|			$('#export-csv').on('click', function (e) {
+2731|				e.preventDefault();
+2732|				setTimeout(function () {
+2733|					$('#collaborator-table').DataTable().button('.buttons-csv').trigger();
+2734|				}, 100);
+2735|			});
+2736|
+2737|			$('#export-pdf').on('click', function (e) {
+2738|				e.preventDefault();
+2739|				setTimeout(function () {
+2740|					$('#collaborator-table').DataTable().button('.buttons-pdf').trigger();
+2741|				}, 100);
+2742|			});
+2743|
+2744|			// Function to delete a collaborator
+2745|			function deleteRecord(id, element) {
+2746|				event.preventDefault();
+2747|				Swal.fire({
+2748|					title: '¿Estás seguro?',
+2749|					text: "¿Deseas eliminar este colaborador?",
+2750|					icon: 'warning',
+2751|					showCancelButton: true,
+2752|					confirmButtonText: 'Sí, eliminar',
+2753|					cancelButtonText: 'Cancelar',
+2754|					customClass: {
+2755|						confirmButton: 'btn btn-primary me-3',
+2756|						cancelButton: 'btn btn-label-secondary'
+2757|					},
+2758|					buttonsStyling: false
+2759|				}).then(function (result) {
+2760|					if (result.isConfirmed) {
+2761|						$.ajax({
+2762|							url: route('collaborator.destroy', id),
+2763|							type: 'DELETE',
+2764|							data: {
+2765|								_token: $('meta[name="csrf-token"]').attr('content'),
+2766|							},
+2767|							success: function (response) {
+2768|								$('#collaborator-table').DataTable().ajax.reload();
+2769|								toastr['success']('', response.message, {
+2770|									closeButton: true,
+2771|									tapToDismiss: false,
+2772|									rtl: false
+2773|								});
+2774|							},
+2775|							error: function (response) {
+2776|								Swal.fire({
+2777|									title: 'Error',
+2778|									text: response.responseJSON.message || 'Ha ocurrido un error',
+2779|									icon: 'error',
+2780|									customClass: {
+2781|										confirmButton: 'btn btn-primary'
+2782|									},
+2783|									buttonsStyling: false
+2784|								});
+2785|							}
+2786|						});
+2787|					}
+2788|				});
+2789|			}
+2790|
+2791|			// Event delegation for action buttons
+2792|			$(document).on('click', '.btn-delete', function () {
+2793|				var id = $(this).data('id');
+2794|				deleteRecord(id, this);
+2795|			});
+2796|
+2797|		// Event delegation for status change
+2798|		$(document).on('click', '.change-status', function (e) {
+2799|			e.preventDefault();
+2800|			e.stopPropagation(); // Prevent event bubbling
+2801|			var contactId = $(this).data('contact-id');
+2802|			var statusId = $(this).data('status-id');
+2803|			console.log('Status change clicked:', { contactId, statusId }); // Debug log
+2804|			changeCollaboratorStatus(contactId, statusId);
+2805|		});
+2806|
+2807|							// Function to fetch service statistics
+2808|		function fetchServiceStatistics(serviceId) {
+2809|			console.log('Fetching statistics for service ID:', serviceId);
+2810|
+2811|			// Get current filter values to pass to statistics API
+2812|			var sourceLanguage = $('#source-language').length ? $('#source-language').val() : '';
+2813|			var targetLanguage = $('#target-language').length ? $('#target-language').val() : '';
+2814|			var status = $('#status').val();
+2815|			var days = $('#days').val();
+2816|			var deliveryDate = $('#delivery-date').val();
+2817|
+2818|			$.ajax({
+2819|				url: 'https://humano.test/api/collaborator/service-statistics',
+2820|				type: 'GET',
+2821|				data: {
+2822|					service_id: serviceId,
+2823|					team_id: 2,
+2824|					source_language: sourceLanguage,
+2825|					target_language: targetLanguage,
+2826|					status: status,
+2827|					days: days,
+2828|					delivery_date: deliveryDate
+2829|				},
+2830|					success: function (response) {
+2831|						console.log('Statistics response:', response);
+2832|						if (response.success) {
+2833|							displayServiceStatistics(response);
+2834|						} else {
+2835|							hideServiceStatistics();
+2836|							// Clear any existing toasts first
+2837|							toastr.clear();
+2838|
+2839|							// Check if this is an availability issue
+2840|							var hasAvailabilityFilter = $('#days').val() && $('#delivery-date').val();
+2841|							var message = response.message;
+2842|
+2843|							if (hasAvailabilityFilter && message.includes('disponibilidad')) {
+2844|								message += ' (La tabla muestra colaboradores con el servicio, pero sin disponibilidad suficiente)';
+2845|							}
+2846|
+2847|							// Show only one warning message
+2848|							toastr['warning']('', message, {
+2849|								closeButton: true,
+2850|								tapToDismiss: false,
+2851|								rtl: false,
+2852|								timeOut: 10000,
+2853|								extendedTimeOut: 2000
+2854|							});
+2855|						}
+2856|					},
+2857|					error: function (xhr, status, error) {
+2858|						console.error('Error fetching statistics:', {xhr: xhr, status: status, error: error});
+2859|						hideServiceStatistics();
+2860|						var message = 'Error al obtener estadísticas del servicio';
+2861|						if (xhr.responseJSON && xhr.responseJSON.message) {
+2862|							message = xhr.responseJSON.message;
+2863|						}
+2864|						// Clear any existing toasts first
+2865|						toastr.clear();
+2866|						// Show only one warning message
+2867|						toastr['warning']('', message, {
+2868|							closeButton: true,
+2869|							tapToDismiss: false,
+2870|							rtl: false,
+2871|							timeOut: 8000,
+2872|							extendedTimeOut: 2000
+2873|						});
+2874|					}
+2875|				});
+2876|			}
+2877|
+2878|						// Function to display service statistics
+2879|			function displayServiceStatistics(data) {
+2880|				$('#statistics-service-name').text('Estadísticas: ' + data.service_name);
+2881|				$('#statistics-media').text('€' + data.statistics.media);
+2882|				$('#statistics-mediana').text('€' + data.statistics.mediana);
+2883|
+2884|				// Handle moda (mode) - can be null or array
+2885|				if (data.statistics.moda && data.statistics.moda.length > 0) {
+2886|					var modaText = data.statistics.moda.map(function(value) {
+2887|						return '€' + value;
+2888|					}).join(', ');
+2889|					$('#statistics-moda').text(modaText);
+2890|				} else {
+2891|					$('#statistics-moda').text('No hay moda');
+2892|				}
+2893|
+2894|				$('#statistics-count').text(data.statistics.count);
+2895|				$('#statistics-min').text('€' + data.statistics.min);
+2896|				$('#statistics-max').text('€' + data.statistics.max);
+2897|				$('#statistics-range').text('€' + data.statistics.range);
+2898|				$('#statistics-std-dev').text('€' + data.statistics.standard_deviation);
+2899|
+2900|				$('#service-statistics').show().addClass('show');
+2901|			}
+2902|
+2903|			// Function to hide service statistics
+2904|			function hideServiceStatistics() {
+2905|				$('#service-statistics').removeClass('show').hide();
+2906|			}
+2907|		});
+2908|
+2909|		// Function to mark as watch
+2910|		function markAsWatch(id) {
+2911|			Swal.fire({
+2912|				title: '¿Marcar como ojo?',
+2913|				text: "Este colaborador será marcado para supervisión especial",
+2914|				icon: 'warning',
+2915|				showCancelButton: true,
+2916|				confirmButtonText: 'Sí, marcar',
+2917|				cancelButtonText: 'Cancelar',
+2918|				customClass: {
+2919|					confirmButton: 'btn btn-warning me-3',
+2920|					cancelButton: 'btn btn-label-secondary'
+2921|				},
+2922|				buttonsStyling: false
+2923|			}).then(function (result) {
+2924|				if (result.isConfirmed) {
+2925|					$.ajax({
+2926|						url: '/collaborator/' + id + '/mark-as-watch',
+2927|						type: 'POST',
+2928|						data: {
+2929|							_token: $('meta[name="csrf-token"]').attr('content'),
+2930|						},
+2931|						success: function (response) {
+2932|							toastr['success']('', response.message, {
+2933|								closeButton: true,
+2934|								tapToDismiss: false,
+2935|								rtl: false
+2936|							});
+2937|							$('#collaborator-table').DataTable().ajax.reload();
+2938|						},
+2939|						error: function (response) {
+2940|							Swal.fire({
+2941|								title: 'Error',
+2942|								text: response.responseJSON.message || 'Ha ocurrido un error',
+2943|								icon: 'error',
+2944|								customClass: {
+2945|									confirmButton: 'btn btn-primary'
+2946|								},
+2947|								buttonsStyling: false
+2948|							});
+2949|						}
+2950|					});
+2951|				}
+2952|			});
+2953|		}
+2954|
+2955|		// Function to send to blacklist
+2956|		function sendToBlacklist(id) {
+2957|			Swal.fire({
+2958|				title: '¿Enviar a lista negra?',
+2959|				text: "Este colaborador será bloqueado y no podrá participar en proyectos",
+2960|				icon: 'error',
+2961|				showCancelButton: true,
+2962|				confirmButtonText: 'Sí, bloquear',
+2963|				cancelButtonText: 'Cancelar',
+2964|				customClass: {
+2965|					confirmButton: 'btn btn-danger me-3',
+2966|					cancelButton: 'btn btn-label-secondary'
+2967|				},
+2968|				buttonsStyling: false
+2969|			}).then(function (result) {
+2970|				if (result.isConfirmed) {
+2971|					$.ajax({
+2972|						url: '/collaborator/' + id + '/send-to-blacklist',
+2973|						type: 'POST',
+2974|						data: {
+2975|							_token: $('meta[name="csrf-token"]').attr('content'),
+2976|						},
+2977|						success: function (response) {
+2978|							toastr['success']('', response.message, {
+2979|								closeButton: true,
+2980|								tapToDismiss: false,
+2981|								rtl: false
+2982|							});
+2983|							$('#collaborator-table').DataTable().ajax.reload();
+2984|						},
+2985|						error: function (response) {
+2986|							Swal.fire({
+2987|								title: 'Error',
+2988|								text: response.responseJSON.message || 'Ha ocurrido un error',
+2989|								icon: 'error',
+2990|								customClass: {
+2991|									confirmButton: 'btn btn-primary'
+2992|								},
+2993|								buttonsStyling: false
+2994|							});
+2995|						}
+2996|					});
+2997|				}
+2998|			});
+2999|		}
+3000|
+3001|		// Function to send notification
+3002|		function sendNotification(id) {
+3003|			Swal.fire({
+3004|				title: 'Enviar notificación',
+3005|				input: 'textarea',
+3006|				inputLabel: 'Mensaje de notificación',
+3007|				inputPlaceholder: 'Escribe tu mensaje aquí...',
+3008|				inputAttributes: {
+3009|					'aria-label': 'Escribe tu mensaje de notificación'
+3010|				},
+3011|				showCancelButton: true,
+3012|				confirmButtonText: 'Enviar',
+3013|				cancelButtonText: 'Cancelar',
+3014|				customClass: {
+3015|					confirmButton: 'btn btn-primary me-3',
+3016|					cancelButton: 'btn btn-label-secondary'
+3017|				},
+3018|				buttonsStyling: false,
+3019|				inputValidator: (value) => {
+3020|					if (!value) {
+3021|						return 'Debes escribir un mensaje'
+3022|					}
+3023|				}
+3024|			}).then(function (result) {
+3025|				if (result.isConfirmed) {
+3026|					$.ajax({
+3027|						url: '/collaborator/' + id + '/send-notification',
+3028|						type: 'POST',
+3029|						data: {
+3030|							_token: $('meta[name="csrf-token"]').attr('content'),
+3031|							message: result.value
+3032|						},
+3033|						success: function (response) {
+3034|							toastr['success']('', response.message, {
+3035|								closeButton: true,
+3036|								tapToDismiss: false,
+3037|								rtl: false
+3038|							});
+3039|						},
+3040|						error: function (response) {
+3041|							Swal.fire({
+3042|								title: 'Error',
+3043|								text: response.responseJSON.message || 'Ha ocurrido un error',
+3044|								icon: 'error',
+3045|								customClass: {
+3046|									confirmButton: 'btn btn-primary'
+3047|								},
+3048|								buttonsStyling: false
+3049|							});
+3050|						}
+3051|					});
+3052|				}
+3053|			});
+3054|		}
+3055|
+3056|	// Function to change collaborator status
+3057|	function changeCollaboratorStatus(contactId, statusId) {
+3058|		console.log('Attempting to change status:', { contactId, statusId }); // Debug log
+3059|
+3060|		// Verify CSRF token exists
+3061|		var csrfToken = $('meta[name="csrf-token"]').attr('content');
+3062|		if (!csrfToken) {
+3063|			console.error('CSRF token not found');
+3064|			toastr['error']('', 'Error de seguridad: Token CSRF no encontrado', {
+3065|				closeButton: true,
+3066|				tapToDismiss: false,
+3067|				rtl: false
+3068|			});
+3069|			return;
+3070|		}
+3071|
+3072|		$.ajax({
+3073|			url: '/collaborator/' + contactId + '/update-status',
+3074|			type: 'POST',
+3075|			data: {
+3076|				_token: csrfToken,
+3077|				status_id: statusId
+3078|			},
+3079|			beforeSend: function() {
+3080|				console.log('Sending request to update status...'); // Debug log
+3081|			},
+3082|			success: function (response) {
+3083|				console.log('Status update response:', response); // Debug log
+3084|				if (response.success) {
+3085|					toastr['success']('', response.message, {
+3086|						closeButton: true,
+3087|						tapToDismiss: false,
+3088|						rtl: false
+3089|					});
+3090|					// Reload the table to show updated status
+3091|					$('#collaborator-table').DataTable().ajax.reload();
+3092|				} else {
+3093|					toastr['error']('', response.message || 'Error desconocido', {
+3094|						closeButton: true,
+3095|						tapToDismiss: false,
+3096|						rtl: false
+3097|					});
+3098|				}
+3099|			},
+3100|			error: function (xhr, status, error) {
+3101|				console.error('Status update error:', { xhr, status, error }); // Debug log
+3102|				var message = 'Error al actualizar el estado';
+3103|
+3104|				if (xhr.responseJSON && xhr.responseJSON.message) {
+3105|					message = xhr.responseJSON.message;
+3106|				} else if (xhr.status === 403) {
+3107|					message = 'No tienes permisos para realizar esta acción';
+3108|				} else if (xhr.status === 404) {
+3109|					message = 'Recurso no encontrado';
+3110|				} else if (xhr.status === 500) {
+3111|					message = 'Error interno del servidor';
+3112|				}
+3113|
+3114|				toastr['error']('', message, {
+3115|					closeButton: true,
+3116|					tapToDismiss: false,
+3117|					rtl: false
+3118|				});
+3119|			}
+3120|		});
+3121|	}
+3122|	</script>
+3123|
+3124|			<script>
+3125|			$(function () {
+3126|				// Initialize Flatpickr for delivery date with minimum date
+3127|				if (typeof flatpickr !== 'undefined') {
+3128|					const today = new Date().toISOString().split('T')[0];
+3129|					flatpickr('#delivery-date', {
+3130|						dateFormat: 'Y-m-d',
+3131|						allowInput: true,
+3132|						altInput: true,
+3133|						altFormat: 'd-m-Y',
+3134|						minDate: today,
+3135|						monthSelectorType: 'static'
+3136|					});
+3137|				}
+3138|			if ($.fn.select2) {
+3139|				if ($('#source-language').length) {
+3140|					if ($('#source-language').hasClass('select2-hidden-accessible')) {
+3141|						$('#source-language').select2('destroy');
+3142|					}
+3143|					$('#source-language').select2({
+3144|						allowClear: true,
+3145|						placeholder: "Idioma origen",
+3146|						width: '100%',
+3147|						templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+3148|						templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+3149|					});
+3150|				}
+3151|
+3152|				if ($('#target-language').length) {
+3153|					if ($('#target-language').hasClass('select2-hidden-accessible')) {
+3154|						$('#target-language').select2('destroy');
+3155|					}
+3156|					$('#target-language').select2({
+3157|						allowClear: true,
+3158|						placeholder: "Idioma destino",
+3159|						width: '100%',
+3160|						templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+3161|						templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+3162|					});
+3163|				}
+3164|			}
+3165|		});
+3166|	</script>
+3167|</body>
+3168|
+3169|</html>
+3170|

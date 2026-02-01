@@ -32,4 +32,15 @@ return [
 
     'timeout' => env('ANTHROPIC_TIMEOUT', 30),
 
+    /*
+    |--------------------------------------------------------------------------
+    | System prompt (optional)
+    |--------------------------------------------------------------------------
+    |
+    | Custom system prompt for the assistant. If empty, default from
+    | storage/app/claude_prompts/default.txt is used.
+    |
+    */
+    'system_prompt' => env('ANTHROPIC_SYSTEM_PROMPT'),
+
 ];

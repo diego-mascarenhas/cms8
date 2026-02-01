@@ -7,7 +7,7 @@ Para que los servicios de IA funcionen correctamente y se registren los logs de 
 ```bash
 # Anthropic Claude API Configuration
 ANTHROPIC_API_KEY=tu_api_key_aquí
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 ANTHROPIC_API_URL=https://api.anthropic.com/v1
 ANTHROPIC_MAX_TOKENS=4096
 ANTHROPIC_TEMPERATURE=0.7
