@@ -29,5 +29,12 @@ return [
     'instagramUrl' => '',
     'logo' => [
         'path' => env('APP_LOGO_PATH', 'assets/logo.png'),
+        'path_dark' => env('APP_LOGO_PATH_DARK', 'assets/logo-dark.svg'),
+        'path_light' => env('APP_LOGO_PATH_LIGHT', 'assets/logo-light.svg'),
+        'path_iso' => env('APP_LOGO_PATH_ISO', 'assets/logo-iso.svg'),
+        'path_iso_dark' => env('APP_LOGO_PATH_ISO_DARK', 'assets/logo-iso-dark.svg'),
+        'path_iso_light' => env('APP_LOGO_PATH_ISO_LIGHT', 'assets/logo-iso-light.svg'),
+        'fallback' => env('APP_LOGO_FALLBACK', 'assets/logo.svg'),
+        'iso_fallback' => env('APP_LOGO_ISO_FALLBACK', 'assets/logo-iso.svg'),
     ],
 ];

@@ -15,6 +15,7 @@
 <!-- Core CSS -->
 <link rel="stylesheet" href="{{ asset('assets/vendor/css' .$configData['rtlSupport'] .'/core.css') }}" class="{{ $configData['hasCustomizer'] ? 'template-customizer-core-css' : '' }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/css' .$configData['rtlSupport'] .'/' .$configData['theme'].'.css') }}" class="{{ $configData['hasCustomizer'] ? 'template-customizer-theme-css' : '' }}" />
+<link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/node-waves/node-waves.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />

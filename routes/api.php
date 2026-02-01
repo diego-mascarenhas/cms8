@@ -404,6 +404,7 @@ Route::middleware('auth:sanctum')->group(function ()
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
+    Route::get('contacts/stats', [ContactController::class, 'stats']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
     // Enterprises - for user-based authentication (Sanctum tokens)

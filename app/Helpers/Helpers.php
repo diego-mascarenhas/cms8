@@ -304,4 +304,36 @@ class Helpers
 
         return round($number / 1000000000, 1).'B';
     }
+
+    /**
+     * Return the URL for a logo variant, checking file existence and falling back when missing.
+     * Variants: dark, light (full logo); iso, iso_dark, iso_light (iso/small logo).
+     */
+    public static function logoAsset(string $variant): string
+    {
+        $logo = config('variables.logo');
+        $variantToPath = [
+            'dark' => $logo['path_dark'] ?? 'assets/logo-dark.svg',
+            'light' => $logo['path_light'] ?? 'assets/logo-light.svg',
+            'iso' => $logo['path_iso'] ?? 'assets/logo-iso.svg',
+            'iso_dark' => $logo['path_iso_dark'] ?? 'assets/logo-iso-dark.svg',
+            'iso_light' => $logo['path_iso_light'] ?? 'assets/logo-iso-light.svg',
+        ];
+        $fallbackForVariant = [
+            'dark' => $logo['fallback'] ?? 'assets/logo.svg',
+            'light' => $logo['fallback'] ?? 'assets/logo.svg',
+            'iso' => $logo['iso_fallback'] ?? 'assets/logo-iso.svg',
+            'iso_dark' => $logo['iso_fallback'] ?? 'assets/logo-iso.svg',
+            'iso_light' => $logo['iso_fallback'] ?? 'assets/logo-iso.svg',
+        ];
+        if (! array_key_exists($variant, $variantToPath))
+        {
+            return asset($logo['fallback'] ?? 'assets/logo.svg');
+        }
+        $path = $variantToPath[$variant];
+        $fallback = $fallbackForVariant[$variant];
+        $fullPath = public_path($path);
+
+        return file_exists($fullPath) ? asset($path) : asset($fallback);
+    }
 }

@@ -95,9 +95,22 @@ class ContactController extends Controller
         $contact = Contact::create($contactData);
 
         // Sync categories
+        $categoryIds = [];
         if (isset($data['categories']))
         {
-            $contact->categories()->sync($data['categories']);
+            $categoryIds = $data['categories'];
+        }
+
+        // Add default category if configured
+        $defaultCategoryId = config('custom.default_contact_category_id');
+        if ($defaultCategoryId)
+        {
+            $categoryIds[] = $defaultCategoryId;
+        }
+
+        if (! empty($categoryIds))
+        {
+            $contact->categories()->sync(array_unique($categoryIds));
         }
 
         // Sync software
