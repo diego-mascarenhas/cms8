@@ -21,6 +21,7 @@ $configData = Helper::appClasses();
     <!-- Forgot Password -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto">
+        <div class="d-lg-none mb-3">@include('auth.partials.cta-button', ['mobile' => true])</div>
         <!-- Logo -->
         <div class="app-brand mb-4">
           <a href="{{url('/')}}" class="app-brand-link">
