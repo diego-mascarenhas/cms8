@@ -1,0 +1,62 @@
+/*
+ * Humano.app brand palette – single file for theme customization.
+ * Loads after theme-default.css. Edit primary/hover/body here only.
+ * https://humano.app
+ */
+:root {
+  --humano-primary: #2563eb;
+  --humano-primary-hover: #1d4ed8;
+  --humano-primary-light: #dbeafe;
+  --humano-body-bg: #f8fafc;
+}
+
+body,
+.bg-body { background: var(--humano-body-bg) !important; }
+
+.text-primary { color: var(--humano-primary) !important; }
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus,
+.border-primary { border-color: var(--humano-primary) !important; }
+
+.bg-primary,
+.btn-primary,
+.page-item.active .page-link,
+.progress-bar,
+.nav-pills .nav-link.active,
+.form-check-input:checked,
+.form-check-input[type="checkbox"]:indeterminate,
+.dropdown-item.active,
+.dropdown-item:active,
+.menu.bg-primary .menu-item.active > .menu-link:not(.menu-toggle),
+.menu.bg-primary.menu-vertical .menu-inner > .menu-item.active > .menu-link:not(.menu-toggle) { background-color: var(--humano-primary) !important; border-color: var(--humano-primary) !important; }
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active { background-color: var(--humano-primary-hover) !important; border-color: var(--humano-primary-hover) !important; }
+
+.bg-label-primary,
+.bg-label-hover-primary { background-color: var(--humano-primary-light) !important; color: var(--humano-primary) !important; }
+.bg-label-hover-primary:hover { background-color: var(--humano-primary) !important; color: #fff !important; }
+
+.btn-outline-primary { border-color: var(--humano-primary); color: var(--humano-primary); }
+.btn-outline-primary:hover { background-color: var(--humano-primary-light) !important; color: var(--humano-primary) !important; }
+
+a { color: var(--humano-primary); }
+a:hover { color: var(--humano-primary-hover); }
+
+.bg-menu-theme.menu-vertical .menu-inner > .menu-item.active > .menu-link:not(.menu-toggle) { background: var(--humano-primary) !important; color: #fff !important; box-shadow: 0 2px 6px 0 rgba(37, 99, 235, 0.35); }
+.bg-menu-theme .menu-item.active > .menu-link { color: var(--humano-primary); }
+.bg-menu-theme .menu-inner > .menu-item.active > .menu-link:not(.menu-toggle) { background: linear-gradient(72.47deg, var(--humano-primary) 22.16%, rgba(37, 99, 235, 0.85) 76.47%) !important; color: #fff !important; }
+
+.input-group:focus-within .form-control,
+.input-group:focus-within .form-select,
+.input-group:focus-within .input-group-text { border-color: var(--humano-primary) !important; }
+
+.switch-input:checked ~ .switch-toggle-slider,
+.switch-primary.switch .switch-input:checked ~ .switch-toggle-slider { background: var(--humano-primary) !important; border-color: var(--humano-primary) !important; }
+.form-switch .form-check-input:focus { border-color: var(--humano-primary); }
+
+.nav-tabs .nav-link.active { box-shadow: inset 0 -2px 0 var(--humano-primary); }
+.fill-primary { fill: var(--humano-primary); }
