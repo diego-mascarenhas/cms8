@@ -88,6 +88,8 @@
         if (typeof marked !== 'undefined') {
           var render = typeof marked.parse === 'function' ? marked.parse : marked;
           html = render(preprocessSuggestion(data.response));
+          html = html.replace(/\u2713/g, '<span class="suggestion-check" aria-hidden="true" title="Aplica"><svg class="suggestion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>');
+          html = html.replace(/\u2717/g, '<span class="suggestion-cross" aria-hidden="true" title="No aplica"><svg class="suggestion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></span>');
         } else {
           html = '<pre>' + escapeHtml(preprocessSuggestion(data.response)) + '</pre>';
         }

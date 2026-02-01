@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Contact;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TeamContactController extends Controller
 {
@@ -75,7 +77,7 @@ class TeamContactController extends Controller
             'creator_id' => $team->user_id,  // Owner of the team
         ]);
 
-        // Attach categories only if provided in request
+        // Attach categories: from request + default if configured (same as landing/lead)
         $categoryIds = [];
         if (! empty($validated['category_id']))
         {
@@ -84,6 +86,19 @@ class TeamContactController extends Controller
         if (! empty($validated['category_ids']))
         {
             $categoryIds = array_merge($categoryIds, $validated['category_ids']);
+        }
+        $defaultCategoryId = config('custom.default_contact_category_id');
+        if ($defaultCategoryId !== null && $defaultCategoryId !== '')
+        {
+            $defaultCategoryId = (int) $defaultCategoryId;
+            if (Category::where('id', $defaultCategoryId)->where('team_id', $team->id)->exists())
+            {
+                $categoryIds[] = $defaultCategoryId;
+            }
+            else
+            {
+                Log::warning('TeamContactController: default category '.$defaultCategoryId.' does not exist for team_id '.$team->id.'; skipping.');
+            }
         }
         if (! empty($categoryIds))
         {

@@ -109,9 +109,29 @@ body {
 .landing-widget .result-content {
   font-size: 0.95rem;
 }
-.landing-widget .result-content h3 { font-size: 1rem; margin: 16px 0 8px; }
-.landing-widget .result-content p { margin: 0 0 8px; }
-.landing-widget .result-content ul { margin: 0 0 8px; padding-left: 1.25rem; }
+.landing-widget .result-content h2,
+.landing-widget .result-content h3 { font-size: 1rem; margin: 20px 0 10px; }
+.landing-widget .result-content h2:first-child,
+.landing-widget .result-content h3:first-child { margin-top: 0; }
+.landing-widget .result-content p { margin: 0 0 16px; }
+.landing-widget .result-content ul { margin: 0 0 16px; padding-left: 1.25rem; }
+.landing-widget .result-content li { margin-bottom: 12px; }
+.landing-widget .result-content .suggestion-check,
+.landing-widget .result-content .suggestion-cross {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.landing-widget .result-content .suggestion-check .suggestion-icon {
+  color: #16a34a;
+  width: 1.1em;
+  height: 1.1em;
+}
+.landing-widget .result-content .suggestion-cross .suggestion-icon {
+  color: #dc2626;
+  width: 1.1em;
+  height: 1.1em;
+}
 .landing-widget .error-msg {
   color: #dc2626;
   margin-top: 8px;

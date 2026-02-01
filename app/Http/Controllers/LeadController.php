@@ -8,6 +8,7 @@ use App\Models\ContactSource;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class LeadController extends Controller
 {
@@ -24,9 +25,16 @@ class LeadController extends Controller
             'email' => ['required_without:phone', 'nullable', 'email:rfc', 'max:255'],
             'phone' => ['required_without:email', 'nullable', 'string', 'max:20', 'regex:/^[+\-\d\s()]+$/'],
             'team_id' => 'required|exists:teams,id',
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')->where('team_id', $request->input('team_id')),
+            ],
             'category_ids' => 'nullable|array',
-            'category_ids.*' => 'integer|exists:categories,id',
+            'category_ids.*' => [
+                'integer',
+                Rule::exists('categories', 'id')->where('team_id', $request->input('team_id')),
+            ],
         ], [
             'name.required' => 'El nombre es obligatorio',
             'surname.string' => 'El apellido debe ser texto válido',
@@ -77,18 +85,19 @@ class LeadController extends Controller
                 $categoryIds = array_merge($categoryIds, $validated['category_ids']);
             }
             
-            // Add default category if configured (only if it exists to avoid foreign key errors)
+            // Add default category if configured (only if it exists for this team to avoid wrong or missing assignment)
             $defaultCategoryId = config('custom.default_contact_category_id');
             if ($defaultCategoryId !== null && $defaultCategoryId !== '')
             {
                 $defaultCategoryId = (int) $defaultCategoryId;
-                if (Category::where('id', $defaultCategoryId)->exists())
+                $existsForTeam = Category::where('id', $defaultCategoryId)->where('team_id', $validated['team_id'])->exists();
+                if ($existsForTeam)
                 {
                     $categoryIds[] = $defaultCategoryId;
                 }
                 else
                 {
-                    Log::warning('LeadController: default_contact_category_id '.$defaultCategoryId.' does not exist in categories table; skipping.');
+                    Log::warning('LeadController: default category '.$defaultCategoryId.' does not exist for team_id '.$validated['team_id'].'; skipping.');
                 }
             }
 
