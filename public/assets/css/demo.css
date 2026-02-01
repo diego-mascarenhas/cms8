@@ -5,10 +5,14 @@
 
 .light-style .menu .app-brand.demo {
   height: 64px;
+  overflow: visible;
+  margin-bottom: 0;
 }
 
 .dark-style .menu .app-brand.demo {
   height: 64px;
+  overflow: visible;
+  margin-bottom: 0;
 }
 
 .app-brand-logo.demo {
@@ -25,6 +29,39 @@
 .app-brand-logo.demo svg {
   width: 35px;
   height: 24px;
+}
+
+/* Full logo in menu (expanded): do not crop */
+.menu .app-brand-logo.demo.app-brand-img {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  overflow: visible;
+}
+.menu .app-brand-logo.demo.app-brand-img img {
+  height: 44px;
+  width: auto;
+  display: block;
+}
+
+/* Less space between logo and first menu item; remove shadow mask that looks odd on scroll */
+.layout-menu .menu-inner {
+  margin-top: 0.25rem !important;
+  padding-top: 0.25rem !important;
+}
+.layout-menu .menu-inner-shadow {
+  display: none !important;
+}
+
+/* Menu brand: show only one logo depending on collapsed state */
+html:not(.layout-menu-collapsed) .layout-menu .app-brand-img-collapsed {
+  display: none !important;
+}
+html.layout-menu-collapsed .layout-menu .app-brand-img {
+  display: none !important;
+}
+html.layout-menu-collapsed .layout-menu .app-brand-img-collapsed {
+  display: flex !important;
 }
 
 .app-brand-text.demo {
