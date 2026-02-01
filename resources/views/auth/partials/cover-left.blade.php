@@ -1,7 +1,7 @@
 {{-- Left cover panel for auth pages (login, register, forgot-password). Include with $coverIllustration e.g. 'auth-login-illustration'. --}}
 <div class="d-none d-lg-flex col-lg-7 p-0">
   <div class="auth-cover-bg auth-cover-bg-color d-flex justify-content-center align-items-center position-relative">
-    <a href="{{ route('landing') }}" class="btn btn-light position-absolute top-0 start-0 m-4" style="top: 32px; left: 32px;">
+    <a href="{{ route('landing') }}" class="btn btn-light position-absolute top-0 start-0 m-4 waves-effect waves-light btn-auth-cta-shine" style="top: 32px; left: 32px;">
       <i class="ti ti-message-question me-1"></i>
       Cuéntanos tu problema de negocio
     </a>
