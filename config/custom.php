@@ -40,4 +40,7 @@ return [
         // 'showQuickAccess' => true, // options[Boolean]: true(default), false // To enable or disable quick access links
         // 'showNotifications' => true, // options[Boolean]: true(default), false // To enable or disable notifications
     ],
+    
+    // Default category ID to assign to new contacts/leads (null to disable). Same env name as Mobile: DEFAULT_CATEGORY_ID
+    'default_contact_category_id' => env('DEFAULT_CATEGORY_ID', env('DEFAULT_CONTACT_CATEGORY_ID', null)),
 ];

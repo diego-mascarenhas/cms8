@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactSource;
 use App\Models\Team;
@@ -75,6 +76,22 @@ class LeadController extends Controller
             {
                 $categoryIds = array_merge($categoryIds, $validated['category_ids']);
             }
+            
+            // Add default category if configured (only if it exists to avoid foreign key errors)
+            $defaultCategoryId = config('custom.default_contact_category_id');
+            if ($defaultCategoryId !== null && $defaultCategoryId !== '')
+            {
+                $defaultCategoryId = (int) $defaultCategoryId;
+                if (Category::where('id', $defaultCategoryId)->exists())
+                {
+                    $categoryIds[] = $defaultCategoryId;
+                }
+                else
+                {
+                    Log::warning('LeadController: default_contact_category_id '.$defaultCategoryId.' does not exist in categories table; skipping.');
+                }
+            }
+
             if (! empty($categoryIds))
             {
                 $contact->categories()->sync(array_unique($categoryIds));
@@ -106,7 +123,12 @@ class LeadController extends Controller
             return view('lead.success');
         } catch (\Exception $e)
         {
-            Log::error('Error creating lead: '.$e->getMessage());
+            Log::error('Error creating lead: '.$e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return redirect()->back()
                 ->with('error', 'No se pudo procesar tu solicitud')

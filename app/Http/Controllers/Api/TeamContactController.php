@@ -75,7 +75,7 @@ class TeamContactController extends Controller
             'creator_id' => $team->user_id,  // Owner of the team
         ]);
 
-        // Attach categories if provided
+        // Attach categories only if provided in request
         $categoryIds = [];
         if (! empty($validated['category_id']))
         {
