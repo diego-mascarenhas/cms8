@@ -2,10 +2,6 @@
 
 @section('title', __('Strategic Growth Framework'))
 
-@section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/fontawesome/css/all.min.css') }}">
-@endsection
-
 @section('content')
 
     <h2 class="mb-4">Strategic Growth Framework</h2>
