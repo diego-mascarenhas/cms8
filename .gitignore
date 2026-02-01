@@ -31,6 +31,17 @@ Thumbs.db
 /public/js/datatables/
 /public/assets/
 
+# Logos: tracked so they deploy to production
+!/public/assets/logo.png
+!/public/assets/logo.svg
+!/public/assets/logo-dark.svg
+!/public/assets/logo-light.svg
+!/public/assets/logo-iso.svg
+!/public/assets/logo-iso-dark.svg
+!/public/assets/logo-iso-light.svg
+!/public/assets/css/custom.css
+!/public/assets/css/demo.css
+
 # Packages en desarrollo local (trabaje en otra computadora)
 /packages/idoneo/humano-academy
 /packages/idoneo/humano-access-control
