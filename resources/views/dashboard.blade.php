@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/fontawesome/css/all.min.css') }}">
 @endsection
 
 @section('page-style')

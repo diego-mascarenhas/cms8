@@ -75,6 +75,11 @@ class Task extends Model implements HasMedia
         return $this->hasOne(Project::class, 'board_id', 'board_id');
     }
 
+    public function times()
+    {
+        return $this->hasMany(Time::class);
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)

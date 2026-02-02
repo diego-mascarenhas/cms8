@@ -798,7 +798,7 @@
 				type: 'GET',
 				data: {
 					service_id: serviceId,
-					team_id: {{ auth()->user()->currentTeam->id ?? 4 }}, // Use current team or default to 4
+					team_id: {{ optional(auth()->user()->currentTeam)->id ?? 4 }},
 					source_language: sourceLanguage,
 					target_language: targetLanguage,
 					status: status,
@@ -1120,7 +1120,7 @@
 					}
 					$('#source-language').select2({
 						allowClear: true,
-						placeholder: '{{ __("Idioma origen") }}',
+						placeholder: {!! json_encode(__('Idioma origen')) !!},
 						width: '100%',
 						templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
 						templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
@@ -1133,11 +1133,12 @@
 					}
 					$('#target-language').select2({
 						allowClear: true,
-						placeholder: '{{ __("Idioma destino") }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
+						placeholder: {!! json_encode(__('Idioma destino')) !!},
+						width: '100%',
+						templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+						templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+					});
+				}
 			}
 		});
 	</script>

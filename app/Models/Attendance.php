@@ -23,6 +23,7 @@ class Attendance extends Model
     protected $casts = [
         'start_at' => 'datetime',
         'end_at' => 'datetime',
+        'paused_at' => 'datetime',
     ];
 
     protected static function booted()

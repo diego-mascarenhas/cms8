@@ -22,12 +22,11 @@ class ClaudeService
 
     public function __construct()
     {
-        // Use anthropic config (compatible with both services.claude and anthropic)
-        $this->apiKey = config('anthropic.api_key') ?? config('services.claude.api_key');
-        $this->model = config('anthropic.model') ?? config('services.claude.model', 'claude-3-5-sonnet-20241022');
-        $this->baseUrl = config('anthropic.api_url') ?? config('services.claude.base_url', 'https://api.anthropic.com/v1');
-        $this->maxTokens = (int) (config('anthropic.max_tokens') ?? config('services.claude.max_tokens', 4096));
-        $this->systemPrompt = config('services.claude.system_prompt', $this->getDefaultSystemPrompt());
+        $this->apiKey = config('anthropic.api_key');
+        $this->model = config('anthropic.model');
+        $this->baseUrl = config('anthropic.api_url');
+        $this->maxTokens = (int) config('anthropic.max_tokens');
+        $this->systemPrompt = config('anthropic.system_prompt') ?? $this->getDefaultSystemPrompt();
     }
 
     /**

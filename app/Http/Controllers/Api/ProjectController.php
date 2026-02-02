@@ -116,7 +116,7 @@ class ProjectController extends Controller
         {
             // Find the project first
             $project = Project::where('id', $id)
-                ->with(['client', 'responsible', 'categories'])
+                ->with(['client', 'responsible'])
                 ->firstOrFail();
 
             // Check if user can view this specific project
@@ -128,9 +128,55 @@ class ProjectController extends Controller
                 ], 403);
             }
 
+            // Get tasks associated with this project (via board_id)
+            $tasks = [];
+            $totalSeconds = 0;
+
+            if ($project->board_id)
+            {
+                $projectTasks = \App\Models\Task::where('board_id', $project->board_id)
+                    ->with(['status', 'responsible'])
+                    ->get();
+
+                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds)
+                {
+                    // Calculate time for this task
+                    $taskTime = \App\Models\Time::where('task_id', $task->id)
+                        ->whereNotNull('end_time')
+                        ->get()
+                        ->sum(function ($time)
+                        {
+                            return $time->start_time->diffInSeconds($time->end_time);
+                        });
+
+                    $totalSeconds += $taskTime;
+
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'status' => [
+                            'id' => $task->status?->id,
+                            'name' => $task->status?->name,
+                            'translated_name' => $task->status?->translated_name,
+                        ],
+                        'responsible' => [
+                            'id' => $task->responsible?->id,
+                            'name' => $task->responsible?->name,
+                        ],
+                        'time_seconds' => $taskTime,
+                        'time_formatted' => gmdate('H:i:s', $taskTime),
+                    ];
+                });
+            }
+
             return response()->json([
                 'success' => true,
-                'data' => $project,
+                'data' => array_merge($project->toArray(), [
+                    'tasks' => $tasks,
+                    'total_time_seconds' => $totalSeconds,
+                    'total_time_formatted' => gmdate('H:i:s', $totalSeconds),
+                    'total_time_hours' => round($totalSeconds / 3600, 2),
+                ]),
                 'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
