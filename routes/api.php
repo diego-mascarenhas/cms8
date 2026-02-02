@@ -393,6 +393,9 @@ Route::middleware('auth:sanctum')->group(function ()
     {
         Route::get('/', [TaskController::class, 'index']);
         Route::get('/{id}', [TaskController::class, 'show']);
+        Route::post('/{id}/start', [TaskController::class, 'start']);
+        Route::post('/{id}/stop', [TaskController::class, 'stop']);
+        Route::get('/{id}/time', [TaskController::class, 'time']);
     });
 
     // Category
