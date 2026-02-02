@@ -4,10 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
+    /**
+     * Obtiene la lista de estados disponibles para las tareas.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statuses()
+    {
+        $statuses = TaskStatus::orderBy('order')
+            ->get()
+            ->map(function ($status)
+            {
+                return [
+                    'id' => $status->id,
+                    'name' => $status->name,
+                    'translated_name' => $status->translated_name,
+                    'color' => $status->color,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $statuses,
+        ]);
+    }
+
     /**
      * Lista las tareas asignadas al usuario autenticado.
      *

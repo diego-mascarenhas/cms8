@@ -391,6 +391,7 @@ Route::middleware('auth:sanctum')->group(function ()
     // Tasks
     Route::prefix('tasks')->group(function ()
     {
+        Route::get('/statuses', [TaskController::class, 'statuses']);
         Route::get('/', [TaskController::class, 'index']);
         Route::get('/{id}', [TaskController::class, 'show']);
         Route::post('/{id}/start', [TaskController::class, 'start']);
