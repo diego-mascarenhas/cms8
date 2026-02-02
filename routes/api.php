@@ -393,9 +393,11 @@ Route::middleware('auth:sanctum')->group(function ()
     {
         Route::get('/statuses', [TaskController::class, 'statuses']);
         Route::get('/', [TaskController::class, 'index']);
+        Route::post('/', [TaskController::class, 'store']);
         Route::get('/{id}', [TaskController::class, 'show']);
         Route::post('/{id}/start', [TaskController::class, 'start']);
         Route::post('/{id}/stop', [TaskController::class, 'stop']);
+        Route::put('/{id}/status', [TaskController::class, 'updateStatus']);
         Route::get('/{id}/time', [TaskController::class, 'time']);
     });
 
