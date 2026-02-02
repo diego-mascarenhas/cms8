@@ -141,6 +141,20 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
             <div>{{ __('Orders') }}</div>
           </a>
         </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.tasks') ? 'active' : '' }}">
+          <a href="{{ route('help.api.tasks') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-list-check"></i>
+            <div>{{ __('Tasks') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.prompts') ? 'active' : '' }}">
+          <a href="{{ route('help.api.prompts') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-sparkles"></i>
+            <div>{{ __('Prompts') }}</div>
+          </a>
+        </li>
       </ul>
     </aside>
 

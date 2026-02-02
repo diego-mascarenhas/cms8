@@ -4,10 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
+    /**
+     * Obtiene la lista de estados disponibles para las tareas.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statuses()
+    {
+        $statuses = TaskStatus::orderBy('order')
+            ->get()
+            ->map(function ($status)
+            {
+                return [
+                    'id' => $status->id,
+                    'name' => $status->name,
+                    'translated_name' => $status->translated_name,
+                    'color' => $status->color,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $statuses,
+        ]);
+    }
+
     /**
      * Lista las tareas asignadas al usuario autenticado.
      *
@@ -144,6 +170,75 @@ class TaskController extends Controller
     }
 
     /**
+     * Crea una nueva tarea y opcionalmente inicia el timer.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_timer' => 'nullable|boolean',
+        ]);
+
+        $user = $request->user();
+
+        // Obtener el estado inicial (TO_DO por defecto, o IN_PROGRESS si se inicia el timer)
+        $defaultStatus = TaskStatus::where('name', $validated['start_timer'] ?? false ? 'IN_PROGRESS' : 'TO_DO')->first();
+
+        // Crear la tarea
+        $task = Task::create([
+            'team_id' => $user->currentTeam->id,
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'responsible_id' => $user->id,
+            'status_id' => $defaultStatus?->id ?? 1,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+
+        // Si se solicita, iniciar el timer automáticamente
+        $timeId = null;
+        if ($validated['start_timer'] ?? false)
+        {
+            // Detener cualquier otro tiempo activo del usuario
+            \App\Models\Time::where('user_id', $user->id)
+                ->whereNull('end_time')
+                ->update(['end_time' => now()]);
+
+            // Crear registro de tiempo
+            $time = \App\Models\Time::create([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'team_id' => $user->currentTeam->id,
+                'start_time' => now(),
+            ]);
+
+            $timeId = $time->id;
+        }
+
+        $task->load('status');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea creada correctamente.'),
+            'data' => [
+                'task_id' => $task->id,
+                'title' => $task->title,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'time_id' => $timeId,
+                'timer_started' => $validated['start_timer'] ?? false,
+            ],
+        ], 201);
+    }
+
+    /**
      * Inicia el registro de tiempo para una tarea.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -190,6 +285,13 @@ class TaskController extends Controller
             'team_id' => $request->user()->currentTeam->id,
             'start_time' => now(),
         ]);
+
+        // Cambiar estado de la tarea a IN_PROGRESS automáticamente
+        $inProgressStatus = TaskStatus::where('name', 'IN_PROGRESS')->first();
+        if ($inProgressStatus && $task->status_id !== $inProgressStatus->id)
+        {
+            $task->update(['status_id' => $inProgressStatus->id]);
+        }
 
         return response()->json([
             'success' => true,
@@ -270,7 +372,7 @@ class TaskController extends Controller
         $task = Task::with(['times' => function ($query)
         {
             $query->whereNotNull('end_time')->orderBy('start_time', 'desc');
-        }, 'project'])->findOrFail($id);
+        }, 'project', 'status'])->findOrFail($id);
 
         // Validar permisos
         if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
@@ -314,6 +416,12 @@ class TaskController extends Controller
                 'task' => [
                     'id' => $task->id,
                     'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => [
+                        'id' => $task->status?->id,
+                        'name' => $task->status?->name,
+                        'translated_name' => $task->status?->translated_name,
+                    ],
                     'project' => $task->project ? [
                         'id' => $task->project->id,
                         'name' => $task->project->name,
@@ -327,6 +435,50 @@ class TaskController extends Controller
                     'started_at' => $activeTime->start_time->toIso8601String(),
                 ] : null,
                 'entries' => $entries,
+            ],
+        ]);
+    }
+
+    /**
+     * Actualiza el estado de una tarea.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $task = Task::findOrFail($id);
+
+        // Validar permisos
+        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tienes permiso para cambiar el estado de esta tarea.'),
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status_id' => 'required|exists:task_statuses,id',
+        ]);
+
+        $task->update([
+            'status_id' => $validated['status_id'],
+        ]);
+
+        $task->load('status');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Estado actualizado correctamente.'),
+            'data' => [
+                'task_id' => $task->id,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
             ],
         ]);
     }

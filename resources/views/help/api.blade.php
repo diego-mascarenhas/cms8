@@ -151,6 +151,11 @@
                                             <td><code>/api/orders</code></td>
                                             <td>{{ __('Order management and tracking (user auth)') }}</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Prompts') }}</strong></td>
+                                            <td><code>/api/team/prompts</code></td>
+                                            <td>{{ __('AI-powered prompts for content generation (team token auth)') }}</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -176,22 +181,30 @@
                                 </ul>
                             </div>
 
-                            <div class="d-flex gap-3 mt-4">
+                            <div class="d-flex flex-wrap gap-3 mt-4">
                                 <a href="{{ route('help.api.authentication') }}" class="btn btn-primary">
                                     <i class="ti ti-key me-2"></i>
                                     {{ __('Learn Authentication') }}
                                 </a>
                                 <a href="{{ route('help.api.contacts') }}" class="btn btn-success">
                                     <i class="ti ti-users me-2"></i>
-                                    {{ __('Contacts API Guide') }}
+                                    {{ __('Contacts API') }}
+                                </a>
+                                <a href="{{ route('help.api.tasks') }}" class="btn btn-warning">
+                                    <i class="ti ti-list-check me-2"></i>
+                                    {{ __('Tasks API') }}
+                                </a>
+                                <a href="{{ route('help.api.prompts') }}" class="btn btn-purple">
+                                    <i class="ti ti-sparkles me-2"></i>
+                                    {{ __('Prompts API') }}
                                 </a>
                                 <a href="{{ route('help.api.contents') }}" class="btn btn-info">
                                     <i class="ti ti-file-text me-2"></i>
-                                    {{ __('Contents API Guide') }}
+                                    {{ __('Contents API') }}
                                 </a>
                                 <a href="{{ route('help.api.enterprises') }}" class="btn btn-secondary">
                                     <i class="ti ti-building me-2"></i>
-                                    {{ __('Enterprises API Guide') }}
+                                    {{ __('Enterprises API') }}
                                 </a>
                             </div>
                         </div>
