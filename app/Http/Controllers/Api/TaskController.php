@@ -177,6 +177,12 @@ class TaskController extends Controller
             ], 400);
         }
 
+        // Detener cualquier otro tiempo activo del usuario (solo puede haber uno a la vez)
+        \App\Models\Time::where('user_id', $request->user()->id)
+            ->where('task_id', '!=', $id)
+            ->whereNull('end_time')
+            ->update(['end_time' => now()]);
+
         // Crear nuevo registro de tiempo
         $time = \App\Models\Time::create([
             'task_id' => $id,
