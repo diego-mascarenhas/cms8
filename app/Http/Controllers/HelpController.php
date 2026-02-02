@@ -190,4 +190,24 @@ class HelpController extends Controller
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
+
+    /**
+     * Display tasks API documentation
+     */
+    public function apiTasks()
+    {
+        return view('help.api-tasks', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display prompts API documentation
+     */
+    public function apiPrompts()
+    {
+        return view('help.api-prompts', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
 }
