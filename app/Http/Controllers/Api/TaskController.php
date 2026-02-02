@@ -39,8 +39,14 @@ class TaskController extends Controller
         $tasks = $query->defaultOrder()->get();
 
         // Transformar a formato API
-        $data = $tasks->map(function ($task)
+        $data = $tasks->map(function ($task) use ($user)
         {
+            // Buscar tiempo activo para esta tarea
+            $activeTime = \App\Models\Time::where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->whereNull('end_time')
+                ->first();
+
             return [
                 'id' => $task->id,
                 'title' => $task->title,
@@ -66,6 +72,11 @@ class TaskController extends Controller
                     'name' => $task->responsible?->name,
                     'email' => $task->responsible?->email,
                 ],
+                'active_time' => $activeTime ? [
+                    'id' => $activeTime->id,
+                    'started_at' => $activeTime->start_time->toIso8601String(),
+                    'elapsed_seconds' => $activeTime->start_time->diffInSeconds(now()),
+                ] : null,
             ];
         });
 
@@ -253,7 +264,7 @@ class TaskController extends Controller
         $task = Task::with(['times' => function ($query)
         {
             $query->whereNotNull('end_time')->orderBy('start_time', 'desc');
-        }])->findOrFail($id);
+        }, 'project'])->findOrFail($id);
 
         // Validar permisos
         if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
@@ -297,13 +308,17 @@ class TaskController extends Controller
                 'task' => [
                     'id' => $task->id,
                     'title' => $task->title,
+                    'project' => $task->project ? [
+                        'id' => $task->project->id,
+                        'name' => $task->project->name,
+                    ] : null,
                 ],
                 'total_seconds' => $totalSeconds,
                 'total_formatted' => gmdate('H:i:s', $totalSeconds),
                 'total_hours' => round($totalSeconds / 3600, 2),
                 'active_time' => $activeTime ? [
                     'id' => $activeTime->id,
-                    'started_at' => $activeTime->start->toIso8601String(),
+                    'started_at' => $activeTime->start_time->toIso8601String(),
                 ] : null,
                 'entries' => $entries,
             ],
