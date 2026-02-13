@@ -88,10 +88,6 @@ $configData = Helper::appClasses();
           </a>
         </p>
         @endif
-
-        <a href="{{ route('assistant-demo') }}" class="btn btn-label-secondary d-grid w-100 mt-3">
-          <i class="ti ti-robot me-2"></i>{{ __('Prueba el asistente') }}
-        </a>
       </div>
     </div>
     <!-- /Login -->
