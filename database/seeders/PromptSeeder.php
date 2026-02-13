@@ -76,11 +76,21 @@ class PromptSeeder extends Seeder
         {
             $prompts[] = [
                 'module_id' => $module->id,
+                'section_key' => 'general',
+                'section_label' => 'Prompt general (enrutador)',
+                'prompt_instruction' => $this->getGeneralRouterPromptInstruction(),
+                'helper_text' => 'Escribe o describe tu necesidad; la IA te enviará al flujo más adecuado (problemas de negocio, descripción de proyecto, email, notas, etc.).',
+                'order' => 0,
+                'is_active' => true,
+            ];
+
+            $prompts[] = [
+                'module_id' => $module->id,
                 'section_key' => 'notes',
                 'section_label' => 'Notas del contacto',
                 'prompt_instruction' => "# Notas profesionales de contacto\n\nAyuda a redactar **notas profesionales y estructuradas** sobre interacciones con contactos.\n\n## Debe incluir:\n\n- Fecha y contexto de la interacción\n- Puntos clave de la conversación\n- Acuerdos o compromisos\n- Próximos pasos\n\n---\n\n**Tu objetivo**: Crear un registro claro y útil de la interacción.",
                 'helper_text' => "**Ejemplo:** 'Reunión con cliente sobre..., se acordó..., próximos pasos...'",
-                'order' => 0,
+                'order' => 1,
                 'is_active' => true,
             ];
 
@@ -90,7 +100,7 @@ class PromptSeeder extends Seeder
                 'section_label' => 'Email al contacto',
                 'prompt_instruction' => "# Email profesional\n\nAyuda a redactar un **email profesional y efectivo**.\n\n## Características:\n\n- Saludo apropiado\n- Mensaje claro y conciso\n- Llamado a la acción específico\n- Cierre profesional\n\n---\n\n**Tu objetivo**: Mejorar claridad y profesionalismo del email.",
                 'helper_text' => '**Indica:** Contexto, objetivo del email, tono (formal/informal)',
-                'order' => 1,
+                'order' => 2,
                 'is_active' => true,
             ];
         }
@@ -225,6 +235,36 @@ class PromptSeeder extends Seeder
         }
 
         return $prompts;
+    }
+
+    /**
+     * Instruction for the general router: classify user intent and return only a routing key.
+     */
+    private function getGeneralRouterPromptInstruction(): string
+    {
+        return <<<'PROMPT'
+Eres un enrutador. Tu ÚNICA tarea es elegir el flujo correcto según la intención del usuario.
+
+Responde con **exactamente una línea**, sin explicación ni texto adicional, usando solo una de estas claves:
+
+- **contacts:landing** → Problemas de negocio, estrategia, crecimiento, diagnóstico de empresa, procesos desordenados, dependencia de una persona, falta de automatización, plan de negocio.
+- **projects:description** → Descripción o definición de un proyecto, alcance, entregables.
+- **tasks:description** → Definir una tarea, tarea concreta, qué hay que hacer.
+- **contacts:notes** → Notas de reunión, notas de contacto, resumen de conversación con cliente.
+- **contacts:email** → Redactar un email, correo profesional, escribir a un contacto.
+- **enterprises:description** → Descripción de empresa, perfil de empresa, datos comerciales de empresa.
+- **invoices:description** → Descripción de servicios para factura, facturación.
+- **communications:message** → Mensaje de marketing, comunicación, campaña, CTA.
+- **communications:image_analysis** → Analizar una imagen, describir imagen, mejorar imagen.
+- **communications:voice_summary** → Resumen para escuchar en audio, texto para voz.
+- **services:description** → Descripción de un servicio, oferta de servicio.
+- **notes:content** → Estructurar una nota, organizar notas, contenido de nota.
+- **notes:notes_from_audio** → Convertir audio en notas, transcribir y estructurar.
+- **templates:content** → Plantilla de email o documento, contenido de plantilla.
+
+Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde solo: contacts:landing
+Para cualquier otra intención, elige la clave que mejor coincida. Responde solo la clave, nada más.
+PROMPT;
     }
 
     /**

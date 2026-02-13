@@ -167,6 +167,20 @@ class PromptController extends Controller
             $languageInstruction = "\n\n**Importante:** Responde únicamente en {$langName}. Si el usuario ha subido audio, traduce o resume el contenido en {$langName}.";
         }
 
+        $routedTo = null;
+        if ($prompt->isGeneralRouter())
+        {
+            $prompt = $this->resolveGeneralPromptRoute($prompt, $userContent);
+            if ($prompt === null)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('No se pudo determinar el flujo. Intenta ser más específico.'),
+                ], 422);
+            }
+            $routedTo = $prompt->section_label;
+        }
+
         $userMessage = $prompt->prompt_instruction.$languageInstruction."\n\n---\n\nEntrada del usuario:\n\n".$userContent;
         $attachments = $hasImage ? [$request->file('image')] : [];
 
@@ -213,6 +227,10 @@ class PromptController extends Controller
             'success' => true,
             'response' => $text,
         ];
+        if ($routedTo !== null)
+        {
+            $payload['routed_to'] = $routedTo;
+        }
 
         $respondWithAudio = $request->boolean('respond_with_audio');
         $voiceId = $request->input('voice_id') ? trim($request->input('voice_id')) : null;
@@ -239,6 +257,44 @@ class PromptController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    /**
+     * When the prompt is the general router, call the agent to get a routing key and return the target prompt.
+     */
+    private function resolveGeneralPromptRoute(Prompt $routerPrompt, string $userContent): ?Prompt
+    {
+        $routerMessage = $routerPrompt->prompt_instruction."\n\n---\n\nEntrada del usuario:\n\n".$userContent;
+
+        try
+        {
+            $agent = agent(
+                instructions: $routerPrompt->prompt_instruction,
+                messages: [],
+                tools: [],
+            );
+            $response = $agent->prompt($routerMessage, [], Lab::Anthropic);
+            $text = trim($response->text ?: '');
+        } catch (\Throwable $e)
+        {
+            Log::warning('General router call failed', ['error' => $e->getMessage()]);
+
+            return Prompt::findByRoutingKey('contacts:landing');
+        }
+
+        $firstLine = trim(explode("\n", $text)[0] ?? '');
+        $firstLine = preg_replace('/^[\s`*#\-]+|[\s`*]+$/u', '', $firstLine);
+        if (preg_match('/[a-z0-9_]+:[a-z0-9_]+/u', $firstLine, $m))
+        {
+            $key = $m[0];
+        } else
+        {
+            $key = trim($firstLine);
+        }
+
+        $target = Prompt::findByRoutingKey($key);
+
+        return $target ?? Prompt::findByRoutingKey('contacts:landing');
     }
 
     /**
