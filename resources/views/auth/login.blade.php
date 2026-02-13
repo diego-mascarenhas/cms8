@@ -21,13 +21,11 @@ $configData = Helper::appClasses();
 
     <!-- Login -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
-      <div class="w-px-400 mx-auto">
+      <div class="w-px-400 mx-auto w-100">
         <div class="d-lg-none mb-3">@include('auth.partials.cta-button', ['mobile' => true])</div>
-        <!-- Logo -->
         <div class="app-brand mb-4">
             @include('auth.partials.logo-full', ['logoId' => 'logo'])
         </div>
-        <!-- /Logo -->
         <h3 class="mb-1">
             {{ \App\Helpers\TranslationHelper::transGroup('welcome', 'auth', ['name' => config('variables.templateName')]) }}
         </h3>

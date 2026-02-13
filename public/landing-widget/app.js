@@ -44,7 +44,7 @@
       return;
     }
     if (!TEAM_TOKEN) {
-      showError('Configura TEAM_TOKEN en la configuración del widget.');
+      showError('Configura TEAM_TOKEN en tu .env (token de API del equipo en Ajustes).');
       return;
     }
     if (!API_BASE) {

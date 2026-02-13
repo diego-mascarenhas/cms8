@@ -42,4 +42,31 @@ class Prompt extends Model
     {
         return $this->belongsTo(Module::class);
     }
+
+    /**
+     * Find a prompt by module key and section key (e.g. "contacts:landing").
+     * For "landing" only, finds the first prompt with section_key landing.
+     */
+    public static function findByRoutingKey(string $routingKey): ?self
+    {
+        $routingKey = trim($routingKey);
+        if (str_contains($routingKey, ':'))
+        {
+            [$moduleKey, $sectionKey] = explode(':', $routingKey, 2);
+            $module = Module::where('key', trim($moduleKey))->first();
+            if (! $module)
+            {
+                return null;
+            }
+
+            return self::where('module_id', $module->id)->where('section_key', trim($sectionKey))->first();
+        }
+
+        return self::where('section_key', $routingKey)->first();
+    }
+
+    public function isGeneralRouter(): bool
+    {
+        return $this->section_key === 'general';
+    }
 }
