@@ -93,6 +93,7 @@
                 <small class="text-muted">{{ __('Si subes audio, la transcripción se traducirá o la respuesta será en este idioma.') }}</small>
             </div>
             <div class="col-md-6">
+                <label class="form-label">{{ __('Respuesta en audio') }}</label>
                 <div class="form-check mb-2">
                     <input type="checkbox" class="form-check-input" id="respondWithAudio" name="respond_with_audio" value="1">
                     <label class="form-check-label" for="respondWithAudio">{{ __('Recibir la respuesta en audio (TTS)') }}</label>
