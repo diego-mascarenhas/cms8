@@ -26,6 +26,9 @@
           <span id="btn-text">Obtener sugerencias</span>
         </button>
       </div>
+      @if(!config('services.landing_widget.team_token'))
+      <p class="error-msg" style="margin-top: 12px; font-size: 0.875rem;">Para usar el widget, configura <code>TEAM_TOKEN</code> en tu <code>.env</code> (token de API del equipo en Ajustes).</p>
+      @endif
       <p id="error-msg" class="error-msg" style="display: none;"></p>
     </div>
 
@@ -61,7 +64,7 @@
   <script>
     window.LANDING_API_BASE_URL = @json(rtrim(config('services.landing_widget.api_url'), '/'));
     window.LANDING_TEAM_TOKEN = @json(config('services.landing_widget.team_token'));
-    window.LANDING_PROMPT_NAME = @json(config('services.landing_widget.prompt_name'));
+    window.LANDING_PROMPT_NAME = @json(config('services.landing_widget.prompt_name', 'landing'));
     window.LANDING_SUCCESS_URL = @json(config('services.landing_widget.success_url') ?: url()->route('landing.gracias'));
   </script>
   <script src="{{ asset('landing-widget/config.js') }}"></script>
