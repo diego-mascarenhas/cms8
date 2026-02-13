@@ -341,6 +341,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
+    // Chatbot (Livewire assistant with general router + flows)
+    Route::get('/chatbot', fn () => view('chatbot'))->name('chatbot');
+
     // Users
     Route::get('/user/list', [UserController::class, 'index'])->name('user.index');
     Route::get('/user/create', [UserController::class, 'create'])->name('user.create');

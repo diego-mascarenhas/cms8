@@ -10,6 +10,14 @@ $configData = Helper::appClasses();
 @section('page-style')
 {{-- Page Css files --}}
 <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}">
+<style>
+.assistant-content p { margin-bottom: 0.5rem; }
+.assistant-content p:last-child { margin-bottom: 0; }
+.assistant-content ul, .assistant-content ol { padding-left: 1.25rem; margin-bottom: 0.5rem; }
+.assistant-content li { margin-bottom: 0.25rem; }
+.assistant-content strong { font-weight: 600; }
+.assistant-content h2, .assistant-content h3 { font-size: 1rem; margin: 0.75rem 0 0.5rem; }
+</style>
 @endsection
 
 @section('content')
@@ -90,6 +98,10 @@ $configData = Helper::appClasses();
           </a>
         </p>
         @endif
+
+        <hr class="my-4">
+        <p class="small text-muted mb-2">{{ __('Prueba el asistente') }}</p>
+        @livewire('assistant-chat')
       </div>
     </div>
     <!-- /Login -->
