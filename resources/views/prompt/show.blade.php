@@ -62,7 +62,46 @@
     <div class="card-body">
         <div class="mb-3">
             <label class="form-label" for="testInput">{{ __('Escribe aquí tu propuesta o texto a mejorar') }}</label>
-            <textarea id="testInput" class="form-control" name="test_message" rows="15" placeholder="{{ __('Escribe aquí tu propuesta...') }}"></textarea>
+            <textarea id="testInput" class="form-control" name="test_message" rows="8" placeholder="{{ __('Escribe aquí tu propuesta...') }}"></textarea>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label" for="promptPreviewImage">{{ __('Subir imagen (opcional)') }}</label>
+                <input type="file" id="promptPreviewImage" class="form-control" name="image" accept="image/*">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="promptPreviewAudio">{{ __('Subir audio (opcional)') }}</label>
+                <input type="file" id="promptPreviewAudio" class="form-control" name="audio" accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg">
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label" for="translateTo">{{ __('Traducir respuesta a') }}</label>
+                <select id="translateTo" class="form-select" name="translate_to">
+                    <option value="">{{ __('No traducir') }}</option>
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="pt">Português</option>
+                    <option value="ja">日本語</option>
+                    <option value="zh">中文</option>
+                    <option value="ru">Русский</option>
+                    <option value="ar">العربية</option>
+                </select>
+                <small class="text-muted">{{ __('Si subes audio, la transcripción se traducirá o la respuesta será en este idioma.') }}</small>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="respondWithAudio" name="respond_with_audio" value="1">
+                    <label class="form-check-label" for="respondWithAudio">{{ __('Recibir la respuesta en audio (TTS)') }}</label>
+                </div>
+                <div id="voiceIdWrap" class="mt-2" style="display: none;">
+                    <label class="form-label" for="voiceId">{{ __('Tu voz (Voice ID de ElevenLabs)') }}</label>
+                    <input type="text" id="voiceId" class="form-control form-control-sm" name="voice_id" placeholder="{{ __('Opcional: pega el ID de tu voz clonada') }}" maxlength="100">
+                </div>
+            </div>
         </div>
         <button type="button" id="btnGenerateSuggestion" class="btn btn-primary">
             <i class="ti ti-sparkles me-1"></i>{{ __('Generar sugerencia con IA') }}
@@ -71,6 +110,10 @@
             <label class="form-label text-muted">{{ __('Respuesta de la IA') }}</label>
             <div id="promptPreviewLoader" class="text-muted small mb-2" style="display: none;"><span class="spinner-border spinner-border-sm me-1" role="status"></span>{{ __('Procesando...') }}</div>
             <div id="promptPreviewContent" class="border rounded p-3 bg-light"><pre class="mb-0 small text-dark" style="white-space: pre-wrap;"></pre></div>
+            <div id="promptPreviewAudioPlayer" class="mt-3" style="display: none;">
+                <label class="form-label text-muted">{{ __('Respuesta en audio') }}</label>
+                <audio id="promptPreviewAudioEl" controls class="w-100"></audio>
+            </div>
         </div>
     </div>
 </div>
@@ -81,39 +124,101 @@
 document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('btnGenerateSuggestion');
     var testInput = document.getElementById('testInput');
+    var imageInput = document.getElementById('promptPreviewImage');
+    var audioInput = document.getElementById('promptPreviewAudio');
+    var respondWithAudioCheck = document.getElementById('respondWithAudio');
+    var translateToSelect = document.getElementById('translateTo');
+    var voiceIdWrap = document.getElementById('voiceIdWrap');
+    var voiceIdInput = document.getElementById('voiceId');
     var responseContainer = document.getElementById('promptPreviewResponse');
     var loader = document.getElementById('promptPreviewLoader');
     var content = document.getElementById('promptPreviewContent');
+    var audioPlayerWrap = document.getElementById('promptPreviewAudioPlayer');
+    var audioEl = document.getElementById('promptPreviewAudioEl');
+
+    function hasFiles() {
+        return (imageInput && imageInput.files && imageInput.files.length) ||
+               (audioInput && audioInput.files && audioInput.files.length);
+    }
+
+    if (respondWithAudioCheck && voiceIdWrap) {
+        respondWithAudioCheck.addEventListener('change', function() {
+            voiceIdWrap.style.display = this.checked ? 'block' : 'none';
+        });
+    }
 
     if (btn && testInput) {
         btn.addEventListener('click', function() {
-            var message = testInput.value.trim();
-            if (!message) {
-                alert('{{ __("Escribe algo en el cuadro de texto para probar el prompt.") }}');
+            var message = (testInput && testInput.value) ? testInput.value.trim() : '';
+            if (!message && !hasFiles()) {
+                alert('{{ __("Escribe algo, sube una imagen o un audio para probar el prompt.") }}');
                 return;
             }
             responseContainer.style.display = 'block';
             loader.style.display = 'block';
             content.querySelector('pre').textContent = '';
+            if (audioPlayerWrap) audioPlayerWrap.style.display = 'none';
+            if (audioEl) { audioEl.pause(); audioEl.removeAttribute('src'); }
             btn.disabled = true;
 
-            fetch('{{ route("prompt.preview", $prompt) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ test_message: message })
+            var url = '{{ route("prompt.preview", $prompt) }}';
+            var csrf = '{{ csrf_token() }}';
+            var body;
+            var headers = { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' };
+
+            var translateTo = translateToSelect ? translateToSelect.value : '';
+            var voiceId = voiceIdInput ? voiceIdInput.value.trim() : '';
+
+            if (hasFiles() || (respondWithAudioCheck && respondWithAudioCheck.checked) || translateTo) {
+                body = new FormData();
+                body.append('_token', csrf);
+                body.append('test_message', message);
+                if (translateTo) body.append('translate_to', translateTo);
+                if (respondWithAudioCheck && respondWithAudioCheck.checked) {
+                    body.append('respond_with_audio', '1');
+                    if (voiceId) body.append('voice_id', voiceId);
+                }
+                if (imageInput && imageInput.files && imageInput.files[0]) body.append('image', imageInput.files[0]);
+                if (audioInput && audioInput.files && audioInput.files[0]) body.append('audio', audioInput.files[0]);
+            } else {
+                headers['Content-Type'] = 'application/json';
+                body = JSON.stringify({ test_message: message, translate_to: translateTo || null });
+            }
+
+            fetch(url, { method: 'POST', headers: headers, body: body })
+            .then(function(res) {
+                var contentType = res.headers.get('content-type') || '';
+                return res.text().then(function(text) {
+                    if (contentType.indexOf('application/json') !== -1) {
+                        try {
+                            return { ok: res.ok, data: JSON.parse(text) };
+                        } catch (e) {
+                            return { ok: false, data: null, text: text };
+                        }
+                    }
+                    return { ok: false, data: null, text: text, status: res.status };
+                });
             })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
+            .then(function(result) {
                 loader.style.display = 'none';
                 btn.disabled = false;
-                if (data.success) {
-                    content.querySelector('pre').textContent = data.response || '';
+                if (result.data) {
+                    var data = result.data;
+                    if (data.success) {
+                        content.querySelector('pre').textContent = data.response || '';
+                        if (data.audio_base64 && audioEl && audioPlayerWrap) {
+                            audioEl.src = 'data:' + (data.audio_mime || 'audio/mpeg') + ';base64,' + data.audio_base64;
+                            audioPlayerWrap.style.display = 'block';
+                        }
+                    } else {
+                        content.querySelector('pre').textContent = '{{ __("Error") }}: ' + (data.message || '{{ __("No se pudo obtener la respuesta.") }}');
+                    }
                 } else {
-                    content.querySelector('pre').textContent = '{{ __("Error") }}: ' + (data.message || '{{ __("No se pudo obtener la respuesta.") }}');
+                    var msg = '{{ __("El servidor respondió con un error. Recarga la página o inténtalo más tarde.") }}';
+                    if (result.status === 419) msg = '{{ __("Sesión caducada. Recarga la página e inicia sesión de nuevo.") }}';
+                    else if (result.status === 403) msg = '{{ __("No tienes permiso para esta acción.") }}';
+                    else if (result.status === 500) msg = '{{ __("Error interno del servidor. Revisa la consola o los logs.") }}';
+                    content.querySelector('pre').textContent = msg + (result.status ? ' (HTTP ' + result.status + ')' : '');
                 }
             })
             .catch(function(err) {
