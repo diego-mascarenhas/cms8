@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Prompt;
 use App\Models\TokenUsageLog;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Transcription;
 
 use function Laravel\Ai\agent;
 
@@ -13,11 +16,11 @@ class AssistantChatService
 {
     /**
      * Run the assistant chat: route the user message through the general router, then run the target prompt.
-     * Returns response text and the flow label (routed_to).
+     * Optionally accept image and audio uploads, and return TTS audio when requested.
      *
-     * @return array{response: string, routed_to: string|null}
+     * @return array{response: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}
      */
-    public function run(string $userMessage, ?int $teamId = null): array
+    public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false): array
     {
         $routerPrompt = Prompt::active()->where('section_key', 'general')->first();
         if (! $routerPrompt)
@@ -28,7 +31,31 @@ class AssistantChatService
             ];
         }
 
-        $prompt = $this->resolveRoute($routerPrompt, $userMessage);
+        $content = trim($userMessage);
+        if ($content === '' && ($image || $audio))
+        {
+            $content = $image && $audio
+                ? __('El usuario ha enviado una imagen y un audio.')
+                : ($image ? __('El usuario ha enviado una imagen.') : __('El usuario ha enviado un audio.'));
+        }
+        if ($audio)
+        {
+            try
+            {
+                $transcript = (string) Transcription::fromUpload($audio)->generate(provider: Lab::OpenAI);
+                $content = trim($content."\n\n[Transcripción del audio]:\n".$transcript);
+            } catch (\Throwable $e)
+            {
+                Log::warning('AssistantChat transcription failed', ['error' => $e->getMessage()]);
+
+                return [
+                    'response' => __('No se pudo transcribir el audio. Comprueba que OPENAI_API_KEY esté configurada.'),
+                    'routed_to' => null,
+                ];
+            }
+        }
+
+        $prompt = $this->resolveRoute($routerPrompt, $content);
         if ($prompt === null)
         {
             return [
@@ -37,7 +64,8 @@ class AssistantChatService
             ];
         }
 
-        $userContent = $prompt->prompt_instruction."\n\n---\n\nEntrada del usuario:\n\n".$userMessage;
+        $userContent = $prompt->prompt_instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
+        $attachments = $image ? [$image] : [];
 
         try
         {
@@ -46,7 +74,7 @@ class AssistantChatService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userContent, [], Lab::Anthropic);
+            $response = $agent->prompt($userContent, $attachments, Lab::Anthropic);
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -81,10 +109,27 @@ class AssistantChatService
             }
         }
 
-        return [
+        $result = [
             'response' => $text,
             'routed_to' => $prompt->section_label,
         ];
+
+        if ($respondWithVoice && $text !== '' && config('ai.providers.eleven.key'))
+        {
+            $maxCharsForTts = 1000;
+            $textForTts = strlen($text) > $maxCharsForTts ? substr($text, 0, $maxCharsForTts).'…' : $text;
+            try
+            {
+                $audioResponse = Audio::of($textForTts)->generate(provider: Lab::ElevenLabs);
+                $result['audio_base64'] = $audioResponse->audio;
+                $result['audio_mime'] = $audioResponse->mimeType() ?? 'audio/mpeg';
+            } catch (\Throwable $e)
+            {
+                Log::warning('AssistantChat TTS failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $result;
     }
 
     /**

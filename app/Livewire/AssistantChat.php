@@ -7,12 +7,15 @@ use App\Models\AgentConversationMessage;
 use App\Services\AssistantChatService;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class AssistantChat extends Component
 {
+    use WithFileUploads;
+
     public const AGENT_NAME = 'assistant_chat';
 
-    /** @var array<int, array{role: string, content: string, routed_to: string|null}> */
+    /** @var array<int, array{role: string, content: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}> */
     public array $messages = [];
 
     public string $input = '';
@@ -20,6 +23,12 @@ class AssistantChat extends Component
     public bool $loading = false;
 
     public ?string $conversationId = null;
+
+    public $image = null;
+
+    public $audio = null;
+
+    public bool $respondWithAudio = false;
 
     public function mount(): void
     {
@@ -51,15 +60,33 @@ class AssistantChat extends Component
 
     public function sendMessage(AssistantChatService $assistant): void
     {
-        $text = trim($this->input);
-        if ($text === '' || $this->loading)
+        $text = trim($this->input ?? '');
+        $hasImage = $this->image !== null;
+        $hasAudio = $this->audio !== null;
+
+        if ($text === '' && ! $hasImage && ! $hasAudio)
+        {
+            return;
+        }
+        if ($this->loading)
         {
             return;
         }
 
+        $this->validate([
+            'image' => 'nullable|image|max:20480',
+            'audio' => 'nullable|file|mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg|max:25600',
+        ], [
+            'image.image' => __('El archivo debe ser una imagen.'),
+            'image.max' => __('La imagen no puede superar 20 MB.'),
+            'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
+            'audio.max' => __('El audio no puede superar 25 MB.'),
+        ]);
+
+        $userContent = $text !== '' ? $text : __('[Imagen o audio adjunto]');
         $this->messages[] = [
             'role' => 'user',
-            'content' => $text,
+            'content' => $userContent,
             'routed_to' => null,
         ];
         $this->input = '';
@@ -69,18 +96,27 @@ class AssistantChat extends Component
             ? auth()->user()->currentTeam->id
             : null;
 
-        $result = $assistant->run($text, $teamId);
+        $result = $assistant->run($text, $teamId, $this->image, $this->audio, $this->respondWithAudio);
 
-        $this->messages[] = [
+        $assistantMessage = [
             'role' => 'assistant',
             'content' => $result['response'],
             'routed_to' => $result['routed_to'],
         ];
+        if (! empty($result['audio_base64']) && ! empty($result['audio_mime']))
+        {
+            $assistantMessage['audio_base64'] = $result['audio_base64'];
+            $assistantMessage['audio_mime'] = $result['audio_mime'];
+        }
+        $this->messages[] = $assistantMessage;
         $this->loading = false;
+
+        $this->image = null;
+        $this->audio = null;
 
         if (auth()->check())
         {
-            $this->persistMessages($text, $result['response'], $result['routed_to']);
+            $this->persistMessages($userContent, $result['response'], $result['routed_to']);
         }
 
         $this->dispatch('scroll-to-bottom');
