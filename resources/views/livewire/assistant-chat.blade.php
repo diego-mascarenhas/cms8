@@ -20,9 +20,13 @@
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
         <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
             @if(count($messages) === 0)
-                <p class="text-muted text-center py-4 mb-0">
-                    {{ __('Escribe tu necesidad o problema. Te enrutaré al flujo más adecuado (estrategia, email, notas, proyecto, etc.).') }}
-                </p>
+                <div class="mb-3 d-flex justify-content-start" x-data="{ step: 'waiting' }" x-init="setTimeout(() => step = 'welcome', 2000); setTimeout(() => step = 'ready', 4500)">
+                    <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">
+                        <p class="mb-0 small text-body" x-show="step === 'waiting'" x-transition style="display: none;">...</p>
+                        <p class="mb-1 fw-medium text-body" x-show="step === 'welcome' || step === 'ready'" x-transition style="display: none;">{{ __('¡Bienvenido!') }}</p>
+                        <p class="mb-0 small text-body" x-show="step === 'ready'" x-transition style="display: none;">{{ __('Puedes consultarme lo que necesites, que intentaré ayudarte en lo que pueda.') }}</p>
+                    </div>
+                </div>
             @else
                 @foreach($messages as $index => $msg)
                     <div wire:key="msg-{{ $index }}" class="mb-3 d-flex {{ $msg['role'] === 'user' ? 'justify-content-end' : '' }}">
