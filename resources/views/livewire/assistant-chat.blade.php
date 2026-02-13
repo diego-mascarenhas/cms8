@@ -19,6 +19,7 @@
     </div>
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
         <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
+            {{-- Recuadro de bienvenida: siempre visible --}}
             @if(count($messages) === 0)
                 <div class="mb-3 d-flex justify-content-start" x-data="{ step: 'waiting' }" x-init="setTimeout(() => step = 'welcome', 2000); setTimeout(() => step = 'ready', 4500)">
                     <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">
@@ -28,6 +29,15 @@
                     </div>
                 </div>
             @else
+                <div class="mb-3 d-flex justify-content-start">
+                    <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">
+                        <p class="mb-1 fw-medium text-body">{{ __('¡Bienvenido!') }}</p>
+                        <p class="mb-0 small text-body">{{ __('Puedes consultarme lo que necesites, que intentaré ayudarte en lo que pueda.') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            @if(count($messages) > 0)
                 @foreach($messages as $index => $msg)
                     <div wire:key="msg-{{ $index }}" class="mb-3 d-flex {{ $msg['role'] === 'user' ? 'justify-content-end' : '' }}">
                         <div class="{{ $msg['role'] === 'user' ? 'bg-primary text-white' : 'bg-label-primary' }} rounded p-3 shadow-sm {{ $msg['role'] === 'user' ? '' : 'me-md-5' }}" style="max-width: 85%;">
@@ -53,6 +63,7 @@
                     </div>
                 @endforeach
             @endif
+
             @if($loading)
                 <div class="d-flex justify-content-start mb-3">
                     <div class="bg-label-primary rounded p-3">
