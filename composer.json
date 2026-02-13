@@ -16,6 +16,7 @@
     "guzzlehttp/guzzle": "^7.9",
     "idoneo/humano-academy": "dev-main",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
+    "laravel/ai": "^0.1.5",
     "laravel/cashier": "^15.0",
     "laravel/framework": "^12.0",
     "laravel/jetstream": "^5.0",
