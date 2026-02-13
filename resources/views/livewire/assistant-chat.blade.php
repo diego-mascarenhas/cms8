@@ -1,6 +1,10 @@
+@php
+    $lastRouted = collect($messages)->reverse()->first(fn ($m) => ($m['role'] ?? '') === 'assistant' && !empty($m['routed_to']));
+    $currentFlow = $lastRouted['routed_to'] ?? __('General');
+@endphp
 <div class="card" x-data x-init="$wire.on('scroll-to-bottom', () => $nextTick(() => document.getElementById('assistant-chat-messages')?.scrollTo(0, 1e9)))">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">{{ __('Asistente') }}</h5>
+        <h5 class="mb-0">{{ __('Asistente') }} · <span class="text-muted fw-normal">{{ $currentFlow }}</span></h5>
         @if(count($messages) > 0)
             <button type="button" class="btn btn-sm btn-label-secondary" wire:click="clearChat">
                 <i class="ti ti-refresh me-1"></i>{{ __('Nueva conversación') }}
@@ -59,7 +63,7 @@
                     <button type="button" class="btn btn-icon btn-label-secondary flex-shrink-0" onclick="document.getElementById('assistant-chat-audio').click()" title="{{ __('Subir audio') }}" aria-label="{{ __('Subir audio') }}" @if($loading) disabled @endif>
                         <i class="ti ti-microphone"></i>
                     </button>
-                    <input type="text" class="form-control flex-grow-1" wire:model="input" placeholder="{{ __('Escribe tu mensaje...') }}" @if($loading) disabled @endif>
+                    <input type="text" id="assistant-chat-input" class="form-control flex-grow-1" wire:model="input" placeholder="{{ __('Escribe tu mensaje...') }}" @if($loading) disabled @endif>
                     <button type="submit" class="btn btn-primary btn-icon flex-shrink-0" @if($loading) disabled @endif aria-label="{{ __('Enviar') }}">
                         <span wire:loading.remove wire:target="sendMessage"><i class="ti ti-send"></i></span>
                         <span wire:loading wire:target="sendMessage" class="spinner-border spinner-border-sm" role="status"></span>
@@ -81,14 +85,6 @@
                 </div>
             </form>
         </div>
-        @php
-            $lastPrompt = collect($messages)->reverse()->first(fn ($m) => ($m['role'] ?? '') === 'assistant' && !empty($m['routed_to']));
-        @endphp
-        @if($lastPrompt)
-        <div class="px-3 pb-2 pt-0 border-top small text-muted">
-            <i class="ti ti-route me-1"></i>{{ __('Resolviendo con') }}: <strong>{{ $lastPrompt['routed_to'] }}</strong>
-        </div>
-        @endif
     </div>
 </div>
 

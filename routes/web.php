@@ -93,6 +93,8 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
 
+Route::get('/try-assistant', fn () => view('assistant-demo'))->name('assistant-demo');
+
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
 
