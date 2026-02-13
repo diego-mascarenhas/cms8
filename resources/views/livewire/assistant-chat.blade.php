@@ -5,11 +5,17 @@
 <div class="card" x-data x-init="$wire.on('scroll-to-bottom', () => $nextTick(() => document.getElementById('assistant-chat-messages')?.scrollTo(0, 1e9)))">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ __('Asistente') }} · <span class="text-muted fw-normal">{{ $currentFlow }}</span></h5>
-        @if(count($messages) > 0)
-            <button type="button" class="btn btn-sm btn-label-secondary" wire:click="clearChat">
-                <i class="ti ti-refresh me-1"></i>{{ __('Nueva conversación') }}
-            </button>
-        @endif
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <label class="mb-0 small d-flex align-items-center gap-2">
+                <span>{{ __('Respuesta por voz') }}</span>
+                <input type="checkbox" wire:model="respondWithAudio" class="form-check-input">
+            </label>
+            @if(count($messages) > 0)
+                <button type="button" class="btn btn-sm btn-label-secondary" wire:click="clearChat">
+                    <i class="ti ti-refresh me-1"></i>{{ __('Nueva conversación') }}
+                </button>
+            @endif
+        </div>
     </div>
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
         <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
@@ -69,6 +75,7 @@
                         <span wire:loading wire:target="sendMessage" class="spinner-border spinner-border-sm" role="status"></span>
                     </button>
                 </div>
+                @if($image || $audio)
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     @if($image)
                         <span class="badge bg-label-info">{{ $image->getClientOriginalName() }}</span>
@@ -78,11 +85,8 @@
                         <span class="badge bg-label-info">{{ $audio->getClientOriginalName() }}</span>
                         <button type="button" class="btn btn-sm btn-icon btn-label-secondary" wire:click="$set('audio', null)" aria-label="{{ __('Quitar audio') }}"><i class="ti ti-x"></i></button>
                     @endif
-                    <label class="mb-0 small d-flex align-items-center gap-1 ms-auto">
-                        <input type="checkbox" wire:model="respondWithAudio" class="form-check-input">
-                        {{ __('Respuesta en voz') }}
-                    </label>
                 </div>
+                @endif
             </form>
         </div>
     </div>
