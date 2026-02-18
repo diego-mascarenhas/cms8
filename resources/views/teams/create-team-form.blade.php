@@ -12,7 +12,7 @@
       <x-label class="form-label" value="{{ __('Team Owner') }}" />
 
       <div class="d-flex mt-3">
-        <img class="rounded-circle" width="48" src="{{ $this->user->profile_photo_url }}" alt="{{ $this->user->name }}">
+        <img class="rounded-circle" width="48" height="48" style="object-fit: cover;" src="{{ $this->user->profile_photo_url }}" alt="{{ $this->user->name }}">
 
         <div class="ms-2">
           <div>{{ $this->user->name }}</div>
