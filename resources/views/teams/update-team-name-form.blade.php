@@ -17,7 +17,7 @@
       <x-label class="form-label" value="{{ __('Team Owner') }}" />
 
       <div class="d-flex mt-1">
-        <img class="rounded-circle me-2" width="48" src="{{ $team->owner->profile_photo_url }}" alt="{{ $team->owner->name }}">
+        <img class="rounded-circle me-2" width="48" height="48" style="object-fit: cover;" src="{{ $team->owner->profile_photo_url }}" alt="{{ $team->owner->name }}">
         <div>
           <div>{{ $team->owner->name }}</div>
           <div class="text-muted">{{ $team->owner->email }}</div>

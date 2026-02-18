@@ -143,7 +143,7 @@
           <div class="d-flex justify-content-between mt-2 mb-2">
             <div class="d-flex align-items-center">
               <div class="pe-2">
-                <img width="32" class="rounded-circle" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
+                <img class="rounded-circle" width="32" height="32" style="object-fit: cover;" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
               </div>
               <span class="fw-medium">{{ $user->name }}</span>
             </div>
