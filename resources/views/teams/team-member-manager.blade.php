@@ -102,12 +102,19 @@
       <x-slot name="content">
         @foreach ($team->teamInvitations as $invitation)
           <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
-            <div class="___class_+?13___">{{ $invitation->email }}</div>
+            <div class="align-self-center">{{ $invitation->email }}</div>
 
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              @if (Gate::check('addTeamMember', $team))
+                <form action="{{ route('teams.invitations.confirm', $invitation) }}" method="POST" class="d-inline">
+                  @csrf
+                  <button type="submit" class="btn btn-sm btn-primary">
+                    {{ __('Confirm invitation') }}
+                  </button>
+                </form>
+              @endif
               @if (Gate::check('removeTeamMember', $team))
-                <!-- Cancel Team Invitation -->
-                <button class="btn btn-link text-danger text-decoration-none"
+                <button class="btn btn-link text-danger text-decoration-none btn-sm"
                   wire:click="cancelTeamInvitation({{ $invitation->id }})">
                   {{ __('Cancel') }}
                 </button>
@@ -121,10 +128,10 @@
   @endif
 
   @php
-    $adminUsers = $team->users()->wherePivot('role', 'admin')->orderBy('users.name')->get();
+    $teamMembers = $team->users()->orderBy('users.name')->get();
   @endphp
 
-  @if ($adminUsers->isNotEmpty())
+  @if ($teamMembers->isNotEmpty())
 
     <div class="mt-4">
       <!-- Manage Team Members -->
@@ -139,7 +146,7 @@
 
       <!-- Team Member List -->
       <x-slot name="content">
-        @foreach ($adminUsers as $user)
+        @foreach ($teamMembers as $user)
           <div class="d-flex justify-content-between mt-2 mb-2">
             <div class="d-flex align-items-center">
               <div class="pe-2">
