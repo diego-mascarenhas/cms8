@@ -58,6 +58,7 @@ use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TimeController;
@@ -182,6 +183,10 @@ Route::middleware(['auth'])->group(function ()
     // Team Shortcuts
     Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
     Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
+
+    // Confirm team invitation (when email did not arrive)
+    Route::post('/teams/invitations/{invitation}/confirm', TeamInvitationConfirmController::class)
+        ->name('teams.invitations.confirm');
 
     // Categories Management
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
