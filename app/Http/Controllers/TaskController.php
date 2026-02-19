@@ -54,7 +54,7 @@ class TaskController extends Controller
             }
         } else
         {
-            // Original single-board kanban: always use default board
+            // Tablero general: use default board for new tasks, but show tasks from all team boards
             $board = TaskBoard::getDefaultBoard();
         }
 
@@ -67,12 +67,19 @@ class TaskController extends Controller
             ];
         });
 
+        // When no project (Tablero general), show tasks from all team boards; otherwise only this board
+        $boardIds = $project ? [$board->id] : TaskBoard::pluck('id')->all();
+        if (empty($boardIds))
+        {
+            $boardIds = [$board->id];
+        }
+
         // Get tasks grouped by status
         $tasksByStatus = [];
         foreach ($statuses as $status)
         {
             $tasks = Task::where('status_id', $status['id'])
-                ->where('board_id', $board->id)
+                ->whereIn('board_id', $boardIds)
                 ->with(['responsible', 'category'])
                 ->orderBy('order')
                 ->get();
@@ -118,6 +125,7 @@ class TaskController extends Controller
                     'responsible' => $task->responsible ? [
                         'id' => $task->responsible->id,
                         'name' => $task->responsible->name,
+                        'profile_photo_url' => $task->responsible->profile_photo_url ?? null,
                     ] : null,
                     'category' => $task->category ? [
                         'id' => $task->category->id,
@@ -137,8 +145,8 @@ class TaskController extends Controller
             {
                 $q->whereIn('name', ['admin', 'collaborator']);
             })
-            ->get(['id', 'name'])
-            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]);
+            ->get()
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'profile_photo_url' => $u->profile_photo_url ?? null]);
 
         $categories = class_exists(Category::class)
             ? Category::query()
@@ -499,18 +507,25 @@ class TaskController extends Controller
                 'sent_at' => now(),
             ]);
 
-            // Dispatch job to send emails in the background
-            \App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
+            // In local, send synchronously so Mailpit receives immediately without running queue:work
+            if (app()->environment('local'))
+            {
+                \App\Jobs\SendTaskCommunication::dispatchSync($communication);
+            }
+            else
+            {
+                \App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
+            }
 
             // Build success message
             $messages = [];
             if (in_array('responsible', $request->recipients))
             {
-                $messages[] = __('Email al responsable en cola');
+                $messages[] = app()->environment('local') ? __('Email enviado al responsable') : __('Email al responsable en cola');
             }
             if (in_array('client', $request->recipients))
             {
-                $messages[] = __('Email al cliente en cola');
+                $messages[] = app()->environment('local') ? __('Email enviado al cliente') : __('Email al cliente en cola');
             }
 
             return response()->json([
@@ -606,7 +621,7 @@ class TaskController extends Controller
         // Project tasks (no activity/times) - without global scope for unauthenticated
         $tasks = Task::withoutGlobalScopes()
             ->where('board_id', $project->board_id)
-            ->with('status')
+            ->with(['status', 'responsible'])
             ->orderBy('order')
             ->get();
 

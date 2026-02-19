@@ -33,6 +33,8 @@ class ClientController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Enterprise::class);
+
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
 
         return view('client.form', compact('enterpriseStatuses'));
@@ -43,6 +45,8 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Enterprise::class);
+
         $data = $request->except(['id', '_token']);
 
         $request->validate([

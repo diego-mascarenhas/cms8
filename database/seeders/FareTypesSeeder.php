@@ -20,7 +20,10 @@ class FareTypesSeeder extends Seeder
 
         foreach ($types as $type)
         {
-            FareType::create($type);
+            FareType::firstOrCreate(
+                ['name' => $type['name']],
+                $type,
+            );
         }
     }
 }

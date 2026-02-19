@@ -22,7 +22,10 @@ class ContactSentimentSeeder extends Seeder
 
         foreach ($sentiments as $sentiment)
         {
-            ContactSentiment::create($sentiment);
+            ContactSentiment::updateOrCreate(
+                ['id' => $sentiment['id']],
+                $sentiment,
+            );
         }
     }
 }

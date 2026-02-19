@@ -69,7 +69,7 @@ class SendTaskCommunication implements ShouldQueue
 
                 Mail::send('emails.task-communication-responsible', [
                     'task' => $task,
-                    'message' => $this->communication->message,
+                    'body' => $this->communication->message,
                     'taskUrl' => $taskUrl,
                     'senderName' => $senderName,
                 ], function ($mail) use ($task)
@@ -95,7 +95,7 @@ class SendTaskCommunication implements ShouldQueue
 
                     Mail::send('emails.task-communication', [
                         'task' => $task,
-                        'message' => $this->communication->message,
+                        'body' => $this->communication->message,
                         'responseUrl' => $responseUrl,
                         'enterprise' => $task->project->enterprise,
                     ], function ($mail) use ($task)

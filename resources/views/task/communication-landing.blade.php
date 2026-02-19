@@ -46,39 +46,14 @@
                     </div>
                 </div>
 
-                <h6 class="mb-2">{{ __('Project tasks') }}</h6>
-                <p class="text-muted small mb-3">{{ __('Tasks linked to this project. No activity or time data is shown.') }}</p>
-                <div class="table-responsive mb-4">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>{{ __('Task') }}</th>
-                                <th>{{ __('Status') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($tasks as $t)
-                                <tr>
-                                    <td>{{ $t->title }}</td>
-                                    <td><span class="badge bg-label-secondary">{{ $t->status->name ?? '—' }}</span></td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="2" class="text-muted">{{ __('No tasks') }}</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
                 @if($communication->response)
-                    <div class="alert alert-success">
+                    <div class="alert alert-success mb-4">
                         <h6 class="alert-heading"><i class="ti ti-check-circle me-1"></i>{{ __('Your response') }}</h6>
                         <p class="mb-1">{{ $communication->response }}</p>
                         <small class="text-muted">{{ __('Answered on') }} {{ $communication->response_at->format('d/m/Y H:i') }}</small>
                     </div>
                 @else
-                    <div class="card">
+                    <div class="card mb-4">
                         <div class="card-header py-2">
                             <h6 class="mb-0"><i class="ti ti-pencil me-1"></i>{{ __('Your response') }}</h6>
                         </div>
@@ -111,6 +86,31 @@
                         </div>
                     </div>
                 @endif
+
+                <h6 class="mb-2">{{ __('Project tasks') }}</h6>
+                <p class="text-muted small mb-3">{{ __('Tasks linked to this project. No activity or time data is shown.') }}</p>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>{{ __('Task') }}</th>
+                                <th>{{ __('Status') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($tasks as $t)
+                                <tr>
+                                    <td>{{ $t->title }}</td>
+                                    <td><span class="badge bg-label-secondary">{{ $t->status ? __('task_status.' . $t->status->name) : '—' }}</span></td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="2" class="text-muted">{{ __('No tasks') }}</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

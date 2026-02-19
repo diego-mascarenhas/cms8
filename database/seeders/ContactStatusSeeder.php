@@ -23,7 +23,10 @@ class ContactStatusSeeder extends Seeder
 
         foreach ($statuses as $status)
         {
-            ContactStatus::create($status);
+            ContactStatus::firstOrCreate(
+                ['name' => $status['name']],
+                $status,
+            );
         }
     }
 }

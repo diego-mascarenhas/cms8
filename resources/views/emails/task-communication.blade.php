@@ -100,17 +100,17 @@
 
 			<div class="message-box">
 				<strong>Mensaje:</strong>
-				<p>{{ $message }}</p>
+				<p>{{ $body }}</p>
 			</div>
 
-			<p>Por favor, haga clic en el siguiente botón para ver los detalles y enviar su respuesta:</p>
+			<p>Puede acceder a la landing del proyecto (ver el mensaje, las tareas y enviar su respuesta) mediante el siguiente enlace seguro con token. Solo tiene que hacer clic:</p>
 
 			<div class="btn-container">
-				<a href="{{ $responseUrl }}" class="button">Responder Consulta</a>
+				<a href="{{ $responseUrl }}" class="button">Acceder a la landing del proyecto</a>
 			</div>
 
 			<p style="font-size: 12px; color: #666; margin-top: 20px;">
-				Si el botón no funciona, copie y pegue el siguiente enlace en su navegador:<br>
+				Si el botón no funciona, copie y pegue este enlace en su navegador (acceso con token):<br>
 				<a href="{{ $responseUrl }}" style="color: #7367f0;">{{ $responseUrl }}</a>
 			</p>
 		</div>

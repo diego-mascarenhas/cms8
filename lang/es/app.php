@@ -14,6 +14,8 @@ return [
     'enterprises' => 'Empresas',
     'list60' => 'Lista de 60',
 
+    'communication_client_landing_hint' => 'Si selecciona Cliente, recibirá un email con un enlace seguro (token) para acceder a la landing del proyecto y responder.',
+
     // Messages
     'Are you sure you want to delete this record?' => '¿Estás seguro de que quieres eliminar este registro?',
     'This action cannot be undone' => 'Esta acción no se puede deshacer',

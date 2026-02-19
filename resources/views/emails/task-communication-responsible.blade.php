@@ -102,7 +102,7 @@
 
 			<div class="message-box">
 				<strong>{{ __('Message from') }} {{ $senderName }}:</strong>
-				<p>{{ $message }}</p>
+				<p>{{ $body }}</p>
 			</div>
 
 			<p>{{ __('View the task and communication history in the Kanban board:') }}</p>
