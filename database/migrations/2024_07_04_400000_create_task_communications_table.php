@@ -24,6 +24,8 @@ return new class extends Migration
             $table->text('response')->nullable();
             $table->timestamp('response_at')->nullable();
             $table->timestamp('sent_at')->nullable();
+            $table->timestamp('client_visited_at')->nullable();
+            $table->timestamp('client_responded_at')->nullable();
             $table->timestamps();
 
             $table->index('task_id');

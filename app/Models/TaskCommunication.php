@@ -20,12 +20,16 @@ class TaskCommunication extends Model
         'response',
         'response_at',
         'sent_at',
+        'client_visited_at',
+        'client_responded_at',
     ];
 
     protected $casts = [
         'recipients' => 'array',
         'sent_at' => 'datetime',
         'response_at' => 'datetime',
+        'client_visited_at' => 'datetime',
+        'client_responded_at' => 'datetime',
     ];
 
     public function task()

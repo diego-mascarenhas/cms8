@@ -585,38 +585,94 @@ class TaskController extends Controller
 
     public function showCommunicationResponse($token)
     {
-        $communication = \App\Models\TaskCommunication::with(['task.project.enterprise', 'user'])
+        $communication = TaskCommunication::with(['task.project.enterprise', 'user'])
             ->where('response_token', $token)
             ->firstOrFail();
 
-        return view('task.communication-respond', compact('communication'));
+        $task = $communication->task;
+        $project = $task->project;
+
+        if (! $project)
+        {
+            return view('task.communication-respond', compact('communication'));
+        }
+
+        // Record client visit (first time only)
+        if (! $communication->client_visited_at)
+        {
+            $communication->update(['client_visited_at' => now()]);
+        }
+
+        // Project tasks (no activity/times) - without global scope for unauthenticated
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with('status')
+            ->orderBy('order')
+            ->get();
+
+        return view('task.communication-landing', compact('communication', 'project', 'tasks'));
     }
 
     public function storeCommunicationResponse(Request $request, $token)
     {
         $request->validate([
             'response' => 'required|string',
+            'action' => 'required|in:respond_todo,mark_complete',
         ]);
 
-        $communication = \App\Models\TaskCommunication::where('response_token', $token)
-            ->firstOrFail();
+        $communication = TaskCommunication::with('task')->where('response_token', $token)->firstOrFail();
 
-        // Check if already responded
         if ($communication->response)
         {
             return redirect()
                 ->route('task.communication.respond', $token)
-                ->with('error', 'Ya se ha respondido a esta comunicación previamente.');
+                ->with('error', __('Ya se ha respondido a esta comunicación previamente.'));
         }
+
+        $now = now();
+        $task = $communication->task;
 
         $communication->update([
             'response' => $request->response,
-            'response_at' => now(),
+            'response_at' => $now,
+            'client_responded_at' => $communication->client_visited_at ? $now : null,
         ]);
+
+        $statusToDo = TaskStatus::where('name', 'TO_DO')->value('id');
+        $statusDone = TaskStatus::where('name', 'DONE')->value('id');
+
+        if ($request->action === 'respond_todo' && $statusToDo)
+        {
+            $task->update(['status_id' => $statusToDo]);
+        }
+        if ($request->action === 'mark_complete' && $statusDone)
+        {
+            $task->update(['status_id' => $statusDone]);
+        }
+
+        // Record non-billable client time (visit to response)
+        if ($communication->client_visited_at && $communication->client_responded_at)
+        {
+            $durationSeconds = $communication->client_responded_at->diffInSeconds($communication->client_visited_at);
+            $userId = $task->responsible_id ?? \App\Models\Team::find($task->team_id)?->users()->first()?->id;
+            if ($userId)
+            {
+                Time::create([
+                    'team_id' => $task->team_id,
+                    'user_id' => $userId,
+                    'task_id' => $task->id,
+                    'description' => __('Client view and response (non-billable)'),
+                    'start_time' => $communication->client_visited_at,
+                    'end_time' => $communication->client_responded_at,
+                    'duration_seconds' => $durationSeconds,
+                    'is_billable' => false,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('task.communication.respond', $token)
-            ->with('success', 'Tu respuesta ha sido enviada correctamente.');
+            ->with('success', __('Tu respuesta ha sido enviada correctamente.'));
     }
 
     public function getTotalTime($taskId)
