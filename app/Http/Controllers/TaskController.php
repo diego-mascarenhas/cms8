@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
+use App\Models\Time;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -170,76 +171,59 @@ class TaskController extends Controller
     public function getActivities($taskId)
     {
         $task = Task::findOrFail($taskId);
-        $activities = $task
-            ->activities()
-            ->with('causer')
-            ->latest()
-            ->get()
-            ->map(function ($activity)
+
+        $times = Time::where('task_id', $task->id)
+            ->with('user')
+            ->orderByDesc('start_time')
+            ->get();
+
+        $totalSeconds = 0;
+        $entries = $times->map(function (Time $time) use (&$totalSeconds)
+        {
+            $seconds = $time->duration_seconds;
+            if (! $seconds && $time->start_time && $time->end_time)
             {
-                $properties = $activity->properties;
+                $seconds = $time->end_time->diffInSeconds($time->start_time);
+            }
+            if (! $seconds && $time->start_time && ! $time->end_time)
+            {
+                $seconds = now()->diffInSeconds($time->start_time);
+            }
+            $totalSeconds += (int) $seconds;
 
-                // Resolve IDs to names for better readability
-                if (isset($properties['attributes']))
-                {
-                    $attributes = $properties['attributes'];
+            $hours = floor($seconds / 3600);
+            $minutes = floor(($seconds % 3600) / 60);
+            $durationFormatted = $hours > 0
+                ? sprintf('%dh %dm', $hours, $minutes)
+                : sprintf('%dm', $minutes);
 
-                    // Resolve status_id to status name
-                    if (isset($attributes['status_id']))
-                    {
-                        $status = TaskStatus::find($attributes['status_id']);
-                        if ($status)
-                        {
-                            $attributes['status_name'] = $status->translated_name;
-                        }
-                    }
+            $user = $time->user;
 
-                    // Resolve category_id to category name
-                    if (isset($attributes['category_id']))
-                    {
-                        $category = Category::find($attributes['category_id']);
-                        if ($category)
-                        {
-                            $attributes['category_name'] = $category->name;
-                        }
-                    }
+            return [
+                'id' => $time->id,
+                'user_name' => $user ? $user->name : __('Sistema'),
+                'user_initials' => $user ? strtoupper(substr($user->name, 0, 2)) : 'SY',
+                'user_avatar_url' => $user ? $user->profile_photo_url : null,
+                'description' => $time->description ?: __('Tiempo registrado'),
+                'duration_seconds' => (int) $seconds,
+                'duration_formatted' => $durationFormatted,
+                'start_time' => $time->start_time?->format('d/m/Y H:i'),
+                'end_time' => $time->end_time?->format('d/m/Y H:i'),
+                'is_running' => $time->isRunning(),
+            ];
+        });
 
-                    // Resolve responsible_id to user name
-                    if (isset($attributes['responsible_id']))
-                    {
-                        $responsible = User::find($attributes['responsible_id']);
-                        if ($responsible)
-                        {
-                            $attributes['responsible_name'] = $responsible->name;
-                        }
-                    }
+        $totalHours = floor($totalSeconds / 3600);
+        $totalMinutes = floor(($totalSeconds % 3600) / 60);
+        $totalFormatted = $totalHours > 0
+            ? sprintf('%dh %dmin', $totalHours, $totalMinutes)
+            : ($totalMinutes > 0 ? sprintf('%dmin', $totalMinutes) : '0min');
 
-                    // Resolve board_id to board name
-                    if (isset($attributes['board_id']))
-                    {
-                        $board = TaskBoard::find($attributes['board_id']);
-                        if ($board)
-                        {
-                            $attributes['board_name'] = $board->name;
-                        }
-                    }
-
-                    $properties['attributes'] = $attributes;
-                }
-
-                return [
-                    'id' => $activity->id,
-                    'description' => $activity->description,
-                    'causer' => $activity->causer ? [
-                        'name' => $activity->causer->name,
-                        'initials' => strtoupper(substr($activity->causer->name, 0, 2)),
-                    ] : null,
-                    'created_at' => $activity->created_at->format('d/m/Y H:i'),
-                    'properties' => $properties,
-                ];
-            });
-
-        return response()->json($activities);
+        return response()->json([
+            'total_seconds' => $totalSeconds,
+            'total_formatted' => $totalFormatted,
+            'times' => $entries->values()->all(),
+        ]);
     }
 
     public function create(Request $request)

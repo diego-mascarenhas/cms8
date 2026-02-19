@@ -91,7 +91,11 @@
         }
     });
     </script>
-    <script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
+    @php
+    $kanbanJs = public_path('assets/js/app-kanban-custom.js');
+    $kanbanJsQ = file_exists($kanbanJs) ? '?v=' . filemtime($kanbanJs) : '';
+@endphp
+    <script src="{{ asset('assets/js/app-kanban-custom.js') }}{{ $kanbanJsQ }}"></script>
 @endsection
 
 @section('content')
