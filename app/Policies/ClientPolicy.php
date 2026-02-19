@@ -16,11 +16,20 @@ class ClientPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin'))
+        {
             return true;
         }
 
         return null; // Continue to specific policy methods
+    }
+
+    /**
+     * Determine whether the user can create enterprises (clients).
+     */
+    public function create(User $user): bool
+    {
+        return $user->hasRole(['admin', 'collaborator']);
     }
 
     /**
@@ -52,7 +61,7 @@ class ClientPolicy
         if ($user->hasRole('client'))
         {
             $contact = $user->contact;
-            if (!$contact)
+            if (! $contact)
             {
                 return false;
             }
@@ -94,7 +103,7 @@ class ClientPolicy
             if ($user->hasRole('client'))
             {
                 $contact = $user->contact;
-                if (!$contact)
+                if (! $contact)
                 {
                     return $query->whereRaw('1 = 0'); // No results
                 }

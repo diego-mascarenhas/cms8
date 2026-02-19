@@ -61,29 +61,32 @@ class Time extends Model
     }
 
     /**
-     * Calculate duration in seconds from start and end time
+     * Calculate duration in seconds from start and end time (never negative)
      */
     public function calculateDuration()
     {
         if ($this->start_time && $this->end_time)
         {
-            $this->duration_seconds = $this->end_time->diffInSeconds($this->start_time);
+            $seconds = (int) $this->end_time->getTimestamp() - (int) $this->start_time->getTimestamp();
+            $this->duration_seconds = max(0, $seconds);
             $this->save();
         }
     }
 
     /**
-     * Get formatted duration (e.g., "2h 30m")
+     * Get formatted duration (e.g., "2h 30m"). Never returns negative values.
      */
     public function getFormattedDurationAttribute()
     {
-        if (! $this->duration_seconds)
+        $seconds = max(0, (int) $this->duration_seconds);
+
+        if ($seconds === 0)
         {
             return '0m';
         }
 
-        $hours = floor($this->duration_seconds / 3600);
-        $minutes = floor(($this->duration_seconds % 3600) / 60);
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
 
         if ($hours > 0)
         {
@@ -94,24 +97,27 @@ class Time extends Model
     }
 
     /**
-     * Get duration in hours (decimal)
+     * Get duration in hours (decimal). Never negative.
      */
     public function getDurationHoursAttribute()
     {
-        return $this->duration_seconds ? round($this->duration_seconds / 3600, 2) : 0;
+        $seconds = max(0, (int) $this->duration_seconds);
+
+        return $seconds ? round($seconds / 3600, 2) : 0;
     }
 
     /**
-     * Calculate earnings based on hourly rate
+     * Calculate earnings based on hourly rate. Uses non-negative duration only.
      */
     public function getEarningsAttribute()
     {
-        if (! $this->is_billable || ! $this->hourly_rate || ! $this->duration_seconds)
+        $seconds = max(0, (int) $this->duration_seconds);
+        if (! $this->is_billable || ! $this->hourly_rate || ! $seconds)
         {
             return 0;
         }
 
-        return round(($this->duration_seconds / 3600) * $this->hourly_rate, 2);
+        return round(($seconds / 3600) * $this->hourly_rate, 2);
     }
 
     /**

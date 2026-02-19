@@ -30,12 +30,38 @@ class EnterpriseStatus extends Model
             $query->where('enterprise_type_id', $enterpriseTypeId);
         }
 
-        return $query->orderBy('id')->get()->map(function ($status)
+        $collection = $query->orderBy('id')->get();
+
+        if ($collection->isEmpty() && $enterpriseTypeId === 1)
+        {
+            self::ensureDefaultClientStatuses();
+            $collection = self::query()->where('enterprise_type_id', 1)->orderBy('id')->get();
+        }
+
+        return $collection->map(function ($status)
         {
             return [
                 'id' => $status->id,
                 'name' => $status->name,
             ];
         });
+    }
+
+    /**
+     * Ensure default enterprise statuses exist for clients (type_id = 1).
+     */
+    protected static function ensureDefaultClientStatuses(): void
+    {
+        $defaults = [
+            ['id' => 1, 'name' => 'Inactiva', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
+            ['id' => 2, 'name' => 'Activa', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
+        ];
+        foreach ($defaults as $row)
+        {
+            self::query()->updateOrCreate(
+                ['id' => $row['id']],
+                $row,
+            );
+        }
     }
 }

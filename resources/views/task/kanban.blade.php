@@ -289,6 +289,7 @@
                                     </label>
                                 </div>
                             </div>
+                            <p class="small text-muted mb-0 mt-1">{{ __('app.communication_client_landing_hint') }}</p>
                         </div>
 
                             <!-- Subject (readonly, predefined) -->

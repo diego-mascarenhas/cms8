@@ -54,7 +54,7 @@ class TaskController extends Controller
             }
         } else
         {
-            // Original single-board kanban: always use default board
+            // Tablero general: use default board for new tasks, but show tasks from all team boards
             $board = TaskBoard::getDefaultBoard();
         }
 
@@ -67,12 +67,19 @@ class TaskController extends Controller
             ];
         });
 
+        // When no project (Tablero general), show tasks from all team boards; otherwise only this board
+        $boardIds = $project ? [$board->id] : TaskBoard::pluck('id')->all();
+        if (empty($boardIds))
+        {
+            $boardIds = [$board->id];
+        }
+
         // Get tasks grouped by status
         $tasksByStatus = [];
         foreach ($statuses as $status)
         {
             $tasks = Task::where('status_id', $status['id'])
-                ->where('board_id', $board->id)
+                ->whereIn('board_id', $boardIds)
                 ->with(['responsible', 'category'])
                 ->orderBy('order')
                 ->get();
@@ -118,6 +125,7 @@ class TaskController extends Controller
                     'responsible' => $task->responsible ? [
                         'id' => $task->responsible->id,
                         'name' => $task->responsible->name,
+                        'profile_photo_url' => $task->responsible->profile_photo_url ?? null,
                     ] : null,
                     'category' => $task->category ? [
                         'id' => $task->category->id,
@@ -137,8 +145,8 @@ class TaskController extends Controller
             {
                 $q->whereIn('name', ['admin', 'collaborator']);
             })
-            ->get(['id', 'name'])
-            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]);
+            ->get()
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'profile_photo_url' => $u->profile_photo_url ?? null]);
 
         $categories = class_exists(Category::class)
             ? Category::query()
@@ -499,18 +507,25 @@ class TaskController extends Controller
                 'sent_at' => now(),
             ]);
 
-            // Dispatch job to send emails in the background
-            \App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
+            // In local, send synchronously so Mailpit receives immediately without running queue:work
+            if (app()->environment('local'))
+            {
+                \App\Jobs\SendTaskCommunication::dispatchSync($communication);
+            }
+            else
+            {
+                \App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
+            }
 
             // Build success message
             $messages = [];
             if (in_array('responsible', $request->recipients))
             {
-                $messages[] = __('Email al responsable en cola');
+                $messages[] = app()->environment('local') ? __('Email enviado al responsable') : __('Email al responsable en cola');
             }
             if (in_array('client', $request->recipients))
             {
-                $messages[] = __('Email al cliente en cola');
+                $messages[] = app()->environment('local') ? __('Email enviado al cliente') : __('Email al cliente en cola');
             }
 
             return response()->json([
@@ -585,38 +600,94 @@ class TaskController extends Controller
 
     public function showCommunicationResponse($token)
     {
-        $communication = \App\Models\TaskCommunication::with(['task.project.enterprise', 'user'])
+        $communication = TaskCommunication::with(['task.project.enterprise', 'user'])
             ->where('response_token', $token)
             ->firstOrFail();
 
-        return view('task.communication-respond', compact('communication'));
+        $task = $communication->task;
+        $project = $task->project;
+
+        if (! $project)
+        {
+            return view('task.communication-respond', compact('communication'));
+        }
+
+        // Record client visit (first time only)
+        if (! $communication->client_visited_at)
+        {
+            $communication->update(['client_visited_at' => now()]);
+        }
+
+        // Project tasks (no activity/times) - without global scope for unauthenticated
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with(['status', 'responsible'])
+            ->orderBy('order')
+            ->get();
+
+        return view('task.communication-landing', compact('communication', 'project', 'tasks'));
     }
 
     public function storeCommunicationResponse(Request $request, $token)
     {
         $request->validate([
             'response' => 'required|string',
+            'action' => 'required|in:respond_todo,mark_complete',
         ]);
 
-        $communication = \App\Models\TaskCommunication::where('response_token', $token)
-            ->firstOrFail();
+        $communication = TaskCommunication::with('task')->where('response_token', $token)->firstOrFail();
 
-        // Check if already responded
         if ($communication->response)
         {
             return redirect()
                 ->route('task.communication.respond', $token)
-                ->with('error', 'Ya se ha respondido a esta comunicación previamente.');
+                ->with('error', __('Ya se ha respondido a esta comunicación previamente.'));
         }
+
+        $now = now();
+        $task = $communication->task;
 
         $communication->update([
             'response' => $request->response,
-            'response_at' => now(),
+            'response_at' => $now,
+            'client_responded_at' => $communication->client_visited_at ? $now : null,
         ]);
+
+        $statusToDo = TaskStatus::where('name', 'TO_DO')->value('id');
+        $statusDone = TaskStatus::where('name', 'DONE')->value('id');
+
+        if ($request->action === 'respond_todo' && $statusToDo)
+        {
+            $task->update(['status_id' => $statusToDo]);
+        }
+        if ($request->action === 'mark_complete' && $statusDone)
+        {
+            $task->update(['status_id' => $statusDone]);
+        }
+
+        // Record non-billable client time (visit to response)
+        if ($communication->client_visited_at && $communication->client_responded_at)
+        {
+            $durationSeconds = $communication->client_responded_at->diffInSeconds($communication->client_visited_at);
+            $userId = $task->responsible_id ?? \App\Models\Team::find($task->team_id)?->users()->first()?->id;
+            if ($userId)
+            {
+                Time::create([
+                    'team_id' => $task->team_id,
+                    'user_id' => $userId,
+                    'task_id' => $task->id,
+                    'description' => __('Client view and response (non-billable)'),
+                    'start_time' => $communication->client_visited_at,
+                    'end_time' => $communication->client_responded_at,
+                    'duration_seconds' => $durationSeconds,
+                    'is_billable' => false,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('task.communication.respond', $token)
-            ->with('success', 'Tu respuesta ha sido enviada correctamente.');
+            ->with('success', __('Tu respuesta ha sido enviada correctamente.'));
     }
 
     public function getTotalTime($taskId)

@@ -19,7 +19,10 @@ class EnterpriseStatusSeeder extends Seeder
 
         foreach ($statuses as $status)
         {
-            EnterpriseStatus::create($status);
+            EnterpriseStatus::updateOrCreate(
+                ['id' => $status['id']],
+                $status,
+            );
         }
     }
 }

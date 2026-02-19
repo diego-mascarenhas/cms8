@@ -51,7 +51,7 @@ class TaskDataTable extends DataTable
     {
         return $model->newQuery()
             ->with([
-                'responsible:id,name',
+                'responsible',
                 'status',
                 'project:id,real_name,name,board_id',
             ])

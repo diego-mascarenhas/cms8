@@ -24,7 +24,10 @@ class UnitsSeeder extends Seeder
 
         foreach ($units as $unit)
         {
-            Unit::create($unit);
+            Unit::firstOrCreate(
+                ['type' => $unit['type']],
+                $unit,
+            );
         }
     }
 }

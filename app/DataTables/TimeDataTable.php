@@ -56,7 +56,7 @@ class TimeDataTable extends DataTable
             {
                 if ($data->isRunning())
                 {
-                    $elapsed = now()->diffInSeconds($data->start_time);
+                    $elapsed = max(0, now()->diffInSeconds($data->start_time));
                     $hours = floor($elapsed / 3600);
                     $minutes = floor(($elapsed % 3600) / 60);
 

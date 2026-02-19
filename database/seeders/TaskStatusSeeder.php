@@ -34,7 +34,10 @@ class TaskStatusSeeder extends Seeder
 
         foreach ($statuses as $status)
         {
-            TaskStatus::create($status);
+            TaskStatus::firstOrCreate(
+                ['name' => $status['name']],
+                $status,
+            );
         }
     }
 }

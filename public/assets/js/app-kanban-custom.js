@@ -1556,7 +1556,8 @@
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-CSRF-TOKEN': csrfToken
+					'X-CSRF-TOKEN': csrfToken,
+					'Accept': 'application/json'
 				},
 				body: JSON.stringify({
 					task_id: taskId,
@@ -1565,17 +1566,20 @@
 					message: message
 				})
 			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success)
+			.then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			})
+			.then(function (_ref) {
+				var ok = _ref.ok;
+				var data = _ref.data;
+				if (ok && data.success)
 				{
-					// Success feedback in button
 					sendBtn.innerHTML = '<i class="ti ti-check me-1"></i>Enviado!';
 					sendBtn.classList.remove('btn-primary');
 					sendBtn.classList.add('btn-success');
-
-					// Clear form and reload history
-					setTimeout(() => {
+					setTimeout(function () {
 						clearCommunicationBtn.click();
 						loadCommunicationHistory(taskId);
 						sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
@@ -1586,12 +1590,12 @@
 				}
 				else
 				{
-					// Error feedback in button
 					sendBtn.innerHTML = '<i class="ti ti-x me-1"></i>Error';
 					sendBtn.classList.remove('btn-primary');
 					sendBtn.classList.add('btn-danger');
-
-					setTimeout(() => {
+					var msg = (data && data.message) ? data.message : 'Error al enviar';
+					if (typeof alert !== 'undefined') alert(msg);
+					setTimeout(function () {
 						sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
 						sendBtn.classList.remove('btn-danger');
 						sendBtn.classList.add('btn-primary');
@@ -1599,14 +1603,13 @@
 					}, 2000);
 				}
 			})
-			.catch(error => {
+			.catch(function (error) {
 				console.error('Error sending communication:', error);
-				// Error feedback in button
 				sendBtn.innerHTML = '<i class="ti ti-x me-1"></i>Error';
 				sendBtn.classList.remove('btn-primary');
 				sendBtn.classList.add('btn-danger');
-
-				setTimeout(() => {
+				if (typeof alert !== 'undefined') alert('Error de conexión. Revisa la consola.');
+				setTimeout(function () {
 					sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
 					sendBtn.classList.remove('btn-danger');
 					sendBtn.classList.add('btn-primary');

@@ -12,7 +12,7 @@ class TaskNotifications extends Component
     public function __construct()
     {
         $this->pendingTasks = Task::pendingForUser(auth()->id())
-            ->with(['status'])
+            ->with(['status', 'responsible'])
             ->get();
     }
 

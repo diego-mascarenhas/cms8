@@ -3,91 +3,95 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Seeder;
 use Hash;
+use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
 {
-	/**
-	 * Create the default admin user for HUMANO system.
-	 *
-	 * This seeder creates ONLY the essential admin user needed to access the system.
-	 * Additional users should be created via UI or team-specific seeders.
-	 */
-	public function run()
-	{
-		$this->command->info('   👤 Creating admin user...');
+    /**
+     * Create the default admin user for HUMANO system.
+     *
+     * This seeder creates ONLY the essential admin user needed to access the system.
+     * Additional users should be created via UI or team-specific seeders.
+     */
+    public function run()
+    {
+        $this->command->info('   👤 Creating admin user...');
 
-		// Check if admin already exists
-		$existingAdmin = User::where('email', 'admin@humano.app')->first();
+        // Check if admin already exists
+        $existingAdmin = User::where('email', 'admin@humano.app')->first();
 
-		if ($existingAdmin) {
-			$this->command->warn('   ⏭️  Admin user already exists, skipping...');
+        if ($existingAdmin)
+        {
+            $this->command->warn('   ⏭️  Admin user already exists, skipping...');
 
-			return;
-		}
+            return;
+        }
 
-		// Create Admin User
-		$admin = User::factory()->create([
-			'name' => 'Admin',
-			'email' => 'admin@humano.app',
-			'password' => Hash::make('Simplicity!'),
-			'email_verified_at' => now(),
-		]);
+        // Create Admin User
+        $admin = User::factory()->create([
+            'name' => 'Admin',
+            'email' => 'admin@humano.app',
+            'password' => Hash::make('Simplicity!'),
+            'email_verified_at' => now(),
+        ]);
 
-		// Assign admin role (role ID 2 = Admin)
-		$admin->assignRole([2]);
+        // Assign admin role (role ID 2 = Admin)
+        $admin->assignRole([2]);
 
-		// Create default team
-		$team = $admin->ownedTeams()->create([
-			'name' => 'Demo',
-			'personal_team' => false,
-		]);
+        // Create default team
+        $team = $admin->ownedTeams()->create([
+            'name' => 'Demo',
+            'personal_team' => false,
+        ]);
 
-		// Attach user to team
-		$admin->teams()->attach($team->id, [
-			'role' => 'admin',
-			'created_at' => now(),
-		]);
+        // Attach user to team
+        $admin->teams()->attach($team->id, [
+            'role' => 'admin',
+            'created_at' => now(),
+        ]);
 
-		// Set as current team
-		$admin->update(['current_team_id' => $team->id]);
+        // Set as current team
+        $admin->update(['current_team_id' => $team->id]);
 
-		// Enable core modules based on configuration
-		$this->enableCoreModulesForTeam($team);
+        // Enable core modules based on configuration
+        $this->enableCoreModulesForTeam($team);
 
-		$this->command->info('   ✅ Admin user created successfully!');
-		$this->command->info('      Email: admin@humano.app');
-		$this->command->info('      Password: Simplicity!');
-		$this->command->info('      Team: ' . $team->name);
+        $this->command->info('   ✅ Admin user created successfully!');
+        $this->command->info('      Email: admin@humano.app');
+        $this->command->info('      Password: Simplicity!');
+        $this->command->info('      Team: '.$team->name);
 
-		// Note: Additional users can be created via:
-		// - Team-specific seeders (TeamDemoSeeder, TeamRevisionAlphaSeeder, etc.)
-		// - UI user management
-		// - Custom seeders for specific deployments
-	}
+        // Note: Additional users can be created via:
+        // - Team-specific seeders (TeamDemoSeeder, TeamRevisionAlphaSeeder, etc.)
+        // - UI user management
+        // - Custom seeders for specific deployments
+    }
 
-	/**
-	 * Enable core modules for a team based on their default configuration
-	 */
-	private function enableCoreModulesForTeam($team)
-	{
-		$this->command->info('   🔧 Enabling modules...');
+    /**
+     * Enable core modules for a team based on their default configuration
+     */
+    private function enableCoreModulesForTeam($team)
+    {
+        $this->command->info('   🔧 Enabling modules...');
 
-		// Get modules configuration from centralized config file
-		$modulesConfig = config('team-modules.defaults', []);
+        // Get modules configuration from centralized config file
+        $modulesConfig = config('team-modules.defaults', []);
 
-		$allModules = \App\Models\Module::all();
+        $allModules = \App\Models\Module::all();
 
-		foreach ($allModules as $module) {
-			$shouldEnable = $modulesConfig[$module->key] ?? false;
+        foreach ($allModules as $module)
+        {
+            $shouldEnable = $modulesConfig[$module->key] ?? false;
 
-			if ($shouldEnable) {
-				$team->enableModule($module->key);
-				$this->command->info("      ✓ {$module->name} enabled");
-			} else {
-				$this->command->info("      ⊗ {$module->name} registered (disabled by default)");
-			}
-		}
-	}
+            if ($shouldEnable)
+            {
+                $team->enableModule($module->key);
+                $this->command->info("      ✓ {$module->name} enabled");
+            } else
+            {
+                $this->command->info("      ⊗ {$module->name} registered (disabled by default)");
+            }
+        }
+    }
 }

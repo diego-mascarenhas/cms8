@@ -77,6 +77,12 @@ class ProjectStatusSeeder extends Seeder
             ],
         ];
 
-        DB::table('project_statuses')->insert($statuses);
+        foreach ($statuses as $status)
+        {
+            DB::table('project_statuses')->updateOrInsert(
+                ['id' => $status['id']],
+                $status,
+            );
+        }
     }
 }
