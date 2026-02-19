@@ -147,7 +147,7 @@
       <!-- Team Member List -->
       <x-slot name="content">
         @foreach ($teamMembers as $user)
-          <div class="d-flex justify-content-between mt-2 mb-2">
+          <div class="d-flex justify-content-between mt-2 mb-2" wire:key="member-{{ $user->id }}-{{ optional($user->membership)->role }}">
             <div class="d-flex align-items-center">
               <div class="pe-2">
                 <img class="rounded-circle" width="32" height="32" style="object-fit: cover;" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
@@ -155,14 +155,12 @@
               <span class="fw-medium">{{ $user->name }}</span>
             </div>
 
-            <div class="d-flex">
-              <!-- Manage Team Member Role -->
+            <div class="d-flex align-items-center">
               @php
                 $roleKey = optional($user->membership)->role;
                 $roleObj = $roleKey ? Laravel\Jetstream\Jetstream::findRole($roleKey) : null;
                 $roleName = $roleObj->name ?? __('Member');
               @endphp
-
               @if (Gate::check('addTeamMember', $team) && Laravel\Jetstream\Jetstream::hasRoles())
                 <button class="btn btn-link text-secondary" wire:click="manageRole({{ $user->id }})">
                   {{ $roleName }}
@@ -173,14 +171,11 @@
                 </button>
               @endif
 
-              <!-- Leave Team -->
               @if ($this->user->id === $user->id)
                 <button class="btn btn-link text-danger text-decoration-none"
                   wire:click="$toggle('confirmingLeavingTeam')">
                   {{ __('Leave') }}
                 </button>
-
-                <!-- Remove Team Member -->
               @elseif (Gate::check('removeTeamMember', $team))
                 <button class="btn btn-link text-danger text-decoration-none"
                   wire:click="confirmTeamMemberRemoval('{{ $user->id }}')">
@@ -189,10 +184,10 @@
               @endif
 
               {{-- Badges con TODOS los roles Spatie que posee el usuario --}}
-              @php($userSpatieRoles = method_exists($user,'getRoleNames') ? $user->getRoleNames() : collect())
-              @if($userSpatieRoles->count())
+              @php($userSpatieRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames() : collect())
+              @if ($userSpatieRoles->count())
                 <div class="ms-3 align-self-center">
-                  @foreach($userSpatieRoles as $sr)
+                  @foreach ($userSpatieRoles as $sr)
                     <span class="badge bg-label-primary me-1">{{ ucfirst($sr) }}</span>
                   @endforeach
                 </div>

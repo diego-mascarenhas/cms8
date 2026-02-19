@@ -91,7 +91,11 @@
         }
     });
     </script>
-    <script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
+    @php
+    $kanbanJs = public_path('assets/js/app-kanban-custom.js');
+    $kanbanJsQ = file_exists($kanbanJs) ? '?v=' . filemtime($kanbanJs) : '';
+@endphp
+    <script src="{{ asset('assets/js/app-kanban-custom.js') }}{{ $kanbanJsQ }}"></script>
 @endsection
 
 @section('content')
@@ -195,9 +199,6 @@
                             <button type="button" class="btn btn-danger d-none" id="task-stop-timer">
                                 <i class="ti ti-player-stop me-1"></i>{{ __('Stop Timer') }}
                             </button>
-                            <span id="elapsed-time-display" class="text-muted" style="font-size: 0.875rem;">
-                                <i class="ti ti-clock me-1"></i><span id="elapsed-time-value">0h 0min</span>
-                            </span>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="title">{{ __('Título') }}</label>

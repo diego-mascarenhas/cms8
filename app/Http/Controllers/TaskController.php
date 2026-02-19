@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
+use App\Models\Time;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -86,17 +87,20 @@ class TaskController extends Controller
 
                 foreach ($times as $time)
                 {
-                    if ($time->duration_seconds)
+                    $add = 0;
+                    if ($time->duration_seconds && $time->duration_seconds > 0)
                     {
-                        $totalSeconds += $time->duration_seconds;
+                        $add = $time->duration_seconds;
                     } elseif ($time->start_time && $time->end_time)
                     {
-                        $totalSeconds += $time->end_time->diffInSeconds($time->start_time);
+                        $add = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
                     } elseif ($time->start_time && ! $time->end_time)
                     {
-                        $totalSeconds += now()->diffInSeconds($time->start_time);
+                        $add = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
                     }
+                    $totalSeconds += $add;
                 }
+                $totalSeconds = max(0, (int) $totalSeconds);
 
                 $hours = floor($totalSeconds / 3600);
                 $minutes = floor(($totalSeconds % 3600) / 60);
@@ -170,76 +174,61 @@ class TaskController extends Controller
     public function getActivities($taskId)
     {
         $task = Task::findOrFail($taskId);
-        $activities = $task
-            ->activities()
-            ->with('causer')
-            ->latest()
-            ->get()
-            ->map(function ($activity)
+
+        $times = Time::where('task_id', $task->id)
+            ->with('user')
+            ->orderByDesc('start_time')
+            ->get();
+
+        $totalSeconds = 0;
+        $entries = $times->map(function (Time $time) use (&$totalSeconds)
+        {
+            $seconds = $time->duration_seconds;
+            if ((! $seconds || $seconds < 0) && $time->start_time && $time->end_time)
             {
-                $properties = $activity->properties;
+                $seconds = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
+            }
+            if ((! $seconds || $seconds < 0) && $time->start_time && ! $time->end_time)
+            {
+                $seconds = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
+            }
+            $seconds = max(0, (int) $seconds);
+            $totalSeconds += $seconds;
 
-                // Resolve IDs to names for better readability
-                if (isset($properties['attributes']))
-                {
-                    $attributes = $properties['attributes'];
+            $hours = floor($seconds / 3600);
+            $minutes = floor(($seconds % 3600) / 60);
+            $durationFormatted = $hours > 0
+                ? sprintf('%dh %dm', $hours, $minutes)
+                : sprintf('%dm', $minutes);
 
-                    // Resolve status_id to status name
-                    if (isset($attributes['status_id']))
-                    {
-                        $status = TaskStatus::find($attributes['status_id']);
-                        if ($status)
-                        {
-                            $attributes['status_name'] = $status->translated_name;
-                        }
-                    }
+            $user = $time->user;
 
-                    // Resolve category_id to category name
-                    if (isset($attributes['category_id']))
-                    {
-                        $category = Category::find($attributes['category_id']);
-                        if ($category)
-                        {
-                            $attributes['category_name'] = $category->name;
-                        }
-                    }
+            return [
+                'id' => $time->id,
+                'user_name' => $user ? $user->name : __('Sistema'),
+                'user_initials' => $user ? strtoupper(substr($user->name, 0, 2)) : 'SY',
+                'user_avatar_url' => $user ? $user->profile_photo_url : null,
+                'description' => $time->description ?: null,
+                'duration_seconds' => (int) $seconds,
+                'duration_formatted' => $durationFormatted,
+                'start_time' => $time->start_time?->format('d/m/Y H:i'),
+                'end_time' => $time->end_time?->format('d/m/Y H:i'),
+                'is_running' => $time->isRunning(),
+            ];
+        });
 
-                    // Resolve responsible_id to user name
-                    if (isset($attributes['responsible_id']))
-                    {
-                        $responsible = User::find($attributes['responsible_id']);
-                        if ($responsible)
-                        {
-                            $attributes['responsible_name'] = $responsible->name;
-                        }
-                    }
+        $totalSeconds = max(0, (int) $totalSeconds);
+        $totalHours = floor($totalSeconds / 3600);
+        $totalMinutes = floor(($totalSeconds % 3600) / 60);
+        $totalFormatted = $totalHours > 0
+            ? sprintf('%dh %dmin', $totalHours, $totalMinutes)
+            : ($totalMinutes > 0 ? sprintf('%dmin', $totalMinutes) : '0min');
 
-                    // Resolve board_id to board name
-                    if (isset($attributes['board_id']))
-                    {
-                        $board = TaskBoard::find($attributes['board_id']);
-                        if ($board)
-                        {
-                            $attributes['board_name'] = $board->name;
-                        }
-                    }
-
-                    $properties['attributes'] = $attributes;
-                }
-
-                return [
-                    'id' => $activity->id,
-                    'description' => $activity->description,
-                    'causer' => $activity->causer ? [
-                        'name' => $activity->causer->name,
-                        'initials' => strtoupper(substr($activity->causer->name, 0, 2)),
-                    ] : null,
-                    'created_at' => $activity->created_at->format('d/m/Y H:i'),
-                    'properties' => $properties,
-                ];
-            });
-
-        return response()->json($activities);
+        return response()->json([
+            'total_seconds' => $totalSeconds,
+            'total_formatted' => $totalFormatted,
+            'times' => $entries->values()->all(),
+        ]);
     }
 
     public function create(Request $request)
@@ -495,12 +484,15 @@ class TaskController extends Controller
                 $responseToken = \Str::random(64);
             }
 
-            // Store communication record
+            // Store communication record (method = email when any recipient gets an email)
+            $method = (in_array('responsible', $request->recipients) || in_array('client', $request->recipients))
+                ? 'email'
+                : 'internal';
             $communication = TaskCommunication::create([
                 'task_id' => $task->id,
                 'user_id' => auth()->id(),
                 'recipients' => $request->recipients,
-                'method' => in_array('client', $request->recipients) ? 'email' : 'internal',
+                'method' => $method,
                 'subject' => $request->subject,
                 'message' => $request->message,
                 'response_token' => $responseToken,
@@ -514,11 +506,11 @@ class TaskController extends Controller
             $messages = [];
             if (in_array('responsible', $request->recipients))
             {
-                $messages[] = 'Nota interna guardada';
+                $messages[] = __('Email al responsable en cola');
             }
             if (in_array('client', $request->recipients))
             {
-                $messages[] = 'Email en cola de envío';
+                $messages[] = __('Email al cliente en cola');
             }
 
             return response()->json([
@@ -631,50 +623,26 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($taskId);
 
-        // Get all time entries for this task
-        $times = \App\Models\Time::where('task_id', $task->id)->get();
-
-        \Log::info('TaskController getTotalTime', [
-            'task_id' => $taskId,
-            'times_count' => $times->count(),
-            'times' => $times->map(function ($t)
-            {
-                return [
-                    'id' => $t->id,
-                    'start_time' => $t->start_time,
-                    'end_time' => $t->end_time,
-                    'duration_seconds' => $t->duration_seconds,
-                ];
-            }),
-        ]);
-
+        $times = Time::where('task_id', $task->id)->get();
         $totalSeconds = 0;
 
         foreach ($times as $time)
         {
-            if ($time->duration_seconds)
+            $add = 0;
+            if ($time->duration_seconds && $time->duration_seconds > 0)
             {
-                // Time entry already has duration calculated
-                \Log::info('Adding duration_seconds', ['time_id' => $time->id, 'duration_seconds' => $time->duration_seconds]);
-                $totalSeconds += $time->duration_seconds;
+                $add = $time->duration_seconds;
             } elseif ($time->start_time && $time->end_time)
             {
-                // Calculate duration if not stored
-                $calculated = $time->end_time->diffInSeconds($time->start_time);
-                \Log::info('Calculating from start/end', ['time_id' => $time->id, 'calculated' => $calculated]);
-                $totalSeconds += $calculated;
+                $add = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
             } elseif ($time->start_time && ! $time->end_time)
             {
-                // Timer is still running, calculate current elapsed time
-                $calculated = now()->diffInSeconds($time->start_time);
-                \Log::info('Calculating running timer', ['time_id' => $time->id, 'calculated' => $calculated]);
-                $totalSeconds += $calculated;
+                $add = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
             }
+            $totalSeconds += $add;
         }
 
-        \Log::info('Total calculation result', ['total_seconds' => $totalSeconds, 'hours' => floor($totalSeconds / 3600), 'minutes' => floor(($totalSeconds % 3600) / 60)]);
-
-        // Format as hours and minutes
+        $totalSeconds = max(0, (int) $totalSeconds);
         $hours = floor($totalSeconds / 3600);
         $minutes = floor(($totalSeconds % 3600) / 60);
 

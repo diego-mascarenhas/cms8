@@ -1322,7 +1322,7 @@
 			</div>
 		`;
 
-		// Fetch activities from backend
+		// Fetch time entries (activities) from backend
 		fetch(`/task/${taskId}/activities`, {
 			method: 'GET',
 			headers: {
@@ -1330,43 +1330,66 @@
 				'X-CSRF-TOKEN': window.kanbanData.csrfToken
 			}
 		})
-		.then(response => response.json())
-		.then(activities => {
-			if (activities.length === 0)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to load activities');
+			}
+			return response.json();
+		})
+		.then(data => {
+			const times = data.times || [];
+			const totalFormatted = data.total_formatted || '0min';
+
+			if (times.length === 0)
 			{
 				activityContainer.innerHTML = `
+					<div class="mb-3 p-3 bg-label-primary rounded">
+						<strong><i class="ti ti-clock me-1"></i>Tiempo total:</strong> ${totalFormatted}
+					</div>
 					<div class="text-center py-4 text-muted">
-						<i class="ti ti-info-circle mb-2" style="font-size: 2rem;"></i>
-						<p class="mb-0">No hay actividad registrada para esta tarea.</p>
+						<i class="ti ti-clock-off mb-2" style="font-size: 2rem;"></i>
+						<p class="mb-0">No hay tiempo registrado en esta tarea.</p>
 					</div>
 				`;
 				return;
 			}
 
-			// Render activities
-			let html = '';
-			activities.forEach(activity => {
-				const initials = activity.causer ? activity.causer.initials : 'SY';
-				const name = activity.causer ? activity.causer.name : 'Sistema';
-				const bgColor = activity.causer ? 'bg-label-primary' : 'bg-label-secondary';
-
+			let html = `
+				<div class="mb-3 p-3 bg-label-primary rounded">
+					<strong><i class="ti ti-clock me-1"></i>Tiempo total:</strong> ${totalFormatted}
+				</div>
+			`;
+			times.forEach(entry => {
+				const runningBadge = entry.is_running ? '<span class="badge bg-success ms-1">En curso</span>' : '';
+				const avatarHtml = entry.user_avatar_url
+					? `<img src="${entry.user_avatar_url}" alt="${entry.user_name}" class="rounded-circle" width="38" height="38" style="object-fit: cover;">`
+					: `<span class="avatar-initial bg-label-primary rounded-circle">${entry.user_initials}</span>`;
 				html += `
 					<div class="media mb-4 d-flex align-items-start">
 						<div class="avatar me-2 flex-shrink-0 mt-1">
-							<span class="avatar-initial ${bgColor} rounded-circle">${initials}</span>
+							${avatarHtml}
 						</div>
 						<div class="media-body">
 							<p class="mb-0">
-								<span class="fw-medium">${name}</span>
-								${translateActivityDescription(activity.description, activity.properties)}
+								<span class="fw-medium">${entry.user_name}</span>
+								<span class="text-muted">— ${entry.duration_formatted}</span>
+								${runningBadge}
 							</p>
-							<small class="text-muted">${activity.created_at}</small>
+							${entry.description ? `<p class="mb-0 small text-body">${entry.description}</p>` : ''}
+							<small class="text-muted">${entry.start_time || ''}${entry.end_time ? ' – ' + entry.end_time : ''}</small>
 						</div>
 					</div>
 				`;
 			});
 
 			activityContainer.innerHTML = html;
+			// Card data attribute in sync for when sidebar is closed/reopened
+			const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+			const taskIdAttr = sidebarEl ? sidebarEl.getAttribute('data-current-task-id') : null;
+			if (taskIdAttr) {
+				const card = document.querySelector(`.kanban-item[data-task-id="${taskIdAttr}"]`);
+				if (card) card.setAttribute('data-total-time', totalFormatted);
+			}
 		})
 		.catch(error => {
 			console.error('Error loading activities:', error);
@@ -1514,14 +1537,6 @@
 			const subject = document.getElementById('communication-subject').value;
 			const message = document.getElementById('communication-message').value;
 
-			// Debug
-			console.log('=== COMMUNICATION FORM SUBMIT ===');
-			console.log('Task ID from button:', btnTaskId);
-			console.log('Task ID final:', taskId);
-			console.log('Client checked:', clientChecked);
-			console.log('Subject:', subject);
-			console.log('Message:', message);
-
 			// Validation
 			if (!taskId || !message.trim())
 			{
@@ -1620,7 +1635,12 @@
 				'X-CSRF-TOKEN': csrfToken
 			}
 		})
-		.then(response => response.json())
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to load communications');
+			}
+			return response.json();
+		})
 		.then(communications => {
 			if (communications.length === 0)
 			{
@@ -1724,16 +1744,6 @@
 		{
 			clientNameEl.textContent = clientName;
 		}
-
-	// Load total time worked from data attribute
-	const elapsedTimeValue = document.getElementById('elapsed-time-value');
-	const totalTime = taskDiv.getAttribute('data-total-time') || '0min';
-	console.log('[Kanban] Total time from data attribute:', totalTime);
-	if (elapsedTimeValue)
-	{
-		elapsedTimeValue.textContent = totalTime;
-		console.log('[Kanban] Updated time display to:', totalTime);
-	}
 
 		// Load communication history with a small delay to ensure DOM is ready
 		if (taskId)
