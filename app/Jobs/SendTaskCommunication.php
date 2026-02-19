@@ -56,6 +56,35 @@ class SendTaskCommunication implements ShouldQueue
             }
 
             $recipients = $this->communication->recipients;
+            $this->communication->load('user');
+
+            // Send email to responsible when selected
+            if (in_array('responsible', $recipients) && $task->responsible && $task->responsible->email)
+            {
+                $taskUrl = route('task.index', [
+                    'view' => 'kanban',
+                    'project_id' => $task->project?->id,
+                ]);
+                $senderName = $this->communication->user ? $this->communication->user->name : config('app.name');
+
+                Mail::send('emails.task-communication-responsible', [
+                    'task' => $task,
+                    'message' => $this->communication->message,
+                    'taskUrl' => $taskUrl,
+                    'senderName' => $senderName,
+                ], function ($mail) use ($task)
+                {
+                    $mail
+                        ->to($task->responsible->email)
+                        ->subject($this->communication->subject.' - '.$task->title);
+                });
+
+                Log::info('Task communication email sent to responsible', [
+                    'communication_id' => $this->communication->id,
+                    'task_id' => $task->id,
+                    'responsible_email' => $task->responsible->email,
+                ]);
+            }
 
             // Send email to client if selected
             if (in_array('client', $recipients))
@@ -88,15 +117,6 @@ class SendTaskCommunication implements ShouldQueue
                         'task_id' => $task->id,
                     ]);
                 }
-            }
-
-            // Internal notes don't need email sending
-            if (in_array('responsible', $recipients) && ! in_array('client', $recipients))
-            {
-                Log::info('Task communication saved as internal note', [
-                    'communication_id' => $this->communication->id,
-                    'task_id' => $task->id,
-                ]);
             }
         } catch (\Exception $e)
         {

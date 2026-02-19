@@ -495,12 +495,15 @@ class TaskController extends Controller
                 $responseToken = \Str::random(64);
             }
 
-            // Store communication record
+            // Store communication record (method = email when any recipient gets an email)
+            $method = (in_array('responsible', $request->recipients) || in_array('client', $request->recipients))
+                ? 'email'
+                : 'internal';
             $communication = TaskCommunication::create([
                 'task_id' => $task->id,
                 'user_id' => auth()->id(),
                 'recipients' => $request->recipients,
-                'method' => in_array('client', $request->recipients) ? 'email' : 'internal',
+                'method' => $method,
                 'subject' => $request->subject,
                 'message' => $request->message,
                 'response_token' => $responseToken,
@@ -514,11 +517,11 @@ class TaskController extends Controller
             $messages = [];
             if (in_array('responsible', $request->recipients))
             {
-                $messages[] = 'Nota interna guardada';
+                $messages[] = __('Email al responsable en cola');
             }
             if (in_array('client', $request->recipients))
             {
-                $messages[] = 'Email en cola de envío';
+                $messages[] = __('Email al cliente en cola');
             }
 
             return response()->json([

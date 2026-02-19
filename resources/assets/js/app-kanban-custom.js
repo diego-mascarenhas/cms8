@@ -1514,14 +1514,6 @@
 			const subject = document.getElementById('communication-subject').value;
 			const message = document.getElementById('communication-message').value;
 
-			// Debug
-			console.log('=== COMMUNICATION FORM SUBMIT ===');
-			console.log('Task ID from button:', btnTaskId);
-			console.log('Task ID final:', taskId);
-			console.log('Client checked:', clientChecked);
-			console.log('Subject:', subject);
-			console.log('Message:', message);
-
 			// Validation
 			if (!taskId || !message.trim())
 			{
@@ -1620,7 +1612,12 @@
 				'X-CSRF-TOKEN': csrfToken
 			}
 		})
-		.then(response => response.json())
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to load communications');
+			}
+			return response.json();
+		})
 		.then(communications => {
 			if (communications.length === 0)
 			{
@@ -1726,13 +1723,12 @@
 		}
 
 	// Load total time worked from data attribute
+	const taskDiv = taskElement.classList.contains('kanban-item') ? taskElement : taskElement.querySelector('.kanban-item');
 	const elapsedTimeValue = document.getElementById('elapsed-time-value');
-	const totalTime = taskDiv.getAttribute('data-total-time') || '0min';
-	console.log('[Kanban] Total time from data attribute:', totalTime);
+	const totalTime = taskDiv ? (taskDiv.getAttribute('data-total-time') || '0min') : '0min';
 	if (elapsedTimeValue)
 	{
 		elapsedTimeValue.textContent = totalTime;
-		console.log('[Kanban] Updated time display to:', totalTime);
 	}
 
 		// Load communication history with a small delay to ensure DOM is ready
