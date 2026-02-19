@@ -1375,7 +1375,7 @@
 								<span class="text-muted">— ${entry.duration_formatted}</span>
 								${runningBadge}
 							</p>
-							<p class="mb-0 small text-body">${entry.description}</p>
+							${entry.description ? `<p class="mb-0 small text-body">${entry.description}</p>` : ''}
 							<small class="text-muted">${entry.start_time || ''}${entry.end_time ? ' – ' + entry.end_time : ''}</small>
 						</div>
 					</div>
@@ -1383,6 +1383,13 @@
 			});
 
 			activityContainer.innerHTML = html;
+			// Card data attribute in sync for when sidebar is closed/reopened
+			const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+			const taskIdAttr = sidebarEl ? sidebarEl.getAttribute('data-current-task-id') : null;
+			if (taskIdAttr) {
+				const card = document.querySelector(`.kanban-item[data-task-id="${taskIdAttr}"]`);
+				if (card) card.setAttribute('data-total-time', totalFormatted);
+			}
 		})
 		.catch(error => {
 			console.error('Error loading activities:', error);
@@ -1737,15 +1744,6 @@
 		{
 			clientNameEl.textContent = clientName;
 		}
-
-	// Load total time worked from data attribute
-	const taskDiv = taskElement.classList.contains('kanban-item') ? taskElement : taskElement.querySelector('.kanban-item');
-	const elapsedTimeValue = document.getElementById('elapsed-time-value');
-	const totalTime = taskDiv ? (taskDiv.getAttribute('data-total-time') || '0min') : '0min';
-	if (elapsedTimeValue)
-	{
-		elapsedTimeValue.textContent = totalTime;
-	}
 
 		// Load communication history with a small delay to ensure DOM is ready
 		if (taskId)

@@ -87,17 +87,20 @@ class TaskController extends Controller
 
                 foreach ($times as $time)
                 {
-                    if ($time->duration_seconds)
+                    $add = 0;
+                    if ($time->duration_seconds && $time->duration_seconds > 0)
                     {
-                        $totalSeconds += $time->duration_seconds;
+                        $add = $time->duration_seconds;
                     } elseif ($time->start_time && $time->end_time)
                     {
-                        $totalSeconds += $time->end_time->diffInSeconds($time->start_time);
+                        $add = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
                     } elseif ($time->start_time && ! $time->end_time)
                     {
-                        $totalSeconds += now()->diffInSeconds($time->start_time);
+                        $add = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
                     }
+                    $totalSeconds += $add;
                 }
+                $totalSeconds = max(0, (int) $totalSeconds);
 
                 $hours = floor($totalSeconds / 3600);
                 $minutes = floor(($totalSeconds % 3600) / 60);
@@ -181,15 +184,16 @@ class TaskController extends Controller
         $entries = $times->map(function (Time $time) use (&$totalSeconds)
         {
             $seconds = $time->duration_seconds;
-            if (! $seconds && $time->start_time && $time->end_time)
+            if ((! $seconds || $seconds < 0) && $time->start_time && $time->end_time)
             {
-                $seconds = $time->end_time->diffInSeconds($time->start_time);
+                $seconds = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
             }
-            if (! $seconds && $time->start_time && ! $time->end_time)
+            if ((! $seconds || $seconds < 0) && $time->start_time && ! $time->end_time)
             {
-                $seconds = now()->diffInSeconds($time->start_time);
+                $seconds = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
             }
-            $totalSeconds += (int) $seconds;
+            $seconds = max(0, (int) $seconds);
+            $totalSeconds += $seconds;
 
             $hours = floor($seconds / 3600);
             $minutes = floor(($seconds % 3600) / 60);
@@ -204,7 +208,7 @@ class TaskController extends Controller
                 'user_name' => $user ? $user->name : __('Sistema'),
                 'user_initials' => $user ? strtoupper(substr($user->name, 0, 2)) : 'SY',
                 'user_avatar_url' => $user ? $user->profile_photo_url : null,
-                'description' => $time->description ?: __('Tiempo registrado'),
+                'description' => $time->description ?: null,
                 'duration_seconds' => (int) $seconds,
                 'duration_formatted' => $durationFormatted,
                 'start_time' => $time->start_time?->format('d/m/Y H:i'),
@@ -213,6 +217,7 @@ class TaskController extends Controller
             ];
         });
 
+        $totalSeconds = max(0, (int) $totalSeconds);
         $totalHours = floor($totalSeconds / 3600);
         $totalMinutes = floor(($totalSeconds % 3600) / 60);
         $totalFormatted = $totalHours > 0
@@ -618,50 +623,26 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($taskId);
 
-        // Get all time entries for this task
-        $times = \App\Models\Time::where('task_id', $task->id)->get();
-
-        \Log::info('TaskController getTotalTime', [
-            'task_id' => $taskId,
-            'times_count' => $times->count(),
-            'times' => $times->map(function ($t)
-            {
-                return [
-                    'id' => $t->id,
-                    'start_time' => $t->start_time,
-                    'end_time' => $t->end_time,
-                    'duration_seconds' => $t->duration_seconds,
-                ];
-            }),
-        ]);
-
+        $times = Time::where('task_id', $task->id)->get();
         $totalSeconds = 0;
 
         foreach ($times as $time)
         {
-            if ($time->duration_seconds)
+            $add = 0;
+            if ($time->duration_seconds && $time->duration_seconds > 0)
             {
-                // Time entry already has duration calculated
-                \Log::info('Adding duration_seconds', ['time_id' => $time->id, 'duration_seconds' => $time->duration_seconds]);
-                $totalSeconds += $time->duration_seconds;
+                $add = $time->duration_seconds;
             } elseif ($time->start_time && $time->end_time)
             {
-                // Calculate duration if not stored
-                $calculated = $time->end_time->diffInSeconds($time->start_time);
-                \Log::info('Calculating from start/end', ['time_id' => $time->id, 'calculated' => $calculated]);
-                $totalSeconds += $calculated;
+                $add = max(0, $time->end_time->getTimestamp() - $time->start_time->getTimestamp());
             } elseif ($time->start_time && ! $time->end_time)
             {
-                // Timer is still running, calculate current elapsed time
-                $calculated = now()->diffInSeconds($time->start_time);
-                \Log::info('Calculating running timer', ['time_id' => $time->id, 'calculated' => $calculated]);
-                $totalSeconds += $calculated;
+                $add = max(0, now()->getTimestamp() - $time->start_time->getTimestamp());
             }
+            $totalSeconds += $add;
         }
 
-        \Log::info('Total calculation result', ['total_seconds' => $totalSeconds, 'hours' => floor($totalSeconds / 3600), 'minutes' => floor(($totalSeconds % 3600) / 60)]);
-
-        // Format as hours and minutes
+        $totalSeconds = max(0, (int) $totalSeconds);
         $hours = floor($totalSeconds / 3600);
         $minutes = floor(($totalSeconds % 3600) / 60);
 
