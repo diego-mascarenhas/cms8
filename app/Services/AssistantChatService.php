@@ -133,16 +133,31 @@ class AssistantChatService
     }
 
     /**
+     * Resolve the router instruction, replacing {{ROUTING_KEYS}} with the dynamic list from the DB.
+     */
+    private function resolveRouterInstruction(Prompt $routerPrompt): string
+    {
+        $instruction = $routerPrompt->prompt_instruction;
+        if (str_contains($instruction, '{{ROUTING_KEYS}}'))
+        {
+            $instruction = str_replace('{{ROUTING_KEYS}}', Prompt::buildRoutableKeysList(), $instruction);
+        }
+
+        return $instruction;
+    }
+
+    /**
      * Resolve the target prompt from the general router and user message.
      */
     public function resolveRoute(Prompt $routerPrompt, string $userContent): ?Prompt
     {
-        $routerMessage = $routerPrompt->prompt_instruction."\n\n---\n\nEntrada del usuario:\n\n".$userContent;
+        $instruction = $this->resolveRouterInstruction($routerPrompt);
+        $routerMessage = $instruction."\n\n---\n\nEntrada del usuario:\n\n".$userContent;
 
         try
         {
             $agent = agent(
-                instructions: $routerPrompt->prompt_instruction,
+                instructions: $instruction,
                 messages: [],
                 tools: [],
             );
@@ -157,13 +172,7 @@ class AssistantChatService
 
         $firstLine = trim(explode("\n", $text)[0] ?? '');
         $firstLine = preg_replace('/^[\s`*#\-]+|[\s`*]+$/u', '', $firstLine);
-        if (preg_match('/[a-z0-9_]+:[a-z0-9_]+/u', $firstLine, $m))
-        {
-            $key = $m[0];
-        } else
-        {
-            $key = trim($firstLine);
-        }
+        $key = trim($firstLine);
 
         $target = Prompt::findByRoutingKey($key);
 

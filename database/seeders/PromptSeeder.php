@@ -239,6 +239,7 @@ class PromptSeeder extends Seeder
 
     /**
      * Instruction for the general router: classify user intent and return only a routing key.
+     * {{ROUTING_KEYS}} is replaced at runtime with the list of active prompts (dynamic from DB).
      */
     private function getGeneralRouterPromptInstruction(): string
     {
@@ -247,23 +248,10 @@ Eres un enrutador. Tu ÚNICA tarea es elegir el flujo correcto según la intenci
 
 Responde con **exactamente una línea**, sin explicación ni texto adicional, usando solo una de estas claves:
 
-- **contacts:landing** → Problemas de negocio, estrategia, crecimiento, diagnóstico de empresa, procesos desordenados, dependencia de una persona, falta de automatización, plan de negocio.
-- **projects:description** → Descripción o definición de un proyecto, alcance, entregables.
-- **tasks:description** → Definir una tarea, tarea concreta, qué hay que hacer.
-- **contacts:notes** → Notas de reunión, notas de contacto, resumen de conversación con cliente.
-- **contacts:email** → Redactar un email, correo profesional, escribir a un contacto.
-- **enterprises:description** → Descripción de empresa, perfil de empresa, datos comerciales de empresa.
-- **invoices:description** → Descripción de servicios para factura, facturación.
-- **communications:message** → Mensaje de marketing, comunicación, campaña, CTA.
-- **communications:image_analysis** → Analizar una imagen, describir imagen, mejorar imagen.
-- **communications:voice_summary** → Resumen para escuchar en audio, texto para voz.
-- **services:description** → Descripción de un servicio, oferta de servicio.
-- **notes:content** → Estructurar una nota, organizar notas, contenido de nota.
-- **notes:notes_from_audio** → Convertir audio en notas, transcribir y estructurar.
-- **templates:content** → Plantilla de email o documento, contenido de plantilla.
+{{ROUTING_KEYS}}
 
-Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde solo: contacts:landing
-Para cualquier otra intención, elige la clave que mejor coincida. Responde solo la clave, nada más.
+Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde la clave que corresponda a ese flujo (suele ser contacts:landing).
+Para cualquier otra intención, elige la clave que mejor coincida con la etiqueta. Responde solo la clave, nada más.
 PROMPT;
     }
 

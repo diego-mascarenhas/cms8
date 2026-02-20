@@ -69,4 +69,28 @@ class Prompt extends Model
     {
         return $this->section_key === 'general';
     }
+
+    /**
+     * Build the list of routable keys from active prompts (all except general) for the router instruction.
+     * Returns a string to inject in place of {{ROUTING_KEYS}} in the general prompt.
+     */
+    public static function buildRoutableKeysList(): string
+    {
+        $prompts = self::active()
+            ->with('module')
+            ->where('section_key', '!=', 'general')
+            ->orderBy('order')
+            ->get();
+
+        $lines = [];
+        foreach ($prompts as $p)
+        {
+            $key = $p->module
+                ? $p->module->key.':'.$p->section_key
+                : $p->section_key;
+            $lines[] = '- **'.$key.'** → '.$p->section_label;
+        }
+
+        return implode("\n", $lines);
+    }
 }
