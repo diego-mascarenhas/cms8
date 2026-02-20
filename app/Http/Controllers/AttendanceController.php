@@ -7,6 +7,15 @@ use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
+    public function index()
+    {
+        $attendances = Attendance::with('user')
+            ->orderBy('start_at', 'desc')
+            ->paginate(20);
+
+        return view('attendance.index', compact('attendances'));
+    }
+
     public function start(Request $request)
     {
         $running = Attendance::getRunning();

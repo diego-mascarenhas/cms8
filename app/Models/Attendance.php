@@ -24,6 +24,8 @@ class Attendance extends Model
         'start_at' => 'datetime',
         'end_at' => 'datetime',
         'paused_at' => 'datetime',
+        'duration_seconds' => 'integer',
+        'paused_seconds' => 'integer',
     ];
 
     protected static function booted()

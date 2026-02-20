@@ -450,6 +450,7 @@ Route::middleware(['auth'])->group(function ()
     })->name('api.team-users');
 
     // Attendance Routes (global in/out)
+    Route::get('/attendance/list', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');
     Route::post('/attendance/{id}/pause', [AttendanceController::class, 'pause'])->name('attendance.pause');
     Route::post('/attendance/{id}/resume', [AttendanceController::class, 'resume'])->name('attendance.resume');

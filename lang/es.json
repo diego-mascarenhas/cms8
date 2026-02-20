@@ -1166,5 +1166,11 @@
   "Write your response": "Escribe tu respuesta",
   "Write your response here...": "Escribe tu respuesta aquí...",
   "Reply and set to To Do": "Responder y marcar como Por hacer",
-  "Mark task as completed": "Marcar tarea como completada"
+  "Mark task as completed": "Marcar tarea como completada",
+  "Work shifts": "Jornadas",
+  "Clock-in / clock-out history": "Historial de entradas y salidas",
+  "No work shifts recorded.": "No hay jornadas registradas.",
+  "In progress": "En curso",
+  "Paused": "Pausada",
+  "Finished": "Finalizada"
 }

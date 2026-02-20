@@ -45,11 +45,14 @@
 		<h4 class="mb-1 mt-3">{{ __('Times') }}</h4>
 		<p class="text-muted">{{ __('Track your work hours') }}</p>
 	</div>
-	@can('time.create')
-	<div class="mt-3 mt-md-0">
+	<div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
+		<a href="{{ route('attendance.index') }}" class="btn btn-outline-primary">
+			<i class="ti ti-clock-play me-1"></i> {{ __('Work shifts') }}
+		</a>
+		@can('time.create')
 		<a href="{{ route('time.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Add Manual Entry') }} </a>
+		@endcan
 	</div>
-	@endcan
 </div>
 
 @if(session('success'))
