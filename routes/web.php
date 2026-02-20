@@ -94,7 +94,8 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
 
-Route::get('/try-assistant', fn () => view('assistant-demo'))->name('assistant-demo');
+Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
+Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');

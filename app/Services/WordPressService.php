@@ -210,4 +210,41 @@ class WordPressService
     {
         return $this->put('/pages/'.$id, $data);
     }
+
+    /**
+     * Fetch WooCommerce products via /wp-json/wc/v3/products.
+     * Returns an empty array if WooCommerce is not installed or not accessible.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getProducts(int $page = 1, int $perPage = 100): array
+    {
+        if (! $this->isConfigured())
+        {
+            return [];
+        }
+
+        $url = $this->baseUrl().'/wp-json/wc/v3/products';
+
+        try
+        {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->get($url, ['page' => $page, 'per_page' => $perPage]);
+
+            if ($response->successful())
+            {
+                $data = $response->json();
+
+                return is_array($data) ? $data : [];
+            }
+
+            return [];
+        } catch (\Throwable $e)
+        {
+            \Illuminate\Support\Facades\Log::warning('WordPress getProducts failed', ['message' => $e->getMessage()]);
+
+            return [];
+        }
+    }
 }
