@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "50832ba2e24f1f08e1e12ecb2d37a320",
+    "content-hash": "785ad6d4cd2494d14035af45711d03bb",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2379,16 +2379,16 @@
         },
         {
             "name": "laravel/ai",
-            "version": "v0.1.5",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/ai.git",
-                "reference": "da44d1ada5f6b7a6ba20c66d0eaf9fc3f47acee1"
+                "reference": "7487f1208ba95a7d32e1609abb1b7f7a801a74fe"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/ai/zipball/da44d1ada5f6b7a6ba20c66d0eaf9fc3f47acee1",
-                "reference": "da44d1ada5f6b7a6ba20c66d0eaf9fc3f47acee1",
+                "url": "https://api.github.com/repos/laravel/ai/zipball/7487f1208ba95a7d32e1609abb1b7f7a801a74fe",
+                "reference": "7487f1208ba95a7d32e1609abb1b7f7a801a74fe",
                 "shasum": ""
             },
             "require": {
@@ -2441,7 +2441,7 @@
                 "issues": "https://github.com/laravel/ai/issues",
                 "source": "https://github.com/laravel/ai"
             },
-            "time": "2026-02-12T19:31:10+00:00"
+            "time": "2026-02-19T14:27:55+00:00"
         },
         {
             "name": "laravel/cashier",
