@@ -65,7 +65,8 @@
             <div class="col-md-3">
                 <label class="form-label" for="section_key">{{ __('Clave de sección') }} (*)</label>
                 <input type="text" class="form-control @error('section_key') is-invalid @enderror" id="section_key" name="section_key"
-                    value="{{ old('section_key', $prompt->section_key ?? '') }}" placeholder="ej: estrategia" maxlength="255" required>
+                    value="{{ old('section_key', $prompt->section_key ?? '') }}" placeholder="ej: estrategia, human_3_0" maxlength="255" required>
+                <div class="form-text">{{ __('El asistente (chat) encadena automáticamente todos los prompts activos: el enrutador usa la lista generada desde la base de datos. Cualquier prompt activo con clave única se ofrece como flujo.') }}</div>
                 @error('section_key')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

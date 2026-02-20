@@ -67,22 +67,27 @@ class TaskController extends Controller
             ];
         });
 
-        // When no project (Tablero general), show tasks from all team boards; otherwise only this board
+        // When no project (Tablero general), show tasks from team boards that are NOT linked to a project
         $boardIds = $project ? [$board->id] : TaskBoard::pluck('id')->all();
         if (empty($boardIds))
         {
             $boardIds = [$board->id];
         }
 
+        $projectBoardIds = $project ? [] : Project::whereNotNull('board_id')->pluck('board_id')->unique()->values()->all();
+
         // Get tasks grouped by status
         $tasksByStatus = [];
         foreach ($statuses as $status)
         {
-            $tasks = Task::where('status_id', $status['id'])
+            $query = Task::where('status_id', $status['id'])
                 ->whereIn('board_id', $boardIds)
-                ->with(['responsible', 'category'])
-                ->orderBy('order')
-                ->get();
+                ->with(['responsible', 'category']);
+            if (! $project && ! empty($projectBoardIds))
+            {
+                $query->whereNotIn('board_id', $projectBoardIds);
+            }
+            $tasks = $query->orderBy('order')->get();
 
             $tasksByStatus[$status['id']] = $tasks->map(function ($task)
             {
