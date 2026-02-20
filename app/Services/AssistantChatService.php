@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Prompt;
+use App\Models\Team;
 use App\Models\TokenUsageLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -16,21 +17,13 @@ class AssistantChatService
 {
     /**
      * Run the assistant chat: route the user message through the general router, then run the target prompt.
+     * If $promptKey is provided, skip the router and use that prompt directly.
      * Optionally accept image and audio uploads, and return TTS audio when requested.
      *
      * @return array{response: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}
      */
-    public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false): array
+    public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false, ?string $promptKey = null): array
     {
-        $routerPrompt = Prompt::active()->where('section_key', 'general')->first();
-        if (! $routerPrompt)
-        {
-            return [
-                'response' => __('No hay prompt general configurado. Configura el enrutador en Prompts.'),
-                'routed_to' => null,
-            ];
-        }
-
         $content = trim($userMessage);
         if ($content === '' && ($image || $audio))
         {
@@ -55,22 +48,46 @@ class AssistantChatService
             }
         }
 
-        $prompt = $this->resolveRoute($routerPrompt, $content);
-        if ($prompt === null)
+        // When a promptKey is specified, skip the router and use that prompt directly.
+        if ($promptKey !== null)
         {
-            return [
-                'response' => __('No se pudo determinar el flujo. Intenta ser más específico.'),
-                'routed_to' => null,
-            ];
+            $prompt = Prompt::findByRoutingKey($promptKey);
+            if (! $prompt)
+            {
+                return [
+                    'response' => __('No se encontró el prompt con la clave: ').$promptKey,
+                    'routed_to' => null,
+                ];
+            }
+        } else
+        {
+            $routerPrompt = Prompt::active()->where('section_key', 'general')->first();
+            if (! $routerPrompt)
+            {
+                return [
+                    'response' => __('No hay prompt general configurado. Configura el enrutador en Prompts.'),
+                    'routed_to' => null,
+                ];
+            }
+
+            $prompt = $this->resolveRoute($routerPrompt, $content);
+            if ($prompt === null)
+            {
+                return [
+                    'response' => __('No se pudo determinar el flujo. Intenta ser más específico.'),
+                    'routed_to' => null,
+                ];
+            }
         }
 
-        $userContent = $prompt->prompt_instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
+        $instruction = $this->resolveInstruction($prompt, $teamId);
+        $userContent = $instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
         $attachments = $image ? [$image] : [];
 
         try
         {
             $agent = agent(
-                instructions: $prompt->prompt_instruction,
+                instructions: $instruction,
                 messages: [],
                 tools: [],
             );
@@ -130,6 +147,30 @@ class AssistantChatService
         }
 
         return $result;
+    }
+
+    /**
+     * Resolve the full instruction for a prompt, replacing any dynamic placeholders.
+     * Supports: {{WORDPRESS_CONTEXT}} — injects live WordPress content from the team's site.
+     */
+    private function resolveInstruction(Prompt $prompt, ?int $teamId): string
+    {
+        $instruction = $prompt->prompt_instruction;
+
+        if (str_contains($instruction, '{{WORDPRESS_CONTEXT}}'))
+        {
+            if ($teamId && $team = Team::find($teamId))
+            {
+                $context = WordPressContextService::forTeam($team)->buildContext();
+            } else
+            {
+                $context = '_El contexto de WordPress no está disponible (requiere sesión autenticada con WordPress configurado)._';
+            }
+
+            $instruction = str_replace('{{WORDPRESS_CONTEXT}}', $context, $instruction);
+        }
+
+        return $instruction;
     }
 
     /**

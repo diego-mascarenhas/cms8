@@ -30,8 +30,12 @@ class AssistantChat extends Component
 
     public bool $respondWithAudio = false;
 
-    public function mount(): void
+    public ?string $promptKey = null;
+
+    public function mount(?string $promptKey = null): void
     {
+        $this->promptKey = $promptKey;
+
         if (! auth()->check())
         {
             return;
@@ -96,7 +100,7 @@ class AssistantChat extends Component
             ? auth()->user()->currentTeam->id
             : null;
 
-        $result = $assistant->run($text, $teamId, $this->image, $this->audio, $this->respondWithAudio);
+        $result = $assistant->run($text, $teamId, $this->image, $this->audio, $this->respondWithAudio, $this->promptKey);
 
         $assistantMessage = [
             'role' => 'assistant',

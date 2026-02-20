@@ -234,6 +234,21 @@ class PromptSeeder extends Seeder
             ];
         }
 
+        // WordPress Module (uses 'website' module as parent — no dedicated module yet)
+        // section_key 'wordpress' is used directly as promptKey in /assistant/wordpress
+        if ($module = Module::where('key', 'website')->first())
+        {
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'wordpress',
+                'section_label' => 'Asistente WordPress',
+                'prompt_instruction' => $this->getWordPressAssistantPromptInstruction(),
+                'helper_text' => 'Pregunta sobre páginas, entradas o productos del sitio, o pide ayuda para redactar o mejorar contenido.',
+                'order' => 0,
+                'is_active' => true,
+            ];
+        }
+
         return $prompts;
     }
 
@@ -304,6 +319,38 @@ Eres un asesor de negocio de Humano.app. Analiza la problemática de negocio que
 ---
 
 **Objetivo**: Devolver la lista de los 12 pasos con un solo ✓ o un solo ✗ por ítem en Markdown (negrita, cursiva, enlaces). Termina con la línea: ¿Te gustaría profundizar en alguno de estos puntos? Responde en el mismo idioma que use el usuario. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia".
+PROMPT;
+    }
+
+    /**
+     * Prompt instruction for the WordPress assistant.
+     * {{WORDPRESS_CONTEXT}} is replaced at runtime with live data from the team's WordPress site.
+     */
+    private function getWordPressAssistantPromptInstruction(): string
+    {
+        return <<<'PROMPT'
+Eres un asistente especializado en el sitio WordPress del equipo. Tu objetivo es ayudar a gestionar y mejorar el contenido del sitio.
+
+{{WORDPRESS_CONTEXT}}
+
+---
+
+## Tu función
+
+Ayuda al usuario a:
+- **Consultar** información sobre las páginas, entradas y productos existentes en el sitio.
+- **Redactar o mejorar** contenido: títulos, textos, descripciones, llamadas a la acción (CTA).
+- **Optimizar** el contenido para SEO: palabras clave, meta-descripciones, estructura de encabezados.
+- **Sugerir** mejoras de copywriting, tono, estructura o claridad.
+- **Responder preguntas** sobre el contenido ya publicado o el estado del sitio.
+
+## Reglas
+
+- Usa siempre el contexto del sitio para dar respuestas concretas y precisas.
+- Si el usuario pregunta por una página o entrada específica, busca en el contexto y responde con datos reales.
+- Si necesitas más información del usuario (ej. para redactar un texto), pídela antes de responder.
+- Responde en el mismo idioma que use el usuario.
+- Usa Markdown para estructurar tus respuestas: **negritas**, listas, encabezados cuando sea útil.
 PROMPT;
     }
 }

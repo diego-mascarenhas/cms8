@@ -45,7 +45,7 @@ $configData = Helper::appClasses();
         </a>
       </div>
       <div class="assistant-chat-wrapper">
-        @livewire('assistant-chat')
+        @livewire('assistant-chat', ['promptKey' => $promptKey ?? null])
       </div>
     </div>
 

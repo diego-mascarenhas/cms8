@@ -78,9 +78,20 @@ return [
 
     'profile_photo_disk' => 'public',
 
+    // Roles by relevance (highest first). Same keys as Spatie; display name for reference.
     'roles' => [
+        'root' => 'Root',
         'admin' => 'Administrator',
+        'developer' => 'Developer',
         'editor' => 'Editor',
+        'collaborator' => 'Collaborator',
+        'technical' => 'Technical',
+        'employee' => 'Employee',
+        'client' => 'Client',
+        'auditor' => 'Auditor',
+        'student' => 'Student',
+        'user' => 'User',
+        'guest' => 'Guest',
     ],
 
 ];
