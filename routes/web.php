@@ -529,6 +529,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
+    Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');
     Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
     Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
     Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');

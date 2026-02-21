@@ -68,7 +68,7 @@
 					<div class="d-flex justify-content-between align-items-start border-end pb-3 pb-sm-0 card-widget-3">
 						<div>
 							<h6 class="mb-2">{{ __('Categorías') }}</h6>
-							<h4 class="mb-2">{{ \App\Models\Category::where('module_id', \App\Models\Module::where('key', 'products')->first()->id ?? 0)->count() }}</h4>
+							<h4 class="mb-2">{{ \App\Models\Category::where('module_id', \App\Models\Module::where('key', 'products')->first()?->id ?? 0)->count() }}</h4>
 							<p class="mb-0 text-muted">{{ __('Total') }}</p>
 						</div>
 						<span class="avatar p-2 me-sm-4">

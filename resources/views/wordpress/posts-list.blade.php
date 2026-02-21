@@ -8,8 +8,17 @@
             <h4 class="mb-1 mt-3">{{ __('Posts') }}</h4>
             <p class="text-muted">{{ __('Content from your WordPress site') }}</p>
         </div>
-        <div class="mt-3 mt-md-0">
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
+            <form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-refresh me-1"></i>{{ __('Sincronizar contenido con el asistente') }}
+                </button>
+            </form>
             <a href="{{ $storeUrl }}/wp-admin/edit.php" target="_blank" rel="noopener noreferrer" class="btn btn-label-secondary">{{ __('Open in WordPress') }}</a>
+            @if (isset($lastSyncedAt))
+                <span class="text-muted small">{{ __('Última sincronización') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
+            @endif
         </div>
     </div>
 

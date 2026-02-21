@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateWordPressPageRequest;
 use App\Http\Requests\UpdateWordPressPostRequest;
+use App\Jobs\SyncWordPressContentJob;
+use App\Models\WordPressSyncPage;
+use App\Models\WordPressSyncPost;
+use App\Models\WordPressSyncProduct;
 use App\Services\WordPressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,6 +55,7 @@ class WordPressController extends Controller
             'team' => $team,
             'storeUrl' => $storeUrl,
             'posts' => $posts,
+            'lastSyncedAt' => $this->getLastSyncedAt($team->id),
         ]);
     }
 
@@ -80,6 +85,7 @@ class WordPressController extends Controller
             'team' => $team,
             'storeUrl' => $storeUrl,
             'pages' => $pages,
+            'lastSyncedAt' => $this->getLastSyncedAt($team->id),
         ]);
     }
 
@@ -202,5 +208,36 @@ class WordPressController extends Controller
         }
 
         return redirect()->route('wordpress.pages')->with('success', __('Page updated successfully.'));
+    }
+
+    /**
+     * Trigger sync of WordPress content for the assistant (queued).
+     */
+    public function sync(Request $request): RedirectResponse
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('error-without-team');
+        }
+        if (! $this->isConfigured())
+        {
+            return redirect()->back()->with('error', __('WordPress not configured.'));
+        }
+
+        SyncWordPressContentJob::dispatch($team);
+
+        return redirect()->back()->with('success', __('Sincronización iniciada en segundo plano. El contenido estará disponible para el asistente en unos momentos.'));
+    }
+
+    protected function getLastSyncedAt(int $teamId): ?\Carbon\Carbon
+    {
+        $pages = WordPressSyncPage::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+        $posts = WordPressSyncPost::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+        $products = WordPressSyncProduct::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+
+        $max = collect([$pages, $posts, $products])->filter()->max();
+
+        return $max ? \Carbon\Carbon::parse($max) : null;
     }
 }

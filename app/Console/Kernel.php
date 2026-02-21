@@ -79,6 +79,15 @@ class Kernel extends ConsoleKernel
             ->description('Send scheduled email deliveries (~20/min)');
 
         // ============================================
+        // WORDPRESS ASSISTANT SYNC
+        // ============================================
+        $schedule->command('wordpress:sync')
+            ->hourly()
+            ->name('wordpress-sync')
+            ->description('Sync WordPress content for assistant context')
+            ->runInBackground();
+
+        // ============================================
         // EXCHANGE RATES
         // ============================================
         $schedule->command('exchange-rates:fetch')

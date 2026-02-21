@@ -28,14 +28,16 @@ class ProductController extends Controller
     {
         $this->authorize('viewAny', Product::class);
 
-        $team = auth()->user()->currentTeam;
+        $user = auth()->user();
+        $team = $user->currentTeam ?? null;
         if (! $team)
         {
             return redirect()->route('error-without-team');
         }
 
         $woo = new WooCommerceService($team);
-        if ($woo->isConfigured())
+        $wooConfigured = $woo->isConfigured();
+        if ($wooConfigured)
         {
             $products = $woo->getProducts(1, 100);
             $storeUrl = $woo->getStoreUrl();
