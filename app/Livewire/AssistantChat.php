@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\Team;
 use App\Services\AssistantChatService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -96,9 +97,21 @@ class AssistantChat extends Component
         $this->input = '';
         $this->loading = true;
 
-        $teamId = auth()->check() && auth()->user()->currentTeam
-            ? auth()->user()->currentTeam->id
-            : null;
+        $teamId = null;
+        if (auth()->check())
+        {
+            $user = auth()->user();
+            $team = $user->currentTeam ?? $user->teams()->first();
+            $teamId = $team?->id;
+        }
+        if ($teamId === null && config('app.assistant_default_team_id'))
+        {
+            $defaultId = (int) config('app.assistant_default_team_id');
+            if (Team::withoutGlobalScopes()->find($defaultId))
+            {
+                $teamId = $defaultId;
+            }
+        }
 
         $result = $assistant->run($text, $teamId, $this->image, $this->audio, $this->respondWithAudio, $this->promptKey);
 

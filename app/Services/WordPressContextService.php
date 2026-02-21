@@ -104,6 +104,12 @@ class WordPressContextService
             {
                 $price = $product->price ? " — {$product->price} {$product->currency}" : '';
                 $lines[] = "- **{$product->name}** (ID: {$product->wp_id}, estado: {$product->status}{$price})";
+                if (! empty($product->description))
+                {
+                    $desc = strip_tags($product->description);
+                    $desc = strlen($desc) > 500 ? substr($desc, 0, 497).'…' : $desc;
+                    $lines[] = '  '.str_replace("\n", ' ', $desc);
+                }
             }
             $lines[] = '';
         }
@@ -158,6 +164,13 @@ class WordPressContextService
                 $currency = $product['currency'] ?? '';
                 $price = isset($product['price']) ? " — {$product['price']} {$currency}" : '';
                 $lines[] = "- **{$title}** (ID: {$id}, estado: {$status}{$price})";
+                $desc = $product['short_description'] ?? $product['description'] ?? null;
+                if (! empty($desc))
+                {
+                    $desc = strip_tags($desc);
+                    $desc = strlen($desc) > 500 ? substr($desc, 0, 497).'…' : $desc;
+                    $lines[] = '  '.str_replace("\n", ' ', $desc);
+                }
             }
             $lines[] = '';
         }

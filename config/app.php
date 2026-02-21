@@ -72,6 +72,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Assistant default team (demo / unauthenticated)
+    |--------------------------------------------------------------------------
+    |
+    | When the user has no current team, the assistant uses this team for
+    | WordPress context (e.g. demo). Set ASSISTANT_DEFAULT_TEAM_ID= in .env
+    | to disable. Later you can drive this via API token instead.
+    |
+    */
+    'assistant_default_team_id' => env('ASSISTANT_DEFAULT_TEAM_ID', 1),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
