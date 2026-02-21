@@ -35,6 +35,14 @@ The plugin calls:
 
 Token and base URL are only used on the server (WordPress); they are never sent to the browser.
 
+## Translations
+
+The plugin uses WordPress's standard i18n (text domain: `humano-chat`). The UI language follows **Settings → General → Site Language**.
+
+- **Included:** `languages/humano-chat.pot` (template) and `languages/humano-chat-es_ES.po` (Spanish). To compile the Spanish .mo: `msgfmt -o languages/humano-chat-es_ES.mo languages/humano-chat-es_ES.po` (requires gettext).
+- **Adding a language:** Copy the .pot to `humano-chat-{locale}.po`, translate the `msgstr` lines, then compile to `.mo` with Poedit or `msgfmt`.
+- **Tools:** Loco Translate or Poedit; WP-CLI: `wp i18n make-pot . languages/humano-chat.pot` to regenerate the template.
+
 ## Support
 
 For token generation and API details, use the **Help** section in your Humano app (e.g. `/help` and “API Authentication”).

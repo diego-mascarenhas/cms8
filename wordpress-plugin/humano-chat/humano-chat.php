@@ -23,6 +23,16 @@ require_once HUMANO_CHAT_PLUGIN_DIR . 'includes/class-humano-chat-settings.php';
 require_once HUMANO_CHAT_PLUGIN_DIR . 'includes/class-humano-chat-shortcode.php';
 require_once HUMANO_CHAT_PLUGIN_DIR . 'includes/class-humano-chat-ajax.php';
 
+function humano_chat_load_textdomain(): void
+{
+    load_plugin_textdomain(
+        'humano-chat',
+        false,
+        dirname(plugin_basename(__FILE__)) . '/languages'
+    );
+}
+add_action('plugins_loaded', 'humano_chat_load_textdomain', 0);
+
 function humano_chat_init(): void
 {
     Humano_Chat_Settings::get_instance();

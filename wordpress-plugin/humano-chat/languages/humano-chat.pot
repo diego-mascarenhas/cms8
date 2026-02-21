@@ -1,0 +1,104 @@
+# Copyright (C) 2025 Humano
+# This file is distributed under the same license as the Humano Chat plugin.
+msgid ""
+msgstr ""
+"Project-Id-Version: Humano Chat 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-01-01 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Humano Chat"
+msgstr ""
+
+msgid "Humano Base URL"
+msgstr ""
+
+msgid "Your Humano instance URL (no trailing slash)."
+msgstr ""
+
+msgid "API Token"
+msgstr ""
+
+msgid "Team API token from Humano: Team Settings → API Tokens. See your Humano /help for details."
+msgstr ""
+
+msgid "Prompt key (optional)"
+msgstr ""
+
+msgid "Leave empty to use the assistant router. Set a key to force a specific prompt flow."
+msgstr ""
+
+msgid "Floating widget"
+msgstr ""
+
+msgid "Show floating chat button on all front-end pages"
+msgstr ""
+
+msgid "Otherwise use the shortcode [humano_chat] where you want the chat."
+msgstr ""
+
+msgid "SSL verification"
+msgstr ""
+
+msgid "Verify SSL certificate when calling Humano (recommended)"
+msgstr ""
+
+msgid "Uncheck only for local development (e.g. .test, self-signed certs). Fixes \"cURL error 60: unable to get local issuer certificate\". Do not disable in production."
+msgstr ""
+
+msgid "Getting your API token"
+msgstr ""
+
+msgid "Log in to Humano, go to Team Settings → API Tokens, generate a token and paste it above. Full documentation: open the Help section in Humano (e.g. /help and API Authentication)."
+msgstr ""
+
+msgid "Humano Chat is not configured. Add Base URL and API Token in Settings → Humano Chat."
+msgstr ""
+
+msgid "Network error: "
+msgstr ""
+
+msgid "Invalid or expired API token. Check your token in Humano (Team Settings → API Tokens) and in Settings → Humano Chat."
+msgstr ""
+
+msgid "Too many requests. Please wait a moment and try again."
+msgstr ""
+
+msgid "Humano service is temporarily unavailable. Try again later."
+msgstr ""
+
+msgid "Unexpected response from Humano."
+msgstr ""
+
+msgid "Invalid response from Humano."
+msgstr ""
+
+msgid "Send"
+msgstr ""
+
+msgid "Type your message..."
+msgstr ""
+
+msgid "Thinking..."
+msgstr ""
+
+msgid "Something went wrong. Try again."
+msgstr ""
+
+msgid "Open chat"
+msgstr ""
+
+msgid "Close chat"
+msgstr ""
+
+msgid "Message is required."
+msgstr ""
+
+msgid "Unknown error."
+msgstr ""
