@@ -3,8 +3,8 @@
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
-use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LanguageVariantController;
@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TeamAssistantController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamContentController;
 use App\Http\Controllers\Api\TeamController;
@@ -506,6 +507,8 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::get('prompts', [TeamPromptController::class, 'list'])->name('api.team.prompts.list');
     // Invoke prompt by prompt_id (DB) or prompt_name (file); body: test_message required
     Route::post('prompt', TeamPromptController::class)->name('api.team.prompt');
+    // Assistant chat (router + flows); body: message required, optional prompt_key
+    Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');
     Route::get('/settings', [TeamController::class, 'settings']);
 
     // Team contacts
