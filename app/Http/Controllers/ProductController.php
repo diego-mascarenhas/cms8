@@ -7,6 +7,7 @@ use App\Http\Requests\StoreWooCommerceProductRequest;
 use App\Http\Requests\UpdateWooCommerceProductRequest;
 use App\Models\Product;
 use App\Services\WooCommerceService;
+use App\Services\WordPressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -37,15 +38,19 @@ class ProductController extends Controller
 
         $woo = new WooCommerceService($team);
         $wooConfigured = $woo->isConfigured();
+        $wordpress = new WordPressService($team);
+        $wordpressConfigured = $wordpress->isConfigured();
+        $lastSyncedAt = $wordpressConfigured ? $wordpress->getLastSyncedAt() : null;
+
         if ($wooConfigured)
         {
             $products = $woo->getProducts(1, 100);
             $storeUrl = $woo->getStoreUrl();
 
-            return view('product.woocommerce-list', compact('products', 'storeUrl'));
+            return view('product.woocommerce-list', compact('products', 'storeUrl', 'wordpressConfigured', 'lastSyncedAt'));
         }
 
-        return $dataTable->render('product.list');
+        return $dataTable->render('product.list', compact('wordpressConfigured', 'lastSyncedAt'));
     }
 
     /**
