@@ -24,6 +24,12 @@
 @endsection
 
 @section('content')
+    @if (session('mail_error'))
+        <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+            {{ session('mail_error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
     <div class="app-email card">
         <div class="row g-0">
             <!-- Email Sidebar -->
@@ -117,8 +123,9 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center mb-0 mb-md-2">
-                                <i
-                                    class="ti ti-rotate-clockwise ti-sm rotate-180 scaleX-n1-rtl cursor-pointer email-refresh me-2"></i>
+                                <a href="{{ route('mail-list') }}" class="text-body" title="{{ __('Sincronizar') }}" aria-label="{{ __('Sincronizar correo') }}">
+                                    <i class="ti ti-rotate-clockwise ti-sm rotate-180 scaleX-n1-rtl cursor-pointer email-refresh me-2"></i>
+                                </a>
                                 <div class="dropdown d-flex align-self-center">
                                     <button class="btn p-0" type="button" id="emailsActions" data-bs-toggle="dropdown"
                                         aria-haspopup="true" aria-expanded="false">
@@ -212,10 +219,9 @@
                                         
                                         {{-- Avatar/Initials --}}
                                         @php
-                                            $fromName = is_array($email['from']) ? array_values($email['from'])[0] : $email['from'];
-                                            $initials = collect(explode(' ', $fromName))->map(function($word) { 
-                                                return strtoupper(substr($word, 0, 1)); 
-                                            })->take(2)->join('');
+                                            $fromName = is_array($email['from'] ?? '') ? (array_values($email['from'])[0] ?? '') : ($email['from'] ?? __('Unknown'));
+                                            $words = array_filter(explode(' ', strip_tags((string) $fromName)));
+                                            $initials = strtoupper(substr($words[0] ?? 'U', 0, 1) . substr($words[1] ?? '', 0, 1));
                                         @endphp
                                         <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
                                             <span class="avatar-initial rounded-circle bg-label-primary">{{ $initials }}</span>
@@ -234,7 +240,14 @@
                                             @endif
                                             
                                             <small class="email-list-item-time text-muted text-truncate me-2" style="min-width: 70px; max-width: 100px;">
-                                                {{ \Carbon\Carbon::parse($email['date'])->diffForHumans(\Carbon\Carbon::now(), true) }} ago
+                                                @php
+                                                    try {
+                                                        $emailDate = \Carbon\Carbon::parse($email['date'] ?? 'now')->diffForHumans(\Carbon\Carbon::now(), true);
+                                                        echo $emailDate . ' ago';
+                                                    } catch (\Exception $e) {
+                                                        echo $email['date'] ?? '—';
+                                                    }
+                                                @endphp
                                             </small>
                                             
                                             <ul class="list-inline email-list-item-actions text-nowrap mb-0">
