@@ -53,3 +53,6 @@ Thumbs.db
 /packages/idoneo/humano-mailer
 /packages/idoneo/humano-tickets
 /packages/idoneo/humano-version-control
+
+# WordPress plugin lives in its own repo (wordpress/wp-content/plugins/humano-chat)
+/wordpress-plugin
