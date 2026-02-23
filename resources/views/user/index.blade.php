@@ -35,13 +35,6 @@
 			<h4 class="mb-1 mt-3">{{ __('Users') }}</h4>
 			<p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
 		</div>
-		@can('user.create')
-		<div class="mt-3 mt-md-0">
-			<a href="{{ route('user.create') }}" class="btn btn-primary">
-				<i class="ti ti-plus me-1"></i> {{ __('Add User') }}
-			</a>
-		</div>
-		@endcan
 	</div>
 
 	@if (session('success'))

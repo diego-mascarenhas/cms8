@@ -4,10 +4,12 @@
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -20,6 +22,79 @@
 				allowClear: true
 			});
 		}
+		// Toggle password visibility (eye icon)
+		document.querySelectorAll('.toggle-password').forEach(function(toggle) {
+			toggle.addEventListener('click', function(e) {
+				var group = e.currentTarget.closest('.input-group');
+				var input = group.querySelector('input');
+				var icon = group.querySelector('i');
+				if (input.type === 'password') {
+					input.type = 'text';
+					icon.classList.remove('ti-eye-off');
+					icon.classList.add('ti-eye');
+				} else {
+					input.type = 'password';
+					icon.classList.remove('ti-eye');
+					icon.classList.add('ti-eye-off');
+				}
+			});
+		});
+		// Delete user (remove from team) button
+		$('#btn-delete-user').on('click', function() {
+			var userId = {{ isset($data->id) ? $data->id : 'null' }};
+			if (!userId) return;
+			Swal.fire({
+				title: '{{ __("Are you sure?") }}',
+				text: "{{ __('Do you want to remove this user from the team?') }}",
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonText: '{{ __("Yes, remove") }}',
+				cancelButtonText: '{{ __("Cancel") }}',
+				customClass: {
+					confirmButton: 'btn btn-primary me-3',
+					cancelButton: 'btn btn-label-secondary'
+				},
+				buttonsStyling: false
+			}).then(function (result) {
+				if (result.value) {
+					fetch("{{ route('user.destroy', ['id' => ':ID']) }}".replace(':ID', userId), {
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-CSRF-TOKEN': '{{ csrf_token() }}'
+						}
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.error) {
+							Swal.fire({
+								icon: 'error',
+								title: '{{ __("Error") }}',
+								text: data.error,
+								customClass: { confirmButton: 'btn btn-primary' }
+							});
+						} else {
+							Swal.fire({
+								icon: 'success',
+								title: '{{ __("Success!") }}',
+								text: data.success,
+								customClass: { confirmButton: 'btn btn-success' }
+							}).then(function() {
+								window.location.href = "{{ route('user.index') }}";
+							});
+						}
+					})
+					.catch(function() {
+						Swal.fire({
+							icon: 'error',
+							title: '{{ __("Error") }}',
+							text: '{{ __("An error occurred while processing the request") }}',
+							customClass: { confirmButton: 'btn btn-primary' }
+						});
+					});
+				}
+			});
+		});
 	});
 </script>
 @endsection
@@ -28,9 +103,14 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Users') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
-		<p class="text-muted">{{ __('Manage team users') }}</p>
+		<p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
+		@if(isset($data->id) && auth()->id() != $data->id && (auth()->user()->can('user.destroy') || auth()->user()->hasRole(['admin'])))
+			<button type="button" class="btn btn-danger waves-effect waves-light" id="btn-delete-user">
+				<i class="ti ti-trash me-1"></i>{{ __('Remove from team') }}
+			</button>
+		@endif
 		@can('user.index')
 			<a href="{{ route('user.index') }}" class="btn btn-outline-secondary waves-effect waves-light">
 				<i class="ti ti-arrow-left me-1"></i>{{ __('Back to Users') }}
@@ -57,26 +137,32 @@
 
 			<div class="col-md-6">
 				<label for="password" class="form-label">{{ __('Password') }} {{ !isset($data->id) ? '(*)' : '(' . __('leave blank to keep current') . ')' }}</label>
-				<input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" />
+				<div class="input-group input-group-merge">
+					<input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" />
+					<span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
+				</div>
 				@error('password')
-					<div class="invalid-feedback">{{ $message }}</div>
+					<div class="invalid-feedback d-block">{{ $message }}</div>
 				@enderror
 			</div>
 
 			<div class="col-md-6">
 				<label for="password_confirmation" class="form-label">{{ __('Confirm Password') }}</label>
-				<input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" />
+				<div class="input-group input-group-merge">
+					<input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" />
+					<span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
+				</div>
 				@error('password_confirmation')
-					<div class="invalid-feedback">{{ $message }}</div>
+					<div class="invalid-feedback d-block">{{ $message }}</div>
 				@enderror
 			</div>
 
-			<div class="col-md-6">
+			<div class="col-md-6 d-none">
 				<label for="role_ids" class="form-label">{{ __('Roles') }} (*)</label>
 				<select class="form-select @error('role_ids') is-invalid @enderror" id="role_ids" name="role_ids[]" multiple>
 					@foreach($roles as $role)
 						<option value="{{ $role->id }}"
-							@if(in_array($role->id, old('role_ids', (isset($data) ? $data->roles->pluck('id')->toArray() : [])))) selected @endif>
+							@if(in_array($role->id, old('role_ids', isset($data) ? $data->roles->pluck('id')->toArray() : ($roles->isNotEmpty() ? [$roles->first()->id] : [])))) selected @endif>
 							{{ ucfirst($role->name) }}
 						</option>
 					@endforeach

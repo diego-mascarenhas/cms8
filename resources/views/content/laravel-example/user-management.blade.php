@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('User Management'))
+@section('title', __('Users'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -28,16 +28,9 @@
 <!-- Header following project pattern -->
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('User Management') }}</h4>
+        <h4 class="mb-1 mt-3">{{ __('Users') }}</h4>
         <p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
     </div>
-    @can('user.create')
-    <div class="mt-3 mt-md-0">
-        <a href="#" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAddUser">
-            <i class="ti ti-plus me-1"></i> {{ __('Add User') }}
-        </a>
-    </div>
-    @endcan
 </div>
 
 <!-- Statistics Cards -->
