@@ -80,7 +80,7 @@
                 const modal = $(this);
                 console.log('Modal content:', modal.html());
                 
-                // Log de los valores iniciales del formulario
+                // Log initial form values
                 const form = modal.find('#editUserForm');
                 if (form.length) {
                     console.log('Form found in modal');
@@ -101,7 +101,7 @@
                 $('#editUserForm').submit();
             });
 
-            // Evento para el envío del formulario
+            // Form submit event
             $(document).on('submit', '#editUserForm', function(e) {
                 e.preventDefault();
                 console.log('Form submit event triggered');

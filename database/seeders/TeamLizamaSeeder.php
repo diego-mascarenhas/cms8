@@ -21,7 +21,7 @@ class TeamLizamaSeeder extends Seeder
         // Crear role student si no existe
         $this->createStudentRole();
 
-        // Gestionar usuario Diego y agregarlo al team
+        // Manage user Diego and add them to the team
         $this->setupTeamAdmin($teamId);
 
         // Agregar Cecilia como admin

@@ -18,7 +18,7 @@
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
-{{-- JavaScript original comentado --}}
+{{-- Original JavaScript commented out --}}
 {{--
 <script>
 	// Servicios vinculados - Funcionalidad
@@ -147,7 +147,7 @@
 </script>
 --}}
 
-{{-- JavaScript nuevo para modal --}}
+{{-- New JavaScript for modal --}}
 <script>
 // Global error handler for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Formulario de servicios - VERSIÓN ORIGINAL (COMENTADA) -->
+<!-- Services form - ORIGINAL VERSION (COMMENTED OUT) -->
 {{--
 <div class="card mb-4">
 	<h5 class="card-header">Servicios vinculados</h5>

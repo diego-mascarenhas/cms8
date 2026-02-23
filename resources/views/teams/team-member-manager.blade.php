@@ -38,7 +38,7 @@
               <x-input-error for="role" />
             </div>
 
-            {{-- Mostrar todos los roles del sistema (Spatie) como referencia --}}
+            {{-- Show all system roles (Spatie) as reference --}}
             @php
               $allSpatieRoles = \Spatie\Permission\Models\Role::pluck('name');
             @endphp
@@ -183,10 +183,10 @@
                 </button>
               @endif
 
-              {{-- Badges con TODOS los roles Spatie que posee el usuario --}}
+              {{-- Badges for all Spatie roles the user has (hidden) --}}
               @php($userSpatieRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames() : collect())
               @if ($userSpatieRoles->count())
-                <div class="ms-3 align-self-center">
+                <div class="ms-3 align-self-center d-none">
                   @foreach ($userSpatieRoles as $sr)
                     <span class="badge bg-label-primary me-1">{{ ucfirst($sr) }}</span>
                   @endforeach

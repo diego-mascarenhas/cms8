@@ -19,7 +19,7 @@
     </div>
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
         <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
-            {{-- Recuadro de bienvenida: siempre visible --}}
+            {{-- Welcome box: always visible --}}
             @if(count($messages) === 0)
                 <div class="mb-3 d-flex justify-content-start" x-data="{ step: 'waiting' }" x-init="setTimeout(() => step = 'welcome', 2000); setTimeout(() => step = 'ready', 4500)">
                     <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">

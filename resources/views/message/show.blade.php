@@ -154,7 +154,7 @@
 
 	<!-- Right Column: Deliveries -->
 	<div class="col-lg-8 col-md-7">
-		{{-- Envíos Component with Pagination --}}
+		{{-- Deliveries component with pagination --}}
 		@livewire('message-deliveries', ['messageId' => $message->id])
 	</div>
 </div>
