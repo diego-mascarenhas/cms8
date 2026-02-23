@@ -123,8 +123,9 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="password" class="form-label">Contraseña *</label>
-                                    <div class="input-group">
+                                    <div class="input-group input-group-merge">
                                         <input type="password" id="password" name="password" class="form-control" required>
+                                        <span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
                                         <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">
                                             <i class="ti ti-refresh"></i>
                                         </button>
@@ -218,5 +219,23 @@ function generatePassword() {
     }
     document.getElementById('password').value = password;
 }
+
+document.querySelectorAll('.toggle-password').forEach(function(toggle) {
+    toggle.addEventListener('click', function(e) {
+        var group = e.currentTarget.closest('.input-group');
+        var input = group.querySelector('input[type="password"], input[type="text"]');
+        var icon = group.querySelector('.toggle-password i');
+        if (!input || !icon) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('ti-eye-off');
+            icon.classList.add('ti-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('ti-eye');
+            icon.classList.add('ti-eye-off');
+        }
+    });
+});
 </script>
 @endpush

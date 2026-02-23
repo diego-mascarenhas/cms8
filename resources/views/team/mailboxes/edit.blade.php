@@ -70,9 +70,12 @@
                 </div>
                 <div class="col-md-6">
                     <label for="password" class="form-label">{{ __('Password') }}</label>
-                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="{{ __('Dejar en blanco para no cambiar') }}">
+                    <div class="input-group input-group-merge">
+                        <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="{{ __('Dejar en blanco para no cambiar') }}">
+                        <span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
+                    </div>
                     @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
 
@@ -95,4 +98,29 @@
         </form>
     </div>
 </div>
+@endsection
+
+@section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.toggle-password').forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+            var group = e.currentTarget.closest('.input-group');
+            var input = group.querySelector('input');
+            var icon = group.querySelector('i');
+            if (input && icon) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('ti-eye-off');
+                    icon.classList.add('ti-eye');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('ti-eye');
+                    icon.classList.add('ti-eye-off');
+                }
+            }
+        });
+    });
+});
+</script>
 @endsection
