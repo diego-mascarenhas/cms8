@@ -46,6 +46,11 @@ class UserController extends Controller
      */
     public function create()
     {
+        if (! Auth::user()->can('user.create'))
+        {
+            abort(403);
+        }
+
         $roles = Role::all();
 
         return view('user.form', [
@@ -58,6 +63,11 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        if (! Auth::user()->can('user.create'))
+        {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -122,9 +132,12 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        // Allow users to edit themselves or if they have permission
+        // Allow users to edit themselves, or if they have permission/role (align with user/action.blade.php)
         $currentUser = Auth::user();
-        if (! $currentUser->can('user.edit') && Auth::id() !== $user->id)
+        $canEdit = Auth::id() === $user->id
+            || $currentUser->can('user.edit')
+            || $currentUser->hasRole(['admin', 'developer']);
+        if (! $canEdit)
         {
             abort(403);
         }
@@ -148,9 +161,12 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        // Allow users to update themselves or if they have permission
+        // Allow users to update themselves or if they have permission/role (align with edit)
         $currentUser = Auth::user();
-        if (! $currentUser->can('user.update') && Auth::id() !== $user->id)
+        $canUpdate = Auth::id() === $user->id
+            || $currentUser->can('user.update')
+            || $currentUser->hasRole(['admin', 'developer']);
+        if (! $canUpdate)
         {
             abort(403);
         }

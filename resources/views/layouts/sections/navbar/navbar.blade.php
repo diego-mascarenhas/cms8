@@ -402,6 +402,14 @@
         @endif
         <!--/ Notification -->
 
+        <!-- Mail -->
+        <li class="nav-item me-3 me-xl-1">
+            <a class="nav-link" href="{{ route('mail-list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mail') }}">
+                <i class="ti ti-mail ti-md"></i>
+            </a>
+        </li>
+        <!--/ Mail -->
+
         <!-- WhatsApp Support -->
         @if(config('app.whatsapp_support'))
             <li class="nav-item me-3 me-xl-1">
@@ -483,7 +491,7 @@
                 </li>
 
                 @if (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
-                    {{-- Variables de configuración (Team Settings module) --}}
+                    {{-- Configuration variables (Team Settings module) --}}
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
                             <i class="ti ti-adjustments-alt me-2 ti-sm"></i>

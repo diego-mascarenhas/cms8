@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Mailbox extends Model
 {
@@ -27,5 +28,10 @@ class Mailbox extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function emails(): HasMany
+    {
+        return $this->hasMany(Email::class);
     }
 }

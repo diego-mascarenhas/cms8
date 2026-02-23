@@ -2,7 +2,7 @@
   @if (Gate::check('addTeamMember', $team))
 
     <!-- Add Team Member -->
-    <x-form-section submit="addTeamMember">
+    <x-form-section id="add-team-member" submit="addTeamMember">
       <x-slot name="title">
         {{ __('Add Team Member') }}
       </x-slot>
@@ -38,7 +38,7 @@
               <x-input-error for="role" />
             </div>
 
-            {{-- Mostrar todos los roles del sistema (Spatie) como referencia --}}
+            {{-- Show all system roles (Spatie) as reference --}}
             @php
               $allSpatieRoles = \Spatie\Permission\Models\Role::pluck('name');
             @endphp
@@ -135,7 +135,7 @@
 
     <div class="mt-4">
       <!-- Manage Team Members -->
-    <x-action-section>
+    <x-action-section id="team-members">
       <x-slot name="title">
         {{ __('Team Members') }}
       </x-slot>
@@ -183,10 +183,10 @@
                 </button>
               @endif
 
-              {{-- Badges con TODOS los roles Spatie que posee el usuario --}}
+              {{-- Badges for all Spatie roles the user has (hidden) --}}
               @php($userSpatieRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames() : collect())
               @if ($userSpatieRoles->count())
-                <div class="ms-3 align-self-center">
+                <div class="ms-3 align-self-center d-none">
                   @foreach ($userSpatieRoles as $sr)
                     <span class="badge bg-label-primary me-1">{{ ucfirst($sr) }}</span>
                   @endforeach

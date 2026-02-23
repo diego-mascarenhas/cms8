@@ -373,6 +373,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+    Route::get('/mail/sync', [MailController::class, 'sync'])->name('mail-sync');
 
     // Services
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
@@ -709,7 +710,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
     Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
 
-    // Tarifas Personalizadas de Usuario
+    // User Custom Fares
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
     Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
     Route::post('/user-fare', [UserFareController::class, 'store'])->name('user-fare.store');

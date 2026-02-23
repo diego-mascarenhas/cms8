@@ -20,6 +20,23 @@
 				allowClear: true
 			});
 		}
+		// Toggle password visibility (eye icon)
+		document.querySelectorAll('.toggle-password').forEach(function(toggle) {
+			toggle.addEventListener('click', function(e) {
+				var group = e.currentTarget.closest('.input-group');
+				var input = group.querySelector('input');
+				var icon = group.querySelector('i');
+				if (input.type === 'password') {
+					input.type = 'text';
+					icon.classList.remove('ti-eye-off');
+					icon.classList.add('ti-eye');
+				} else {
+					input.type = 'password';
+					icon.classList.remove('ti-eye');
+					icon.classList.add('ti-eye-off');
+				}
+			});
+		});
 	});
 </script>
 @endsection
@@ -28,9 +45,14 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Users') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
-		<p class="text-muted">{{ __('Manage team users') }}</p>
+		<p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
+		@if(isset($data->id) && auth()->user()->currentTeam && (Gate::check('addTeamMember', auth()->user()->currentTeam) || Gate::check('updateTeamMember', auth()->user()->currentTeam)))
+			<a href="{{ route('teams.show', auth()->user()->currentTeam) }}#team-members" class="btn btn-primary waves-effect waves-light">
+				<i class="ti ti-users me-1"></i>{{ __('Manage user') }}
+			</a>
+		@endif
 		@can('user.index')
 			<a href="{{ route('user.index') }}" class="btn btn-outline-secondary waves-effect waves-light">
 				<i class="ti ti-arrow-left me-1"></i>{{ __('Back to Users') }}
@@ -57,26 +79,32 @@
 
 			<div class="col-md-6">
 				<label for="password" class="form-label">{{ __('Password') }} {{ !isset($data->id) ? '(*)' : '(' . __('leave blank to keep current') . ')' }}</label>
-				<input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" />
+				<div class="input-group input-group-merge">
+					<input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" />
+					<span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
+				</div>
 				@error('password')
-					<div class="invalid-feedback">{{ $message }}</div>
+					<div class="invalid-feedback d-block">{{ $message }}</div>
 				@enderror
 			</div>
 
 			<div class="col-md-6">
 				<label for="password_confirmation" class="form-label">{{ __('Confirm Password') }}</label>
-				<input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" />
+				<div class="input-group input-group-merge">
+					<input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" />
+					<span class="input-group-text cursor-pointer toggle-password" title="{{ __('Show password') }}"><i class="ti ti-eye-off"></i></span>
+				</div>
 				@error('password_confirmation')
-					<div class="invalid-feedback">{{ $message }}</div>
+					<div class="invalid-feedback d-block">{{ $message }}</div>
 				@enderror
 			</div>
 
-			<div class="col-md-6">
+			<div class="col-md-6 d-none">
 				<label for="role_ids" class="form-label">{{ __('Roles') }} (*)</label>
 				<select class="form-select @error('role_ids') is-invalid @enderror" id="role_ids" name="role_ids[]" multiple>
 					@foreach($roles as $role)
 						<option value="{{ $role->id }}"
-							@if(in_array($role->id, old('role_ids', (isset($data) ? $data->roles->pluck('id')->toArray() : [])))) selected @endif>
+							@if(in_array($role->id, old('role_ids', isset($data) ? $data->roles->pluck('id')->toArray() : ($roles->isNotEmpty() ? [$roles->first()->id] : [])))) selected @endif>
 							{{ ucfirst($role->name) }}
 						</option>
 					@endforeach

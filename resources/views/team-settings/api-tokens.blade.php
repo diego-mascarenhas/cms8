@@ -14,7 +14,7 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i>Back to Settings
+            <i class="ti ti-arrow-left me-1"></i>{{ __('Back to Settings') }}
         </a>
     </div>
 </div>

@@ -191,7 +191,7 @@
                             }
                         @endphp
 
-                        {{-- Mostrar facturas activas --}}
+                        {{-- Show active invoices --}}
                         @foreach($activeInvoices as $invoice)
                         <tr>
                             <td>{{ $invoice['number'] }}</td>
@@ -230,7 +230,7 @@
                         </tr>
                         @endforeach
 
-                        {{-- Mostrar facturas anuladas/incobrables si existen --}}
+                        {{-- Show cancelled/uncollectible invoices if any --}}
                         @if(count($inactiveInvoices) > 0)
                         <tr class="bg-light border-top">
                             <td colspan="6" class="py-3">

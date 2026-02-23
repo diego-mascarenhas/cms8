@@ -7,6 +7,13 @@
         </button>
     </h5>
     <div class="card-body">
+        @if ($data->currentSentiment && $data->currentSentiment->sentiment)
+            <p class="text-body mb-3">
+                <span class="fw-medium">{{ $data->currentSentiment->sentiment->name }}</span>
+                {!! $data->currentSentiment->sentiment->emoji !!}
+                — <span class="text-muted">{{ Str::limit($data->currentSentiment->notes, 120) }}</span>
+            </p>
+        @endif
         <ul class="timeline mb-4 ms-3">
             @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
                 <li class="timeline-item timeline-item-transparent">

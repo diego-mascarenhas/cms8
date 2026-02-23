@@ -66,7 +66,7 @@
                             >
                         </div>
 
-                        {{-- Coordenadas (ocultas temporalmente) --}}
+                        {{-- Coordinates (hidden temporarily) --}}
                         {{-- <div class="col-md-6">
                             <label for="birth_latitude" class="form-label">
                                 Latitud <small class="text-muted">(opcional)</small>

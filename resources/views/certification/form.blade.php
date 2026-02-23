@@ -54,7 +54,7 @@
                         }
                     });
                     
-                    // Enviar el formulario
+                    // Submit the form
                     form.submit();
                 }
             });

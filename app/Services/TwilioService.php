@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -460,6 +461,12 @@ class TwilioService
                 Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
             }
 
+            // Queue AI sentiment analysis for WhatsApp (all channels use same job)
+            if ($channel === 'whatsapp')
+            {
+                $this->dispatchSentimentAnalysis($cleanFrom, $body);
+            }
+
             // Check if this is part of a registration process
             if ($channel == 'whatsapp')
             {
@@ -545,9 +552,6 @@ class TwilioService
                     {
                         Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
                     }
-
-                    // Analyze sentiment of the incoming message
-                    $this->analyzeSentiment($cleanFrom, $body);
                 } catch (\Exception $e)
                 {
                     Log::error('Error in auto AI response: '.$e->getMessage());
@@ -644,226 +648,41 @@ class TwilioService
     }
 
     /**
-     * Analyze sentiment of incoming message and create sentiment history if emotion is detected
+     * Queue AI sentiment analysis for incoming WhatsApp message (contact resolved by phone).
      */
-    private function analyzeSentiment($phoneNumber, $messageBody)
+    private function dispatchSentimentAnalysis(string $phoneNumber, string $messageBody): void
     {
         try
         {
-            // Find user by phone number
             $phoneAsInt = is_numeric($phoneNumber) ? (int) $phoneNumber : null;
             $user = null;
 
             if ($phoneAsInt)
             {
-                $user = \App\Models\User::where('phone', $phoneAsInt)->first();
+                $user = User::where('phone', $phoneAsInt)->first();
             }
 
             if (! $user)
             {
-                $user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
+                $user = User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
             }
 
             if (! $user)
             {
-                Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
-
                 return;
             }
 
-            // Find associated contact
-            $contact = \App\Models\Contact::where('user_id', $user->id)->first();
+            $contact = Contact::withoutGlobalScopes()->where('user_id', $user->id)->first();
             if (! $contact)
             {
-                Log::info('No contact found for sentiment analysis', ['user_id' => $user->id]);
-
                 return;
             }
 
-            // Analyze message for emotional indicators
-            $sentiment = $this->detectSentiment($messageBody);
-
-            if ($sentiment)
-            {
-                // Create sentiment history entry
-                \App\Models\ContactSentimentHistory::create([
-                    'contact_id' => $contact->id,
-                    'sentiment_id' => $sentiment['id'],
-                    'notes' => 'Análisis automático de WhatsApp: '.$sentiment['reason'],
-                ]);
-
-                Log::info('Sentiment detected and recorded', [
-                    'contact_id' => $contact->id,
-                    'sentiment' => $sentiment['name'],
-                    'message' => substr($messageBody, 0, 100),
-                ]);
-            }
+            RecordContactSentimentJob::dispatch($contact->id, $messageBody, 'whatsapp');
         } catch (\Exception $e)
         {
-            Log::error('Error in sentiment analysis: '.$e->getMessage());
+            Log::error('Error dispatching sentiment analysis: '.$e->getMessage());
         }
-    }
-
-    /**
-     * Detect sentiment from message content
-     * Returns array with sentiment info or null if no strong emotion detected
-     */
-    private function detectSentiment($message)
-    {
-        $message = strtolower($message);
-
-        // Very negative indicators (sentiment_id = 1)
-        $veryNegativeKeywords = [
-            'terrible',
-            'horrible',
-            'pésimo',
-            'malísimo',
-            'odio',
-            'detesto',
-            'furioso',
-            'indignado',
-            'inaceptable',
-            'vergonzoso',
-            'estafa',
-            'robo',
-            'ladrones',
-            'cancelar',
-            'cancelaré',
-            'nunca más',
-            'demanda',
-            'denuncia',
-            'abogado',
-            'fraude',
-        ];
-
-        // Negative indicators (sentiment_id = 2)
-        $negativeKeywords = [
-            'molesto',
-            'enfadado',
-            'problema',
-            'falla',
-            'error',
-            'mal',
-            'no funciona',
-            'deficiente',
-            'lento',
-            'caro',
-            'insatisfecho',
-            'decepcionado',
-            'preocupado',
-            'disgustado',
-        ];
-
-        // Very positive indicators (sentiment_id = 5)
-        $veryPositiveKeywords = [
-            'excelente',
-            'fantástico',
-            'perfecto',
-            'increíble',
-            'maravilloso',
-            'espectacular',
-            'genial',
-            'amor',
-            'amo',
-            'feliz',
-            'encantado',
-            'satisfecho',
-            'recomiendo',
-            'recomendaré',
-            '10/10',
-            'cinco estrellas',
-        ];
-
-        // Positive indicators (sentiment_id = 4)
-        $positiveKeywords = [
-            'bien',
-            'bueno',
-            'gracias',
-            'perfecto',
-            'ok',
-            'vale',
-            'correcto',
-            'funciona',
-            'rápido',
-            'eficiente',
-            'útil',
-            'contento',
-        ];
-
-        // Check for very negative sentiment
-        foreach ($veryNegativeKeywords as $keyword)
-        {
-            if (strpos($message, $keyword) !== false)
-            {
-                return [
-                    'id' => 1,
-                    'name' => 'Muy Negativo',
-                    'reason' => "Detectada palabra clave: '$keyword'",
-                ];
-            }
-        }
-
-        // Check for negative sentiment
-        foreach ($negativeKeywords as $keyword)
-        {
-            if (strpos($message, $keyword) !== false)
-            {
-                return [
-                    'id' => 2,
-                    'name' => 'Negativo',
-                    'reason' => "Detectada palabra clave: '$keyword'",
-                ];
-            }
-        }
-
-        // Check for very positive sentiment
-        foreach ($veryPositiveKeywords as $keyword)
-        {
-            if (strpos($message, $keyword) !== false)
-            {
-                return [
-                    'id' => 5,
-                    'name' => 'Muy Positivo',
-                    'reason' => "Detectada palabra clave: '$keyword'",
-                ];
-            }
-        }
-
-        // Check for positive sentiment
-        foreach ($positiveKeywords as $keyword)
-        {
-            if (strpos($message, $keyword) !== false)
-            {
-                return [
-                    'id' => 4,
-                    'name' => 'Positivo',
-                    'reason' => "Detectada palabra clave: '$keyword'",
-                ];
-            }
-        }
-
-        // Additional patterns for negative sentiment
-        if (preg_match('/no\s+(funciona|sirve|me\s+gusta|está\s+bien)/i', $message))
-        {
-            return [
-                'id' => 2,
-                'name' => 'Negativo',
-                'reason' => 'Detectado patrón negativo',
-            ];
-        }
-
-        // Additional patterns for very negative sentiment
-        if (preg_match('/es\s+una\s+(mierda|basura|estafa)/i', $message))
-        {
-            return [
-                'id' => 1,
-                'name' => 'Muy Negativo',
-                'reason' => 'Detectado lenguaje muy negativo',
-            ];
-        }
-
-        // No strong emotion detected
-        return null;
     }
 
     /**
