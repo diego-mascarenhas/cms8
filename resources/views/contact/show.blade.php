@@ -51,8 +51,14 @@
                     {{ $data->currentSentiment->sentiment->emoji }}
                 @endif
             </h4>
-            <p class="text-muted">
-                Creado el {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
+            <p class="text-muted mb-0">
+                Creado el {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
+            </p>
+            @if ($data->currentSentiment && $data->currentSentiment->sentiment && $data->currentSentiment->notes)
+                <p class="text-muted small mb-0 mt-1">
+                    {{ $data->currentSentiment->sentiment->name }} — {{ Str::limit($data->currentSentiment->notes, 100) }}
+                </p>
+            @endif
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
             <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i

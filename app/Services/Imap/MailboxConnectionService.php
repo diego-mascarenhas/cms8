@@ -2,8 +2,10 @@
 
 namespace App\Services\Imap;
 
+use App\Jobs\ProcessEmailSentimentJob;
 use App\Models\Email;
 use App\Models\Mailbox;
+use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Client;
 use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
 use Webklex\PHPIMAP\Message;
@@ -58,10 +60,20 @@ class MailboxConnectionService
         $count = 0;
         foreach ($messages as $message)
         {
-            if ($message instanceof Message)
+            if (! $message instanceof Message)
+            {
+                continue;
+            }
+            try
             {
                 $this->persistMessage($mailbox, $message);
                 $count++;
+            } catch (\Throwable $e)
+            {
+                Log::warning('Mail sync: skip message due to error', [
+                    'mailbox_id' => $mailbox->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -104,7 +116,7 @@ class MailboxConnectionService
         $dateAttr = $message->getDate();
         $carbonDate = $dateAttr && method_exists($dateAttr, 'toDate') ? $dateAttr->toDate() : null;
 
-        return Email::updateOrCreate(
+        $email = Email::updateOrCreate(
             [
                 'mailbox_id' => $mailbox->id,
                 'message_id' => $messageId,
@@ -121,6 +133,19 @@ class MailboxConnectionService
                 'flagged' => $message->hasFlag('Flagged'),
             ],
         );
+
+        if ($email->wasRecentlyCreated)
+        {
+            try
+            {
+                ProcessEmailSentimentJob::dispatch($email->id);
+            } catch (\Throwable $e)
+            {
+                Log::warning('Mail sync: could not dispatch sentiment job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $email;
     }
 
     protected function getMessageIdString(Message $message): string
