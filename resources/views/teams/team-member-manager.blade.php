@@ -2,7 +2,7 @@
   @if (Gate::check('addTeamMember', $team))
 
     <!-- Add Team Member -->
-    <x-form-section submit="addTeamMember">
+    <x-form-section id="add-team-member" submit="addTeamMember">
       <x-slot name="title">
         {{ __('Add Team Member') }}
       </x-slot>
@@ -135,7 +135,7 @@
 
     <div class="mt-4">
       <!-- Manage Team Members -->
-    <x-action-section>
+    <x-action-section id="team-members">
       <x-slot name="title">
         {{ __('Team Members') }}
       </x-slot>

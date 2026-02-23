@@ -4,12 +4,10 @@
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -39,62 +37,6 @@
 				}
 			});
 		});
-		// Delete user (remove from team) button
-		$('#btn-delete-user').on('click', function() {
-			var userId = {{ isset($data->id) ? $data->id : 'null' }};
-			if (!userId) return;
-			Swal.fire({
-				title: '{{ __("Are you sure?") }}',
-				text: "{{ __('Do you want to remove this user from the team?') }}",
-				icon: 'warning',
-				showCancelButton: true,
-				confirmButtonText: '{{ __("Yes, remove") }}',
-				cancelButtonText: '{{ __("Cancel") }}',
-				customClass: {
-					confirmButton: 'btn btn-primary me-3',
-					cancelButton: 'btn btn-label-secondary'
-				},
-				buttonsStyling: false
-			}).then(function (result) {
-				if (result.value) {
-					fetch("{{ route('user.destroy', ['id' => ':ID']) }}".replace(':ID', userId), {
-						method: 'DELETE',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-CSRF-TOKEN': '{{ csrf_token() }}'
-						}
-					})
-					.then(response => response.json())
-					.then(data => {
-						if (data.error) {
-							Swal.fire({
-								icon: 'error',
-								title: '{{ __("Error") }}',
-								text: data.error,
-								customClass: { confirmButton: 'btn btn-primary' }
-							});
-						} else {
-							Swal.fire({
-								icon: 'success',
-								title: '{{ __("Success!") }}',
-								text: data.success,
-								customClass: { confirmButton: 'btn btn-success' }
-							}).then(function() {
-								window.location.href = "{{ route('user.index') }}";
-							});
-						}
-					})
-					.catch(function() {
-						Swal.fire({
-							icon: 'error',
-							title: '{{ __("Error") }}',
-							text: '{{ __("An error occurred while processing the request") }}',
-							customClass: { confirmButton: 'btn btn-primary' }
-						});
-					});
-				}
-			});
-		});
 	});
 </script>
 @endsection
@@ -106,10 +48,10 @@
 		<p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		@if(isset($data->id) && auth()->id() != $data->id && (auth()->user()->can('user.destroy') || auth()->user()->hasRole(['admin'])))
-			<button type="button" class="btn btn-danger waves-effect waves-light" id="btn-delete-user">
-				<i class="ti ti-trash me-1"></i>{{ __('Remove from team') }}
-			</button>
+		@if(isset($data->id) && auth()->user()->currentTeam && (Gate::check('addTeamMember', auth()->user()->currentTeam) || Gate::check('updateTeamMember', auth()->user()->currentTeam)))
+			<a href="{{ route('teams.show', auth()->user()->currentTeam) }}#team-members" class="btn btn-primary waves-effect waves-light">
+				<i class="ti ti-users me-1"></i>{{ __('Manage user') }}
+			</a>
 		@endif
 		@can('user.index')
 			<a href="{{ route('user.index') }}" class="btn btn-outline-secondary waves-effect waves-light">

@@ -1,6 +1,6 @@
-@props(['submit'])
+@props(['submit', 'id' => null])
 
-<div class="card">
+<div class="card" @if($id) id="{{ $id }}" @endif>
   <h5 class="card-header">
     {{ $title }}
   </h5>

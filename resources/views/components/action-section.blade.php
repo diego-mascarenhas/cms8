@@ -1,4 +1,5 @@
-<div class="card">
+@props(['id' => null])
+<div class="card" @if($id) id="{{ $id }}" @endif>
   <h5 class="card-header">
     {{ $title }}
   </h5>
