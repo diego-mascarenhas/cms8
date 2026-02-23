@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class TeamSetting extends Model
 {
@@ -30,7 +32,19 @@ class TeamSetting extends Model
     {
         if ($this->is_encrypted && $value)
         {
-            $value = Crypt::decryptString($value);
+            try
+            {
+                $value = Crypt::decryptString($value);
+            }
+            catch (DecryptException $e)
+            {
+                Log::warning('TeamSetting decryption failed (key changed or corrupted)', [
+                    'team_id' => $this->team_id,
+                    'key' => $this->key,
+                    'exception' => $e->getMessage(),
+                ]);
+                $value = null;
+            }
         }
 
         switch ($this->type)

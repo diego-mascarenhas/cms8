@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Team;
+use App\Models\WordPressSyncPage;
+use App\Models\WordPressSyncPost;
+use App\Models\WordPressSyncProduct;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -19,6 +22,20 @@ class WordPressService
         $password = $this->team->getSetting('wordpress_application_password');
 
         return ! empty($url) && ! empty($user) && ! empty($password);
+    }
+
+    /**
+     * Last time any WordPress sync (pages, posts, products) ran for this team.
+     */
+    public function getLastSyncedAt(): ?\Carbon\Carbon
+    {
+        $teamId = $this->team->id;
+        $pages = WordPressSyncPage::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+        $posts = WordPressSyncPost::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+        $products = WordPressSyncProduct::withoutGlobalScope('team')->where('team_id', $teamId)->max('synced_at');
+        $max = collect([$pages, $posts, $products])->filter()->max();
+
+        return $max ? \Carbon\Carbon::parse($max) : null;
     }
 
     protected function baseUrl(): string

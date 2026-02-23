@@ -109,7 +109,10 @@
                             <i class="ti ti-mail mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Email Configuration</h5>
                             <p class="card-text">Configure SMTP and IMAP settings for incoming and outgoing emails</p>
-                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'email']) }}" class="btn btn-primary">Configure</a>
+                            <div class="btn-group">
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'email']) }}" class="btn btn-primary">Configure</a>
+                                <a href="{{ route('team.mailboxes.index', $team) }}" class="btn btn-outline-primary">Gestionar casillas</a>
+                            </div>
                         </div>
                     </div>
                 </div>

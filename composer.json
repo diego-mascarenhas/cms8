@@ -16,7 +16,7 @@
     "guzzlehttp/guzzle": "^7.9",
     "idoneo/humano-academy": "dev-main",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
-    "laravel/ai": "^0.1.5",
+    "laravel/ai": "^0.2",
     "laravel/cashier": "^15.0",
     "laravel/framework": "^12.0",
     "laravel/jetstream": "^5.0",
@@ -39,6 +39,7 @@
     "symfony/var-dumper": "*",
     "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",
+    "webklex/laravel-imap": "*",
     "yajra/laravel-datatables": "^12.0",
     "yajra/laravel-datatables-oracle": "^12.0"
   },

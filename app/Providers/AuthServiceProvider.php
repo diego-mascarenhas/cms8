@@ -10,6 +10,7 @@ use App\Models\EnterpriseDepartment;
 use App\Models\Fare;
 use App\Models\Invoice;
 use App\Models\LanguageVariant;
+use App\Models\Mailbox;
 use App\Models\Multimedia;
 use App\Models\Project;
 use App\Models\Prompt;
@@ -24,6 +25,7 @@ use App\Policies\EnterpriseDepartmentPolicy;
 use App\Policies\FarePolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
+use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\PromptPolicy;
@@ -50,6 +52,7 @@ class AuthServiceProvider extends ServiceProvider
         Software::class => SoftwarePolicy::class,
         Stylebook::class => StyleBookPolicy::class,
         Content::class => ContentPolicy::class,
+        Mailbox::class => MailboxPolicy::class,
     ];
 
     public function boot()

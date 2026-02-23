@@ -17,12 +17,23 @@
             <h4 class="mb-1 mt-3">{{ __('Products') }}</h4>
             <p class="text-muted">{{ __('Products from your WooCommerce store') }}</p>
         </div>
-        <div class="mt-3 mt-md-0">
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
+            @if (!empty($wordpressConfigured))
+            <form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-refresh me-1"></i>{{ __('Sincronizar contenido con el asistente') }}
+                </button>
+            </form>
+            @endif
             @can('product.create')
                 <a href="{{ route('product.create') }}" class="btn btn-primary">
                     <i class="ti ti-plus me-1"></i> {{ __('Create product') }}
                 </a>
             @endcan
+            @if (!empty($lastSyncedAt))
+            <span class="text-muted small">{{ __('Última sincronización') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
+            @endif
         </div>
     </div>
 

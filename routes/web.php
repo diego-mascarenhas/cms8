@@ -59,6 +59,7 @@ use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamInvitationConfirmController;
+use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TimeController;
@@ -161,6 +162,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+
+    // Team Mailboxes
+    Route::get('/team/{team}/mailboxes', [TeamMailboxController::class, 'index'])->name('team.mailboxes.index');
+    Route::get('/team/{team}/mailboxes/create', [TeamMailboxController::class, 'create'])->name('team.mailboxes.create');
+    Route::post('/team/{team}/mailboxes', [TeamMailboxController::class, 'store'])->name('team.mailboxes.store');
+    Route::get('/team/{team}/mailboxes/{mailbox}/edit', [TeamMailboxController::class, 'edit'])->name('team.mailboxes.edit');
+    Route::put('/team/{team}/mailboxes/{mailbox}', [TeamMailboxController::class, 'update'])->name('team.mailboxes.update');
+    Route::delete('/team/{team}/mailboxes/{mailbox}', [TeamMailboxController::class, 'destroy'])->name('team.mailboxes.destroy');
+    Route::post('/team/{team}/mailboxes/{mailbox}/test-connection', [TeamMailboxController::class, 'testConnection'])->name('team.mailboxes.test-connection');
     Route::post('/team/{team}/test-twilio', [TeamSettingController::class, 'testTwilioConnection'])->name('team-settings.test-twilio');
 
     // Team Valorations
@@ -529,6 +539,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
+    Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');
     Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
     Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
     Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');

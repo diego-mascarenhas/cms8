@@ -67,6 +67,14 @@ class Team extends JetstreamTeam
         return $this->hasMany(TeamSetting::class);
     }
 
+    /**
+     * Get the mailboxes for the team.
+     */
+    public function mailboxes()
+    {
+        return $this->hasMany(Mailbox::class);
+    }
+
     public function getSetting($key, $default = null)
     {
         // If settings are already loaded, use them to avoid N+1 queries

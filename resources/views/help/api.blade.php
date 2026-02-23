@@ -156,6 +156,11 @@
                                             <td><code>/api/team/prompts</code></td>
                                             <td>{{ __('AI-powered prompts for content generation (team token auth)') }}</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>{{ __('Assistant Chat') }}</strong></td>
+                                            <td><code>POST /api/team/assistant/chat</code></td>
+                                            <td>{{ __('Chat with the full assistant (router + flows). Body: message, optional prompt_key. Team token auth.') }}</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>

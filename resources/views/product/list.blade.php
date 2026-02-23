@@ -20,14 +20,38 @@
 		<h4 class="mb-1 mt-3">{{ __('Productos') }}</h4>
 		<p class="text-muted">{{ __('Gestiona tus productos') }}</p>
 	</div>
-	@can('product.create')
-	<div class="mt-3 mt-md-0">
+	<div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
+		@if (!empty($wordpressConfigured))
+		<form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
+			@csrf
+			<button type="submit" class="btn btn-primary">
+				<i class="ti ti-refresh me-1"></i>{{ __('Sincronizar contenido con el asistente') }}
+			</button>
+		</form>
+		@endif
+		@can('product.create')
 		<a href="{{ route('product.create') }}" class="btn btn-primary">
 			<i class="ti ti-plus me-1"></i> {{ __('Agregar Producto') }}
 		</a>
+		@endcan
+		@if (!empty($lastSyncedAt))
+		<span class="text-muted small">{{ __('Última sincronización') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
+		@endif
 	</div>
-	@endcan
 </div>
+
+@if (session('success'))
+<div class="alert alert-success alert-dismissible mb-3" role="alert">
+	{{ session('success') }}
+	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+@if (session('error'))
+<div class="alert alert-danger alert-dismissible mb-3" role="alert">
+	{{ session('error') }}
+	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
 
 <!-- Product List Widget -->
 <div class="card mb-4">
@@ -68,7 +92,7 @@
 					<div class="d-flex justify-content-between align-items-start border-end pb-3 pb-sm-0 card-widget-3">
 						<div>
 							<h6 class="mb-2">{{ __('Categorías') }}</h6>
-							<h4 class="mb-2">{{ \App\Models\Category::where('module_id', \App\Models\Module::where('key', 'products')->first()->id ?? 0)->count() }}</h4>
+							<h4 class="mb-2">{{ \App\Models\Category::where('module_id', \App\Models\Module::where('key', 'products')->first()?->id ?? 0)->count() }}</h4>
 							<p class="mb-0 text-muted">{{ __('Total') }}</p>
 						</div>
 						<span class="avatar p-2 me-sm-4">
