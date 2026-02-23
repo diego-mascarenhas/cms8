@@ -39,6 +39,7 @@
     "symfony/var-dumper": "*",
     "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",
+    "webklex/laravel-imap": "*",
     "yajra/laravel-datatables": "^12.0",
     "yajra/laravel-datatables-oracle": "^12.0"
   },
