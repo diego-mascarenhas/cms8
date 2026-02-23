@@ -373,6 +373,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+    Route::get('/mail/sync', [MailController::class, 'sync'])->name('mail-sync');
 
     // Services
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');

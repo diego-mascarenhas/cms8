@@ -99,6 +99,14 @@ class Kernel extends ConsoleKernel
                 Log::error('Exchange rates fetch command failed');
             })
             ->runInBackground();
+
+        // ============================================
+        // MAILBOXES (IMAP SYNC)
+        // ============================================
+        $schedule->command('mailboxes:sync')
+            ->everyFiveMinutes()
+            ->name('mailboxes-sync')
+            ->description('Sync emails from team mailboxes into the database');
     }
 
     /**

@@ -402,6 +402,14 @@
         @endif
         <!--/ Notification -->
 
+        <!-- Mail -->
+        <li class="nav-item me-3 me-xl-1">
+            <a class="nav-link" href="{{ route('mail-list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mail') }}">
+                <i class="ti ti-mail ti-md"></i>
+            </a>
+        </li>
+        <!--/ Mail -->
+
         <!-- WhatsApp Support -->
         @if(config('app.whatsapp_support'))
             <li class="nav-item me-3 me-xl-1">

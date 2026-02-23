@@ -21,49 +21,18 @@
 
 @section('page-script')
     <script src="{{ asset('assets/js/app-email.js') }}"></script>
-    <script>
-    // #region agent log
-    (function() {
-        var endpoint = 'http://127.0.0.1:7242/ingest/99d81a34-7fe9-40b7-b5cc-9ce4fa7dff4c';
-        var sessionId = 'e41f19';
-        function sendLog(message, data, hypothesisId) {
-            fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': sessionId }, body: JSON.stringify({ sessionId: sessionId, location: 'mail/index', message: message, data: data || {}, hypothesisId: hypothesisId || 'A', timestamp: Date.now() }) }).catch(function() {});
-        }
-        function observePanel() {
-            var el = document.getElementById('app-email-view');
-            if (!el) return;
-            var hadShow = el.classList.contains('show');
-            var obs = new MutationObserver(function() {
-                var hasShow = el.classList.contains('show');
-                if (hasShow !== hadShow) {
-                    sendLog(hasShow ? 'panel gained show' : 'panel lost show', { hasShow: hasShow }, 'A');
-                    if (!hasShow) {
-                        requestAnimationFrame(function() {
-                            var panel = document.getElementById('app-email-view');
-                            if (!panel || panel.classList.contains('show')) return;
-                            var card = panel.querySelector('.email-card-prev');
-                            if (card && !card.classList.contains('d-none')) {
-                                panel.classList.add('show');
-                                sendLog('reapplied show after morph', { runId: 'post-fix' }, 'A');
-                            }
-                        });
-                    }
-                    hadShow = hasShow;
-                }
-            });
-            obs.observe(el, { attributes: true, attributeFilter: ['class'] });
-        }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observePanel);
-        else observePanel();
-    })();
-    // #endregion
-    </script>
 @endsection
 
 @section('content')
     @if (session('mail_error'))
         <div class="alert alert-danger alert-dismissible mb-3" role="alert">
             {{ session('mail_error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if (session('mail_success'))
+        <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('mail_success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif

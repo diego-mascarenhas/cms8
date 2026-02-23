@@ -1,4 +1,4 @@
-<div class="col d-flex flex-grow-1 p-0" style="min-width: 0;">
+<div class="col d-flex flex-grow-1 p-0" style="min-width: 0;" x-data>
     <!-- Emails List -->
     <div class="col app-emails-list">
         <div class="shadow-none border-0">
@@ -18,7 +18,7 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center mb-0 mb-md-2">
-                        <a href="{{ route('mail-list') }}" class="text-body" title="{{ __('Sincronizar') }}" aria-label="{{ __('Sincronizar correo') }}">
+                        <a href="{{ route('mail-sync') }}" class="text-body" title="{{ __('Sincronizar') }}" aria-label="{{ __('Sincronizar correo') }}">
                             <i class="ti ti-rotate-clockwise ti-sm rotate-180 scaleX-n1-rtl cursor-pointer email-refresh me-2"></i>
                         </a>
                         <div class="dropdown d-flex align-self-center">
@@ -106,10 +106,9 @@
                             $words = array_filter(explode(' ', strip_tags((string) $fromName)));
                             $initials = strtoupper(substr($words[0] ?? 'U', 0, 1) . substr($words[1] ?? '', 0, 1));
                         @endphp
-                        <li class="email-list-item email-marked-read" data-starred="false" data-bs-toggle="sidebar"
-                            data-target="#app-email-view" role="button" tabindex="0"
-                            wire:click="selectEmail({{ $index }})"
-                            wire:key="email-{{ $index }}">
+                        <li class="email-list-item email-marked-read" data-starred="false" role="button" tabindex="0"
+                            wire:key="email-{{ $index }}"
+                            @click="$wire.selectEmail({{ $index }}); document.getElementById('app-email-view')?.classList.add('show')">
                             <div class="d-flex align-items-center">
                                 <div class="form-check mb-0">
                                     <input class="email-list-item-input form-check-input" type="checkbox" id="email-{{ $index }}" wire:click.stop>
@@ -157,7 +156,7 @@
     </div>
 
     <!-- Email View -->
-    <div class="col app-email-view flex-grow-0 bg-body" id="app-email-view">
+    <div class="col app-email-view flex-grow-0 bg-body {{ $this->selectedEmail ? 'show' : '' }}" id="app-email-view">
         <div class="card shadow-none border-0 rounded-0 app-email-view-header p-3 py-md-3 py-2">
             <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="d-flex align-items-center overflow-hidden">
@@ -223,7 +222,7 @@
             </div>
         </div>
         <hr class="m-0">
-        <div class="app-email-view-content py-4">
+        <div class="app-email-view-content py-4 overflow-y-auto" style="overflow-y: auto;" wire:key="email-view-content-{{ $this->selectedIndex ?? 'none' }}">
             @if(!$this->selectedEmail)
                 <p class="text-center text-muted py-5">{{ __('Haz clic en un mensaje de la lista para ver su contenido.') }}</p>
             @else
@@ -242,7 +241,7 @@
                                         // keep as is
                     }
                 @endphp
-                <div class="card email-card-prev mx-sm-4 mx-3">
+                <div class="card email-view-body-card mx-sm-4 mx-3">
                     <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
                         <div class="d-flex align-items-center mb-sm-0 mb-3">
                             <div class="avatar flex-shrink-0 me-3">
