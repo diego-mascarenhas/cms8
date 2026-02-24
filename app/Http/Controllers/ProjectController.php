@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
 use App\Http\Requests\StoreProjectRequest;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactProject;
 use App\Models\Fare;
 use App\Models\Language;
+use App\Models\Module;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Prompt;
@@ -119,6 +121,12 @@ class ProjectController extends Controller
             ->active()
             ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
 
+        $taskCategoriesContext = $this->getTaskCategoriesContextForAi();
+        if ($taskCategoriesContext !== '')
+        {
+            $instructions .= "\n\n".$taskCategoriesContext;
+        }
+
         $userMessage = $instructions."\n\n---\n\nEntrada del usuario:\n\n".trim($request->input('budget_given'));
 
         try
@@ -181,6 +189,7 @@ class ProjectController extends Controller
 
         $clientItems = is_array($decoded['client_items'] ?? null) ? $decoded['client_items'] : [];
         $resourceBreakdown = is_array($decoded['resource_breakdown'] ?? null) ? $decoded['resource_breakdown'] : [];
+        $suggestedTasks = is_array($decoded['suggested_tasks'] ?? null) ? $decoded['suggested_tasks'] : [];
 
         return response()->json([
             'success' => true,
@@ -190,12 +199,57 @@ class ProjectController extends Controller
             'resources' => $decoded['resources'] ?? '',
             'client_items' => $clientItems,
             'resource_breakdown' => $resourceBreakdown,
+            'suggested_tasks' => $suggestedTasks,
         ]);
+    }
+
+    /**
+     * Build context for the AI with task categories and suggested_tasks format.
+     * So the AI suggests tasks using only backend category names and decimal estimated_hours.
+     */
+    private function getTaskCategoriesContextForAi(): string
+    {
+        $tasksModule = Module::where('key', 'tasks')->first();
+        if (! $tasksModule)
+        {
+            return '';
+        }
+
+        $teamId = auth()->check() && auth()->user()->currentTeam
+            ? auth()->user()->currentTeam->id
+            : null;
+
+        $categories = Category::where('module_id', $tasksModule->id)
+            ->where('status', 1)
+            ->where(function ($q) use ($teamId)
+            {
+                $q->whereNull('team_id');
+                if ($teamId)
+                {
+                    $q->orWhere('team_id', $teamId);
+                }
+            })
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_id']);
+
+        if ($categories->isEmpty())
+        {
+            return '';
+        }
+
+        $names = $categories->pluck('name')->unique()->values()->all();
+        $namesList = implode(', ', $names);
+
+        return "TASK SUGGESTIONS (use only when the budget describes concrete tasks or work packages):\n"
+            .'- Available task categories in the system (use ONLY these exact names for category_name): '.$namesList."\n"
+            ."- Add a key \"suggested_tasks\" to your JSON: an array of objects, each with \"title\" (string), \"category_name\" (one of the names above), and \"estimated_hours\" (decimal number, e.g. 2.5 for 2h 30m).\n"
+            .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] if the budget does not describe concrete tasks.';
     }
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.";
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"suggested_tasks\": (optional) Array of suggested tasks: each object with \"title\", \"category_name\" (must match an existing task category in the system), \"estimated_hours\" (decimal). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.";
     }
 
     /**

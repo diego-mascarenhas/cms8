@@ -125,6 +125,16 @@
                     $('#data_dimension').val(res.dimension || '');
                     $('#data_estimated_times').val(res.estimated_times || '');
                     $('#data_resources').val(res.resources || '');
+                    if (res.suggested_tasks && res.suggested_tasks.length) {
+                        var html = '<p class="text-muted small mb-2">' + (res.suggested_tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', res.suggested_tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Est. hours") }}</th></tr></thead><tbody>';
+                        res.suggested_tasks.forEach(function(t) {
+                            html += '<tr><td>' + (t.title || '—') + '</td><td class="text-center">' + (t.category_name || '—') + '</td><td class="text-end">' + (t.estimated_hours != null ? Number(t.estimated_hours) : '—') + '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                        $('#suggested-tasks-container').html(html).removeClass('d-none');
+                    } else {
+                        $('#suggested-tasks-container').addClass('d-none').empty();
+                    }
                 } else {
                     Swal.fire({
                         title: '{{ __("Error") }}',
@@ -357,6 +367,9 @@
 				<label for="data_resources" class="form-label">{{ __('Resources') }}</label>
 				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
 			</div>
+
+			<!-- Suggested tasks (filled by AI when generating from budget) -->
+			<div class="col-12 d-none" id="suggested-tasks-container"></div>
 
 		</div>
 
