@@ -55,6 +55,16 @@ class PromptSeeder extends Seeder
                 'order' => 0,
                 'is_active' => true,
             ];
+
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'budget_spec',
+                'section_label' => 'Presupuesto: interpretación IA (dimensión, tiempos, recursos)',
+                'prompt_instruction' => "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.",
+                'helper_text' => 'Texto del presupuesto recibido del cliente. La IA devuelve JSON con ai_interpretation, dimension, estimated_times, resources. Mayoría para creación de software.',
+                'order' => 1,
+                'is_active' => true,
+            ];
         }
 
         // Tasks Module
