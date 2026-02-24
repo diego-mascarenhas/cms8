@@ -192,7 +192,7 @@
 					<thead>
 						<tr>
 							<th>{{ __('Task') }}</th>
-							<th class="text-center">{{ __('Category') }}</th>
+							<th class="text-center">{{ __('Task category') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
 							<th style="min-width: 220px;">{{ __('Who will do it') }}</th>
 						</tr>

@@ -126,7 +126,7 @@
                     $('#data_estimated_times').val(res.estimated_times || '');
                     $('#data_resources').val(res.resources || '');
                     if (res.suggested_tasks && res.suggested_tasks.length) {
-                        var html = '<p class="text-muted small mb-2">' + (res.suggested_tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', res.suggested_tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Est. hours") }}</th></tr></thead><tbody>';
+                        var html = '<p class="text-muted small mb-2">' + (res.suggested_tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', res.suggested_tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Task category") }}</th><th class="text-end">{{ __("Hours") }}</th></tr></thead><tbody>';
                         res.suggested_tasks.forEach(function(t) {
                             html += '<tr><td>' + (t.title || '—') + '</td><td class="text-center">' + (t.category_name || '—') + '</td><td class="text-end">' + (t.estimated_hours != null ? Number(t.estimated_hours) : '—') + '</td></tr>';
                         });
@@ -378,7 +378,7 @@
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
 						<table class="table table-sm table-bordered">
-							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Est. hours') }}</th></tr></thead>
+							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Task category') }}</th><th class="text-end">{{ __('Hours') }}</th></tr></thead>
 							<tbody>
 								@foreach($savedSuggested as $t)
 								<tr>
