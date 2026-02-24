@@ -88,9 +88,18 @@
     }
     @endif
 
-    // Generate budget data from "Budget received" text (AI)
+    // Generate budget data from "Project notes" + "Budget received" (AI)
     $('#generate-budget-spec').on('click', function() {
-        var budgetGiven = $('#data_budget_given').val().trim();
+        var notes = $('#description').val().trim();
+        var budgetReceived = $('#data_budget_given').val().trim();
+        var parts = [];
+        if (notes) {
+            parts.push('{{ __("Project Notes") }}:\n' + notes);
+        }
+        if (budgetReceived) {
+            parts.push('{{ __("Budget received") }}:\n' + budgetReceived);
+        }
+        var budgetGiven = parts.join('\n\n');
         if (!budgetGiven) {
             Swal.fire({
                 title: '{{ __("Description required") }}',

@@ -11,7 +11,9 @@ use App\Models\Language;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Prompt;
+use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\Time;
 use App\Models\TokenUsageLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -622,29 +624,44 @@ class ProjectController extends Controller
             abort(403);
         }
 
-        // Get time tracking data for this project through board tasks
+        // Get time tracking data and task breakdown for this project through board tasks
         $timeEntries = collect();
         $totalHours = 0;
+        $projectTasks = collect();
+        $actualHoursByTaskId = collect();
 
         if ($project->board_id)
         {
-            $taskIds = \App\Models\Task::where('board_id', $project->board_id)->pluck('id');
+            $taskIds = Task::where('board_id', $project->board_id)->pluck('id');
 
             if ($taskIds->isNotEmpty())
             {
-                $timeEntries = \App\Models\Time::whereIn('task_id', $taskIds)
+                $timeEntries = Time::whereIn('task_id', $taskIds)
                     ->with('user:id,name')
                     ->orderBy('start_time', 'desc')
                     ->limit(10)
                     ->get();
 
-                $totalHours = \App\Models\Time::whereIn('task_id', $taskIds)
+                $totalHours = Time::whereIn('task_id', $taskIds)
                     ->whereNotNull('end_time')
                     ->sum('duration_seconds') / 3600;
+
+                // Task breakdown: tasks with estimated hours and actual hours
+                $projectTasks = Task::where('board_id', $project->board_id)
+                    ->with(['status', 'responsible'])
+                    ->orderBy('order')
+                    ->orderBy('id')
+                    ->get();
+
+                $actualHoursByTaskId = Time::whereIn('task_id', $taskIds)
+                    ->selectRaw('task_id, SUM(duration_seconds) as total_seconds')
+                    ->groupBy('task_id')
+                    ->get()
+                    ->mapWithKeys(fn ($row) => [$row->task_id => round($row->total_seconds / 3600, 1)]);
             }
         }
 
-        return view('project.show', compact('project', 'timeEntries', 'totalHours'));
+        return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId'));
     }
 
     /**
