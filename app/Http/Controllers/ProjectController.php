@@ -124,10 +124,6 @@ class ProjectController extends Controller
      */
     public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
     {
-        // #region agent log
-        $logPath = '/Users/magoo/Sites/humano/.cursor/debug-5c9f93.log';
-        file_put_contents($logPath, json_encode(['hypothesisId' => 'H1', 'location' => 'ProjectController::generateBudgetSpec entry', 'message' => 'request reached controller', 'data' => ['has_budget_given' => $request->has('budget_given'), 'budget_len' => strlen($request->input('budget_given', ''))], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
-        // #endregion
         $this->authorize('create', Project::class);
 
         $request->validate([
@@ -158,9 +154,6 @@ class ProjectController extends Controller
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
-            // #region agent log
-            file_put_contents($logPath, json_encode(['hypothesisId' => 'H2', 'location' => 'ProjectController::generateBudgetSpec catch', 'message' => 'exception in agent or before', 'data' => ['exception' => get_class($e), 'message' => $e->getMessage()], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
-            // #endregion
             Log::error('Project generateBudgetSpec failed', ['error' => $e->getMessage()]);
 
             return response()->json([
@@ -200,9 +193,6 @@ class ProjectController extends Controller
         $decoded = json_decode($text, true);
         if (! is_array($decoded))
         {
-            // #region agent log
-            file_put_contents($logPath, json_encode(['hypothesisId' => 'H3', 'location' => 'ProjectController::generateBudgetSpec invalid JSON', 'message' => 'AI response not valid JSON', 'data' => ['text_preview' => substr($text, 0, 300)], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
-            // #endregion
             Log::warning('generateBudgetSpec invalid JSON', ['text' => substr($text, 0, 500)]);
 
             return response()->json([
