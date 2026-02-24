@@ -118,7 +118,8 @@ class ClaudeService
             // Log token usage (when team is known: auth user or API team token)
             $savings = $useToon && $jsonSize > 0 ? round((($jsonSize - $toonSize) / $jsonSize) * 100, 2) : 0;
             $teamId = $teamIdForLog ?? (auth()->check() && auth()->user()->currentTeam ? auth()->user()->currentTeam->id : null);
-            if ($teamId !== null) {
+            if ($teamId !== null)
+            {
                 TokenUsageLog::withoutGlobalScope('team')->create([
                     'team_id' => $teamId,
                     'module_id' => TokenUsageLog::inferModuleId(),
@@ -175,6 +176,77 @@ class ClaudeService
                 'message' => 'Error processing Claude request: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Generate presupuesto data from the budget text: AI interpretation, dimension, estimated times, resources.
+     * Optimized for software development budgets.
+     *
+     * @param  string  $budgetGiven  Presupuesto que nos dieron (raw budget text)
+     * @return array{success: bool, ai_interpretation?: string, dimension?: string, estimated_times?: string, resources?: string, message?: string}
+     */
+    public function generateBudgetSpecFromDescription(string $budgetGiven): array
+    {
+        $systemPrompt = \App\Models\Prompt::forModule('projects')
+            ->where('section_key', 'budget_spec')
+            ->active()
+            ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
+
+        $response = $this->chat(trim($budgetGiven), [], $systemPrompt);
+
+        if (! $response['success'] || empty($response['text']))
+        {
+            return [
+                'success' => false,
+                'message' => $response['message'] ?? 'No se pudo generar el presupuesto.',
+            ];
+        }
+
+        $text = $response['text'];
+
+        // Strip optional markdown code block
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $text, $m))
+        {
+            $text = trim($m[1]);
+        }
+
+        $decoded = json_decode($text, true);
+        if (! is_array($decoded))
+        {
+            Log::warning('ClaudeService::generateBudgetSpecFromDescription invalid JSON', ['text' => substr($text, 0, 500)]);
+
+            return [
+                'success' => false,
+                'message' => 'La respuesta no es un JSON válido.',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'ai_interpretation' => $decoded['ai_interpretation'] ?? '',
+            'dimension' => $decoded['dimension'] ?? '',
+            'estimated_times' => $decoded['estimated_times'] ?? '',
+            'resources' => $decoded['resources'] ?? '',
+        ];
+    }
+
+    /**
+     * Default system prompt for budget spec when no prompt exists in module_prompts.
+     */
+    private function getDefaultBudgetSpecPrompt(): string
+    {
+        return <<<'EOT'
+You are an expert at interpreting project budgets and technical proposals, especially for software development.
+
+Given the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).
+Use exactly these keys:
+- "ai_interpretation": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.
+- "dimension": Scope and size of the project (features, modules, deliverables, complexity).
+- "estimated_times": Realistic timeline (phases, milestones, total duration).
+- "resources": Human and technical resources (roles, team size, tools, infrastructure).
+
+Write in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.
+EOT;
     }
 
     /**

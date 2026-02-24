@@ -11,6 +11,7 @@ use App\Models\Language;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\TaskBoard;
+use App\Services\ClaudeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ class ProjectController extends Controller
     public function index(ProjectDataTable $dataTable)
     {
         $this->authorize('viewAny', Project::class);
+
         return $dataTable->render('project.index');
     }
 
@@ -36,8 +38,9 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
         $enterprise_id = request('enterprise_id');
         $statuses = ProjectStatus::getOptions();
+        $data = new Project;
 
-        return view('project.form', compact('enterprise_id', 'statuses'));
+        return view('project.form', compact('enterprise_id', 'statuses', 'data'));
     }
 
     /**
@@ -46,7 +49,7 @@ class ProjectController extends Controller
     public function store(StoreProjectRequest $request)
     {
         $this->authorize('create', Project::class);
-        
+
         $data = $request->validated();
 
         $project = Project::updateOrCreate(
@@ -58,6 +61,7 @@ class ProjectController extends Controller
                 'enterprise_id' => $data['enterprise_id'],
                 'category_id' => $data['category_id'] ?? null,
                 'description' => $data['description'] ?? null,
+                'data' => $data['data'] ?? null,
                 'responsible_id' => $data['responsible_id'],
                 'price' => $data['price'] ?? null,
                 'discount' => $data['discount'] ?? null,
@@ -89,6 +93,38 @@ class ProjectController extends Controller
         }
 
         return redirect()->route('project.show', $project->id)->with('success', 'Proyecto actualizado exitosamente.');
+    }
+
+    /**
+     * Generate budget spec (dimension, times, resources) from description via AI.
+     * Used when creating/editing a project presupuesto.
+     */
+    public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->authorize('create', Project::class);
+
+        $request->validate([
+            'budget_given' => 'required|string|max:16000',
+        ]);
+
+        $claude = app(ClaudeService::class);
+        $result = $claude->generateBudgetSpecFromDescription($request->input('budget_given'));
+
+        if (! $result['success'])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? __('Error generating budget spec'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'ai_interpretation' => $result['ai_interpretation'] ?? '',
+            'dimension' => $result['dimension'] ?? '',
+            'estimated_times' => $result['estimated_times'] ?? '',
+            'resources' => $result['resources'] ?? '',
+        ]);
     }
 
     /**
@@ -494,7 +530,7 @@ class ProjectController extends Controller
     {
         $project = Project::findOrFail($id);
         $this->authorize('view', $project);
-        
+
         $project = Project::with([
             'client',
             'responsible',

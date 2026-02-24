@@ -87,6 +87,60 @@
         });
     }
     @endif
+
+    // Generate budget data from "Budget received" text (AI)
+    $('#generate-budget-spec').on('click', function() {
+        var budgetGiven = $('#data_budget_given').val().trim();
+        if (!budgetGiven) {
+            Swal.fire({
+                title: '{{ __("Description required") }}',
+                text: '{{ __("Write or paste the budget text first, then click Generate.") }}',
+                icon: 'info',
+                customClass: { confirmButton: 'btn btn-primary' },
+                buttonsStyling: false
+            });
+            return;
+        }
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>{{ __("Generating...") }}');
+        $.ajax({
+            url: '{{ route("project.generate-budget-spec") }}',
+            type: 'POST',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                budget_given: budgetGiven
+            },
+            success: function(res) {
+                if (res.success) {
+                    $('#data_ai_interpretation').val(res.ai_interpretation || '');
+                    $('#data_dimension').val(res.dimension || '');
+                    $('#data_estimated_times').val(res.estimated_times || '');
+                    $('#data_resources').val(res.resources || '');
+                } else {
+                    Swal.fire({
+                        title: '{{ __("Error") }}',
+                        text: res.message || '{{ __("Could not generate budget spec.") }}',
+                        icon: 'error',
+                        customClass: { confirmButton: 'btn btn-primary' },
+                        buttonsStyling: false
+                    });
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : '{{ __("Request failed. Try again.") }}';
+                Swal.fire({
+                    title: '{{ __("Error") }}',
+                    text: msg,
+                    icon: 'error',
+                    customClass: { confirmButton: 'btn btn-primary' },
+                    buttonsStyling: false
+                });
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="ti ti-sparkles me-1"></i>{{ __("Generate from budget text") }}');
+            }
+        });
+    });
 </script>
 @endsection
 
@@ -258,12 +312,42 @@
 			<!-- Notas del proyecto -->
 			<div class="col-12">
 				<label for="description" class="form-label">{{ __('Project Notes') }}</label>
-				<textarea name="description" class="form-control @error('description') is-invalid @enderror">{{ old('description', $data->description ?? '') }}</textarea>
+				<textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
 				@error('description')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
 			</div>
 
+			<!-- Presupuesto: texto recibido + datos interpretados (data JSON) -->
+			<div class="col-12">
+				<label for="data_budget_given" class="form-label">{{ __('Budget received') }}</label>
+				<textarea id="data_budget_given" name="data[budget_given]" class="form-control" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
+			</div>
+			<div class="col-12">
+				<div class="d-flex justify-content-between align-items-center mb-2">
+					<label class="form-label mb-0">{{ __('Budget data (AI)') }}</label>
+					<button type="button" id="generate-budget-spec" class="btn btn-outline-primary btn-sm">
+						<i class="ti ti-sparkles me-1"></i>{{ __('Generate from budget text') }}
+					</button>
+				</div>
+				<p class="text-muted small">{{ __('Use "Budget received" above, then click to generate AI interpretation, dimension, timeline and resources.') }}</p>
+			</div>
+			<div class="col-12">
+				<label for="data_ai_interpretation" class="form-label">{{ __('AI interpretation') }}</label>
+				<textarea id="data_ai_interpretation" name="data[ai_interpretation]" class="form-control" rows="2">{{ old('data.ai_interpretation', data_get($data, 'data.ai_interpretation', '')) }}</textarea>
+			</div>
+			<div class="col-md-4">
+				<label for="data_dimension" class="form-label">{{ __('Dimension') }}</label>
+				<textarea id="data_dimension" name="data[dimension]" class="form-control" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>
+			</div>
+			<div class="col-md-4">
+				<label for="data_estimated_times" class="form-label">{{ __('Estimated times') }}</label>
+				<textarea id="data_estimated_times" name="data[estimated_times]" class="form-control" rows="3">{{ old('data.estimated_times', data_get($data, 'data.estimated_times', '')) }}</textarea>
+			</div>
+			<div class="col-md-4">
+				<label for="data_resources" class="form-label">{{ __('Resources') }}</label>
+				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
+			</div>
 
 		</div>
 

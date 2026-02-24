@@ -20,6 +20,7 @@ class Project extends Model
         'name',
         'real_name',
         'description',
+        'data',
         'price',
         'discount',
         'cost',
@@ -37,6 +38,7 @@ class Project extends Model
         'date_start' => 'date',
         'date_end' => 'date',
         'deleted_at' => 'datetime',
+        'data' => 'array',
     ];
 
     protected static function booted()

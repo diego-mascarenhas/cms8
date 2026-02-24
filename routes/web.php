@@ -395,6 +395,7 @@ Route::middleware(['auth'])->group(function ()
     // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
     Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
     Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::post('/project/generate-budget-spec', [ProjectController::class, 'generateBudgetSpec'])->name('project.generate-budget-spec');
     Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');

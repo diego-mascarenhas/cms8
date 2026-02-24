@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('name', 255);
             $table->string('real_name', 255)->nullable();
             $table->text('description')->nullable();
+            $table->json('data')->nullable()->comment('Presupuesto: budget_given, ai_interpretation, dimension, estimated_times, resources');
             $table->date('date_material')->nullable();
             $table->date('date_start')->nullable();
             $table->date('date_end')->nullable();

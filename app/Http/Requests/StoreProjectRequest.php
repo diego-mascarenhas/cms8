@@ -32,6 +32,12 @@ class StoreProjectRequest extends FormRequest
             'responsible_id' => 'required|exists:users,id',
             'date_material' => 'nullable|date',
             'description' => 'nullable|string',
+            'data' => 'nullable|array',
+            'data.budget_given' => 'nullable|string',
+            'data.ai_interpretation' => 'nullable|string',
+            'data.dimension' => 'nullable|string',
+            'data.estimated_times' => 'nullable|string',
+            'data.resources' => 'nullable|string',
         ];
     }
 }
