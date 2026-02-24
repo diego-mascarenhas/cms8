@@ -152,10 +152,6 @@
                 }
             },
             error: function(xhr) {
-                // #region agent log
-                var respPreview = typeof xhr.responseText === 'string' ? xhr.responseText.substring(0, 500) : '';
-                fetch('http://127.0.0.1:7244/ingest/0cbe135a-d9b5-4139-a23f-c2d8aeb3f716',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5c9f93'},body:JSON.stringify({sessionId:'5c9f93',hypothesisId:'H4',location:'project form error callback',message:'ajax error',data:{status:xhr.status,statusText:xhr.statusText,hasResponseJSON:!!xhr.responseJSON,responseMessage:xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:null,responseTextPreview:respPreview},timestamp:Date.now()})}).catch(function(){});
-                // #endregion
                 var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : '{{ __("Request failed. Try again.") }}';
                 Swal.fire({
                     title: '{{ __("Error") }}',
