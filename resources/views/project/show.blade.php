@@ -149,7 +149,7 @@
 						<tr>
 							<th>{{ __('Task') }}</th>
 							<th class="text-center">{{ __('Status') }}</th>
-							<th class="text-end">{{ __('Estimated (h)') }}</th>
+							<th class="text-end">{{ __('Hours') }}</th>
 							<th class="text-end">{{ __('Actual (h)') }}</th>
 						</tr>
 					</thead>
@@ -182,6 +182,49 @@
 			</div>
 		@else
 			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add tasks in the Kanban to see estimated and actual hours here.') }}</p>
+		@endif
+
+		@if(isset($suggestedTasks) && count($suggestedTasks) > 0)
+			<hr class="my-4">
+			<p class="text-muted small mb-3">{{ __('Suggested tasks from the budget. Assign who will do each and add them to the board.') }}</p>
+			<div class="table-responsive">
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>{{ __('Task') }}</th>
+							<th class="text-center">{{ __('Category') }}</th>
+							<th class="text-end">{{ __('Hours') }}</th>
+							<th style="min-width: 220px;">{{ __('Who will do it') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach($suggestedTasks as $idx => $t)
+						<tr>
+							<td>{{ $t['title'] ?? '—' }}</td>
+							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
+							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+							<td>
+								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
+									@csrf
+									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
+									<input type="hidden" name="category_name" value="{{ $t['category_name'] ?? '' }}">
+									<input type="hidden" name="estimated_hours" value="{{ $t['estimated_hours'] ?? '' }}">
+									<select name="responsible_id" class="form-select form-select-sm" required>
+										<option value="">{{ __('Select') }}</option>
+										@foreach($teamUsers ?? [] as $userId => $userName)
+											<option value="{{ $userId }}">{{ $userName }}</option>
+										@endforeach
+									</select>
+									<button type="submit" class="btn btn-sm btn-primary">
+										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add to Kanban') }}
+									</button>
+								</form>
+							</td>
+						</tr>
+						@endforeach
+					</tbody>
+				</table>
+			</div>
 		@endif
 	</div>
 </div>

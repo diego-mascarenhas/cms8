@@ -398,6 +398,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project/generate-budget-spec', [ProjectController::class, 'generateBudgetSpec'])->name('project.generate-budget-spec');
     Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
+    Route::post('/project/{id}/add-suggested-task', [ProjectController::class, 'addSuggestedTask'])->name('project.add-suggested-task');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');

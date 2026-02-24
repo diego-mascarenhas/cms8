@@ -15,6 +15,7 @@ use App\Models\ProjectStatus;
 use App\Models\Prompt;
 use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Models\TokenUsageLog;
 use Carbon\Carbon;
@@ -723,7 +724,80 @@ class ProjectController extends Controller
             }
         }
 
-        return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId'));
+        $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+        $teamUsers = auth()->user()->currentTeam ? auth()->user()->currentTeam->allUsers()->pluck('name', 'id') : collect();
+
+        return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));
+    }
+
+    /**
+     * Create a task on the project board from a suggested task (title, category, hours, responsible).
+     */
+    public function addSuggestedTask(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        $request->validate([
+            'title' => 'required|string|max:500',
+            'category_name' => 'nullable|string|max:255',
+            'estimated_hours' => 'nullable|numeric|min:0',
+            'responsible_id' => 'required|exists:users,id',
+        ]);
+
+        if (! $project->board_id)
+        {
+            $board = TaskBoard::create([
+                'team_id' => auth()->user()->currentTeam->id,
+                'name' => "Project: {$project->name}",
+                'description' => "Task board for project: {$project->name}",
+                'is_default' => false,
+                'order' => 0,
+            ]);
+            $project->update(['board_id' => $board->id]);
+        }
+
+        $categoryId = null;
+        if ($request->filled('category_name'))
+        {
+            $tasksModule = Module::where('key', 'tasks')->first();
+            $teamId = auth()->user()->currentTeam->id ?? null;
+            if ($tasksModule)
+            {
+                $category = Category::where('module_id', $tasksModule->id)
+                    ->where('name', $request->category_name)
+                    ->where(function ($q) use ($teamId)
+                    {
+                        $q->whereNull('team_id');
+                        if ($teamId)
+                        {
+                            $q->orWhere('team_id', $teamId);
+                        }
+                    })
+                    ->first();
+                $categoryId = $category?->id;
+            }
+        }
+
+        $defaultStatusId = TaskStatus::orderBy('order')->value('id') ?? 1;
+        $nextOrder = (int) Task::where('board_id', $project->board_id)->max('order') + 1;
+        $today = now()->toDateString();
+
+        Task::create([
+            'team_id' => auth()->user()->currentTeam->id,
+            'board_id' => $project->board_id,
+            'title' => $request->title,
+            'category_id' => $categoryId,
+            'responsible_id' => $request->responsible_id,
+            'estimated_hours' => $request->filled('estimated_hours') ? $request->estimated_hours : null,
+            'status_id' => $defaultStatusId,
+            'order' => $nextOrder,
+            'start_date' => $today,
+            'due_date' => $today,
+        ]);
+
+        return redirect()->route('project.show', $project->id)
+            ->with('success', __('Task added to board.'));
     }
 
     /**
