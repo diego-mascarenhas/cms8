@@ -132,8 +132,10 @@
                         });
                         html += '</tbody></table></div>';
                         $('#suggested-tasks-container').html(html).removeClass('d-none');
+                        $('#data_suggested_tasks').val(JSON.stringify(res.suggested_tasks));
                     } else {
                         $('#suggested-tasks-container').addClass('d-none').empty();
+                        $('#data_suggested_tasks').val('');
                     }
                 } else {
                     Swal.fire({
@@ -368,8 +370,28 @@
 				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
 			</div>
 
-			<!-- Suggested tasks (filled by AI when generating from budget) -->
-			<div class="col-12 d-none" id="suggested-tasks-container"></div>
+			<!-- Suggested tasks (filled by AI, persisted in project data) -->
+			<input type="hidden" name="data[suggested_tasks]" id="data_suggested_tasks" value="{{ json_encode(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) }}">
+			<div class="col-12 {{ empty(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) ? 'd-none' : '' }}" id="suggested-tasks-container">
+				@php $savedSuggested = old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', [])); @endphp
+				@if(!empty($savedSuggested) && is_array($savedSuggested))
+					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
+					<div class="table-responsive">
+						<table class="table table-sm table-bordered">
+							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Est. hours') }}</th></tr></thead>
+							<tbody>
+								@foreach($savedSuggested as $t)
+								<tr>
+									<td>{{ $t['title'] ?? '—' }}</td>
+									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
+									<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+								</tr>
+								@endforeach
+							</tbody>
+						</table>
+					</div>
+				@endif
+			</div>
 
 		</div>
 

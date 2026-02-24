@@ -61,6 +61,14 @@ class ProjectController extends Controller
 
         $data = $request->validated();
 
+        if (isset($data['data']['suggested_tasks']))
+        {
+            $raw = $data['data']['suggested_tasks'];
+            $data['data']['suggested_tasks'] = is_string($raw)
+                ? (json_decode($raw, true) ?? [])
+                : (is_array($raw) ? $raw : []);
+        }
+
         $project = Project::updateOrCreate(
             ['id' => $request->id],
             [

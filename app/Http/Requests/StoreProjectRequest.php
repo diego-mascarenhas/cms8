@@ -38,6 +38,7 @@ class StoreProjectRequest extends FormRequest
             'data.dimension' => 'nullable|string',
             'data.estimated_times' => 'nullable|string',
             'data.resources' => 'nullable|string',
+            'data.suggested_tasks' => 'nullable',
         ];
     }
 }
