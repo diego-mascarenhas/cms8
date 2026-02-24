@@ -10,10 +10,15 @@ use App\Models\Fare;
 use App\Models\Language;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\Prompt;
 use App\Models\TaskBoard;
-use App\Services\ClaudeService;
+use App\Models\TokenUsageLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
+
+use function Laravel\Ai\agent;
 
 class ProjectController extends Controller
 {
@@ -96,7 +101,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Generate budget spec (dimension, times, resources) from description via AI.
+     * Generate budget spec (dimension, times, resources) from budget text via Laravel AI.
      * Used when creating/editing a project presupuesto.
      */
     public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
@@ -107,24 +112,88 @@ class ProjectController extends Controller
             'budget_given' => 'required|string|max:16000',
         ]);
 
-        $claude = app(ClaudeService::class);
-        $result = $claude->generateBudgetSpecFromDescription($request->input('budget_given'));
+        $instructions = Prompt::forModule('projects')
+            ->where('section_key', 'budget_spec')
+            ->active()
+            ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
 
-        if (! $result['success'])
+        $userMessage = $instructions."\n\n---\n\nEntrada del usuario:\n\n".trim($request->input('budget_given'));
+
+        try
         {
+            $agent = agent(
+                instructions: $instructions,
+                messages: [],
+                tools: [],
+            );
+            $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+            $text = $response->text ?: '';
+        } catch (\Throwable $e)
+        {
+            Log::error('Project generateBudgetSpec failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => $result['message'] ?? __('Error generating budget spec'),
+                'message' => __('Error al comunicar con la IA: ').$e->getMessage(),
             ], 422);
         }
 
+        if (isset($response->usage) && auth()->check() && auth()->user()->currentTeam)
+        {
+            $usage = $response->usage;
+            $totalTokens = $usage->promptTokens + $usage->completionTokens;
+            try
+            {
+                TokenUsageLog::create([
+                    'team_id' => auth()->user()->currentTeam->id,
+                    'module_id' => TokenUsageLog::inferModuleId(),
+                    'service' => 'ProjectController::generateBudgetSpec',
+                    'json_size' => strlen($userMessage),
+                    'toon_size' => 0,
+                    'json_tokens' => $totalTokens,
+                    'toon_tokens' => 0,
+                    'savings_percentage' => 0,
+                    'used_toon' => false,
+                ]);
+            } catch (\Exception $logEx)
+            {
+                Log::warning('TokenUsageLog failed', ['error' => $logEx->getMessage()]);
+            }
+        }
+
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $text, $m))
+        {
+            $text = trim($m[1]);
+        }
+
+        $decoded = json_decode($text, true);
+        if (! is_array($decoded))
+        {
+            Log::warning('generateBudgetSpec invalid JSON', ['text' => substr($text, 0, 500)]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('La respuesta no es un JSON válido.'),
+            ], 422);
+        }
+
+        $clientItems = is_array($decoded['client_items'] ?? null) ? $decoded['client_items'] : [];
+        $resourceBreakdown = is_array($decoded['resource_breakdown'] ?? null) ? $decoded['resource_breakdown'] : [];
+
         return response()->json([
             'success' => true,
-            'ai_interpretation' => $result['ai_interpretation'] ?? '',
-            'dimension' => $result['dimension'] ?? '',
-            'estimated_times' => $result['estimated_times'] ?? '',
-            'resources' => $result['resources'] ?? '',
+            'ai_interpretation' => $decoded['ai_interpretation'] ?? '',
+            'dimension' => $decoded['dimension'] ?? '',
+            'estimated_times' => $decoded['estimated_times'] ?? '',
+            'resources' => $decoded['resources'] ?? '',
+            'client_items' => $clientItems,
+            'resource_breakdown' => $resourceBreakdown,
         ]);
+    }
+
+    private function getDefaultBudgetSpecPrompt(): string
+    {
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.";
     }
 
     /**
