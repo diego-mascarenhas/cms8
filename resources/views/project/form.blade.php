@@ -126,15 +126,19 @@
                     $('#data_estimated_times').val(res.estimated_times || '');
                     $('#data_resources').val(res.resources || '');
                     if (res.suggested_tasks && res.suggested_tasks.length) {
-                        var html = '<p class="text-muted small mb-2">' + (res.suggested_tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', res.suggested_tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Task category") }}</th><th class="text-end">{{ __("Hours") }}</th></tr></thead><tbody>';
                         res.suggested_tasks.forEach(function(t) {
-                            html += '<tr><td>' + (t.title || '—') + '</td><td class="text-center">' + (t.category_name || '—') + '</td><td class="text-end">' + (t.estimated_hours != null ? Number(t.estimated_hours) : '—') + '</td></tr>';
+                            if (t.resource_level === undefined) t.resource_level = '';
+                            if (t.unit_price === undefined) t.unit_price = '';
                         });
-                        html += '</tbody></table></div>';
+                        var html = buildSuggestedTasksTable(res.suggested_tasks);
                         $('#suggested-tasks-container').html(html).removeClass('d-none');
+                        $('#suggested-tasks-toggle').removeClass('d-none');
                         $('#data_suggested_tasks').val(JSON.stringify(res.suggested_tasks));
+                        refreshBudgetPreview();
+                        $('#suggested-tasks-container').addClass('d-none');
                     } else {
                         $('#suggested-tasks-container').addClass('d-none').empty();
+                        $('#suggested-tasks-toggle').addClass('d-none');
                         $('#data_suggested_tasks').val('');
                     }
                 } else {
@@ -148,6 +152,10 @@
                 }
             },
             error: function(xhr) {
+                // #region agent log
+                var respPreview = typeof xhr.responseText === 'string' ? xhr.responseText.substring(0, 500) : '';
+                fetch('http://127.0.0.1:7244/ingest/0cbe135a-d9b5-4139-a23f-c2d8aeb3f716',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5c9f93'},body:JSON.stringify({sessionId:'5c9f93',hypothesisId:'H4',location:'project form error callback',message:'ajax error',data:{status:xhr.status,statusText:xhr.statusText,hasResponseJSON:!!xhr.responseJSON,responseMessage:xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:null,responseTextPreview:respPreview},timestamp:Date.now()})}).catch(function(){});
+                // #endregion
                 var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : '{{ __("Request failed. Try again.") }}';
                 Swal.fire({
                     title: '{{ __("Error") }}',
@@ -161,6 +169,88 @@
                 $btn.prop('disabled', false).html('<i class="ti ti-sparkles me-1"></i>{{ __("Generate from budget text") }}');
             }
         });
+    });
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function buildSuggestedTasksTable(tasks) {
+        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-center">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
+        tasks.forEach(function(t, i) {
+            var title = escapeHtml(t.title || '—');
+            var cat = escapeHtml(t.category_name || '—');
+            var hours = (t.estimated_hours != null ? Number(t.estimated_hours) : '—');
+            var resLevel = (t.resource_level != null && t.resource_level !== '') ? escapeHtml(String(t.resource_level)) : '';
+            var unitPrice = (t.unit_price != null && t.unit_price !== '') ? escapeHtml(String(t.unit_price)) : '';
+            h += '<tr data-index="' + i + '"><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hours + '</td>';
+            h += '<td class="text-center"><input type="text" class="form-control form-control-sm suggested-resource-level" data-index="' + i + '" value="' + resLevel + '" placeholder="{{ __("e.g. Senior") }}"></td>';
+            h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"></td></tr>';
+        });
+        h += '</tbody></table></div>';
+        return h;
+    }
+
+    function refreshBudgetPreview() {
+        var raw = $('#data_suggested_tasks').val();
+        var tasks = [];
+        try {
+            if (raw) tasks = JSON.parse(raw);
+        } catch (e) { }
+        var summaryEl = $('#budget-preview-summary');
+        if (tasks.length === 0) {
+            $('#budget-preview-container').addClass('d-none');
+            summaryEl.val('');
+            return;
+        }
+        $('#budget-preview-container').removeClass('d-none');
+        var lines = ['{{ __("Summary of requested quote and values") }}', ''];
+        var total = 0;
+        tasks.forEach(function(t) {
+            var title = (t.title || '—');
+            var level = (t.resource_level != null && t.resource_level !== '') ? String(t.resource_level) : '';
+            var levelPart = level ? ' (' + level + ')' : '';
+            var price = (t.unit_price != null && t.unit_price !== '') ? parseFloat(t.unit_price) : NaN;
+            var priceStr = !isNaN(price) ? price.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' : '—';
+            if (!isNaN(price)) total += price;
+            lines.push('• ' + title + levelPart + '. {{ __("Value") }}: ' + priceStr);
+        });
+        lines.push('');
+        lines.push('{{ __("Total") }}: ' + total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €');
+        summaryEl.val(lines.join('\n'));
+    }
+
+    $(document).on('change input', '.suggested-resource-level, .suggested-unit-price', function() {
+        var idx = parseInt($(this).data('index'), 10);
+        var raw = $('#data_suggested_tasks').val();
+        var tasks = [];
+        try {
+            if (raw) tasks = JSON.parse(raw);
+        } catch (e) { return; }
+        if (tasks[idx] === undefined) return;
+        var isPrice = $(this).hasClass('suggested-unit-price');
+        var val = $(this).val();
+        if (isPrice) {
+            var num = parseFloat(val);
+            tasks[idx].unit_price = (isNaN(num) || val === '') ? '' : num;
+        } else {
+            tasks[idx].resource_level = val;
+        }
+        $('#data_suggested_tasks').val(JSON.stringify(tasks));
+        refreshBudgetPreview();
+    });
+
+    $('#suggested-tasks-toggle-btn').on('click', function() {
+        var container = $('#suggested-tasks-container');
+        var btn = $(this);
+        var isHidden = container.hasClass('d-none');
+        container.toggleClass('d-none');
+        btn.attr('aria-expanded', isHidden);
+        btn.find('.ti-chevron-down').toggleClass('ti-chevron-down', !isHidden).toggleClass('ti-chevron-up', isHidden);
+        btn.find('.toggle-label').text(isHidden ? '{{ __("Hide breakdown") }}' : '{{ __("Edit breakdown") }}');
+    });
+
+    $(function() {
+        refreshBudgetPreview();
     });
 </script>
 @endsection
@@ -344,6 +434,17 @@
 				<label for="data_budget_given" class="form-label">{{ __('Budget received') }}</label>
 				<textarea id="data_budget_given" name="data[budget_given]" class="form-control" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
 			</div>
+			<!-- Vista previa: resumen para copiar en email (alineado con pedido de cotización) -->
+			<div class="col-12 d-none mt-2" id="budget-preview-container">
+				<label for="budget-preview-summary" class="form-label">{{ __('Budget preview') }}</label>
+				<p class="text-muted small mb-1">{{ __('Summary of requested quote and values, ready to copy into an email.') }}</p>
+				@if(isset($data->id) && data_get($data, 'data.budget_preview_token'))
+					<p class="small mb-1">
+						<a href="{{ route('project.budget-preview', data_get($data, 'data.budget_preview_token')) }}" target="_blank" rel="noopener noreferrer">{{ __('Preview') }}</a>
+					</p>
+				@endif
+				<textarea id="budget-preview-summary" class="form-control font-monospace" rows="12" readonly placeholder="{{ __('Generate from budget text to see the summary here.') }}"></textarea>
+			</div>
 			<div class="col-12">
 				<div class="d-flex justify-content-between align-items-center mb-2">
 					<label class="form-label mb-0">{{ __('Budget data (AI)') }}</label>
@@ -370,21 +471,28 @@
 				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
 			</div>
 
-			<!-- Suggested tasks (filled by AI, persisted in project data) -->
+			<!-- Suggested tasks (filled by AI, persisted in project data). Hidden by default; show via "Edit breakdown" link. -->
 			<input type="hidden" name="data[suggested_tasks]" id="data_suggested_tasks" value="{{ json_encode(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) }}">
-			<div class="col-12 {{ empty(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) ? 'd-none' : '' }}" id="suggested-tasks-container">
-				@php $savedSuggested = old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', [])); @endphp
+			@php $savedSuggested = old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', [])); @endphp
+			<div class="col-12 mb-2 {{ empty($savedSuggested) || !is_array($savedSuggested) ? 'd-none' : '' }}" id="suggested-tasks-toggle">
+				<button type="button" class="btn btn-sm btn-label-secondary" id="suggested-tasks-toggle-btn" aria-expanded="false">
+					<i class="ti ti-chevron-down me-1"></i><span class="toggle-label">{{ __('Edit breakdown') }}</span>
+				</button>
+			</div>
+			<div class="col-12 d-none" id="suggested-tasks-container">
 				@if(!empty($savedSuggested) && is_array($savedSuggested))
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
-						<table class="table table-sm table-bordered">
-							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Task category') }}</th><th class="text-end">{{ __('Hours') }}</th></tr></thead>
+						<table class="table table-sm table-bordered" id="suggested-tasks-table">
+							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-center">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
 							<tbody>
-								@foreach($savedSuggested as $t)
-								<tr>
+								@foreach($savedSuggested as $i => $t)
+								<tr data-index="{{ $i }}">
 									<td>{{ $t['title'] ?? '—' }}</td>
 									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
 									<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+									<td class="text-center"><input type="text" class="form-control form-control-sm suggested-resource-level" data-index="{{ $i }}" value="{{ $t['resource_level'] ?? '' }}" placeholder="{{ __('e.g. Senior') }}"></td>
+									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0"></td>
 								</tr>
 								@endforeach
 							</tbody>

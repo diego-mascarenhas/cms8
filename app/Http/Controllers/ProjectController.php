@@ -21,6 +21,7 @@ use App\Models\TokenUsageLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
@@ -68,6 +69,10 @@ class ProjectController extends Controller
             $data['data']['suggested_tasks'] = is_string($raw)
                 ? (json_decode($raw, true) ?? [])
                 : (is_array($raw) ? $raw : []);
+            if (! empty($data['data']['suggested_tasks']) && empty($data['data']['budget_preview_token']))
+            {
+                $data['data']['budget_preview_token'] = Str::random(48);
+            }
         }
 
         $project = Project::updateOrCreate(
@@ -119,6 +124,10 @@ class ProjectController extends Controller
      */
     public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
     {
+        // #region agent log
+        $logPath = '/Users/magoo/Sites/humano/.cursor/debug-5c9f93.log';
+        file_put_contents($logPath, json_encode(['hypothesisId' => 'H1', 'location' => 'ProjectController::generateBudgetSpec entry', 'message' => 'request reached controller', 'data' => ['has_budget_given' => $request->has('budget_given'), 'budget_len' => strlen($request->input('budget_given', ''))], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
+        // #endregion
         $this->authorize('create', Project::class);
 
         $request->validate([
@@ -149,6 +158,9 @@ class ProjectController extends Controller
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
+            // #region agent log
+            file_put_contents($logPath, json_encode(['hypothesisId' => 'H2', 'location' => 'ProjectController::generateBudgetSpec catch', 'message' => 'exception in agent or before', 'data' => ['exception' => get_class($e), 'message' => $e->getMessage()], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
+            // #endregion
             Log::error('Project generateBudgetSpec failed', ['error' => $e->getMessage()]);
 
             return response()->json([
@@ -188,6 +200,9 @@ class ProjectController extends Controller
         $decoded = json_decode($text, true);
         if (! is_array($decoded))
         {
+            // #region agent log
+            file_put_contents($logPath, json_encode(['hypothesisId' => 'H3', 'location' => 'ProjectController::generateBudgetSpec invalid JSON', 'message' => 'AI response not valid JSON', 'data' => ['text_preview' => substr($text, 0, 300)], 'timestamp' => time()])."\n", FILE_APPEND | LOCK_EX);
+            // #endregion
             Log::warning('generateBudgetSpec invalid JSON', ['text' => substr($text, 0, 500)]);
 
             return response()->json([
@@ -199,6 +214,7 @@ class ProjectController extends Controller
         $clientItems = is_array($decoded['client_items'] ?? null) ? $decoded['client_items'] : [];
         $resourceBreakdown = is_array($decoded['resource_breakdown'] ?? null) ? $decoded['resource_breakdown'] : [];
         $suggestedTasks = is_array($decoded['suggested_tasks'] ?? null) ? $decoded['suggested_tasks'] : [];
+        $suggestedTasks = $this->normalizeSuggestedTasksForFrontend($suggestedTasks);
 
         return response()->json([
             'success' => true,
@@ -210,6 +226,65 @@ class ProjectController extends Controller
             'resource_breakdown' => $resourceBreakdown,
             'suggested_tasks' => $suggestedTasks,
         ]);
+    }
+
+    /**
+     * Public budget preview by token (no auth). Shows module, level, value table.
+     */
+    public function budgetPreview(string $token)
+    {
+        $project = Project::withoutGlobalScopes()
+            ->where('data->budget_preview_token', $token)
+            ->firstOrFail();
+
+        $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+
+        return view('project.budget-preview', [
+            'project' => $project,
+            'suggestedTasks' => $suggestedTasks,
+        ]);
+    }
+
+    /**
+     * Normalize suggested_tasks so unit_price is numeric and resource_level is string for the frontend.
+     */
+    private function normalizeSuggestedTasksForFrontend(array $tasks): array
+    {
+        return array_map(function (array $t): array
+        {
+            if (isset($t['unit_price']))
+            {
+                $v = $t['unit_price'];
+                if (is_numeric($v))
+                {
+                    $t['unit_price'] = (float) $v;
+                } elseif (is_string($v))
+                {
+                    $normalized = preg_replace('/[\s\x{00A0}]/u', '', $v);
+                    if (preg_match('/^\d{1,3}(?:\.\d{3})*,\d+$/', $normalized))
+                    {
+                        $normalized = str_replace('.', '', $normalized);
+                        $normalized = str_replace(',', '.', $normalized);
+                    } else
+                    {
+                        $normalized = str_replace(',', '.', $normalized);
+                    }
+                    if (is_numeric($normalized))
+                    {
+                        $t['unit_price'] = (float) $normalized;
+                    }
+                }
+            }
+            if (! isset($t['resource_level']) || $t['resource_level'] === null)
+            {
+                $t['resource_level'] = '';
+            } else
+            {
+                $t['resource_level'] = (string) $t['resource_level'];
+            }
+
+            return $t;
+        }, $tasks);
     }
 
     /**
@@ -252,13 +327,15 @@ class ProjectController extends Controller
 
         return "TASK SUGGESTIONS (use only when the budget describes concrete tasks or work packages):\n"
             .'- Available task categories in the system (use ONLY these exact names for category_name): '.$namesList."\n"
-            ."- Add a key \"suggested_tasks\" to your JSON: an array of objects, each with \"title\" (string), \"category_name\" (one of the names above), and \"estimated_hours\" (decimal number, e.g. 2.5 for 2h 30m).\n"
-            .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] if the budget does not describe concrete tasks.';
+            ."- Add a key \"suggested_tasks\" to your JSON: an array of objects, each with \"title\", \"category_name\" (one of the names above), \"estimated_hours\" (decimal), \"resource_level\", and \"unit_price\".\n"
+            ."- **resource_level** (string): You MUST suggest a level for every task. Use typical roles: Senior (architecture, lead, complex work), Junior (routine implementation, support), Consultor (analysis, advice, audits). Infer from the type of work and complexity.\n"
+            ."- **unit_price** (number): You MUST suggest a monetary value for every task. (1) If the budget explicitly states a price for that line/module, use it (plain number, e.g. 1500 or 1250.50, no currency or thousands separator). (2) If the budget does NOT give per-line prices, estimate unit_price using: (a) typical market rates for that type of work (e.g. development, consulting) and region (e.g. EU/Spain), (b) the scope/quantity (estimated_hours × reasonable hourly rate, or a realistic fixed price for that module). Always output a number so the user gets a suggested quote; the user can adjust later.\n"
+            .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] only if the budget does not describe concrete tasks. Every suggested task must have resource_level and unit_price.';
     }
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"suggested_tasks\": (optional) Array of suggested tasks: each object with \"title\", \"category_name\" (must match an existing task category in the system), \"estimated_hours\" (decimal). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.";
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (always suggest: Senior/Junior/Consultor based on work type and complexity), \"unit_price\" (always suggest: use client price if given, otherwise estimate from market rates and scope/quantity so every line has a value). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include resource_level and unit_price based on market prices and quantity/scope when the budget does not specify them.";
     }
 
     /**

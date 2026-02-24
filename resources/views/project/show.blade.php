@@ -56,19 +56,24 @@
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			@can('update', $project)
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
-					<i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}
+					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
 			@endcan
 			@can('update', $project)
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
-				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
+				<i class="ti ti-users me-1"></i>{{ __('Collaborators') }}
 			</a>
 			@endcan
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
-				<i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban Board') }}
+				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
+			@if(data_get($project->data, 'budget_preview_token'))
+				<a href="{{ route('project.budget-preview', data_get($project->data, 'budget_preview_token')) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary waves-effect waves-light">
+					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
+				</a>
+			@endif
 			@role('admin|collaborator|developer|editor|technical')
-				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
+				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}</a>
 			@endrole
 		</div>
 	</div>
@@ -216,7 +221,7 @@
 										@endforeach
 									</select>
 									<button type="submit" class="btn btn-sm btn-primary">
-										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add to Kanban') }}
+										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>
 								</form>
 							</td>
