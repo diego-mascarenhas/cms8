@@ -25,8 +25,11 @@ class CategoryController extends Controller
         // Get module filter if set
         $moduleId = $request->get('module_id');
 
-        // Get only parent categories (null parent_id) to show in a hierarchical view
-        $categories = Category::where('team_id', $team->id)
+        // Get only parent categories (null parent_id): global (team_id null) or belonging to current team
+        $categories = Category::where(function ($query) use ($team)
+        {
+            $query->whereNull('team_id')->orWhere('team_id', $team->id);
+        })
             ->when($moduleId, function ($query, $moduleId)
             {
                 return $query->where('module_id', $moduleId);

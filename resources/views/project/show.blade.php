@@ -56,19 +56,24 @@
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			@can('update', $project)
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
-					<i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}
+					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
 			@endcan
 			@can('update', $project)
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
-				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
+				<i class="ti ti-users me-1"></i>{{ __('Collaborators') }}
 			</a>
 			@endcan
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
-				<i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban Board') }}
+				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
+			@if(data_get($project->data, 'budget_preview_token'))
+				<a href="{{ route('project.budget-preview', data_get($project->data, 'budget_preview_token')) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary waves-effect waves-light">
+					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
+				</a>
+			@endif
 			@role('admin|collaborator|developer|editor|technical')
-				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
+				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}</a>
 			@endrole
 		</div>
 	</div>
@@ -122,6 +127,111 @@
            </div>
        </div>
    </div>
+</div>
+
+<!-- Tasks and times block -->
+<div class="card mb-4">
+	<div class="card-header d-flex justify-content-between align-items-center">
+		<h5 class="mb-0">{{ __('Tasks and times') }}</h5>
+		<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-sm btn-outline-primary">
+			<i class="ti ti-layout-kanban me-1"></i>{{ __('Open Kanban board') }}
+		</a>
+	</div>
+	<div class="card-body">
+		@if(isset($projectTasks) && $projectTasks->isNotEmpty())
+			@php
+				$totalEstimated = $projectTasks->sum('estimated_hours');
+				$totalActual = $actualHoursByTaskId->sum();
+			@endphp
+			<p class="text-muted small mb-3">{{ __('Estimated and actual hours per task.') }}</p>
+			<div class="d-flex gap-2 mb-3">
+				<span class="badge bg-label-primary">{{ __('Estimated') }}: {{ number_format($totalEstimated, 1) }}h</span>
+				<span class="badge bg-label-info">{{ __('Actual') }}: {{ number_format($totalActual, 1) }}h</span>
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>{{ __('Task') }}</th>
+							<th class="text-center">{{ __('Status') }}</th>
+							<th class="text-end">{{ __('Hours') }}</th>
+							<th class="text-end">{{ __('Actual (h)') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach($projectTasks as $task)
+						<tr>
+							<td>
+								<a href="{{ route('task.show', $task->id) }}">{{ $task->title ?? '—' }}</a>
+							</td>
+							<td class="text-center">
+								@if($task->status)
+									<span class="badge rounded-pill {{ $task->status->label_class ?? 'bg-label-secondary' }}">{{ $task->status->translated_name ?? $task->status->name }}</span>
+								@else
+									—
+								@endif
+							</td>
+							<td class="text-end">{{ $task->estimated_hours !== null && $task->estimated_hours !== '' ? number_format((float) $task->estimated_hours, 1) : '—' }}</td>
+							<td class="text-end">{{ number_format($actualHoursByTaskId->get($task->id, 0), 1) }}</td>
+						</tr>
+						@endforeach
+					</tbody>
+					<tfoot>
+						<tr class="fw-semibold">
+							<td colspan="2" class="text-end">{{ __('Total') }}</td>
+							<td class="text-end">{{ number_format($totalEstimated, 1) }}h</td>
+							<td class="text-end">{{ number_format($totalActual, 1) }}h</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		@else
+			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add tasks in the Kanban to see estimated and actual hours here.') }}</p>
+		@endif
+
+		@if(isset($suggestedTasks) && count($suggestedTasks) > 0)
+			<hr class="my-4">
+			<p class="text-muted small mb-3">{{ __('Suggested tasks from the budget. Assign who will do each and add them to the board.') }}</p>
+			<div class="table-responsive">
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>{{ __('Task') }}</th>
+							<th class="text-center">{{ __('Task category') }}</th>
+							<th class="text-end">{{ __('Hours') }}</th>
+							<th style="min-width: 220px;">{{ __('Who will do it') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach($suggestedTasks as $idx => $t)
+						<tr>
+							<td>{{ $t['title'] ?? '—' }}</td>
+							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
+							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+							<td>
+								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
+									@csrf
+									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
+									<input type="hidden" name="category_name" value="{{ $t['category_name'] ?? '' }}">
+									<input type="hidden" name="estimated_hours" value="{{ $t['estimated_hours'] ?? '' }}">
+									<select name="responsible_id" class="form-select form-select-sm" required>
+										<option value="">{{ __('Select') }}</option>
+										@foreach($teamUsers ?? [] as $userId => $userName)
+											<option value="{{ $userId }}">{{ $userName }}</option>
+										@endforeach
+									</select>
+									<button type="submit" class="btn btn-sm btn-primary">
+										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
+									</button>
+								</form>
+							</td>
+						</tr>
+						@endforeach
+					</tbody>
+				</table>
+			</div>
+		@endif
+	</div>
 </div>
 
 <!-- Time Tracking for Project Tasks -->
