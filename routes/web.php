@@ -185,6 +185,7 @@ Route::middleware(['auth'])->group(function ()
     // Team API Tokens
     Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
     Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+    Route::post('/team/{team}/api-tokens/reveal', [TeamSettingController::class, 'revealApiToken'])->name('team-settings.reveal-api-token');
     Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
 
     // Custom Translations

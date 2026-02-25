@@ -7,6 +7,10 @@
 @endsection
 
 @section('content')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+
+@section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Team Settings/</span> API Access Tokens</h4>
@@ -98,6 +102,9 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-primary" onclick="revealToken()">
+                            <i class="ti ti-eye me-1"></i>View Token
+                        </button>
                         <button type="button" class="btn btn-danger" onclick="confirmRevokeToken()">
                             <i class="ti ti-trash me-1"></i>Revoke Token
                         </button>
@@ -172,6 +179,34 @@
     </div>
 </div>
 
+<!-- Reveal Token Modal -->
+<div class="modal fade" id="revealTokenModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">API Token</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="reveal-token-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 mb-0">Loading token...</p>
+                </div>
+                <div id="reveal-token-error" class="alert alert-danger d-none"></div>
+                <div id="reveal-token-content" class="d-none">
+                    <p class="text-muted small">Copy this token and store it securely.</p>
+                    <div class="bg-light p-3 rounded">
+                        <code id="revealed-token" style="font-size: 14px; word-break: break-all;"></code>
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('#revealed-token')">
+                            <i class="ti ti-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Revoke Token Form -->
 <form id="revokeTokenForm" action="{{ route('team-settings.revoke-api-token', $team) }}" method="POST" style="display: none;">
     @csrf
@@ -216,6 +251,42 @@ function copyToClipboard(element) {
             timer: 1500,
             showConfirmButton: false
         });
+    });
+}
+
+function revealToken() {
+    const modal = new bootstrap.Modal(document.getElementById('revealTokenModal'));
+    document.getElementById('reveal-token-loading').classList.remove('d-none');
+    document.getElementById('reveal-token-error').classList.add('d-none');
+    document.getElementById('reveal-token-content').classList.add('d-none');
+    modal.show();
+
+    const revealUrl = '{{ route('team-settings.reveal-api-token', $team) }}';
+    fetch(revealUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        return response.json().then(data => ({ ok: response.ok, data }));
+    })
+    .then(({ ok, data }) => {
+        document.getElementById('reveal-token-loading').classList.add('d-none');
+        if (ok && data.token) {
+            document.getElementById('revealed-token').textContent = data.token;
+            document.getElementById('reveal-token-content').classList.remove('d-none');
+        } else {
+            document.getElementById('reveal-token-error').textContent = (data && data.error) || 'Could not load token';
+            document.getElementById('reveal-token-error').classList.remove('d-none');
+        }
+    })
+    .catch(() => {
+        document.getElementById('reveal-token-loading').classList.add('d-none');
+        document.getElementById('reveal-token-error').textContent = 'Failed to load token';
+        document.getElementById('reveal-token-error').classList.remove('d-none');
     });
 }
 </script>

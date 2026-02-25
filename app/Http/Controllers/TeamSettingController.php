@@ -808,6 +808,23 @@ class TeamSettingController extends Controller
     }
 
     /**
+     * Reveal the current API token (plain value) for viewing/copying
+     */
+    public function revealApiToken(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $plainToken = $team->getSetting('api_token_plain');
+
+        if (empty($plainToken))
+        {
+            return response()->json(['error' => 'No API token found'], 404);
+        }
+
+        return response()->json(['token' => $plainToken]);
+    }
+
+    /**
      * Revoke the current API token
      */
     public function revokeApiToken(Team $team)
