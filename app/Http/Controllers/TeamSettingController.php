@@ -808,6 +808,54 @@ class TeamSettingController extends Controller
     }
 
     /**
+     * Reveal the current API token (plain value) for viewing/copying
+     */
+    public function revealApiToken(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $plainToken = $team->getSetting('api_token_plain');
+
+        if (empty($plainToken))
+        {
+            return response()->json(['error' => 'No API token found'], 404);
+        }
+
+        return response()->json(['token' => $plainToken]);
+    }
+
+    /**
+     * Update the current API token name and abilities (token value unchanged)
+     */
+    public function updateApiToken(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        if (empty($team->getSetting('api_token_hash')))
+        {
+            return redirect()->route('team-settings.api-tokens', $team)
+                ->with('error', 'No API token to update.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'abilities' => 'required|string|max:255',
+        ]);
+
+        $team->setSetting('api_token_name', $request->name, [
+            'group' => 'api',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('api_token_abilities', $request->abilities, [
+            'group' => 'api',
+            'is_encrypted' => false,
+        ]);
+
+        return redirect()->back()->with('success', 'API token updated successfully.');
+    }
+
+    /**
      * Revoke the current API token
      */
     public function revokeApiToken(Team $team)

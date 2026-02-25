@@ -10,19 +10,32 @@
         @php
             $lines = [__('Summary of requested quote and values'), ''];
             $total = 0;
+            $totalHours = 0;
+            $strikethrough = function ($text) {
+                $chars = preg_split('//u', (string) $text, -1, PREG_SPLIT_NO_EMPTY);
+                return implode("\u{0336}", $chars) . "\u{0336}";
+            };
             foreach ($suggestedTasks as $t) {
                 $title = $t['title'] ?? '—';
-                $level = isset($t['resource_level']) && $t['resource_level'] !== '' ? $t['resource_level'] : '';
-                $levelPart = $level ? ' (' . $level . ')' : '';
-                $price = isset($t['unit_price']) && $t['unit_price'] !== '' && $t['unit_price'] !== null ? (float) $t['unit_price'] : null;
-                $priceStr = $price !== null ? number_format($price, 2, ',', '.') . ' €' : '—';
-                if ($price !== null) {
-                    $total += $price;
+                $included = $t['included'] ?? true;
+                if ($included) {
+                    $lines[] = '• ' . $title;
+                    $price = isset($t['unit_price']) && $t['unit_price'] !== '' && $t['unit_price'] !== null ? (float) $t['unit_price'] : null;
+                    if ($price !== null) {
+                        $total += $price;
+                    }
+                    $hours = isset($t['estimated_hours']) && $t['estimated_hours'] !== '' && $t['estimated_hours'] !== null ? (float) $t['estimated_hours'] : 0;
+                    $totalHours += $hours;
+                } else {
+                    $lines[] = '• ' . $strikethrough($title);
                 }
-                $lines[] = '• ' . $title . $levelPart . '. ' . __('Value') . ': ' . $priceStr;
             }
             $lines[] = '';
-            $lines[] = __('Total') . ': ' . number_format($total, 2, ',', '.') . ' €';
+            $totalRounded = (int) round($total);
+            $lines[] = __('Total') . ': ' . number_format($totalRounded, 0, '', '.') . '€ + ' . __('I.V.A.');
+            $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
+            $lines[] = '';
+            $lines[] = __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]);
             $summaryText = implode("\n", $lines);
         @endphp
         <pre class="bg-light border rounded p-3 font-monospace mb-0" style="white-space: pre-wrap; word-wrap: break-word;">{{ $summaryText }}</pre>
