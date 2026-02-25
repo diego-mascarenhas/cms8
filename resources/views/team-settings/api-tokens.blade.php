@@ -9,9 +9,6 @@
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-
-@section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Team Settings/</span> API Access Tokens</h4>
         <p class="text-muted">Generate and manage team API tokens for external access</p>
@@ -28,6 +25,11 @@
         @if (session('success'))
             <div class="alert alert-success">
                 {{ session('success') }}
+            </div>
+        @endif
+        @if (session('error'))
+            <div class="alert alert-danger">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -105,6 +107,9 @@
                         <button type="button" class="btn btn-primary" onclick="revealToken()">
                             <i class="ti ti-eye me-1"></i>View Token
                         </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="showEditTokenModal()">
+                            <i class="ti ti-edit me-1"></i>Edit Name & Abilities
+                        </button>
                         <button type="button" class="btn btn-danger" onclick="confirmRevokeToken()">
                             <i class="ti ti-trash me-1"></i>Revoke Token
                         </button>
@@ -179,6 +184,52 @@
     </div>
 </div>
 
+<!-- Edit Token Modal -->
+<div class="modal fade" id="editTokenModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Token Name & Abilities</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('team-settings.update-api-token', $team) }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-token-name" class="form-label">Token Name</label>
+                        <input type="text" class="form-control" id="edit-token-name" name="name"
+                               value="{{ old('name', $tokenName) }}" required>
+                        <div class="form-text">Give your token a descriptive name</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-token-abilities" class="form-label">Token Abilities</label>
+                        <select class="form-select" id="edit-token-abilities" name="abilities" required>
+                            <option value="*" {{ old('abilities', $tokenAbilities) === '*' ? 'selected' : '' }}>
+                                All Abilities
+                            </option>
+                            <option value="read" {{ old('abilities', $tokenAbilities) === 'read' ? 'selected' : '' }}>
+                                Read Only
+                            </option>
+                            <option value="write" {{ old('abilities', $tokenAbilities) === 'write' ? 'selected' : '' }}>
+                                Write Only
+                            </option>
+                            <option value="read,write" {{ old('abilities', $tokenAbilities) === 'read,write' ? 'selected' : '' }}>
+                                Read & Write
+                            </option>
+                        </select>
+                        <div class="form-text">Choose what this token can do</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Reveal Token Modal -->
 <div class="modal fade" id="revealTokenModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -225,15 +276,23 @@ function showGenerateForm() {
     new bootstrap.Modal(document.getElementById('generateTokenModal')).show();
 }
 
+function showEditTokenModal() {
+    new bootstrap.Modal(document.getElementById('editTokenModal')).show();
+}
+
 function confirmRevokeToken() {
     Swal.fire({
         title: 'Are you sure?',
         text: 'This will permanently revoke the current API token. Any applications using this token will lose access.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, revoke it!'
+        confirmButtonText: 'Yes, revoke it!',
+        cancelButtonText: 'Cancel',
+        customClass: {
+            confirmButton: 'btn btn-danger me-3',
+            cancelButton: 'btn btn-label-secondary'
+        },
+        buttonsStyling: false
     }).then((result) => {
         if (result.isConfirmed) {
             document.getElementById('revokeTokenForm').submit();
