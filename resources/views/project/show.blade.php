@@ -153,6 +153,7 @@
 					<thead>
 						<tr>
 							<th>{{ __('Task') }}</th>
+							<th class="text-center">{{ __('Responsible') }}</th>
 							<th class="text-center">{{ __('Status') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
 							<th class="text-end">{{ __('Actual (h)') }}</th>
@@ -164,6 +165,7 @@
 							<td>
 								<a href="{{ route('task.show', $task->id) }}">{{ $task->title ?? '—' }}</a>
 							</td>
+							<td class="text-center">{{ $task->responsible?->name ?? '—' }}</td>
 							<td class="text-center">
 								@if($task->status)
 									<span class="badge rounded-pill {{ $task->status->label_class ?? 'bg-label-secondary' }}">{{ $task->status->translated_name ?? $task->status->name }}</span>
@@ -178,7 +180,7 @@
 					</tbody>
 					<tfoot>
 						<tr class="fw-semibold">
-							<td colspan="2" class="text-end">{{ __('Total') }}</td>
+							<td colspan="3" class="text-end">{{ __('Total') }}</td>
 							<td class="text-end">{{ number_format($totalEstimated, 1) }}h</td>
 							<td class="text-end">{{ number_format($totalActual, 1) }}h</td>
 						</tr>
@@ -190,6 +192,9 @@
 		@endif
 
 		@if(isset($suggestedTasks) && count($suggestedTasks) > 0)
+			@php
+				$suggestedTotalHours = collect($suggestedTasks)->sum(fn ($t) => isset($t['estimated_hours']) && $t['estimated_hours'] !== '' && $t['estimated_hours'] !== null ? (float) $t['estimated_hours'] : 0);
+			@endphp
 			<hr class="my-4">
 			<p class="text-muted small mb-3">{{ __('Suggested tasks from the budget. Assign who will do each and add them to the board.') }}</p>
 			<div class="table-responsive">
@@ -199,6 +204,7 @@
 							<th>{{ __('Task') }}</th>
 							<th class="text-center">{{ __('Task category') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
+							<th class="text-center">{{ __('Level') }}</th>
 							<th style="min-width: 220px;">{{ __('Who will do it') }}</th>
 						</tr>
 					</thead>
@@ -208,6 +214,7 @@
 							<td>{{ $t['title'] ?? '—' }}</td>
 							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
 							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+							<td class="text-center">{{ $t['resource_level'] ?? '—' }}</td>
 							<td>
 								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
 									@csrf
@@ -228,6 +235,13 @@
 						</tr>
 						@endforeach
 					</tbody>
+					<tfoot>
+						<tr class="fw-semibold">
+							<td colspan="2" class="text-end">{{ __('Total') }}</td>
+							<td class="text-end">{{ number_format($suggestedTotalHours, 1) }}h</td>
+							<td colspan="2"></td>
+						</tr>
+					</tfoot>
 				</table>
 			</div>
 		@endif
