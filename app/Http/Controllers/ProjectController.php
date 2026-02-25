@@ -272,6 +272,13 @@ class ProjectController extends Controller
             {
                 $t['resource_level'] = (string) $t['resource_level'];
             }
+            if (! array_key_exists('included', $t))
+            {
+                $t['included'] = true;
+            } else
+            {
+                $t['included'] = (bool) $t['included'];
+            }
 
             return $t;
         }, $tasks);

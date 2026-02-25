@@ -560,6 +560,8 @@
   "Summary of requested quote and values, ready to copy into an email.": "Resumen de lo solicitado y su valor, listo para copiar en el cuerpo de un email.",
   "Generate from budget text to see the summary here.": "Genera desde el texto del presupuesto para ver aquí el resumen.",
   "Total": "Total",
+  "I.V.A.": "I.V.A.",
+  "Estimated development time, :weeks weeks after the budget has been confirmed.": "Tiempo estimado de desarrollo, :weeks semanas luego de haberse confirmado el presupuesto.",
   "Edit breakdown": "Editar desglose",
   "Hide breakdown": "Ocultar desglose",
   "e.g. Senior": "ej. Senior",

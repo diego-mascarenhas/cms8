@@ -171,14 +171,16 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
     function buildSuggestedTasksTable(tasks) {
-        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-center">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
+        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-center">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
         tasks.forEach(function(t, i) {
+            var included = t.included !== false;
+            if (typeof t.included === 'undefined') t.included = true;
             var title = escapeHtml(t.title || '—');
             var cat = escapeHtml(t.category_name || '—');
             var hours = (t.estimated_hours != null ? Number(t.estimated_hours) : '—');
             var resLevel = (t.resource_level != null && t.resource_level !== '') ? escapeHtml(String(t.resource_level)) : '';
             var unitPrice = (t.unit_price != null && t.unit_price !== '') ? escapeHtml(String(t.unit_price)) : '';
-            h += '<tr data-index="' + i + '"><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hours + '</td>';
+            h += '<tr data-index="' + i + '"><td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hours + '</td>';
             h += '<td class="text-center"><input type="text" class="form-control form-control-sm suggested-resource-level" data-index="' + i + '" value="' + resLevel + '" placeholder="{{ __("e.g. Senior") }}"></td>';
             h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"></td></tr>';
         });
@@ -201,19 +203,45 @@
         $('#budget-preview-container').removeClass('d-none');
         var lines = ['{{ __("Summary of requested quote and values") }}', ''];
         var total = 0;
+        var totalHours = 0;
+        function strikethroughUtf8(text) {
+            return Array.from(String(text)).map(function(c) { return c + '\u0336'; }).join('');
+        }
         tasks.forEach(function(t) {
             var title = (t.title || '—');
-            var level = (t.resource_level != null && t.resource_level !== '') ? String(t.resource_level) : '';
-            var levelPart = level ? ' (' + level + ')' : '';
-            var price = (t.unit_price != null && t.unit_price !== '') ? parseFloat(t.unit_price) : NaN;
-            var priceStr = !isNaN(price) ? price.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' : '—';
-            if (!isNaN(price)) total += price;
-            lines.push('• ' + title + levelPart + '. {{ __("Value") }}: ' + priceStr);
+            var included = t.included !== false;
+            if (included) {
+                lines.push('• ' + title);
+                var price = (t.unit_price != null && t.unit_price !== '') ? parseFloat(t.unit_price) : NaN;
+                if (!isNaN(price)) total += price;
+                var hours = (t.estimated_hours != null && t.estimated_hours !== '') ? parseFloat(t.estimated_hours) : 0;
+                totalHours += hours;
+            } else {
+                lines.push('• ' + strikethroughUtf8(title));
+            }
         });
         lines.push('');
-        lines.push('{{ __("Total") }}: ' + total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €');
+        var totalRounded = Math.round(total);
+        var totalFormatted = totalRounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        lines.push('{{ __("Total") }}: ' + totalFormatted + '€ + {{ __("I.V.A.") }}');
+        var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
+        lines.push('');
+        lines.push('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks));
         summaryEl.val(lines.join('\n'));
     }
+
+    $(document).on('change', '.suggested-task-included', function() {
+        var idx = parseInt($(this).data('index'), 10);
+        var raw = $('#data_suggested_tasks').val();
+        var tasks = [];
+        try {
+            if (raw) tasks = JSON.parse(raw);
+        } catch (e) { return; }
+        if (tasks[idx] === undefined) return;
+        tasks[idx].included = $(this).prop('checked');
+        $('#data_suggested_tasks').val(JSON.stringify(tasks));
+        refreshBudgetPreview();
+    });
 
     $(document).on('change input', '.suggested-resource-level, .suggested-unit-price', function() {
         var idx = parseInt($(this).data('index'), 10);
@@ -480,10 +508,12 @@
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
 						<table class="table table-sm table-bordered" id="suggested-tasks-table">
-							<thead><tr><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-center">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
+							<thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-center">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
 							<tbody>
 								@foreach($savedSuggested as $i => $t)
+								@php $included = ($t['included'] ?? true); @endphp
 								<tr data-index="{{ $i }}">
+									<td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="{{ $i }}" {{ $included ? 'checked' : '' }}></td>
 									<td>{{ $t['title'] ?? '—' }}</td>
 									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
 									<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>

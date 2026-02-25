@@ -193,7 +193,7 @@
 
 		@if(isset($suggestedTasks) && count($suggestedTasks) > 0)
 			@php
-				$suggestedTotalHours = collect($suggestedTasks)->sum(fn ($t) => isset($t['estimated_hours']) && $t['estimated_hours'] !== '' && $t['estimated_hours'] !== null ? (float) $t['estimated_hours'] : 0);
+				$suggestedTotalHours = collect($suggestedTasks)->sum(fn ($t) => ($t['included'] ?? true) && isset($t['estimated_hours']) && $t['estimated_hours'] !== '' && $t['estimated_hours'] !== null ? (float) $t['estimated_hours'] : 0);
 			@endphp
 			<hr class="my-4">
 			<p class="text-muted small mb-3">{{ __('Suggested tasks from the budget. Assign who will do each and add them to the board.') }}</p>
@@ -210,7 +210,8 @@
 					</thead>
 					<tbody>
 						@foreach($suggestedTasks as $idx => $t)
-						<tr>
+						@php $suggestedIncluded = $t['included'] ?? true; @endphp
+						<tr class="{{ $suggestedIncluded ? '' : 'table-secondary' }}">
 							<td>{{ $t['title'] ?? '—' }}</td>
 							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
 							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
@@ -221,13 +222,13 @@
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
 									<input type="hidden" name="category_name" value="{{ $t['category_name'] ?? '' }}">
 									<input type="hidden" name="estimated_hours" value="{{ $t['estimated_hours'] ?? '' }}">
-									<select name="responsible_id" class="form-select form-select-sm" required>
+									<select name="responsible_id" class="form-select form-select-sm" {{ $suggestedIncluded ? '' : 'disabled' }} required>
 										<option value="">{{ __('Select') }}</option>
 										@foreach($teamUsers ?? [] as $userId => $userName)
 											<option value="{{ $userId }}">{{ $userName }}</option>
 										@endforeach
 									</select>
-									<button type="submit" class="btn btn-sm btn-primary">
+									<button type="submit" class="btn btn-sm btn-primary" {{ $suggestedIncluded ? '' : 'disabled' }}>
 										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>
 								</form>

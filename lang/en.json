@@ -276,6 +276,8 @@
   "Summary of requested quote and values, ready to copy into an email.": "Summary of requested quote and values, ready to copy into an email.",
   "Generate from budget text to see the summary here.": "Generate from budget text to see the summary here.",
   "Total": "Total",
+  "I.V.A.": "VAT",
+  "Estimated development time, :weeks weeks after the budget has been confirmed.": "Estimated development time, :weeks weeks after the budget has been confirmed.",
   "Edit breakdown": "Edit breakdown",
   "Hide breakdown": "Hide breakdown",
   "e.g. Senior": "e.g. Senior",
