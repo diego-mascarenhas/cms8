@@ -126,7 +126,17 @@
 							</dl>
            </div>
        </div>
-   </div>
+       <div class="row mt-2">
+           <div class="col-12">
+               <dl class="row mb-0">
+                   <dt class="col-auto">{{ __('Project key (API)') }}:</dt>
+                   <dd class="col mb-0">
+                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env') }}">HUMANO_PROJECT_KEY={{ $project->project_key }}</code>
+                   </dd>
+               </dl>
+           </div>
+       </div>
+</div>
 </div>
 
 <!-- Tasks and times block -->

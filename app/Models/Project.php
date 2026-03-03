@@ -65,6 +65,34 @@ class Project extends Model
         });
     }
 
+    /**
+     * Project key (hash of id) for API/external tools. Use in .env as HUMANO_PROJECT_KEY.
+     */
+    public static function keyFromId(int $id): string
+    {
+        return hash('sha256', 'humano_project_' . $id);
+    }
+
+    public function getProjectKeyAttribute(): string
+    {
+        return static::keyFromId((int) $this->id);
+    }
+
+    /**
+     * Resolve project by its key (hash of id). Used for unauthenticated time reporting.
+     */
+    public static function findByKey(string $key): ?self
+    {
+        $key = trim($key);
+        if ($key === '') {
+            return null;
+        }
+
+        return static::withoutGlobalScopes()
+            ->get()
+            ->first(fn ($project) => static::keyFromId((int) $project->id) === $key);
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

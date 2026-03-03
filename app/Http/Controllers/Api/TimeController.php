@@ -3,11 +3,106 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\Task;
 use App\Models\Time;
 use Illuminate\Http\Request;
 
 class TimeController extends Controller
 {
+    /**
+     * Registra tiempo usando solo project_key (hash del proyecto). Sin token.
+     * Para desarrolladores que solo tienen HUMANO_PROJECT_KEY en su .env.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeByProjectKey(Request $request)
+    {
+        $validated = $request->validate([
+            'project_key'      => 'required|string|size:64',
+            'description'      => 'required|string|max:500',
+            'duration_seconds' => 'required|integer|min:1',
+            'task_id'          => 'nullable|integer',
+            'date'             => 'nullable|date',
+            'is_billable'      => 'boolean',
+        ]);
+
+        $project = Project::findByKey($validated['project_key']);
+        if (! $project) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado con la clave indicada.'),
+            ], 404);
+        }
+
+        $taskId = null;
+        if (! empty($validated['task_id'])) {
+            $task = Task::withoutGlobalScopes()->where('board_id', $project->board_id)->find($validated['task_id']);
+            if ($task) {
+                $taskId = $task->id;
+            }
+        }
+        if ($taskId === null && $project->board_id) {
+            $firstTask = Task::withoutGlobalScopes()
+                ->where('board_id', $project->board_id)
+                ->orderBy('order')
+                ->orderBy('id')
+                ->first();
+            $taskId = $firstTask?->id;
+        }
+
+        if ($taskId === null) {
+            return response()->json([
+                'success' => false,
+                'message' => __('El proyecto no tiene tareas. Crea al menos una tarea en el tablero del proyecto.'),
+            ], 422);
+        }
+
+        $task = Task::withoutGlobalScopes()->find($taskId);
+        $teamId = $task->team_id;
+        $userId = $project->responsible_id ?? $task->responsible_id;
+        if (! $userId) {
+            $userId = \App\Models\User::withoutGlobalScopes()->where('team_id', $teamId)->value('id');
+        }
+        if (! $userId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay usuario asignado al proyecto o al equipo.'),
+            ], 422);
+        }
+
+        $date = isset($validated['date']) ? \Carbon\Carbon::parse($validated['date']) : now();
+        $startTime = $date->copy()->startOfDay();
+        $endTime = $startTime->copy()->addSeconds($validated['duration_seconds']);
+
+        $time = Time::withoutGlobalScope('team')->create([
+            'team_id'          => $teamId,
+            'user_id'          => $userId,
+            'task_id'          => $taskId,
+            'description'      => $validated['description'],
+            'start_time'       => $startTime,
+            'end_time'         => $endTime,
+            'duration_seconds' => $validated['duration_seconds'],
+            'is_billable'      => $validated['is_billable'] ?? true,
+            'hourly_rate'      => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tiempo registrado correctamente.'),
+            'data'    => [
+                'id'                 => $time->id,
+                'description'        => $time->description,
+                'duration_seconds'   => $time->duration_seconds,
+                'duration_formatted' => $time->formatted_duration,
+                'duration_hours'     => $time->duration_hours,
+                'date'               => $startTime->toDateString(),
+                'is_billable'        => $time->is_billable,
+                'task_id'            => $time->task_id,
+            ],
+        ], 201);
+    }
+
     /**
      * Lista el historial de fichajes del usuario autenticado.
      *
@@ -212,6 +307,69 @@ class TimeController extends Controller
                 'is_billable' => $time->is_billable,
             ],
             'previous_stopped' => $previouslyStopped,
+        ], 201);
+    }
+
+    /**
+     * Registra una entrada de tiempo con duración conocida (sin timer start/stop).
+     * Útil para registrar trabajo realizado desde herramientas externas (MCP, etc.).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'description'      => 'required|string|max:500',
+            'duration_seconds' => 'required|integer|min:1',
+            'task_id'          => 'nullable|exists:tasks,id',
+            'date'             => 'nullable|date',
+            'is_billable'      => 'boolean',
+            'hourly_rate'      => 'nullable|numeric|min:0',
+        ]);
+
+        $date      = isset($validated['date']) ? \Carbon\Carbon::parse($validated['date']) : now();
+        $startTime = $date->copy()->startOfDay();
+        $endTime   = $startTime->copy()->addSeconds($validated['duration_seconds']);
+
+        $user = $request->user();
+        $teamId = $user->currentTeam->id ?? null;
+        if (isset($validated['task_id'])) {
+            $task = \App\Models\Task::find($validated['task_id']);
+            if ($task) {
+                $teamId = $task->team_id;
+            }
+        }
+        if (! $teamId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Usuario sin equipo asignado. Asigna un equipo actual o envía task_id para registrar en el proyecto.'),
+            ], 422);
+        }
+
+        $time = Time::create([
+            'team_id'          => $teamId,
+            'user_id'          => $user->id,
+            'task_id'          => $validated['task_id'] ?? null,
+            'description'      => $validated['description'],
+            'start_time'       => $startTime,
+            'end_time'         => $endTime,
+            'duration_seconds' => $validated['duration_seconds'],
+            'is_billable'      => $validated['is_billable'] ?? true,
+            'hourly_rate'      => $validated['hourly_rate'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tiempo registrado correctamente.',
+            'data'    => [
+                'id'                 => $time->id,
+                'description'        => $time->description,
+                'duration_seconds'   => $time->duration_seconds,
+                'duration_formatted' => $time->formatted_duration,
+                'duration_hours'     => $time->duration_hours,
+                'date'               => $startTime->toDateString(),
+                'is_billable'        => $time->is_billable,
+            ],
         ], 201);
     }
 
