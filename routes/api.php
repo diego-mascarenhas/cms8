@@ -361,6 +361,9 @@ Route::group(['prefix' => 'auth'], function ()
     });
 });
 
+// Time reporting by project key only (no API token; developers use HUMANO_PROJECT_KEY in .env)
+Route::post('time/store-by-project-key', [TimeController::class, 'storeByProjectKey']);
+
 Route::middleware('auth:sanctum')->group(function ()
 {
     // Menu for mobile app (filtered by user permissions and team modules)
@@ -374,6 +377,7 @@ Route::middleware('auth:sanctum')->group(function ()
     {
         Route::get('/', [TimeController::class, 'index']);
         Route::get('/running', [TimeController::class, 'running']);
+        Route::post('/store', [TimeController::class, 'store']);
         Route::post('/start', [TimeController::class, 'start']);
         Route::post('/{id}/stop', [TimeController::class, 'stop']);
     });
