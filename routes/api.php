@@ -364,6 +364,9 @@ Route::group(['prefix' => 'auth'], function ()
 // Time reporting by project key only (no API token; developers use HUMANO_PROJECT_KEY in .env)
 Route::post('time/store-by-project-key', [TimeController::class, 'storeByProjectKey']);
 
+// Tasks by project key (fetch from Humano; no API token)
+Route::get('tasks-by-project-key', [TaskController::class, 'tasksByProjectKey']);
+
 Route::middleware('auth:sanctum')->group(function ()
 {
     // Menu for mobile app (filtered by user permissions and team modules)

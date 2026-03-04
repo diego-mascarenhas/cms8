@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Illuminate\Http\Request;
@@ -31,6 +32,83 @@ class TaskController extends Controller
         return response()->json([
             'success' => true,
             'data' => $statuses,
+        ]);
+    }
+
+    /**
+     * Lista todas las tareas asociadas a un proyecto por project_key (sin autenticación).
+     * Para integración externa (ej. Oba) igual que time/store-by-project-key.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function tasksByProjectKey(Request $request)
+    {
+        $validated = $request->validate([
+            'project_key' => 'required|string|size:64',
+        ]);
+
+        $project = Project::findByKey($validated['project_key']);
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado con la clave indicada.'),
+            ], 404);
+        }
+
+        if (! $project->board_id)
+        {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                ],
+            ]);
+        }
+
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with(['status', 'category', 'responsible'])
+            ->defaultOrder()
+            ->get();
+
+        $data = $tasks->map(function ($task)
+        {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'start_date' => $task->start_date?->format('Y-m-d'),
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'estimated_hours' => $task->estimated_hours,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'category' => [
+                    'id' => $task->category?->id,
+                    'name' => $task->category?->name,
+                ],
+                'responsible' => [
+                    'id' => $task->responsible?->id,
+                    'name' => $task->responsible?->name,
+                    'email' => $task->responsible?->email,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'total' => $data->count(),
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+            ],
         ]);
     }
 
@@ -172,7 +250,6 @@ class TaskController extends Controller
     /**
      * Crea una nueva tarea y opcionalmente inicia el timer.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -241,7 +318,6 @@ class TaskController extends Controller
     /**
      * Inicia el registro de tiempo para una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -307,7 +383,6 @@ class TaskController extends Controller
     /**
      * Detiene el registro de tiempo activo para una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -363,7 +438,6 @@ class TaskController extends Controller
     /**
      * Obtiene el tiempo total invertido en una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -397,6 +471,7 @@ class TaskController extends Controller
         $entries = $task->times->map(function ($time)
         {
             $duration = $time->start_time->diffInSeconds($time->end_time);
+
             return [
                 'id' => $time->id,
                 'user' => [
@@ -442,7 +517,6 @@ class TaskController extends Controller
     /**
      * Actualiza el estado de una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */

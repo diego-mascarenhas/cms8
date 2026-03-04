@@ -70,7 +70,7 @@ class Project extends Model
      */
     public static function keyFromId(int $id): string
     {
-        return hash('sha256', 'humano_project_' . $id);
+        return hash('sha256', 'humano_project_'.$id);
     }
 
     public function getProjectKeyAttribute(): string
@@ -84,13 +84,24 @@ class Project extends Model
     public static function findByKey(string $key): ?self
     {
         $key = trim($key);
-        if ($key === '') {
+        if ($key === '' || strlen($key) !== 64)
+        {
             return null;
         }
 
-        return static::withoutGlobalScopes()
-            ->get()
-            ->first(fn ($project) => static::keyFromId((int) $project->id) === $key);
+        $ids = static::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        foreach ($ids as $id)
+        {
+            if (static::keyFromId((int) $id) === $key)
+            {
+                return static::withoutGlobalScopes()->find($id);
+            }
+        }
+
+        return null;
     }
 
     public function category()

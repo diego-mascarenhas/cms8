@@ -23,14 +23,16 @@ class DemoDataForTimeReportingSeeder extends Seeder
     public function run(): void
     {
         $team = Team::where('personal_team', false)->first();
-        if (! $team) {
+        if (! $team)
+        {
             $this->command->warn('No hay equipo. Ejecuta antes DatabaseSeeder o crea un team.');
 
             return;
         }
 
         $user = $team->users()->first() ?? User::first();
-        if (! $user) {
+        if (! $user)
+        {
             $this->command->warn('No hay usuario en el equipo.');
 
             return;
@@ -38,7 +40,8 @@ class DemoDataForTimeReportingSeeder extends Seeder
 
         $projectsModule = Module::where('key', 'projects')->first();
         $tasksModule = Module::where('key', 'tasks')->first();
-        if (! $projectsModule || ! $tasksModule) {
+        if (! $projectsModule || ! $tasksModule)
+        {
             $this->command->warn('Módulos projects/tasks no encontrados. Ejecuta ModuleSeeder y HostingProjectAndTaskCategoriesSeeder.');
 
             return;
@@ -46,7 +49,8 @@ class DemoDataForTimeReportingSeeder extends Seeder
 
         $projectCategory = Category::where('module_id', $projectsModule->id)->first();
         $taskCategory = Category::where('module_id', $tasksModule->id)->first();
-        if (! $projectCategory || ! $taskCategory) {
+        if (! $projectCategory || ! $taskCategory)
+        {
             $this->command->warn('Categorías de proyecto/tarea no encontradas. Ejecuta HostingProjectAndTaskCategoriesSeeder.');
 
             return;
@@ -63,7 +67,8 @@ class DemoDataForTimeReportingSeeder extends Seeder
         ];
 
         $enterprises = [];
-        foreach ($clients as $c) {
+        foreach ($clients as $c)
+        {
             $ent = Enterprise::withoutGlobalScope('team')->firstOrCreate(
                 [
                     'team_id' => $team->id,
@@ -73,7 +78,7 @@ class DemoDataForTimeReportingSeeder extends Seeder
                     'name' => $c['name'],
                     'type_id' => 1,
                     'status_id' => 1,
-                    'email' => strtolower($c['code']) . '@example.com',
+                    'email' => strtolower($c['code']).'@example.com',
                 ],
             );
             $enterprises[] = $ent;
@@ -87,14 +92,15 @@ class DemoDataForTimeReportingSeeder extends Seeder
             ['name' => 'Consultoría técnica', 'client' => $enterprises[2]],
         ];
 
-        foreach ($projectsData as $pData) {
+        foreach ($projectsData as $pData)
+        {
             $board = TaskBoard::withoutGlobalScope('team')->firstOrCreate(
                 [
                     'team_id' => $team->id,
-                    'name' => $pData['name'] . ' (board)',
+                    'name' => $pData['name'].' (board)',
                 ],
                 [
-                    'description' => 'Tablero del proyecto ' . $pData['name'],
+                    'description' => 'Tablero del proyecto '.$pData['name'],
                     'is_default' => false,
                     'order' => 0,
                 ],
@@ -120,17 +126,22 @@ class DemoDataForTimeReportingSeeder extends Seeder
 
             $this->command->info("Proyecto: {$project->name} (ID: {$project->id}, board: {$board->id})");
 
-            // 2 tareas por proyecto
+            // Varias tareas por proyecto (más de dos para pruebas y API)
             $taskTitles = [
                 'Desarrollo backend',
                 'Revisión y testing',
+                'Diseño de interfaz',
+                'Integración API',
+                'Documentación técnica',
+                'Despliegue y configuración',
             ];
-            foreach ($taskTitles as $i => $title) {
+            foreach ($taskTitles as $i => $title)
+            {
                 $task = Task::withoutGlobalScope('team')->firstOrCreate(
                     [
                         'team_id' => $team->id,
                         'board_id' => $board->id,
-                        'title' => $title . ' — ' . $project->name,
+                        'title' => $title.' — '.$project->name,
                     ],
                     [
                         'category_id' => $taskCategory->id,
