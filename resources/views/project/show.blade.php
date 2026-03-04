@@ -129,20 +129,16 @@
        <div class="row mt-2">
            <div class="col-12">
                <dl class="row mb-0">
-                   <dt class="col-auto">{{ __('Project key (API)') }}:</dt>
+                   <dt class="col-auto">{{ __('Project key (API / MCP)') }}:</dt>
                    <dd class="col mb-0">
+                       @auth
+                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env: list tasks and auto-assign when you pick one via MCP') }}">HUMANO_PROJECT_KEY={{ $project->contextKeyForUser(auth()->user()) }}</code>
+                       @else
                        <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env') }}">HUMANO_PROJECT_KEY={{ $project->project_key }}</code>
+                       <p class="text-muted small mb-0 mt-1">{{ __('Log in to get the key that includes your user (list and assign tasks via MCP).') }}</p>
+                       @endauth
                    </dd>
                </dl>
-               @auth
-               <dl class="row mb-0 mt-2">
-                   <dt class="col-auto">{{ __('MCP key (project + you)') }}:</dt>
-                   <dd class="col mb-0">
-                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env to auto-assign tasks when you select one via MCP') }}">HUMANO_CONTEXT_KEY={{ $project->contextKeyForUser(auth()->user()) }}</code>
-                   </dd>
-               </dl>
-               <p class="text-muted small mb-0 mt-1">{{ __('Use this key in .env so when you pick a task from MCP it is assigned to you and set to In progress.') }}</p>
-               @endauth
            </div>
        </div>
 </div>
@@ -175,7 +171,7 @@
 							<th class="text-center">{{ __('Responsible') }}</th>
 							<th class="text-center">{{ __('Status') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
-							<th class="text-end">{{ __('Actual (h)') }}</th>
+							<th class="text-end">{{ __('Actual') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -229,13 +225,24 @@
 					</thead>
 					<tbody>
 						@foreach($suggestedTasks as $idx => $t)
-						@php $suggestedIncluded = $t['included'] ?? true; @endphp
+						@php
+							$suggestedIncluded = $t['included'] ?? true;
+							$onBoard = $t['on_board'] ?? false;
+							$responsibleName = null;
+							if (!empty($t['responsible_id']) && isset($teamUsers) && isset($teamUsers[$t['responsible_id']])) {
+								$responsibleName = $teamUsers[$t['responsible_id']];
+							}
+						@endphp
 						<tr class="{{ $suggestedIncluded ? '' : 'table-secondary' }}">
 							<td>{{ $t['title'] ?? '—' }}</td>
 							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
 							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
 							<td class="text-center">{{ $t['resource_level'] ?? '—' }}</td>
 							<td>
+								@if($onBoard)
+									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
+									<span class="badge bg-label-success ms-1">{{ __('On board') }}</span>
+								@else
 								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
 									@csrf
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
@@ -251,6 +258,7 @@
 										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>
 								</form>
+								@endif
 							</td>
 						</tr>
 						@endforeach

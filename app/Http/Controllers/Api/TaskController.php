@@ -113,6 +113,92 @@ class TaskController extends Controller
     }
 
     /**
+     * Lista tareas por context_key (proyecto + usuario). Con una sola clave puedes listar y luego asignar.
+     * Misma respuesta que tasks-by-project-key.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function tasksByContextKey(Request $request)
+    {
+        $validated = $request->validate([
+            'context_key' => 'required|string',
+        ]);
+
+        $decoded = Project::decodeContextKey($validated['context_key']);
+        if (! $decoded)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Clave de contexto inválida o corrupta.'),
+            ], 422);
+        }
+
+        $project = Project::findByKey($decoded['project_key']);
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado con la clave indicada.'),
+            ], 404);
+        }
+
+        if (! $project->board_id)
+        {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                ],
+            ]);
+        }
+
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with(['status', 'category', 'responsible'])
+            ->defaultOrder()
+            ->get();
+
+        $data = $tasks->map(function ($task)
+        {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'start_date' => $task->start_date?->format('Y-m-d'),
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'estimated_hours' => $task->estimated_hours,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'category' => [
+                    'id' => $task->category?->id,
+                    'name' => $task->category?->name,
+                ],
+                'responsible' => [
+                    'id' => $task->responsible?->id,
+                    'name' => $task->responsible?->name,
+                    'email' => $task->responsible?->email,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'total' => $data->count(),
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+            ],
+        ]);
+    }
+
+    /**
      * Asigna la tarea al usuario indicado en la context_key y pone la tarea en estado "En progreso".
      * La context_key contiene proyecto + usuario (generada en la ficha del proyecto como "Clave MCP").
      *

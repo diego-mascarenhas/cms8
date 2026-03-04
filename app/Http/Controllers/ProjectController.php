@@ -811,6 +811,23 @@ class ProjectController extends Controller
 
             return $t;
         })->all();
+
+        $suggestedTitles = collect($suggestedTasks)->pluck('title')->filter()->values()->all();
+        foreach ($projectTasks as $boardTask)
+        {
+            if (! in_array($boardTask->title, $suggestedTitles, true))
+            {
+                $suggestedTasks[] = [
+                    'title' => $boardTask->title,
+                    'category_name' => $boardTask->category?->name ?? '—',
+                    'estimated_hours' => $boardTask->estimated_hours,
+                    'resource_level' => '—',
+                    'responsible_id' => $boardTask->responsible_id,
+                    'on_board' => true,
+                ];
+            }
+        }
+
         $teamUsers = auth()->user()->currentTeam ? auth()->user()->currentTeam->allUsers()->pluck('name', 'id') : collect();
 
         return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));
