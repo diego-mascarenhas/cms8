@@ -799,6 +799,18 @@ class ProjectController extends Controller
         }
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+        $boardTasksByTitle = $projectTasks->keyBy('title');
+        $suggestedTasks = collect($suggestedTasks)->map(function ($t) use ($boardTasksByTitle)
+        {
+            $title = $t['title'] ?? '';
+            $boardTask = $boardTasksByTitle->get($title);
+            if ($boardTask && $boardTask->responsible_id)
+            {
+                $t['responsible_id'] = $boardTask->responsible_id;
+            }
+
+            return $t;
+        })->all();
         $teamUsers = auth()->user()->currentTeam ? auth()->user()->currentTeam->allUsers()->pluck('name', 'id') : collect();
 
         return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));

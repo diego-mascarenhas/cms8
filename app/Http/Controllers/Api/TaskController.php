@@ -113,6 +113,101 @@ class TaskController extends Controller
     }
 
     /**
+     * Asigna la tarea al usuario indicado en la context_key y pone la tarea en estado "En progreso".
+     * La context_key contiene proyecto + usuario (generada en la ficha del proyecto como "Clave MCP").
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function taskAssignAndStart(Request $request)
+    {
+        $validated = $request->validate([
+            'context_key' => 'required|string',
+            'task_id' => 'required|integer|min:1',
+        ]);
+
+        $decoded = Project::decodeContextKey($validated['context_key']);
+        if (! $decoded)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Clave de contexto inválida o corrupta.'),
+            ], 422);
+        }
+
+        $project = Project::findByKey($decoded['project_key']);
+        if (! $project || ! $project->board_id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado o sin tablero.'),
+            ], 404);
+        }
+
+        $user = \App\Models\User::withoutGlobalScopes()->find($decoded['user_id']);
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Usuario no encontrado.'),
+            ], 404);
+        }
+
+        $isMember = $user->teams()->where('team_id', $project->team_id)->exists();
+        if (! $isMember)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('El usuario no pertenece al equipo del proyecto.'),
+            ], 403);
+        }
+
+        $inProgressStatus = TaskStatus::where('name', 'IN_PROGRESS')->first();
+        if (! $inProgressStatus)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Estado "En progreso" no configurado.'),
+            ], 500);
+        }
+
+        $task = Task::withoutGlobalScopes()
+            ->where('id', $validated['task_id'])
+            ->where('board_id', $project->board_id)
+            ->first();
+
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Tarea no encontrada o no pertenece a este proyecto.'),
+            ], 404);
+        }
+
+        $task->update([
+            'responsible_id' => $user->id,
+            'status_id' => $inProgressStatus->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea asignada y puesta en progreso.'),
+            'task' => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'responsible' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'status' => [
+                    'id' => $inProgressStatus->id,
+                    'name' => $inProgressStatus->name,
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Lista las tareas asignadas al usuario autenticado.
      *
      * @return \Illuminate\Http\JsonResponse

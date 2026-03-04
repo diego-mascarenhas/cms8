@@ -134,6 +134,15 @@
                        <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env') }}">HUMANO_PROJECT_KEY={{ $project->project_key }}</code>
                    </dd>
                </dl>
+               @auth
+               <dl class="row mb-0 mt-2">
+                   <dt class="col-auto">{{ __('MCP key (project + you)') }}:</dt>
+                   <dd class="col mb-0">
+                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env to auto-assign tasks when you select one via MCP') }}">HUMANO_CONTEXT_KEY={{ $project->contextKeyForUser(auth()->user()) }}</code>
+                   </dd>
+               </dl>
+               <p class="text-muted small mb-0 mt-1">{{ __('Use this key in .env so when you pick a task from MCP it is assigned to you and set to In progress.') }}</p>
+               @endauth
            </div>
        </div>
 </div>
@@ -235,7 +244,7 @@
 									<select name="responsible_id" class="form-select form-select-sm" {{ $suggestedIncluded ? '' : 'disabled' }} required>
 										<option value="">{{ __('Select') }}</option>
 										@foreach($teamUsers ?? [] as $userId => $userName)
-											<option value="{{ $userId }}">{{ $userName }}</option>
+											<option value="{{ $userId }}" @selected((int) $userId === (int) ($t['responsible_id'] ?? auth()->id()))>{{ $userName }}</option>
 										@endforeach
 									</select>
 									<button type="submit" class="btn btn-sm btn-primary" {{ $suggestedIncluded ? '' : 'disabled' }}>
