@@ -62,10 +62,22 @@
 				<div class="col-md-6">
 					<dl class="row mb-0">
 						<dt class="col-4 text-truncate">{{ __('Start Date') }}:</dt>
-						<dd class="col-8">{{ $task->start_date ? \Carbon\Carbon::parse($task->start_date)->format('d/m/Y') : '—' }}</dd>
+						<dd class="col-8">
+							@if(isset($actualStartAt) && $actualStartAt)
+								{{ \Carbon\Carbon::parse($actualStartAt)->format('d/m/Y H:i') }}
+							@else
+								{{ $task->start_date ? \Carbon\Carbon::parse($task->start_date)->format('d/m/Y') : '—' }}
+							@endif
+						</dd>
 
 						<dt class="col-4 text-truncate">{{ __('Due Date') }}:</dt>
-						<dd class="col-8">{{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : '—' }}</dd>
+						<dd class="col-8">
+							@if(isset($actualEndAt) && $actualEndAt)
+								{{ \Carbon\Carbon::parse($actualEndAt)->format('d/m/Y H:i') }}
+							@else
+								{{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('d/m/Y') : '—' }}
+							@endif
+						</dd>
 					</dl>
 				</div>
 			</div>

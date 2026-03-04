@@ -368,6 +368,7 @@ Route::post('time/store-by-project-key', [TimeController::class, 'storeByProject
 Route::get('tasks-by-project-key', [TaskController::class, 'tasksByProjectKey']);
 Route::get('tasks-by-context-key', [TaskController::class, 'tasksByContextKey']);
 Route::post('task-assign-and-start', [TaskController::class, 'taskAssignAndStart']);
+Route::post('task-complete-by-context-key', [TaskController::class, 'taskCompleteByContextKey']);
 
 Route::middleware('auth:sanctum')->group(function ()
 {
