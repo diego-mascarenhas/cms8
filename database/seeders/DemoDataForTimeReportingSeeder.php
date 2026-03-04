@@ -158,7 +158,112 @@ class DemoDataForTimeReportingSeeder extends Seeder
             }
         }
 
+        // --- Proyecto demo desde DB (Sistema Formularios, project/10) ---
+        $demoBoard = TaskBoard::withoutGlobalScope('team')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'name' => 'Project: Sistema Formularios',
+            ],
+            [
+                'description' => 'Task board for project: Sistema Formularios',
+                'is_default' => false,
+                'order' => 0,
+            ],
+        );
+
+        $demoProjectCategory = Category::where('module_id', $projectsModule->id)->where('name', 'Desarrollo web')->first() ?? $projectCategory;
+
+        $demoProjectData = [
+            'budget_given' => "Presupuesto recibido:\nSistema de formularios y encuestas en Laravel 11 con Vuexy. Módulo de encuestas, diseño de base de datos (formularios, campos, respuestas), vistas y componentes UI.",
+            'ai_interpretation' => 'Desarrollo de un sistema de formularios y encuestas. Alcance: análisis funcional, modelo de datos, UI en Vuexy (formularios, histórico, emails), implementación backend y frontend.',
+            'dimension' => 'Proyecto mediano: un módulo principal de encuestas, CRUD de formularios y respuestas, vistas de historial y notificaciones por email. Stack Laravel 11 + Vuexy.',
+            'estimated_times' => 'Fase 1 análisis y diseño (1-2 semanas). Fase 2 desarrollo backend y base de datos (2-3 semanas). Fase 3 UI y integración (2 semanas). Pruebas y despliegue (1 semana).',
+            'resources' => '1 desarrollador Senior full-stack (Laravel + Vuexy). Entorno local y staging. Base de datos MySQL.',
+            'suggested_tasks' => [
+                ['title' => 'Análisis funcional y definición de flujos del módulo de encuestas', 'category_name' => 'Análisis', 'estimated_hours' => 6, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Diseño de base de datos: formularios, campos, respuestas y relaciones', 'category_name' => 'Diseño', 'estimated_hours' => 8, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Diseño de vistas y componentes UI en Vuexy (formularios, histórico, emails)', 'category_name' => 'Diseño', 'estimated_hours' => 8, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Implementación modelos y migraciones Laravel (formularios, campos, respuestas)', 'category_name' => 'Desarrollo web', 'estimated_hours' => 12, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'API REST y controladores para formularios y respuestas', 'category_name' => 'Desarrollo web', 'estimated_hours' => 10, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Vistas Blade/Vuexy: listado y edición de formularios', 'category_name' => 'Desarrollo web', 'estimated_hours' => 10, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Componentes de formulario dinámico (campos configurables)', 'category_name' => 'Desarrollo web', 'estimated_hours' => 14, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Flujo de respuestas y almacenamiento en BD', 'category_name' => 'Desarrollo web', 'estimated_hours' => 8, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Vista de histórico de respuestas y exportación', 'category_name' => 'Desarrollo web', 'estimated_hours' => 6, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Integración envío de emails (notificaciones, resúmenes)', 'category_name' => 'Desarrollo web', 'estimated_hours' => 6, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Validaciones y permisos por rol', 'category_name' => 'Desarrollo web', 'estimated_hours' => 6, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Tests automatizados (feature y unit)', 'category_name' => 'Desarrollo web', 'estimated_hours' => 8, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Documentación técnica y manual de usuario', 'category_name' => 'Documentación', 'estimated_hours' => 4, 'resource_level' => 'Junior', 'unit_price' => 45],
+                ['title' => 'Despliegue en staging y configuración de entorno', 'category_name' => 'Desarrollo web', 'estimated_hours' => 4, 'resource_level' => 'Senior', 'unit_price' => 65],
+                ['title' => 'Revisión final y entrega', 'category_name' => 'Análisis', 'estimated_hours' => 2, 'resource_level' => 'Senior', 'unit_price' => 65],
+            ],
+            'budget_preview_token' => \Illuminate\Support\Str::random(48),
+        ];
+
+        $demoProject = Project::withoutGlobalScope('team')->withoutGlobalScope('ownership')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'board_id' => $demoBoard->id,
+            ],
+            [
+                'enterprise_id' => $enterprises[2]->id, // Agencia Digital (AGD)
+                'category_id' => $demoProjectCategory->id,
+                'name' => 'Sistema Formularios',
+                'real_name' => 'Formularios',
+                'description' => "El cliente tiene un sistema desarrollado recientemente por nosotros por lo que las tareas de auditoría y consultoría no deben contemplarse.\nEl sistema está realizado en Laravel 11 con Vuexy.",
+                'status_id' => 1,
+                'responsible_id' => $user->id,
+                'date_start' => null,
+                'date_end' => null,
+                'data' => $demoProjectData,
+            ],
+        );
+
+        $demoProject->update(['data' => $demoProjectData]);
+
+        $this->command->info("Proyecto demo (desde DB): {$demoProject->name} (ID: {$demoProject->id}, board: {$demoBoard->id})");
+
+        $demoTaskCategoryAnalisis = Category::where('module_id', $tasksModule->id)->where('name', 'Análisis')->first() ?? $taskCategory;
+        $demoTaskCategoryDiseno = Category::where('module_id', $tasksModule->id)->where('name', 'Diseño')->first() ?? $taskCategory;
+
+        $demoTasksData = [
+            [
+                'title' => 'Análisis de requisitos y diseño del modelo de datos',
+                'description' => null,
+                'estimated_hours' => 6,
+                'category' => $demoTaskCategoryAnalisis,
+            ],
+            [
+                'title' => 'Diseño de vistas y componentes UI en Vuexy (formularios, histórico, emails)',
+                'description' => null,
+                'estimated_hours' => 8,
+                'category' => $demoTaskCategoryDiseno,
+            ],
+        ];
+
+        foreach ($demoTasksData as $i => $taskData)
+        {
+            $task = Task::withoutGlobalScope('team')->firstOrCreate(
+                [
+                    'team_id' => $team->id,
+                    'board_id' => $demoBoard->id,
+                    'title' => $taskData['title'],
+                ],
+                [
+                    'category_id' => $taskData['category']->id,
+                    'responsible_id' => $user->id,
+                    'description' => $taskData['description'],
+                    'estimated_hours' => $taskData['estimated_hours'],
+                    'status_id' => $statusToDo,
+                    'order' => $i + 1,
+                    'start_date' => now(),
+                    'due_date' => now(),
+                ],
+            );
+            $this->command->info("  Tarea: {$task->title} (ID: {$task->id})");
+        }
+
         $this->command->info('');
+        $this->command->info("Proyecto demo: https://humano.test/project/{$demoProject->id} — Usa esta URL para demostraciones.");
         $this->command->info('Listo. Puedes usar https://humano.test/project/list y la API /api/time (start/stop o store) para pruebas.');
     }
 }
