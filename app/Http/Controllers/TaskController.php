@@ -409,10 +409,13 @@ class TaskController extends Controller
 
     public function show(string $id)
     {
-        $task = Task::with(['responsible', 'status', 'category'])
+        $task = Task::with(['responsible', 'status', 'category', 'project'])
             ->findOrFail($id);
 
-        return view('task.show', compact('task'));
+        $actualStartAt = Time::where('task_id', $task->id)->min('start_time');
+        $actualEndAt = Time::where('task_id', $task->id)->whereNotNull('end_time')->max('end_time');
+
+        return view('task.show', compact('task', 'actualStartAt', 'actualEndAt'));
     }
 
     /**
@@ -516,8 +519,7 @@ class TaskController extends Controller
             if (app()->environment('local'))
             {
                 \App\Jobs\SendTaskCommunication::dispatchSync($communication);
-            }
-            else
+            } else
             {
                 \App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
             }

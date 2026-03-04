@@ -799,6 +799,35 @@ class ProjectController extends Controller
         }
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+        $boardTasksByTitle = $projectTasks->keyBy('title');
+        $suggestedTasks = collect($suggestedTasks)->map(function ($t) use ($boardTasksByTitle)
+        {
+            $title = $t['title'] ?? '';
+            $boardTask = $boardTasksByTitle->get($title);
+            if ($boardTask && $boardTask->responsible_id)
+            {
+                $t['responsible_id'] = $boardTask->responsible_id;
+            }
+
+            return $t;
+        })->all();
+
+        $suggestedTitles = collect($suggestedTasks)->pluck('title')->filter()->values()->all();
+        foreach ($projectTasks as $boardTask)
+        {
+            if (! in_array($boardTask->title, $suggestedTitles, true))
+            {
+                $suggestedTasks[] = [
+                    'title' => $boardTask->title,
+                    'category_name' => $boardTask->category?->name ?? '—',
+                    'estimated_hours' => $boardTask->estimated_hours,
+                    'resource_level' => '—',
+                    'responsible_id' => $boardTask->responsible_id,
+                    'on_board' => true,
+                ];
+            }
+        }
+
         $teamUsers = auth()->user()->currentTeam ? auth()->user()->currentTeam->allUsers()->pluck('name', 'id') : collect();
 
         return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));

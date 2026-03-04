@@ -109,6 +109,7 @@ class DatabaseSeeder extends Seeder
             TeamRevisionAlphaSeeder::class,  // Production data import
             // TeamDemoSeeder::class,  // Demo data (alternative)
             TeamHumanoSeeder::class,  // Humano team setup
+            DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
         ]);
 
         // Activity log was removed from the application

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use App\Models\Time;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -31,6 +33,394 @@ class TaskController extends Controller
         return response()->json([
             'success' => true,
             'data' => $statuses,
+        ]);
+    }
+
+    /**
+     * Lista todas las tareas asociadas a un proyecto por project_key (sin autenticación).
+     * Para integración externa (ej. Oba) igual que time/store-by-project-key.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function tasksByProjectKey(Request $request)
+    {
+        $validated = $request->validate([
+            'project_key' => 'required|string|size:64',
+        ]);
+
+        $project = Project::findByKey($validated['project_key']);
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado con la clave indicada.'),
+            ], 404);
+        }
+
+        if (! $project->board_id)
+        {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                ],
+            ]);
+        }
+
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with(['status', 'category', 'responsible'])
+            ->defaultOrder()
+            ->get();
+
+        $data = $tasks->map(function ($task)
+        {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'start_date' => $task->start_date?->format('Y-m-d'),
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'estimated_hours' => $task->estimated_hours,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'category' => [
+                    'id' => $task->category?->id,
+                    'name' => $task->category?->name,
+                ],
+                'responsible' => [
+                    'id' => $task->responsible?->id,
+                    'name' => $task->responsible?->name,
+                    'email' => $task->responsible?->email,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'total' => $data->count(),
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+            ],
+        ]);
+    }
+
+    /**
+     * Lista tareas por context_key (proyecto + usuario). Con una sola clave puedes listar y luego asignar.
+     * Misma respuesta que tasks-by-project-key.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function tasksByContextKey(Request $request)
+    {
+        $validated = $request->validate([
+            'context_key' => 'required|string',
+        ]);
+
+        $decoded = Project::decodeContextKey($validated['context_key']);
+        if (! $decoded)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Clave de contexto inválida o corrupta.'),
+            ], 422);
+        }
+
+        $project = Project::findByKey($decoded['project_key']);
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado con la clave indicada.'),
+            ], 404);
+        }
+
+        if (! $project->board_id)
+        {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                ],
+            ]);
+        }
+
+        $tasks = Task::withoutGlobalScopes()
+            ->where('board_id', $project->board_id)
+            ->with(['status', 'category', 'responsible'])
+            ->defaultOrder()
+            ->get();
+
+        $data = $tasks->map(function ($task)
+        {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'start_date' => $task->start_date?->format('Y-m-d'),
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'estimated_hours' => $task->estimated_hours,
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'category' => [
+                    'id' => $task->category?->id,
+                    'name' => $task->category?->name,
+                ],
+                'responsible' => [
+                    'id' => $task->responsible?->id,
+                    'name' => $task->responsible?->name,
+                    'email' => $task->responsible?->email,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'total' => $data->count(),
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+            ],
+        ]);
+    }
+
+    /**
+     * Asigna la tarea al usuario indicado en la context_key y pone la tarea en estado "En progreso".
+     * La context_key contiene proyecto + usuario (generada en la ficha del proyecto como "Clave MCP").
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function taskAssignAndStart(Request $request)
+    {
+        $validated = $request->validate([
+            'context_key' => 'required|string',
+            'task_id' => 'required|integer|min:1',
+        ]);
+
+        $decoded = Project::decodeContextKey($validated['context_key']);
+        if (! $decoded)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Clave de contexto inválida o corrupta.'),
+            ], 422);
+        }
+
+        $project = Project::findByKey($decoded['project_key']);
+        if (! $project || ! $project->board_id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado o sin tablero.'),
+            ], 404);
+        }
+
+        $user = \App\Models\User::withoutGlobalScopes()->find($decoded['user_id']);
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Usuario no encontrado.'),
+            ], 404);
+        }
+
+        $isMember = $user->teams()->where('team_id', $project->team_id)->exists();
+        if (! $isMember)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('El usuario no pertenece al equipo del proyecto.'),
+            ], 403);
+        }
+
+        $inProgressStatus = TaskStatus::where('name', 'IN_PROGRESS')->first();
+        if (! $inProgressStatus)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Estado "En progreso" no configurado.'),
+            ], 500);
+        }
+
+        $task = Task::withoutGlobalScopes()
+            ->where('id', $validated['task_id'])
+            ->where('board_id', $project->board_id)
+            ->first();
+
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Tarea no encontrada o no pertenece a este proyecto.'),
+            ], 404);
+        }
+
+        $task->update([
+            'responsible_id' => $user->id,
+            'status_id' => $inProgressStatus->id,
+        ]);
+
+        // Stop any other running timer for this user (except this task) and persist duration
+        Time::withoutGlobalScope('team')
+            ->where('user_id', $user->id)
+            ->where('task_id', '!=', $task->id)
+            ->whereNull('end_time')
+            ->get()
+            ->each(function (Time $t)
+            {
+                $t->update(['end_time' => now()]);
+                $t->calculateDuration();
+            });
+
+        // Create time entry so start/end can be computed when task is completed (only if none running for this task)
+        $existingRunning = Time::withoutGlobalScope('team')
+            ->where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->whereNull('end_time')
+            ->exists();
+
+        if (! $existingRunning)
+        {
+            Time::withoutGlobalScope('team')->create([
+                'team_id' => $task->team_id,
+                'user_id' => $user->id,
+                'task_id' => $task->id,
+                'start_time' => now(),
+                'description' => $task->title,
+                'is_billable' => true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea asignada y puesta en progreso.'),
+            'task' => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'responsible' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'status' => [
+                    'id' => $inProgressStatus->id,
+                    'name' => $inProgressStatus->name,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Marca la tarea como finalizada (DONE) usando context_key (proyecto + usuario).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function taskCompleteByContextKey(Request $request)
+    {
+        $validated = $request->validate([
+            'context_key' => 'required|string',
+            'task_id' => 'required|integer|min:1',
+        ]);
+
+        $decoded = Project::decodeContextKey($validated['context_key']);
+        if (! $decoded)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Clave de contexto inválida o corrupta.'),
+            ], 422);
+        }
+
+        $project = Project::findByKey($decoded['project_key']);
+        if (! $project || ! $project->board_id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Proyecto no encontrado o sin tablero.'),
+            ], 404);
+        }
+
+        $user = \App\Models\User::withoutGlobalScopes()->find($decoded['user_id']);
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Usuario no encontrado.'),
+            ], 404);
+        }
+
+        $isMember = $user->teams()->where('team_id', $project->team_id)->exists();
+        if (! $isMember)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('El usuario no pertenece al equipo del proyecto.'),
+            ], 403);
+        }
+
+        $doneStatus = TaskStatus::where('name', 'DONE')->first();
+        if (! $doneStatus)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Estado "Completado" no configurado.'),
+            ], 500);
+        }
+
+        $task = Task::withoutGlobalScopes()
+            ->where('id', $validated['task_id'])
+            ->where('board_id', $project->board_id)
+            ->first();
+
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Tarea no encontrada o no pertenece a este proyecto.'),
+            ], 404);
+        }
+
+        $task->update(['status_id' => $doneStatus->id]);
+
+        // Close running time entry for this task and user so actual hours are computed
+        $runningTime = Time::withoutGlobalScope('team')
+            ->where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->whereNull('end_time')
+            ->first();
+
+        if ($runningTime)
+        {
+            $runningTime->update(['end_time' => now()]);
+            $runningTime->calculateDuration();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea marcada como finalizada.'),
+            'task' => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'status' => [
+                    'id' => $doneStatus->id,
+                    'name' => $doneStatus->name,
+                ],
+            ],
         ]);
     }
 
@@ -172,7 +562,6 @@ class TaskController extends Controller
     /**
      * Crea una nueva tarea y opcionalmente inicia el timer.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -203,13 +592,18 @@ class TaskController extends Controller
         $timeId = null;
         if ($validated['start_timer'] ?? false)
         {
-            // Detener cualquier otro tiempo activo del usuario
-            \App\Models\Time::where('user_id', $user->id)
+            // Stop any other running timer and persist duration
+            Time::where('user_id', $user->id)
                 ->whereNull('end_time')
-                ->update(['end_time' => now()]);
+                ->get()
+                ->each(function (Time $t)
+                {
+                    $t->update(['end_time' => now()]);
+                    $t->calculateDuration();
+                });
 
             // Crear registro de tiempo
-            $time = \App\Models\Time::create([
+            $time = Time::create([
                 'task_id' => $task->id,
                 'user_id' => $user->id,
                 'team_id' => $user->currentTeam->id,
@@ -241,7 +635,6 @@ class TaskController extends Controller
     /**
      * Inicia el registro de tiempo para una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -272,14 +665,19 @@ class TaskController extends Controller
             ], 400);
         }
 
-        // Detener cualquier otro tiempo activo del usuario (solo puede haber uno a la vez)
-        \App\Models\Time::where('user_id', $request->user()->id)
+        // Stop any other running timer for this user and persist duration
+        Time::where('user_id', $request->user()->id)
             ->where('task_id', '!=', $id)
             ->whereNull('end_time')
-            ->update(['end_time' => now()]);
+            ->get()
+            ->each(function (Time $t)
+            {
+                $t->update(['end_time' => now()]);
+                $t->calculateDuration();
+            });
 
         // Crear nuevo registro de tiempo
-        $time = \App\Models\Time::create([
+        $time = Time::create([
             'task_id' => $id,
             'user_id' => $request->user()->id,
             'team_id' => $request->user()->currentTeam->id,
@@ -307,7 +705,6 @@ class TaskController extends Controller
     /**
      * Detiene el registro de tiempo activo para una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -325,7 +722,7 @@ class TaskController extends Controller
         }
 
         // Buscar tiempo activo
-        $activeTime = \App\Models\Time::where('task_id', $id)
+        $activeTime = Time::where('task_id', $id)
             ->where('user_id', $request->user()->id)
             ->whereNull('end_time')
             ->first();
@@ -338,13 +735,11 @@ class TaskController extends Controller
             ], 400);
         }
 
-        // Detener el tiempo
-        $activeTime->update([
-            'end_time' => now(),
-        ]);
+        // Stop the timer and persist duration so "Actual" hours are computed
+        $activeTime->update(['end_time' => now()]);
+        $activeTime->calculateDuration();
 
-        // Calcular duración
-        $duration = $activeTime->start_time->diffInSeconds($activeTime->end_time);
+        $duration = (int) $activeTime->duration_seconds;
 
         return response()->json([
             'success' => true,
@@ -363,7 +758,6 @@ class TaskController extends Controller
     /**
      * Obtiene el tiempo total invertido en una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -397,6 +791,7 @@ class TaskController extends Controller
         $entries = $task->times->map(function ($time)
         {
             $duration = $time->start_time->diffInSeconds($time->end_time);
+
             return [
                 'id' => $time->id,
                 'user' => [
@@ -442,7 +837,6 @@ class TaskController extends Controller
     /**
      * Actualiza el estado de una tarea.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */

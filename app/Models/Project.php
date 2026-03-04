@@ -70,7 +70,7 @@ class Project extends Model
      */
     public static function keyFromId(int $id): string
     {
-        return hash('sha256', 'humano_project_' . $id);
+        return hash('sha256', 'humano_project_'.$id);
     }
 
     public function getProjectKeyAttribute(): string
@@ -84,13 +84,70 @@ class Project extends Model
     public static function findByKey(string $key): ?self
     {
         $key = trim($key);
-        if ($key === '') {
+        if ($key === '' || strlen($key) !== 64)
+        {
             return null;
         }
 
-        return static::withoutGlobalScopes()
-            ->get()
-            ->first(fn ($project) => static::keyFromId((int) $project->id) === $key);
+        $ids = static::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        foreach ($ids as $id)
+        {
+            if (static::keyFromId((int) $id) === $key)
+            {
+                return static::withoutGlobalScopes()->find($id);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Context key (project + user) for MCP/API: allows assigning tasks to a specific user when they select one.
+     * Use in .env as HUMANO_CONTEXT_KEY so the MCP can auto-assign and set "in progress" on task selection.
+     */
+    public function contextKeyForUser(\App\Models\User $user): string
+    {
+        $payload = [
+            'k' => $this->project_key,
+            'u' => $user->id,
+        ];
+
+        return \Illuminate\Support\Facades\Crypt::encryptString(json_encode($payload));
+    }
+
+    /**
+     * Decode context key to project_key and user_id. Returns null if invalid.
+     *
+     * @return array{project_key: string, user_id: int}|null
+     */
+    public static function decodeContextKey(string $contextKey): ?array
+    {
+        $contextKey = trim($contextKey);
+        if ($contextKey === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            $json = \Illuminate\Support\Facades\Crypt::decryptString($contextKey);
+            $data = json_decode($json, true);
+            if (! is_array($data) || empty($data['k']) || empty($data['u']))
+            {
+                return null;
+            }
+
+            return [
+                'project_key' => (string) $data['k'],
+                'user_id' => (int) $data['u'],
+            ];
+        } catch (\Throwable $e)
+        {
+            return null;
+        }
     }
 
     public function category()
