@@ -11,6 +11,7 @@ use App\Models\TaskBoard;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Categorías, clientes (enterprises) y proyectos/tareas de ejemplo para probar
@@ -37,6 +38,43 @@ class DemoDataForTimeReportingSeeder extends Seeder
 
             return;
         }
+
+        // --- ~10 usuarios demo para el equipo: admin, colaboradores, empleados ---
+        $demoPassword = Hash::make('password');
+        $demoUsers = [
+            ['name' => 'Demo Admin One', 'email' => 'demo-admin1@humano.test', 'role' => 'admin'],
+            ['name' => 'Demo Admin Two', 'email' => 'demo-admin2@humano.test', 'role' => 'admin'],
+            ['name' => 'Carmen Colaboradora', 'email' => 'demo-collab1@humano.test', 'role' => 'collaborator'],
+            ['name' => 'Pablo Colaborador', 'email' => 'demo-collab2@humano.test', 'role' => 'collaborator'],
+            ['name' => 'Laura Colaboradora', 'email' => 'demo-collab3@humano.test', 'role' => 'collaborator'],
+            ['name' => 'Miguel Colaborador', 'email' => 'demo-collab4@humano.test', 'role' => 'collaborator'],
+            ['name' => 'Sofia Empleada', 'email' => 'demo-employee1@humano.test', 'role' => 'employee'],
+            ['name' => 'Diego Empleado', 'email' => 'demo-employee2@humano.test', 'role' => 'employee'],
+            ['name' => 'Elena Empleada', 'email' => 'demo-employee3@humano.test', 'role' => 'employee'],
+            ['name' => 'Roberto Empleado', 'email' => 'demo-employee4@humano.test', 'role' => 'employee'],
+        ];
+        foreach ($demoUsers as $demo)
+        {
+            $newUser = User::firstOrCreate(
+                ['email' => $demo['email']],
+                [
+                    'name' => $demo['name'],
+                    'password' => $demoPassword,
+                    'email_verified_at' => now(),
+                    'current_team_id' => $team->id,
+                ],
+            );
+            if (! $newUser->hasRole($demo['role']))
+            {
+                $newUser->assignRole($demo['role']);
+            }
+            if (! $newUser->teams()->where('team_id', $team->id)->exists())
+            {
+                $newUser->teams()->attach($team->id, ['role' => $demo['role']]);
+            }
+            $this->command->info("Usuario demo: {$newUser->name} ({$demo['role']}) — {$newUser->email}");
+        }
+        $this->command->info('');
 
         $projectsModule = Module::where('key', 'projects')->first();
         $tasksModule = Module::where('key', 'tasks')->first();
