@@ -148,29 +148,79 @@ class ApolloController extends Controller
             'apollo_id' => 'required|string|max:100',
             'first_name' => 'required|string|max:255',
             'last_name_obfuscated' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'title' => 'nullable|string|max:500',
             'organization_name' => 'nullable|string|max:500',
+            'person_data' => 'nullable|string|max:65535',
         ]);
 
         $team = auth()->user()->currentTeam;
-        $name = trim($validated['first_name'].' '.($validated['last_name_obfuscated'] ?? ''));
+
+        $apolloData = [
+            'apollo_id' => $validated['apollo_id'],
+            'title' => $validated['title'] ?? null,
+            'organization_name' => $validated['organization_name'] ?? null,
+        ];
+        if (! empty($validated['person_data']))
+        {
+            $decoded = json_decode($validated['person_data'], true);
+            if (is_array($decoded))
+            {
+                $apolloData = $decoded;
+            }
+        }
+
+        $enriched = null;
+        try
+        {
+            $service = new ApolloService;
+            $personForEnrich = [
+                'id' => $validated['apollo_id'],
+                'first_name' => $validated['first_name'],
+                'organization_name' => $apolloData['organization_name'] ?? null,
+                'organization' => $apolloData['organization'] ?? null,
+            ];
+            $enriched = $service->enrichPerson($personForEnrich);
+        }
+        catch (\Throwable $e)
+        {
+            $enriched = null;
+        }
+
+        if (is_array($enriched) && ! empty($enriched))
+        {
+            $apolloData = array_merge($enriched, ['apollo_id' => $enriched['id'] ?? $validated['apollo_id']]);
+            $name = trim(($enriched['first_name'] ?? '').' '.($enriched['last_name'] ?? ''));
+            if ($name === '')
+            {
+                $name = $enriched['name'] ?? trim($validated['first_name'].' '.($validated['last_name_obfuscated'] ?? '')) ?: 'Contact';
+            }
+        }
+        else
+        {
+            $lastName = $validated['last_name'] ?? $validated['last_name_obfuscated'] ?? '';
+            $name = trim($validated['first_name'].' '.$lastName) ?: 'Contact';
+        }
 
         $contactData = [
             'team_id' => $team->id,
             'creator_id' => auth()->id(),
             'responsible_id' => auth()->id(),
-            'name' => $name ?: 'Apollo Contact',
+            'name' => $name ?: 'Contact',
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'data' => [
-                'apollo' => [
-                    'apollo_id' => $validated['apollo_id'],
-                    'title' => $validated['title'] ?? null,
-                    'organization_name' => $validated['organization_name'] ?? null,
-                ],
-            ],
+            'data' => ['apollo' => $apolloData],
         ];
+        if (! empty($apolloData['email']))
+        {
+            $contactData['email'] = $apolloData['email'];
+        }
+        $phone = $apolloData['phone'] ?? null;
+        if (! empty($phone))
+        {
+            $contactData['phone'] = is_string($phone) ? $phone : ($phone['number'] ?? null);
+        }
 
         $contact = Contact::create($contactData);
 

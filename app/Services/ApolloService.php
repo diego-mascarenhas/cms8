@@ -59,11 +59,13 @@ class ApolloService
                 'id' => $person['id'] ?? '',
                 'first_name' => $person['first_name'] ?? '',
                 'last_name_obfuscated' => $person['last_name_obfuscated'] ?? '',
+                'last_name' => $person['last_name'] ?? null,
                 'title' => $person['title'] ?? null,
                 'organization_name' => $orgName,
                 'organization' => $org,
                 'has_email' => $person['has_email'] ?? false,
                 'last_refreshed_at' => $person['last_refreshed_at'] ?? null,
+                'apollo_raw' => $person,
             ];
         }, $people));
 
@@ -73,6 +75,58 @@ class ApolloService
             'page' => $page,
             'per_page' => $perPage,
         ];
+    }
+
+    /**
+     * Enrich a person by Apollo id to get full name and email (consumes credits).
+     * Calls Apollo People Enrichment API /people/match.
+     *
+     * @param  array{id: string, first_name?: string, organization_name?: string, organization?: array}  $person  At least id from search; first_name and organization_name improve match.
+     * @return array<string, mixed>|null  Enriched person array or null if not found/failed
+     */
+    public function enrichPerson(array $person): ?array
+    {
+        if (empty($this->apiKey))
+        {
+            throw new \RuntimeException('Apollo API key is not configured.');
+        }
+
+        $id = $person['id'] ?? '';
+        if ($id === '')
+        {
+            return null;
+        }
+
+        $params = [
+            'id' => $id,
+            'reveal_personal_emails' => 'true',
+        ];
+        if (! empty($person['first_name']))
+        {
+            $params['first_name'] = $person['first_name'];
+        }
+        $org = $person['organization'] ?? [];
+        $orgName = is_array($org) ? ($org['name'] ?? $person['organization_name'] ?? '') : ($person['organization_name'] ?? '');
+        if ($orgName !== '')
+        {
+            $params['organization_name'] = $orgName;
+        }
+
+        $url = $this->baseUrl.'/people/match?'.http_build_query($params);
+        $response = Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->post($url, []);
+
+        if (! $response->successful())
+        {
+            return null;
+        }
+
+        $data = $response->json();
+        $enriched = $data['person'] ?? null;
+
+        return is_array($enriched) ? $enriched : null;
     }
 
     /**

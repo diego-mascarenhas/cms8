@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Buscar en Apollo')
+@section('title', 'Buscar contactos')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
@@ -13,8 +13,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span> Buscar en Apollo</h4>
-        <p class="text-muted">Busca personas y empresas en Apollo.io por filtros y añade resultados como contactos.</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span> Buscar contactos</h4>
+        <p class="text-muted">Busca personas y empresas por filtros y añade resultados como contactos.</p>
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ route('contact-list') }}" class="btn btn-outline-secondary">
@@ -66,8 +66,8 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label for="q_organization_domains_list" class="form-label">Dominios empresa (ej. apollo.io)</label>
-                                <input type="text" class="form-control" id="q_organization_domains_list" name="q_organization_domains_list" placeholder="apollo.io, microsoft.com">
+                                <label for="q_organization_domains_list" class="form-label">Dominios empresa (ej. empresa.com)</label>
+                                <input type="text" class="form-control" id="q_organization_domains_list" name="q_organization_domains_list" placeholder="empresa.com, ejemplo.com">
                             </div>
                             <div class="col-md-4">
                                 <label for="organization_locations_people" class="form-label">Ubicación sede empresa</label>
@@ -88,7 +88,7 @@
                 <div id="people-results-wrap" class="d-none">
                     <h5 class="mb-2">Resultados <span id="people-total" class="text-muted"></span></h5>
                     <div id="people-zero-results" class="alert alert-warning d-none mb-3" role="alert">
-                        No se encontraron personas con estos filtros. Para obtener resultados, añade al menos <strong>títulos</strong> (ej. manager, sales) o <strong>palabras clave</strong>; solo seniority suele devolver 0 resultados en Apollo.
+                        No se encontraron personas con estos filtros. Para obtener resultados, añade al menos <strong>títulos</strong> (ej. manager, sales) o <strong>palabras clave</strong>; solo seniority suele devolver 0 resultados.
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered">
@@ -111,14 +111,14 @@
 
             {{-- Organizations tab --}}
             <div class="tab-pane fade" id="content-organizations" role="tabpanel">
-                <p class="text-muted small">La búsqueda de empresas consume créditos de tu plan Apollo.</p>
+                <p class="text-muted small">La búsqueda de empresas consume créditos de tu plan.</p>
                 <div class="card mb-4">
                     <h5 class="card-header">Filtros (empresas)</h5>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label for="q_organization_domains" class="form-label">Dominios (separados por coma)</label>
-                                <input type="text" class="form-control" id="q_organization_domains" name="q_organization_domains" placeholder="apollo.io, acme.com">
+                                <input type="text" class="form-control" id="q_organization_domains" name="q_organization_domains" placeholder="empresa.com, ejemplo.com">
                             </div>
                             <div class="col-md-4">
                                 <label for="organization_locations" class="form-label">Ubicación</label>
@@ -233,16 +233,19 @@
             } else {
                 if (zeroResultsEl) zeroResultsEl.classList.add('d-none');
             }
+            var peopleById = {};
+            people.forEach(function(p) { peopleById[p.id] = p; });
             var tbody = document.getElementById('people-tbody');
             tbody.innerHTML = '';
             people.forEach(function(p) {
                 var tr = document.createElement('tr');
-                var name = (p.first_name || '') + ' ' + (p.last_name_obfuscated || '');
+                var lastName = p.last_name || p.last_name_obfuscated || '';
+                var name = (p.first_name || '') + ' ' + lastName;
                 tr.innerHTML =
                     '<td>' + (name.trim() || '—') + '</td>' +
                     '<td>' + (p.title || '—') + '</td>' +
                     '<td>' + (p.organization_name || '—') + '</td>' +
-                    '<td><button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (p.id || '') + '" data-first="' + (p.first_name || '').replace(/"/g, '&quot;') + '" data-last="' + (p.last_name_obfuscated || '').replace(/"/g, '&quot;') + '" data-title="' + (p.title || '').replace(/"/g, '&quot;') + '" data-org="' + (p.organization_name || '').replace(/"/g, '&quot;') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button></td>';
+                    '<td><button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (p.id || '') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button></td>';
                 tbody.appendChild(tr);
             });
             var pagination = document.getElementById('people-pagination');
@@ -268,13 +271,8 @@
             document.getElementById('people-results-wrap').classList.remove('d-none');
             tbody.querySelectorAll('.btn-add-person').forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    addPersonAsContact({
-                        apollo_id: btn.getAttribute('data-id'),
-                        first_name: btn.getAttribute('data-first'),
-                        last_name_obfuscated: btn.getAttribute('data-last'),
-                        title: btn.getAttribute('data-title'),
-                        organization_name: btn.getAttribute('data-org')
-                    });
+                    var person = peopleById[btn.getAttribute('data-id')];
+                    addPersonAsContact(person || { id: btn.getAttribute('data-id') });
                 });
             });
         })
@@ -284,14 +282,18 @@
         });
     }
 
-    function addPersonAsContact(data) {
+    function addPersonAsContact(person) {
         var formData = new FormData();
         formData.append('_token', csrf);
-        formData.append('apollo_id', data.apollo_id || '');
-        formData.append('first_name', data.first_name || '');
-        formData.append('last_name_obfuscated', data.last_name_obfuscated || '');
-        formData.append('title', data.title || '');
-        formData.append('organization_name', data.organization_name || '');
+        formData.append('apollo_id', person.id || '');
+        formData.append('first_name', person.first_name || '');
+        formData.append('last_name_obfuscated', person.last_name_obfuscated || '');
+        formData.append('last_name', person.last_name || '');
+        formData.append('title', person.title || '');
+        formData.append('organization_name', person.organization_name || '');
+        if (person.apollo_raw) {
+            formData.append('person_data', JSON.stringify(person.apollo_raw));
+        }
         fetch(urlAddPerson, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },

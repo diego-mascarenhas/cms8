@@ -156,7 +156,7 @@
                     @can('create', \App\Models\Contact::class)
                     <a href="{{ route('contact.apollo') }}" class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-search me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Buscar en Apollo</span>
+                        <span class="d-none d-sm-inline-block">Buscar contactos</span>
                     </a>
                     @endcan
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
