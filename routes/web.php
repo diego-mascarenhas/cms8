@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AttendanceController;
@@ -24,8 +25,8 @@ use App\Http\Controllers\EnterpriseDepartmentController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
-use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\FinancialDashboardController;
+use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
@@ -264,6 +265,10 @@ Route::middleware(['auth'])->group(function ()
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
     Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::get('/contact/apollo', [ApolloController::class, 'index'])->name('contact.apollo');
+    Route::post('/contact/apollo/people', [ApolloController::class, 'searchPeople'])->name('contact.apollo.people');
+    Route::post('/contact/apollo/organizations', [ApolloController::class, 'searchOrganizations'])->name('contact.apollo.organizations');
+    Route::post('/contact/apollo/add-person', [ApolloController::class, 'addPersonAsContact'])->name('contact.apollo.add-person');
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
     Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
     Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
