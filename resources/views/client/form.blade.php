@@ -54,6 +54,34 @@
                     <x-input-general id="email" label="Email (*)"
                         value="{{ old('email', $data->email ?? '') }}" />
                 </div>
+                <div class="col-12">
+                    <x-input-general id="address" label="{{ __('Address') }}"
+                        value="{{ old('address', $data->address ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="postal_code" label="{{ __('Postal code') }}"
+                        value="{{ old('postal_code', $data->postal_code ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="locality" label="{{ __('Locality') }}"
+                        value="{{ old('locality', $data->locality ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="province" label="{{ __('Province') }}"
+                        value="{{ old('province', $data->province ?? '') }}" />
+                </div>
+                <div class="col-md-6">
+                    <x-input-general id="country" label="{{ __('Country') }}"
+                        value="{{ old('country', $data->country ?? '') }}" />
+                </div>
+                <div class="col-md-6">
+                    <x-input-general id="phone" label="{{ __('Phone') }}"
+                        value="{{ old('phone', $data->phone ?? '') }}" />
+                </div>
+                <div class="col-12">
+                    <x-input-general id="website" label="{{ __('Website') }}"
+                        value="{{ old('website', $data->website ?? '') }}" />
+                </div>
                 @endif
             </div>
 

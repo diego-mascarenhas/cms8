@@ -24,6 +24,7 @@ use App\Http\Controllers\EnterpriseDepartmentController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
+use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\FinancialDashboardController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
@@ -351,6 +352,11 @@ Route::middleware(['auth'])->group(function ()
 
     // Enterprises
     Route::get('/enterprise/list', [\App\Http\Controllers\EnterpriseController::class, 'index'])->name('enterprise.index');
+
+    // Google Places (business search for enterprise/client)
+    Route::get('/places/search', [GooglePlacesController::class, 'search'])->name('places.search');
+    Route::get('/places/details/{placeId}', [GooglePlacesController::class, 'placeDetails'])->name('places.details')->where('placeId', '[^/]+');
+    Route::post('/places/use-for-client', [GooglePlacesController::class, 'useForClient'])->name('places.use-for-client');
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');

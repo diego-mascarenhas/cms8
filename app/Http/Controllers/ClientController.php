@@ -36,8 +36,22 @@ class ClientController extends Controller
         $this->authorize('create', Enterprise::class);
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+        $placeData = session('place_data', []);
+        $data = (object) array_merge([
+            'name' => '',
+            'email' => '',
+            'status_id' => 1,
+            'address' => '',
+            'postal_code' => '',
+            'locality' => '',
+            'province' => '',
+            'country' => '',
+            'phone' => '',
+            'website' => '',
+        ], $placeData);
+        $trackingId = session('client_form_tracking_id');
 
-        return view('client.form', compact('enterpriseStatuses'));
+        return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId'));
     }
 
     /**
@@ -59,6 +73,7 @@ class ClientController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'locality' => 'nullable|string|max:50',
             'province' => 'nullable|string|max:50',
+            'country' => 'nullable|string|max:100',
             'data' => 'nullable|array',
         ]);
 

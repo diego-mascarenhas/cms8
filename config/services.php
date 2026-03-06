@@ -94,6 +94,10 @@ return [
         'consumer_secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
     ],
 
+    'google' => [
+        'places_api_key' => env('GOOGLE_PLACES_API_KEY', ''),
+    ],
+
     // Same env names as Mobile: TEAM_TOKEN, API_BASE_URL, LANDING_PROMPT_NAME
     'landing_widget' => [
         'api_url' => env('API_BASE_URL', env('APP_URL', 'https://humano.test')),

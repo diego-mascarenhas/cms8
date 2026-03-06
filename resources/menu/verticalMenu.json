@@ -34,6 +34,13 @@
       "module_key": "clients"
     },
     {
+      "url": "enterprise/list",
+      "name": "Buscar negocio",
+      "icon": "menu-icon tf-icons ti ti-brand-google",
+      "slug": "enterprise.index",
+      "module_key": "enterprises"
+    },
+    {
       "url": "collaborator/list",
       "name": "Collaborators",
       "icon": "menu-icon tf-icons ti ti-users-group",
