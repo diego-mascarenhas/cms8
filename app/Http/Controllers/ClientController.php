@@ -48,6 +48,10 @@ class ClientController extends Controller
             'country' => '',
             'phone' => '',
             'website' => '',
+            'opening_hours' => '',
+            'latitude' => '',
+            'longitude' => '',
+            'contact_person' => '',
         ], $placeData);
         $trackingId = session('client_form_tracking_id');
 
@@ -74,13 +78,22 @@ class ClientController extends Controller
             'locality' => 'nullable|string|max:50',
             'province' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
+            'opening_hours' => 'nullable|string|max:2000',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'contact_person' => 'nullable|string|max:255',
             'data' => 'nullable|array',
         ]);
 
         $data['team_id'] = auth()->user()->currentTeam->id;
         $data['status_id'] = $request->status_id ?? 1;
 
-        $data['data'] = $data;
+        $data['data'] = array_merge($data, [
+            'opening_hours' => $request->input('opening_hours'),
+            'latitude' => $request->input('latitude'),
+            'longitude' => $request->input('longitude'),
+            'contact_person' => $request->input('contact_person'),
+        ]);
 
         Enterprise::updateOrCreate(
             ['id' => $request->id],

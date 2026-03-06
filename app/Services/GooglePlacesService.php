@@ -83,7 +83,7 @@ class GooglePlacesService
         }
 
         $placeId = str_starts_with($placeId, 'places/') ? substr($placeId, 7) : $placeId;
-        $fieldMask = 'displayName,formattedAddress,addressComponents,nationalPhoneNumber,internationalPhoneNumber,websiteUri';
+        $fieldMask = 'displayName,formattedAddress,addressComponents,nationalPhoneNumber,internationalPhoneNumber,websiteUri,location,regularOpeningHours';
 
         $response = Http::withHeaders([
             'X-Goog-Api-Key' => $this->apiKey,
@@ -120,6 +120,12 @@ class GooglePlacesService
             $street = $place['formattedAddress'] ?? '';
         }
 
+        $location = $place['location'] ?? [];
+        $latitude = isset($location['latitude']) ? (float) $location['latitude'] : null;
+        $longitude = isset($location['longitude']) ? (float) $location['longitude'] : null;
+
+        $openingHours = $this->formatOpeningHours($place['regularOpeningHours'] ?? null);
+
         return [
             'name' => $displayName,
             'address' => $street,
@@ -129,7 +135,63 @@ class GooglePlacesService
             'postal_code' => $postalCode,
             'phone' => $place['nationalPhoneNumber'] ?? $place['internationalPhoneNumber'] ?? '',
             'website' => $place['websiteUri'] ?? '',
+            'email' => '',
+            'opening_hours' => $openingHours,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
         ];
+    }
+
+    /**
+     * Format regularOpeningHours from Places API to a readable string.
+     *
+     * @param  array|null  $regularOpeningHours
+     */
+    protected function formatOpeningHours($regularOpeningHours): string
+    {
+        if (empty($regularOpeningHours) || ! is_array($regularOpeningHours))
+        {
+            return '';
+        }
+
+        $periods = $regularOpeningHours['periods'] ?? $regularOpeningHours['openDayList'] ?? [];
+        if (empty($periods))
+        {
+            $weekdayDescriptions = $regularOpeningHours['weekdayDescriptions'] ?? [];
+            if (! empty($weekdayDescriptions))
+            {
+                return implode("\n", $weekdayDescriptions);
+            }
+
+            return '';
+        }
+
+        $dayNames = [
+            'MONDAY' => 'Lunes',
+            'TUESDAY' => 'Martes',
+            'WEDNESDAY' => 'Miércoles',
+            'THURSDAY' => 'Jueves',
+            'FRIDAY' => 'Viernes',
+            'SATURDAY' => 'Sábado',
+            'SUNDAY' => 'Domingo',
+        ];
+        $lines = [];
+        foreach ($periods as $period)
+        {
+            $open = $period['open'] ?? [];
+            $close = $period['close'] ?? [];
+            $day = $dayNames[$open['day'] ?? ''] ?? ($open['day'] ?? '');
+            $openTime = $this->formatTime($open['hour'] ?? 0, $open['minute'] ?? 0);
+            $closeTime = $this->formatTime($close['hour'] ?? 23, $close['minute'] ?? 59);
+            $lines[] = "{$day}: {$openTime} - {$closeTime}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    protected function formatTime(int $hour, int $minute): string
+    {
+        return sprintf('%02d:%02d', $hour, $minute);
     }
 
     /**

@@ -109,6 +109,7 @@ class GooglePlacesIntegrationTest extends TestCase
         $response->assertJsonPath('locality', 'Madrid');
         $response->assertJsonPath('country', 'Spain');
         $response->assertJsonPath('postal_code', '28001');
+        $response->assertJsonStructure(['email', 'opening_hours', 'latitude', 'longitude']);
     }
 
     public function test_places_use_for_client_redirects_to_client_create_with_place_data(): void
