@@ -20,6 +20,13 @@
       "module_key": "today"
     },
     {
+      "url": "enterprise/list",
+      "name": "Buscar clientes",
+      "icon": "menu-icon tf-icons ti ti-target",
+      "slug": "enterprise.index",
+      "module_key": "enterprises"
+    },
+    {
       "url": "contact/list",
       "name": "Contacts",
       "icon": "menu-icon tf-icons ti ti-users",
@@ -32,13 +39,6 @@
       "icon": "menu-icon tf-icons ti ti-user-heart",
       "slug": "client-list",
       "module_key": "clients"
-    },
-    {
-      "url": "enterprise/list",
-      "name": "Buscar negocio",
-      "icon": "menu-icon tf-icons ti ti-brand-google",
-      "slug": "enterprise.index",
-      "module_key": "enterprises"
     },
     {
       "url": "collaborator/list",
