@@ -88,20 +88,39 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="placesSearchForm" class="mb-3">
-                        <div class="input-group">
-                            <input type="text" id="placesTextQuery" class="form-control" placeholder="{{ __('e.g. restaurant Madrid') }}" maxlength="500" autocomplete="off">
-                            <button type="submit" class="btn btn-primary" id="placesSearchBtn">
-                                <i class="ti ti-search"></i>
-                            </button>
+                    <div id="placesSearchStep">
+                        <form id="placesSearchForm" class="mb-3">
+                            <div class="input-group">
+                                <input type="text" id="placesTextQuery" class="form-control" placeholder="{{ __('e.g. restaurant Madrid') }}" maxlength="500" autocomplete="off">
+                                <button type="submit" class="btn btn-primary" id="placesSearchBtn">
+                                    <i class="ti ti-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <div id="placesError" class="alert alert-danger py-2" role="alert" style="display: none;"></div>
+                        <div id="placesResultsContainer" class="list-group" style="max-height: 320px; overflow-y: auto; display: none;"></div>
+                        <div id="placesLoading" class="text-center text-muted py-3" style="display: none;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>{{ __('Loading...') }}
                         </div>
-                    </form>
-                    <div id="placesError" class="alert alert-danger py-2" role="alert" style="display: none;"></div>
-                    <div id="placesResultsContainer" class="list-group" style="max-height: 320px; overflow-y: auto; display: none;"></div>
-                    <div id="placesLoading" class="text-center text-muted py-3" style="display: none;">
-                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>{{ __('Loading...') }}
+                        <div id="placesEmpty" class="text-muted text-center py-3" style="display: none;">{{ __('Enter a search term and click search.') }}</div>
                     </div>
-                    <div id="placesEmpty" class="text-muted text-center py-3" style="display: none;">{{ __('Enter a search term and click search.') }}</div>
+                    <div id="placesDetailsStep" style="display: none;">
+                        <button type="button" class="btn btn-label-secondary btn-sm mb-3" id="placesBackToSearch">
+                            <i class="ti ti-arrow-left me-1"></i>{{ __('Back to results') }}
+                        </button>
+                        <div id="placesDetailsSummary" class="mb-3"></div>
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="collapse" data-bs-target="#placesApiResponseCollapse" aria-expanded="false">
+                                {{ __('Full API response') }}
+                            </button>
+                            <div class="collapse mt-2" id="placesApiResponseCollapse">
+                                <pre id="placesApiResponseJson" class="bg-dark text-light p-3 rounded small" style="max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100 mt-2" id="placesUseForClientBtn">
+                            <i class="ti ti-user-plus me-1"></i>{{ __('Use to create client') }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -133,7 +152,14 @@
         var useForm = document.getElementById('placesUseForClientForm');
         var placeIdInput = document.getElementById('placesUseForClientPlaceId');
         var errorEl = document.getElementById('placesError');
+        var searchStep = document.getElementById('placesSearchStep');
+        var detailsStep = document.getElementById('placesDetailsStep');
+        var detailsSummary = document.getElementById('placesDetailsSummary');
+        var apiResponseJson = document.getElementById('placesApiResponseJson');
+        var backBtn = document.getElementById('placesBackToSearch');
+        var useForClientBtn = document.getElementById('placesUseForClientBtn');
         var debounceTimer;
+        var selectedPlaceId = null;
 
         if (!form) return;
 
@@ -173,8 +199,8 @@
                 a.innerHTML = '<div class="fw-medium">' + escapeHtml(p.name) + '</div><small class="text-muted">' + escapeHtml(p.formatted_address) + '</small>';
                 a.addEventListener('click', function(e) {
                     e.preventDefault();
-                    placeIdInput.value = p.id;
-                    useForm.submit();
+                    selectedPlaceId = p.id;
+                    loadPlaceDetails(p.id);
                 });
                 resultsContainer.appendChild(a);
             });
@@ -185,6 +211,54 @@
             var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function showSearchStep() {
+            if (searchStep) searchStep.style.display = 'block';
+            if (detailsStep) detailsStep.style.display = 'none';
+        }
+
+        function showDetailsStep() {
+            if (searchStep) searchStep.style.display = 'none';
+            if (detailsStep) detailsStep.style.display = 'block';
+        }
+
+        function loadPlaceDetails(placeId) {
+            showLoading(true);
+            var url = '{{ url("/places/details") }}/' + encodeURIComponent(placeId);
+            fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    showLoading(false);
+                    if (data.message && !data.name) {
+                        showError(data.message);
+                        return;
+                    }
+                    renderPlaceDetails(data);
+                    showDetailsStep();
+                })
+                .catch(function() {
+                    showLoading(false);
+                    showError('Connection error. Check your network and try again.');
+                });
+        }
+
+        function renderPlaceDetails(data) {
+            var lines = [];
+            if (data.name) lines.push('<strong>' + escapeHtml(data.name) + '</strong>');
+            if (data.formatted_address || data.address) lines.push(escapeHtml(data.formatted_address || data.address));
+            if (data.phone) lines.push(escapeHtml(data.phone));
+            if (data.website) lines.push('<a href="' + escapeHtml(data.website) + '" target="_blank" rel="noopener">' + escapeHtml(data.website) + '</a>');
+            if (data.locality || data.postal_code) lines.push((data.postal_code || '') + ' ' + (data.locality || ''));
+            detailsSummary.innerHTML = lines.length ? '<div class="small">' + lines.join('<br>') + '</div>' : '';
+            apiResponseJson.textContent = data.api_response
+                ? JSON.stringify(data.api_response, null, 2)
+                : JSON.stringify(data, null, 2);
+            var collapse = document.getElementById('placesApiResponseCollapse');
+            if (collapse && window.bootstrap && bootstrap.Collapse) {
+                var bsCollapse = bootstrap.Collapse.getInstance(collapse);
+                if (bsCollapse) bsCollapse.hide();
+            }
         }
 
         function doSearch() {
@@ -212,6 +286,15 @@
                 });
         }
 
+        if (backBtn) backBtn.addEventListener('click', showSearchStep);
+
+        if (useForClientBtn) useForClientBtn.addEventListener('click', function() {
+            if (selectedPlaceId) {
+                placeIdInput.value = selectedPlaceId;
+                useForm.submit();
+            }
+        });
+
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             doSearch();
@@ -225,6 +308,7 @@
         });
 
         document.getElementById('placesSearchModal').addEventListener('show.bs.modal', function() {
+            showSearchStep();
             emptyEl.style.display = 'block';
             resultsContainer.style.display = 'none';
             loadingEl.style.display = 'none';

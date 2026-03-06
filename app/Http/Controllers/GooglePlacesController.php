@@ -83,7 +83,9 @@ class GooglePlacesController extends Controller
         {
             $service = new GooglePlacesService;
             $place = $service->getPlace($validated['place_id']);
-            session()->flash('place_data', $place);
+            $placeData = $place;
+            unset($placeData['api_response']);
+            session()->flash('place_data', $placeData);
 
             return redirect()->route('client.create');
         } catch (\RuntimeException $e)

@@ -139,6 +139,7 @@ class GooglePlacesService
             'opening_hours' => $openingHours,
             'latitude' => $latitude,
             'longitude' => $longitude,
+            'api_response' => $place,
         ];
     }
 
