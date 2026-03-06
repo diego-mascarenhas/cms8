@@ -156,7 +156,7 @@
                     </div>
                     <div id="organizations-pagination" class="mt-2"></div>
                 </div>
-                <div id="organizations-empty" class="alert alert-info d-none">Usa los filtros y pulsa "Buscar empresas".</div>
+                <div id="organizations-empty" class="alert alert-info">Usa los filtros y pulsa "Buscar empresas".</div>
                 <div id="organizations-loading" class="text-center py-4 d-none"><span class="spinner-border"></span> Buscando...</div>
             </div>
         </div>
@@ -310,15 +310,16 @@
     }
 
     function searchOrganizations(page) {
+        var payload = getOrgFilters(page);
         document.getElementById('organizations-empty').classList.add('d-none');
         document.getElementById('organizations-results-wrap').classList.add('d-none');
         document.getElementById('organizations-loading').classList.remove('d-none');
         fetch(urlOrgs, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            body: JSON.stringify(getOrgFilters(page))
+            body: JSON.stringify(payload)
         })
-        .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
+        .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j, status: r.status }; }); })
         .then(function(res) {
             document.getElementById('organizations-loading').classList.add('d-none');
             if (!res.ok) {
@@ -375,8 +376,13 @@
         });
     }
 
-    document.getElementById('btn-search-people').addEventListener('click', function() { searchPeople(1); });
-    document.getElementById('btn-search-organizations').addEventListener('click', function() { searchOrganizations(1); });
+    document.body.addEventListener('click', function(e) {
+        var btn = e.target.closest ? e.target.closest('#btn-search-people, #btn-search-organizations') : null;
+        if (!btn) return;
+        e.preventDefault();
+        if (btn.id === 'btn-search-people') searchPeople(1);
+        else if (btn.id === 'btn-search-organizations') searchOrganizations(1);
+    });
 })();
 </script>
 @endsection

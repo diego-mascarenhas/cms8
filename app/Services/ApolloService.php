@@ -98,6 +98,10 @@ class ApolloService
             'Content-Type' => 'application/json',
         ])->post($url, []);
 
+        $data = $response->json();
+        $organizations = $data['organizations'] ?? $data['companies'] ?? [];
+        $totalEntries = (int) ($data['total_entries'] ?? 0);
+
         if (! $response->successful())
         {
             throw new \RuntimeException(
@@ -105,10 +109,6 @@ class ApolloService
                 $response->status(),
             );
         }
-
-        $data = $response->json();
-        $organizations = $data['organizations'] ?? $data['companies'] ?? [];
-        $totalEntries = (int) ($data['total_entries'] ?? 0);
 
         $normalized = array_values(array_map(function (array $org): array
         {
@@ -244,7 +244,16 @@ class ApolloService
 
         if (! empty($filters['q_keywords']))
         {
-            $parts[] = 'q_keywords='.rawurlencode((string) $filters['q_keywords']);
+            $keywords = is_array($filters['q_keywords'])
+                ? $filters['q_keywords']
+                : array_filter(preg_split('/\s*,\s*/', (string) $filters['q_keywords']));
+            foreach ($keywords as $kw)
+            {
+                if ((string) $kw !== '')
+                {
+                    $parts[] = 'q_organization_keyword_tags[]='.rawurlencode((string) $kw);
+                }
+            }
         }
 
         return implode('&', $parts);
