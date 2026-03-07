@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
@@ -51,6 +52,13 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request)
 {
     return $request->user();
+});
+
+// Prospect Search (public, for React frontend / prospection)
+Route::middleware('throttle:30,1')->group(function ()
+{
+    Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('api.prospect-search.search');
+    Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('api.prospect-search.lead');
 });
 
 // Mailgun Webhook (sin autenticación para recibir eventos)
