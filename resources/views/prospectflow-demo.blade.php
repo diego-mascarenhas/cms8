@@ -46,13 +46,13 @@ $configData = Helper::appClasses();
         <h5 class="card-header">{{ __('Filtros') }}</h5>
         <div class="card-body">
           <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-8">
               <label for="person_titles" class="form-label">{{ __('Títulos (separados por coma)') }}</label>
-              <textarea class="form-control" id="person_titles" name="person_titles" rows="2" placeholder="sales manager, director"></textarea>
+              <input type="text" class="form-control" id="person_titles" name="person_titles" placeholder="director comercial, gerente de ventas, responsable de compras">
             </div>
             <div class="col-md-4">
               <label for="person_locations" class="form-label">{{ __('Ubicación') }}</label>
-              <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="Spain, Madrid">
+              <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
             </div>
             <div class="col-md-4">
               <label for="person_seniorities" class="form-label">{{ __('Seniority') }}</label>
@@ -73,7 +73,7 @@ $configData = Helper::appClasses();
             </div>
             <div class="col-md-4">
               <label for="q_keywords_people" class="form-label">{{ __('Palabras clave') }}</label>
-              <input type="text" class="form-control" id="q_keywords_people" name="q_keywords_people" placeholder="technology">
+              <input type="text" class="form-control" id="q_keywords_people" name="q_keywords_people" placeholder="tecnología, software">
             </div>
             <div class="col-12">
               <button type="button" class="btn btn-primary" id="btn-search-people">
