@@ -20,6 +20,13 @@
       "module_key": "today"
     },
     {
+      "url": "enterprise/list",
+      "name": "Buscar clientes",
+      "icon": "menu-icon tf-icons ti ti-target",
+      "slug": "enterprise.index",
+      "module_key": "enterprises"
+    },
+    {
       "url": "contact/list",
       "name": "Contacts",
       "icon": "menu-icon tf-icons ti ti-users",

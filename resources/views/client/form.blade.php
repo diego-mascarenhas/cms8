@@ -54,6 +54,52 @@
                     <x-input-general id="email" label="Email (*)"
                         value="{{ old('email', $data->email ?? '') }}" />
                 </div>
+                <div class="col-12">
+                    <x-input-general id="address" label="{{ __('Address') }}"
+                        value="{{ old('address', $data->address ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="postal_code" label="{{ __('Postal code') }}"
+                        value="{{ old('postal_code', $data->postal_code ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="locality" label="{{ __('Locality') }}"
+                        value="{{ old('locality', $data->locality ?? '') }}" />
+                </div>
+                <div class="col-md-4">
+                    <x-input-general id="province" label="{{ __('Province') }}"
+                        value="{{ old('province', $data->province ?? '') }}" />
+                </div>
+                <div class="col-md-6">
+                    <x-input-general id="country" label="{{ __('Country') }}"
+                        value="{{ old('country', $data->country ?? '') }}" />
+                </div>
+                <div class="col-md-6">
+                    <x-input-general id="phone" label="{{ __('Phone') }}"
+                        value="{{ old('phone', $data->phone ?? '') }}" />
+                </div>
+                <div class="col-12">
+                    <x-input-general id="website" label="{{ __('Website') }}"
+                        value="{{ old('website', $data->website ?? '') }}" />
+                </div>
+                <div class="col-12">
+                    <label for="opening_hours" class="form-label">{{ __('Opening hours') }}</label>
+                    <textarea id="opening_hours" name="opening_hours" class="form-control" rows="3" placeholder="{{ __('e.g. Mon–Fri 9:00–18:00') }}">{{ old('opening_hours', $data->opening_hours ?? '') }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="latitude" class="form-label">{{ __('Latitude') }}</label>
+                    <input type="number" step="any" id="latitude" name="latitude" class="form-control" placeholder="40.4168"
+                        value="{{ old('latitude', $data->latitude ?? '') }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="longitude" class="form-label">{{ __('Longitude') }}</label>
+                    <input type="number" step="any" id="longitude" name="longitude" class="form-control" placeholder="-3.7038"
+                        value="{{ old('longitude', $data->longitude ?? '') }}">
+                </div>
+                <div class="col-12">
+                    <x-input-general id="contact_person" label="{{ __('Contact person') }}"
+                        value="{{ old('contact_person', $data->contact_person ?? '') }}" />
+                </div>
                 @endif
             </div>
 
