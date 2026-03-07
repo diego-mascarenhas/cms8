@@ -53,7 +53,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PromptController;
-use App\Http\Controllers\ProspectflowController;
+use App\Http\Controllers\ProspectSearchController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
@@ -101,9 +101,10 @@ Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
-Route::get('/prospectflow', [ProspectflowController::class, 'index'])->name('prospectflow');
-Route::post('/prospectflow/search', [ProspectflowController::class, 'searchPeople'])->name('prospectflow.search');
-Route::post('/prospectflow/lead', [ProspectflowController::class, 'storeLead'])->name('prospectflow.lead');
+Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
+Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
+Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
+Route::redirect('/prospectflow', '/prospect-search');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');

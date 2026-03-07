@@ -110,8 +110,8 @@ return [
         'success_url' => env('LANDING_SUCCESS_URL', ''),
     ],
 
-    'prospectflow' => [
-        'team_id' => env('PROSPECTFLOW_TEAM_ID'),
+    'prospect_search' => [
+        'team_id' => env('PROSPECT_SEARCH_TEAM_ID'),
     ],
 
 ];

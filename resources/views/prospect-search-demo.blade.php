@@ -4,20 +4,20 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', __('ProspectFlow - Buscar contactos'))
+@section('title', __('Búsqueda de prospectos'))
 
 @section('page-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}">
 <style>
-.prospectflow-demo-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
-.prospectflow-demo-row { flex: 1; display: flex; flex-wrap: nowrap; min-height: 0; }
-.prospectflow-demo-row .col-lg-7 { min-height: 0; display: flex; flex-direction: column; }
-.prospectflow-demo-row .col-lg-5 { min-height: 0; display: flex; flex-direction: column; }
-.prospectflow-left { flex: 1; min-height: 0; overflow: auto; }
-.prospectflow-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.prospectflow-right .card-body { flex: 1; min-height: 0; overflow: auto; }
+.prospect-search-demo-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+.prospect-search-demo-row { flex: 1; display: flex; flex-wrap: nowrap; min-height: 0; }
+.prospect-search-demo-row .col-lg-7 { min-height: 0; display: flex; flex-direction: column; }
+.prospect-search-demo-row .col-lg-5 { min-height: 0; display: flex; flex-direction: column; }
+.prospect-search-left { flex: 1; min-height: 0; overflow: auto; }
+.prospect-search-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.prospect-search-right .card-body { flex: 1; min-height: 0; overflow: auto; }
 #people-results-wrap table { font-size: 0.875rem; }
 </style>
 @endsection
@@ -29,12 +29,12 @@ $configData = Helper::appClasses();
 @endsection
 
 @section('content')
-<div class="prospectflow-demo-wrapper authentication-bg">
-  <div class="row g-0 prospectflow-demo-row mx-0">
+<div class="prospect-search-demo-wrapper authentication-bg">
+  <div class="row g-0 prospect-search-demo-row mx-0">
     <!-- Left: search + results + email gate -->
-    <div class="col-12 col-lg-7 p-4 auth-cover-bg auth-cover-bg-color prospectflow-left">
+    <div class="col-12 col-lg-7 p-4 auth-cover-bg auth-cover-bg-color prospect-search-left">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
-        <h4 class="mb-0">{{ __('ProspectFlow') }}</h4>
+        <h4 class="mb-0">{{ __('Búsqueda de prospectos') }}</h4>
         <a href="{{ route('login') }}" class="btn btn-sm btn-label-secondary">
           <i class="ti ti-arrow-left me-1"></i>{{ __('Volver al inicio de sesión') }}
         </a>
@@ -122,10 +122,10 @@ $configData = Helper::appClasses();
     </div>
 
     <!-- Right: copy -->
-    <div class="col-12 col-lg-5 p-4 bg-body border-start prospectflow-right d-none d-lg-flex">
+    <div class="col-12 col-lg-5 p-4 bg-body border-start prospect-search-right d-none d-lg-flex">
       <div class="card w-100">
         <div class="card-header">
-          <h5 class="mb-0">{{ __('¿Qué es ProspectFlow?') }}</h5>
+          <h5 class="mb-0">{{ __('¿Qué es la búsqueda de prospectos?') }}</h5>
         </div>
         <div class="card-body">
           <p class="text-muted mb-3">
@@ -151,8 +151,8 @@ $configData = Helper::appClasses();
 <script>
 (function() {
     var csrf = '{{ csrf_token() }}';
-    var urlSearch = '{{ route("prospectflow.search") }}';
-    var urlLead = '{{ route("prospectflow.lead") }}';
+    var urlSearch = '{{ route("prospect-search.search") }}';
+    var urlLead = '{{ route("prospect-search.lead") }}';
 
     function parseList(val) {
         if (!val || !String(val).trim()) return [];

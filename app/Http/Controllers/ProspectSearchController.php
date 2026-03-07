@@ -10,14 +10,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
-class ProspectflowController extends Controller
+class ProspectSearchController extends Controller
 {
     /**
-     * ProspectFlow landing (public).
+     * Prospect Search landing (public).
      */
     public function index(): View
     {
-        return view('prospectflow-demo');
+        return view('prospect-search-demo');
     }
 
     /**
@@ -79,11 +79,11 @@ class ProspectflowController extends Controller
             'email' => 'required|email:rfc|max:255',
         ]);
 
-        $teamId = config('services.prospectflow.team_id');
+        $teamId = config('services.prospect_search.team_id');
         if (empty($teamId))
         {
             return response()->json([
-                'message' => __('ProspectFlow is not configured.'),
+                'message' => __('Prospect Search is not configured.'),
                 'success' => false,
             ], 503);
         }
