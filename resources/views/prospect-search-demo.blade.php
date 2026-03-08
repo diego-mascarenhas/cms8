@@ -19,6 +19,9 @@ $configData = Helper::appClasses();
 .prospect-search-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .prospect-search-right .card-body { flex: 1; min-height: 0; overflow: auto; }
 #people-results-wrap table { font-size: 0.875rem; }
+.apollo-seniority-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.apollo-seniority-chips .btn { margin: 0; }
+.person-seniority-select { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 </style>
 @endsection
 
@@ -43,39 +46,61 @@ $configData = Helper::appClasses();
       <p class="text-muted mb-4">{{ __('Busca perfiles por títulos, ubicación o sector. Te mostramos los primeros 10 resultados; introduce tu email para continuar.') }}</p>
 
       <div class="card mb-4">
-        <h5 class="card-header">{{ __('Filtros') }}</h5>
         <div class="card-body">
+          <h5 class="card-title mb-1">{{ __('Define tu búsqueda') }}</h5>
+          <p class="text-muted mb-4">{{ __('Indica títulos, ubicación, posición o palabras clave. Te mostramos los primeros resultados; introduce tu email para continuar.') }}</p>
           <div class="row g-3">
-            <div class="col-md-8">
-              <label for="person_titles" class="form-label">{{ __('Títulos (separados por coma)') }}</label>
-              <input type="text" class="form-control" id="person_titles" name="person_titles" placeholder="director comercial, gerente de ventas, responsable de compras">
+            <div class="col-12">
+              <label for="person_titles" class="form-label">{{ __('Títulos') }}</label>
+              <input type="text" class="form-control" id="person_titles" name="person_titles" placeholder="director comercial, gerente de ventas">
+              <div class="form-text">{{ __('Indica uno o más títulos de puesto, separados por coma (por ejemplo: director comercial, gerente de ventas).') }}</div>
             </div>
-            <div class="col-md-4">
-              <label for="person_locations" class="form-label">{{ __('Ubicación') }}</label>
+            <div class="col-md-6">
+              <label for="person_locations" class="form-label">{{ __('Ubicación de la persona') }}</label>
               <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
+              <div class="form-text">{{ __('País o ciudad donde reside la persona.') }}</div>
             </div>
-            <div class="col-md-4">
-              <label for="person_seniorities" class="form-label">{{ __('Seniority') }}</label>
-              <select class="form-select select2-select" id="person_seniorities" name="person_seniorities" multiple>
+            <div class="col-md-6">
+              <label class="form-label d-block">{{ __('Posición') }}</label>
+              <div class="apollo-seniority-chips" id="seniority-chips-people" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="owner">Owner</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="founder">Founder</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="c_suite">C-Suite</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="vp">VP</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="head">Head</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="director">Director</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="manager">Manager</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="senior">Senior</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="entry">Entry</button>
+                <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="intern">Intern</button>
+              </div>
+              <select class="person-seniority-select form-select" id="person_seniorities" name="person_seniorities" multiple aria-hidden="true" tabindex="-1">
                 <option value="owner">Owner</option>
                 <option value="founder">Founder</option>
                 <option value="c_suite">C-Suite</option>
                 <option value="vp">VP</option>
+                <option value="head">Head</option>
                 <option value="director">Director</option>
                 <option value="manager">Manager</option>
                 <option value="senior">Senior</option>
                 <option value="entry">Entry</option>
+                <option value="intern">Intern</option>
               </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label for="q_organization_domains_list" class="form-label">{{ __('Dominios empresa') }}</label>
-              <input type="text" class="form-control" id="q_organization_domains_list" name="q_organization_domains_list" placeholder="empresa.com">
+              <input type="text" class="form-control" id="q_organization_domains_list" name="q_organization_domains_list" placeholder="empresa.com, ejemplo.com">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
+              <label for="organization_locations_people" class="form-label">{{ __('Ubicación de la empresa') }}</label>
+              <input type="text" class="form-control" id="organization_locations_people" name="organization_locations_people" placeholder="California">
+              <div class="form-text">{{ __('País o ciudad donde tiene la sede la empresa.') }}</div>
+            </div>
+            <div class="col-12">
               <label for="q_keywords_people" class="form-label">{{ __('Palabras clave') }}</label>
               <input type="text" class="form-control" id="q_keywords_people" name="q_keywords_people" placeholder="tecnología, software">
             </div>
-            <div class="col-12">
+            <div class="col-12 pt-2">
               <button type="button" class="btn btn-primary" id="btn-search-people">
                 <i class="ti ti-search me-1"></i> {{ __('Buscar') }}
               </button>
@@ -88,18 +113,22 @@ $configData = Helper::appClasses();
       <div id="people-zero-results" class="alert alert-warning d-none mb-3">{{ __('No se encontraron personas con estos filtros. Prueba con títulos o palabras clave.') }}</div>
 
       <div id="people-results-wrap" class="d-none">
-        <h5 class="mb-2">{{ __('Resultados') }} <span id="people-total" class="text-muted"></span></h5>
-        <div class="table-responsive mb-4">
-          <table class="table table-bordered">
-            <thead>
-              <tr>
-                <th>{{ __('Nombre') }}</th>
-                <th>{{ __('Título') }}</th>
-                <th>{{ __('Empresa') }}</th>
-              </tr>
-            </thead>
-            <tbody id="people-tbody"></tbody>
-          </table>
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title mb-3">{{ __('Resultados') }} <span id="people-total" class="text-muted"></span></h5>
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead>
+                  <tr>
+                    <th>{{ __('Nombre') }}</th>
+                    <th>{{ __('Título') }}</th>
+                    <th>{{ __('Empresa') }}</th>
+                  </tr>
+                </thead>
+                <tbody id="people-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <div id="email-gate" class="card border-primary">
@@ -164,11 +193,13 @@ $configData = Helper::appClasses();
         var locations = parseList(document.getElementById('person_locations').value);
         var seniorities = Array.from(document.getElementById('person_seniorities').selectedOptions).map(function(o) { return o.value; });
         var domains = parseList(document.getElementById('q_organization_domains_list').value);
+        var orgLocations = parseList(document.getElementById('organization_locations_people').value);
         var data = { _token: csrf, page: 1, per_page: 10 };
         if (titles.length) data.person_titles = titles;
         if (locations.length) data.person_locations = locations;
         if (seniorities.length) data.person_seniorities = seniorities;
         if (domains.length) data.q_organization_domains_list = domains;
+        if (orgLocations.length) data.organization_locations = orgLocations;
         var kw = document.getElementById('q_keywords_people').value;
         if (kw) data.q_keywords = kw;
         return data;
@@ -194,7 +225,9 @@ $configData = Helper::appClasses();
             }
             var people = res.json.people || [];
             var total = res.json.total_entries || 0;
-            document.getElementById('people-total').textContent = '(' + people.length + ')';
+            var showing = people.length;
+            var totalLabel = total === 0 ? ' (0 {{ __("contactos") }})' : ' ({{ __("mostrando") }} ' + showing + ' {{ __("de") }} ' + total + ' {{ __("contactos") }})';
+            document.getElementById('people-total').textContent = totalLabel;
             var tbody = document.getElementById('people-tbody');
             tbody.innerHTML = '';
             if (people.length === 0) {
@@ -257,11 +290,33 @@ $configData = Helper::appClasses();
 @section('page-script')
 <script>
 (function() {
-    if (window.$ && $.fn.select2) {
-        $('#person_seniorities').select2({
-            width: '100%',
-            placeholder: '{{ __("Seleccionar seniority") }}',
-            allowClear: true
+    // Seniority chips: sync with hidden multi-select (same as prospect/search page)
+    var sel = document.getElementById('person_seniorities');
+    var container = document.getElementById('seniority-chips-people');
+    if (sel && container) {
+        function setChipActive(btn, active) {
+            if (active) {
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary');
+            } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            }
+        }
+        container.querySelectorAll('.chip').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = btn.getAttribute('data-value');
+                var opt = Array.from(sel.options).filter(function(o) { return o.value === val; })[0];
+                if (opt) {
+                    opt.selected = !opt.selected;
+                    setChipActive(btn, opt.selected);
+                }
+            });
+        });
+        container.querySelectorAll('.chip').forEach(function(btn) {
+            var val = btn.getAttribute('data-value');
+            var opt = Array.from(sel.options).filter(function(o) { return o.value === val; })[0];
+            setChipActive(btn, opt && opt.selected);
         });
     }
 })();

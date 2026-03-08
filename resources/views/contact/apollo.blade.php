@@ -98,9 +98,12 @@
 {{-- Resultados en bloque separado con DataTables --}}
 <div class="card d-none mt-4" id="people-results-card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h5 class="card-title mb-0">Resultados de búsqueda</h5>
+        <div>
+            <h5 class="card-title mb-0">Resultados de búsqueda</h5>
+            <p class="text-muted small mb-0" id="people-results-count"></p>
+        </div>
         <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
-            <i class="ti ti-download me-1"></i> Importar seleccionados
+            <i class="ti ti-user-plus me-1"></i> Importar seleccionados
         </button>
     </div>
     <div class="card-body">
@@ -240,6 +243,8 @@ $(function() {
         apolloTable = $('#apollo-people-table').DataTable({
             processing: true,
             serverSide: true,
+            searching: false,
+            lengthChange: false,
             ajax: function(data, callback, settings) {
                 var page = Math.floor(data.start / data.length) + 1;
                 var payload = getPeopleFilters(page, data.length);
@@ -255,11 +260,13 @@ $(function() {
                     $btn.prop('disabled', false).html('<i class="ti ti-search me-1"></i> Buscar personas');
                     if (!res.ok) {
                         toastr.error(res.json.message || 'Error al buscar.');
+                        updatePeopleResultsCount(0);
                         callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
                         return;
                     }
                     var people = res.json.people || [];
                     var total = res.json.total_entries || 0;
+                    updatePeopleResultsCount(total);
                     var zeroEl = document.getElementById('people-zero-results');
                     if (total === 0) {
                         if (zeroEl) zeroEl.classList.remove('d-none');
@@ -271,6 +278,7 @@ $(function() {
                 .catch(function() {
                     $btn.prop('disabled', false).html('<i class="ti ti-search me-1"></i> Buscar personas');
                     toastr.error('Error de conexión.');
+                    updatePeopleResultsCount(0);
                     callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
                 });
             },
@@ -278,17 +286,17 @@ $(function() {
                 { data: null, orderable: false, searchable: false, className: 'dt-body-center', render: function(row) {
                     return '<input type="checkbox" class="form-check-input apollo-row-checkbox" value="' + (row.id || '') + '" aria-label="Seleccionar">';
                 }},
-                { data: null, title: 'Nombre', orderable: true, render: function(row) {
+                { data: null, title: 'Nombre', orderable: false, render: function(row) {
                     var ln = row.last_name || row.last_name_obfuscated || '';
                     return ((row.first_name || '') + ' ' + ln).trim() || '—';
                 }},
-                { data: 'title', title: 'Título', defaultContent: '—' },
-                { data: 'organization_name', title: 'Empresa', defaultContent: '—' },
-                { data: null, title: 'Acciones', orderable: false, render: function(row) {
-                    return '<button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (row.id || '') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button>';
+                { data: 'title', title: 'Título', orderable: false, defaultContent: '—' },
+                { data: 'organization_name', title: 'Empresa', orderable: false, defaultContent: '—' },
+                { data: null, title: 'Acciones', orderable: false, className: 'text-center', render: function(row) {
+                    return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-body btn-add-person" data-id="' + (row.id || '') + '" title="Importar"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
                 }}
             ],
-            order: [[1, 'asc']],
+            order: [],
             pageLength: 25,
             lengthMenu: [[10, 25, 50], [10, 25, 50]],
             language: {
@@ -318,6 +326,12 @@ $(function() {
     function updateImportButtonVisibility() {
         var n = $('#apollo-people-table tbody .apollo-row-checkbox:checked').length;
         $('#btn-import-selected').toggle(n > 0);
+    }
+
+    function updatePeopleResultsCount(total) {
+        var el = document.getElementById('people-results-count');
+        if (!el) return;
+        el.textContent = total === 0 ? 'Ningún registro' : (total === 1 ? '1 registro' : total + ' registros');
     }
 
     $(document).on('change', '#apollo-select-all', function() {

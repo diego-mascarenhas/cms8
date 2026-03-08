@@ -102,6 +102,7 @@ Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
 Route::redirect('/propspect/search', '/prospect/search', 301);
+Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
 Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
 Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
 Route::redirect('/prospectflow', '/prospect/search');

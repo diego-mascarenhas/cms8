@@ -154,9 +154,9 @@
                         <span class="d-none d-sm-inline-block">Importar</span>
                     </a>
                     @can('create', \App\Models\Contact::class)
-                    <a href="{{ route('contact.apollo') }}" class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-search me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Buscar contactos</span>
+                    <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                        <i class="ti ti-target me-sm-1"></i>
+                        <span class="d-none d-sm-inline-block">Buscar clientes</span>
                     </a>
                     @endcan
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
