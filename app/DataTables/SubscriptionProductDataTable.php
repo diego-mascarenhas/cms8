@@ -35,7 +35,7 @@ class SubscriptionProductDataTable extends DataTable
             })
             ->editColumn('category', function ($product)
             {
-                return $product->category ?? '—';
+                return SubscriptionProduct::getCategoryLabel($product->category);
             })
             ->editColumn('plan', function ($product)
             {

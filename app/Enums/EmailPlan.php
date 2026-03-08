@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Models\SubscriptionProduct;
+
 enum EmailPlan: string
 {
     case FREE = 'free';
@@ -75,31 +77,29 @@ enum EmailPlan: string
     }
 
     /**
-     * Get the Stripe product ID for this plan
+     * Get the Stripe product ID for this plan (from subscription_products).
      */
     public function getStripeProductId(): ?string
     {
-        return match ($this)
+        if ($this === self::FREE)
         {
-            self::FREE => null, // FREE plan has no Stripe product
-            self::BASIC => 'prod_TRiCHCP6QiGK9n',
-            self::FOUNDATION => 'prod_TRiDcPW8PSKYkq',
-            self::SCALE => 'prod_TRiDBLKIOlK0pL',
-        };
+            return null;
+        }
+
+        return SubscriptionProduct::getMailerProductId($this->value);
     }
 
     /**
-     * Get the Stripe price ID for this plan (monthly recurring)
+     * Get the Stripe price ID for this plan (from subscription_products).
      */
     public function getStripePriceId(): ?string
     {
-        return match ($this)
+        if ($this === self::FREE)
         {
-            self::FREE => null, // FREE plan has no Stripe price
-            self::BASIC => env('STRIPE_MAILER_BASIC', 'price_1SUolyRwN51ygFdec574kfHt'),
-            self::FOUNDATION => env('STRIPE_MAILER_FOUNDATION', 'price_1SUomeRwN51ygFdehZBo2SXd'),
-            self::SCALE => env('STRIPE_MAILER_SCALE', 'price_1SUon4RwN51ygFdeu3gm5bkR'),
-        };
+            return null;
+        }
+
+        return SubscriptionProduct::getMailerPriceId($this->value);
     }
 
     /**
@@ -111,7 +111,7 @@ enum EmailPlan: string
     }
 
     /**
-     * Get EmailPlan from Stripe price ID
+     * Get EmailPlan from Stripe price ID (from subscription_products, fallback to Stripe API).
      */
     public static function fromStripePriceId(?string $priceId): self
     {
@@ -120,41 +120,50 @@ enum EmailPlan: string
             return self::FREE;
         }
 
-        // First try to match with configured price IDs from env
-        $basicPrice = env('STRIPE_MAILER_BASIC', 'price_1SUolyRwN51ygFdec574kfHt');
-        $foundationPrice = env('STRIPE_MAILER_FOUNDATION', 'price_1SUomeRwN51ygFdehZBo2SXd');
-        $scalePrice = env('STRIPE_MAILER_SCALE', 'price_1SUon4RwN51ygFdeu3gm5bkR');
-
-        return match ($priceId)
+        $product = SubscriptionProduct::findByStripePrice($priceId);
+        if ($product && $product->category === 'mailer' && $product->plan)
         {
-            $basicPrice => self::BASIC,
-            $foundationPrice => self::FOUNDATION,
-            $scalePrice => self::SCALE,
-            default => self::fromStripeProductId($priceId),
-        };
+            $plan = self::tryFrom($product->plan);
+
+            return $plan ?? self::FREE;
+        }
+
+        return self::fromStripeProductId($priceId);
     }
 
     /**
-     * Get EmailPlan from Stripe price ID by querying Stripe API
+     * Get EmailPlan from Stripe price ID by resolving product via Stripe API (fallback).
      */
     private static function fromStripeProductId(string $priceId): self
     {
         try
         {
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
-            $price = \Stripe\Price::retrieve($priceId);
+            $product = SubscriptionProduct::active()
+                ->where('category', 'mailer')
+                ->where('stripe_price', $priceId)
+                ->first();
+            if ($product && $product->plan)
+            {
+                $plan = self::tryFrom($product->plan);
 
+                return $plan ?? self::FREE;
+            }
+
+            \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('mailer'));
+            $price = \Stripe\Price::retrieve($priceId);
             if ($price && $price->product)
             {
                 $productId = is_string($price->product) ? $price->product : $price->product->id;
-
-                return match ($productId)
+                $product = SubscriptionProduct::active()
+                    ->where('category', 'mailer')
+                    ->where('stripe_product', $productId)
+                    ->first();
+                if ($product && $product->plan)
                 {
-                    'prod_TRiCHCP6QiGK9n' => self::BASIC,
-                    'prod_TRiDcPW8PSKYkq' => self::FOUNDATION,
-                    'prod_TRiDBLKIOlK0pL' => self::SCALE,
-                    default => self::FREE,
-                };
+                    $plan = self::tryFrom($product->plan);
+
+                    return $plan ?? self::FREE;
+                }
             }
         } catch (\Exception $e)
         {

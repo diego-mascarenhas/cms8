@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Models\SubscriptionProduct;
+
 enum ProspectPlan: string
 {
     case FREE = 'free';
@@ -38,14 +40,17 @@ enum ProspectPlan: string
         };
     }
 
+    /**
+     * Get the Stripe price ID for this plan (from subscription_products).
+     */
     public function getStripePriceId(): ?string
     {
-        return match ($this)
+        if ($this === self::FREE)
         {
-            self::FREE => null,
-            self::BASIC => config('prospects.stripe_basic_price_id'),
-            self::GROWTH => config('prospects.stripe_growth_price_id'),
-        };
+            return null;
+        }
+
+        return SubscriptionProduct::getProspectRecurringPriceId($this->value);
     }
 
     public function isPaid(): bool
@@ -62,6 +67,9 @@ enum ProspectPlan: string
         ];
     }
 
+    /**
+     * Get ProspectPlan from Stripe price ID (from subscription_products).
+     */
     public static function fromStripePriceId(?string $priceId): self
     {
         if (! $priceId)
@@ -69,15 +77,15 @@ enum ProspectPlan: string
             return self::FREE;
         }
 
-        $basicPrice = config('prospects.stripe_basic_price_id');
-        $growthPrice = config('prospects.stripe_growth_price_id');
-
-        return match ($priceId)
+        $product = SubscriptionProduct::findByStripePrice($priceId);
+        if ($product && $product->category === 'prospecting' && $product->plan)
         {
-            $basicPrice => self::BASIC,
-            $growthPrice => self::GROWTH,
-            default => self::FREE,
-        };
+            $plan = self::tryFrom($product->plan);
+
+            return $plan ?? self::FREE;
+        }
+
+        return self::FREE;
     }
 
     public function getConfig(): array

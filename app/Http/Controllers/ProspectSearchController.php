@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\ProspectResultsAccessMail;
 use App\Models\Contact;
+use App\Models\SubscriptionProduct;
 use App\Models\Team;
 use App\Services\ApolloService;
 use Illuminate\Http\JsonResponse;
@@ -225,7 +226,7 @@ class ProspectSearchController extends Controller
     public function checkoutConfig(Request $request): JsonResponse
     {
         $config = config('services.prospect_search', []);
-        $priceId = config('prospects.stripe_prospection_price_id') ?? $config['export_price_id'] ?? null;
+        $priceId = SubscriptionProduct::getProspectionPriceId() ?? $config['export_price_id'] ?? null;
         $appUrl = isset($config['access_base_url']) ? rtrim($config['access_base_url'], '/') : null;
 
         return response()->json([
@@ -258,7 +259,7 @@ class ProspectSearchController extends Controller
             'q_keywords' => 'nullable|string|max:500',
         ]);
 
-        $priceId = $validated['price_id'] ?? config('prospects.stripe_prospection_price_id') ?? config('services.prospect_search.export_price_id');
+        $priceId = $validated['price_id'] ?? SubscriptionProduct::getProspectionPriceId() ?? config('services.prospect_search.export_price_id');
         if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
         {
             return response()->json([
@@ -280,7 +281,7 @@ class ProspectSearchController extends Controller
 
         try
         {
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
 
             $session = \Stripe\Checkout\Session::create([
                 'ui_mode' => 'embedded',
@@ -339,7 +340,7 @@ class ProspectSearchController extends Controller
 
         try
         {
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
             $session = \Stripe\Checkout\Session::retrieve($sessionId);
             if (! $session || ($session->payment_status ?? '') !== 'paid')
             {

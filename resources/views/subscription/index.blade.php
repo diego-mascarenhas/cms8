@@ -462,10 +462,10 @@
 	</div>
 @endif
 
-<!-- Hosting Plans -->
+<!-- Hosting Plans (hosting + support in same section) -->
 @if($hostingProducts->isNotEmpty())
 	<div class="mb-5 mt-5">
-		<h3 class="mb-4">Hosting</h3>
+		<h3 class="mb-4">{{ __('Hosting') }}</h3>
 		<div class="row gy-4">
 			@foreach($hostingProducts as $product)
 				<div class="col-lg-6 col-12">
@@ -488,13 +488,12 @@
 								@php
 									$isSupport = $product->category === 'support';
 								@endphp
-
 								@if($product->stripe_price)
-									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, '{{ $product->name }}', {{ $isSupport ? 'true' : 'false' }})">
-										Contratar
+									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, {{ json_encode($product->name) }}, {{ $isSupport ? 'true' : 'false' }})">
+										{{ __('Contratar') }}
 									</button>
 								@else
-									<button class="btn btn-primary w-100" disabled>Próximamente</button>
+									<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
 								@endif
 							</div>
 						</div>

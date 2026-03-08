@@ -125,6 +125,55 @@ class SubscriptionProductSeeder extends Seeder
             ],
         ];
 
+        // Prospecting Products (credits: Watson/Sherlock recurring, Prospection one-time)
+        $prospectingProducts = [
+            [
+                'stripe_id' => null,
+                'stripe_product' => null,
+                'stripe_price' => null,
+                'name' => 'Watson',
+                'description' => 'Ideal para comenzar a importar prospectos',
+                'category' => 'prospecting',
+                'plan' => 'basic',
+                'type' => 'prospecting',
+                'currency' => 'eur',
+                'unit_amount' => 9.99,
+                'recurring_interval' => 'month',
+                'recurring_interval_count' => 1,
+                'active' => true,
+            ],
+            [
+                'stripe_id' => null,
+                'stripe_product' => null,
+                'stripe_price' => null,
+                'name' => 'Sherlock',
+                'description' => 'Para equipos que importan muchos prospectos',
+                'category' => 'prospecting',
+                'plan' => 'growth',
+                'type' => 'prospecting',
+                'currency' => 'eur',
+                'unit_amount' => 29.99,
+                'recurring_interval' => 'month',
+                'recurring_interval_count' => 1,
+                'active' => true,
+            ],
+            [
+                'stripe_id' => null,
+                'stripe_product' => null,
+                'stripe_price' => null,
+                'name' => 'Prospection',
+                'description' => 'Créditos para exportar resultados de búsqueda de prospectos (pago único)',
+                'category' => 'prospecting',
+                'plan' => null,
+                'type' => 'prospecting',
+                'currency' => 'eur',
+                'unit_amount' => 100.00,
+                'recurring_interval' => null,
+                'recurring_interval_count' => null,
+                'active' => true,
+            ],
+        ];
+
         // Hosting Products (from https://revisionalpha.com/wordpress)
         $hostingProducts = [
             [
@@ -159,16 +208,15 @@ class SubscriptionProductSeeder extends Seeder
             ],
         ];
 
-        $allProducts = array_merge($mailerProducts, $mentoringProducts, $hostingProducts);
+        $allProducts = array_merge($mailerProducts, $mentoringProducts, $prospectingProducts, $hostingProducts);
 
         foreach ($allProducts as $productData)
         {
-            SubscriptionProduct::updateOrCreate(
-                [
-                    'stripe_id' => $productData['stripe_id'],
-                ],
-                $productData,
-            );
+            $key = $productData['stripe_id']
+                ? ['stripe_id' => $productData['stripe_id']]
+                : ['category' => $productData['category'], 'plan' => $productData['plan']];
+
+            SubscriptionProduct::updateOrCreate($key, $productData);
         }
     }
 }

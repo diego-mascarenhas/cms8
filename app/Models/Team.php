@@ -69,6 +69,24 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Find a team by any of its Stripe customer IDs (main stripe_id or per-category settings).
+     */
+    public static function findByStripeCustomerId(string $stripeCustomerId): ?self
+    {
+        $team = static::where('stripe_id', $stripeCustomerId)->first();
+        if ($team)
+        {
+            return $team;
+        }
+
+        $setting = TeamSetting::where('key', 'like', 'stripe_id_%')
+            ->where('value', $stripeCustomerId)
+            ->first();
+
+        return $setting ? $setting->team : null;
+    }
+
+    /**
      * Get the mailboxes for the team.
      */
     public function mailboxes()

@@ -45,8 +45,9 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stripe Price IDs for prospect plans
-    | Watson = entry (recurring), Sherlock = growth (recurring), Prospection = pago único
+    | Stripe Price IDs for prospect plans (legacy: prefer subscription_products)
+    | Watson/Growth = recurring (plan basic|growth), Prospection = one-time (recurring_interval null).
+    | Resolved via SubscriptionProduct::getProspectRecurringPriceId() and getProspectionPriceId().
     |--------------------------------------------------------------------------
     */
     'stripe_basic_price_id' => env('STRIPE_PROSPECTS_WATSON_PRICE_ID'),

@@ -21,8 +21,7 @@ class StripeWebhookController extends CashierController
         $invoice = $payload['data']['object'];
         $customerId = $invoice['customer'];
 
-        // Find the team by Stripe customer ID
-        $team = Team::where('stripe_id', $customerId)->first();
+        $team = Team::findByStripeCustomerId($customerId);
 
         if (! $team)
         {
@@ -64,8 +63,7 @@ class StripeWebhookController extends CashierController
         $subscription = $payload['data']['object'];
         $customerId = $subscription['customer'];
 
-        // Find the team by Stripe customer ID
-        $team = Team::where('stripe_id', $customerId)->first();
+        $team = Team::findByStripeCustomerId($customerId);
 
         if (! $team)
         {
@@ -88,8 +86,7 @@ class StripeWebhookController extends CashierController
         $subscription = $payload['data']['object'];
         $customerId = $subscription['customer'];
 
-        // Find the team by Stripe customer ID
-        $team = Team::where('stripe_id', $customerId)->first();
+        $team = Team::findByStripeCustomerId($customerId);
 
         if (! $team)
         {

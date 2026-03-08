@@ -72,9 +72,10 @@
                         <option value="domain" {{ old('category', $product->category) === 'domain' ? 'selected' : '' }}>Domain</option>
                         <option value="backups" {{ old('category', $product->category) === 'backups' ? 'selected' : '' }}>Backups</option>
                         <option value="mailer" {{ old('category', $product->category) === 'mailer' ? 'selected' : '' }}>Mailer</option>
-                        <option value="whatsapp" {{ old('category', $product->category) === 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
                         <option value="mentoring" {{ old('category', $product->category) === 'mentoring' ? 'selected' : '' }}>Mentoring</option>
+                        <option value="prospecting" {{ old('category', $product->category) === 'prospecting' ? 'selected' : '' }}>Prospectos</option>
                         <option value="support" {{ old('category', $product->category) === 'support' ? 'selected' : '' }}>Support</option>
+                        <option value="whatsapp" {{ old('category', $product->category) === 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
                     </select>
                 </div>
 
