@@ -102,7 +102,7 @@
             <h5 class="card-title mb-0">Resultados de búsqueda</h5>
             <p class="text-muted small mb-0" id="people-results-count"></p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;" @if(!($hasApolloImportCredit ?? true)) disabled title="{{ __('Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.') }}" @endif>
             <i class="ti ti-user-plus me-1"></i> Importar seleccionados
         </button>
     </div>
@@ -135,6 +135,7 @@ $(function() {
     var csrf = '{{ csrf_token() }}';
     var urlPeople = '{{ route("contact.apollo.people") }}';
     var urlAddPerson = '{{ route("contact.apollo.add-person") }}';
+    var hasApolloImportCredit = {{ ($hasApolloImportCredit ?? true) ? 'true' : 'false' }};
     var apolloTable = null;
 
     // Seniority chips: sync with hidden multi-select
@@ -293,6 +294,9 @@ $(function() {
                 { data: 'title', title: 'Título', orderable: false, defaultContent: '—' },
                 { data: 'organization_name', title: 'Empresa', orderable: false, defaultContent: '—' },
                 { data: null, title: 'Acciones', orderable: false, className: 'text-center', render: function(row) {
+                    if (!hasApolloImportCredit) {
+                        return '<div class="d-flex justify-content-center align-items-center"><span class="text-muted" title="{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}"><i class="ti ti-user-plus ti-sm me-2"></i></span></div>';
+                    }
                     return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-body btn-add-person" data-id="' + (row.id || '') + '" title="Importar"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
                 }}
             ],
@@ -348,6 +352,10 @@ $(function() {
     });
 
     $(document).on('click', '#btn-import-selected', function() {
+        if (!hasApolloImportCredit) {
+            toastr.warning('{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}');
+            return;
+        }
         var selected = getSelectedRowData();
         if (selected.length === 0) return;
         var btn = $(this).prop('disabled', true);
@@ -400,6 +408,10 @@ $(function() {
     });
 
     $(document).on('click', '#people-results-card .btn-add-person', function() {
+        if (!hasApolloImportCredit) {
+            toastr.warning('{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}');
+            return;
+        }
         var tr = $(this).closest('tr');
         if (apolloTable && tr.length) {
             var row = apolloTable.row(tr).data();

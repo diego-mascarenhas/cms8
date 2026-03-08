@@ -23,7 +23,10 @@ class ApolloController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        return view('contact.apollo');
+        $team = auth()->user()->currentTeam;
+        $hasApolloImportCredit = $team->hasApolloImportCredit();
+
+        return view('contact.apollo', compact('hasApolloImportCredit'));
     }
 
     /**
@@ -155,6 +158,20 @@ class ApolloController extends Controller
         ]);
 
         $team = auth()->user()->currentTeam;
+
+        if (! $team->hasApolloImportCredit())
+        {
+            if ($request->wantsJson())
+            {
+                return response()->json([
+                    'message' => __('Tu equipo no tiene crédito para importar contactos desde la búsqueda de prospectos. Contrata el servicio en Suscripciones.'),
+                ], 402);
+            }
+
+            return redirect()
+                ->route('subscription.billing-info', ['prospection' => 1])
+                ->with('error', __('Tu equipo no tiene crédito para importar. Contrata el servicio de prospección.'));
+        }
 
         $apolloData = [
             'apollo_id' => $validated['apollo_id'],

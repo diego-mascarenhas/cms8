@@ -319,6 +319,23 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Check if the team has credit to import contacts from Apollo (prospection subscription).
+     */
+    public function hasApolloImportCredit(): bool
+    {
+        $priceId = config('services.prospect_search.export_price_id');
+        if (empty($priceId))
+        {
+            return true;
+        }
+
+        return $this->subscriptions()
+            ->where('stripe_price', $priceId)
+            ->get()
+            ->contains(fn ($sub) => $sub->active());
+    }
+
+    /**
      * Get outgoing email configuration for this team (with fallbacks to .env).
      */
     public function getOutgoingEmailConfig()
