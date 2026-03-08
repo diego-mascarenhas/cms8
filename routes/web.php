@@ -105,6 +105,12 @@ Route::redirect('/propspect/search', '/prospect/search', 301);
 Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
 Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
 Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
+
+Route::get('/register-for-prospects', function ()
+{
+    session()->put('url.intended', route('subscription.index').'#prospectos');
+    return redirect()->route('register');
+})->name('register.redirect-to-prospects');
 Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route

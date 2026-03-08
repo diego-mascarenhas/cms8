@@ -101,7 +101,7 @@ $configData = Helper::appClasses();
               <input type="text" class="form-control" id="q_keywords_people" name="q_keywords_people" placeholder="tecnología, software">
             </div>
             <div class="col-12 pt-2">
-              <button type="button" class="btn btn-primary" id="btn-search-people">
+              <button type="button" class="btn btn-primary" id="btn-search-people" disabled>
                 <i class="ti ti-search me-1"></i> {{ __('Buscar') }}
               </button>
             </div>
@@ -133,18 +133,17 @@ $configData = Helper::appClasses();
 
         <div id="email-gate" class="card border-primary">
           <div class="card-body">
-            <h6 class="card-title">{{ __('Introduce tu email para continuar') }}</h6>
-            <p class="text-muted small mb-3">{{ __('Te permitirá guardar o exportar estos resultados y acceder a más búsquedas.') }}</p>
-            <form id="form-email-gate" class="row g-2 align-items-end">
-              <div class="col-md-6">
-                <label for="lead_email" class="form-label visually-hidden">{{ __('Email') }}</label>
-                <input type="email" class="form-control" id="lead_email" name="email" placeholder="tu@email.com" required>
-              </div>
-              <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">{{ __('Enviar') }}</button>
-              </div>
-            </form>
-            <p id="email-gate-success" class="text-success small mt-2 mb-0 d-none"></p>
+            <h6 class="card-title">{{ __('Debes registrarte para continuar') }}</h6>
+            <p class="text-muted small mb-3">{{ __('Regístrate para guardar o exportar estos resultados y acceder a más búsquedas. Tras registrarte serás redirigido a los planes de prospectos.') }}</p>
+            @if (Route::has('register') && config('custom.custom.showRegister', true))
+              <a href="{{ route('register.redirect-to-prospects') }}" class="btn btn-primary">
+                <i class="ti ti-user-plus me-1"></i>{{ __('Registrarse') }}
+              </a>
+            @else
+              <a href="{{ route('login') }}" class="btn btn-primary">
+                <i class="ti ti-login me-1"></i>{{ __('Iniciar sesión') }}
+              </a>
+            @endif
           </div>
         </div>
       </div>
@@ -169,7 +168,7 @@ $configData = Helper::appClasses();
             {{ __('Una vez registrado, podrás exportar resultados, añadirlos como contactos y enriquecer perfiles con email y teléfono desde la plataforma.') }}
           </p>
           <p class="small text-muted mb-0">
-            {{ __('Introduce tu email tras la búsqueda para desbloquear y guardar los resultados.') }}
+            {{ __('Regístrate tras la búsqueda para desbloquear y guardar los resultados; serás redirigido a los planes de prospectos.') }}
           </p>
         </div>
       </div>
@@ -181,11 +180,25 @@ $configData = Helper::appClasses();
 (function() {
     var csrf = '{{ csrf_token() }}';
     var urlSearch = '{{ route("prospect-search.search") }}';
-    var urlLead = '{{ route("prospect-search.lead") }}';
 
     function parseList(val) {
         if (!val || !String(val).trim()) return [];
         return String(val).split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+
+    function hasSearchCriteria() {
+        var titles = parseList(document.getElementById('person_titles').value);
+        var locations = parseList(document.getElementById('person_locations').value);
+        var seniorities = Array.from(document.getElementById('person_seniorities').selectedOptions).map(function(o) { return o.value; });
+        var domains = parseList(document.getElementById('q_organization_domains_list').value);
+        var orgLocations = parseList(document.getElementById('organization_locations_people').value);
+        var kw = (document.getElementById('q_keywords_people').value || '').trim();
+        return titles.length > 0 || locations.length > 0 || seniorities.length > 0 || domains.length > 0 || orgLocations.length > 0 || kw.length > 0;
+    }
+
+    function updateSearchButtonState() {
+        var btn = document.getElementById('btn-search-people');
+        if (btn) btn.disabled = !hasSearchCriteria();
     }
 
     function getPeopleFilters() {
@@ -204,6 +217,15 @@ $configData = Helper::appClasses();
         if (kw) data.q_keywords = kw;
         return data;
     }
+
+    ['person_titles', 'person_locations', 'q_organization_domains_list', 'organization_locations_people', 'q_keywords_people'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateSearchButtonState);
+    });
+    var selSeniority = document.getElementById('person_seniorities');
+    if (selSeniority) selSeniority.addEventListener('change', updateSearchButtonState);
+    window.updateProspectSearchButtonState = updateSearchButtonState;
+    updateSearchButtonState();
 
     document.getElementById('btn-search-people').addEventListener('click', function() {
         var payload = getPeopleFilters();
@@ -244,7 +266,6 @@ $configData = Helper::appClasses();
                     tbody.appendChild(tr);
                 });
                 document.getElementById('people-results-wrap').classList.remove('d-none');
-                document.getElementById('email-gate-success').classList.add('d-none');
             }
         })
         .catch(function() {
@@ -253,36 +274,6 @@ $configData = Helper::appClasses();
         });
     });
 
-    document.getElementById('form-email-gate').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var email = document.getElementById('lead_email').value.trim();
-        if (!email) return;
-        var btn = this.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        var formData = new FormData();
-        formData.append('_token', csrf);
-        formData.append('email', email);
-        fetch(urlLead, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            body: formData
-        })
-        .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
-        .then(function(res) {
-            btn.disabled = false;
-            if (res.ok && res.json.success) {
-                document.getElementById('email-gate-success').textContent = res.json.message || '{{ __("Gracias, hemos recibido tu email.") }}';
-                document.getElementById('email-gate-success').classList.remove('d-none');
-                document.getElementById('form-email-gate').querySelector('input[name="email"]').value = '';
-            } else {
-                toastr.error(res.json.message || '{{ __("Error al enviar.") }}');
-            }
-        })
-        .catch(function() {
-            btn.disabled = false;
-            toastr.error('{{ __("Error de conexión.") }}');
-        });
-    });
 })();
 </script>
 @endsection
@@ -311,6 +302,7 @@ $configData = Helper::appClasses();
                     opt.selected = !opt.selected;
                     setChipActive(btn, opt.selected);
                 }
+                if (window.updateProspectSearchButtonState) window.updateProspectSearchButtonState();
             });
         });
         container.querySelectorAll('.chip').forEach(function(btn) {
