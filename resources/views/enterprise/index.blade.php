@@ -37,6 +37,17 @@
     }
 </style>
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal-backdrop').forEach(function(el) { el.remove(); });
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+});
+</script>
+@endpush
+
 @section('content')
     @if (session('success'))
         <div id="toast-container" class="toast-top-right">
@@ -314,6 +325,15 @@
             loadingEl.style.display = 'none';
             if (errorEl) errorEl.style.display = 'none';
         });
+
+        function removeModalBackdrops() {
+            document.querySelectorAll('.modal-backdrop').forEach(function(el) { el.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }
+
+        document.getElementById('placesSearchModal').addEventListener('hidden.bs.modal', removeModalBackdrops);
     })();
     </script>
     @endcan

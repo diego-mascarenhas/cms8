@@ -101,10 +101,10 @@ Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
-Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
+Route::redirect('/propspect/search', '/prospect/search', 301);
 Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
 Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
-Route::redirect('/prospectflow', '/prospect-search');
+Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
@@ -271,6 +271,7 @@ Route::middleware(['auth'])->group(function ()
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
     Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::get('/prospect/search', [ApolloController::class, 'index'])->name('prospect.search');
     Route::get('/contact/apollo', [ApolloController::class, 'index'])->name('contact.apollo');
     Route::post('/contact/apollo/people', [ApolloController::class, 'searchPeople'])->name('contact.apollo.people');
     Route::post('/contact/apollo/organizations', [ApolloController::class, 'searchOrganizations'])->name('contact.apollo.organizations');

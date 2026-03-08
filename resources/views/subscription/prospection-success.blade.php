@@ -20,8 +20,8 @@
                     <p class="card-text text-muted mb-4">
                         {{ __('Los contactos de tus búsquedas de prospectos quedarán disponibles en la plataforma, en la sección Contactos.') }}
                     </p>
-                    <a href="{{ route('enterprise.index') }}" class="btn btn-primary">
-                        <i class="ti ti-target me-1"></i>{{ __('Buscar clientes') }}
+                    <a href="{{ route('prospect.search') }}" class="btn btn-primary">
+                        <i class="ti ti-target me-1"></i>{{ __('Buscar prospectos') }}
                     </a>
                 </div>
             </div>
