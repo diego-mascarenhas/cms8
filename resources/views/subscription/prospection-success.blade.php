@@ -16,12 +16,12 @@
                     <div class="mb-4">
                         <i class="ti ti-circle-check text-success" style="font-size: 4rem;"></i>
                     </div>
-                    <h5 class="card-title">{{ __('Descargar exportación') }}</h5>
+                    <h5 class="card-title">{{ __('Crédito aplicado') }}</h5>
                     <p class="card-text text-muted mb-4">
-                        {{ __('Puedes descargar el CSV de contactos cuando hayas realizado la búsqueda en la aplicación de Prospection. Si ya realizaste la búsqueda y el pago, usa el enlace inferior para descargar.') }}
+                        {{ __('Los contactos de tus búsquedas de prospectos quedarán disponibles en la plataforma, en la sección Contactos.') }}
                     </p>
-                    <a href="{{ $downloadUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-                        <i class="ti ti-download me-1"></i>{{ __('Descargar CSV') }}
+                    <a href="{{ route('enterprise.index') }}" class="btn btn-primary">
+                        <i class="ti ti-target me-1"></i>{{ __('Buscar clientes') }}
                     </a>
                 </div>
             </div>

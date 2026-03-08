@@ -568,6 +568,7 @@ class SubscriptionController extends Controller
             }
 
             $successUrl = url()->route('subscription.prospection-success').'?session_id={CHECKOUT_SESSION_ID}';
+            $cancelUrl = url()->route('subscription.billing-info', ['prospection' => 1]);
 
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
             $session = \Stripe\Checkout\Session::create([
@@ -578,7 +579,8 @@ class SubscriptionController extends Controller
                     'price' => $priceId,
                     'quantity' => 1,
                 ]],
-                'return_url' => $successUrl,
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
                 'metadata' => [
                     'source' => 'prospect_search_export',
                     'lead_email' => auth()->user()->email,
