@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Enums\ProspectPlan;
 use App\Models\SubscriptionProduct;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
@@ -74,6 +75,18 @@ class SubscriptionController extends Controller
             ->orderBy('unit_amount', 'desc')
             ->get();
 
+        $prospectProducts = SubscriptionProduct::active()
+            ->where('category', 'prospects')
+            ->whereNotNull('recurring_interval')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $prospectPacks = SubscriptionProduct::active()
+            ->where('category', 'prospects')
+            ->whereNull('recurring_interval')
+            ->orderBy('unit_amount')
+            ->get();
+
         // Get active subscriptions for each category
         $activeSubscriptions = $team->subscriptions()
             ->where('stripe_status', '!=', 'canceled')
@@ -111,6 +124,15 @@ class SubscriptionController extends Controller
 
         $prospectionConfig = $this->getProspectionExportConfig();
 
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $currentProspectPlan = $team->getProspectPlan();
+
+        $prospectSubscription = $activeSubscriptions->filter(function ($sub) use ($prospectProducts)
+        {
+            return $prospectProducts->contains(fn ($product) => $product->stripe_price === $sub->stripe_price);
+        })->first();
+
         return view('subscription.index', [
             'team' => $team,
             'currentPlan' => $currentPlan,
@@ -127,6 +149,11 @@ class SubscriptionController extends Controller
             'mentoringSubscription' => $mentoringSubscription,
             'hostingSubscription' => $hostingSubscription,
             'prospectionConfig' => $prospectionConfig,
+            'prospectProducts' => $prospectProducts,
+            'prospectPacks' => $prospectPacks,
+            'remainingProspectCredits' => $remainingProspectCredits,
+            'currentProspectPlan' => $currentProspectPlan,
+            'prospectSubscription' => $prospectSubscription,
         ]);
     }
 
@@ -855,10 +882,12 @@ class SubscriptionController extends Controller
         }
 
         // For hosting/support products, allow multiple subscriptions (one per domain)
+        // For one-time prospect packs, no subscription conflict (payment only)
         // For other products, check if already has an active subscription of the same type
         $isHostingOrSupport = $product && in_array($product->category, ['hosting', 'support']);
+        $isOneTimeProspect = $product && $product->category === 'prospects' && ! $product->recurring_interval;
 
-        if (! $isHostingOrSupport)
+        if (! $isHostingOrSupport && ! $isOneTimeProspect)
         {
             // Check if already has an active subscription of the same type (not canceled)
             $activeSubscription = $team->subscriptions()
@@ -1212,6 +1241,18 @@ class SubscriptionController extends Controller
                         }
                     }
 
+                    if ($subscriptionType === 'prospects')
+                    {
+                        try
+                        {
+                            $plan = ProspectPlan::fromStripePriceId($priceId);
+                            $team->assignProspectPlan($plan, auth()->id());
+                        } catch (\Exception $e)
+                        {
+                            \Log::warning('Could not assign prospect plan: '.$e->getMessage());
+                        }
+                    }
+
                     // Custom success message based on subscription type
                     $successMessage = match ($subscriptionType)
                     {
@@ -1267,6 +1308,24 @@ class SubscriptionController extends Controller
                 'type' => 'card',
                 'limit' => 1,
             ]);
+
+            // One-time prospect credit pack: create payment session instead of subscription
+            if ($product && $product->category === 'prospects' && ! $product->recurring_interval)
+            {
+                $paymentSession = \Stripe\Checkout\Session::create([
+                    'customer' => $team->stripe_id,
+                    'mode' => 'payment',
+                    'locale' => 'es',
+                    'line_items' => [[
+                        'price' => $priceId,
+                        'quantity' => 1,
+                    ]],
+                    'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
+                    'cancel_url' => route('subscription.index'),
+                ]);
+
+                return redirect($paymentSession->url);
+            }
 
             // Build subscription metadata
             $subscriptionMetadata = [
@@ -1451,6 +1510,22 @@ class SubscriptionController extends Controller
                         $team->assignEmailPlan($plan, auth()->id());
                     }
                 }
+
+                if ($subscriptionType === 'prospects')
+                {
+                    try
+                    {
+                        $plan = ProspectPlan::fromStripePriceId($priceId);
+                        $team->assignProspectPlan($plan, auth()->id());
+                    } catch (\Exception $e)
+                    {
+                        \Log::warning('Could not assign prospect plan: '.$e->getMessage());
+                    }
+                }
+            } else
+            {
+                // One-time payment: check for prospect credit packs
+                $this->applyProspectCreditPackFromSession($session, $team);
             }
 
             return redirect()->route('subscription.index')
@@ -1727,6 +1802,55 @@ class SubscriptionController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Apply prospect credits from a one-time checkout session (credit pack).
+     */
+    private function applyProspectCreditPackFromSession($session, $team): void
+    {
+        if (! $session || $session->mode !== 'payment' || $session->payment_status !== 'paid')
+        {
+            return;
+        }
+
+        try
+        {
+            $lineItemsResponse = \Stripe\Checkout\Session::allLineItems($session->id, ['expand' => ['data.price']]);
+            $lineItems = $lineItemsResponse->data ?? [];
+        } catch (\Exception $e)
+        {
+            \Log::warning('Could not retrieve checkout session line items: '.$e->getMessage());
+
+            return;
+        }
+
+        foreach ($lineItems as $item)
+        {
+            $priceId = $item->price->id ?? null;
+            if (! $priceId)
+            {
+                continue;
+            }
+
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if (! $product || $product->category !== 'prospects' || $product->recurring_interval)
+            {
+                continue;
+            }
+
+            $packs = config('prospects.credit_packs', []);
+            $credits = (int) ($product->metadata['credits'] ?? $packs[$priceId] ?? 0);
+            if ($credits > 0)
+            {
+                $team->addProspectCreditsFromPurchase($credits);
+                \Log::info('Prospect credits added from one-time purchase', [
+                    'team_id' => $team->id,
+                    'price_id' => $priceId,
+                    'credits' => $credits,
+                ]);
+            }
+        }
     }
 
     /**

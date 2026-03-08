@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasEmailLimits;
+use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
@@ -12,7 +13,7 @@ use Laravel\Jetstream\Team as JetstreamTeam;
 
 class Team extends JetstreamTeam
 {
-    use Billable, HasEmailLimits, HasFactory;
+    use Billable, HasEmailLimits, HasFactory, HasProspectLimits;
 
     /**
      * The attributes that should be cast.
@@ -316,23 +317,6 @@ class Team extends JetstreamTeam
     public function hasTwilioConfig()
     {
         return ! empty($this->getSetting('twilio_sid')) && ! empty($this->getSetting('twilio_token'));
-    }
-
-    /**
-     * Check if the team has credit to import contacts from Apollo (prospection subscription).
-     */
-    public function hasApolloImportCredit(): bool
-    {
-        $priceId = config('services.prospect_search.export_price_id');
-        if (empty($priceId))
-        {
-            return true;
-        }
-
-        return $this->subscriptions()
-            ->where('stripe_price', $priceId)
-            ->get()
-            ->contains(fn ($sub) => $sub->active());
     }
 
     /**

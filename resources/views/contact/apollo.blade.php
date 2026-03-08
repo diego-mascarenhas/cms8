@@ -25,7 +25,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span> Buscar contactos</h4>
-        <p class="text-muted">Busca personas por filtros y añade los resultados como contactos.</p>
+        <p class="text-muted">Busca personas por filtros y añade los resultados como contactos. @if(isset($remainingProspectCredits)) <strong>{{ __('Créditos de prospectos') }}: {{ $remainingProspectCredits }}</strong> @endif</p>
     </div>
 </div>
 
@@ -102,7 +102,7 @@
             <h5 class="card-title mb-0">Resultados de búsqueda</h5>
             <p class="text-muted small mb-0" id="people-results-count"></p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;" @if(!($hasApolloImportCredit ?? true)) disabled title="{{ __('Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.') }}" @endif>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
             <i class="ti ti-user-plus me-1"></i> Importar seleccionados
         </button>
     </div>
@@ -129,13 +129,34 @@
     </div>
 </div>
 
+{{-- Modal: sin créditos de prospectos --}}
+<div class="modal fade" id="prospectCreditsModal" tabindex="-1" aria-labelledby="prospectCreditsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="prospectCreditsModalLabel">
+                    <i class="ti ti-alert-triangle text-warning me-2"></i>{{ __('Créditos de prospectos') }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">{{ __('Necesitas comprar créditos para importar contactos. Contrata un plan o compra créditos en la sección de prospectos.') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                <a href="{{ route('subscription.index') }}#prospectos" class="btn btn-warning waves-effect">{{ __('Ir a planes de prospectos') }}</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 $(function() {
     var csrf = '{{ csrf_token() }}';
     var urlPeople = '{{ route("contact.apollo.people") }}';
     var urlAddPerson = '{{ route("contact.apollo.add-person") }}';
-    var hasApolloImportCredit = {{ ($hasApolloImportCredit ?? true) ? 'true' : 'false' }};
+    var canImportProspects = {{ ($canImportProspects ?? true) ? 'true' : 'false' }};
     var apolloTable = null;
 
     // Seniority chips: sync with hidden multi-select
@@ -294,8 +315,8 @@ $(function() {
                 { data: 'title', title: 'Título', orderable: false, defaultContent: '—' },
                 { data: 'organization_name', title: 'Empresa', orderable: false, defaultContent: '—' },
                 { data: null, title: 'Acciones', orderable: false, className: 'text-center', render: function(row) {
-                    if (!hasApolloImportCredit) {
-                        return '<div class="d-flex justify-content-center align-items-center"><span class="text-muted" title="{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}"><i class="ti ti-user-plus ti-sm me-2"></i></span></div>';
+                    if (!canImportProspects) {
+                        return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-muted btn-show-credits-modal" title="{{ __("Importar") }}"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
                     }
                     return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-body btn-add-person" data-id="' + (row.id || '') + '" title="Importar"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
                 }}
@@ -352,8 +373,8 @@ $(function() {
     });
 
     $(document).on('click', '#btn-import-selected', function() {
-        if (!hasApolloImportCredit) {
-            toastr.warning('{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}');
+        if (!canImportProspects) {
+            new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
             return;
         }
         var selected = getSelectedRowData();
@@ -407,9 +428,13 @@ $(function() {
         addOne(0);
     });
 
+    $(document).on('click', '#people-results-card .btn-show-credits-modal', function() {
+        new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
+    });
+
     $(document).on('click', '#people-results-card .btn-add-person', function() {
-        if (!hasApolloImportCredit) {
-            toastr.warning('{{ __("Tu equipo no tiene crédito para importar. Contrata el servicio en Suscripciones.") }}');
+        if (!canImportProspects) {
+            new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
             return;
         }
         var tr = $(this).closest('tr');

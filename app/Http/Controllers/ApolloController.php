@@ -24,9 +24,14 @@ class ApolloController extends Controller
         }
 
         $team = auth()->user()->currentTeam;
-        $hasApolloImportCredit = $team->hasApolloImportCredit();
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $canImportProspects = $team->canImportProspects(1);
 
-        return view('contact.apollo', compact('hasApolloImportCredit'));
+        return view('contact.apollo', [
+            'remainingProspectCredits' => $remainingProspectCredits,
+            'canImportProspects' => $canImportProspects,
+        ]);
     }
 
     /**
@@ -73,8 +78,7 @@ class ApolloController extends Controller
             $result = $service->searchPeople($filters, $page, $perPage);
 
             return response()->json($result);
-        }
-        catch (\RuntimeException $e)
+        } catch (\RuntimeException $e)
         {
             $status = $e->getCode() >= 400 && $e->getCode() < 600 ? (int) $e->getCode() : 502;
 
@@ -159,20 +163,6 @@ class ApolloController extends Controller
 
         $team = auth()->user()->currentTeam;
 
-        if (! $team->hasApolloImportCredit())
-        {
-            if ($request->wantsJson())
-            {
-                return response()->json([
-                    'message' => __('Tu equipo no tiene crédito para importar contactos desde la búsqueda de prospectos. Contrata el servicio en Suscripciones.'),
-                ], 402);
-            }
-
-            return redirect()
-                ->route('subscription.billing-info', ['prospection' => 1])
-                ->with('error', __('Tu equipo no tiene crédito para importar. Contrata el servicio de prospección.'));
-        }
-
         $apolloData = [
             'apollo_id' => $validated['apollo_id'],
             'title' => $validated['title'] ?? null,
@@ -187,6 +177,36 @@ class ApolloController extends Controller
             }
         }
 
+        $position = $this->normalizeProspectPosition($apolloData);
+        $cost = $this->getProspectCreditsCost($position);
+
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        if (! $team->canImportProspects($cost))
+        {
+            if ($request->wantsJson())
+            {
+                return response()->json([
+                    'message' => __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos en Suscripciones.'),
+                ], 402);
+            }
+
+            return redirect()
+                ->route('subscription.index')
+                ->with('error', __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos.'));
+        }
+
+        if (! $team->decrementProspectCredits($cost))
+        {
+            if ($request->wantsJson())
+            {
+                return response()->json([
+                    'message' => __('No tienes suficientes créditos de prospectos.'),
+                ], 402);
+            }
+
+            return redirect()->route('subscription.index')->with('error', __('No tienes suficientes créditos de prospectos.'));
+        }
+
         $enriched = null;
         try
         {
@@ -198,8 +218,7 @@ class ApolloController extends Controller
                 'organization' => $apolloData['organization'] ?? null,
             ];
             $enriched = $service->enrichPerson($personForEnrich);
-        }
-        catch (\Throwable $e)
+        } catch (\Throwable $e)
         {
             $enriched = null;
         }
@@ -212,8 +231,7 @@ class ApolloController extends Controller
             {
                 $name = $enriched['name'] ?? trim($validated['first_name'].' '.($validated['last_name_obfuscated'] ?? '')) ?: 'Contact';
             }
-        }
-        else
+        } else
         {
             $lastName = $validated['last_name'] ?? $validated['last_name_obfuscated'] ?? '';
             $name = trim($validated['first_name'].' '.$lastName) ?: 'Contact';
@@ -252,6 +270,35 @@ class ApolloController extends Controller
 
         return redirect()
             ->route('contact.show', $contact->id)
-            ->with('success', __('Contact created from Apollo.'));
+            ->with('success', __('Contacto creado desde la búsqueda de prospectos.'));
+    }
+
+    /**
+     * Normalize prospect position (seniority) from API data to a config key.
+     */
+    private function normalizeProspectPosition(array $apolloData): string
+    {
+        $raw = $apolloData['apollo_raw'] ?? $apolloData;
+        $seniority = $raw['seniority'] ?? $raw['person_seniority'] ?? null;
+        if (! is_string($seniority) || $seniority === '')
+        {
+            return 'manager';
+        }
+
+        $key = strtolower(trim(preg_replace('/[^a-z0-9_]/', '_', $seniority)));
+        $key = str_replace('__', '_', $key);
+        $allowed = array_keys(config('prospects.credits_per_position', []));
+
+        return in_array($key, $allowed, true) ? $key : 'manager';
+    }
+
+    /**
+     * Get credit cost for a prospect position.
+     */
+    private function getProspectCreditsCost(string $position): int
+    {
+        $credits = config('prospects.credits_per_position', []);
+
+        return (int) ($credits[$position] ?? config('prospects.default_credits', 1));
     }
 }

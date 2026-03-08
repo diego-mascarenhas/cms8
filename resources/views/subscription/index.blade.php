@@ -285,10 +285,92 @@
 	</div>
 </div>
 
-<!-- Prospection -->
-@if(!empty($prospectionConfig['enabled']))
-	<div class="mb-5 mt-5">
-		<h3 class="mb-4">Planes de Prospection</h3>
+<!-- Prospectos: planes mensuales y compra bajo demanda -->
+@if(($prospectProducts->isNotEmpty() || $prospectPacks->isNotEmpty()))
+	<div class="mb-5 mt-5" id="prospectos">
+		<h3 class="mb-4">{{ __('Prospectos') }}</h3>
+		@if(isset($remainingProspectCredits))
+			<p class="text-muted mb-3">{{ __('Créditos de prospectos restantes') }}: <strong>{{ $remainingProspectCredits }}</strong></p>
+		@endif
+		<div class="row gy-4">
+			@foreach($prospectProducts as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100 {{ $prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price ? 'border-primary shadow-sm' : '' }}">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							@if($prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price)
+								<div class="position-absolute end-0 me-4 top-0 mt-3">
+									<span class="badge bg-label-primary">{{ __('Plan actual') }}</span>
+								</div>
+							@endif
+							<div class="mb-4">
+								<div class="d-flex justify-content-center flex-wrap">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									@if($product->recurring_interval)
+										<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
+									@endif
+								</div>
+							</div>
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
+							@if($product->metadata['monthly_credits'] ?? null)
+								<p class="small text-muted mb-3">{{ $product->metadata['monthly_credits'] }} {{ __('créditos/mes') }}</p>
+							@endif
+							<div class="mt-auto">
+								@if($prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price)
+									<button class="btn btn-label-primary w-100" disabled>{{ __('Tu plan actual') }}</button>
+								@elseif($product->stripe_price)
+									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->description ?? '') }}')">
+										{{ __('Suscribirse') }}
+									</button>
+								@else
+									<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+			@endforeach
+			@foreach($prospectPacks as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							<div class="mb-4">
+								<div class="d-flex justify-content-center flex-wrap">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ __('pago único') }}</sub>
+								</div>
+							</div>
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
+							@php
+								$creditPacks = config('prospects.credit_packs', []);
+								$packCredits = $creditPacks[$product->stripe_price] ?? 0;
+								$credits = (int)($product->metadata['credits'] ?? $packCredits);
+							@endphp
+							@if($credits > 0)
+								<p class="small text-muted mb-3">{{ $credits }} {{ __('créditos') }}</p>
+							@endif
+							<div class="mt-auto">
+								@if($product->stripe_price)
+									<button type="button" class="btn btn-outline-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->description ?? '') }}')">
+										{{ __('Comprar créditos') }}
+									</button>
+								@else
+									<button class="btn btn-outline-primary w-100" disabled>{{ __('Próximamente') }}</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+			@endforeach
+		</div>
+	</div>
+@elseif(!empty($prospectionConfig['enabled']))
+	{{-- Legacy: one-time export product when no prospect products in DB --}}
+	<div class="mb-5 mt-5" id="prospectos">
+		<h3 class="mb-4">{{ __('Prospectos') }}</h3>
 		<div class="row gy-4">
 			<div class="col-lg-6 col-12">
 				<div class="card border h-100">
@@ -301,32 +383,30 @@
 								@else
 									<h1 class="mb-0 text-primary">—</h1>
 								@endif
-								<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/pago único</sub>
+								<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ __('pago único') }}</sub>
 							</div>
 						</div>
-
 						<h4>{{ $prospectionConfig['name'] }}</h4>
 						<p class="mb-4">{{ $prospectionConfig['description'] }}</p>
-
 						<div class="mt-auto">
 							<button type="button" class="btn btn-primary w-100" onclick="showProspectionConfirmModal()">
-								Contratar
+								{{ __('Contratar') }}
 							</button>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
+		<script>
+			window.prospectionConfig = {
+				name: @json($prospectionConfig['name'] ?? 'Prospection'),
+				description: @json($prospectionConfig['description'] ?? ''),
+				amount: {{ $prospectionConfig['amount'] ?? 0 }},
+				currency: @json($prospectionConfig['currency'] ?? 'EUR'),
+				app_url: @json($prospectionConfig['app_url'] ?? ''),
+			};
+		</script>
 	</div>
-	<script>
-		window.prospectionConfig = {
-			name: @json($prospectionConfig['name'] ?? 'Prospection'),
-			description: @json($prospectionConfig['description'] ?? ''),
-			amount: {{ $prospectionConfig['amount'] ?? 0 }},
-			currency: @json($prospectionConfig['currency'] ?? 'EUR'),
-			app_url: @json($prospectionConfig['app_url'] ?? ''),
-		};
-	</script>
 @endif
 
 <!-- Hosting Plans -->
