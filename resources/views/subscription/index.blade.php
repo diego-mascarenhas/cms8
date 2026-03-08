@@ -26,7 +26,7 @@
 <!-- Mentoring Plans -->
 @if($mentoringProducts->isNotEmpty())
 	<div class="mb-5">
-		<h3 class="mb-4">Planes de Mentoría</h3>
+		<h3 class="mb-4">Mentoría</h3>
 		<div class="row gy-4">
 			@foreach($mentoringProducts as $product)
 				<div class="{{ $product->plan === 'complete' ? 'col-12' : 'col-xl col-lg-4 col-md-6' }}">
@@ -80,7 +80,7 @@
 
 <!-- Mailer Plans -->
 <div class="mb-5">
-	<h3 class="mb-4">Planes de Mailer</h3>
+	<h3 class="mb-4">Mailer</h3>
 	<div class="row gy-4">
 	<!-- FREE Plan -->
 	<div class="col-xl-3 col-lg-6 col-12">
@@ -321,10 +321,10 @@
 									<button class="btn btn-label-primary w-100" disabled>{{ __('Tu plan actual') }}</button>
 								@elseif($product->stripe_price)
 									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->description ?? '') }}')">
-										{{ __('Suscribirse') }}
+										{{ __('Suscribirse ahora') }}
 									</button>
 								@else
-									<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
+									<button class="btn btn-primary w-100" disabled>{{ __('Suscribirse ahora') }}</button>
 								@endif
 							</div>
 						</div>
@@ -371,10 +371,10 @@
 									<button class="btn btn-label-primary w-100" disabled>{{ __('Tu plan actual') }}</button>
 								@elseif($plan->getStripePriceId())
 									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModalProspect('{{ $plan->value }}', '{{ addslashes($planDisplayName) }}', {{ $amount }}, '{{ $currency }}')">
-										{{ __('Suscribirse') }}
+										{{ __('Suscribirse ahora') }}
 									</button>
 								@else
-									<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
+									<button class="btn btn-primary w-100" disabled>{{ __('Suscribirse ahora') }}</button>
 								@endif
 							</div>
 						</div>
@@ -465,7 +465,7 @@
 <!-- Hosting Plans -->
 @if($hostingProducts->isNotEmpty())
 	<div class="mb-5 mt-5">
-		<h3 class="mb-4">Planes de Hosting</h3>
+		<h3 class="mb-4">Hosting</h3>
 		<div class="row gy-4">
 			@foreach($hostingProducts as $product)
 				<div class="col-lg-6 col-12">

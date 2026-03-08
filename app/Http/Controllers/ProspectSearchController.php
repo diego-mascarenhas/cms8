@@ -225,7 +225,7 @@ class ProspectSearchController extends Controller
     public function checkoutConfig(Request $request): JsonResponse
     {
         $config = config('services.prospect_search', []);
-        $priceId = $config['export_price_id'] ?? null;
+        $priceId = config('prospects.stripe_prospection_price_id') ?? $config['export_price_id'] ?? null;
         $appUrl = isset($config['access_base_url']) ? rtrim($config['access_base_url'], '/') : null;
 
         return response()->json([
@@ -258,7 +258,7 @@ class ProspectSearchController extends Controller
             'q_keywords' => 'nullable|string|max:500',
         ]);
 
-        $priceId = $validated['price_id'] ?? config('services.prospect_search.export_price_id');
+        $priceId = $validated['price_id'] ?? config('prospects.stripe_prospection_price_id') ?? config('services.prospect_search.export_price_id');
         if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
         {
             return response()->json([

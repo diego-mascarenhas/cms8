@@ -45,11 +45,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stripe Price IDs for prospect plans (recurring, can be monthly or quarterly)
+    | Stripe Price IDs for prospect plans
+    | Watson = entry (recurring), Sherlock = growth (recurring), Prospection = pago único
     |--------------------------------------------------------------------------
     */
-    'stripe_basic_price_id' => env('STRIPE_PROSPECTS_BASIC_PRICE_ID'),
-    'stripe_growth_price_id' => env('STRIPE_PROSPECTS_GROWTH_PRICE_ID'),
+    'stripe_basic_price_id' => env('STRIPE_PROSPECTS_WATSON_PRICE_ID'),
+    'stripe_growth_price_id' => env('STRIPE_PROSPECTS_SHERLOCK_PRICE_ID'),
+    'stripe_prospection_price_id' => env('STRIPE_PROSPECTS_PROSPECTION_PRICE_ID'),
 
     /*
     |--------------------------------------------------------------------------

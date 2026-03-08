@@ -211,7 +211,7 @@ class SubscriptionController extends Controller
     private function getProspectionExportConfig(): array
     {
         $config = config('services.prospect_search', []);
-        $priceId = $config['export_price_id'] ?? null;
+        $priceId = config('prospects.stripe_prospection_price_id') ?? $config['export_price_id'] ?? null;
         $name = $config['export_name'] ?? 'Prospection';
         $description = $config['export_description'] ?? 'Exporta tus resultados de búsqueda de prospectos y descarga el CSV con los contactos.';
         $appUrl = $config['access_base_url'] ?? null;
@@ -647,7 +647,7 @@ class SubscriptionController extends Controller
         // Prospection: create one-time Stripe Checkout Session and redirect to Stripe
         if ($request->prospection)
         {
-            $priceId = config('services.prospect_search.export_price_id');
+            $priceId = config('prospects.stripe_prospection_price_id') ?? config('services.prospect_search.export_price_id');
             if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
             {
                 return redirect()->route('subscription.index')
@@ -878,7 +878,7 @@ class SubscriptionController extends Controller
         // Prospection: redirect to billing-info to collect data, then create one-time checkout
         if ($request->prospection)
         {
-            $priceId = config('services.prospect_search.export_price_id');
+            $priceId = config('prospects.stripe_prospection_price_id') ?? config('services.prospect_search.export_price_id');
             if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
             {
                 return redirect()->route('subscription.index')
