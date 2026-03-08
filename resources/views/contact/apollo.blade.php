@@ -27,28 +27,24 @@
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span> Buscar contactos</h4>
         <p class="text-muted">Busca personas por filtros y añade los resultados como contactos.</p>
     </div>
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('contact-list') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Volver a contactos
-        </a>
-    </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <h5 class="card-title mb-3">Define tu búsqueda</h5>
-        <p class="text-muted small mb-4">Indica títulos, ubicación, seniority o palabras clave. Añade los resultados como contactos.</p>
+        <h5 class="card-title mb-1">Define tu búsqueda</h5>
+        <p class="text-muted mb-4">Indica títulos, ubicación, posición o palabras clave. Añade los resultados como contactos.</p>
         <div class="row g-3">
             <div class="col-12">
-                <label for="person_titles" class="form-label">Títulos (separados por coma)</label>
+                <label for="person_titles" class="form-label">Títulos</label>
                 <input type="text" class="form-control" id="person_titles" name="person_titles" placeholder="director comercial, gerente de ventas">
+                <div class="form-text">Indica uno o más títulos de puesto, separados por coma (por ejemplo: director comercial, gerente de ventas).</div>
             </div>
             <div class="col-md-6">
                 <label for="person_locations" class="form-label">Ubicación</label>
                 <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
             </div>
             <div class="col-md-6">
-                <label class="form-label d-block">Seniority</label>
+                <label class="form-label d-block">Posición</label>
                 <div class="apollo-seniority-chips" id="seniority-chips-people" role="group">
                     <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="owner">Owner</button>
                     <button type="button" class="btn btn-sm btn-outline-primary chip" data-value="founder">Founder</button>
@@ -101,6 +97,9 @@
 <div class="card d-none mt-4" id="people-results-card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h5 class="card-title mb-0">Resultados de búsqueda</h5>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
+            <i class="ti ti-download me-1"></i> Importar seleccionados
+        </button>
     </div>
     <div class="card-body">
         <div id="people-zero-results" class="alert alert-warning d-none mb-3" role="alert">
@@ -110,6 +109,9 @@
             <table class="table table-bordered" id="apollo-people-table" style="width:100%">
                 <thead>
                     <tr>
+                        <th class="dt-body-center" style="width: 2rem;">
+                            <input type="checkbox" class="form-check-input" id="apollo-select-all" title="Seleccionar todos" aria-label="Seleccionar todos">
+                        </th>
                         <th>Nombre</th>
                         <th>Título</th>
                         <th>Empresa</th>
@@ -256,6 +258,9 @@ $(function() {
                 });
             },
             columns: [
+                { data: null, orderable: false, searchable: false, className: 'dt-body-center', render: function(row) {
+                    return '<input type="checkbox" class="form-check-input apollo-row-checkbox" value="' + (row.id || '') + '" aria-label="Seleccionar">';
+                }},
                 { data: null, title: 'Nombre', orderable: true, render: function(row) {
                     var ln = row.last_name || row.last_name_obfuscated || '';
                     return ((row.first_name || '') + ' ' + ln).trim() || '—';
@@ -266,7 +271,7 @@ $(function() {
                     return '<button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (row.id || '') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button>';
                 }}
             ],
-            order: [[0, 'asc']],
+            order: [[1, 'asc']],
             pageLength: 25,
             lengthMenu: [[10, 25, 50], [10, 25, 50]],
             language: {
@@ -277,9 +282,91 @@ $(function() {
                 if (apolloTable && apolloTable.page.info().recordsDisplay === 0) {
                     document.getElementById('people-zero-results').classList.remove('d-none');
                 }
+                updateImportButtonVisibility();
             }
         });
     }
+
+    function getSelectedRowData() {
+        if (!apolloTable) return [];
+        var data = [];
+        $('#apollo-people-table tbody .apollo-row-checkbox:checked').each(function() {
+            var tr = $(this).closest('tr');
+            var row = apolloTable.row(tr).data();
+            if (row) data.push(row);
+        });
+        return data;
+    }
+
+    function updateImportButtonVisibility() {
+        var n = $('#apollo-people-table tbody .apollo-row-checkbox:checked').length;
+        $('#btn-import-selected').toggle(n > 0);
+    }
+
+    $(document).on('change', '#apollo-select-all', function() {
+        var checked = this.checked;
+        $('#apollo-people-table tbody .apollo-row-checkbox').prop('checked', checked);
+        updateImportButtonVisibility();
+    });
+
+    $(document).on('change', '#people-results-card .apollo-row-checkbox', function() {
+        var total = $('#apollo-people-table tbody .apollo-row-checkbox').length;
+        var checked = $('#apollo-people-table tbody .apollo-row-checkbox:checked').length;
+        $('#apollo-select-all').prop('checked', total > 0 && checked === total).prop('indeterminate', checked > 0 && checked < total);
+        updateImportButtonVisibility();
+    });
+
+    $(document).on('click', '#btn-import-selected', function() {
+        var selected = getSelectedRowData();
+        if (selected.length === 0) return;
+        var btn = $(this).prop('disabled', true);
+        function addOne(index) {
+            if (index >= selected.length) {
+                btn.prop('disabled', false);
+                toastr.success(selected.length === 1 ? 'Contacto importado.' : 'Se importaron ' + selected.length + ' contactos.');
+                if (selected.length === 1) return;
+                apolloTable && apolloTable.rows().every(function() {
+                    var d = this.data();
+                    if (selected.some(function(s) { return s.id === d.id; })) {
+                        $(this.node()).find('.apollo-row-checkbox').prop('checked', false);
+                    }
+                });
+                $('#apollo-select-all').prop('checked', false).prop('indeterminate', false);
+                updateImportButtonVisibility();
+                return;
+            }
+            var person = selected[index];
+            var formData = new FormData();
+            formData.append('_token', csrf);
+            formData.append('apollo_id', person.id || '');
+            formData.append('first_name', person.first_name || '');
+            formData.append('last_name_obfuscated', person.last_name_obfuscated || '');
+            formData.append('last_name', person.last_name || '');
+            formData.append('title', person.title || '');
+            formData.append('organization_name', person.organization_name || '');
+            if (person.apollo_raw) formData.append('person_data', JSON.stringify(person.apollo_raw));
+            fetch(urlAddPerson, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: formData
+            })
+            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
+            .then(function(res) {
+                if (res.ok && res.json.redirect_url && selected.length === 1) {
+                    toastr.success(res.json.message || 'Contacto creado.');
+                    window.location.href = res.json.redirect_url;
+                    return;
+                }
+                if (!res.ok) toastr.error(res.json.message || 'Error al importar.');
+                addOne(index + 1);
+            })
+            .catch(function() {
+                toastr.error('Error de conexión.');
+                addOne(index + 1);
+            });
+        }
+        addOne(0);
+    });
 
     $(document).on('click', '#people-results-card .btn-add-person', function() {
         var tr = $(this).closest('tr');
