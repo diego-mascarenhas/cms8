@@ -34,6 +34,9 @@
                     @if(isset($prospection) && $prospection)
                         <input type="hidden" name="prospection" value="1">
                     @endif
+                    @if(!empty($prospect_plan))
+                        <input type="hidden" name="prospect_plan" value="{{ $prospect_plan }}">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->

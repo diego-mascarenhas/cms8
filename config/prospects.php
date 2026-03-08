@@ -31,7 +31,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stripe Price IDs for monthly prospect plans (recurring)
+    | Optional display names for prospect plans (subscription page)
+    |--------------------------------------------------------------------------
+    | Override enum labels. Examples (Sherlock / investigator theme):
+    | basic => 'Watson', 'Scout', 'Rastreador'
+    | growth => 'Sherlock', 'Detective', 'Investigador'
+    | Leave null to use enum default (Basic, Growth).
+    */
+    'plan_display_names' => [
+        'basic' => env('PROSPECT_PLAN_NAME_BASIC', 'Watson'),
+        'growth' => env('PROSPECT_PLAN_NAME_GROWTH', 'Sherlock'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stripe Price IDs for prospect plans (recurring, can be monthly or quarterly)
     |--------------------------------------------------------------------------
     */
     'stripe_basic_price_id' => env('STRIPE_PROSPECTS_BASIC_PRICE_ID'),

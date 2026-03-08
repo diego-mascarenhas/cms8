@@ -23,13 +23,13 @@ class BillingController extends Controller
         // Get mailer subscription for email plan info
         $mailerSubscription = $team->subscription('mailer');
 
-        // Get current plan from active subscription or fallback to team setting
+        // Get current plan from active subscription or fallback to team setting (e.g. from seeder)
         if ($mailerSubscription && $mailerSubscription->active())
         {
             $currentPlan = EmailPlan::fromStripePriceId($mailerSubscription->stripe_price);
         } else
         {
-            $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+            $currentPlan = $team->getEmailPlan();
         }
 
         // Get plan usage configuration
@@ -131,6 +131,10 @@ class BillingController extends Controller
             $stripeData = null;
         }
 
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $currentProspectPlan = $team->getProspectPlan();
+
         return view('billing.index', compact(
             'team',
             'currentPlan',
@@ -141,6 +145,8 @@ class BillingController extends Controller
             'subscriptions',
             'paymentMethods',
             'stripeData',
+            'remainingProspectCredits',
+            'currentProspectPlan',
         ));
     }
 

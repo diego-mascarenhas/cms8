@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Contact;
+use App\Models\Module;
 use App\Services\ApolloService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,9 +30,26 @@ class ApolloController extends Controller
         $remainingProspectCredits = $team->getRemainingProspectCredits();
         $canImportProspects = $team->canImportProspects(1);
 
+        $contactsModule = Module::where('key', 'contacts')->first();
+        $contactCategories = collect();
+        if ($contactsModule)
+        {
+            $contactCategories = Category::where('module_id', $contactsModule->id)
+                ->where('status', 1)
+                ->where(function ($q) use ($team)
+                {
+                    $q->whereNull('team_id')->orWhere('team_id', $team->id);
+                })
+                ->whereNull('parent_id')
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
         return view('contact.apollo', [
             'remainingProspectCredits' => $remainingProspectCredits,
             'canImportProspects' => $canImportProspects,
+            'contactCategories' => $contactCategories,
         ]);
     }
 
@@ -159,6 +178,7 @@ class ApolloController extends Controller
             'title' => 'nullable|string|max:500',
             'organization_name' => 'nullable|string|max:500',
             'person_data' => 'nullable|string|max:65535',
+            'category_id' => 'nullable|integer|exists:categories,id',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -258,6 +278,30 @@ class ApolloController extends Controller
         }
 
         $contact = Contact::create($contactData);
+
+        $categoryIds = [];
+        if (! empty($validated['category_id']))
+        {
+            $contactsModule = Module::where('key', 'contacts')->first();
+            $category = Category::where('id', $validated['category_id'])
+                ->where('status', 1)
+                ->when($contactsModule, fn ($q) => $q->where('module_id', $contactsModule->id))
+                ->where(fn ($q) => $q->whereNull('team_id')->orWhere('team_id', $team->id))
+                ->first();
+            if ($category)
+            {
+                $categoryIds[] = $category->id;
+            }
+        }
+        $defaultCategoryId = config('custom.default_contact_category_id');
+        if ($defaultCategoryId)
+        {
+            $categoryIds[] = (int) $defaultCategoryId;
+        }
+        if (! empty($categoryIds))
+        {
+            $contact->categories()->sync(array_unique($categoryIds));
+        }
 
         if ($request->wantsJson())
         {

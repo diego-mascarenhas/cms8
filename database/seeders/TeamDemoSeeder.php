@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Enums\EmailPlan;
+use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Contact;
@@ -54,19 +56,22 @@ class TeamDemoSeeder extends Seeder
         // 7. Create demo message
         $this->createDemoMessage();
 
-        // 8. Configure email settings
+        // 8. Configure email settings and Mailer credits
         $this->configureDemoEmailSettings($team);
 
-        // 9. Configure team shortcuts
+        // 9. Configure prospect credits for testing
+        $this->configureDemoProspectCredits($team);
+
+        // 10. Configure team shortcuts
         $this->configureTeamShortcuts($team);
 
-        // 10. Create task boards
+        // 11. Create task boards
         $this->createTaskBoards();
 
-        // 11. Create demo users with different roles
+        // 12. Create demo users with different roles
         $this->createDemoUsers($team);
 
-        // 12. Seed demo data
+        // 13. Seed demo data
         $this->seedDemoEnterprises();
         $this->createServiceCategoriesAndTypes();
         $this->seedDemoServices();
@@ -75,7 +80,7 @@ class TeamDemoSeeder extends Seeder
         $this->createProjectCategoriesAndProjects();
         $this->createProjectBoardsWithTasks();
 
-        // 12. Fix GrapesJS structure
+        // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
 
         $this->command->info('✅ Demo Team setup completed successfully');
@@ -483,7 +488,21 @@ class TeamDemoSeeder extends Seeder
             'is_encrypted' => false,
         ]);
 
-        $this->command->info('✅ Email settings configured');
+        // Assign Mailer plan with minimum credits for testing (Basic: 10,000 monthly / 500 daily)
+        $team->assignEmailPlan(EmailPlan::BASIC, null);
+        $this->command->info('✅ Email settings and Mailer credits (Basic plan) configured');
+    }
+
+    private function configureDemoProspectCredits(Team $team): void
+    {
+        $this->command->info('👥 Configuring prospect credits for testing...');
+
+        // Assign prospect plan with monthly credits (Basic: 50/month)
+        $team->assignProspectPlan(ProspectPlan::BASIC, null);
+        // Add extra one-time credits so demo has enough to test imports
+        $team->addProspectCreditsFromPurchase(50);
+
+        $this->command->info('✅ Prospect credits configured (Basic plan + 50 extra credits)');
     }
 
     private function configureTeamShortcuts(Team $team): void

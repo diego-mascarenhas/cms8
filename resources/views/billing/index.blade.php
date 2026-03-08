@@ -154,9 +154,9 @@
 		<div class="card">
 			<div class="card-header d-flex justify-content-between align-items-center">
 				<h5 class="card-title mb-0">Todas las Suscripciones</h5>
-				<a href="{{ route('subscription.index') }}" class="btn btn-sm btn-primary">
-					<i class="ti ti-plus ti-xs me-1"></i>
-					Ver Planes
+				<a href="{{ route('subscription.index') }}" class="btn btn-primary">
+					<i class="ti ti-eye ti-xs me-1"></i>
+					{{ __('Ver Planes Disponibles') }}
 				</a>
 			</div>
 			<div class="card-body">
@@ -371,15 +371,56 @@
 					@endforeach
 					</div>
 				@else
+					@php
+						$hasAssignedPlans = ($currentPlan->value ?? 'free') !== 'free' || ($remainingProspectCredits ?? 0) > 0;
+					@endphp
+					@if($hasAssignedPlans)
+						<div class="mb-4">
+							<h6 class="text-body mb-3">{{ __('Planes y créditos actuales') }}</h6>
+							<p class="text-muted small mb-3">{{ __('Asignados a tu equipo (no provienen de una suscripción Stripe activa).') }}</p>
+							<div class="row g-3">
+								<div class="col-md-6">
+									<div class="border rounded p-3">
+										<div class="d-flex justify-content-between align-items-start">
+											<div>
+												<span class="fw-medium">{{ __('Mailer') }}</span>
+												<span class="badge bg-label-primary ms-2">{{ $currentPlan->getDisplayName() }}</span>
+											</div>
+										</div>
+										<p class="small text-muted mb-0 mt-2">
+											{{ $planConfig['monthly_limit'] - $planConfig['monthly_used'] }} {{ __('emails restantes este mes') }}
+											@if($planConfig['daily_limit'])
+												· {{ $planConfig['daily_limit'] - $planConfig['daily_used'] }} {{ __('hoy') }}
+											@endif
+										</p>
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="border rounded p-3">
+										<div class="d-flex justify-content-between align-items-start">
+											<div>
+												<span class="fw-medium">{{ __('Prospectos') }}</span>
+												<span class="badge bg-label-info ms-2">{{ $currentProspectPlan->getDisplayName() }}</span>
+											</div>
+										</div>
+										<p class="small text-muted mb-0 mt-2">
+											{{ $remainingProspectCredits }} {{ __('créditos disponibles') }}
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					@else
 				<div class="text-center py-5">
 					<i class="ti ti-package-off ti-lg text-muted mb-3 d-block" style="font-size: 3rem;"></i>
-					<h5 class="text-muted mb-2">No tienes suscripciones activas</h5>
-					<p class="text-muted mb-4">Explora nuestros planes para comenzar a utilizar los servicios</p>
+					<h5 class="text-muted mb-2">{{ __('No tienes suscripciones activas') }}</h5>
+					<p class="text-muted mb-4">{{ __('Explora nuestros planes para comenzar a utilizar los servicios') }}</p>
 					<a href="{{ route('subscription.index') }}" class="btn btn-primary">
 						<i class="ti ti-eye ti-xs me-1"></i>
-						Ver Planes Disponibles
+						{{ __('Ver Planes Disponibles') }}
 					</a>
-					</div>
+				</div>
+					@endif
 				@endif
 			</div>
 		</div>

@@ -4,6 +4,7 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
 @endsection
@@ -18,6 +19,7 @@
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
 @endsection
 
@@ -99,12 +101,21 @@
 <div class="card d-none mt-4" id="people-results-card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
-            <h5 class="card-title mb-0">Resultados de búsqueda</h5>
+            <h5 class="card-title mb-0">{{ __('Resultados de búsqueda') }}</h5>
             <p class="text-muted small mb-0" id="people-results-count"></p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
-            <i class="ti ti-user-plus me-1"></i> Importar seleccionados
-        </button>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <label for="apollo_import_category_id" class="form-label mb-0 small text-muted">{{ __('Categoría para importar') }}</label>
+            <select id="apollo_import_category_id" name="apollo_import_category_id" class="form-select form-select-sm" style="min-width: 200px;" data-placeholder="{{ __('Seleccionar o crear categoría') }}">
+                <option value="">{{ __('Seleccionar o crear categoría') }}</option>
+                @foreach($contactCategories ?? [] as $cat)
+                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                @endforeach
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
+                <i class="ti ti-user-plus me-1"></i> {{ __('Importar seleccionados') }}
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div id="people-zero-results" class="alert alert-warning d-none mb-3" role="alert">
@@ -156,8 +167,44 @@ $(function() {
     var csrf = '{{ csrf_token() }}';
     var urlPeople = '{{ route("contact.apollo.people") }}';
     var urlAddPerson = '{{ route("contact.apollo.add-person") }}';
+    var urlCategoryQuickStore = '{{ route("categories.quick-store") }}';
     var canImportProspects = {{ ($canImportProspects ?? true) ? 'true' : 'false' }};
     var apolloTable = null;
+
+    if ($.fn.select2) {
+        $('#apollo_import_category_id').select2({
+            placeholder: '{{ __("Seleccionar o crear categoría") }}',
+            allowClear: true,
+            tags: true,
+            createTag: function(params) {
+                var term = $.trim(params.term);
+                if (term === '') return null;
+                return { id: 'new__' + term, text: term };
+            },
+            width: '100%'
+        }).on('select2:select', function(e) {
+            var data = e.params.data;
+            if (data.id && String(data.id).indexOf('new__') === 0) {
+                var name = data.text;
+                var $sel = $(this);
+                $.ajax({
+                    url: urlCategoryQuickStore,
+                    method: 'POST',
+                    data: { _token: csrf, name: name, module_key: 'contacts' },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (res.success && res.category) {
+                        $sel.find('option').filter(function() { return String(this.value).indexOf('new__') === 0; }).remove();
+                        var opt = new Option(res.category.name, res.category.id, true, true);
+                        $sel.append(opt).val(res.category.id).trigger('change');
+                    }
+                }).fail(function() {
+                    toastr.error('{{ __("Error al crear la categoría.") }}');
+                    $sel.val(null).trigger('change');
+                });
+            }
+        });
+    }
 
     // Seniority chips: sync with hidden multi-select
     (function initSeniorityChips() {
@@ -240,6 +287,8 @@ $(function() {
         if (person.apollo_raw) {
             formData.append('person_data', JSON.stringify(person.apollo_raw));
         }
+        var catId = $('#apollo_import_category_id').val();
+        if (catId && String(catId).indexOf('new__') !== 0) formData.append('category_id', catId);
         fetch(urlAddPerson, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
@@ -405,6 +454,8 @@ $(function() {
             formData.append('title', person.title || '');
             formData.append('organization_name', person.organization_name || '');
             if (person.apollo_raw) formData.append('person_data', JSON.stringify(person.apollo_raw));
+            var catId = $('#apollo_import_category_id').val();
+            if (catId && String(catId).indexOf('new__') !== 0) formData.append('category_id', catId);
             fetch(urlAddPerson, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },

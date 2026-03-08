@@ -118,6 +118,7 @@ return [
         'export_price_id' => env('PROSPECT_EXPORT_STRIPE_PRICE_ID'),
         'export_name' => env('PROSPECT_EXPORT_NAME', 'Prospection'),
         'export_description' => env('PROSPECT_EXPORT_DESCRIPTION', 'Crédito para la búsqueda de prospectos para que puedas transformarlos en clientes.'),
+        'export_credits' => (int) env('PROSPECT_EXPORT_CREDITS', 100),
     ],
 
 ];

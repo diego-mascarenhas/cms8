@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Enums\EmailPlan;
+use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Module;
@@ -766,6 +768,11 @@ class TeamRevisionAlphaSeeder extends Seeder
             'group' => 'notifications',
             'is_encrypted' => false,
         ]);
+
+        // Mailer and Prospect credits for testing
+        $team->assignEmailPlan(EmailPlan::BASIC, null);
+        $team->assignProspectPlan(ProspectPlan::BASIC, null);
+        $team->addProspectCreditsFromPurchase(50);
 
         $this->getCommand()->info('✅ Revision Alpha email settings configured successfully!');
         $this->getCommand()->info('   Email Configuration:');

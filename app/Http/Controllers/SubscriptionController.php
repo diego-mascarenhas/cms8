@@ -121,7 +121,7 @@ class SubscriptionController extends Controller
         // Fallback to EmailPlan if no products synced yet
         $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
-
+        $prospectPrices = $this->getProspectStripePrices();
         $prospectionConfig = $this->getProspectionExportConfig();
 
         $team->resetProspectMonthlyLimitsIfNeeded();
@@ -154,7 +154,53 @@ class SubscriptionController extends Controller
             'remainingProspectCredits' => $remainingProspectCredits,
             'currentProspectPlan' => $currentProspectPlan,
             'prospectSubscription' => $prospectSubscription,
+            'prospectPrices' => $prospectPrices,
         ]);
+    }
+
+    /**
+     * Get prospect plan prices from Stripe (Basic, Growth).
+     * Returns amount, currency and billing interval (month or quarter when interval_count is 3).
+     *
+     * @return array<string, array{amount: float, currency: string, interval: string, interval_count: int}|null>
+     */
+    private function getProspectStripePrices(): array
+    {
+        Stripe::setApiKey(config('cashier.secret'));
+        $prospectPrices = [
+            'basic' => null,
+            'growth' => null,
+        ];
+        try
+        {
+            foreach ([ProspectPlan::BASIC, ProspectPlan::GROWTH] as $plan)
+            {
+                $priceId = $plan->getStripePriceId();
+                if ($priceId)
+                {
+                    try
+                    {
+                        $priceData = \Stripe\Price::retrieve($priceId);
+                        $interval = $priceData->recurring->interval ?? 'month';
+                        $intervalCount = (int) ($priceData->recurring->interval_count ?? 1);
+                        $prospectPrices[$plan->value] = [
+                            'amount' => $priceData->unit_amount / 100,
+                            'currency' => strtoupper($priceData->currency ?? 'EUR'),
+                            'interval' => $interval,
+                            'interval_count' => $intervalCount,
+                        ];
+                    } catch (\Exception $e)
+                    {
+                        \Log::warning("Error fetching prospect price for {$plan->value}: ".$e->getMessage());
+                    }
+                }
+            }
+        } catch (\Exception $e)
+        {
+            \Log::error('Error fetching prospect Stripe prices: '.$e->getMessage());
+        }
+
+        return $prospectPrices;
     }
 
     /**
@@ -187,12 +233,15 @@ class SubscriptionController extends Controller
             }
         }
 
+        $credits = (int) ($config['export_credits'] ?? 0);
+
         return [
             'enabled' => ! empty($priceId) && ! empty($appUrl),
             'name' => $name,
             'description' => $description,
             'amount' => $amount,
             'currency' => $currency,
+            'credits' => $credits,
             'price_id' => $priceId,
             'app_url' => $appUrl ? rtrim($appUrl, '/') : null,
         ];
@@ -288,6 +337,7 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
@@ -318,6 +368,10 @@ class SubscriptionController extends Controller
         {
             $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
         }
+
+        $prospectPlan = ($request->prospect_plan && in_array($request->prospect_plan, ['basic', 'growth'], true))
+            ? ProspectPlan::from($request->prospect_plan)
+            : null;
 
         // Get customer data from Stripe if exists
         // IMPORTANT: Only get data if THIS team has a stripe_id
@@ -383,6 +437,8 @@ class SubscriptionController extends Controller
             'team' => $team,
             'plan' => $plan,
             'product' => $product,
+            'prospect_plan' => $request->prospect_plan,
+            'prospectPlan' => $prospectPlan,
             'prices' => $prices,
             'customerData' => $customerData,
             'domain' => $request->domain,
@@ -401,6 +457,7 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
@@ -571,6 +628,9 @@ class SubscriptionController extends Controller
         } elseif ($request->price_id)
         {
             $redirectParams['price_id'] = $request->price_id;
+        } elseif ($request->prospect_plan)
+        {
+            $redirectParams['prospect_plan'] = $request->prospect_plan;
         } else
         {
             $redirectParams['plan'] = $request->plan;
@@ -804,6 +864,7 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
@@ -832,8 +893,15 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.billing-info', $redirectParams);
         }
 
+        // Prospect recurring plan (Basic/Growth from enum, no product in DB)
+        if ($request->prospect_plan)
+        {
+            $prospectPlan = ProspectPlan::from($request->prospect_plan);
+            $priceId = $prospectPlan->getStripePriceId();
+            $subscriptionType = 'prospects';
+        }
         // If product_id is provided, get product and use its stripe_price
-        if ($request->product_id)
+        elseif ($request->product_id)
         {
             $product = SubscriptionProduct::findOrFail($request->product_id);
             $priceId = $product->stripe_price;
@@ -1087,6 +1155,9 @@ class SubscriptionController extends Controller
             } elseif ($request->plan)
             {
                 $redirectParams['plan'] = $request->plan;
+            } elseif ($request->prospect_plan)
+            {
+                $redirectParams['prospect_plan'] = $request->prospect_plan;
             }
             if ($request->domain)
             {
