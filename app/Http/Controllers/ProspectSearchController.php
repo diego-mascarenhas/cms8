@@ -252,23 +252,6 @@ class ProspectSearchController extends Controller
             'q_keywords' => $validated['q_keywords'] ?? null,
         ], fn ($v) => $v !== null && $v !== []);
 
-        // #region agent log
-        $logPath = '/Users/magoo/Sites/humano/.cursor/debug-69c507.log';
-        $logEntry = json_encode([
-            'sessionId' => '69c507',
-            'location' => 'ProspectSearchController.php:createExportCheckout:beforeStripe',
-            'message' => 'Before Stripe create',
-            'data' => [
-                'hasSecret' => ! empty(config('cashier.secret')),
-                'price_id' => $priceId,
-                'return_url_prefix' => substr($returnUrl, 0, 60),
-            ],
-            'timestamp' => (int) (microtime(true) * 1000),
-            'hypothesisId' => 'H1,H2,H3',
-        ])."\n";
-        @file_put_contents($logPath, $logEntry, FILE_APPEND | LOCK_EX);
-        // #endregion
-
         try
         {
             \Stripe\Stripe::setApiKey(config('cashier.secret'));
@@ -302,22 +285,6 @@ class ProspectSearchController extends Controller
         } catch (\Throwable $e)
         {
             \Log::error('Prospect export checkout error: '.$e->getMessage());
-            // #region agent log
-            $logPath = '/Users/magoo/Sites/humano/.cursor/debug-69c507.log';
-            $logEntry = json_encode([
-                'sessionId' => '69c507',
-                'location' => 'ProspectSearchController.php:createExportCheckout:catch',
-                'message' => 'Stripe exception',
-                'data' => [
-                    'exception' => get_class($e),
-                    'message' => $e->getMessage(),
-                    'code' => $e->getCode(),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-                'hypothesisId' => 'H4,H5',
-            ])."\n";
-            @file_put_contents($logPath, $logEntry, FILE_APPEND | LOCK_EX);
-            // #endregion
 
             return response()->json([
                 'message' => __('Error al crear la sesión de pago.'),
