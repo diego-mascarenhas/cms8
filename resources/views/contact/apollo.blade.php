@@ -4,6 +4,8 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
 @endsection
 
 @section('page-style')
@@ -16,6 +18,7 @@
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
 @endsection
 
 @section('content')
@@ -89,39 +92,45 @@
                 </button>
             </div>
         </div>
-
-        <div id="people-results-wrap" class="d-none mt-4">
-            <h5 class="mb-2">Resultados <span id="people-total" class="text-muted"></span></h5>
-            <div id="people-zero-results" class="alert alert-warning d-none mb-3" role="alert">
-                No se encontraron personas con estos filtros. Para obtener resultados, añade al menos <strong>títulos</strong> (ej. manager, sales) o <strong>palabras clave</strong>; solo seniority suele devolver 0 resultados.
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Título</th>
-                            <th>Empresa</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="people-tbody"></tbody>
-                </table>
-            </div>
-            <div id="people-pagination" class="mt-2"></div>
-        </div>
         <div id="people-empty" class="alert alert-info d-none mt-4">Usa los filtros y pulsa "Buscar personas".</div>
         <div id="people-loading" class="text-center py-4 d-none"><span class="spinner-border"></span> Buscando...</div>
     </div>
 </div>
 
+{{-- Resultados en bloque separado con DataTables --}}
+<div class="card d-none mt-4" id="people-results-card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="card-title mb-0">Resultados de búsqueda</h5>
+    </div>
+    <div class="card-body">
+        <div id="people-zero-results" class="alert alert-warning d-none mb-3" role="alert">
+            No se encontraron personas con estos filtros. Para obtener resultados, añade al menos <strong>títulos</strong> (ej. manager, sales) o <strong>palabras clave</strong>; solo seniority suele devolver 0 resultados.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered" id="apollo-people-table" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Título</th>
+                        <th>Empresa</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
 <script>
-(function() {
+$(function() {
     var csrf = '{{ csrf_token() }}';
     var urlPeople = '{{ route("contact.apollo.people") }}';
     var urlAddPerson = '{{ route("contact.apollo.add-person") }}';
+    var apolloTable = null;
 
-    // Seniority chips: sync with hidden multi-select so getPeopleFilters() keeps working
+    // Seniority chips: sync with hidden multi-select
     (function initSeniorityChips() {
         var sel = document.getElementById('person_seniorities');
         var container = document.getElementById('seniority-chips-people');
@@ -157,14 +166,15 @@
         return String(val).split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
     }
 
-    function getPeopleFilters(page) {
+    function getPeopleFilters(page, perPage) {
         page = page || 1;
+        perPage = perPage || 25;
         var titles = parseList(document.getElementById('person_titles').value);
         var locations = parseList(document.getElementById('person_locations').value);
         var seniorities = Array.from(document.getElementById('person_seniorities').selectedOptions).map(function(o) { return o.value; });
         var domains = parseList(document.getElementById('q_organization_domains_list').value);
         var orgLocations = parseList(document.getElementById('organization_locations_people').value);
-        var data = { _token: csrf, page: page, per_page: 25 };
+        var data = { _token: csrf, page: page, per_page: perPage };
         if (titles.length) data.person_titles = titles;
         if (locations.length) data.person_locations = locations;
         if (seniorities.length) data.person_seniorities = seniorities;
@@ -173,83 +183,6 @@
         var kw = document.getElementById('q_keywords_people').value;
         if (kw) data.q_keywords = kw;
         return data;
-    }
-
-    function searchPeople(page) {
-        var payload = getPeopleFilters(page);
-        document.getElementById('people-empty').classList.add('d-none');
-        document.getElementById('people-results-wrap').classList.add('d-none');
-        document.getElementById('people-loading').classList.remove('d-none');
-        fetch(urlPeople, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j, status: r.status }; }); })
-        .then(function(res) {
-            document.getElementById('people-loading').classList.add('d-none');
-            if (!res.ok) {
-                toastr.error(res.json.message || 'Error al buscar.');
-                return;
-            }
-            var people = res.json.people || [];
-            var total = res.json.total_entries || 0;
-            var currentPage = res.json.page || 1;
-            var perPage = res.json.per_page || 25;
-            document.getElementById('people-total').textContent = '(' + total + ' encontrados)';
-            var zeroResultsEl = document.getElementById('people-zero-results');
-            if (total === 0) {
-                if (zeroResultsEl) zeroResultsEl.classList.remove('d-none');
-            } else {
-                if (zeroResultsEl) zeroResultsEl.classList.add('d-none');
-            }
-            var peopleById = {};
-            people.forEach(function(p) { peopleById[p.id] = p; });
-            var tbody = document.getElementById('people-tbody');
-            tbody.innerHTML = '';
-            people.forEach(function(p) {
-                var tr = document.createElement('tr');
-                var lastName = p.last_name || p.last_name_obfuscated || '';
-                var name = (p.first_name || '') + ' ' + lastName;
-                tr.innerHTML =
-                    '<td>' + (name.trim() || '—') + '</td>' +
-                    '<td>' + (p.title || '—') + '</td>' +
-                    '<td>' + (p.organization_name || '—') + '</td>' +
-                    '<td><button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (p.id || '') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button></td>';
-                tbody.appendChild(tr);
-            });
-            var pagination = document.getElementById('people-pagination');
-            pagination.innerHTML = '';
-            if (total > perPage) {
-                var totalPages = Math.ceil(total / perPage);
-                if (currentPage > 1) {
-                    var prev = document.createElement('button');
-                    prev.className = 'btn btn-sm btn-outline-secondary me-1';
-                    prev.textContent = 'Anterior';
-                    prev.onclick = function() { searchPeople(currentPage - 1); };
-                    pagination.appendChild(prev);
-                }
-                pagination.appendChild(document.createTextNode(' Página ' + currentPage + ' de ' + totalPages + ' '));
-                if (currentPage < totalPages) {
-                    var next = document.createElement('button');
-                    next.className = 'btn btn-sm btn-outline-secondary ms-1';
-                    next.textContent = 'Siguiente';
-                    next.onclick = function() { searchPeople(currentPage + 1); };
-                    pagination.appendChild(next);
-                }
-            }
-            document.getElementById('people-results-wrap').classList.remove('d-none');
-            tbody.querySelectorAll('.btn-add-person').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var person = peopleById[btn.getAttribute('data-id')];
-                    addPersonAsContact(person || { id: btn.getAttribute('data-id') });
-                });
-            });
-        })
-        .catch(function() {
-            document.getElementById('people-loading').classList.add('d-none');
-            toastr.error('Error de conexión.');
-        });
     }
 
     function addPersonAsContact(person) {
@@ -281,10 +214,88 @@
         .catch(function() { toastr.error('Error de conexión.'); });
     }
 
-    document.getElementById('btn-search-people').addEventListener('click', function(e) {
-        e.preventDefault();
-        searchPeople(1);
+    function initApolloDataTable() {
+        if (apolloTable && $.fn.DataTable.isDataTable('#apollo-people-table')) {
+            apolloTable.destroy();
+            apolloTable = null;
+        }
+        apolloTable = $('#apollo-people-table').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: function(data, callback, settings) {
+                var page = Math.floor(data.start / data.length) + 1;
+                var payload = getPeopleFilters(page, data.length);
+                document.getElementById('people-loading').classList.remove('d-none');
+                fetch(urlPeople, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
+                .then(function(res) {
+                    document.getElementById('people-loading').classList.add('d-none');
+                    if (!res.ok) {
+                        toastr.error(res.json.message || 'Error al buscar.');
+                        callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+                        return;
+                    }
+                    var people = res.json.people || [];
+                    var total = res.json.total_entries || 0;
+                    var zeroEl = document.getElementById('people-zero-results');
+                    if (total === 0) {
+                        if (zeroEl) zeroEl.classList.remove('d-none');
+                    } else {
+                        if (zeroEl) zeroEl.classList.add('d-none');
+                    }
+                    callback({ draw: data.draw, recordsTotal: total, recordsFiltered: total, data: people });
+                })
+                .catch(function() {
+                    document.getElementById('people-loading').classList.add('d-none');
+                    toastr.error('Error de conexión.');
+                    callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+                });
+            },
+            columns: [
+                { data: null, title: 'Nombre', orderable: true, render: function(row) {
+                    var ln = row.last_name || row.last_name_obfuscated || '';
+                    return ((row.first_name || '') + ' ' + ln).trim() || '—';
+                }},
+                { data: 'title', title: 'Título', defaultContent: '—' },
+                { data: 'organization_name', title: 'Empresa', defaultContent: '—' },
+                { data: null, title: 'Acciones', orderable: false, render: function(row) {
+                    return '<button type="button" class="btn btn-sm btn-primary btn-add-person" data-id="' + (row.id || '') + '"><i class="ti ti-user-plus me-1"></i>Añadir como contacto</button>';
+                }}
+            ],
+            order: [[0, 'asc']],
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50], [10, 25, 50]],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
+                emptyTable: 'No hay resultados. Ajusta los filtros y vuelve a buscar.'
+            },
+            drawCallback: function() {
+                if (apolloTable && apolloTable.page.info().recordsDisplay === 0) {
+                    document.getElementById('people-zero-results').classList.remove('d-none');
+                }
+            }
+        });
+    }
+
+    $(document).on('click', '#people-results-card .btn-add-person', function() {
+        var tr = $(this).closest('tr');
+        if (apolloTable && tr.length) {
+            var row = apolloTable.row(tr).data();
+            if (row) addPersonAsContact(row);
+        }
     });
-})();
+
+    $('#btn-search-people').on('click', function(e) {
+        e.preventDefault();
+        $('#people-empty').addClass('d-none');
+        $('#people-results-card').removeClass('d-none');
+        initApolloDataTable();
+    });
+});
 </script>
+@endpush
 @endsection
