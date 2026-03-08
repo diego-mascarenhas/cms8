@@ -754,6 +754,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/validate-coupon', [SubscriptionController::class, 'validateCoupon'])->name('subscription.validate-coupon');
     Route::match(['get', 'post'], '/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::get('/subscription/prospection-success', [SubscriptionController::class, 'prospectionSuccess'])->name('subscription.prospection-success');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');

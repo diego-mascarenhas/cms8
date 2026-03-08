@@ -31,6 +31,9 @@
                     @if(isset($coupon) && $coupon)
                         <input type="hidden" name="coupon" value="{{ $coupon }}">
                     @endif
+                    @if(isset($prospection) && $prospection)
+                        <input type="hidden" name="prospection" value="1">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->
@@ -134,7 +137,24 @@
                 <h5 class="card-title mb-0">{{ __('Resumen del Plan') }}</h5>
             </div>
             <div class="card-body">
-                @if($product)
+                @if(isset($prospection) && $prospection && !empty($prospectionConfig))
+                    {{-- Prospection Summary --}}
+                    <div class="mb-3">
+                        <h4 class="mb-1">{{ $prospectionConfig['name'] ?? 'Prospection' }}</h4>
+                        <div class="d-flex align-items-baseline">
+                            <span class="h2 mb-0">{{ $prospectionConfig['amount'] !== null ? number_format($prospectionConfig['amount'], 2, ',', '.') : '—' }}</span>
+                            <span class="text-muted ms-2">{{ strtoupper($prospectionConfig['currency'] ?? 'EUR') }}</span>
+                            <span class="text-muted ms-2">/{{ __('pago único') }}</span>
+                        </div>
+                        <small class="text-muted">+ I.V.A.</small>
+                    </div>
+                    @if(!empty($prospectionConfig['description']))
+                        <hr>
+                        <div class="mb-3">
+                            <p class="mb-0">{{ $prospectionConfig['description'] }}</p>
+                        </div>
+                    @endif
+                @elseif($product)
                     {{-- Product Summary --}}
                     <div class="mb-3">
                         <h4 class="mb-1">{{ $product->name }}</h4>
@@ -223,6 +243,7 @@
                     </div>
                 @endif
 
+                @if(!isset($prospection) || !$prospection)
                 <hr>
 
                 <div class="alert alert-info mb-0">
@@ -233,6 +254,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

@@ -109,6 +109,8 @@ class SubscriptionController extends Controller
         $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
 
+        $prospectionConfig = $this->getProspectionExportConfig();
+
         return view('subscription.index', [
             'team' => $team,
             'currentPlan' => $currentPlan,
@@ -124,7 +126,49 @@ class SubscriptionController extends Controller
             'currentMentoringPlan' => $currentMentoringPlan,
             'mentoringSubscription' => $mentoringSubscription,
             'hostingSubscription' => $hostingSubscription,
+            'prospectionConfig' => $prospectionConfig,
         ]);
+    }
+
+    /**
+     * Get Prospection export product config for the subscription page (price from Stripe when configured).
+     *
+     * @return array{enabled: bool, name: string, description: string, amount: float|null, currency: string|null, price_id: string|null, app_url: string|null}
+     */
+    private function getProspectionExportConfig(): array
+    {
+        $config = config('services.prospect_search', []);
+        $priceId = $config['export_price_id'] ?? null;
+        $name = $config['export_name'] ?? 'Prospection';
+        $description = $config['export_description'] ?? 'Exporta tus resultados de búsqueda de prospectos y descarga el CSV con los contactos.';
+        $appUrl = $config['access_base_url'] ?? null;
+
+        $amount = null;
+        $currency = null;
+
+        if ($priceId)
+        {
+            try
+            {
+                Stripe::setApiKey(config('cashier.secret'));
+                $priceData = \Stripe\Price::retrieve($priceId);
+                $amount = ($priceData->unit_amount ?? 0) / 100;
+                $currency = strtoupper($priceData->currency ?? 'EUR');
+            } catch (\Exception $e)
+            {
+                \Log::warning('Prospection export: could not fetch Stripe price: '.$e->getMessage());
+            }
+        }
+
+        return [
+            'enabled' => ! empty($priceId) && ! empty($appUrl),
+            'name' => $name,
+            'description' => $description,
+            'amount' => $amount,
+            'currency' => $currency,
+            'price_id' => $priceId,
+            'app_url' => $appUrl ? rtrim($appUrl, '/') : null,
+        ];
     }
 
     /**
@@ -218,7 +262,8 @@ class SubscriptionController extends Controller
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
             'domain' => 'nullable|string|max:255',
-            'coupon' => 'nullable|string|max:255', // Added coupon to validation
+            'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -234,9 +279,12 @@ class SubscriptionController extends Controller
         $plan = $request->plan;
         $product = null;
         $prices = $this->getStripePrices();
+        $prospectionConfig = null;
 
-        // Get product if product_id is provided
-        if ($request->product_id)
+        if ($request->prospection)
+        {
+            $prospectionConfig = $this->getProspectionExportConfig();
+        } elseif ($request->product_id)
         {
             $product = SubscriptionProduct::findOrFail($request->product_id);
         } elseif ($request->price_id)
@@ -275,19 +323,19 @@ class SubscriptionController extends Controller
                     // Don't use this customer's data
                 } else
                 {
-                $customerData = [
-                    'individual_name' => $customer->metadata->individual_name ?? '',
-                    'business_name' => $customer->metadata->business_name ?? '',
-                    'country' => $customer->address->country ?? '',
-                    'phone' => $customer->phone ?? '',
-                    'tax_id' => '',
-                ];
+                    $customerData = [
+                        'individual_name' => $customer->metadata->individual_name ?? '',
+                        'business_name' => $customer->metadata->business_name ?? '',
+                        'country' => $customer->address->country ?? '',
+                        'phone' => $customer->phone ?? '',
+                        'tax_id' => '',
+                    ];
 
-                // Get Tax ID if exists
-                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
-                if (! empty($taxIds->data))
-                {
-                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                    // Get Tax ID if exists
+                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+                    if (! empty($taxIds->data))
+                    {
+                        $customerData['tax_id'] = $taxIds->data[0]->value;
                     }
                 }
             } catch (\Exception $e)
@@ -311,7 +359,9 @@ class SubscriptionController extends Controller
             'prices' => $prices,
             'customerData' => $customerData,
             'domain' => $request->domain,
-            'coupon' => $request->coupon, // Pass coupon code to view
+            'coupon' => $request->coupon,
+            'prospection' => (bool) $request->prospection,
+            'prospectionConfig' => $prospectionConfig,
         ]);
     }
 
@@ -325,7 +375,8 @@ class SubscriptionController extends Controller
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
             'domain' => 'nullable|string|max:255',
-            'coupon' => 'nullable|string|max:255', // Added coupon to validation
+            'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -504,6 +555,47 @@ class SubscriptionController extends Controller
         if ($request->coupon)
         {
             $redirectParams['coupon'] = $request->coupon;
+        }
+
+        // Prospection: create one-time Stripe Checkout Session and redirect to Stripe
+        if ($request->prospection)
+        {
+            $priceId = config('services.prospect_search.export_price_id');
+            if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', __('El producto Prospection no está configurado.'));
+            }
+
+            $successUrl = url()->route('subscription.prospection-success').'?session_id={CHECKOUT_SESSION_ID}';
+
+            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $session = \Stripe\Checkout\Session::create([
+                'mode' => 'payment',
+                'locale' => 'es',
+                'customer_email' => auth()->user()->email,
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'return_url' => $successUrl,
+                'metadata' => [
+                    'source' => 'prospect_search_export',
+                    'lead_email' => auth()->user()->email,
+                    'individual_name' => $request->individual_name,
+                    'business_name' => $request->business_name ?? '',
+                    'country' => $request->country,
+                    'phone' => $phone ?? $request->phone,
+                    'tax_id' => $request->tax_id,
+                ],
+            ]);
+
+            \Illuminate\Support\Facades\Cache::put('prospect_export_session:'.$session->id, [
+                'email' => auth()->user()->email,
+                'filters' => [],
+            ], now()->addHours(24));
+
+            return redirect($session->url);
         }
 
         return redirect()->route('subscription.checkout', $redirectParams);
@@ -685,12 +777,31 @@ class SubscriptionController extends Controller
             'price_id' => 'nullable|string',
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
         $priceId = null;
         $product = null;
         $subscriptionType = 'mailer';
+
+        // Prospection: redirect to billing-info to collect data, then create one-time checkout
+        if ($request->prospection)
+        {
+            $priceId = config('services.prospect_search.export_price_id');
+            if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', __('El producto Prospection no está configurado.'));
+            }
+            $redirectParams = ['prospection' => 1];
+            if ($request->coupon)
+            {
+                $redirectParams['coupon'] = $request->coupon;
+            }
+
+            return redirect()->route('subscription.billing-info', $redirectParams);
+        }
 
         // If product_id is provided, get product and use its stripe_price
         if ($request->product_id)
@@ -712,7 +823,7 @@ class SubscriptionController extends Controller
         // Otherwise, use the plan parameter (for Mailer plans)
         elseif ($request->plan)
         {
-        $plan = EmailPlan::from($request->plan);
+            $plan = EmailPlan::from($request->plan);
             $priceId = $plan->getStripePriceId();
             $subscriptionType = 'mailer';
         } else
@@ -748,8 +859,8 @@ class SubscriptionController extends Controller
         if (! $isHostingOrSupport)
         {
             // Check if already has an active subscription of the same type (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
+            $activeSubscription = $team->subscriptions()
+                ->where('stripe_status', '!=', 'canceled')
                 ->get()
                 ->filter(function ($sub) use ($subscriptionType, $product)
                 {
@@ -770,7 +881,7 @@ class SubscriptionController extends Controller
 
                     return false;
                 })
-            ->first();
+                ->first();
 
             // If already has an active subscription of the same type, automatically swap instead of showing error
             if ($activeSubscription)
@@ -831,7 +942,7 @@ class SubscriptionController extends Controller
                     'domain.max' => 'El dominio no puede exceder 255 caracteres.',
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e)
-        {
+            {
                 // Redirect back with errors and product_id to show modal
                 return redirect()->route('subscription.index', ['product_id' => $request->product_id])
                     ->withErrors($e->errors())
@@ -1106,7 +1217,7 @@ class SubscriptionController extends Controller
                         default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
                     };
 
-                return redirect()->route('subscription.index')
+                    return redirect()->route('subscription.index')
                         ->with('success', $successMessage);
                 }
             } catch (\Exception $e)
@@ -1135,7 +1246,7 @@ class SubscriptionController extends Controller
                 ->where('type', 'mailer')
                 ->where('stripe_status', 'canceled')
                 ->delete();
-            }
+        }
 
         try
         {
@@ -1329,13 +1440,13 @@ class SubscriptionController extends Controller
                 // Only assign EmailPlan if it's a mailer subscription
                 if ($subscriptionType === 'mailer')
                 {
-                // Map product ID to EmailPlan
-                $plan = $this->getEmailPlanFromProductId($productId);
+                    // Map product ID to EmailPlan
+                    $plan = $this->getEmailPlanFromProductId($productId);
 
-                if ($plan)
-                {
-                    // Assign the plan to the team
-                    $team->assignEmailPlan($plan, auth()->id());
+                    if ($plan)
+                    {
+                        // Assign the plan to the team
+                        $team->assignEmailPlan($plan, auth()->id());
                     }
                 }
             }
@@ -1349,6 +1460,26 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.index')
                 ->with('error', 'Error al procesar la suscripción: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Prospection one-time payment success: show download link for CSV export.
+     */
+    public function prospectionSuccess(Request $request)
+    {
+        $sessionId = $request->query('session_id');
+        if (empty($sessionId))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', __('Sesión inválida.'));
+        }
+
+        $downloadUrl = url('/api/prospect-search/export-csv').'?session_id='.urlencode($sessionId);
+
+        return view('subscription.prospection-success', [
+            'sessionId' => $sessionId,
+            'downloadUrl' => $downloadUrl,
+        ]);
     }
 
     /**
@@ -1494,11 +1625,11 @@ class SubscriptionController extends Controller
                 ->with('error', 'Debes especificar un plan o producto para cambiar.');
         }
 
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
-            }
+        }
 
         try
         {
@@ -1559,13 +1690,13 @@ class SubscriptionController extends Controller
             // Update the team's email plan if it's a mailer subscription
             if ($subscriptionType === 'mailer')
             {
-            try
-            {
+                try
+                {
                     $team->email_plan = EmailPlan::fromStripePriceId($priceId)->value;
-                $team->save();
-            } catch (\Exception $e)
-            {
-                \Log::warning('Could not update email_plan: '.$e->getMessage());
+                    $team->save();
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not update email_plan: '.$e->getMessage());
                 }
             }
 

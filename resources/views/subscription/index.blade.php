@@ -285,6 +285,50 @@
 	</div>
 </div>
 
+<!-- Prospection -->
+@if(!empty($prospectionConfig['enabled']))
+	<div class="mb-5 mt-5">
+		<h3 class="mb-4">Planes de Prospection</h3>
+		<div class="row gy-4">
+			<div class="col-lg-6 col-12">
+				<div class="card border h-100">
+					<div class="card-body position-relative text-center d-flex flex-column">
+						<div class="mb-4">
+							<div class="d-flex justify-content-center">
+								@if($prospectionConfig['amount'] !== null)
+									<h1 class="mb-0 text-primary">{{ number_format($prospectionConfig['amount'], 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ $prospectionConfig['currency'] ?? 'EUR' }}</sup>
+								@else
+									<h1 class="mb-0 text-primary">—</h1>
+								@endif
+								<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/pago único</sub>
+							</div>
+						</div>
+
+						<h4>{{ $prospectionConfig['name'] }}</h4>
+						<p class="mb-4">{{ $prospectionConfig['description'] }}</p>
+
+						<div class="mt-auto">
+							<button type="button" class="btn btn-primary w-100" onclick="showProspectionConfirmModal()">
+								Contratar
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+		window.prospectionConfig = {
+			name: @json($prospectionConfig['name'] ?? 'Prospection'),
+			description: @json($prospectionConfig['description'] ?? ''),
+			amount: {{ $prospectionConfig['amount'] ?? 0 }},
+			currency: @json($prospectionConfig['currency'] ?? 'EUR'),
+			app_url: @json($prospectionConfig['app_url'] ?? ''),
+		};
+	</script>
+@endif
+
 <!-- Hosting Plans -->
 @if($hostingProducts->isNotEmpty())
 	<div class="mb-5 mt-5">
@@ -417,6 +461,7 @@
 					@csrf
 					<input type="hidden" name="plan" id="confirmPlanInput">
 					<input type="hidden" name="product_id" id="confirmProductIdInput">
+					<input type="hidden" name="prospection" id="confirmProspectionInput" value="">
 					<input type="hidden" name="coupon" id="confirmCouponInput">
 				</form>
 			</div>
@@ -517,6 +562,29 @@ function confirmSwapProduct(productId, productName, isUpgrade)
 
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
+    modal.show();
+}
+
+function showProspectionConfirmModal()
+{
+    if (typeof window.prospectionConfig === 'undefined') return;
+    const c = window.prospectionConfig;
+    document.getElementById('confirmPlanInput').value = '';
+    document.getElementById('confirmProductIdInput').value = '';
+    document.getElementById('confirmProspectionInput').value = '1';
+    document.getElementById('confirmPlanName').textContent = c.name;
+    document.getElementById('confirmPlanDescription').textContent = c.description || '';
+    currentPrice = c.amount || 0;
+    currentCurrency = c.currency || 'EUR';
+    document.getElementById('confirmPrice').textContent = (parseFloat(currentPrice)).toFixed(2).replace('.', ',') + ' ' + currentCurrency;
+    document.getElementById('confirmTotal').textContent = (parseFloat(currentPrice)).toFixed(2).replace('.', ',') + ' ' + currentCurrency;
+    document.getElementById('couponCode').value = '';
+    document.getElementById('couponMessage').innerHTML = '';
+    document.getElementById('couponDiscount').innerHTML = '';
+    document.getElementById('confirmCouponInput').value = '';
+    document.getElementById('discountRow').style.display = 'none';
+    appliedCoupon = null;
+    const modal = new bootstrap.Modal(document.getElementById('confirmSubscriptionModal'));
     modal.show();
 }
 
@@ -648,12 +716,13 @@ let appliedCoupon = null;
 
 function showConfirmModal(plan, planName, price, currency, productId = null, productName = null, productDescription = null)
 {
-    // Reset coupon
+    // Reset coupon and prospection
     document.getElementById('couponCode').value = '';
     document.getElementById('couponMessage').innerHTML = '';
     document.getElementById('couponDiscount').innerHTML = '';
     document.getElementById('discountRow').style.display = 'none';
     document.getElementById('confirmCouponInput').value = '';
+    document.getElementById('confirmProspectionInput').value = '';
     appliedCoupon = null;
 
     // Set form values
@@ -752,7 +821,6 @@ function validateCoupon()
 
 function submitConfirmation()
 {
-    // Submit the form
     document.getElementById('confirmSubscriptionForm').submit();
 }
 

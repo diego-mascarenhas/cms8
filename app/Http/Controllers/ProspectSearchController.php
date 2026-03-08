@@ -219,14 +219,32 @@ class ProspectSearchController extends Controller
     }
 
     /**
+     * Return Stripe checkout config for the Prospection frontend (publishable key, price ID, return URL base).
+     * Frontend can use this instead of env vars to unify configuration in the backend.
+     */
+    public function checkoutConfig(Request $request): JsonResponse
+    {
+        $config = config('services.prospect_search', []);
+        $priceId = $config['export_price_id'] ?? null;
+        $appUrl = isset($config['access_base_url']) ? rtrim($config['access_base_url'], '/') : null;
+
+        return response()->json([
+            'stripePublishableKey' => config('cashier.key') ?: null,
+            'priceId' => $priceId,
+            'returnUrlBase' => $appUrl,
+        ]);
+    }
+
+    /**
      * Create Stripe Checkout URL for CSV export. Frontend sends email + filters; after payment user can download CSV.
+     * price_id is optional when backend has export_price_id configured (use checkout-config to get it).
      */
     public function createExportCheckout(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'email' => 'required|email:rfc|max:255',
             'return_url' => 'required|url|max:500',
-            'price_id' => 'required|string|max:255|starts_with:price_',
+            'price_id' => 'nullable|string|max:255|starts_with:price_',
             'person_titles' => 'nullable|array',
             'person_titles.*' => 'string|max:255',
             'person_locations' => 'nullable|array',
@@ -240,7 +258,15 @@ class ProspectSearchController extends Controller
             'q_keywords' => 'nullable|string|max:500',
         ]);
 
-        $priceId = $validated['price_id'];
+        $priceId = $validated['price_id'] ?? config('services.prospect_search.export_price_id');
+        if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
+        {
+            return response()->json([
+                'message' => __('El producto de exportación no está configurado.'),
+                'success' => false,
+            ], 502);
+        }
+
         $returnUrl = rtrim($validated['return_url'], '/').'?session_id={CHECKOUT_SESSION_ID}';
 
         $filters = array_filter([

@@ -114,6 +114,10 @@ return [
         'team_id' => env('PROSPECT_SEARCH_TEAM_ID'),
         // URL of the Prospection frontend (React app). The email link must point here so users land on the frontend.
         'access_base_url' => env('PROSPECT_ACCESS_BASE_URL'),
+        // Stripe Price ID for the export product (one-time payment). Used in subscription page and by the Prospection frontend via API.
+        'export_price_id' => env('PROSPECT_EXPORT_STRIPE_PRICE_ID'),
+        'export_name' => env('PROSPECT_EXPORT_NAME', 'Prospection'),
+        'export_description' => env('PROSPECT_EXPORT_DESCRIPTION', 'Crédito para la búsqueda de prospectos para que puedas transformarlos en clientes.'),
     ],
 
 ];
