@@ -40,8 +40,9 @@
                 <div class="form-text">Indica uno o más títulos de puesto, separados por coma (por ejemplo: director comercial, gerente de ventas).</div>
             </div>
             <div class="col-md-6">
-                <label for="person_locations" class="form-label">Ubicación</label>
+                <label for="person_locations" class="form-label">Ubicación de la persona</label>
                 <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
+                <div class="form-text">País o ciudad donde reside la persona.</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label d-block">Posición</label>
@@ -75,15 +76,16 @@
                 <input type="text" class="form-control" id="q_organization_domains_list" name="q_organization_domains_list" placeholder="empresa.com, ejemplo.com">
             </div>
             <div class="col-md-6">
-                <label for="organization_locations_people" class="form-label">Ubicación sede empresa</label>
+                <label for="organization_locations_people" class="form-label">Ubicación de la empresa</label>
                 <input type="text" class="form-control" id="organization_locations_people" name="organization_locations_people" placeholder="California">
+                <div class="form-text">País o ciudad donde tiene la sede la empresa.</div>
             </div>
             <div class="col-12">
                 <label for="q_keywords_people" class="form-label">Palabras clave</label>
                 <input type="text" class="form-control" id="q_keywords_people" name="q_keywords_people" placeholder="tecnología, software">
             </div>
             <div class="col-12 pt-2">
-                <button type="button" class="btn btn-primary" id="btn-search-people">
+                <button type="button" class="btn btn-primary" id="btn-search-people" disabled>
                     <i class="ti ti-search me-1"></i> Buscar personas
                 </button>
             </div>
@@ -168,6 +170,20 @@ $(function() {
         return String(val).split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
     }
 
+    function hasSearchCriteria() {
+        var titles = parseList(document.getElementById('person_titles').value);
+        var locations = parseList(document.getElementById('person_locations').value);
+        var seniorities = Array.from(document.getElementById('person_seniorities').selectedOptions).map(function(o) { return o.value; });
+        var domains = parseList(document.getElementById('q_organization_domains_list').value);
+        var orgLocations = parseList(document.getElementById('organization_locations_people').value);
+        var kw = (document.getElementById('q_keywords_people').value || '').trim();
+        return titles.length > 0 || locations.length > 0 || seniorities.length > 0 || domains.length > 0 || orgLocations.length > 0 || kw.length > 0;
+    }
+
+    function updateSearchButtonState() {
+        $('#btn-search-people').prop('disabled', !hasSearchCriteria());
+    }
+
     function getPeopleFilters(page, perPage) {
         page = page || 1;
         perPage = perPage || 25;
@@ -227,7 +243,8 @@ $(function() {
             ajax: function(data, callback, settings) {
                 var page = Math.floor(data.start / data.length) + 1;
                 var payload = getPeopleFilters(page, data.length);
-                document.getElementById('people-loading').classList.remove('d-none');
+                var $btn = $('#btn-search-people');
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Buscando...');
                 fetch(urlPeople, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
@@ -235,7 +252,7 @@ $(function() {
                 })
                 .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
                 .then(function(res) {
-                    document.getElementById('people-loading').classList.add('d-none');
+                    $btn.prop('disabled', false).html('<i class="ti ti-search me-1"></i> Buscar personas');
                     if (!res.ok) {
                         toastr.error(res.json.message || 'Error al buscar.');
                         callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
@@ -252,7 +269,7 @@ $(function() {
                     callback({ draw: data.draw, recordsTotal: total, recordsFiltered: total, data: people });
                 })
                 .catch(function() {
-                    document.getElementById('people-loading').classList.add('d-none');
+                    $btn.prop('disabled', false).html('<i class="ti ti-search me-1"></i> Buscar personas');
                     toastr.error('Error de conexión.');
                     callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
                 });
@@ -382,6 +399,10 @@ $(function() {
         $('#people-results-card').removeClass('d-none');
         initApolloDataTable();
     });
+
+    $('#person_titles, #person_locations, #q_organization_domains_list, #organization_locations_people, #q_keywords_people').on('input', updateSearchButtonState);
+    $(document).on('click', '#seniority-chips-people .chip', function() { setTimeout(updateSearchButtonState, 0); });
+    updateSearchButtonState();
 });
 </script>
 @endpush
