@@ -112,6 +112,11 @@ return [
 
     'prospect_search' => [
         'team_id' => env('PROSPECT_SEARCH_TEAM_ID'),
+        // URL of the Prospection frontend (React app). The email link must point here so users land on the frontend.
+        'access_base_url' => env('PROSPECT_ACCESS_BASE_URL'),
+        'export_price_id' => env('PROSPECT_EXPORT_STRIPE_PRICE_ID'),
+        'checkout_success_url' => env('PROSPECT_CHECKOUT_SUCCESS_URL', env('APP_URL')),
+        'checkout_cancel_url' => env('PROSPECT_CHECKOUT_CANCEL_URL', env('APP_URL')),
     ],
 
 ];
