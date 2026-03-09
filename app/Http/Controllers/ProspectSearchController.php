@@ -10,6 +10,7 @@ use App\Services\ApolloService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -370,6 +371,366 @@ class ProspectSearchController extends Controller
     }
 
     /**
+     * Return one page of export data (JSON) for frontend to build CSV. Paginated; cache is forgotten when last page is returned.
+     */
+    public function getExportData(Request $request): JsonResponse
+    {
+        $sessionId = $request->query('session_id');
+        if (empty($sessionId))
+        {
+            return response()->json(['message' => __('Sesión inválida.')], 400);
+        }
+
+        $cacheKey = 'prospect_export_session:'.$sessionId;
+        $data = Cache::get($cacheKey);
+        if (! $data || ! is_array($data))
+        {
+            return response()->json(['message' => __('Enlace de descarga inválido o expirado.')], 404);
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
+            $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            if (! $session || ($session->payment_status ?? '') !== 'paid')
+            {
+                return response()->json(['message' => __('El pago no se ha completado.')], 403);
+            }
+        } catch (\Throwable $e)
+        {
+            \Log::warning('Prospect export: Stripe session check failed: '.$e->getMessage());
+
+            return response()->json(['message' => __('No se pudo verificar el pago.')], 502);
+        }
+
+        $filters = $data['filters'] ?? [];
+        $quantity = (int) ($data['quantity'] ?? 500);
+        $quantity = max(1, min(100000, $quantity));
+        $code = $data['code'] ?? null;
+        if (is_string($code))
+        {
+            $code = preg_replace('/[^A-Za-z0-9_-]/', '', $code) ?: null;
+        } else
+        {
+            $code = null;
+        }
+
+        if (empty($filters))
+        {
+            return response()->json(['message' => __('No hay búsqueda asociada.')], 404);
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(500, max(1, (int) $request->query('per_page', 100)));
+        $offset = ($page - 1) * $perPage;
+        $needCount = min($perPage, $quantity - $offset);
+        if ($needCount <= 0)
+        {
+            return response()->json(['message' => __('Página inválida.')], 400);
+        }
+
+        $service = new ApolloService;
+        $apolloPerPage = 100;
+        $startApolloPage = (int) floor($offset / $apolloPerPage) + 1;
+        $toSkip = $offset % $apolloPerPage;
+        $people = [];
+        $apolloPage = $startApolloPage;
+
+        while (count($people) < $needCount)
+        {
+            try
+            {
+                $result = $service->searchPeople($filters, $apolloPage, $apolloPerPage);
+            } catch (\RuntimeException $e)
+            {
+                break;
+            }
+            $batch = $result['people'] ?? [];
+            if (empty($batch))
+            {
+                break;
+            }
+            foreach ($batch as $p)
+            {
+                if ($toSkip > 0)
+                {
+                    $toSkip--;
+
+                    continue;
+                }
+                if (count($people) >= $needCount)
+                {
+                    break;
+                }
+                $row = $this->buildEnrichedExportRow($p, $service);
+                if ($row !== null)
+                {
+                    $people[] = $row;
+                }
+            }
+            if (count($batch) < $apolloPerPage)
+            {
+                break;
+            }
+            $apolloPage++;
+        }
+
+        $hasMore = ($offset + count($people)) < $quantity;
+        if (! $hasMore)
+        {
+            Cache::forget($cacheKey);
+        }
+
+        $filename = ($code !== null && $code !== '') ? $code.'.csv' : 'prospectos-'.date('Y-m-d-His').'.csv';
+
+        return response()->json([
+            'people' => $people,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $quantity,
+            'has_more' => $hasMore,
+            'filename' => $filename,
+        ]);
+    }
+
+    /**
+     * Build one enriched row for export (array for JSON).
+     *
+     * @param  array<string, mixed>  $p
+     * @return array<string, mixed>|null
+     */
+    private function buildEnrichedExportRow(array $p, ApolloService $service): ?array
+    {
+        $personForEnrich = [
+            'id' => $p['id'] ?? '',
+            'first_name' => $p['first_name'] ?? '',
+            'organization_name' => $p['organization_name'] ?? null,
+            'organization' => $p['organization'] ?? null,
+        ];
+        $enriched = $service->enrichPerson($personForEnrich);
+        $lastNameEnriched = null;
+        $emailEnriched = null;
+        if (is_array($enriched) && ! empty($enriched))
+        {
+            $rawLast = $enriched['last_name'] ?? $enriched['primary_last_name'] ?? '';
+            if ((string) $rawLast !== '' && strpos($rawLast, '*') === false)
+            {
+                $lastNameEnriched = $rawLast;
+            }
+            $rawEmail = $enriched['email'] ?? $enriched['primary_email'] ?? $enriched['sanitized_email'] ?? '';
+            if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
+            {
+                $emailEnriched = $rawEmail;
+            }
+        }
+        if (is_array($enriched) && ! empty($enriched))
+        {
+            $firstName = $enriched['first_name'] ?? $p['first_name'] ?? '';
+            $lastName = $lastNameEnriched ?? $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+            $email = $emailEnriched ?? '';
+            $phone = $enriched['phone'] ?? null;
+            $phoneStr = '';
+            if (is_string($phone))
+            {
+                $phoneStr = $phone;
+            } elseif (is_array($phone) && isset($phone['number']))
+            {
+                $phoneStr = $phone['number'] ?? '';
+            } elseif (! empty($enriched['phone_numbers']) && is_array($enriched['phone_numbers']))
+            {
+                $first = reset($enriched['phone_numbers']);
+                $phoneStr = is_string($first) ? $first : ($first['number'] ?? '');
+            }
+            $title = $enriched['title'] ?? $p['title'] ?? '';
+            $org = $enriched['organization'] ?? $p['organization'] ?? [];
+        } else
+        {
+            $firstName = $p['first_name'] ?? '';
+            $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+            $email = '';
+            $phoneStr = '';
+            $title = $p['title'] ?? '';
+            $org = $p['organization'] ?? [];
+        }
+        $orgName = is_array($org) ? ($org['name'] ?? '') : '';
+        $rawData = is_array($enriched) && ! empty($enriched) ? $enriched : $p;
+
+        return [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phoneStr,
+            'title' => $title,
+            'organization_name' => $orgName,
+            'raw' => $this->sanitizeRawForExport($rawData),
+        ];
+    }
+
+    /**
+     * Generate and save CSV to storage so the user can re-download by code. One-time per session.
+     * Returns code and filename for the frontend to show the "download again" link.
+     */
+    public function triggerSaveExport(Request $request): JsonResponse
+    {
+        $sessionId = $request->query('session_id');
+        if (empty($sessionId))
+        {
+            return response()->json(['message' => __('Sesión inválida.')], 400);
+        }
+
+        $cacheKey = 'prospect_export_session:'.$sessionId;
+        $data = Cache::get($cacheKey);
+        if (! $data || ! is_array($data))
+        {
+            return response()->json(['message' => __('Enlace de descarga inválido o expirado.')], 404);
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
+            $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            if (! $session || ($session->payment_status ?? '') !== 'paid')
+            {
+                return response()->json(['message' => __('El pago no se ha completado.')], 403);
+            }
+        } catch (\Throwable $e)
+        {
+            \Log::warning('Prospect export: Stripe session check failed: '.$e->getMessage());
+
+            return response()->json(['message' => __('No se pudo verificar el pago.')], 502);
+        }
+
+        $filters = $data['filters'] ?? [];
+        $quantity = (int) ($data['quantity'] ?? 500);
+        $quantity = max(1, min(100000, $quantity));
+        $code = $data['code'] ?? null;
+        if (is_string($code))
+        {
+            $code = preg_replace('/[^A-Za-z0-9_-]/', '', $code) ?: null;
+        } else
+        {
+            $code = null;
+        }
+
+        if (empty($filters))
+        {
+            return response()->json(['message' => __('No hay búsqueda asociada.')], 404);
+        }
+
+        $filename = ($code !== null && $code !== '') ? $code.'.csv' : 'prospectos-'.date('Y-m-d-His').'.csv';
+        $baseName = pathinfo($filename, PATHINFO_FILENAME);
+        $dir = storage_path('app/prospect-exports');
+        if (! File::isDirectory($dir))
+        {
+            File::makeDirectory($dir, 0755, true);
+        }
+        $filePath = $dir.DIRECTORY_SEPARATOR.$baseName.'.csv';
+
+        $service = new ApolloService;
+        $out = fopen($filePath, 'w');
+        if ($out === false)
+        {
+            throw new \RuntimeException('Could not create export file.');
+        }
+        $this->writeExportCsvToHandle($out, $filters, $quantity, $service);
+        fclose($out);
+
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'code' => $baseName,
+            'filename' => $filename,
+        ]);
+    }
+
+    /**
+     * Serve stored export file by code (same code sent by email). Allows re-download without exposing backend path.
+     */
+    public function exportByCode(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    {
+        $code = $request->query('code');
+        if (empty($code) || ! is_string($code))
+        {
+            return response()->json(['message' => __('Código inválido.')], 400);
+        }
+        $code = preg_replace('/[^A-Za-z0-9_-]/', '', $code);
+        if ($code === '')
+        {
+            return response()->json(['message' => __('Código inválido.')], 400);
+        }
+
+        $filePath = storage_path('app/prospect-exports').DIRECTORY_SEPARATOR.$code.'.csv';
+        if (! File::exists($filePath))
+        {
+            return response()->json(['message' => __('Archivo no encontrado o expirado.')], 404);
+        }
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$code.'.csv"',
+        ];
+
+        return response()->file($filePath, $headers);
+    }
+
+    /**
+     * Write export CSV to an open handle (file or php://output).
+     *
+     * @param  resource  $out
+     * @param  array<string, mixed>  $filters
+     */
+    private function writeExportCsvToHandle($out, array $filters, int $quantity, ApolloService $service): void
+    {
+        fputcsv($out, ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Título', 'Empresa', 'Raw'], ';');
+        $perPage = 100;
+        $page = 1;
+        $collected = 0;
+
+        while ($collected < $quantity)
+        {
+            try
+            {
+                $result = $service->searchPeople($filters, $page, $perPage);
+            } catch (\RuntimeException $e)
+            {
+                break;
+            }
+            $people = $result['people'] ?? [];
+            if (empty($people))
+            {
+                break;
+            }
+            foreach ($people as $p)
+            {
+                if ($collected >= $quantity)
+                {
+                    break;
+                }
+                $row = $this->buildEnrichedExportRow($p, $service);
+                if ($row !== null)
+                {
+                    $rawJson = json_encode($row['raw'], JSON_UNESCAPED_UNICODE);
+                    fputcsv($out, [
+                        $row['first_name'],
+                        $row['last_name'],
+                        $row['email'],
+                        $row['phone'],
+                        $row['title'],
+                        $row['organization_name'],
+                        $rawJson,
+                    ], ';');
+                }
+                $collected++;
+            }
+            if (count($people) < $perPage)
+            {
+                break;
+            }
+            $page++;
+        }
+    }
+
+    /**
      * Download CSV after successful Stripe payment. One-time use per session.
      */
     public function downloadExportCsv(Request $request)
@@ -427,114 +788,12 @@ class ProspectSearchController extends Controller
 
         Cache::forget($cacheKey);
 
-        $perPage = 100;
+        $service = new ApolloService;
 
-        return response()->streamDownload(function () use ($filters, $quantity, $perPage)
+        return response()->streamDownload(function () use ($filters, $quantity, $service)
         {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Título', 'Empresa', 'Raw'], ';');
-
-            $service = new ApolloService;
-            $page = 1;
-            $collected = 0;
-
-            while ($collected < $quantity)
-            {
-                try
-                {
-                    $result = $service->searchPeople($filters, $page, $perPage);
-                } catch (\RuntimeException $e)
-                {
-                    break;
-                }
-
-                $people = $result['people'] ?? [];
-                if (empty($people))
-                {
-                    break;
-                }
-
-                foreach ($people as $p)
-                {
-                    if ($collected >= $quantity)
-                    {
-                        break;
-                    }
-
-                    $personForEnrich = [
-                        'id' => $p['id'] ?? '',
-                        'first_name' => $p['first_name'] ?? '',
-                        'organization_name' => $p['organization_name'] ?? null,
-                        'organization' => $p['organization'] ?? null,
-                    ];
-                    $enriched = $service->enrichPerson($personForEnrich);
-                    $lastNameEnriched = null;
-                    $emailEnriched = null;
-                    if (is_array($enriched) && ! empty($enriched))
-                    {
-                        $rawLast = $enriched['last_name'] ?? $enriched['primary_last_name'] ?? '';
-                        if ((string) $rawLast !== '' && strpos($rawLast, '*') === false)
-                        {
-                            $lastNameEnriched = $rawLast;
-                        }
-                        $rawEmail = $enriched['email'] ?? $enriched['primary_email'] ?? $enriched['sanitized_email'] ?? '';
-                        if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
-                        {
-                            $emailEnriched = $rawEmail;
-                        }
-                    }
-                    if (is_array($enriched) && ! empty($enriched))
-                    {
-                        $firstName = $enriched['first_name'] ?? $p['first_name'] ?? '';
-                        $lastName = $lastNameEnriched ?? $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
-                        $email = $emailEnriched ?? '';
-                        $phone = $enriched['phone'] ?? null;
-                        $phoneStr = '';
-                        if (is_string($phone))
-                        {
-                            $phoneStr = $phone;
-                        } elseif (is_array($phone) && isset($phone['number']))
-                        {
-                            $phoneStr = $phone['number'] ?? '';
-                        } elseif (! empty($enriched['phone_numbers']) && is_array($enriched['phone_numbers']))
-                        {
-                            $first = reset($enriched['phone_numbers']);
-                            $phoneStr = is_string($first) ? $first : ($first['number'] ?? '');
-                        }
-                        $title = $enriched['title'] ?? $p['title'] ?? '';
-                        $org = $enriched['organization'] ?? $p['organization'] ?? [];
-                    } else
-                    {
-                        $firstName = $p['first_name'] ?? '';
-                        $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
-                        $email = '';
-                        $phoneStr = '';
-                        $title = $p['title'] ?? '';
-                        $org = $p['organization'] ?? [];
-                    }
-
-                    $orgName = is_array($org) ? ($org['name'] ?? '') : '';
-                    $rawData = is_array($enriched) && ! empty($enriched) ? $enriched : $p;
-                    $rawJson = json_encode($this->sanitizeRawForExport($rawData), JSON_UNESCAPED_UNICODE);
-                    fputcsv($out, [
-                        $firstName,
-                        $lastName,
-                        $email,
-                        $phoneStr,
-                        $title,
-                        $orgName,
-                        $rawJson,
-                    ], ';');
-                    $collected++;
-                }
-
-                if (count($people) < $perPage)
-                {
-                    break;
-                }
-                $page++;
-            }
-
+            $this->writeExportCsvToHandle($out, $filters, $quantity, $service);
             fclose($out);
         }, $filename, $headers);
     }

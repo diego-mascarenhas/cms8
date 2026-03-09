@@ -27,6 +27,11 @@
             <p><a href="{{ $accessUrl }}" class="cta-button">{{ __('Ver resultados') }}</a></p>
             <p class="link-fallback"><a href="{{ $accessUrl }}">{{ $accessUrl }}</a></p>
             @endif
+            @if(!empty($downloadUrl))
+            <p class="muted" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">{{ __('Guarda este enlace para volver a descargar tu archivo CSV cuando quieras (después de pagar):') }}</p>
+            <p><a href="{{ $downloadUrl }}" class="cta-button" style="background: #0d9488;">{{ __('Enlace de descarga') }}</a></p>
+            <p class="link-fallback"><a href="{{ $downloadUrl }}">{{ $downloadUrl }}</a></p>
+            @endif
         </div>
     </div>
 </body>

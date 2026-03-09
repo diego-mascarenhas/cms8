@@ -63,6 +63,9 @@ Route::middleware('throttle:30,1')->group(function ()
     Route::get('/prospect-search/access', [ProspectSearchController::class, 'access'])->name('api.prospect-search.access');
     Route::post('/prospect-search/checkout', [ProspectSearchController::class, 'createExportCheckout'])->name('api.prospect-search.checkout');
     Route::get('/prospect-search/export-csv', [ProspectSearchController::class, 'downloadExportCsv'])->name('api.prospect-search.export-csv');
+    Route::get('/prospect-search/export-data', [ProspectSearchController::class, 'getExportData'])->name('api.prospect-search.export-data');
+    Route::get('/prospect-search/trigger-save-export', [ProspectSearchController::class, 'triggerSaveExport'])->name('api.prospect-search.trigger-save-export');
+    Route::get('/prospect-search/export-by-code', [ProspectSearchController::class, 'exportByCode'])->name('api.prospect-search.export-by-code');
 });
 
 // Mailgun Webhook (sin autenticación para recibir eventos)
