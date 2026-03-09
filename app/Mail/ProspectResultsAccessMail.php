@@ -14,15 +14,28 @@ class ProspectResultsAccessMail extends Mailable
 
     public string $accessUrl;
 
-    public function __construct(string $code, string $accessUrl = '')
+    public ?string $fromAddress = null;
+
+    public ?string $fromName = null;
+
+    public function __construct(string $code, string $accessUrl = '', ?string $fromAddress = null, ?string $fromName = null)
     {
         $this->code = $code;
         $this->accessUrl = $accessUrl;
+        $this->fromAddress = $fromAddress;
+        $this->fromName = $fromName;
     }
 
     public function build()
     {
-        return $this->subject(__('Tu código para ver los resultados de prospectos'))
+        $mailable = $this->subject(__('Tu código para ver los resultados de prospectos'))
             ->view('emails.prospect-results-access');
+
+        if ($this->fromAddress !== null && $this->fromAddress !== '')
+        {
+            $mailable->from($this->fromAddress, $this->fromName ?? '');
+        }
+
+        return $mailable;
     }
 }

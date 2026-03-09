@@ -100,6 +100,7 @@ class ApolloService
         $params = [
             'id' => $id,
             'reveal_personal_emails' => 'true',
+            'reveal_phone_number' => 'true',
         ];
         if (! empty($person['first_name']))
         {

@@ -81,6 +81,8 @@ class ProspectSearchController extends Controller
         $validated = $request->validate([
             'email' => 'required|email:rfc|max:255',
             'send_email' => 'nullable|boolean',
+            'mail_from_address' => 'nullable|string|email:rfc|max:255',
+            'mail_from_name' => 'nullable|string|max:255',
             'person_titles' => 'nullable|array',
             'person_titles.*' => 'string|max:255',
             'person_locations' => 'nullable|array',
@@ -152,7 +154,9 @@ class ProspectSearchController extends Controller
         $sendEmail = $validated['send_email'] ?? true;
         if ($sendEmail)
         {
-            Mail::to($validated['email'])->send(new ProspectResultsAccessMail($code, $accessUrl));
+            $fromAddress = $validated['mail_from_address'] ?? null;
+            $fromName = $validated['mail_from_name'] ?? null;
+            Mail::to($validated['email'])->send(new ProspectResultsAccessMail($code, $accessUrl, $fromAddress, $fromName));
         }
 
         $payload = [
@@ -406,7 +410,7 @@ class ProspectSearchController extends Controller
         return response()->streamDownload(function () use ($filters, $quantity, $perPage)
         {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Nombre', 'Apellido', 'Título', 'Empresa'], ';');
+            fputcsv($out, ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Título', 'Empresa'], ';');
 
             $service = new ApolloService;
             $page = 1;
@@ -434,13 +438,48 @@ class ProspectSearchController extends Controller
                     {
                         break;
                     }
-                    $org = $p['organization'] ?? [];
+
+                    $enriched = $service->enrichPerson($p);
+                    if (is_array($enriched) && ! empty($enriched))
+                    {
+                        $firstName = $enriched['first_name'] ?? $p['first_name'] ?? '';
+                        $lastName = $enriched['last_name'] ?? $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+                        $email = $enriched['email'] ?? '';
+                        $phone = $enriched['phone'] ?? null;
+                        $phoneStr = '';
+                        if (is_string($phone))
+                        {
+                            $phoneStr = $phone;
+                        }
+                        elseif (is_array($phone) && isset($phone['number']))
+                        {
+                            $phoneStr = $phone['number'] ?? '';
+                        }
+                        elseif (! empty($enriched['phone_numbers']) && is_array($enriched['phone_numbers']))
+                        {
+                            $first = reset($enriched['phone_numbers']);
+                            $phoneStr = is_string($first) ? $first : ($first['number'] ?? '');
+                        }
+                        $title = $enriched['title'] ?? $p['title'] ?? '';
+                        $org = $enriched['organization'] ?? $p['organization'] ?? [];
+                    }
+                    else
+                    {
+                        $firstName = $p['first_name'] ?? '';
+                        $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+                        $email = '';
+                        $phoneStr = '';
+                        $title = $p['title'] ?? '';
+                        $org = $p['organization'] ?? [];
+                    }
+
                     $orgName = is_array($org) ? ($org['name'] ?? '') : '';
-                    $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
                     fputcsv($out, [
-                        $p['first_name'] ?? '',
+                        $firstName,
                         $lastName,
-                        $p['title'] ?? '',
+                        $email,
+                        $phoneStr,
+                        $title,
                         $orgName,
                     ], ';');
                     $collected++;
