@@ -80,6 +80,7 @@ class ProspectSearchController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email:rfc|max:255',
+            'send_email' => 'nullable|boolean',
             'person_titles' => 'nullable|array',
             'person_titles.*' => 'string|max:255',
             'person_locations' => 'nullable|array',
@@ -148,12 +149,24 @@ class ProspectSearchController extends Controller
         $baseUrl = config('services.prospect_search.access_base_url');
         $accessUrl = ! empty($baseUrl) ? rtrim($baseUrl, '/').'?access='.$hash : '';
 
-        Mail::to($validated['email'])->send(new ProspectResultsAccessMail($code, $accessUrl));
+        $sendEmail = $validated['send_email'] ?? true;
+        if ($sendEmail)
+        {
+            Mail::to($validated['email'])->send(new ProspectResultsAccessMail($code, $accessUrl));
+        }
 
-        return response()->json([
+        $payload = [
             'message' => __('Revisa tu correo. Te hemos enviado un código para ver los resultados.'),
             'success' => true,
-        ], 201);
+        ];
+        if (! $sendEmail)
+        {
+            $payload['code'] = $code;
+            $payload['access_url'] = $accessUrl;
+            $payload['hash'] = $hash;
+        }
+
+        return response()->json($payload, 201);
     }
 
     /**
@@ -246,6 +259,8 @@ class ProspectSearchController extends Controller
             'email' => 'required|email:rfc|max:255',
             'return_url' => 'required|url|max:500',
             'price_id' => 'nullable|string|max:255|starts_with:price_',
+            'quantity' => 'nullable|integer|min:1',
+            'contact_count' => 'nullable|integer|min:1|max:100000',
             'person_titles' => 'nullable|array',
             'person_titles.*' => 'string|max:255',
             'person_locations' => 'nullable|array',
@@ -269,6 +284,13 @@ class ProspectSearchController extends Controller
         }
 
         $returnUrl = rtrim($validated['return_url'], '/').'?session_id={CHECKOUT_SESSION_ID}';
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $quantity = max(1, $quantity);
+        $contactCount = isset($validated['contact_count']) ? (int) $validated['contact_count'] : null;
+        if ($contactCount !== null)
+        {
+            $contactCount = max(1, min(100000, $contactCount));
+        }
 
         $filters = array_filter([
             'person_titles' => $validated['person_titles'] ?? null,
@@ -283,16 +305,24 @@ class ProspectSearchController extends Controller
         {
             \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
 
+            $lineItem = [
+                'price' => $priceId,
+                'quantity' => $quantity,
+            ];
+            if ($quantity > 99) {
+                $lineItem['adjustable_quantity'] = [
+                    'enabled' => false,
+                    'maximum' => min($quantity, 999999),
+                ];
+            }
+
             $session = \Stripe\Checkout\Session::create([
                 'ui_mode' => 'embedded',
                 'mode' => 'payment',
                 'locale' => 'es',
                 'customer_email' => $validated['email'],
                 'client_reference_id' => $validated['email'],
-                'line_items' => [[
-                    'price' => $priceId,
-                    'quantity' => 1,
-                ]],
+                'line_items' => [$lineItem],
                 'return_url' => $returnUrl,
                 'metadata' => [
                     'source' => 'prospect_search_export',
@@ -303,6 +333,7 @@ class ProspectSearchController extends Controller
             Cache::put('prospect_export_session:'.$session->id, [
                 'email' => $validated['email'],
                 'filters' => $filters,
+                'quantity' => $contactCount ?? $quantity,
             ], now()->addHours(24));
 
             return response()->json([
@@ -311,10 +342,18 @@ class ProspectSearchController extends Controller
             ]);
         } catch (\Throwable $e)
         {
-            \Log::error('Prospect export checkout error: '.$e->getMessage());
+            \Log::error('Prospect export checkout error: '.$e->getMessage(), [
+                'exception' => $e::class,
+                'quantity' => $quantity,
+            ]);
+
+            $message = __('Error al crear la sesión de pago.');
+            if (config('app.debug') && $e->getMessage() !== '') {
+                $message .= ' '.$e->getMessage();
+            }
 
             return response()->json([
-                'message' => __('Error al crear la sesión de pago.'),
+                'message' => $message,
                 'success' => false,
             ], 502);
         }
@@ -354,22 +393,12 @@ class ProspectSearchController extends Controller
         }
 
         $filters = $data['filters'] ?? [];
+        $quantity = (int) ($data['quantity'] ?? 500);
+        $quantity = max(1, min(100000, $quantity));
+
         if (empty($filters))
         {
             return response()->json(['message' => __('No hay búsqueda asociada.')], 404);
-        }
-
-        try
-        {
-            $service = new ApolloService;
-            $result = $service->searchPeople($filters, 1, 500);
-            $people = $result['people'] ?? [];
-        } catch (\RuntimeException $e)
-        {
-            return response()->json(
-                ['message' => $e->getMessage()],
-                $e->getCode() >= 400 && $e->getCode() < 600 ? (int) $e->getCode() : 502,
-            );
         }
 
         $filename = 'prospectos-'.date('Y-m-d-His').'.csv';
@@ -380,22 +409,58 @@ class ProspectSearchController extends Controller
 
         Cache::forget($cacheKey);
 
-        return response()->streamDownload(function () use ($people)
+        $perPage = 100;
+
+        return response()->streamDownload(function () use ($filters, $quantity, $perPage)
         {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Nombre', 'Apellido', 'Título', 'Empresa'], ';');
-            foreach ($people as $p)
+
+            $service = new ApolloService;
+            $page = 1;
+            $collected = 0;
+
+            while ($collected < $quantity)
             {
-                $org = $p['organization'] ?? [];
-                $orgName = is_array($org) ? ($org['name'] ?? '') : '';
-                $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
-                fputcsv($out, [
-                    $p['first_name'] ?? '',
-                    $lastName,
-                    $p['title'] ?? '',
-                    $orgName,
-                ], ';');
+                try
+                {
+                    $result = $service->searchPeople($filters, $page, $perPage);
+                } catch (\RuntimeException $e)
+                {
+                    break;
+                }
+
+                $people = $result['people'] ?? [];
+                if (empty($people))
+                {
+                    break;
+                }
+
+                foreach ($people as $p)
+                {
+                    if ($collected >= $quantity)
+                    {
+                        break;
+                    }
+                    $org = $p['organization'] ?? [];
+                    $orgName = is_array($org) ? ($org['name'] ?? '') : '';
+                    $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+                    fputcsv($out, [
+                        $p['first_name'] ?? '',
+                        $lastName,
+                        $p['title'] ?? '',
+                        $orgName,
+                    ], ';');
+                    $collected++;
+                }
+
+                if (count($people) < $perPage)
+                {
+                    break;
+                }
+                $page++;
             }
+
             fclose($out);
         }, $filename, $headers);
     }
