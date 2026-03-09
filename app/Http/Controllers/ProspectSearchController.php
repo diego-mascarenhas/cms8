@@ -57,7 +57,7 @@ class ProspectSearchController extends Controller
             $service = new ApolloService;
             $result = $service->searchPeople($filters, 1, 10);
 
-            $people = array_slice($result['people'], 0, 10);
+            $people = array_slice($result['people'] ?? [], 0, 10);
             $result['people'] = $people;
             $result['per_page'] = 10;
 
@@ -226,6 +226,7 @@ class ProspectSearchController extends Controller
                 'people' => $people,
                 'total_entries' => $result['total_entries'] ?? count($people),
                 'email' => $email,
+                'filters' => $filters,
             ]);
         } catch (\RuntimeException $e)
         {
@@ -305,6 +306,14 @@ class ProspectSearchController extends Controller
             'q_organization_domains_list' => $validated['q_organization_domains_list'] ?? null,
             'q_keywords' => $validated['q_keywords'] ?? null,
         ], fn ($v) => $v !== null && $v !== []);
+
+        if (empty($filters))
+        {
+            return response()->json([
+                'message' => __('Debe indicar criterios de búsqueda antes de pagar.'),
+                'success' => false,
+            ], 400);
+        }
 
         try
         {

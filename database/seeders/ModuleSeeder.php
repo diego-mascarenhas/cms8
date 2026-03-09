@@ -259,6 +259,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Enterprise management module',
             'order' => 1,
         ],
+        'prospecting' => [
+            'name' => 'Prospecting',
+            'icon' => 'target',
+            'description' => 'Prospect search and contact acquisition',
+            'order' => 2,
+        ],
         'events' => [
             'name' => 'Events',
             'icon' => 'calendar',
@@ -354,7 +360,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()

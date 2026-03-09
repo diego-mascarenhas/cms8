@@ -137,6 +137,7 @@ class TeamHumanoSeeder extends Seeder
         $defaultModuleKeys = [
             'contacts',  // Contact management
             'enterprises',  // Enterprise management
+            'prospecting',  // Prospect search
             'services',  // Service management
             'projects',  // Project management
             'tasks',  // Task management

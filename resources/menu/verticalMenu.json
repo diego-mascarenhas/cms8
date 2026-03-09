@@ -24,7 +24,7 @@
       "name": "Buscar clientes",
       "icon": "menu-icon tf-icons ti ti-target",
       "slug": "prospect.search",
-      "module_key": "enterprises"
+      "module_key": "prospecting"
     },
     {
       "url": "contact/list",
