@@ -14,6 +14,8 @@ class ProspectResultsAccessMail extends Mailable
 
     public string $accessUrl;
 
+    public string $downloadUrl;
+
     public ?string $fromAddress = null;
 
     public ?string $fromName = null;
@@ -22,6 +24,8 @@ class ProspectResultsAccessMail extends Mailable
     {
         $this->code = $code;
         $this->accessUrl = $accessUrl;
+        $baseUrl = config('services.prospect_search.access_base_url');
+        $this->downloadUrl = ! empty($baseUrl) ? rtrim($baseUrl, '/').'?download='.$code : '';
         $this->fromAddress = $fromAddress;
         $this->fromName = $fromName;
     }
