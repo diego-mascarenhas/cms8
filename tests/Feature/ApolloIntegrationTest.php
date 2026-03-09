@@ -83,6 +83,7 @@ class ApolloIntegrationTest extends TestCase
     public function test_add_person_as_contact_creates_contact_with_team_and_apollo_data(): void
     {
         $user = $this->createUserWithRole('admin');
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
         $this->actingAs($user);
 
         $response = $this->post(route('contact.apollo.add-person'), [
@@ -118,6 +119,7 @@ class ApolloIntegrationTest extends TestCase
     public function test_add_person_as_contact_redirects_when_not_ajax(): void
     {
         $user = $this->createUserWithRole('admin');
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
         $this->actingAs($user);
 
         $response = $this->post(route('contact.apollo.add-person'), [

@@ -4,6 +4,8 @@ namespace App\Actions\Products;
 
 use App\Models\SubscriptionProduct;
 use App\Services\Stripe\StripeProductService;
+use App\Services\StripeAccountResolver;
+use Stripe\StripeClient;
 
 class SyncStripeProducts
 {
@@ -11,13 +13,26 @@ class SyncStripeProducts
         private readonly StripeProductService $stripe,
     ) {}
 
-    public function handle(): int
+    /**
+     * Sync products from Stripe. Optionally use a specific category's Stripe account.
+     *
+     * @param  string|null  $category  mentoring|mailer|prospecting|hosting|support; null = default Cashier account
+     */
+    public function handle(?string $category = null): int
     {
+        $stripe = $this->stripe;
+        if ($category !== null)
+        {
+            $category = StripeAccountResolver::normalizeCategory($category);
+            $secret = StripeAccountResolver::secretForCategory($category);
+            $stripe = new StripeProductService(new StripeClient($secret));
+        }
+
         $processed = 0;
         $productsByName = [];
 
         // Group products by name to handle duplicates
-        foreach ($this->stripe->products() as $stripeProduct)
+        foreach ($stripe->products() as $stripeProduct)
         {
             $name = $stripeProduct->name;
             if (! isset($productsByName[$name]))
@@ -31,14 +46,14 @@ class SyncStripeProducts
         foreach ($productsByName as $name => $stripeProducts)
         {
             // If there are duplicates, prefer the one with fewer prices
-            $selectedProduct = $this->selectBestProduct($stripeProducts);
+            $selectedProduct = $this->selectBestProduct($stripeProducts, $stripe);
 
             if (! $selectedProduct)
             {
                 continue;
             }
 
-            $mapped = $this->mapProduct($selectedProduct);
+            $mapped = $this->mapProduct($selectedProduct, $stripe);
 
             // First try to find by stripe_id
             $product = SubscriptionProduct::firstWhere('stripe_id', $mapped['stripe_id']);
@@ -88,7 +103,7 @@ class SyncStripeProducts
     /**
      * Select the best product when there are duplicates (prefer fewer prices, more recent)
      */
-    private function selectBestProduct(array $products): ?\Stripe\Product
+    private function selectBestProduct(array $products, StripeProductService $stripe): ?\Stripe\Product
     {
         if (count($products) === 1)
         {
@@ -100,7 +115,7 @@ class SyncStripeProducts
         foreach ($products as $product)
         {
             $priceCount = 0;
-            foreach ($this->stripe->prices($product->id) as $price)
+            foreach ($stripe->prices($product->id) as $price)
             {
                 $priceCount++;
             }
@@ -134,7 +149,7 @@ class SyncStripeProducts
         try
         {
             $stripeProduct = $this->stripe->retrieve($stripeProductId);
-            $mapped = $this->mapProduct($stripeProduct);
+            $mapped = $this->mapProduct($stripeProduct, $this->stripe);
 
             // Find product by stripe_product or stripe_id
             $product = SubscriptionProduct::where('stripe_product', $stripeProductId)
@@ -164,12 +179,12 @@ class SyncStripeProducts
     /**
      * Map Stripe product to local format
      */
-    private function mapProduct(\Stripe\Product $stripeProduct): array
+    private function mapProduct(\Stripe\Product $stripeProduct, StripeProductService $stripe): array
     {
         $payload = $stripeProduct->toArray();
 
         // Get main price (recurring, most recent, or default)
-        $mainPrice = $this->getMainPrice($stripeProduct->id);
+        $mainPrice = $this->getMainPrice($stripeProduct->id, $stripe);
 
         $mapped = [
             'stripe_id' => $stripeProduct->id,
@@ -196,10 +211,10 @@ class SyncStripeProducts
      * Get main price for a product (recurring, most recent, or default)
      * Prefers prices with EUR currency and recurring monthly
      */
-    private function getMainPrice(string $productId): ?\Stripe\Price
+    private function getMainPrice(string $productId, StripeProductService $stripe): ?\Stripe\Price
     {
         $prices = [];
-        foreach ($this->stripe->prices($productId) as $price)
+        foreach ($stripe->prices($productId) as $price)
         {
             $prices[] = $price;
         }

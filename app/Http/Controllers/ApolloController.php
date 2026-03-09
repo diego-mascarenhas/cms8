@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Contact;
+use App\Models\Module;
 use App\Services\ApolloService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +25,32 @@ class ApolloController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        return view('contact.apollo');
+        $team = auth()->user()->currentTeam;
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $canImportProspects = $team->canImportProspects(1);
+
+        $contactsModule = Module::where('key', 'contacts')->first();
+        $contactCategories = collect();
+        if ($contactsModule)
+        {
+            $contactCategories = Category::where('module_id', $contactsModule->id)
+                ->where('status', 1)
+                ->where(function ($q) use ($team)
+                {
+                    $q->whereNull('team_id')->orWhere('team_id', $team->id);
+                })
+                ->whereNull('parent_id')
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        return view('contact.apollo', [
+            'remainingProspectCredits' => $remainingProspectCredits,
+            'canImportProspects' => $canImportProspects,
+            'contactCategories' => $contactCategories,
+        ]);
     }
 
     /**
@@ -70,8 +97,7 @@ class ApolloController extends Controller
             $result = $service->searchPeople($filters, $page, $perPage);
 
             return response()->json($result);
-        }
-        catch (\RuntimeException $e)
+        } catch (\RuntimeException $e)
         {
             $status = $e->getCode() >= 400 && $e->getCode() < 600 ? (int) $e->getCode() : 502;
 
@@ -152,6 +178,7 @@ class ApolloController extends Controller
             'title' => 'nullable|string|max:500',
             'organization_name' => 'nullable|string|max:500',
             'person_data' => 'nullable|string|max:65535',
+            'category_id' => 'nullable|integer|exists:categories,id',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -170,6 +197,36 @@ class ApolloController extends Controller
             }
         }
 
+        $position = $this->normalizeProspectPosition($apolloData);
+        $cost = $this->getProspectCreditsCost($position);
+
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        if (! $team->canImportProspects($cost))
+        {
+            if ($request->wantsJson())
+            {
+                return response()->json([
+                    'message' => __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos en Suscripciones.'),
+                ], 402);
+            }
+
+            return redirect()
+                ->route('subscription.index')
+                ->with('error', __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos.'));
+        }
+
+        if (! $team->decrementProspectCredits($cost))
+        {
+            if ($request->wantsJson())
+            {
+                return response()->json([
+                    'message' => __('No tienes suficientes créditos de prospectos.'),
+                ], 402);
+            }
+
+            return redirect()->route('subscription.index')->with('error', __('No tienes suficientes créditos de prospectos.'));
+        }
+
         $enriched = null;
         try
         {
@@ -181,8 +238,7 @@ class ApolloController extends Controller
                 'organization' => $apolloData['organization'] ?? null,
             ];
             $enriched = $service->enrichPerson($personForEnrich);
-        }
-        catch (\Throwable $e)
+        } catch (\Throwable $e)
         {
             $enriched = null;
         }
@@ -195,8 +251,7 @@ class ApolloController extends Controller
             {
                 $name = $enriched['name'] ?? trim($validated['first_name'].' '.($validated['last_name_obfuscated'] ?? '')) ?: 'Contact';
             }
-        }
-        else
+        } else
         {
             $lastName = $validated['last_name'] ?? $validated['last_name_obfuscated'] ?? '';
             $name = trim($validated['first_name'].' '.$lastName) ?: 'Contact';
@@ -224,6 +279,30 @@ class ApolloController extends Controller
 
         $contact = Contact::create($contactData);
 
+        $categoryIds = [];
+        if (! empty($validated['category_id']))
+        {
+            $contactsModule = Module::where('key', 'contacts')->first();
+            $category = Category::where('id', $validated['category_id'])
+                ->where('status', 1)
+                ->when($contactsModule, fn ($q) => $q->where('module_id', $contactsModule->id))
+                ->where(fn ($q) => $q->whereNull('team_id')->orWhere('team_id', $team->id))
+                ->first();
+            if ($category)
+            {
+                $categoryIds[] = $category->id;
+            }
+        }
+        $defaultCategoryId = config('custom.default_contact_category_id');
+        if ($defaultCategoryId)
+        {
+            $categoryIds[] = (int) $defaultCategoryId;
+        }
+        if (! empty($categoryIds))
+        {
+            $contact->categories()->sync(array_unique($categoryIds));
+        }
+
         if ($request->wantsJson())
         {
             return response()->json([
@@ -235,6 +314,35 @@ class ApolloController extends Controller
 
         return redirect()
             ->route('contact.show', $contact->id)
-            ->with('success', __('Contact created from Apollo.'));
+            ->with('success', __('Contacto creado desde la búsqueda de prospectos.'));
+    }
+
+    /**
+     * Normalize prospect position (seniority) from API data to a config key.
+     */
+    private function normalizeProspectPosition(array $apolloData): string
+    {
+        $raw = $apolloData['apollo_raw'] ?? $apolloData;
+        $seniority = $raw['seniority'] ?? $raw['person_seniority'] ?? null;
+        if (! is_string($seniority) || $seniority === '')
+        {
+            return 'manager';
+        }
+
+        $key = strtolower(trim(preg_replace('/[^a-z0-9_]/', '_', $seniority)));
+        $key = str_replace('__', '_', $key);
+        $allowed = array_keys(config('prospects.credits_per_position', []));
+
+        return in_array($key, $allowed, true) ? $key : 'manager';
+    }
+
+    /**
+     * Get credit cost for a prospect position.
+     */
+    private function getProspectCreditsCost(string $position): int
+    {
+        $credits = config('prospects.credits_per_position', []);
+
+        return (int) ($credits[$position] ?? config('prospects.default_credits', 1));
     }
 }

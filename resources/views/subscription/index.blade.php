@@ -26,7 +26,7 @@
 <!-- Mentoring Plans -->
 @if($mentoringProducts->isNotEmpty())
 	<div class="mb-5">
-		<h3 class="mb-4">Planes de Mentoría</h3>
+		<h3 class="mb-4">Mentoría</h3>
 		<div class="row gy-4">
 			@foreach($mentoringProducts as $product)
 				<div class="{{ $product->plan === 'complete' ? 'col-12' : 'col-xl col-lg-4 col-md-6' }}">
@@ -80,7 +80,7 @@
 
 <!-- Mailer Plans -->
 <div class="mb-5">
-	<h3 class="mb-4">Planes de Mailer</h3>
+	<h3 class="mb-4">Mailer</h3>
 	<div class="row gy-4">
 	<!-- FREE Plan -->
 	<div class="col-xl-3 col-lg-6 col-12">
@@ -285,10 +285,187 @@
 	</div>
 </div>
 
-<!-- Hosting Plans -->
+<!-- Prospectos: planes recurrentes primero, luego pago único -->
+@if($prospectProducts->isNotEmpty() || $prospectPacks->isNotEmpty() || !empty($prospectionConfig['enabled']))
+	<div class="mb-5 mt-5" id="prospectos">
+		<h3 class="mb-4">{{ __('Prospectos') }}</h3>
+		<div class="row gy-4">
+			{{-- 1. Planes recurrentes (suscripción mensual): desde BD o desde enum (Basic, Growth) como Mailer --}}
+			@if($prospectProducts->isNotEmpty())
+				@foreach($prospectProducts as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100 {{ $prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price ? 'border-primary shadow-sm' : '' }}">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							@if($prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price)
+								<div class="position-absolute end-0 me-4 top-0 mt-3">
+									<span class="badge bg-label-primary">{{ __('Plan actual') }}</span>
+								</div>
+							@endif
+							<div class="mb-4">
+								<div class="d-flex justify-content-center flex-wrap">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									@if($product->recurring_interval)
+										<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ $product->getBillingFrequency() }}</sub>
+									@endif
+								</div>
+								<p class="small text-muted mb-0">{{ __('Mínimo 3 meses') }}</p>
+							</div>
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
+							@if($product->metadata['monthly_credits'] ?? null)
+								<p class="small text-muted mb-3">{{ $product->metadata['monthly_credits'] }} {{ __('créditos/mes') }}</p>
+							@endif
+							<div class="mt-auto">
+								@if($prospectSubscription && $prospectSubscription->stripe_price === $product->stripe_price)
+									<button class="btn btn-label-primary w-100" disabled>{{ __('Tu plan actual') }}</button>
+								@elseif($product->stripe_price)
+									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->description ?? '') }}')">
+										{{ __('Suscribirse ahora') }}
+									</button>
+								@else
+									<button class="btn btn-primary w-100" disabled>{{ __('Suscribirse ahora') }}</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+				@endforeach
+			@else
+				{{-- Planes desde enum (Basic, Growth) cuando no hay productos en BD --}}
+				@foreach([\App\Enums\ProspectPlan::BASIC, \App\Enums\ProspectPlan::GROWTH] as $plan)
+				@php
+					$price = $prospectPrices[$plan->value] ?? null;
+					$amount = $price['amount'] ?? ($plan->value === 'basic' ? 9.99 : 29.99);
+					$currency = $price['currency'] ?? 'EUR';
+					$intervalCount = (int) ($price['interval_count'] ?? 1);
+					$isTrimestral = ($price['interval'] ?? 'month') === 'month' && $intervalCount === 3;
+					// Mostrar precio mensual siempre; si el cobro es trimestral, mostrar equivalente mensual (amount/3)
+					$displayAmount = $isTrimestral ? round($amount / 3, 2) : $amount;
+					// Importe trimestral: si ya es trimestral es $amount; si es mensual es amount*3
+					$trimestralAmount = $isTrimestral ? $amount : round($amount * 3, 2);
+					$commitmentLabel = __('Precio trimestral') . ' ' . number_format($trimestralAmount, 2, ',', '.') . ' ' . $currency;
+					$planDisplayName = config("prospects.plan_display_names.{$plan->value}") ?? $plan->getDisplayName();
+				@endphp
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100 {{ $currentProspectPlan === $plan ? 'border-primary shadow-sm' : '' }}">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							@if($currentProspectPlan === $plan)
+								<div class="position-absolute end-0 me-4 top-0 mt-3">
+									<span class="badge bg-label-primary">{{ __('Plan actual') }}</span>
+								</div>
+							@endif
+							<div class="mb-4">
+								<div class="d-flex justify-content-center flex-wrap">
+									<h1 class="mb-0 text-primary">{{ number_format($displayAmount, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ $currency }}</sup>
+									<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ __('mes') }}</sub>
+								</div>
+								<p class="small text-muted mb-0">{{ $commitmentLabel }}</p>
+							</div>
+							<h4>{{ $planDisplayName }}</h4>
+							<p class="mb-4">{{ $plan->getDescription() }}</p>
+							<p class="small text-muted mb-3">{{ $plan->getMonthlyCredits() }} {{ __('créditos/mes') }}</p>
+							<div class="mt-auto">
+								@if($currentProspectPlan === $plan)
+									<button class="btn btn-label-primary w-100" disabled>{{ __('Tu plan actual') }}</button>
+								@elseif($plan->getStripePriceId())
+									<button type="button" class="btn btn-primary w-100" onclick="showConfirmModalProspect('{{ $plan->value }}', '{{ addslashes($planDisplayName) }}', {{ $amount }}, '{{ $currency }}')">
+										{{ __('Suscribirse ahora') }}
+									</button>
+								@else
+									<button class="btn btn-primary w-100" disabled>{{ __('Suscribirse ahora') }}</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+				@endforeach
+			@endif
+			{{-- 2. Pago único (packs o producto legacy) --}}
+			@foreach($prospectPacks as $product)
+				<div class="col-xl col-lg-4 col-md-6">
+					<div class="card border h-100">
+						<div class="card-body position-relative text-center d-flex flex-column">
+							<div class="mb-4">
+								<div class="d-flex justify-content-center flex-wrap">
+									<h1 class="mb-0 text-primary">{{ number_format($product->unit_amount ?? 0, 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($product->currency ?? 'EUR') }}</sup>
+									<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ __('pago único') }}</sub>
+								</div>
+							</div>
+							<h4>{{ $product->name }}</h4>
+							<p class="mb-4">{{ $product->description }}</p>
+							@php
+								$creditPacks = config('prospects.credit_packs', []);
+								$packCredits = $creditPacks[$product->stripe_price] ?? 0;
+								$credits = (int)($product->metadata['credits'] ?? $packCredits);
+							@endphp
+							@if($credits > 0)
+								<p class="small text-muted mb-3">{{ $credits }} {{ __('créditos') }}</p>
+							@endif
+							<div class="mt-auto">
+								@if($product->stripe_price)
+									<button type="button" class="btn btn-outline-primary w-100" onclick="showConfirmModal(null, null, {{ $product->unit_amount ?? 0 }}, '{{ strtoupper($product->currency ?? 'EUR') }}', {{ $product->id }}, '{{ addslashes($product->name) }}', '{{ addslashes($product->description ?? '') }}')">
+										{{ __('Comprar créditos') }}
+									</button>
+								@else
+									<button class="btn btn-outline-primary w-100" disabled>{{ __('Próximamente') }}</button>
+								@endif
+							</div>
+						</div>
+					</div>
+				</div>
+			@endforeach
+			{{-- Pago único: Prospection (siempre visible en Prospectos) --}}
+			<div class="col-xl col-lg-4 col-md-6">
+				<div class="card border h-100">
+					<div class="card-body position-relative text-center d-flex flex-column">
+						<div class="mb-4">
+							<div class="d-flex justify-content-center">
+								@if(isset($prospectionConfig['amount']) && $prospectionConfig['amount'] !== null)
+									<h1 class="mb-0 text-primary">{{ number_format($prospectionConfig['amount'], 2, ',', '.') }}</h1>
+									<sup class="h6 pricing-currency mt-2 mb-0 ms-1 text-body">{{ strtoupper($prospectionConfig['currency'] ?? 'EUR') }}</sup>
+								@else
+									<h1 class="mb-0 text-primary">—</h1>
+								@endif
+								<sub class="h6 pricing-duration mt-auto mb-3 text-muted">/{{ __('pago único') }}</sub>
+							</div>
+						</div>
+						<h4>{{ $prospectionConfig['name'] ?? __('Prospection') }}</h4>
+						<p class="mb-4">{{ $prospectionConfig['description'] ?? __('Crédito para la búsqueda de prospectos para que puedas transformarlos en clientes.') }}</p>
+						@if(!empty($prospectionConfig['credits']))
+							<p class="small text-muted mb-3">{{ $prospectionConfig['credits'] }} {{ __('créditos') }}</p>
+						@endif
+						<div class="mt-auto">
+							@if(!empty($prospectionConfig['enabled']))
+								<button type="button" class="btn btn-primary w-100" onclick="showProspectionConfirmModal()">
+									{{ __('Contratar') }}
+								</button>
+							@else
+								<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
+							@endif
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script>
+			window.prospectionConfig = {
+				name: @json($prospectionConfig['name'] ?? 'Prospection'),
+				description: @json($prospectionConfig['description'] ?? ''),
+				amount: {{ $prospectionConfig['amount'] ?? 0 }},
+				currency: @json($prospectionConfig['currency'] ?? 'EUR'),
+				app_url: @json($prospectionConfig['app_url'] ?? ''),
+			};
+		</script>
+	</div>
+@endif
+
+<!-- Hosting Plans (hosting + support in same section) -->
 @if($hostingProducts->isNotEmpty())
 	<div class="mb-5 mt-5">
-		<h3 class="mb-4">Planes de Hosting</h3>
+		<h3 class="mb-4">{{ __('Hosting') }}</h3>
 		<div class="row gy-4">
 			@foreach($hostingProducts as $product)
 				<div class="col-lg-6 col-12">
@@ -311,13 +488,12 @@
 								@php
 									$isSupport = $product->category === 'support';
 								@endphp
-
 								@if($product->stripe_price)
-									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, '{{ $product->name }}', {{ $isSupport ? 'true' : 'false' }})">
-										Contratar
+									<button type="button" class="btn btn-primary w-100" onclick="showDomainModal({{ $product->id }}, {{ json_encode($product->name) }}, {{ $isSupport ? 'true' : 'false' }})">
+										{{ __('Contratar') }}
 									</button>
 								@else
-									<button class="btn btn-primary w-100" disabled>Próximamente</button>
+									<button class="btn btn-primary w-100" disabled>{{ __('Próximamente') }}</button>
 								@endif
 							</div>
 						</div>
@@ -417,6 +593,8 @@
 					@csrf
 					<input type="hidden" name="plan" id="confirmPlanInput">
 					<input type="hidden" name="product_id" id="confirmProductIdInput">
+					<input type="hidden" name="prospect_plan" id="confirmProspectPlanInput" value="">
+					<input type="hidden" name="prospection" id="confirmProspectionInput" value="">
 					<input type="hidden" name="coupon" id="confirmCouponInput">
 				</form>
 			</div>
@@ -517,6 +695,52 @@ function confirmSwapProduct(productId, productName, isUpgrade)
 
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('swapPlanModal'));
+    modal.show();
+}
+
+function showConfirmModalProspect(planKey, planName, price, currency)
+{
+    document.getElementById('couponCode').value = '';
+    document.getElementById('couponMessage').innerHTML = '';
+    document.getElementById('couponDiscount').innerHTML = '';
+    document.getElementById('discountRow').style.display = 'none';
+    document.getElementById('confirmCouponInput').value = '';
+    document.getElementById('confirmProspectionInput').value = '';
+    document.getElementById('confirmPlanInput').value = '';
+    document.getElementById('confirmProductIdInput').value = '';
+    document.getElementById('confirmProspectPlanInput').value = planKey;
+    document.getElementById('confirmPlanName').textContent = planName;
+    document.getElementById('confirmPlanDescription').textContent = '';
+    currentPrice = price;
+    currentCurrency = currency;
+    document.getElementById('confirmPrice').textContent = (parseFloat(price)).toFixed(2).replace('.', ',') + ' ' + currency;
+    document.getElementById('confirmTotal').textContent = (parseFloat(price)).toFixed(2).replace('.', ',') + ' ' + currency;
+    appliedCoupon = null;
+    const modal = new bootstrap.Modal(document.getElementById('confirmSubscriptionModal'));
+    modal.show();
+}
+
+function showProspectionConfirmModal()
+{
+    if (typeof window.prospectionConfig === 'undefined') return;
+    const c = window.prospectionConfig;
+    document.getElementById('confirmPlanInput').value = '';
+    document.getElementById('confirmProductIdInput').value = '';
+    document.getElementById('confirmProspectPlanInput').value = '';
+    document.getElementById('confirmProspectionInput').value = '1';
+    document.getElementById('confirmPlanName').textContent = c.name;
+    document.getElementById('confirmPlanDescription').textContent = c.description || '';
+    currentPrice = c.amount || 0;
+    currentCurrency = c.currency || 'EUR';
+    document.getElementById('confirmPrice').textContent = (parseFloat(currentPrice)).toFixed(2).replace('.', ',') + ' ' + currentCurrency;
+    document.getElementById('confirmTotal').textContent = (parseFloat(currentPrice)).toFixed(2).replace('.', ',') + ' ' + currentCurrency;
+    document.getElementById('couponCode').value = '';
+    document.getElementById('couponMessage').innerHTML = '';
+    document.getElementById('couponDiscount').innerHTML = '';
+    document.getElementById('confirmCouponInput').value = '';
+    document.getElementById('discountRow').style.display = 'none';
+    appliedCoupon = null;
+    const modal = new bootstrap.Modal(document.getElementById('confirmSubscriptionModal'));
     modal.show();
 }
 
@@ -648,23 +872,27 @@ let appliedCoupon = null;
 
 function showConfirmModal(plan, planName, price, currency, productId = null, productName = null, productDescription = null)
 {
-    // Reset coupon
+    // Reset coupon, prospection and prospect plan
     document.getElementById('couponCode').value = '';
     document.getElementById('couponMessage').innerHTML = '';
     document.getElementById('couponDiscount').innerHTML = '';
     document.getElementById('discountRow').style.display = 'none';
     document.getElementById('confirmCouponInput').value = '';
+    document.getElementById('confirmProspectionInput').value = '';
+    document.getElementById('confirmProspectPlanInput').value = '';
     appliedCoupon = null;
 
     // Set form values
     if (productId) {
         document.getElementById('confirmPlanInput').value = '';
         document.getElementById('confirmProductIdInput').value = productId;
+        document.getElementById('confirmProspectPlanInput').value = '';
         document.getElementById('confirmPlanName').textContent = productName || 'Producto';
         document.getElementById('confirmPlanDescription').textContent = productDescription || '';
     } else {
         document.getElementById('confirmPlanInput').value = plan;
         document.getElementById('confirmProductIdInput').value = '';
+        document.getElementById('confirmProspectPlanInput').value = '';
         document.getElementById('confirmPlanName').textContent = `Plan ${planName}`;
         document.getElementById('confirmPlanDescription').textContent = '';
     }
@@ -752,7 +980,6 @@ function validateCoupon()
 
 function submitConfirmation()
 {
-    // Submit the form
     document.getElementById('confirmSubscriptionForm').submit();
 }
 

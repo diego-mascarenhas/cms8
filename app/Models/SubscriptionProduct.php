@@ -39,6 +39,42 @@ class SubscriptionProduct extends Model
     ];
 
     /**
+     * Display labels for category column (subscription product categories).
+     *
+     * @return array<string, string>
+     */
+    public static function getCategoryLabels(): array
+    {
+        return [
+            'backups' => __('Backups'),
+            'domain' => __('Domain'),
+            'hosting' => __('Hosting'),
+            'mailer' => __('Mailer'),
+            'mentoring' => __('Mentoring'),
+            'prospecting' => __('Prospectos'),
+            'support' => __('Support'),
+            'vps' => __('VPS'),
+            'web_cloud' => __('Web Cloud'),
+            'whatsapp' => __('WhatsApp'),
+        ];
+    }
+
+    /**
+     * Get display label for a category.
+     */
+    public static function getCategoryLabel(?string $category): string
+    {
+        if (! $category)
+        {
+            return '—';
+        }
+
+        $labels = static::getCategoryLabels();
+
+        return $labels[$category] ?? $category;
+    }
+
+    /**
      * Scope a query to only include active products.
      */
     public function scopeActive(Builder $query): Builder
@@ -89,6 +125,69 @@ class SubscriptionProduct extends Model
     public function getStripePriceId(): ?string
     {
         return $this->stripe_price;
+    }
+
+    /**
+     * Get Stripe price ID for a mailer plan (basic, foundation, scale) from subscription_products.
+     */
+    public static function getMailerPriceId(string $plan): ?string
+    {
+        $product = static::active()
+            ->where('category', 'mailer')
+            ->where('plan', $plan)
+            ->first();
+
+        return $product?->stripe_price;
+    }
+
+    /**
+     * Get Stripe product ID for a mailer plan from subscription_products.
+     */
+    public static function getMailerProductId(string $plan): ?string
+    {
+        $product = static::active()
+            ->where('category', 'mailer')
+            ->where('plan', $plan)
+            ->first();
+
+        return $product?->stripe_product;
+    }
+
+    /**
+     * Get Stripe price ID for a prospect recurring plan (basic, growth) from subscription_products.
+     */
+    public static function getProspectRecurringPriceId(string $plan): ?string
+    {
+        $product = static::active()
+            ->where('category', 'prospecting')
+            ->whereNotNull('recurring_interval')
+            ->where('plan', $plan)
+            ->first();
+
+        return $product?->stripe_price;
+    }
+
+    /**
+     * Get Stripe price ID for the one-time Prospection product from subscription_products.
+     */
+    public static function getProspectionPriceId(): ?string
+    {
+        $product = static::active()
+            ->where('category', 'prospecting')
+            ->whereNull('recurring_interval')
+            ->first();
+
+        return $product?->stripe_price;
+    }
+
+    /**
+     * Find subscription product by Stripe price ID (any category).
+     */
+    public static function findByStripePrice(string $stripePrice): ?static
+    {
+        return static::active()
+            ->where('stripe_price', $stripePrice)
+            ->first();
     }
 
     /**

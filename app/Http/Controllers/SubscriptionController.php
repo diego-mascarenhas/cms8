@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Enums\ProspectPlan;
 use App\Models\SubscriptionProduct;
+use App\Services\StripeAccountResolver;
+use App\Services\TeamStripeCustomerService;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
 
@@ -46,7 +49,7 @@ class SubscriptionController extends Controller
         {
             try
             {
-                Stripe::setApiKey(config('cashier.secret'));
+                Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
                 $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
             } catch (\Exception $e)
             {
@@ -72,6 +75,18 @@ class SubscriptionController extends Controller
             ->whereIn('category', ['hosting', 'support'])
             ->orderByRaw("CASE WHEN category = 'hosting' THEN 0 ELSE 1 END")
             ->orderBy('unit_amount', 'desc')
+            ->get();
+
+        $prospectProducts = SubscriptionProduct::active()
+            ->where('category', 'prospecting')
+            ->whereNotNull('recurring_interval')
+            ->orderBy('unit_amount')
+            ->get();
+
+        $prospectPacks = SubscriptionProduct::active()
+            ->where('category', 'prospecting')
+            ->whereNull('recurring_interval')
+            ->orderBy('unit_amount')
             ->get();
 
         // Get active subscriptions for each category
@@ -108,6 +123,17 @@ class SubscriptionController extends Controller
         // Fallback to EmailPlan if no products synced yet
         $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
         $prices = $this->getStripePrices();
+        $prospectPrices = $this->getProspectStripePrices();
+        $prospectionConfig = $this->getProspectionExportConfig();
+
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $currentProspectPlan = $team->getProspectPlan();
+
+        $prospectSubscription = $activeSubscriptions->filter(function ($sub) use ($prospectProducts)
+        {
+            return $prospectProducts->contains(fn ($product) => $product->stripe_price === $sub->stripe_price);
+        })->first();
 
         return view('subscription.index', [
             'team' => $team,
@@ -124,7 +150,103 @@ class SubscriptionController extends Controller
             'currentMentoringPlan' => $currentMentoringPlan,
             'mentoringSubscription' => $mentoringSubscription,
             'hostingSubscription' => $hostingSubscription,
+            'prospectionConfig' => $prospectionConfig,
+            'prospectProducts' => $prospectProducts,
+            'prospectPacks' => $prospectPacks,
+            'remainingProspectCredits' => $remainingProspectCredits,
+            'currentProspectPlan' => $currentProspectPlan,
+            'prospectSubscription' => $prospectSubscription,
+            'prospectPrices' => $prospectPrices,
         ]);
+    }
+
+    /**
+     * Get prospect plan prices from Stripe (Basic, Growth).
+     * Returns amount, currency and billing interval (month or quarter when interval_count is 3).
+     *
+     * @return array<string, array{amount: float, currency: string, interval: string, interval_count: int}|null>
+     */
+    private function getProspectStripePrices(): array
+    {
+        Stripe::setApiKey(StripeAccountResolver::secretForCategory('prospecting'));
+        $prospectPrices = [
+            'basic' => null,
+            'growth' => null,
+        ];
+        try
+        {
+            foreach ([ProspectPlan::BASIC, ProspectPlan::GROWTH] as $plan)
+            {
+                $priceId = $plan->getStripePriceId();
+                if ($priceId)
+                {
+                    try
+                    {
+                        $priceData = \Stripe\Price::retrieve($priceId);
+                        $interval = $priceData->recurring->interval ?? 'month';
+                        $intervalCount = (int) ($priceData->recurring->interval_count ?? 1);
+                        $prospectPrices[$plan->value] = [
+                            'amount' => $priceData->unit_amount / 100,
+                            'currency' => strtoupper($priceData->currency ?? 'EUR'),
+                            'interval' => $interval,
+                            'interval_count' => $intervalCount,
+                        ];
+                    } catch (\Exception $e)
+                    {
+                        \Log::warning("Error fetching prospect price for {$plan->value}: ".$e->getMessage());
+                    }
+                }
+            }
+        } catch (\Exception $e)
+        {
+            \Log::error('Error fetching prospect Stripe prices: '.$e->getMessage());
+        }
+
+        return $prospectPrices;
+    }
+
+    /**
+     * Get Prospection export product config for the subscription page (price from Stripe when configured).
+     *
+     * @return array{enabled: bool, name: string, description: string, amount: float|null, currency: string|null, price_id: string|null, app_url: string|null}
+     */
+    private function getProspectionExportConfig(): array
+    {
+        $config = config('services.prospect_search', []);
+        $priceId = SubscriptionProduct::getProspectionPriceId() ?? $config['export_price_id'] ?? null;
+        $name = $config['export_name'] ?? 'Prospection';
+        $description = $config['export_description'] ?? 'Exporta tus resultados de búsqueda de prospectos y descarga el CSV con los contactos.';
+        $appUrl = $config['access_base_url'] ?? null;
+
+        $amount = null;
+        $currency = null;
+
+        if ($priceId)
+        {
+            try
+            {
+                Stripe::setApiKey(StripeAccountResolver::secretForCategory('prospecting'));
+                $priceData = \Stripe\Price::retrieve($priceId);
+                $amount = ($priceData->unit_amount ?? 0) / 100;
+                $currency = strtoupper($priceData->currency ?? 'EUR');
+            } catch (\Exception $e)
+            {
+                \Log::warning('Prospection export: could not fetch Stripe price: '.$e->getMessage());
+            }
+        }
+
+        $credits = (int) ($config['export_credits'] ?? 0);
+
+        return [
+            'enabled' => ! empty($priceId) && ! empty($appUrl),
+            'name' => $name,
+            'description' => $description,
+            'amount' => $amount,
+            'currency' => $currency,
+            'credits' => $credits,
+            'price_id' => $priceId,
+            'app_url' => $appUrl ? rtrim($appUrl, '/') : null,
+        ];
     }
 
     /**
@@ -132,7 +254,7 @@ class SubscriptionController extends Controller
      */
     private function getStripePrices(): array
     {
-        Stripe::setApiKey(config('cashier.secret'));
+        Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
 
         $prices = [
             'basic' => null,
@@ -172,19 +294,46 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Check if customer has complete billing info in Stripe
+     * Resolve Stripe account category from billing/checkout request.
      */
-    private function hasCompleteBillingInfo($team): bool
+    private function resolveBillingCategory(Request $request, ?SubscriptionProduct $product): string
     {
-        if (! $team->stripe_id)
+        if ($request->prospection)
+        {
+            return 'prospecting';
+        }
+        if ($request->prospect_plan)
+        {
+            return 'prospecting';
+        }
+        if ($product)
+        {
+            return StripeAccountResolver::normalizeCategory($product->category);
+        }
+        if ($request->plan)
+        {
+            return 'mailer';
+        }
+
+        return 'mailer';
+    }
+
+    /**
+     * Check if customer has complete billing info in Stripe for the given category's account.
+     */
+    private function hasCompleteBillingInfo($team, string $category): bool
+    {
+        $customerService = app(TeamStripeCustomerService::class);
+        $customerId = $customerService->getStripeCustomerIdForCategory($team, $category);
+        if (! $customerId)
         {
             return false;
         }
 
         try
         {
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
-            $customer = \Stripe\Customer::retrieve($team->stripe_id);
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
+            $customer = \Stripe\Customer::retrieve($customerId);
 
             // Check if we have all required fields
             $hasName = ! empty($customer->metadata->individual_name ?? $customer->name ?? '');
@@ -193,7 +342,7 @@ class SubscriptionController extends Controller
             $hasTaxId = false;
 
             // Check if tax ID exists
-            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
+            $taxIds = \Stripe\Customer::allTaxIds($customerId, ['limit' => 1]);
             if (! empty($taxIds->data))
             {
                 $hasTaxId = true;
@@ -217,8 +366,10 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
-            'coupon' => 'nullable|string|max:255', // Added coupon to validation
+            'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -234,9 +385,12 @@ class SubscriptionController extends Controller
         $plan = $request->plan;
         $product = null;
         $prices = $this->getStripePrices();
+        $prospectionConfig = null;
 
-        // Get product if product_id is provided
-        if ($request->product_id)
+        if ($request->prospection)
+        {
+            $prospectionConfig = $this->getProspectionExportConfig();
+        } elseif ($request->product_id)
         {
             $product = SubscriptionProduct::findOrFail($request->product_id);
         } elseif ($request->price_id)
@@ -244,8 +398,12 @@ class SubscriptionController extends Controller
             $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
         }
 
-        // Get customer data from Stripe if exists
-        // IMPORTANT: Only get data if THIS team has a stripe_id
+        $prospectPlan = ($request->prospect_plan && in_array($request->prospect_plan, ['basic', 'growth'], true))
+            ? ProspectPlan::from($request->prospect_plan)
+            : null;
+
+        $billingCategory = $this->resolveBillingCategory($request, $product);
+
         $customerData = [
             'individual_name' => '',
             'business_name' => '',
@@ -254,53 +412,51 @@ class SubscriptionController extends Controller
             'tax_id' => '',
         ];
 
-        // Only fetch from Stripe if THIS team has a stripe_id
-        if ($team->stripe_id)
+        $customerService = app(TeamStripeCustomerService::class);
+        $customerId = $customerService->getStripeCustomerIdForCategory($team, $billingCategory);
+        if ($customerId)
         {
             try
             {
-                \Stripe\Stripe::setApiKey(config('cashier.secret'));
-                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+                \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($billingCategory));
+                $customer = \Stripe\Customer::retrieve($customerId);
 
-                // Verify the customer belongs to this team
-                // Check metadata team_id if it exists
                 $customerTeamId = $customer->metadata->team_id ?? null;
                 if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
                 {
                     \Log::warning('Customer stripe_id does not match team', [
                         'team_id' => $team->id,
                         'customer_team_id' => $customerTeamId,
-                        'stripe_customer_id' => $team->stripe_id,
+                        'stripe_customer_id' => $customerId,
                     ]);
-                    // Don't use this customer's data
                 } else
                 {
-                $customerData = [
-                    'individual_name' => $customer->metadata->individual_name ?? '',
-                    'business_name' => $customer->metadata->business_name ?? '',
-                    'country' => $customer->address->country ?? '',
-                    'phone' => $customer->phone ?? '',
-                    'tax_id' => '',
-                ];
+                    $customerData = [
+                        'individual_name' => $customer->metadata->individual_name ?? '',
+                        'business_name' => $customer->metadata->business_name ?? '',
+                        'country' => $customer->address->country ?? '',
+                        'phone' => $customer->phone ?? '',
+                        'tax_id' => '',
+                    ];
 
-                // Get Tax ID if exists
-                $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 1]);
-                if (! empty($taxIds->data))
-                {
-                    $customerData['tax_id'] = $taxIds->data[0]->value;
+                    $taxIds = \Stripe\Customer::allTaxIds($customerId, ['limit' => 1]);
+                    if (! empty($taxIds->data))
+                    {
+                        $customerData['tax_id'] = $taxIds->data[0]->value;
                     }
                 }
             } catch (\Exception $e)
             {
                 \Log::warning('Error fetching customer data from Stripe: '.$e->getMessage(), [
                     'team_id' => $team->id,
-                    'stripe_id' => $team->stripe_id,
+                    'customer_id' => $customerId,
                 ]);
             }
         } else
         {
-            \Log::info('Team has no stripe_id, using empty customer data', [
+            \Log::info('Team has no Stripe customer for category, using empty customer data', [
                 'team_id' => $team->id,
+                'category' => $billingCategory,
             ]);
         }
 
@@ -308,10 +464,14 @@ class SubscriptionController extends Controller
             'team' => $team,
             'plan' => $plan,
             'product' => $product,
+            'prospect_plan' => $request->prospect_plan,
+            'prospectPlan' => $prospectPlan,
             'prices' => $prices,
             'customerData' => $customerData,
             'domain' => $request->domain,
-            'coupon' => $request->coupon, // Pass coupon code to view
+            'coupon' => $request->coupon,
+            'prospection' => (bool) $request->prospection,
+            'prospectionConfig' => $prospectionConfig,
         ]);
     }
 
@@ -324,8 +484,10 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
-            'coupon' => 'nullable|string|max:255', // Added coupon to validation
+            'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -362,127 +524,117 @@ class SubscriptionController extends Controller
 
         $team = auth()->user()->currentTeam;
 
+        $product = null;
+        if ($request->product_id)
+        {
+            $product = SubscriptionProduct::find($request->product_id);
+        } elseif ($request->price_id)
+        {
+            $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
+        }
+        $billingCategory = $this->resolveBillingCategory($request, $product);
+
+        $customerService = app(TeamStripeCustomerService::class);
+        $customerId = $customerService->getOrCreateStripeCustomerIdForCategory($team, $billingCategory);
+        if (! $customerId)
+        {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('No se pudo crear el cliente de facturación. Asegúrate de tener un email de usuario.'));
+        }
+
         // Use business name if provided, otherwise use individual name
         $displayName = $request->business_name ?: $request->individual_name;
 
         // Normalize phone number to E.164 format
         $phone = $this->normalizePhoneNumber($request->phone, $request->country);
 
-        // Ensure team has a Stripe customer
-        if (! $team->stripe_id)
+        try
         {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($billingCategory));
+
+            \Stripe\Customer::update($customerId, [
+                'name' => $displayName,
+                'phone' => $phone,
+                'address' => [
+                    'country' => $request->country,
+                ],
+            ]);
+
             try
             {
-                $team->createAsStripeCustomer([
-                    'name' => $displayName,
-                    'email' => auth()->user()->email,
-                ]);
-            } catch (\Exception $e)
-            {
-                \Log::error('Error creating Stripe customer: '.$e->getMessage());
-            }
-        }
-
-        // Update Stripe customer with billing info
-        if ($team->stripe_id)
-        {
-            try
-            {
-                \Stripe\Stripe::setApiKey(config('cashier.secret'));
-
-                // Update customer basic info
-                \Stripe\Customer::update($team->stripe_id, [
-                    'name' => $displayName,
-                    'phone' => $phone,
-                    'address' => [
-                        'country' => $request->country,
-                    ],
-                ]);
-
-                // Add or update Tax ID
-                // IMPORTANT: Only delete existing tax IDs AFTER successfully creating the new one
-                try
+                $taxIdType = match ($request->country)
                 {
-                    // Map country code to Stripe tax ID type
-                    $taxIdType = match ($request->country)
-                    {
-                        'AR' => 'ar_cuit',
-                        'ES' => in_array(strtoupper(substr($request->tax_id, 0, 1)), ['X', 'Y', 'Z']) ? 'es_cif' : 'eu_vat',
-                        'MX' => 'mx_rfc',
-                        'CL' => 'cl_tin',
-                        'CO' => 'co_nit',
-                        'PE' => 'pe_ruc',
-                        'UY' => 'uy_ruc',
-                        'US' => 'us_ein',
-                        default => 'unknown',
-                    };
+                    'AR' => 'ar_cuit',
+                    'ES' => in_array(strtoupper(substr($request->tax_id, 0, 1)), ['X', 'Y', 'Z']) ? 'es_cif' : 'eu_vat',
+                    'MX' => 'mx_rfc',
+                    'CL' => 'cl_tin',
+                    'CO' => 'co_nit',
+                    'PE' => 'pe_ruc',
+                    'UY' => 'uy_ruc',
+                    'US' => 'us_ein',
+                    default => 'unknown',
+                };
 
-                    // Only proceed if tax ID type is known
-                    if ($taxIdType !== 'unknown' && ! empty($request->tax_id))
-                    {
-                        // First, try to create the new tax ID
-                        $newTaxId = \Stripe\Customer::createTaxId($team->stripe_id, [
-                            'type' => $taxIdType,
-                            'value' => $request->tax_id,
-                        ]);
+                if ($taxIdType !== 'unknown' && ! empty($request->tax_id))
+                {
+                    $newTaxId = \Stripe\Customer::createTaxId($customerId, [
+                        'type' => $taxIdType,
+                        'value' => $request->tax_id,
+                    ]);
 
-                        // Only delete existing tax IDs AFTER successful creation
-                        if ($newTaxId)
+                    if ($newTaxId)
+                    {
+                        $taxIds = \Stripe\Customer::allTaxIds($customerId, ['limit' => 100]);
+                        foreach ($taxIds->data as $taxId)
                         {
-                            $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
-                            foreach ($taxIds->data as $taxId)
+                            if ($taxId->id !== $newTaxId->id)
                             {
-                                // Don't delete the one we just created
-                                if ($taxId->id !== $newTaxId->id)
+                                try
                                 {
-                                    try
-                                    {
-                                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
-                                    } catch (\Exception $e)
-                                    {
-                                        \Log::warning('Error deleting old tax ID: '.$e->getMessage());
-                                    }
+                                    \Stripe\Customer::deleteTaxId($customerId, $taxId->id);
+                                } catch (\Exception $e)
+                                {
+                                    \Log::warning('Error deleting old tax ID: '.$e->getMessage());
                                 }
                             }
-                            \Log::info('Tax ID updated successfully', [
-                                'team_id' => $team->id,
-                                'tax_id_type' => $taxIdType,
-                            ]);
                         }
+                        \Log::info('Tax ID updated successfully', [
+                            'team_id' => $team->id,
+                            'tax_id_type' => $taxIdType,
+                        ]);
                     }
-                } catch (\Exception $e)
-                {
-                    \Log::error('Error updating tax ID: '.$e->getMessage(), [
-                        'team_id' => $team->id,
-                        'country' => $request->country,
-                        'tax_id' => $request->tax_id,
-                    ]);
-                    // Don't throw - continue with other updates
                 }
-
-                // Update metadata
-                \Stripe\Customer::update($team->stripe_id, [
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'business_name' => $request->business_name,
-                        'tax_id' => $request->tax_id,
-                        'country' => $request->country,
-                    ],
-                ]);
-
-                \Log::info('Stripe customer updated successfully', [
-                    'customer_id' => $team->stripe_id,
-                    'name' => $displayName,
-                    'tax_id' => $request->tax_id,
-                ]);
             } catch (\Exception $e)
             {
-                \Log::error('Error updating Stripe customer: '.$e->getMessage());
-
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Error al actualizar los datos en Stripe: '.$e->getMessage());
+                \Log::error('Error updating tax ID: '.$e->getMessage(), [
+                    'team_id' => $team->id,
+                    'country' => $request->country,
+                    'tax_id' => $request->tax_id,
+                ]);
             }
+
+            \Stripe\Customer::update($customerId, [
+                'metadata' => [
+                    'individual_name' => $request->individual_name,
+                    'business_name' => $request->business_name,
+                    'tax_id' => $request->tax_id,
+                    'country' => $request->country,
+                ],
+            ]);
+
+            \Log::info('Stripe customer updated successfully', [
+                'customer_id' => $customerId,
+                'name' => $displayName,
+                'tax_id' => $request->tax_id,
+            ]);
+        } catch (\Exception $e)
+        {
+            \Log::error('Error updating Stripe customer: '.$e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error al actualizar los datos en Stripe: '.$e->getMessage());
         }
 
         // Redirect to checkout (preserve domain if provided)
@@ -493,6 +645,9 @@ class SubscriptionController extends Controller
         } elseif ($request->price_id)
         {
             $redirectParams['price_id'] = $request->price_id;
+        } elseif ($request->prospect_plan)
+        {
+            $redirectParams['prospect_plan'] = $request->prospect_plan;
         } else
         {
             $redirectParams['plan'] = $request->plan;
@@ -504,6 +659,56 @@ class SubscriptionController extends Controller
         if ($request->coupon)
         {
             $redirectParams['coupon'] = $request->coupon;
+        }
+
+        // Prospection: create one-time Stripe Checkout Session and redirect to Stripe
+        if ($request->prospection)
+        {
+            $priceId = SubscriptionProduct::getProspectionPriceId() ?? config('services.prospect_search.export_price_id');
+            if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', __('El producto Prospection no está configurado.'));
+            }
+
+            $successUrl = url()->route('subscription.prospection-success').'?session_id={CHECKOUT_SESSION_ID}';
+            $cancelUrl = url()->route('subscription.billing-info', ['prospection' => 1]);
+
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory('prospecting'));
+            $sessionParams = [
+                'mode' => 'payment',
+                'locale' => 'es',
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
+                'metadata' => [
+                    'source' => 'prospect_search_export',
+                    'lead_email' => auth()->user()->email,
+                    'individual_name' => $request->individual_name,
+                    'business_name' => $request->business_name ?? '',
+                    'country' => $request->country,
+                    'phone' => $phone ?? $request->phone,
+                    'tax_id' => $request->tax_id,
+                ],
+            ];
+            if ($customerId)
+            {
+                $sessionParams['customer'] = $customerId;
+            } else
+            {
+                $sessionParams['customer_email'] = auth()->user()->email;
+            }
+            $session = \Stripe\Checkout\Session::create($sessionParams);
+
+            \Illuminate\Support\Facades\Cache::put('prospect_export_session:'.$session->id, [
+                'email' => auth()->user()->email,
+                'filters' => [],
+            ], now()->addHours(24));
+
+            return redirect($session->url);
         }
 
         return redirect()->route('subscription.checkout', $redirectParams);
@@ -683,8 +888,10 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'prospect_plan' => 'nullable|in:basic,growth',
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
+            'prospection' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -692,8 +899,33 @@ class SubscriptionController extends Controller
         $product = null;
         $subscriptionType = 'mailer';
 
+        // Prospection: redirect to billing-info to collect data, then create one-time checkout
+        if ($request->prospection)
+        {
+            $priceId = SubscriptionProduct::getProspectionPriceId() ?? config('services.prospect_search.export_price_id');
+            if (empty($priceId) || ! str_starts_with($priceId, 'price_'))
+            {
+                return redirect()->route('subscription.index')
+                    ->with('error', __('El producto Prospection no está configurado.'));
+            }
+            $redirectParams = ['prospection' => 1];
+            if ($request->coupon)
+            {
+                $redirectParams['coupon'] = $request->coupon;
+            }
+
+            return redirect()->route('subscription.billing-info', $redirectParams);
+        }
+
+        // Prospect recurring plan (Basic/Growth from enum, no product in DB)
+        if ($request->prospect_plan)
+        {
+            $prospectPlan = ProspectPlan::from($request->prospect_plan);
+            $priceId = $prospectPlan->getStripePriceId();
+            $subscriptionType = 'prospecting';
+        }
         // If product_id is provided, get product and use its stripe_price
-        if ($request->product_id)
+        elseif ($request->product_id)
         {
             $product = SubscriptionProduct::findOrFail($request->product_id);
             $priceId = $product->stripe_price;
@@ -712,7 +944,7 @@ class SubscriptionController extends Controller
         // Otherwise, use the plan parameter (for Mailer plans)
         elseif ($request->plan)
         {
-        $plan = EmailPlan::from($request->plan);
+            $plan = EmailPlan::from($request->plan);
             $priceId = $plan->getStripePriceId();
             $subscriptionType = 'mailer';
         } else
@@ -742,14 +974,16 @@ class SubscriptionController extends Controller
         }
 
         // For hosting/support products, allow multiple subscriptions (one per domain)
+        // For one-time prospect packs, no subscription conflict (payment only)
         // For other products, check if already has an active subscription of the same type
         $isHostingOrSupport = $product && in_array($product->category, ['hosting', 'support']);
+        $isOneTimeProspect = $product && $product->category === 'prospecting' && ! $product->recurring_interval;
 
-        if (! $isHostingOrSupport)
+        if (! $isHostingOrSupport && ! $isOneTimeProspect)
         {
             // Check if already has an active subscription of the same type (not canceled)
-        $activeSubscription = $team->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
+            $activeSubscription = $team->subscriptions()
+                ->where('stripe_status', '!=', 'canceled')
                 ->get()
                 ->filter(function ($sub) use ($subscriptionType, $product)
                 {
@@ -770,7 +1004,7 @@ class SubscriptionController extends Controller
 
                     return false;
                 })
-            ->first();
+                ->first();
 
             // If already has an active subscription of the same type, automatically swap instead of showing error
             if ($activeSubscription)
@@ -831,7 +1065,7 @@ class SubscriptionController extends Controller
                     'domain.max' => 'El dominio no puede exceder 255 caracteres.',
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e)
-        {
+            {
                 // Redirect back with errors and product_id to show modal
                 return redirect()->route('subscription.index', ['product_id' => $request->product_id])
                     ->withErrors($e->errors())
@@ -925,7 +1159,7 @@ class SubscriptionController extends Controller
         // Always check if billing info is complete (for ALL subscription types)
         // If billing info is already complete, we skip this step
         // This check happens BEFORE trying to create subscription directly
-        $hasBillingInfo = $this->hasCompleteBillingInfo($team);
+        $hasBillingInfo = $this->hasCompleteBillingInfo($team, $subscriptionType);
 
         if (! $hasBillingInfo)
         {
@@ -945,6 +1179,9 @@ class SubscriptionController extends Controller
             } elseif ($request->plan)
             {
                 $redirectParams['plan'] = $request->plan;
+            } elseif ($request->prospect_plan)
+            {
+                $redirectParams['prospect_plan'] = $request->prospect_plan;
             }
             if ($request->domain)
             {
@@ -958,21 +1195,23 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.billing-info', $redirectParams);
         }
 
+        $customerService = app(TeamStripeCustomerService::class);
+        $checkoutCustomerId = $customerService->getOrCreateStripeCustomerIdForCategory($team, $subscriptionType);
+
         // If customer has payment method, create subscription directly (skip checkout)
-        // This prevents creating duplicate payment methods
-        if ($team->stripe_id)
+        if ($checkoutCustomerId)
         {
             try
             {
-                \Stripe\Stripe::setApiKey(config('cashier.secret'));
-                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+                \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($subscriptionType));
+                $customer = \Stripe\Customer::retrieve($checkoutCustomerId);
 
                 // Get default payment method or first available payment method
                 $paymentMethodId = $customer->invoice_settings->default_payment_method;
 
                 \Log::info('Checking payment methods', [
                     'team_id' => $team->id,
-                    'stripe_customer_id' => $team->stripe_id,
+                    'stripe_customer_id' => $checkoutCustomerId,
                     'default_payment_method' => $paymentMethodId,
                 ]);
 
@@ -980,7 +1219,7 @@ class SubscriptionController extends Controller
                 if (! $paymentMethodId)
                 {
                     $paymentMethods = \Stripe\PaymentMethod::all([
-                        'customer' => $team->stripe_id,
+                        'customer' => $checkoutCustomerId,
                         'type' => 'card',
                         'limit' => 10, // Get more to find an active one
                     ]);
@@ -1041,7 +1280,7 @@ class SubscriptionController extends Controller
 
                     // Build subscription creation config
                     $subscriptionConfig = [
-                        'customer' => $team->stripe_id,
+                        'customer' => $checkoutCustomerId,
                         'items' => [[
                             'price' => $priceId,
                         ]],
@@ -1099,6 +1338,18 @@ class SubscriptionController extends Controller
                         }
                     }
 
+                    if ($subscriptionType === 'prospecting')
+                    {
+                        try
+                        {
+                            $plan = ProspectPlan::fromStripePriceId($priceId);
+                            $team->assignProspectPlan($plan, auth()->id());
+                        } catch (\Exception $e)
+                        {
+                            \Log::warning('Could not assign prospect plan: '.$e->getMessage());
+                        }
+                    }
+
                     // Custom success message based on subscription type
                     $successMessage = match ($subscriptionType)
                     {
@@ -1106,7 +1357,7 @@ class SubscriptionController extends Controller
                         default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
                     };
 
-                return redirect()->route('subscription.index')
+                    return redirect()->route('subscription.index')
                         ->with('success', $successMessage);
                 }
             } catch (\Exception $e)
@@ -1120,13 +1371,11 @@ class SubscriptionController extends Controller
             }
         } else
         {
-            \Log::info('No stripe_id for team, going to checkout', [
+            \Log::info('No Stripe customer for category, going to checkout', [
                 'team_id' => $team->id,
+                'subscription_type' => $subscriptionType,
             ]);
         }
-
-        // Note: Billing info check is now done BEFORE attempting direct subscription creation
-        // This ensures consistent behavior regardless of payment method availability
 
         // Clean up any canceled subscriptions of the same type to avoid conflicts
         if ($subscriptionType === 'mailer')
@@ -1135,25 +1384,43 @@ class SubscriptionController extends Controller
                 ->where('type', 'mailer')
                 ->where('stripe_status', 'canceled')
                 ->delete();
-            }
+        }
 
         try
         {
-            // Ensure team has a Stripe customer ID
-            if (! $team->stripe_id)
+            if (! $checkoutCustomerId)
             {
-                $team->createAsStripeCustomer();
+                return redirect()->route('subscription.index')
+                    ->with('error', __('No se pudo crear el cliente de pago. Asegúrate de tener un email.'));
             }
 
-            // Create Stripe checkout session directly via API
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($subscriptionType));
 
-            // Check if customer has existing payment methods
             $paymentMethods = \Stripe\PaymentMethod::all([
-                'customer' => $team->stripe_id,
+                'customer' => $checkoutCustomerId,
                 'type' => 'card',
                 'limit' => 1,
             ]);
+
+            $successUrlWithCategory = route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}&category='.urlencode($subscriptionType);
+
+            // One-time prospect credit pack: create payment session instead of subscription
+            if ($product && $product->category === 'prospecting' && ! $product->recurring_interval)
+            {
+                $paymentSession = \Stripe\Checkout\Session::create([
+                    'customer' => $checkoutCustomerId,
+                    'mode' => 'payment',
+                    'locale' => 'es',
+                    'line_items' => [[
+                        'price' => $priceId,
+                        'quantity' => 1,
+                    ]],
+                    'success_url' => $successUrlWithCategory,
+                    'cancel_url' => route('subscription.index'),
+                ]);
+
+                return redirect($paymentSession->url);
+            }
 
             // Build subscription metadata
             $subscriptionMetadata = [
@@ -1168,14 +1435,14 @@ class SubscriptionController extends Controller
             }
 
             $checkoutConfig = [
-                'customer' => $team->stripe_id,
+                'customer' => $checkoutCustomerId,
                 'mode' => 'subscription',
                 'locale' => 'es',
                 'line_items' => [[
                     'price' => $priceId,
                     'quantity' => 1,
                 ]],
-                'success_url' => route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => $successUrlWithCategory,
                 'cancel_url' => route('subscription.index'),
                 'subscription_data' => [
                     'metadata' => $subscriptionMetadata,
@@ -1233,14 +1500,17 @@ class SubscriptionController extends Controller
         }
 
         $team = auth()->user()->currentTeam;
+        $category = $request->get('category');
+        $category = $category ? StripeAccountResolver::normalizeCategory($category) : 'mailer';
+        $secret = StripeAccountResolver::secretForCategory($category);
+        $teamCustomerId = $category ? app(TeamStripeCustomerService::class)->getStripeCustomerIdForCategory($team, $category) : $team->stripe_id;
 
         try
         {
-            Stripe::setApiKey(config('cashier.secret'));
+            Stripe::setApiKey($secret);
             $session = \Stripe\Checkout\Session::retrieve($sessionId);
 
-            // Verify the session belongs to this team
-            if ($session->customer !== $team->stripe_id)
+            if ($session->customer !== $teamCustomerId)
             {
                 return redirect()->route('subscription.index')
                     ->with('error', 'Sesión inválida.');
@@ -1329,15 +1599,31 @@ class SubscriptionController extends Controller
                 // Only assign EmailPlan if it's a mailer subscription
                 if ($subscriptionType === 'mailer')
                 {
-                // Map product ID to EmailPlan
-                $plan = $this->getEmailPlanFromProductId($productId);
+                    // Map product ID to EmailPlan
+                    $plan = $this->getEmailPlanFromProductId($productId);
 
-                if ($plan)
-                {
-                    // Assign the plan to the team
-                    $team->assignEmailPlan($plan, auth()->id());
+                    if ($plan)
+                    {
+                        // Assign the plan to the team
+                        $team->assignEmailPlan($plan, auth()->id());
                     }
                 }
+
+                if ($subscriptionType === 'prospecting')
+                {
+                    try
+                    {
+                        $plan = ProspectPlan::fromStripePriceId($priceId);
+                        $team->assignProspectPlan($plan, auth()->id());
+                    } catch (\Exception $e)
+                    {
+                        \Log::warning('Could not assign prospect plan: '.$e->getMessage());
+                    }
+                }
+            } else
+            {
+                // One-time payment: check for prospect credit packs
+                $this->applyProspectCreditPackFromSession($session, $team);
             }
 
             return redirect()->route('subscription.index')
@@ -1349,6 +1635,26 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.index')
                 ->with('error', 'Error al procesar la suscripción: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Prospection one-time payment success: show download link for CSV export.
+     */
+    public function prospectionSuccess(Request $request)
+    {
+        $sessionId = $request->query('session_id');
+        if (empty($sessionId))
+        {
+            return redirect()->route('subscription.index')
+                ->with('error', __('Sesión inválida.'));
+        }
+
+        $downloadUrl = url('/api/prospect-search/export-csv').'?session_id='.urlencode($sessionId);
+
+        return view('subscription.prospection-success', [
+            'sessionId' => $sessionId,
+            'downloadUrl' => $downloadUrl,
+        ]);
     }
 
     /**
@@ -1387,8 +1693,8 @@ class SubscriptionController extends Controller
                     ->with('error', 'No se encontró una suscripción activa.');
             }
 
-            // Cancel via Stripe API
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $category = StripeAccountResolver::normalizeCategory($subscription->type);
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
             \Stripe\Subscription::update($subscription->stripe_id, [
                 'cancel_at_period_end' => true,
             ]);
@@ -1432,8 +1738,8 @@ class SubscriptionController extends Controller
                     ->with('error', 'No se encontró una suscripción cancelada.');
             }
 
-            // Resume via Stripe API
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $category = StripeAccountResolver::normalizeCategory($subscription->type);
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
             \Stripe\Subscription::update($subscription->stripe_id, [
                 'cancel_at_period_end' => false,
             ]);
@@ -1494,11 +1800,11 @@ class SubscriptionController extends Controller
                 ->with('error', 'Debes especificar un plan o producto para cambiar.');
         }
 
-            if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
-            {
-                return redirect()->route('subscription.index')
+        if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
+        {
+            return redirect()->route('subscription.index')
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
-            }
+        }
 
         try
         {
@@ -1533,8 +1839,8 @@ class SubscriptionController extends Controller
                     ->with('error', 'No se encontró una suscripción activa de este tipo. Por favor, crea una nueva suscripción primero.');
             }
 
-            // Update directly via Stripe API to avoid Billable model issues
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $category = StripeAccountResolver::normalizeCategory($subscription->type);
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
 
             $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
 
@@ -1559,13 +1865,13 @@ class SubscriptionController extends Controller
             // Update the team's email plan if it's a mailer subscription
             if ($subscriptionType === 'mailer')
             {
-            try
-            {
+                try
+                {
                     $team->email_plan = EmailPlan::fromStripePriceId($priceId)->value;
-                $team->save();
-            } catch (\Exception $e)
-            {
-                \Log::warning('Could not update email_plan: '.$e->getMessage());
+                    $team->save();
+                } catch (\Exception $e)
+                {
+                    \Log::warning('Could not update email_plan: '.$e->getMessage());
                 }
             }
 
@@ -1594,6 +1900,55 @@ class SubscriptionController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Apply prospect credits from a one-time checkout session (credit pack).
+     */
+    private function applyProspectCreditPackFromSession($session, $team): void
+    {
+        if (! $session || $session->mode !== 'payment' || $session->payment_status !== 'paid')
+        {
+            return;
+        }
+
+        try
+        {
+            $lineItemsResponse = \Stripe\Checkout\Session::allLineItems($session->id, ['expand' => ['data.price']]);
+            $lineItems = $lineItemsResponse->data ?? [];
+        } catch (\Exception $e)
+        {
+            \Log::warning('Could not retrieve checkout session line items: '.$e->getMessage());
+
+            return;
+        }
+
+        foreach ($lineItems as $item)
+        {
+            $priceId = $item->price->id ?? null;
+            if (! $priceId)
+            {
+                continue;
+            }
+
+            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
+            if (! $product || $product->category !== 'prospecting' || $product->recurring_interval)
+            {
+                continue;
+            }
+
+            $packs = config('prospects.credit_packs', []);
+            $credits = (int) ($product->metadata['credits'] ?? $packs[$priceId] ?? 0);
+            if ($credits > 0)
+            {
+                $team->addProspectCreditsFromPurchase($credits);
+                \Log::info('Prospect credits added from one-time purchase', [
+                    'team_id' => $team->id,
+                    'price_id' => $priceId,
+                    'credits' => $credits,
+                ]);
+            }
+        }
     }
 
     /**

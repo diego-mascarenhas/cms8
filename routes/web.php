@@ -101,10 +101,17 @@ Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
+Route::redirect('/propspect/search', '/prospect/search', 301);
 Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
 Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
 Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
-Route::redirect('/prospectflow', '/prospect-search');
+
+Route::get('/register-for-prospects', function ()
+{
+    session()->put('url.intended', route('subscription.index').'#prospectos');
+    return redirect()->route('register');
+})->name('register.redirect-to-prospects');
+Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
@@ -271,6 +278,7 @@ Route::middleware(['auth'])->group(function ()
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
     Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::get('/prospect/search', [ApolloController::class, 'index'])->name('prospect.search');
     Route::get('/contact/apollo', [ApolloController::class, 'index'])->name('contact.apollo');
     Route::post('/contact/apollo/people', [ApolloController::class, 'searchPeople'])->name('contact.apollo.people');
     Route::post('/contact/apollo/organizations', [ApolloController::class, 'searchOrganizations'])->name('contact.apollo.organizations');
@@ -754,6 +762,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/validate-coupon', [SubscriptionController::class, 'validateCoupon'])->name('subscription.validate-coupon');
     Route::match(['get', 'post'], '/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::get('/subscription/prospection-success', [SubscriptionController::class, 'prospectionSuccess'])->name('subscription.prospection-success');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Services\StripeAccountResolver;
+use App\Services\TeamStripeCustomerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -23,13 +25,13 @@ class BillingController extends Controller
         // Get mailer subscription for email plan info
         $mailerSubscription = $team->subscription('mailer');
 
-        // Get current plan from active subscription or fallback to team setting
+        // Get current plan from active subscription or fallback to team setting (e.g. from seeder)
         if ($mailerSubscription && $mailerSubscription->active())
         {
             $currentPlan = EmailPlan::fromStripePriceId($mailerSubscription->stripe_price);
         } else
         {
-            $currentPlan = EmailPlan::from($team->email_plan ?? 'free');
+            $currentPlan = $team->getEmailPlan();
         }
 
         // Get plan usage configuration
@@ -49,14 +51,13 @@ class BillingController extends Controller
 
         try
         {
-            // IMPORTANT: Only use team's stripe_id - do NOT fallback to email search
-            // This ensures each team only sees its own billing data
-            if ($team->stripe_id)
+            $customerService = app(TeamStripeCustomerService::class);
+            $customerId = $team->stripe_id ?: $customerService->getStripeCustomerIdForCategory($team, 'mailer');
+            if ($customerId)
             {
-                \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
 
-                // Get customer data
-                $customer = \Stripe\Customer::retrieve($team->stripe_id);
+                $customer = \Stripe\Customer::retrieve($customerId);
 
                 // Verify the customer belongs to this team
                 // Check metadata team_id if it exists
@@ -66,7 +67,7 @@ class BillingController extends Controller
                     \Log::warning('Customer stripe_id does not match team in BillingController', [
                         'team_id' => $team->id,
                         'customer_team_id' => $customerTeamId,
-                        'stripe_customer_id' => $team->stripe_id,
+                        'stripe_customer_id' => $customerId,
                     ]);
                     // Don't use this customer's data - team has wrong stripe_id
                     $stripeData = null;
@@ -75,7 +76,7 @@ class BillingController extends Controller
                     // Get tax IDs separately for more reliability
                     try
                     {
-                        $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 10]);
+                        $taxIds = \Stripe\Customer::allTaxIds($customerId, ['limit' => 10]);
                         $customer->tax_ids = $taxIds;
                     } catch (\Exception $e)
                     {
@@ -84,21 +85,21 @@ class BillingController extends Controller
 
                     // Get invoices
                     $invoicesData = \Stripe\Invoice::all([
-                        'customer' => $team->stripe_id,
+                        'customer' => $customerId,
                         'limit' => 20,
                     ]);
                     $invoices = collect($invoicesData->data);
 
                     // Get subscriptions
                     $subscriptionsData = \Stripe\Subscription::all([
-                        'customer' => $team->stripe_id,
+                        'customer' => $customerId,
                         'limit' => 10,
                     ]);
                     $subscriptions = collect($subscriptionsData->data);
 
                     // Get payment methods
                     $paymentMethodsData = \Stripe\PaymentMethod::all([
-                        'customer' => $team->stripe_id,
+                        'customer' => $customerId,
                         'type' => 'card',
                     ]);
                     $paymentMethods = collect($paymentMethodsData->data);
@@ -131,6 +132,10 @@ class BillingController extends Controller
             $stripeData = null;
         }
 
+        $team->resetProspectMonthlyLimitsIfNeeded();
+        $remainingProspectCredits = $team->getRemainingProspectCredits();
+        $currentProspectPlan = $team->getProspectPlan();
+
         return view('billing.index', compact(
             'team',
             'currentPlan',
@@ -141,6 +146,8 @@ class BillingController extends Controller
             'subscriptions',
             'paymentMethods',
             'stripeData',
+            'remainingProspectCredits',
+            'currentProspectPlan',
         ));
     }
 
@@ -187,142 +194,79 @@ class BillingController extends Controller
 
         try
         {
-            \Stripe\Stripe::setApiKey(config('cashier.secret'));
+            $customerService = app(TeamStripeCustomerService::class);
+            $billingCustomerId = $customerService->getOrCreateStripeCustomerIdForCategory($team, 'mailer');
+            if (! $billingCustomerId)
+            {
+                return redirect()->route('billing.index')
+                    ->with('error', __('No se pudo crear el cliente de facturación.'));
+            }
 
-            // Prepare data
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
+
             $customerName = $request->business_name ?: $request->individual_name;
             $taxIdError = null;
-
-            // Normalize phone number to E.164 format
             $phone = $this->normalizePhoneNumber($request->phone, $request->country);
 
-            // Get or create Stripe customer
-            if ($team->stripe_id)
+            // Step 1: Update customer basic info
+            \Stripe\Customer::update($billingCustomerId, [
+                'name' => $customerName,
+                'phone' => $phone,
+                'address' => [
+                    'country' => $request->country,
+                ],
+            ]);
+
+            // Step 2: Update or create tax ID
+            try
             {
-                // Step 1: Update customer basic info
-                \Stripe\Customer::update($team->stripe_id, [
-                    'name' => $customerName,
-                    'phone' => $phone,
-                    'address' => [
-                        'country' => $request->country,
-                    ],
-                ]);
-
-                // Step 2: Update or create tax ID
-                try
+                $taxIds = \Stripe\Customer::allTaxIds($billingCustomerId, ['limit' => 100]);
+                foreach ($taxIds->data as $taxId)
                 {
-                    // Get existing tax IDs
-                    $taxIds = \Stripe\Customer::allTaxIds($team->stripe_id, ['limit' => 100]);
-
-                    // Delete existing tax IDs
-                    foreach ($taxIds->data as $taxId)
-                    {
-                        \Stripe\Customer::deleteTaxId($team->stripe_id, $taxId->id);
-                    }
-
-                    // Determine tax ID type based on country
-                    $taxIdType = match ($request->country)
-                    {
-                        'AR' => 'ar_cuit',
-                        'ES' => 'es_cif',
-                        'MX' => 'mx_rfc',
-                        'CL' => 'cl_tin',
-                        'CO' => 'co_nit',
-                        'PE' => 'pe_ruc',
-                        'UY' => 'uy_ruc',
-                        'US' => 'us_ein',
-                        default => 'unknown',
-                    };
-
-                    // Create new tax ID if type is known
-                    if ($taxIdType !== 'unknown')
-                    {
-                        \Stripe\Customer::createTaxId($team->stripe_id, [
-                            'type' => $taxIdType,
-                            'value' => $request->tax_id,
-                        ]);
-                        \Log::info('Tax ID created successfully for customer: '.$team->stripe_id);
-                    }
-                } catch (\Exception $e)
-                {
-                    // Log the full error
-                    \Log::error('Could not update tax ID: '.$e->getMessage());
-                    \Log::error('Tax ID Error details: ', [
-                        'customer' => $team->stripe_id,
-                        'country' => $request->country,
-                        'tax_id' => $request->tax_id,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $taxIdError = $e->getMessage();
+                    \Stripe\Customer::deleteTaxId($billingCustomerId, $taxId->id);
                 }
 
-                // Step 3: Update metadata separately (like SubscriptionController)
-                \Stripe\Customer::update($team->stripe_id, [
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'business_name' => $request->business_name,
-                        'tax_id' => $request->tax_id,
-                        'country' => $request->country,
-                    ],
-                ]);
-            } else
-            {
-                // Step 1: Create new customer
-                $customer = $team->createAsStripeCustomer([
-                    'name' => $customerName,
-                    'phone' => $phone,
-                    'address' => [
-                        'country' => $request->country,
-                    ],
-                ]);
-
-                // Step 2: Add tax ID
-                try
+                $taxIdType = match ($request->country)
                 {
-                    $taxIdType = match ($request->country)
-                    {
-                        'AR' => 'ar_cuit',
-                        'ES' => 'es_cif',
-                        'MX' => 'mx_rfc',
-                        'CL' => 'cl_tin',
-                        'CO' => 'co_nit',
-                        'PE' => 'pe_ruc',
-                        'UY' => 'uy_ruc',
-                        'US' => 'us_ein',
-                        default => 'unknown',
-                    };
+                    'AR' => 'ar_cuit',
+                    'ES' => 'es_cif',
+                    'MX' => 'mx_rfc',
+                    'CL' => 'cl_tin',
+                    'CO' => 'co_nit',
+                    'PE' => 'pe_ruc',
+                    'UY' => 'uy_ruc',
+                    'US' => 'us_ein',
+                    default => 'unknown',
+                };
 
-                    // Create tax ID if type is known
-                    if ($taxIdType !== 'unknown')
-                    {
-                        \Stripe\Customer::createTaxId($customer->id, [
-                            'type' => $taxIdType,
-                            'value' => $request->tax_id,
-                        ]);
-                        \Log::info('Tax ID created successfully for new customer: '.$customer->id);
-                    }
-                } catch (\Exception $e)
+                if ($taxIdType !== 'unknown')
                 {
-                    \Log::error('Could not create tax ID: '.$e->getMessage());
-                    \Log::error('Tax ID Error details: ', [
-                        'customer' => $customer->id,
-                        'country' => $request->country,
-                        'tax_id' => $request->tax_id,
-                        'error' => $e->getMessage(),
+                    \Stripe\Customer::createTaxId($billingCustomerId, [
+                        'type' => $taxIdType,
+                        'value' => $request->tax_id,
                     ]);
-                    $taxIdError = $e->getMessage();
+                    \Log::info('Tax ID created successfully for customer: '.$billingCustomerId);
                 }
-
-                // Step 3: Update metadata separately (like SubscriptionController)
-                \Stripe\Customer::update($customer->id, [
-                    'metadata' => [
-                        'individual_name' => $request->individual_name,
-                        'business_name' => $request->business_name,
-                        'tax_id' => $request->tax_id,
-                        'country' => $request->country,
-                    ],
+            } catch (\Exception $e)
+            {
+                \Log::error('Could not update tax ID: '.$e->getMessage());
+                \Log::error('Tax ID Error details: ', [
+                    'customer' => $billingCustomerId,
+                    'country' => $request->country,
+                    'tax_id' => $request->tax_id,
+                    'error' => $e->getMessage(),
                 ]);
+                $taxIdError = $e->getMessage();
             }
+
+            \Stripe\Customer::update($billingCustomerId, [
+                'metadata' => [
+                    'individual_name' => $request->individual_name,
+                    'business_name' => $request->business_name,
+                    'tax_id' => $request->tax_id,
+                    'country' => $request->country,
+                ],
+            ]);
 
             $successMessage = 'Datos de facturación actualizados correctamente.';
             if ($taxIdError)

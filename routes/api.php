@@ -57,8 +57,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request)
 // Prospect Search (public, for React frontend / prospection)
 Route::middleware('throttle:30,1')->group(function ()
 {
+    Route::get('/prospect-search/checkout-config', [ProspectSearchController::class, 'checkoutConfig'])->name('api.prospect-search.checkout-config');
     Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('api.prospect-search.search');
     Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('api.prospect-search.lead');
+    Route::get('/prospect-search/access', [ProspectSearchController::class, 'access'])->name('api.prospect-search.access');
+    Route::post('/prospect-search/checkout', [ProspectSearchController::class, 'createExportCheckout'])->name('api.prospect-search.checkout');
+    Route::get('/prospect-search/export-csv', [ProspectSearchController::class, 'downloadExportCsv'])->name('api.prospect-search.export-csv');
 });
 
 // Mailgun Webhook (sin autenticación para recibir eventos)

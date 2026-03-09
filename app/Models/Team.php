@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasEmailLimits;
+use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
@@ -12,7 +13,7 @@ use Laravel\Jetstream\Team as JetstreamTeam;
 
 class Team extends JetstreamTeam
 {
-    use Billable, HasEmailLimits, HasFactory;
+    use Billable, HasEmailLimits, HasFactory, HasProspectLimits;
 
     /**
      * The attributes that should be cast.
@@ -65,6 +66,24 @@ class Team extends JetstreamTeam
     public function settings()
     {
         return $this->hasMany(TeamSetting::class);
+    }
+
+    /**
+     * Find a team by any of its Stripe customer IDs (main stripe_id or per-category settings).
+     */
+    public static function findByStripeCustomerId(string $stripeCustomerId): ?self
+    {
+        $team = static::where('stripe_id', $stripeCustomerId)->first();
+        if ($team)
+        {
+            return $team;
+        }
+
+        $setting = TeamSetting::where('key', 'like', 'stripe_id_%')
+            ->where('value', $stripeCustomerId)
+            ->first();
+
+        return $setting ? $setting->team : null;
     }
 
     /**

@@ -12,7 +12,8 @@ class SyncStripeProductsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'products:sync';
+    protected $signature = 'products:sync
+                            {--category= : Stripe account category (mentoring|mailer|prospecting|hosting|support). Omit to use default Cashier account}';
 
     /**
      * The console command description.
@@ -26,11 +27,12 @@ class SyncStripeProductsCommand extends Command
      */
     public function handle(SyncStripeProducts $syncAction): int
     {
-        $this->info('Starting product synchronization from Stripe...');
+        $category = $this->option('category');
+        $this->info('Starting product synchronization from Stripe'.($category ? " (category: {$category})" : '').'...');
 
         try
         {
-            $processed = $syncAction->handle();
+            $processed = $syncAction->handle($category ?: null);
 
             $this->info("Successfully synchronized {$processed} products from Stripe.");
 

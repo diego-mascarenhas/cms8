@@ -90,6 +90,7 @@ class DatabaseSeeder extends Seeder
             UnitsSeeder::class,  // Units (words, minutes, etc)
             FareTypesSeeder::class,  // Fare types
             CategorySeeder::class,  // Base categories
+            BasicCategoriesForAllModulesSeeder::class,  // One basic category per module (global)
             HostingProjectAndTaskCategoriesSeeder::class,  // Project & task categories (hosting)
             WebDevProjectAndTaskCategoriesSeeder::class,  // Project & task categories (web dev & infrastructure)
             PromptSeeder::class,  // Prompts (AI instructions by module_id)

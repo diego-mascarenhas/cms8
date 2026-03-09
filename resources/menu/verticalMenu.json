@@ -20,10 +20,10 @@
       "module_key": "today"
     },
     {
-      "url": "enterprise/list",
+      "url": "prospect/search",
       "name": "Buscar clientes",
       "icon": "menu-icon tf-icons ti ti-target",
-      "slug": "enterprise.index",
+      "slug": "prospect.search",
       "module_key": "enterprises"
     },
     {

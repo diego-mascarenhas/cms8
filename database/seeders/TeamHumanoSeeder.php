@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Enums\EmailPlan;
+use App\Enums\ProspectPlan;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Team;
@@ -23,16 +25,19 @@ class TeamHumanoSeeder extends Seeder
         // 2. Create Humano users
         $this->createHumanoUsers($team);
 
-        // 3. Create Humano enterprise
+        // 3. Mailer and Prospect credits for testing
+        $this->configureTeamCreditsForTesting($team);
+
+        // 4. Create Humano enterprise
         //  $this->createHumanoEnterprise($team);
 
-        // 4. Create Humano contacts
+        // 5. Create Humano contacts
         // $this->createHumanoContacts($team);
 
-        // 5. Create Humano categories
+        // 6. Create Humano categories
         // $this->createHumanoCategories();
 
-        // 6. Assign core modules to team
+        // 7. Assign core modules to team
         $this->assignCoreModules($team);
 
         $this->command->info('✅ Humano setup completed successfully');
@@ -164,5 +169,17 @@ class TeamHumanoSeeder extends Seeder
         {
             $this->command->line("   • {$module->name} ({$module->key})");
         }
+    }
+
+    /**
+     * Assign Mailer and Prospect credits for testing.
+     */
+    private function configureTeamCreditsForTesting(Team $team): void
+    {
+        $this->command->info('📧 Configuring Mailer and Prospect credits for testing...');
+        $team->assignEmailPlan(EmailPlan::BASIC, null);
+        $team->assignProspectPlan(ProspectPlan::BASIC, null);
+        $team->addProspectCreditsFromPurchase(50);
+        $this->command->info('✅ Mailer (Basic) and Prospect (Basic + 50 credits) configured');
     }
 }
