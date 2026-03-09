@@ -305,24 +305,16 @@ class ProspectSearchController extends Controller
         {
             \Stripe\Stripe::setApiKey(\App\Services\StripeAccountResolver::secretForCategory('prospecting'));
 
-            $lineItem = [
-                'price' => $priceId,
-                'quantity' => $quantity,
-            ];
-            if ($quantity > 99) {
-                $lineItem['adjustable_quantity'] = [
-                    'enabled' => false,
-                    'maximum' => min($quantity, 999999),
-                ];
-            }
-
             $session = \Stripe\Checkout\Session::create([
                 'ui_mode' => 'embedded',
                 'mode' => 'payment',
                 'locale' => 'es',
                 'customer_email' => $validated['email'],
                 'client_reference_id' => $validated['email'],
-                'line_items' => [$lineItem],
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => $quantity,
+                ]],
                 'return_url' => $returnUrl,
                 'metadata' => [
                     'source' => 'prospect_search_export',
