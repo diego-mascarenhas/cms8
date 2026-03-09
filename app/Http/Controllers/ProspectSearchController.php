@@ -265,6 +265,7 @@ class ProspectSearchController extends Controller
             'price_id' => 'nullable|string|max:255|starts_with:price_',
             'quantity' => 'nullable|integer|min:1',
             'contact_count' => 'nullable|integer|min:1|max:100000',
+            'code' => 'nullable|string|max:100',
             'person_titles' => 'nullable|array',
             'person_titles.*' => 'string|max:255',
             'person_locations' => 'nullable|array',
@@ -326,10 +327,13 @@ class ProspectSearchController extends Controller
                 ],
             ]);
 
+            $code = isset($validated['code']) ? preg_replace('/[^A-Za-z0-9_-]/', '', (string) $validated['code']) : null;
+
             Cache::put('prospect_export_session:'.$session->id, [
                 'email' => $validated['email'],
                 'filters' => $filters,
                 'quantity' => $contactCount ?? $quantity,
+                'code' => $code !== '' ? $code : null,
             ], now()->addHours(24));
 
             return response()->json([
@@ -344,7 +348,8 @@ class ProspectSearchController extends Controller
             ]);
 
             $message = __('Error al crear la sesión de pago.');
-            if (config('app.debug') && $e->getMessage() !== '') {
+            if (config('app.debug') && $e->getMessage() !== '')
+            {
                 $message .= ' '.$e->getMessage();
             }
 
@@ -391,13 +396,21 @@ class ProspectSearchController extends Controller
         $filters = $data['filters'] ?? [];
         $quantity = (int) ($data['quantity'] ?? 500);
         $quantity = max(1, min(100000, $quantity));
+        $code = $data['code'] ?? null;
+        if (is_string($code))
+        {
+            $code = preg_replace('/[^A-Za-z0-9_-]/', '', $code) ?: null;
+        } else
+        {
+            $code = null;
+        }
 
         if (empty($filters))
         {
             return response()->json(['message' => __('No hay búsqueda asociada.')], 404);
         }
 
-        $filename = 'prospectos-'.date('Y-m-d-His').'.csv';
+        $filename = ($code !== null && $code !== '') ? $code.'.csv' : 'prospectos-'.date('Y-m-d-His').'.csv';
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
@@ -410,7 +423,7 @@ class ProspectSearchController extends Controller
         return response()->streamDownload(function () use ($filters, $quantity, $perPage)
         {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Título', 'Empresa'], ';');
+            fputcsv($out, ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Título', 'Empresa', 'Raw'], ';');
 
             $service = new ApolloService;
             $page = 1;
@@ -439,31 +452,49 @@ class ProspectSearchController extends Controller
                         break;
                     }
 
-                    $enriched = $service->enrichPerson($p);
+                    $personForEnrich = [
+                        'id' => $p['id'] ?? '',
+                        'first_name' => $p['first_name'] ?? '',
+                        'organization_name' => $p['organization_name'] ?? null,
+                        'organization' => $p['organization'] ?? null,
+                    ];
+                    $enriched = $service->enrichPerson($personForEnrich);
+                    $lastNameEnriched = null;
+                    $emailEnriched = null;
+                    if (is_array($enriched) && ! empty($enriched))
+                    {
+                        $rawLast = $enriched['last_name'] ?? $enriched['primary_last_name'] ?? '';
+                        if ((string) $rawLast !== '' && strpos($rawLast, '*') === false)
+                        {
+                            $lastNameEnriched = $rawLast;
+                        }
+                        $rawEmail = $enriched['email'] ?? $enriched['primary_email'] ?? $enriched['sanitized_email'] ?? '';
+                        if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
+                        {
+                            $emailEnriched = $rawEmail;
+                        }
+                    }
                     if (is_array($enriched) && ! empty($enriched))
                     {
                         $firstName = $enriched['first_name'] ?? $p['first_name'] ?? '';
-                        $lastName = $enriched['last_name'] ?? $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
-                        $email = $enriched['email'] ?? '';
+                        $lastName = $lastNameEnriched ?? $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
+                        $email = $emailEnriched ?? '';
                         $phone = $enriched['phone'] ?? null;
                         $phoneStr = '';
                         if (is_string($phone))
                         {
                             $phoneStr = $phone;
-                        }
-                        elseif (is_array($phone) && isset($phone['number']))
+                        } elseif (is_array($phone) && isset($phone['number']))
                         {
                             $phoneStr = $phone['number'] ?? '';
-                        }
-                        elseif (! empty($enriched['phone_numbers']) && is_array($enriched['phone_numbers']))
+                        } elseif (! empty($enriched['phone_numbers']) && is_array($enriched['phone_numbers']))
                         {
                             $first = reset($enriched['phone_numbers']);
                             $phoneStr = is_string($first) ? $first : ($first['number'] ?? '');
                         }
                         $title = $enriched['title'] ?? $p['title'] ?? '';
                         $org = $enriched['organization'] ?? $p['organization'] ?? [];
-                    }
-                    else
+                    } else
                     {
                         $firstName = $p['first_name'] ?? '';
                         $lastName = $p['last_name'] ?? $p['last_name_obfuscated'] ?? '';
@@ -474,6 +505,8 @@ class ProspectSearchController extends Controller
                     }
 
                     $orgName = is_array($org) ? ($org['name'] ?? '') : '';
+                    $rawData = is_array($enriched) && ! empty($enriched) ? $enriched : $p;
+                    $rawJson = json_encode($this->sanitizeRawForExport($rawData), JSON_UNESCAPED_UNICODE);
                     fputcsv($out, [
                         $firstName,
                         $lastName,
@@ -481,6 +514,7 @@ class ProspectSearchController extends Controller
                         $phoneStr,
                         $title,
                         $orgName,
+                        $rawJson,
                     ], ';');
                     $collected++;
                 }
@@ -494,5 +528,33 @@ class ProspectSearchController extends Controller
 
             fclose($out);
         }, $filename, $headers);
+    }
+
+    /**
+     * Remove provider name from array keys so the CSV raw column does not reference the provider.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function sanitizeRawForExport(array $data): array
+    {
+        $out = [];
+        foreach ($data as $key => $value)
+        {
+            $keyStr = (string) $key;
+            if (stripos($keyStr, 'apollo') !== false)
+            {
+                if (strtolower($keyStr) === 'apollo_id')
+                {
+                    $keyStr = 'external_id';
+                } else
+                {
+                    $keyStr = preg_replace('/apollo[_\-]?/i', '', $keyStr) ?: 'data';
+                }
+            }
+            $out[$keyStr] = is_array($value) ? $this->sanitizeRawForExport($value) : $value;
+        }
+
+        return $out;
     }
 }

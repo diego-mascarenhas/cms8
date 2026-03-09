@@ -55,6 +55,9 @@ class ApolloService
             $org = $person['organization'] ?? [];
             $orgName = is_array($org) ? ($org['name'] ?? '') : '';
 
+            $hasDirectPhone = ($person['has_direct_phone'] ?? '') === 'Yes' || ($person['has_direct_phone'] ?? false) === true;
+            $hasPhone = $hasDirectPhone || ($person['has_phone'] ?? false);
+
             return [
                 'id' => $person['id'] ?? '',
                 'first_name' => $person['first_name'] ?? '',
@@ -64,6 +67,7 @@ class ApolloService
                 'organization_name' => $orgName,
                 'organization' => $org,
                 'has_email' => $person['has_email'] ?? false,
+                'has_phone' => $hasPhone,
                 'last_refreshed_at' => $person['last_refreshed_at'] ?? null,
                 'apollo_raw' => $person,
             ];
@@ -82,7 +86,7 @@ class ApolloService
      * Calls Apollo People Enrichment API /people/match.
      *
      * @param  array{id: string, first_name?: string, organization_name?: string, organization?: array}  $person  At least id from search; first_name and organization_name improve match.
-     * @return array<string, mixed>|null  Enriched person array or null if not found/failed
+     * @return array<string, mixed>|null Enriched person array or null if not found/failed
      */
     public function enrichPerson(array $person): ?array
     {
@@ -100,7 +104,6 @@ class ApolloService
         $params = [
             'id' => $id,
             'reveal_personal_emails' => 'true',
-            'reveal_phone_number' => 'true',
         ];
         if (! empty($person['first_name']))
         {
@@ -121,6 +124,12 @@ class ApolloService
 
         if (! $response->successful())
         {
+            \Log::debug('Apollo enrich failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'person_id' => $id,
+            ]);
+
             return null;
         }
 

@@ -257,6 +257,15 @@ class ApolloController extends Controller
             $name = trim($validated['first_name'].' '.$lastName) ?: 'Contact';
         }
 
+        $dataJson = ['apollo' => $apolloData];
+        if (is_array($enriched) && ! empty($enriched))
+        {
+            $dataJson['apollo_raw'] = $enriched;
+        } else
+        {
+            $dataJson['apollo_raw'] = $apolloData;
+        }
+
         $contactData = [
             'team_id' => $team->id,
             'creator_id' => auth()->id(),
@@ -265,16 +274,36 @@ class ApolloController extends Controller
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'data' => ['apollo' => $apolloData],
+            'data' => $dataJson,
         ];
-        if (! empty($apolloData['email']))
+        $rawEmail = $apolloData['email'] ?? $apolloData['primary_email'] ?? $apolloData['sanitized_email'] ?? '';
+        if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
         {
-            $contactData['email'] = $apolloData['email'];
+            $contactData['email'] = $rawEmail;
         }
+
         $phone = $apolloData['phone'] ?? null;
-        if (! empty($phone))
+        $phoneStr = null;
+        if (is_string($phone) && $phone !== '')
         {
-            $contactData['phone'] = is_string($phone) ? $phone : ($phone['number'] ?? null);
+            $phoneStr = $phone;
+        } elseif (is_array($phone) && isset($phone['number']))
+        {
+            $phoneStr = $phone['number'] ?? null;
+        }
+        if (empty($phoneStr) && ! empty($apolloData['phone_numbers']) && is_array($apolloData['phone_numbers']))
+        {
+            $first = reset($apolloData['phone_numbers']);
+            $phoneStr = is_string($first) ? $first : ($first['number'] ?? null);
+        }
+        // Transform phone only for the integer column; contacts.data (apollo/apollo_raw) is never modified.
+        if (! empty($phoneStr))
+        {
+            $phoneDigits = preg_replace('/\D/', '', $phoneStr);
+            if ($phoneDigits !== '')
+            {
+                $contactData['phone'] = (int) $phoneDigits;
+            }
         }
 
         $contact = Contact::create($contactData);
@@ -293,15 +322,7 @@ class ApolloController extends Controller
                 $categoryIds[] = $category->id;
             }
         }
-        $defaultCategoryId = config('custom.default_contact_category_id');
-        if ($defaultCategoryId)
-        {
-            $categoryIds[] = (int) $defaultCategoryId;
-        }
-        if (! empty($categoryIds))
-        {
-            $contact->categories()->sync(array_unique($categoryIds));
-        }
+        $contact->categories()->sync($categoryIds);
 
         if ($request->wantsJson())
         {
