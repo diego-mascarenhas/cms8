@@ -105,13 +105,6 @@
             <p class="text-muted small mb-0" id="people-results-count"></p>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <label for="apollo_import_category_id" class="form-label mb-0 small text-muted">{{ __('Categoría para importar') }}</label>
-            <select id="apollo_import_category_id" name="apollo_import_category_id" class="form-select form-select-sm" style="min-width: 200px;" data-placeholder="{{ __('Seleccionar o crear categoría') }}">
-                <option value="">{{ __('Seleccionar o crear categoría') }}</option>
-                @foreach($contactCategories ?? [] as $cat)
-                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                @endforeach
-            </select>
             <button type="button" class="btn btn-primary btn-sm" id="btn-import-selected" style="display: none;">
                 <i class="ti ti-user-plus me-1"></i> {{ __('Importar seleccionados') }}
             </button>
@@ -131,11 +124,40 @@
                         <th>Nombre</th>
                         <th>Título</th>
                         <th>Empresa</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: elegir categoría al importar --}}
+<div class="modal fade" id="apolloImportCategoryModal" tabindex="-1" aria-labelledby="apolloImportCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="apolloImportCategoryModalLabel">{{ __('Categoría para importar') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="apollo_import_category_modal_id" class="form-label">{{ __('Seleccionar o crear categoría') }}</label>
+                <select id="apollo_import_category_modal_id" name="apollo_import_category_modal_id" class="form-select" data-placeholder="{{ __('Seleccionar o crear categoría') }}">
+                    <option value="">{{ __('Seleccionar o crear categoría') }}</option>
+                    @foreach($contactCategories ?? [] as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                <button type="button" class="btn btn-primary" id="apollo-import-modal-confirm">
+                    <i class="ti ti-user-plus me-1"></i> {{ __('Importar') }}
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -171,8 +193,11 @@ $(function() {
     var canImportProspects = {{ ($canImportProspects ?? true) ? 'true' : 'false' }};
     var apolloTable = null;
 
+    var pendingImportAction = null;
+
     if ($.fn.select2) {
-        $('#apollo_import_category_id').select2({
+        $('#apollo_import_category_modal_id').select2({
+            dropdownParent: $('#apolloImportCategoryModal'),
             placeholder: '{{ __("Seleccionar o crear categoría") }}',
             allowClear: true,
             tags: true,
@@ -205,6 +230,10 @@ $(function() {
             }
         });
     }
+
+    $('#apolloImportCategoryModal').on('show.bs.modal', function() {
+        $('#apollo_import_category_modal_id').val(null).trigger('change');
+    });
 
     // Seniority chips: sync with hidden multi-select
     (function initSeniorityChips() {
@@ -275,7 +304,7 @@ $(function() {
         return data;
     }
 
-    function addPersonAsContact(person) {
+    function addPersonAsContact(person, categoryId) {
         var formData = new FormData();
         formData.append('_token', csrf);
         formData.append('apollo_id', person.id || '');
@@ -287,8 +316,7 @@ $(function() {
         if (person.apollo_raw) {
             formData.append('person_data', JSON.stringify(person.apollo_raw));
         }
-        var catId = $('#apollo_import_category_id').val();
-        if (catId && String(catId).indexOf('new__') !== 0) formData.append('category_id', catId);
+        if (categoryId && String(categoryId).indexOf('new__') !== 0) formData.append('category_id', categoryId);
         fetch(urlAddPerson, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
@@ -363,6 +391,14 @@ $(function() {
                 }},
                 { data: 'title', title: 'Título', orderable: false, defaultContent: '—' },
                 { data: 'organization_name', title: 'Empresa', orderable: false, defaultContent: '—' },
+                { data: null, title: 'Email', orderable: false, className: 'text-center', render: function(row) {
+                    if (row.has_email) return '<span class="badge bg-label-success">Sí</span>';
+                    return '<span class="text-muted">—</span>';
+                }},
+                { data: null, title: 'Teléfono', orderable: false, className: 'text-center', render: function(row) {
+                    if (row.has_phone) return '<span class="badge bg-label-success">Sí</span>';
+                    return '<span class="text-muted">—</span>';
+                }},
                 { data: null, title: 'Acciones', orderable: false, className: 'text-center', render: function(row) {
                     if (!canImportProspects) {
                         return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-muted btn-show-credits-modal" title="{{ __("Importar") }}"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
@@ -421,6 +457,91 @@ $(function() {
         updateImportButtonVisibility();
     });
 
+    function getCategoryIdFromModal(callback) {
+        var catVal = $('#apollo_import_category_modal_id').val();
+        if (!catVal || String(catVal).indexOf('new__') !== 0) {
+            callback(catVal || null);
+            return;
+        }
+        var data = $('#apollo_import_category_modal_id').select2('data');
+        var name = (data && data[0]) ? data[0].text : String(catVal).replace(/^new__/, '');
+        $.ajax({
+            url: urlCategoryQuickStore,
+            method: 'POST',
+            data: { _token: csrf, name: name, module_key: 'contacts' },
+            dataType: 'json'
+        }).done(function(res) {
+            if (res.success && res.category) callback(res.category.id); else callback(null);
+        }).fail(function() {
+            toastr.error('{{ __("Error al crear la categoría.") }}');
+            callback(null);
+        });
+    }
+
+    $(document).on('click', '#apollo-import-modal-confirm', function() {
+        var action = pendingImportAction;
+        if (!action) return;
+        getCategoryIdFromModal(function(catId) {
+            bootstrap.Modal.getInstance(document.getElementById('apolloImportCategoryModal')).hide();
+            pendingImportAction = null;
+            if (action.type === 'single' && action.row) {
+                addPersonAsContact(action.row, catId);
+                return;
+            }
+            if (action.type === 'bulk' && action.selected && action.selected.length > 0) {
+                var selected = action.selected;
+                var btn = $('#btn-import-selected').prop('disabled', true);
+                function addOne(index, categoryId) {
+                    if (index >= selected.length) {
+                        btn.prop('disabled', false);
+                        toastr.success(selected.length === 1 ? 'Contacto importado.' : 'Se importaron ' + selected.length + ' contactos.');
+                        if (selected.length === 1) return;
+                        apolloTable && apolloTable.rows().every(function() {
+                            var d = this.data();
+                            if (selected.some(function(s) { return s.id === d.id; })) {
+                                $(this.node()).find('.apollo-row-checkbox').prop('checked', false);
+                            }
+                        });
+                        $('#apollo-select-all').prop('checked', false).prop('indeterminate', false);
+                        updateImportButtonVisibility();
+                        return;
+                    }
+                    var person = selected[index];
+                    var formData = new FormData();
+                    formData.append('_token', csrf);
+                    formData.append('apollo_id', person.id || '');
+                    formData.append('first_name', person.first_name || '');
+                    formData.append('last_name_obfuscated', person.last_name_obfuscated || '');
+                    formData.append('last_name', person.last_name || '');
+                    formData.append('title', person.title || '');
+                    formData.append('organization_name', person.organization_name || '');
+                    if (person.apollo_raw) formData.append('person_data', JSON.stringify(person.apollo_raw));
+                    if (categoryId && String(categoryId).indexOf('new__') !== 0) formData.append('category_id', categoryId);
+                    fetch(urlAddPerson, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                        body: formData
+                    })
+                    .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
+                    .then(function(res) {
+                        if (res.ok && res.json.redirect_url && selected.length === 1) {
+                            toastr.success(res.json.message || 'Contacto creado.');
+                            window.location.href = res.json.redirect_url;
+                            return;
+                        }
+                        if (!res.ok) toastr.error(res.json.message || 'Error al importar.');
+                        addOne(index + 1, categoryId);
+                    })
+                    .catch(function() {
+                        toastr.error('Error de conexión.');
+                        addOne(index + 1, categoryId);
+                    });
+                }
+                addOne(0, catId);
+            }
+        });
+    });
+
     $(document).on('click', '#btn-import-selected', function() {
         if (!canImportProspects) {
             new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
@@ -428,55 +549,8 @@ $(function() {
         }
         var selected = getSelectedRowData();
         if (selected.length === 0) return;
-        var btn = $(this).prop('disabled', true);
-        function addOne(index) {
-            if (index >= selected.length) {
-                btn.prop('disabled', false);
-                toastr.success(selected.length === 1 ? 'Contacto importado.' : 'Se importaron ' + selected.length + ' contactos.');
-                if (selected.length === 1) return;
-                apolloTable && apolloTable.rows().every(function() {
-                    var d = this.data();
-                    if (selected.some(function(s) { return s.id === d.id; })) {
-                        $(this.node()).find('.apollo-row-checkbox').prop('checked', false);
-                    }
-                });
-                $('#apollo-select-all').prop('checked', false).prop('indeterminate', false);
-                updateImportButtonVisibility();
-                return;
-            }
-            var person = selected[index];
-            var formData = new FormData();
-            formData.append('_token', csrf);
-            formData.append('apollo_id', person.id || '');
-            formData.append('first_name', person.first_name || '');
-            formData.append('last_name_obfuscated', person.last_name_obfuscated || '');
-            formData.append('last_name', person.last_name || '');
-            formData.append('title', person.title || '');
-            formData.append('organization_name', person.organization_name || '');
-            if (person.apollo_raw) formData.append('person_data', JSON.stringify(person.apollo_raw));
-            var catId = $('#apollo_import_category_id').val();
-            if (catId && String(catId).indexOf('new__') !== 0) formData.append('category_id', catId);
-            fetch(urlAddPerson, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: formData
-            })
-            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, json: j }; }); })
-            .then(function(res) {
-                if (res.ok && res.json.redirect_url && selected.length === 1) {
-                    toastr.success(res.json.message || 'Contacto creado.');
-                    window.location.href = res.json.redirect_url;
-                    return;
-                }
-                if (!res.ok) toastr.error(res.json.message || 'Error al importar.');
-                addOne(index + 1);
-            })
-            .catch(function() {
-                toastr.error('Error de conexión.');
-                addOne(index + 1);
-            });
-        }
-        addOne(0);
+        pendingImportAction = { type: 'bulk', selected: selected };
+        new bootstrap.Modal(document.getElementById('apolloImportCategoryModal')).show();
     });
 
     $(document).on('click', '#people-results-card .btn-show-credits-modal', function() {
@@ -491,7 +565,10 @@ $(function() {
         var tr = $(this).closest('tr');
         if (apolloTable && tr.length) {
             var row = apolloTable.row(tr).data();
-            if (row) addPersonAsContact(row);
+            if (row) {
+                pendingImportAction = { type: 'single', row: row };
+                new bootstrap.Modal(document.getElementById('apolloImportCategoryModal')).show();
+            }
         }
     });
 
