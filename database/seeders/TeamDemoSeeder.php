@@ -132,6 +132,7 @@ class TeamDemoSeeder extends Seeder
             'users',
             'contacts',
             'clients',
+            'prospecting',
             'services',
             'projects',
             'tasks',
