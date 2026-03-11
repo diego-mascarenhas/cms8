@@ -135,12 +135,15 @@
                             </select>
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">Idioma</label>
-                            <select class="form-select" wire:model.blur="config.language" multiple>
-                                <option value="Español">Español</option>
-                                <option value="Inglés">Inglés</option>
-                                <option value="Francés">Francés</option>
-                            </select>
+                            <label class="form-label d-block">Idioma</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (['Español', 'Inglés', 'Francés'] as $lang)
+                                    <label class="form-check form-check-inline mb-0">
+                                        <input type="checkbox" class="form-check-input" wire:model.live="config.language" value="{{ $lang }}">
+                                        <span class="form-check-label">{{ $lang }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                         <div class="col-12 d-flex justify-content-between">
                             <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
@@ -266,31 +269,97 @@
                             </div>
                         </div>
                     @endif
-                    <hr>
-                    <p class="fw-medium mb-2">Datos básicos del negocio</p>
-                    <ul class="list-unstyled">
-                        <li>Nombre del negocio, Rubro, Ubicación, Código postal</li>
-                        <li>Logo, Eslogan, Descripción</li>
-                        <li>Teléfono, WhatsApp, Página web, Email</li>
-                    </ul>
-                    <hr>
-                    <p class="fw-medium mb-2">Información personal</p>
-                    <ul class="list-unstyled">
-                        <li>Nombre, Apellidos</li>
-                        <li>Fecha de nacimiento, Hora de nacimiento</li>
-                        <li>País, Idioma</li>
-                    </ul>
-                    <hr>
-                    <p class="fw-medium mb-2">Dirección</p>
-                    <ul class="list-unstyled">
-                        <li>Dirección, Punto de referencia</li>
-                        <li>Código postal, Ciudad</li>
-                    </ul>
-                    <hr>
-                    <p class="fw-medium mb-2">Redes sociales</p>
-                    <ul class="list-unstyled mb-0">
-                        <li>X, Facebook, Instagram, LinkedIn, YouTube, TikTok, WhatsApp, Telegram, Pinterest, Threads</li>
-                    </ul>
+                    <div class="mb-4">
+                        <h6 class="mb-2">Datos de mercado</h6>
+                        <p class="text-muted small mb-2">Indicadores de mercado, análisis de tu web y enlaces, posicionamiento frente a competidores y recomendaciones según tu sector y ubicación.</p>
+                        @if (!$insightsLoading && empty($insights))
+                            <button type="button" class="btn btn-outline-primary" wire:click="loadInsights" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="loadInsights"><i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado</span>
+                                <span wire:loading wire:target="loadInsights">Cargando…</span>
+                            </button>
+                        @elseif ($insightsLoading)
+                            <div class="d-flex align-items-center gap-2 text-muted">
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                                <span>Analizando web, mercado y generando informe…</span>
+                            </div>
+                        @else
+                            <div class="row g-3 mb-3">
+                                @if (isset($insights['businesses_nearby']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-primary h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1">Negocios en tu zona</span>
+                                                <span class="fs-3 fw-bold text-primary">{{ number_format($insights['businesses_nearby']) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if (isset($insights['prospects']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-success h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1">Prospectos</span>
+                                                <span class="fs-3 fw-bold text-success">{{ number_format($insights['prospects']) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if (isset($insights['by_industry']) && is_array($insights['by_industry']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-info h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1">Por sector (muestra)</span>
+                                                <span class="fs-3 fw-bold text-info">{{ number_format(array_sum($insights['by_industry'])) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                            @if (!empty($insights['chart_series']))
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <span class="fw-medium">Distribución por sector</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="business-insights-chart" class="min-h-200"></div>
+                                        <script>
+                                            (function() {
+                                                var el = document.getElementById('business-insights-chart');
+                                                if (!el || !window.ApexCharts) return;
+                                                var data = @json($insights['chart_series'] ?? []);
+                                                if (!data.categories || !data.series) return;
+                                                try {
+                                                    if (window.__businessInsightsChart) window.__businessInsightsChart.destroy();
+                                                    window.__businessInsightsChart = new ApexCharts(el, {
+                                                        chart: { type: 'bar', toolbar: { show: false }, height: 280 },
+                                                        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
+                                                        dataLabels: { enabled: true },
+                                                        xaxis: { categories: data.categories },
+                                                        series: [{ name: 'Empresas', data: data.series }],
+                                                        colors: ['#696cff']
+                                                    });
+                                                    window.__businessInsightsChart.render();
+                                                } catch (e) { console.warn('Chart init', e); }
+                                            })();
+                                        </script>
+                                    </div>
+                                </div>
+                            @endif
+                            @if (!empty($insights['potential_clients_summary']))
+                                <div class="card border-secondary">
+                                    <div class="card-header bg-label-secondary">
+                                        <i class="ti ti-report-analytics ti-sm me-1"></i>
+                                        <span class="fw-medium">Informe de mercado</span>
+                                    </div>
+                                    <div class="card-body pt-3">
+                                        <div class="potential-clients-content small">
+                                            {!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
                     <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
                         <button type="button" class="btn btn-success" wire:click="submit">Enviar</button>
