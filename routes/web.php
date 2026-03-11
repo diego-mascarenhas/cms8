@@ -175,6 +175,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
+    Route::get('/team/{team}/settings/business-config', [TeamSettingController::class, 'businessConfig'])->name('team-settings.business-config');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');

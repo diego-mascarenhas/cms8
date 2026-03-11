@@ -23,6 +23,13 @@ class TeamSettingController extends Controller
         return view('team-settings.index', compact('team', 'groupedSettings'));
     }
 
+    public function businessConfig(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        return view('settings.business-config', compact('team'));
+    }
+
     public function edit(Team $team, $group = 'stripe')
     {
         $this->authorize('update', $team);
