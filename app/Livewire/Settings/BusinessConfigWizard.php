@@ -197,6 +197,7 @@ class BusinessConfigWizard extends Component
      */
     public function loadInsights(ApolloService $apolloService): void
     {
+        @set_time_limit(120);
         $this->insightsLoading = true;
         $this->insights = [];
 
@@ -205,25 +206,28 @@ class BusinessConfigWizard extends Component
         $description = trim((string) ($this->config['business_description'] ?? ''));
         $website = trim((string) ($this->config['business_website'] ?? ''));
 
+        $filtersSectorAndZone = $this->buildSectorAndLocationFilters($location, $industry);
+
         try
         {
             $businessesNearby = 0;
             $prospects = 0;
             $byIndustry = [];
 
-            if ($location !== [])
+            if ($filtersSectorAndZone !== [])
             {
-                $orgResult = $apolloService->searchOrganizations($location, 1, 1);
+                $orgResult = $apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
                 $businessesNearby = $orgResult['total_entries'] ?? 0;
 
-                $peopleResult = $apolloService->searchPeople($location, 1, 1);
+                $peopleResult = $apolloService->searchPeople($filtersSectorAndZone, 1, 1);
                 $prospects = $peopleResult['total_entries'] ?? 0;
             }
 
             if ($industry !== '')
             {
+                $industryOnlyFilters = ['q_keywords' => $industry];
                 $industryResult = $apolloService->searchOrganizations(
-                    ['q_keywords' => $industry],
+                    array_merge($location, $industryOnlyFilters),
                     1,
                     1,
                 );
@@ -267,11 +271,12 @@ class BusinessConfigWizard extends Component
             ]);
         } catch (\Throwable $e)
         {
-            Log::warning('Business insights load failed', ['error' => $e->getMessage()]);
-            $websiteContent = $this->fetchWebsiteContent($website);
-            $linksContext = $this->buildLinksContext();
-            $this->insights = [
-                'potential_clients_summary' => $this->generateMarketReport(
+            Log::warning('Business insights load failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            try
+            {
+                $websiteContent = $this->fetchWebsiteContent($website);
+                $linksContext = $this->buildLinksContext();
+                $fallbackReport = $this->generateMarketReport(
                     $description,
                     $website,
                     $websiteContent,
@@ -281,8 +286,15 @@ class BusinessConfigWizard extends Component
                     0,
                     0,
                     [],
-                ),
-            ];
+                );
+                $this->insights = ['potential_clients_summary' => $fallbackReport];
+            } catch (\Throwable $inner)
+            {
+                Log::warning('Business insights fallback failed', ['error' => $inner->getMessage()]);
+                $this->insights = [
+                    'potential_clients_summary' => 'No se pudo generar el informe. Comprueba que Rubro, Ubicación o País estén rellenados y vuelve a intentarlo.',
+                ];
+            }
         }
 
         $this->insightsLoading = false;
@@ -304,6 +316,35 @@ class BusinessConfigWizard extends Component
         }
 
         return ['organization_locations' => array_values($locations)];
+    }
+
+    /**
+     * Build filters that combine sector (rubro) and location so counts are "in this industry in this zone".
+     * E.g. "Tecnología" + "Asturias, España" → organizations/people in Technology in Asturias, Spain.
+     *
+     * @param  array<string, mixed>  $location
+     * @return array<string, mixed>
+     */
+    private function buildSectorAndLocationFilters(array $location, string $industry): array
+    {
+        $industry = trim($industry);
+        $hasLocation = $location !== [] && ! empty($location['organization_locations'] ?? []);
+        $hasSector = $industry !== '';
+
+        if ($hasLocation && $hasSector)
+        {
+            return array_merge($location, ['q_keywords' => $industry]);
+        }
+        if ($hasLocation)
+        {
+            return $location;
+        }
+        if ($hasSector)
+        {
+            return ['q_keywords' => $industry];
+        }
+
+        return [];
     }
 
     private function fetchWebsiteContent(string $url): string
