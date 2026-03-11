@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <input type="text" id="business-location-modern" class="form-control" name="business_location" placeholder="Calle, ciudad, región" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" for="business-postal-code-modern"><i class="ti ti-mail ti-sm me-1 text-body"></i> Código postal</label>
+                                <label class="form-label" for="business-postal-code-modern"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
                                 <input type="text" id="business-postal-code-modern" class="form-control" name="business_postal_code" placeholder="28001" />
                             </div>
                             <div class="col-md-6">
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <input type="tel" id="business-phone-modern" class="form-control" name="business_phone" placeholder="+34 600 000 000" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" for="business-whatsapp-modern"><i class="ti ti-brand-whatsapp ti-sm me-1 text-success"></i> WhatsApp</label>
+                                <label class="form-label" for="business-whatsapp-modern"><i class="ti ti-brand-whatsapp ti-sm me-1 text-body"></i> WhatsApp</label>
                                 <input type="tel" id="business-whatsapp-modern" class="form-control" name="business_whatsapp" placeholder="+34 600 000 000" />
                             </div>
                             <div class="col-md-6">
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <input type="text" class="form-control" id="address-modern-input" placeholder="Calle, número, piso">
                             </div>
                             <div class="col-sm-6">
-                                <label class="form-label" for="landmark-modern">Referencia / Punto de referencia</label>
+                                <label class="form-label" for="landmark-modern">Punto de referencia</label>
                                 <input type="text" class="form-control" id="landmark-modern" placeholder="Cerca de...">
                             </div>
                             <div class="col-sm-6">
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <p class="fw-medium mb-2">Dirección</p>
                         <ul class="list-unstyled">
                             <li>Dirección</li>
-                            <li>Referencia</li>
+                            <li>Punto de referencia</li>
                             <li>Código postal</li>
                             <li>Ciudad</li>
                         </ul>
