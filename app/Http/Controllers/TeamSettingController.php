@@ -5,8 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
+use App\Models\Prompt;
 use App\Models\Team;
+use App\Services\AssistantChatService;
+use App\Services\AstralChartService;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
+
+use function Laravel\Ai\agent;
 
 class TeamSettingController extends Controller
 {
@@ -28,6 +37,107 @@ class TeamSettingController extends Controller
         $this->authorize('update', $team);
 
         return view('settings.business-config', compact('team'));
+    }
+
+    /**
+     * Generate a concise business improvement summary using AI, Apollo context and human archetype (birth data).
+     * Uses the landing prompt instruction if available, plus the user's problemática and form context.
+     */
+    public function generateBusinessSummary(Request $request, Team $team): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        $problematica = trim((string) $request->input('business_problematica', ''));
+        $birthDate = $request->input('birth_date');
+        $birthTime = $request->input('birth_time');
+
+        $contextParts = [];
+
+        $contextParts[] = 'Datos del negocio:';
+        $contextParts[] = '- Nombre: '.trim((string) $request->input('business_name', ''));
+        $contextParts[] = '- Rubro/Sector: '.trim((string) $request->input('business_industry', ''));
+        $contextParts[] = '- Ubicación: '.trim((string) $request->input('business_location', ''));
+        $contextParts[] = '- Código postal: '.trim((string) $request->input('business_postal_code', ''));
+        $contextParts[] = '- Teléfono: '.trim((string) $request->input('business_phone', ''));
+        $contextParts[] = '- WhatsApp: '.trim((string) $request->input('business_whatsapp', ''));
+        $contextParts[] = '- Página web: '.trim((string) $request->input('business_website', ''));
+        $contextParts[] = '- Email: '.trim((string) $request->input('business_email', ''));
+        $contextParts[] = '- Eslogan: '.trim((string) $request->input('business_tagline', ''));
+        $contextParts[] = '- Descripción: '.trim((string) $request->input('business_description', ''));
+
+        if ($birthDate)
+        {
+            try
+            {
+                $astral = new AstralChartService;
+                $birthCarbon = Carbon::parse($birthDate);
+                $zodiac = $astral->getZodiacSign($birthCarbon);
+                $northNode = $astral->getNorthNode($birthCarbon);
+                $contextParts[] = '';
+                $contextParts[] = 'Arquetipo humano (fecha y hora de nacimiento):';
+                $contextParts[] = '- Signo zodiacal: '.($zodiac['sign'] ?? '').' '.($zodiac['symbol'] ?? '').' ('.($zodiac['element'] ?? '').')';
+                $contextParts[] = '- Nodo Norte: '.($northNode['north'] ?? '');
+                $contextParts[] = '- Nodo Sur: '.($northNode['south'] ?? '');
+                if ($birthTime)
+                {
+                    $contextParts[] = '- Hora de nacimiento: '.$birthTime;
+                }
+            } catch (\Throwable $e)
+            {
+                Log::warning('AstralChartService in business summary', ['error' => $e->getMessage()]);
+            }
+        }
+
+        $context = implode("\n", $contextParts);
+        $userMessage = $problematica !== ''
+            ? "Problemática actual del negocio:\n\n".$problematica."\n\n---\n\n".$context
+            : $context;
+
+        $prompt = Prompt::findByRoutingKey('landing');
+        $teamId = $team->id;
+
+        if ($prompt)
+        {
+            try
+            {
+                $service = new AssistantChatService;
+                $result = $service->run($userMessage, $teamId, null, null, false, 'landing');
+                $summary = $result['response'] ?? '';
+            } catch (\Throwable $e)
+            {
+                Log::error('AssistantChatService business summary failed', ['error' => $e->getMessage()]);
+
+                return response()->json([
+                    'summary' => null,
+                    'message' => 'Error al generar el resumen con la IA. Intenta de nuevo.',
+                ], 500);
+            }
+        } else
+        {
+            $defaultInstruction = 'Eres un consultor de negocio. Con el contexto que te proporcionan (datos del negocio, problemática actual y arquetipo humano por fecha de nacimiento), genera un resumen muy conciso (máximo 1 párrafo corto o 3-5 puntos) de lo que esta empresa necesita para mejorar. Sé directo y práctico.';
+            try
+            {
+                $agent = agent(
+                    instructions: $defaultInstruction,
+                    messages: [],
+                    tools: [],
+                );
+                $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+                $summary = $response->text ?: '';
+            } catch (\Throwable $e)
+            {
+                Log::error('Business summary AI fallback failed', ['error' => $e->getMessage()]);
+
+                return response()->json([
+                    'summary' => null,
+                    'message' => 'Error al generar el resumen. Comprueba la configuración de IA.',
+                ], 500);
+            }
+        }
+
+        return response()->json([
+            'summary' => $summary,
+        ]);
     }
 
     public function edit(Team $team, $group = 'stripe')
