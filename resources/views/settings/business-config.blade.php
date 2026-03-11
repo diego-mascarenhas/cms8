@@ -219,20 +219,44 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-sm-6">
-                                <label class="form-label" for="twitter-modern">Twitter</label>
-                                <input type="text" id="twitter-modern" class="form-control" placeholder="https://twitter.com/abc" />
+                                <label class="form-label" for="twitter-modern"><i class="ti ti-brand-x ti-sm me-1 text-body"></i> X (Twitter)</label>
+                                <input type="text" id="twitter-modern" class="form-control" placeholder="https://x.com/..." />
                             </div>
                             <div class="col-sm-6">
-                                <label class="form-label" for="facebook-modern">Facebook</label>
-                                <input type="text" id="facebook-modern" class="form-control" placeholder="https://facebook.com/abc" />
+                                <label class="form-label" for="facebook-modern"><i class="ti ti-brand-facebook ti-sm me-1 text-primary"></i> Facebook</label>
+                                <input type="text" id="facebook-modern" class="form-control" placeholder="https://facebook.com/..." />
                             </div>
                             <div class="col-sm-6">
-                                <label class="form-label" for="google-modern">Google+</label>
-                                <input type="text" id="google-modern" class="form-control" placeholder="https://plus.google.com/abc" />
+                                <label class="form-label" for="instagram-modern"><i class="ti ti-brand-instagram ti-sm me-1 text-danger"></i> Instagram</label>
+                                <input type="text" id="instagram-modern" class="form-control" placeholder="https://instagram.com/..." />
                             </div>
                             <div class="col-sm-6">
-                                <label class="form-label" for="linkedin-modern">LinkedIn</label>
-                                <input type="text" id="linkedin-modern" class="form-control" placeholder="https://linkedin.com/abc" />
+                                <label class="form-label" for="linkedin-modern"><i class="ti ti-brand-linkedin ti-sm me-1 text-primary"></i> LinkedIn</label>
+                                <input type="text" id="linkedin-modern" class="form-control" placeholder="https://linkedin.com/in/..." />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="youtube-modern"><i class="ti ti-brand-youtube ti-sm me-1 text-danger"></i> YouTube</label>
+                                <input type="text" id="youtube-modern" class="form-control" placeholder="https://youtube.com/..." />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="tiktok-modern"><i class="ti ti-brand-tiktok ti-sm me-1 text-body"></i> TikTok</label>
+                                <input type="text" id="tiktok-modern" class="form-control" placeholder="https://tiktok.com/@" />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="whatsapp-modern"><i class="ti ti-brand-whatsapp ti-sm me-1 text-success"></i> WhatsApp</label>
+                                <input type="text" id="whatsapp-modern" class="form-control" placeholder="https://wa.me/..." />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="telegram-modern"><i class="ti ti-brand-telegram ti-sm me-1 text-info"></i> Telegram</label>
+                                <input type="text" id="telegram-modern" class="form-control" placeholder="https://t.me/..." />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="pinterest-modern"><i class="ti ti-brand-pinterest ti-sm me-1 text-danger"></i> Pinterest</label>
+                                <input type="text" id="pinterest-modern" class="form-control" placeholder="https://pinterest.com/..." />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="threads-modern"><i class="ti ti-brand-threads ti-sm me-1 text-body"></i> Threads</label>
+                                <input type="text" id="threads-modern" class="form-control" placeholder="https://threads.net/@" />
                             </div>
                             <div class="col-12 d-flex justify-content-between">
                                 <button class="btn btn-label-secondary btn-prev"> <i class="ti ti-arrow-left me-sm-1"></i>
@@ -267,13 +291,19 @@
                         </ul>
                         <hr>
                         <p class="fw-medium mb-2">{{ __('Social Links') }}</p>
-                        <ul class="list-unstyled">
-                            <li>https://twitter.com/abc</li>
-                            <li>https://facebook.com/abc</li>
-                            <li>https://plus.google.com/abc</li>
-                            <li>https://linkedin.com/abc</li>
+                        <ul class="list-unstyled mb-0">
+                            <li><i class="ti ti-brand-x ti-sm me-1 text-body"></i> X (Twitter)</li>
+                            <li><i class="ti ti-brand-facebook ti-sm me-1 text-primary"></i> Facebook</li>
+                            <li><i class="ti ti-brand-instagram ti-sm me-1 text-danger"></i> Instagram</li>
+                            <li><i class="ti ti-brand-linkedin ti-sm me-1 text-primary"></i> LinkedIn</li>
+                            <li><i class="ti ti-brand-youtube ti-sm me-1 text-danger"></i> YouTube</li>
+                            <li><i class="ti ti-brand-tiktok ti-sm me-1 text-body"></i> TikTok</li>
+                            <li><i class="ti ti-brand-whatsapp ti-sm me-1 text-success"></i> WhatsApp</li>
+                            <li><i class="ti ti-brand-telegram ti-sm me-1 text-info"></i> Telegram</li>
+                            <li><i class="ti ti-brand-pinterest ti-sm me-1 text-danger"></i> Pinterest</li>
+                            <li><i class="ti ti-brand-threads ti-sm me-1 text-body"></i> Threads</li>
                         </ul>
-                        <div class="col-12 d-flex justify-content-between">
+                        <div class="col-12 d-flex justify-content-between mt-3">
                             <button class="btn btn-label-secondary btn-prev"> <i class="ti ti-arrow-left me-sm-1"></i>
                                 <span class="align-middle d-sm-inline-block d-none">{{ __('Previous') }}</span>
                             </button>
