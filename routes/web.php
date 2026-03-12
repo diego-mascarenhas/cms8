@@ -97,7 +97,7 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
-Route::get('/crear-negocio/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))->name('landing.business-creation');
+Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))->name('landing.business-creation');
 
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');

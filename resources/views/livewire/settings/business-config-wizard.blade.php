@@ -84,7 +84,7 @@
                             <input type="text" class="form-control" wire:model.blur="config.business_tagline" placeholder="Frase corta que defina tu negocio" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="ti ti-map-pin ti-sm me-1 text-body"></i> Ubicación / Dirección</label>
+                            <label class="form-label"><i class="ti ti-map-pin ti-sm me-1 text-body"></i> Ubicación</label>
                             <input type="text" class="form-control" wire:model.blur="config.business_location" placeholder="Calle, ciudad, región" />
                         </div>
                         <div class="col-md-6">
@@ -139,6 +139,14 @@
                             <input type="time" class="form-control" wire:model.blur="config.birth_time" placeholder="HH:MM" />
                         </div>
                         <div class="col-sm-6">
+                            <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email</label>
+                            <input type="email" class="form-control" wire:model.blur="config.business_email" placeholder="contacto@ejemplo.com" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label"><i class="ti ti-brand-whatsapp ti-sm me-1 text-body"></i> WhatsApp</label>
+                            <input type="tel" class="form-control" wire:model.blur="config.business_whatsapp" placeholder="+34 600 000 000" />
+                        </div>
+                        <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-world ti-sm me-1 text-body"></i> País</label>
                             <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
                                 <option value="">Seleccionar país</option>
@@ -187,12 +195,12 @@
                             <input type="text" class="form-control" wire:model.blur="config.landmark" placeholder="Cerca de..." />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
-                            <input type="text" class="form-control" wire:model.blur="config.pincode" placeholder="28001" />
-                        </div>
-                        <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-building ti-sm me-1 text-body"></i> Ciudad</label>
                             <input type="text" class="form-control" wire:model.blur="config.city" placeholder="Madrid" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
+                            <input type="text" class="form-control" wire:model.blur="config.pincode" placeholder="28001" />
                         </div>
                         <div class="col-12 d-flex justify-content-between">
                             <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
@@ -391,7 +399,7 @@
                     </div>
                     <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
-                        <button type="button" class="btn btn-success" wire:click="submit">Enviar</button>
+                        <button type="button" class="btn btn-success" wire:click="submit">Enviar informe completo por email</button>
                     </div>
                 </div>
             @endif
