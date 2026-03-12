@@ -40,11 +40,23 @@ document.addEventListener('livewire:init', function() {
             if ($el.data('select2')) {
                 $el.select2('destroy');
             }
+            $el.off('change.businessWizardSelect2');
             $el.select2({
                 placeholder: $el.data('placeholder') || 'Seleccionar',
                 allowClear: true,
                 width: '100%'
             });
+            var prop = this.id === 'business-wizard-country' ? 'config.country' : (this.id === 'business-wizard-language' ? 'config.language' : null);
+            if (prop) {
+                $el.on('change.businessWizardSelect2', function() {
+                    var value = $(this).val();
+                    var root = this.closest('[wire\\:id]');
+                    if (root) {
+                        var comp = window.Livewire.find(root.getAttribute('wire:id'));
+                        if (comp) comp.set(prop, value || '');
+                    }
+                });
+            }
         });
     }
     function initBusinessWizardFlatpickr() {
@@ -57,7 +69,11 @@ document.addEventListener('livewire:init', function() {
             dateFormat: 'Y-m-d',
             allowInput: false,
             onChange: function(selectedDates, dateStr) {
-                el.dispatchEvent(new Event('input', { bubbles: true }));
+                var root = el.closest('[wire\\:id]');
+                if (root) {
+                    var comp = window.Livewire.find(root.getAttribute('wire:id'));
+                    if (comp) comp.set('config.birth_date', dateStr || '');
+                }
             }
         });
     }

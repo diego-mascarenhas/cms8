@@ -496,7 +496,7 @@
                             @else
                             <div wire:loading.remove wire:target="loadInsights">
                                 <button type="button" class="btn btn-outline-primary" wire:click="loadInsights">
-                                    <i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado
+                                    <i class="ti ti-chart-bar ti-sm me-1"></i> Generar informe
                                 </button>
                             </div>
                             @endif
