@@ -14,8 +14,8 @@ $configData = Helper::appClasses();
 @section('content')
 <div class="container-xxl container-p-y">
     <div class="misc-wrapper text-center">
-        <h2 class="mb-1 mx-2">¡Gracias!</h2>
-        <p class="mb-4 mx-2">
+        <h2 class="mb-1 mx-2 text-black">¡Gracias!</h2>
+        <p class="mb-4 mx-2 text-black">
             Nos pondremos en contacto contigo.
         </p>
         <a href="{{ url('/') }}" class="btn btn-primary mb-4">

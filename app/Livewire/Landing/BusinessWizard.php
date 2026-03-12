@@ -117,6 +117,10 @@ class BusinessWizard extends Component
         {
             $this->insights = $saved['_insights'];
         }
+        if (empty($saved['_step_history']))
+        {
+            $this->persistConfigWithStepEntry();
+        }
     }
 
     public function nextStep(): void
@@ -125,6 +129,7 @@ class BusinessWizard extends Component
         if ($this->step < 6)
         {
             $this->step++;
+            $this->persistConfigWithStepEntry();
         }
     }
 
@@ -134,6 +139,7 @@ class BusinessWizard extends Component
         if ($this->step > 1)
         {
             $this->step--;
+            $this->persistConfigWithStepEntry();
         }
     }
 
@@ -143,6 +149,7 @@ class BusinessWizard extends Component
         if ($step >= 1 && $step <= 6)
         {
             $this->step = $step;
+            $this->persistConfigWithStepEntry();
         }
     }
 
@@ -172,13 +179,33 @@ class BusinessWizard extends Component
             }
         }
         $existing = $this->session->fresh()->config ?? [];
-        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase'] as $internal)
+        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase', '_step_history'] as $internal)
         {
             if (array_key_exists($internal, $existing))
             {
                 $payload[$internal] = $existing[$internal];
             }
         }
+        $this->session->update([
+            'config' => $payload,
+            'current_step' => $this->step,
+        ]);
+    }
+
+    protected function persistConfigWithStepEntry(): void
+    {
+        if (! $this->session)
+        {
+            return;
+        }
+        $existing = $this->session->fresh()->config ?? [];
+        $history = $existing['_step_history'] ?? [];
+        $history[] = [
+            'step' => $this->step,
+            'at' => now()->toIso8601String(),
+        ];
+        $payload = $existing;
+        $payload['_step_history'] = $history;
         $this->session->update([
             'config' => $payload,
             'current_step' => $this->step,
@@ -240,6 +267,7 @@ class BusinessWizard extends Component
 
         try
         {
+            $aiStartedAt = now();
             $prompt = Prompt::findByRoutingKey('landing');
             if ($prompt)
             {
@@ -252,12 +280,19 @@ class BusinessWizard extends Component
                 $response = $agent->prompt($userMessage, [], Lab::Anthropic);
                 $this->summary = $response->text ?? '';
             }
+            $aiFinishedAt = now();
 
+            $this->session->refresh();
+            $metadata = $this->session->getStepMetadata();
+            $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
+            $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
+            $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
             BusinessCreationAiLog::create([
                 'business_creation_session_id' => $this->session->id,
                 'type' => 'summary',
                 'request_payload' => $userMessage,
                 'response_payload' => $this->summary,
+                'metadata' => $metadata,
             ]);
             $current = $this->session->fresh()->config ?? [];
             $current['_summary'] = $this->summary;
@@ -397,7 +432,7 @@ class BusinessWizard extends Component
         {
             $this->session->update(['completed_at' => now()]);
         }
-        $this->redirect(route('landing.gracias'), navigate: true);
+        $this->redirect(route('landing.gracias'), navigate: false);
     }
 
     private function normalizeLocationForSearch(): array
@@ -560,17 +595,25 @@ PROMPT;
 
         try
         {
+            $aiStartedAt = now();
             $agent = agent(instructions: $instruction, messages: [], tools: []);
             $response = $agent->prompt($fullContext, [], Lab::Anthropic);
+            $aiFinishedAt = now();
             $text = $response->text ? trim($response->text) : null;
 
             if ($this->session && $text !== null)
             {
+                $this->session->refresh();
+                $metadata = $this->session->getStepMetadata();
+                $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
+                $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
+                $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
                 BusinessCreationAiLog::create([
                     'business_creation_session_id' => $this->session->id,
                     'type' => 'market_report',
                     'request_payload' => $fullContext,
                     'response_payload' => $text,
+                    'metadata' => $metadata,
                 ]);
             }
 

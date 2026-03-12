@@ -35,6 +35,8 @@ class BusinessCreationInsightsService
 
         $filtersSectorAndZone = $this->buildSectorAndLocationFilters($location, $industry);
 
+        $aiPhaseTimeline = [];
+        $aiPhaseTimeline[] = ['phase' => 'market_data', 'started_at' => now()->toIso8601String()];
         $this->setInsightsPhase($session, 'market_data');
 
         try
@@ -98,10 +100,14 @@ class BusinessCreationInsightsService
                 $chartSeries = null;
             }
 
+            $aiPhaseTimeline[array_key_last($aiPhaseTimeline)]['completed_at'] = now()->toIso8601String();
+            $aiPhaseTimeline[] = ['phase' => 'web', 'started_at' => now()->toIso8601String()];
             $this->setInsightsPhase($session, 'web');
             $websiteContent = $this->fetchWebsiteContent($website);
             $linksContext = $this->buildLinksContext($config);
 
+            $aiPhaseTimeline[array_key_last($aiPhaseTimeline)]['completed_at'] = now()->toIso8601String();
+            $aiPhaseTimeline[] = ['phase' => 'recommendations', 'started_at' => now()->toIso8601String()];
             $this->setInsightsPhase($session, 'recommendations');
             $potentialClientsSummary = $this->generateMarketReport(
                 $session,
@@ -116,6 +122,7 @@ class BusinessCreationInsightsService
                 $prospects,
                 $byIndustry,
                 $sectorTotalCount,
+                $aiPhaseTimeline,
             );
 
             $insights = array_filter([
@@ -135,7 +142,7 @@ class BusinessCreationInsightsService
             {
                 $websiteContent = $this->fetchWebsiteContent($website);
                 $linksContext = $this->buildLinksContext($config);
-                $fallbackReport = $this->generateMarketReport($session, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, []);
+                $fallbackReport = $this->generateMarketReport($session, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0);
                 $insights = ['potential_clients_summary' => $fallbackReport];
             } catch (\Throwable $inner)
             {
@@ -294,6 +301,7 @@ class BusinessCreationInsightsService
      * @param  array<string, mixed>  $config
      * @param  array<string, mixed>  $location
      * @param  array<string, int>  $byIndustry
+     * @param  array<int, array{phase: string, started_at: string, completed_at?: string}>  $aiPhaseTimeline
      */
     private function generateMarketReport(
         BusinessCreationSession $session,
@@ -308,6 +316,7 @@ class BusinessCreationInsightsService
         int $prospects,
         array $byIndustry,
         int $sectorTotalCount = 0,
+        array $aiPhaseTimeline = [],
     ): ?string {
         $locationStr = implode(', ', array_filter($location['organization_locations'] ?? []));
         $industryCount = array_sum($byIndustry);
@@ -385,17 +394,30 @@ PROMPT;
 
         try
         {
+            $aiStartedAt = now();
             $agent = agent(instructions: $instruction, messages: [], tools: []);
             $response = $agent->prompt($fullContext, [], Lab::Anthropic);
+            $aiFinishedAt = now();
             $text = $response->text ? trim($response->text) : null;
 
             if ($text !== null)
             {
+                $session->refresh();
+                $metadata = $session->getStepMetadata();
+                if ($aiPhaseTimeline !== [])
+                {
+                    $aiPhaseTimeline[array_key_last($aiPhaseTimeline)]['completed_at'] = $aiFinishedAt->toIso8601String();
+                    $metadata['ai_phase_timeline'] = $aiPhaseTimeline;
+                }
+                $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
+                $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
+                $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
                 BusinessCreationAiLog::create([
                     'business_creation_session_id' => $session->id,
                     'type' => 'market_report',
                     'request_payload' => $fullContext,
                     'response_payload' => $text,
+                    'metadata' => $metadata,
                 ]);
             }
 
