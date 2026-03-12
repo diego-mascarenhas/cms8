@@ -612,36 +612,6 @@
                                     </div>
                                 @endif
                             </div>
-                            @if (!empty($insights['chart_series']))
-                                <div class="card mb-3">
-                                    <div class="card-header">
-                                        <span class="fw-medium">Distribución por sector</span>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="business-insights-chart" class="min-h-160"></div>
-                                        <script>
-                                            (function() {
-                                                var el = document.getElementById('business-insights-chart');
-                                                if (!el || !window.ApexCharts) return;
-                                                var data = @json($insights['chart_series'] ?? []);
-                                                if (!data.categories || !data.series) return;
-                                                try {
-                                                    if (window.__businessInsightsChart) window.__businessInsightsChart.destroy();
-                                                    window.__businessInsightsChart = new ApexCharts(el, {
-                                                        chart: { type: 'bar', toolbar: { show: false }, height: 200 },
-                                                        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
-                                                        dataLabels: { enabled: true },
-                                                        xaxis: { categories: data.categories },
-                                                        series: [{ name: 'Empresas', data: data.series }],
-                                                        colors: ['#696cff']
-                                                    });
-                                                    window.__businessInsightsChart.render();
-                                                } catch (e) { console.warn('Chart init', e); }
-                                            })();
-                                        </script>
-                                    </div>
-                                </div>
-                            @endif
                             @if (!empty($insights['potential_clients_summary']))
                                 <div class="card border-primary">
                                     <div class="card-header bg-label-primary d-flex align-items-center gap-2">
