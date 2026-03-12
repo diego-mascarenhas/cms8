@@ -9,8 +9,8 @@
                     1 => ['label' => 'Datos del negocio', 'icon' => 'ti-building-store'],
                     2 => ['label' => 'Información personal', 'icon' => 'ti-user'],
                     3 => ['label' => 'Dirección', 'icon' => 'ti-map-pin'],
-                    4 => ['label' => 'Redes sociales', 'icon' => 'ti-brand-facebook'],
-                    5 => ['label' => 'Problemática actual', 'icon' => 'ti-message-question'],
+                    4 => ['label' => 'Redes sociales', 'icon' => 'ti-share'],
+                    5 => ['label' => 'Desafío', 'icon' => 'ti-puzzle'],
                     6 => ['label' => 'Revisar y enviar', 'icon' => 'ti-circle-check'],
                 ];
             @endphp
@@ -36,38 +36,6 @@
                         <small>Nombre, rubro, ubicación, logo y descripción de tu negocio.</small>
                     </div>
                     <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label d-block"><i class="ti ti-photo ti-sm me-1 text-body"></i> Logo</label>
-                            <div
-                                class="d-flex align-items-start gap-3"
-                                x-data="{ dragging: false }"
-                            >
-                                <div
-                                    class="rounded border bg-lighter p-2 d-flex align-items-center justify-content-center logo-drop-zone flex-shrink-0 position-relative"
-                                    style="width: 120px; height: 120px; min-width: 120px; min-height: 120px; cursor: pointer; transition: border-color 0.15s, background-color 0.15s;"
-                                    :class="{ 'border-primary border-2': dragging }"
-                                    @dragover.prevent="dragging = true"
-                                    @dragleave.prevent="dragging = false"
-                                    @drop.prevent="dragging = false"
-                                >
-                                    <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/jpg" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" style="cursor: pointer;" />
-                                    @if ($logo)
-                                        <img src="{{ $logo->temporaryUrl() }}" alt="Logo" class="rounded object-fit-contain position-relative" style="max-width: 100%; max-height: 100%; pointer-events: none;" />
-                                    @else
-                                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small text-center position-relative" style="pointer-events: none;">
-                                            <i class="ti ti-photo-plus ti-xl mb-1"></i>
-                                            <span>Arrastrá o clic</span>
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="flex-grow-1">
-                                    <small class="text-muted d-block">Recomendado: imagen cuadrada, PNG o JPG, máx. 2 MB</small>
-                                    @error('logo')
-                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
                         <div class="col-md-6">
                             <label class="form-label"><i class="ti ti-building-store ti-sm me-1 text-body"></i> Nombre del negocio (*)</label>
                             <input type="text" class="form-control" wire:model.blur="config.business_name" placeholder="Nombre de tu empresa o marca" />
@@ -75,6 +43,45 @@
                         <div class="col-md-6">
                             <label class="form-label"><i class="ti ti-category ti-sm me-1 text-body"></i> Rubro / Sector</label>
                             <input type="text" class="form-control" wire:model.blur="config.business_industry" placeholder="ej. Tecnología, Retail, Servicios" />
+                        </div>
+                        <div class="col-12">
+                            <div
+                                class="d-flex align-items-start gap-3"
+                                x-data="{ dragging: false }"
+                            >
+                                <div class="d-flex flex-column flex-shrink-0">
+                                    <label class="form-label"><i class="ti ti-photo ti-sm me-1 text-body"></i> Logo</label>
+                                    <div
+                                        class="rounded border bg-lighter p-2 d-flex align-items-center justify-content-center logo-drop-zone position-relative"
+                                        style="width: 120px; height: 120px; min-width: 120px; min-height: 120px; cursor: pointer; transition: border-color 0.15s, background-color 0.15s;"
+                                        :class="{ 'border-primary border-2': dragging }"
+                                        @dragover.prevent="dragging = true"
+                                        @dragleave.prevent="dragging = false"
+                                        @drop.prevent="dragging = false"
+                                    >
+                                        <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/jpg" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" style="cursor: pointer;" />
+                                        @if ($logo)
+                                            <img src="{{ $logo->temporaryUrl() }}" alt="Logo" class="rounded object-fit-contain position-relative" style="max-width: 100%; max-height: 100%; pointer-events: none;" />
+                                        @else
+                                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small text-center position-relative" style="pointer-events: none;">
+                                                <i class="ti ti-photo-plus ti-xl mb-1"></i>
+                                                <span>Arrastrá o clic</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <label class="form-label"><i class="ti ti-file-description ti-sm me-1 text-body"></i> Descripción</label>
+                                    <textarea class="form-control" wire:model.blur="config.business_description" placeholder="¿Qué hace tu negocio? ¿A quién va dirigido?" style="height: 120px; resize: vertical;"></textarea>
+                                    @error('logo')
+                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label"><i class="ti ti-quote ti-sm me-1 text-body"></i> Eslogan</label>
+                            <input type="text" class="form-control" wire:model.blur="config.business_tagline" placeholder="Frase corta que defina tu negocio" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label"><i class="ti ti-map-pin ti-sm me-1 text-body"></i> Ubicación / Dirección</label>
@@ -99,14 +106,6 @@
                         <div class="col-md-6">
                             <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email</label>
                             <input type="email" class="form-control" wire:model.blur="config.business_email" placeholder="contacto@ejemplo.com" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label"><i class="ti ti-quote ti-sm me-1 text-body"></i> Eslogan</label>
-                            <input type="text" class="form-control" wire:model.blur="config.business_tagline" placeholder="Frase corta que defina tu negocio" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label"><i class="ti ti-file-description ti-sm me-1 text-body"></i> Descripción</label>
-                            <textarea class="form-control" wire:model.blur="config.business_description" rows="4" placeholder="¿Qué hace tu negocio? ¿A quién va dirigido?"></textarea>
                         </div>
                         <div class="col-12 d-flex justify-content-between">
                             <button type="button" class="btn btn-label-secondary" disabled><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
@@ -261,11 +260,11 @@
             @if ($step === 5)
                 <div class="content active" wire:key="step-5">
                     <div class="content-header mb-3">
-                        <h6 class="mb-0">Problemática actual de tu negocio</h6>
+                        <h6 class="mb-0">Desafío de tu negocio</h6>
                         <small>Describe el reto o la situación actual. El Asistente AI generará un resumen conciso de lo que necesitas para mejorar.</small>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label"><i class="ti ti-message-question ti-sm me-1 text-body"></i> Problemática actual</label>
+                        <label class="form-label"><i class="ti ti-puzzle ti-sm me-1 text-body"></i> Desafío</label>
                         <textarea class="form-control" wire:model.blur="config.business_problematica" wire:blur="triggerSummaryIfChanged" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. El Asistente AI generará un resumen conciso al salir del campo (si el texto cambió)."></textarea>
                     </div>
                     @if ($summaryLoading || $summary)
