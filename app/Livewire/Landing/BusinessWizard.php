@@ -288,6 +288,25 @@ class BusinessWizard extends Component
         $this->insights = [];
     }
 
+    /**
+     * Borra el informe de la sesión en BD (solo landing, solo para uso en local).
+     * Permite volver a ejecutar "Generar informe".
+     */
+    public function clearReportFromSession(): void
+    {
+        if (! $this->session)
+        {
+            return;
+        }
+        $existing = $this->session->fresh()->config ?? [];
+        unset($existing['_insights'], $existing['_insights_phase']);
+        $this->session->update(['config' => $existing]);
+
+        $this->insights = [];
+        $this->insightsLoading = false;
+        $this->insightsPhase = null;
+    }
+
     public function hydrate(): void
     {
         if ($this->step === 6 && $this->insightsLoading && $this->session)

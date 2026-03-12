@@ -534,6 +534,13 @@
                             </div>
                             </div>
                         @else
+                            @if (app()->environment('local') && method_exists($this, 'clearReportFromSession'))
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="clearReportFromSession" title="Quitar el informe guardado para poder generarlo de nuevo (solo local)">
+                                        <i class="ti ti-trash ti-sm me-1"></i> Eliminar informe
+                                    </button>
+                                </div>
+                            @endif
                             <div class="row g-3 mb-3">
                                 @if (isset($insights['businesses_nearby']))
                                     <div class="col-sm-6 col-lg-3">
