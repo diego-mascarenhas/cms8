@@ -38,15 +38,33 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label d-block"><i class="ti ti-photo ti-sm me-1 text-body"></i> Logo</label>
-                            <div class="d-flex align-items-start gap-3">
-                                <div class="rounded border bg-lighter p-2" style="width: 80px; height: 80px;">
-                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
-                                        <i class="ti ti-building-store ti-xl"></i>
-                                    </div>
+                            <div
+                                class="d-flex align-items-start gap-3"
+                                x-data="{ dragging: false }"
+                            >
+                                <div
+                                    class="rounded border bg-lighter p-2 d-flex align-items-center justify-content-center logo-drop-zone flex-shrink-0 position-relative"
+                                    style="width: 120px; height: 120px; min-width: 120px; min-height: 120px; cursor: pointer; transition: border-color 0.15s, background-color 0.15s;"
+                                    :class="{ 'border-primary border-2': dragging }"
+                                    @dragover.prevent="dragging = true"
+                                    @dragleave.prevent="dragging = false"
+                                    @drop.prevent="dragging = false"
+                                >
+                                    <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/jpg" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" style="cursor: pointer;" />
+                                    @if ($logo)
+                                        <img src="{{ $logo->temporaryUrl() }}" alt="Logo" class="rounded object-fit-contain position-relative" style="max-width: 100%; max-height: 100%; pointer-events: none;" />
+                                    @else
+                                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted small text-center position-relative" style="pointer-events: none;">
+                                            <i class="ti ti-photo-plus ti-xl mb-1"></i>
+                                            <span>Arrastrá o clic</span>
+                                        </div>
+                                    @endif
                                 </div>
                                 <div class="flex-grow-1">
-                                    <input type="file" class="form-control" accept="image/*" />
-                                    <small class="text-muted">Recomendado: imagen cuadrada, PNG o JPG, máx. 2 MB</small>
+                                    <small class="text-muted d-block">Recomendado: imagen cuadrada, PNG o JPG, máx. 2 MB</small>
+                                    @error('logo')
+                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -115,7 +133,7 @@
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-calendar-event ti-sm me-1 text-body"></i> Fecha de nacimiento</label>
-                            <input type="date" class="form-control" wire:model.blur="config.birth_date" />
+                            <input type="text" id="business-wizard-birth-date" class="form-control flatpickr-birth-date" wire:model.live="config.birth_date" placeholder="YYYY-MM-DD" />
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-clock ti-sm me-1 text-body"></i> Hora de nacimiento</label>
@@ -123,23 +141,23 @@
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label">País</label>
-                            <select class="form-select" wire:model.blur="config.country">
-                                <option value=""> </option>
-                                <option>España</option>
-                                <option>México</option>
-                                <option>Argentina</option>
-                                <option>Colombia</option>
-                                <option>Chile</option>
-                                <option>Perú</option>
-                                <option>Reino Unido</option>
-                                <option>Estados Unidos</option>
-                                <option>Francia</option>
-                                <option>Italia</option>
+                            <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
+                                <option value="">Seleccionar país</option>
+                                <option value="España">España</option>
+                                <option value="México">México</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="Chile">Chile</option>
+                                <option value="Perú">Perú</option>
+                                <option value="Reino Unido">Reino Unido</option>
+                                <option value="Estados Unidos">Estados Unidos</option>
+                                <option value="Francia">Francia</option>
+                                <option value="Italia">Italia</option>
                             </select>
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label">Idioma</label>
-                            <select class="form-select" wire:model.blur="config.language">
+                            <select id="business-wizard-language" class="form-select select2-select" wire:model.live="config.language" data-placeholder="Seleccionar idioma">
                                 <option value="">Seleccionar idioma</option>
                                 <option value="Español">Español</option>
                                 <option value="Inglés">Inglés</option>

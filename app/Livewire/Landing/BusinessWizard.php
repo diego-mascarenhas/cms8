@@ -40,6 +40,21 @@ class BusinessWizard extends Component
 
     public bool $insightsLoading = false;
 
+    /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
+    public $logo = null;
+
+    protected function rules(): array
+    {
+        return [
+            'logo' => 'nullable|image|max:2048',
+        ];
+    }
+
+    public function updatedLogo(): void
+    {
+        $this->validateOnly('logo');
+    }
+
     protected static array $configKeys = [
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
         'business_phone', 'business_whatsapp', 'business_website', 'business_email',
