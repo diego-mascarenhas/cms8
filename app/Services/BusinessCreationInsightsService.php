@@ -41,12 +41,30 @@ class BusinessCreationInsightsService
             $prospects = 0;
             $byIndustry = [];
 
+            $seniorityCSuite = 0;
+            $seniorityDirector = 0;
+            $seniorityManager = 0;
+
             if ($filtersSectorAndZone !== [])
             {
                 $orgResult = $this->apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
                 $businessesNearby = $orgResult['total_entries'] ?? 0;
                 $peopleResult = $this->apolloService->searchPeople($filtersSectorAndZone, 1, 1);
                 $prospects = $peopleResult['total_entries'] ?? 0;
+
+                $basePeopleFilters = $filtersSectorAndZone;
+                try
+                {
+                    $cSuiteResult = $this->apolloService->searchPeople(array_merge($basePeopleFilters, ['person_seniorities' => ['c_suite']]), 1, 1);
+                    $seniorityCSuite = $cSuiteResult['total_entries'] ?? 0;
+                    $dirResult = $this->apolloService->searchPeople(array_merge($basePeopleFilters, ['person_seniorities' => ['director']]), 1, 1);
+                    $seniorityDirector = $dirResult['total_entries'] ?? 0;
+                    $mgrResult = $this->apolloService->searchPeople(array_merge($basePeopleFilters, ['person_seniorities' => ['manager']]), 1, 1);
+                    $seniorityManager = $mgrResult['total_entries'] ?? 0;
+                } catch (\Throwable $e)
+                {
+                    Log::debug('Apollo seniority counts skipped', ['error' => $e->getMessage()]);
+                }
             }
 
             if ($industry !== '')
@@ -69,6 +87,11 @@ class BusinessCreationInsightsService
                 $chartSeries['categories'] = array_merge(['Negocios en tu zona', 'Prospectos'], $chartSeries['categories']);
                 $chartSeries['series'] = array_merge([$businessesNearby, $prospects], $chartSeries['series']);
             }
+            $nonZeroCount = $chartSeries['series'] ? count(array_filter($chartSeries['series'], fn ($v) => (int) $v > 0)) : 0;
+            if ($nonZeroCount < 1)
+            {
+                $chartSeries = null;
+            }
 
             $websiteContent = $this->fetchWebsiteContent($website);
             $linksContext = $this->buildLinksContext($config);
@@ -89,8 +112,11 @@ class BusinessCreationInsightsService
             $insights = array_filter([
                 'businesses_nearby' => $businessesNearby > 0 ? $businessesNearby : null,
                 'prospects' => $prospects > 0 ? $prospects : null,
+                'seniority_c_suite' => $seniorityCSuite > 0 ? $seniorityCSuite : null,
+                'seniority_director' => $seniorityDirector > 0 ? $seniorityDirector : null,
+                'seniority_manager' => $seniorityManager > 0 ? $seniorityManager : null,
                 'by_industry' => $byIndustry ?: null,
-                'chart_series' => ($chartSeries['categories'] && array_sum($chartSeries['series']) > 0) ? $chartSeries : null,
+                'chart_series' => $chartSeries,
                 'potential_clients_summary' => $potentialClientsSummary,
             ]);
         } catch (\Throwable $e)

@@ -275,10 +275,25 @@ class BusinessWizard extends Component
         {
             return;
         }
+        $industry = trim((string) ($this->config['business_industry'] ?? ''));
+        $description = trim((string) ($this->config['business_description'] ?? ''));
+        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
+        if ($industry === '' || $description === '' || $tagline === '')
+        {
+            return;
+        }
         $this->persistConfig();
         LoadBusinessCreationInsightsJob::dispatch($this->session->id);
         $this->insightsLoading = true;
         $this->insights = [];
+    }
+
+    public function hydrate(): void
+    {
+        if ($this->step === 6 && $this->insightsLoading && $this->session)
+        {
+            $this->checkInsightsReady();
+        }
     }
 
     public function checkInsightsReady(): void

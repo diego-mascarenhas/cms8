@@ -250,6 +250,13 @@ class BusinessConfigWizard extends Component
      */
     public function loadInsights(ApolloService $apolloService): void
     {
+        $industry = trim((string) ($this->config['business_industry'] ?? ''));
+        $description = trim((string) ($this->config['business_description'] ?? ''));
+        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
+        if ($industry === '' || $description === '' || $tagline === '')
+        {
+            return;
+        }
         @set_time_limit(120);
         $this->insightsLoading = true;
         $this->insights = [];
@@ -267,6 +274,10 @@ class BusinessConfigWizard extends Component
             $prospects = 0;
             $byIndustry = [];
 
+            $seniorityCSuite = 0;
+            $seniorityDirector = 0;
+            $seniorityManager = 0;
+
             if ($filtersSectorAndZone !== [])
             {
                 $orgResult = $apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
@@ -274,6 +285,20 @@ class BusinessConfigWizard extends Component
 
                 $peopleResult = $apolloService->searchPeople($filtersSectorAndZone, 1, 1);
                 $prospects = $peopleResult['total_entries'] ?? 0;
+
+                try
+                {
+                    $baseFilters = $filtersSectorAndZone;
+                    $cSuiteResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['c_suite']]), 1, 1);
+                    $seniorityCSuite = $cSuiteResult['total_entries'] ?? 0;
+                    $dirResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['director']]), 1, 1);
+                    $seniorityDirector = $dirResult['total_entries'] ?? 0;
+                    $mgrResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['manager']]), 1, 1);
+                    $seniorityManager = $mgrResult['total_entries'] ?? 0;
+                } catch (\Throwable $e)
+                {
+                    Log::debug('Apollo seniority counts skipped', ['error' => $e->getMessage()]);
+                }
             }
 
             if ($industry !== '')
@@ -300,6 +325,11 @@ class BusinessConfigWizard extends Component
                 $chartSeries['categories'] = array_merge(['Negocios en tu zona', 'Prospectos'], $chartSeries['categories']);
                 $chartSeries['series'] = array_merge([$businessesNearby, $prospects], $chartSeries['series']);
             }
+            $nonZeroCount = $chartSeries['series'] ? count(array_filter($chartSeries['series'], fn ($v) => (int) $v > 0)) : 0;
+            if ($nonZeroCount < 1)
+            {
+                $chartSeries = null;
+            }
 
             $websiteContent = $this->fetchWebsiteContent($website);
             $linksContext = $this->buildLinksContext();
@@ -318,8 +348,11 @@ class BusinessConfigWizard extends Component
             $this->insights = array_filter([
                 'businesses_nearby' => $businessesNearby > 0 ? $businessesNearby : null,
                 'prospects' => $prospects > 0 ? $prospects : null,
+                'seniority_c_suite' => $seniorityCSuite > 0 ? $seniorityCSuite : null,
+                'seniority_director' => $seniorityDirector > 0 ? $seniorityDirector : null,
+                'seniority_manager' => $seniorityManager > 0 ? $seniorityManager : null,
                 'by_industry' => $byIndustry ?: null,
-                'chart_series' => ($chartSeries['categories'] && array_sum($chartSeries['series']) > 0) ? $chartSeries : null,
+                'chart_series' => $chartSeries,
                 'potential_clients_summary' => $potentialClientsSummary,
             ]);
         } catch (\Throwable $e)

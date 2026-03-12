@@ -193,7 +193,7 @@
                 <div class="content active" wire:key="step-1">
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Datos del negocio</h6>
-                        <small>Nombre, rubro, ubicación, logo y descripción de tu negocio.</small>
+                        <small>Nombre, sector, ubicación, logo y descripción de tu negocio.</small>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -201,7 +201,7 @@
                             <input type="text" class="form-control" wire:model.blur="config.business_name" placeholder="Nombre de tu empresa o marca" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="ti ti-category ti-sm me-1 text-body"></i> Rubro / Sector</label>
+                            <label class="form-label"><i class="ti ti-category ti-sm me-1 text-body"></i> Sector (*)</label>
                             <input type="text" class="form-control" wire:model.blur="config.business_industry" placeholder="ej. Tecnología, Retail, Servicios" />
                         </div>
                         <div class="col-12">
@@ -231,7 +231,7 @@
                                     </div>
                                 </div>
                                 <div class="flex-grow-1 min-w-0">
-                                    <label class="form-label"><i class="ti ti-file-description ti-sm me-1 text-body"></i> Descripción</label>
+                                    <label class="form-label"><i class="ti ti-file-description ti-sm me-1 text-body"></i> Descripción (*)</label>
                                     <textarea class="form-control" wire:model.blur="config.business_description" placeholder="¿Qué hace tu negocio? ¿A quién va dirigido?" style="height: 120px; resize: vertical;"></textarea>
                                     @error('logo')
                                         <small class="text-danger d-block mt-1">{{ $message }}</small>
@@ -240,7 +240,7 @@
                             </div>
                         </div>
                         <div class="col-12">
-                            <label class="form-label"><i class="ti ti-quote ti-sm me-1 text-body"></i> Eslogan</label>
+                            <label class="form-label"><i class="ti ti-quote ti-sm me-1 text-body"></i> Propuesta de valor (*)</label>
                             <input type="text" class="form-control" wire:model.blur="config.business_tagline" placeholder="Frase corta que defina tu negocio" />
                         </div>
                         <div class="col-md-6">
@@ -306,25 +306,28 @@
                             <label class="form-label"><i class="ti ti-world ti-sm me-1 text-body"></i> País</label>
                             <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
                                 <option value="">Seleccionar país</option>
-                                <option value="España">España</option>
-                                <option value="México">México</option>
                                 <option value="Argentina">Argentina</option>
-                                <option value="Colombia">Colombia</option>
                                 <option value="Chile">Chile</option>
-                                <option value="Perú">Perú</option>
-                                <option value="Reino Unido">Reino Unido</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="España">España</option>
                                 <option value="Estados Unidos">Estados Unidos</option>
                                 <option value="Francia">Francia</option>
                                 <option value="Italia">Italia</option>
+                                <option value="México">México</option>
+                                <option value="Perú">Perú</option>
+                                <option value="Reino Unido">Reino Unido</option>
                             </select>
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-language ti-sm me-1 text-body"></i> Idioma</label>
                             <select id="business-wizard-language" class="form-select select2-select" wire:model.live="config.language" data-placeholder="Seleccionar idioma">
                                 <option value="">Seleccionar idioma</option>
+                                <option value="Catalán">Catalán</option>
                                 <option value="Español">Español</option>
-                                <option value="Inglés">Inglés</option>
                                 <option value="Francés">Francés</option>
+                                <option value="Inglés">Inglés</option>
+                                <option value="Italiano">Italiano</option>
+                                <option value="Portugués">Portugués</option>
                             </select>
                         </div>
                         <div class="col-12 d-flex justify-content-between">
@@ -475,11 +478,29 @@
                         <h6 class="mb-2">Datos de mercado</h6>
                         <p class="text-muted small mb-2">Indicadores de mercado, análisis de tu web y enlaces, posicionamiento frente a competidores y recomendaciones según tu sector y ubicación.</p>
                         @if (!$insightsLoading && empty($insights))
+                            @php
+                                $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
+                            @endphp
+                            @if (!$canLoadInsights)
+                                <div class="alert alert-warning mb-0">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <i class="ti ti-alert-triangle ti-lg me-2 flex-shrink-0"></i>
+                                        <div class="flex-grow-1">
+                                            <span class="fw-medium">Completa sector, descripción y propuesta de valor para cargar los datos de mercado.</span>
+                                        </div>
+                                        <button type="button" class="btn btn-warning btn-sm" wire:click="goToStep(1)">
+                                            <i class="ti ti-building-store ti-sm me-1"></i> Ir a datos del negocio
+                                        </button>
+                                    </div>
+                                </div>
+                            @else
                             <div wire:loading.remove wire:target="loadInsights">
                                 <button type="button" class="btn btn-outline-primary" wire:click="loadInsights">
                                     <i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado
                                 </button>
                             </div>
+                            @endif
+                            @if ($canLoadInsights ?? true)
                             <div class="d-flex justify-content-center">
                                 <div wire:loading wire:target="loadInsights" class="ai-loader-overlay p-4 p-md-5 text-center">
                                     <div class="ai-loader-grid" aria-hidden="true"></div>
@@ -495,8 +516,9 @@
                                     <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                                 </div>
                             </div>
+                            @endif
                         @elseif ($insightsLoading)
-                            <div class="d-flex justify-content-center" @if(method_exists($this, 'checkInsightsReady')) wire:poll.5s="checkInsightsReady" @endif>
+                            <div class="d-flex justify-content-center" @if(method_exists($this, 'checkInsightsReady')) wire:poll.3s="checkInsightsReady" @endif>
                             <div class="ai-loader-overlay p-4 p-md-5 text-center">
                                 <div class="ai-loader-grid" aria-hidden="true"></div>
                                 <div class="ai-loader-scan-line" aria-hidden="true"></div>
@@ -517,7 +539,7 @@
                                     <div class="col-sm-6 col-lg-3">
                                         <div class="card border-primary h-100">
                                             <div class="card-body d-flex flex-column justify-content-center">
-                                                <span class="d-block text-muted small mb-1">Negocios en tu zona</span>
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-building-store ti-sm me-1"></i> Negocios en tu zona</span>
                                                 <span class="fs-3 fw-bold text-primary">{{ number_format($insights['businesses_nearby']) }}</span>
                                             </div>
                                         </div>
@@ -527,18 +549,49 @@
                                     <div class="col-sm-6 col-lg-3">
                                         <div class="card border-success h-100">
                                             <div class="card-body d-flex flex-column justify-content-center">
-                                                <span class="d-block text-muted small mb-1">Prospectos</span>
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-users ti-sm me-1"></i> Prospectos</span>
                                                 <span class="fs-3 fw-bold text-success">{{ number_format($insights['prospects']) }}</span>
                                             </div>
                                         </div>
                                     </div>
                                 @endif
-                                @if (isset($insights['by_industry']) && is_array($insights['by_industry']))
+                                @if (isset($insights['seniority_c_suite']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-secondary h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-crown ti-sm me-1"></i> C-Suite</span>
+                                                <span class="fs-3 fw-bold text-secondary">{{ number_format($insights['seniority_c_suite']) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if (isset($insights['seniority_director']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-secondary h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-briefcase ti-sm me-1"></i> Directores</span>
+                                                <span class="fs-3 fw-bold text-secondary">{{ number_format($insights['seniority_director']) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if (isset($insights['seniority_manager']))
+                                    <div class="col-sm-6 col-lg-3">
+                                        <div class="card border-secondary h-100">
+                                            <div class="card-body d-flex flex-column justify-content-center">
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-user-check ti-sm me-1"></i> Managers</span>
+                                                <span class="fs-3 fw-bold text-secondary">{{ number_format($insights['seniority_manager']) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @php $byIndustrySum = isset($insights['by_industry']) && is_array($insights['by_industry']) ? array_sum($insights['by_industry']) : 0; @endphp
+                                @if ($byIndustrySum > 0)
                                     <div class="col-sm-6 col-lg-3">
                                         <div class="card border-info h-100">
                                             <div class="card-body d-flex flex-column justify-content-center">
-                                                <span class="d-block text-muted small mb-1">Por sector (muestra)</span>
-                                                <span class="fs-3 fw-bold text-info">{{ number_format(array_sum($insights['by_industry'])) }}</span>
+                                                <span class="d-block text-muted small mb-1"><i class="ti ti-chart-bar ti-sm me-1"></i> Por sector</span>
+                                                <span class="fs-3 fw-bold text-info">{{ number_format($byIndustrySum) }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -550,7 +603,7 @@
                                         <span class="fw-medium">Distribución por sector</span>
                                     </div>
                                     <div class="card-body">
-                                        <div id="business-insights-chart" class="min-h-200"></div>
+                                        <div id="business-insights-chart" class="min-h-160"></div>
                                         <script>
                                             (function() {
                                                 var el = document.getElementById('business-insights-chart');
@@ -560,7 +613,7 @@
                                                 try {
                                                     if (window.__businessInsightsChart) window.__businessInsightsChart.destroy();
                                                     window.__businessInsightsChart = new ApexCharts(el, {
-                                                        chart: { type: 'bar', toolbar: { show: false }, height: 280 },
+                                                        chart: { type: 'bar', toolbar: { show: false }, height: 200 },
                                                         plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
                                                         dataLabels: { enabled: true },
                                                         xaxis: { categories: data.categories },
@@ -575,8 +628,8 @@
                                 </div>
                             @endif
                             @if (!empty($insights['potential_clients_summary']))
-                                <div class="card border-secondary">
-                                    <div class="card-header bg-label-secondary d-flex align-items-center gap-2">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-label-primary d-flex align-items-center gap-2">
                                         <i class="ti ti-report-analytics ti-md"></i>
                                         <span class="fw-medium">Informe de mercado</span>
                                     </div>
@@ -599,24 +652,14 @@
                     @if (!$hasEmail)
                         <div class="col-12 mb-3">
                             <div class="alert alert-warning mb-0">
-                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                <div class="d-flex align-items-center flex-wrap gap-2">
                                     <i class="ti ti-mail ti-lg me-2"></i>
                                     <div class="flex-grow-1">
-                                        <span class="fw-medium">Completá tu email para recibir el informe.</span>
-                                        <span class="d-block small text-muted">En primera instancia indicá el correo al que querés recibir el informe (o completalo en Información personal).</span>
+                                        <span class="fw-medium">Completa tu email para recibir el informe.</span>
                                     </div>
                                     <button type="button" class="btn btn-warning btn-sm" wire:click="goToStep(2)">
                                         <i class="ti ti-user ti-sm me-1"></i> Ir a Información personal
                                     </button>
-                                </div>
-                                <div class="mt-2">
-                                    <label class="form-label small mb-1">Email para recibir el informe</label>
-                                    <div class="d-flex gap-2 flex-wrap align-items-start">
-                                        <input type="email" class="form-control flex-grow-1" style="min-width: 200px;" wire:model.live="config.contact_email" placeholder="tu@email.com" />
-                                    </div>
-                                    @error('config.contact_email')
-                                        <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -647,9 +690,9 @@
                             @if ($canSubmit)
                                 Enviar informe completo por email
                             @elseif (!$hasReport)
-                                Primero generá el informe de mercado
+                                Primero genera el informe de mercado
                             @else
-                                Completá tu email para enviar
+                                Completa tu email para enviar
                             @endif
                         </button>
                     </div>
