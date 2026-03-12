@@ -10,10 +10,24 @@
         .header { border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 24px; }
         .header h1 { margin: 0; font-size: 1.5rem; color: #1e40af; }
         .section { margin-bottom: 24px; }
-        .section h2 { font-size: 1.1rem; color: #1e40af; margin: 0 0 10px 0; }
+        .section h2 { font-size: 1.1rem; color: #1e40af; margin: 0 0 12px 0; }
         .section p { margin: 0 0 8px 0; }
-        .summary-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 12px 0; }
-        .insight-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; margin: 12px 0; font-size: 0.95rem; }
+        .summary-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 12px 0; }
+        .insight-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px 20px; margin: 12px 0; font-size: 0.95rem; }
+        .report-content { font-size: 0.9375rem; line-height: 1.6; }
+        .report-content h1, .report-content h2, .report-content h3 { font-weight: 600; color: #1e293b; margin: 0 0 8px 0; }
+        .report-content h1 { font-size: 1.25rem; margin-top: 16px; }
+        .report-content h1:first-child { margin-top: 0; }
+        .report-content h2 { font-size: 1.1rem; margin-top: 16px; }
+        .report-content h3 { font-size: 1rem; margin-top: 12px; }
+        .report-content p { margin: 0 0 10px 0; }
+        .report-content p:last-child { margin-bottom: 0; }
+        .report-content ul, .report-content ol { margin: 0 0 10px 0; padding-left: 20px; }
+        .report-content li { margin-bottom: 4px; }
+        .report-content strong { font-weight: 600; }
+        .report-content em { font-style: italic; }
+        .report-content a { color: #2563eb; text-decoration: underline; }
+        .report-content hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
         .footer { font-size: 12px; color: #64748b; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
         .label { font-weight: 600; color: #475569; }
     </style>
@@ -53,7 +67,7 @@
         <div class="section">
             <h2>{{ __('Resumen para mejorar tu empresa') }}</h2>
             <div class="summary-box">
-                {!! nl2br(e($summary)) !!}
+                <div class="report-content">{!! \Illuminate\Support\Str::markdown($summary) !!}</div>
             </div>
         </div>
         @endif
@@ -62,7 +76,7 @@
         <div class="section">
             <h2>{{ __('Informe de mercado') }}</h2>
             <div class="insight-box">
-                {!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}
+                <div class="report-content">{!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}</div>
             </div>
         </div>
         @endif

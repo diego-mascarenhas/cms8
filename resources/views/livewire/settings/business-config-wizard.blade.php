@@ -120,6 +120,47 @@
             0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
             40% { transform: scale(1); opacity: 1; }
         }
+
+        /* Informe de mercado — markdown content styling (reference: Resumen para mejorar tu empresa) */
+        .potential-clients-content {
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            color: var(--bs-body-color);
+        }
+        .potential-clients-content h1,
+        .potential-clients-content h2,
+        .potential-clients-content h3 {
+            font-weight: 600;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--bs-heading-color, inherit);
+        }
+        .potential-clients-content h1 { font-size: 1.25rem; margin-top: 0; }
+        .potential-clients-content > *:first-child { margin-top: 1rem; }
+        .potential-clients-content h2 { font-size: 1.1rem; }
+        .potential-clients-content h3 { font-size: 1rem; }
+        .potential-clients-content p {
+            margin-bottom: 0.75rem;
+        }
+        .potential-clients-content p:last-child { margin-bottom: 0; }
+        .potential-clients-content ul,
+        .potential-clients-content ol {
+            margin-bottom: 0.75rem;
+            padding-left: 1.25rem;
+        }
+        .potential-clients-content li {
+            margin-bottom: 0.35rem;
+        }
+        .potential-clients-content strong { font-weight: 600; }
+        .potential-clients-content em { font-style: italic; }
+        .potential-clients-content a {
+            color: var(--bs-primary);
+            text-decoration: underline;
+        }
+        .potential-clients-content a:hover {
+            color: var(--bs-primary);
+            text-decoration: none;
+        }
     </style>
     <div class="bs-stepper wizard-icons wizard-modern wizard-modern-icons-example mt-2">
         <div class="bs-stepper-header">
@@ -403,10 +444,21 @@
                                         Generando resumen con el Asistente AI de Humano…
                                     </div>
                                 @elseif ($summary)
-                                    <div class="small">{!! nl2br(e($summary)) !!}</div>
+                                    <div class="potential-clients-content">{!! \Illuminate\Support\Str::markdown($summary) !!}</div>
                                 @endif
                             </div>
                         </div>
+                        @if ($summary)
+                            <div class="card border-secondary mb-4">
+                                <div class="card-body">
+                                    <p class="mb-2">¿Te gustaría profundizar en alguno de estos puntos?</p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
+                                        <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     @endif
                     <div class="col-12 d-flex justify-content-between">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
@@ -430,20 +482,23 @@
                                     <i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado
                                 </button>
                             </div>
-                            <div wire:loading wire:target="loadInsights" class="ai-loader-overlay p-4 p-md-5 text-center">
-                                <div class="ai-loader-grid" aria-hidden="true"></div>
-                                <div class="ai-loader-scan-line" aria-hidden="true"></div>
-                                <div class="ai-loader-core">
-                                    <span class="ai-loader-ring" aria-hidden="true"></span>
-                                    <span class="ai-loader-ring" aria-hidden="true"></span>
-                                    <span class="ai-loader-ring" aria-hidden="true"></span>
-                                    <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                            <div class="d-flex justify-content-center">
+                                <div wire:loading wire:target="loadInsights" class="ai-loader-overlay p-4 p-md-5 text-center">
+                                    <div class="ai-loader-grid" aria-hidden="true"></div>
+                                    <div class="ai-loader-scan-line" aria-hidden="true"></div>
+                                    <div class="ai-loader-core">
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                                    </div>
+                                    <h6 class="mb-1 fw-semibold text-body">Analizando con IA</h6>
+                                    <p class="mb-0 small text-muted">Web, competencia y sector · Generando informe de mercado</p>
+                                    <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                                 </div>
-                                <h6 class="mb-1 fw-semibold text-body">Analizando con IA</h6>
-                                <p class="mb-0 small text-muted">Web, competencia y sector · Generando informe de mercado</p>
-                                <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                             </div>
                         @elseif ($insightsLoading)
+                            <div class="d-flex justify-content-center">
                             <div class="ai-loader-overlay p-4 p-md-5 text-center">
                                 <div class="ai-loader-grid" aria-hidden="true"></div>
                                 <div class="ai-loader-scan-line" aria-hidden="true"></div>
@@ -456,6 +511,7 @@
                                 <h6 class="mb-1 fw-semibold text-body">Analizando con IA</h6>
                                 <p class="mb-0 small text-muted">Web, competencia y sector · Generando informe de mercado</p>
                                 <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                            </div>
                             </div>
                         @else
                             <div class="row g-3 mb-3">
@@ -522,12 +578,12 @@
                             @endif
                             @if (!empty($insights['potential_clients_summary']))
                                 <div class="card border-secondary">
-                                    <div class="card-header bg-label-secondary">
-                                        <i class="ti ti-report-analytics ti-sm me-1"></i>
+                                    <div class="card-header bg-label-secondary d-flex align-items-center gap-2">
+                                        <i class="ti ti-report-analytics ti-md"></i>
                                         <span class="fw-medium">Informe de mercado</span>
                                     </div>
                                     <div class="card-body pt-3">
-                                        <div class="potential-clients-content small">
+                                        <div class="potential-clients-content">
                                             {!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}
                                         </div>
                                     </div>

@@ -69,6 +69,7 @@ class BusinessConfigWizard extends Component
         'address', 'landmark', 'pincode', 'city',
         'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
         'whatsapp_url', 'telegram', 'pinterest', 'threads',
+        'wants_profundizar',
     ];
 
     public function mount(Team $team): void
@@ -133,6 +134,16 @@ class BusinessConfigWizard extends Component
             'type' => 'json',
             'group' => 'business-config',
         ]);
+    }
+
+    public function setWantsProfundizar(string $value): void
+    {
+        if ($value !== 'si' && $value !== 'no')
+        {
+            return;
+        }
+        $this->config['wants_profundizar'] = $value;
+        $this->persistConfig();
     }
 
     public function submit(): void
