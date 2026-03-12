@@ -511,8 +511,8 @@
                                         <span class="ai-loader-ring" aria-hidden="true"></span>
                                         <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
                                     </div>
-                                    <h6 class="mb-1 fw-semibold text-body">Generando en segundo plano</h6>
-                                    <p class="mb-0 small text-muted">Web, competencia y sector · El informe se actualizará al terminar</p>
+                                    <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
+                                    <p class="mb-0 small text-muted">Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar</p>
                                     <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                                 </div>
                             </div>
@@ -528,8 +528,8 @@
                                     <span class="ai-loader-ring" aria-hidden="true"></span>
                                     <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
                                 </div>
-                                <h6 class="mb-1 fw-semibold text-body">Generando en segundo plano</h6>
-                                <p class="mb-0 small text-muted">Web, competencia y sector · El informe se actualizará al terminar</p>
+                                <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
+                                <p class="mb-0 small text-muted">Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar</p>
                                 <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                             </div>
                             </div>
