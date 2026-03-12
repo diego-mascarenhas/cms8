@@ -139,7 +139,7 @@
                             <input type="time" class="form-control" wire:model.blur="config.birth_time" placeholder="HH:MM" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">País</label>
+                            <label class="form-label"><i class="ti ti-world ti-sm me-1 text-body"></i> País</label>
                             <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
                                 <option value="">Seleccionar país</option>
                                 <option value="España">España</option>
@@ -155,7 +155,7 @@
                             </select>
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">Idioma</label>
+                            <label class="form-label"><i class="ti ti-language ti-sm me-1 text-body"></i> Idioma</label>
                             <select id="business-wizard-language" class="form-select select2-select" wire:model.live="config.language" data-placeholder="Seleccionar idioma">
                                 <option value="">Seleccionar idioma</option>
                                 <option value="Español">Español</option>
@@ -179,19 +179,19 @@
                     </div>
                     <div class="row g-3">
                         <div class="col-sm-6">
-                            <label class="form-label">Dirección</label>
+                            <label class="form-label"><i class="ti ti-map-pin ti-sm me-1 text-body"></i> Dirección</label>
                             <input type="text" class="form-control" wire:model.blur="config.address" placeholder="Calle, número, piso" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">Punto de referencia</label>
+                            <label class="form-label"><i class="ti ti-flag ti-sm me-1 text-body"></i> Punto de referencia</label>
                             <input type="text" class="form-control" wire:model.blur="config.landmark" placeholder="Cerca de..." />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">Código postal</label>
+                            <label class="form-label"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
                             <input type="text" class="form-control" wire:model.blur="config.pincode" placeholder="28001" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label">Ciudad</label>
+                            <label class="form-label"><i class="ti ti-building ti-sm me-1 text-body"></i> Ciudad</label>
                             <input type="text" class="form-control" wire:model.blur="config.city" placeholder="Madrid" />
                         </div>
                         <div class="col-12 d-flex justify-content-between">
