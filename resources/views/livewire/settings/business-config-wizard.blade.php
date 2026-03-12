@@ -1,6 +1,125 @@
 <div>
     <style>
         .wizard-modern .bs-stepper-icon .wizard-step-icon { font-size: 1.75rem; }
+
+        /* AI futuristic loader — full takeover when loading */
+        .ai-loader-overlay {
+            animation: ai-loader-fade-in 0.4s ease-out;
+            position: relative;
+            overflow: hidden;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, var(--bs-body-bg, #fff) 0%, var(--bs-secondary-bg, #f8f9fa) 100%);
+            border: 1px solid var(--bs-border-color, #e9ecef);
+            box-shadow: 0 0 0 1px rgba(105, 108, 255, 0.08), 0 8px 24px rgba(105, 108, 255, 0.12);
+        }
+        .ai-loader-overlay::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(110deg, transparent 0%, rgba(105, 108, 255, 0.4) 25%, rgba(105, 108, 255, 0.8) 50%, rgba(105, 108, 255, 0.4) 75%, transparent 100%);
+            background-size: 200% 200%;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: ai-loader-border-flow 2.5s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes ai-loader-border-flow {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @keyframes ai-loader-fade-in {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .ai-loader-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(105, 108, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(105, 108, 255, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+        }
+        .ai-loader-core {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.25rem;
+        }
+        .ai-loader-core .ai-loader-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: rgba(105, 108, 255, 0.9);
+            border-right-color: rgba(105, 108, 255, 0.4);
+            animation: ai-loader-spin 1s linear infinite;
+        }
+        .ai-loader-core .ai-loader-ring:nth-child(2) {
+            inset: 8px;
+            border-top-color: rgba(105, 108, 255, 0.5);
+            border-right-color: rgba(105, 108, 255, 0.2);
+            animation-duration: 1.4s;
+            animation-direction: reverse;
+        }
+        .ai-loader-core .ai-loader-ring:nth-child(3) {
+            inset: 16px;
+            border-top-color: rgba(105, 108, 255, 0.3);
+            animation-duration: 1.8s;
+        }
+        .ai-loader-core .ai-loader-icon {
+            position: relative;
+            font-size: 1.75rem;
+            color: rgba(105, 108, 255, 0.95);
+            filter: drop-shadow(0 0 12px rgba(105, 108, 255, 0.4));
+            animation: ai-loader-pulse 2s ease-in-out infinite;
+        }
+        @keyframes ai-loader-spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes ai-loader-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.05); }
+        }
+        .ai-loader-scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(105, 108, 255, 0.6), transparent);
+            animation: ai-loader-scan 2s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes ai-loader-scan {
+            0%, 100% { top: 20%; opacity: 0.5; }
+            50% { top: 80%; opacity: 1; }
+        }
+        .ai-loader-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 0.5rem;
+        }
+        .ai-loader-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(105, 108, 255, 0.8);
+            animation: ai-loader-dot 1.2s ease-in-out infinite both;
+        }
+        .ai-loader-dots span:nth-child(1) { animation-delay: 0s; }
+        .ai-loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .ai-loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes ai-loader-dot {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
     </style>
     <div class="bs-stepper wizard-icons wizard-modern wizard-modern-icons-example mt-2">
         <div class="bs-stepper-header">
@@ -84,14 +203,6 @@
                             <input type="text" class="form-control" wire:model.blur="config.business_tagline" placeholder="Frase corta que defina tu negocio" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="ti ti-map-pin ti-sm me-1 text-body"></i> Ubicación</label>
-                            <input type="text" class="form-control" wire:model.blur="config.business_location" placeholder="Calle, ciudad, región" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
-                            <input type="text" class="form-control" wire:model.blur="config.business_postal_code" placeholder="28001" />
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label"><i class="ti ti-phone ti-sm me-1 text-body"></i> Teléfono</label>
                             <input type="tel" class="form-control" wire:model.blur="config.business_phone" placeholder="+34 600 000 000" />
                         </div>
@@ -104,11 +215,15 @@
                             <input type="url" class="form-control" wire:model.blur="config.business_website" placeholder="https://www.ejemplo.com" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email</label>
-                            <input type="email" class="form-control" wire:model.blur="config.business_email" placeholder="contacto@ejemplo.com" />
+                            <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email del negocio</label>
+                            <input type="email" class="form-control" wire:model.blur="config.business_email" placeholder="contacto@empresa.com" />
                         </div>
                         <div class="col-12 d-flex justify-content-between">
-                            <button type="button" class="btn btn-label-secondary" disabled><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
+                            @if ($isLandingWizard)
+                                <a href="{{ url('/') }}" class="btn btn-label-secondary"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Volver al home</span></a>
+                            @else
+                                <button type="button" class="btn btn-label-secondary" disabled><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
+                            @endif
                             <button type="button" class="btn btn-primary" wire:click="nextStep"><span class="align-middle d-sm-inline-block d-none me-sm-1">Siguiente</span><i class="ti ti-arrow-right"></i></button>
                         </div>
                     </div>
@@ -119,7 +234,7 @@
                 <div class="content active" wire:key="step-2">
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Información personal</h6>
-                        <small>Introduce tu información personal. Fecha y hora de nacimiento se usan para obtener tu arquetipo humano.</small>
+                        <small>Introduce tu información personal. Cuanto más te conozcamos, más te podremos ayudar con la gestión de tus clientes.</small>
                     </div>
                     <div class="row g-3">
                         <div class="col-sm-6">
@@ -139,8 +254,8 @@
                             <input type="time" class="form-control" wire:model.blur="config.birth_time" placeholder="HH:MM" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email</label>
-                            <input type="email" class="form-control" wire:model.blur="config.business_email" placeholder="contacto@ejemplo.com" />
+                            <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email de contacto</label>
+                            <input type="email" class="form-control" wire:model.blur="config.contact_email" placeholder="tu@email.com" />
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-brand-whatsapp ti-sm me-1 text-body"></i> WhatsApp</label>
@@ -183,7 +298,7 @@
                 <div class="content active" wire:key="step-3">
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Dirección</h6>
-                        <small>Introduce tu dirección.</small>
+                        <small>Introduce tu dirección (no aplica para negocios digitales).</small>
                     </div>
                     <div class="row g-3">
                         <div class="col-sm-6">
@@ -195,8 +310,8 @@
                             <input type="text" class="form-control" wire:model.blur="config.landmark" placeholder="Cerca de..." />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label"><i class="ti ti-building ti-sm me-1 text-body"></i> Ciudad</label>
-                            <input type="text" class="form-control" wire:model.blur="config.city" placeholder="Madrid" />
+<label class="form-label"><i class="ti ti-building ti-sm me-1 text-body"></i> Ciudad, país</label>
+                                            <input type="text" class="form-control" wire:model.blur="config.city" placeholder="Madrid, España" />
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-mailbox ti-sm me-1 text-body"></i> Código postal</label>
@@ -310,14 +425,37 @@
                         <h6 class="mb-2">Datos de mercado</h6>
                         <p class="text-muted small mb-2">Indicadores de mercado, análisis de tu web y enlaces, posicionamiento frente a competidores y recomendaciones según tu sector y ubicación.</p>
                         @if (!$insightsLoading && empty($insights))
-                            <button type="button" class="btn btn-outline-primary" wire:click="loadInsights" wire:loading.attr="disabled">
-                                <span wire:loading.remove wire:target="loadInsights"><i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado</span>
-                                <span wire:loading wire:target="loadInsights">Cargando…</span>
-                            </button>
+                            <div wire:loading.remove wire:target="loadInsights">
+                                <button type="button" class="btn btn-outline-primary" wire:click="loadInsights">
+                                    <i class="ti ti-chart-bar ti-sm me-1"></i> Cargar datos de mercado
+                                </button>
+                            </div>
+                            <div wire:loading wire:target="loadInsights" class="ai-loader-overlay p-4 p-md-5 text-center">
+                                <div class="ai-loader-grid" aria-hidden="true"></div>
+                                <div class="ai-loader-scan-line" aria-hidden="true"></div>
+                                <div class="ai-loader-core">
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                                </div>
+                                <h6 class="mb-1 fw-semibold text-body">Analizando con IA</h6>
+                                <p class="mb-0 small text-muted">Web, competencia y sector · Generando informe de mercado</p>
+                                <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                            </div>
                         @elseif ($insightsLoading)
-                            <div class="d-flex align-items-center gap-2 text-muted">
-                                <div class="spinner-border spinner-border-sm" role="status"></div>
-                                <span>Analizando web, mercado y generando informe…</span>
+                            <div class="ai-loader-overlay p-4 p-md-5 text-center">
+                                <div class="ai-loader-grid" aria-hidden="true"></div>
+                                <div class="ai-loader-scan-line" aria-hidden="true"></div>
+                                <div class="ai-loader-core">
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                                </div>
+                                <h6 class="mb-1 fw-semibold text-body">Analizando con IA</h6>
+                                <p class="mb-0 small text-muted">Web, competencia y sector · Generando informe de mercado</p>
+                                <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                             </div>
                         @else
                             <div class="row g-3 mb-3">
@@ -397,9 +535,69 @@
                             @endif
                         @endif
                     </div>
+                    @php
+                        $hasReport = !empty($insights['potential_clients_summary']);
+                        $hasContactEmail = filled($config['contact_email'] ?? null);
+                        $hasBusinessEmail = filled($config['business_email'] ?? null);
+                        $hasEmail = $hasContactEmail || $hasBusinessEmail;
+                        $canSubmit = $hasReport && $hasEmail && !$insightsLoading;
+                    @endphp
+                    @if (!$hasEmail)
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-warning mb-0">
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                    <i class="ti ti-mail ti-lg me-2"></i>
+                                    <div class="flex-grow-1">
+                                        <span class="fw-medium">Completá tu email para recibir el informe.</span>
+                                        <span class="d-block small text-muted">En primera instancia indicá el correo al que querés recibir el informe (o completalo en Información personal).</span>
+                                    </div>
+                                    <button type="button" class="btn btn-warning btn-sm" wire:click="goToStep(2)">
+                                        <i class="ti ti-user ti-sm me-1"></i> Ir a Información personal
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="form-label small mb-1">Email para recibir el informe</label>
+                                    <div class="d-flex gap-2 flex-wrap align-items-start">
+                                        <input type="email" class="form-control flex-grow-1" style="min-width: 200px;" wire:model.live="config.contact_email" placeholder="tu@email.com" />
+                                    </div>
+                                    @error('config.contact_email')
+                                        <div class="text-danger small mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                    @if ($showEmailRequired && method_exists($this, 'provideEmail'))
+                        <div class="col-12 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <label class="form-label">Email</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <input type="email" class="form-control flex-grow-1" style="min-width: 200px;" wire:model="config.contact_email" placeholder="tu@email.com" />
+                                        <button type="button" class="btn btn-primary" wire:click="provideEmail" wire:loading.attr="disabled">
+                                            <span wire:loading.remove wire:target="provideEmail">Enviar informe</span>
+                                            <span wire:loading wire:target="provideEmail">Enviando…</span>
+                                        </button>
+                                    </div>
+                                    @error('config.contact_email')
+                                        <div class="text-danger small mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
-                        <button type="button" class="btn btn-success" wire:click="submit">Enviar informe completo por email</button>
+                        <button type="button" class="btn btn-success" wire:click="submit" @disabled(!$canSubmit)>
+                            <i class="ti ti-send ti-sm me-1"></i>
+                            @if ($canSubmit)
+                                Enviar informe completo por email
+                            @elseif (!$hasReport)
+                                Primero generá el informe de mercado
+                            @else
+                                Completá tu email para enviar
+                            @endif
+                        </button>
                     </div>
                 </div>
             @endif

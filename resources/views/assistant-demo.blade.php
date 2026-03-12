@@ -40,8 +40,8 @@ $configData = Helper::appClasses();
     <div class="col-12 col-lg-7 p-4 auth-cover-bg auth-cover-bg-color assistant-demo-left">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
         <h4 class="mb-0">{{ __('Asistente') }}</h4>
-        <a href="{{ route('login') }}" class="btn btn-sm btn-label-secondary">
-          <i class="ti ti-arrow-left me-1"></i>{{ __('Volver al inicio de sesión') }}
+        <a href="{{ url('/') }}" class="btn btn-sm btn-label-secondary waves-effect">
+          <i class="ti ti-arrow-left me-1"></i>{{ __('Volver al home') }}
         </a>
       </div>
       <div class="assistant-chat-wrapper">

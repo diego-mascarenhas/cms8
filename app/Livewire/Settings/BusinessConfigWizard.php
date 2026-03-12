@@ -44,6 +44,10 @@ class BusinessConfigWizard extends Component
     /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
     public $logo = null;
 
+    public bool $showEmailRequired = false;
+
+    public bool $isLandingWizard = false;
+
     protected function rules(): array
     {
         return [
@@ -59,6 +63,7 @@ class BusinessConfigWizard extends Component
     protected static array $configKeys = [
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
         'business_phone', 'business_whatsapp', 'business_website', 'business_email',
+        'contact_email',
         'business_tagline', 'business_description', 'business_problematica',
         'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
         'address', 'landmark', 'pincode', 'city',

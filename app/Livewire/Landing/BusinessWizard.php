@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Landing;
 
+use App\Mail\BusinessCreationReportMail;
 use App\Models\BusinessCreationAiLog;
 use App\Models\BusinessCreationSession;
 use App\Models\Prompt;
@@ -11,6 +12,7 @@ use App\Services\AstralChartService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
@@ -55,9 +57,14 @@ class BusinessWizard extends Component
         $this->validateOnly('logo');
     }
 
+    public bool $showEmailRequired = false;
+
+    public bool $isLandingWizard = true;
+
     protected static array $configKeys = [
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
         'business_phone', 'business_whatsapp', 'business_website', 'business_email',
+        'contact_email',
         'business_tagline', 'business_description', 'business_problematica',
         'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
         'address', 'landmark', 'pincode', 'city',
@@ -357,6 +364,60 @@ class BusinessWizard extends Component
     public function submit(): void
     {
         $this->persistConfig();
+        $email = $this->getReportRecipientEmail();
+        if ($email === null)
+        {
+            $this->showEmailRequired = true;
+
+            return;
+        }
+        $this->sendReportAndFinish($email);
+    }
+
+    public function provideEmail(): void
+    {
+        $this->validate([
+            'config.contact_email' => 'required|email',
+        ], [
+            'config.contact_email.required' => __('Indicá tu email para recibir el informe.'),
+            'config.contact_email.email' => __('El email no es válido.'),
+        ]);
+        $this->persistConfig();
+        $email = trim((string) $this->config['contact_email']);
+        $this->showEmailRequired = false;
+        $this->sendReportAndFinish($email);
+    }
+
+    private function getReportRecipientEmail(): ?string
+    {
+        $personal = trim((string) ($this->config['contact_email'] ?? ''));
+        if ($personal !== '')
+        {
+            return $personal;
+        }
+        $business = trim((string) ($this->config['business_email'] ?? ''));
+
+        return $business !== '' ? $business : null;
+    }
+
+    private function sendReportAndFinish(string $email): void
+    {
+        $summary = $this->summary ?? ($this->session->fresh()->config['_summary'] ?? null);
+        try
+        {
+            Mail::to($email)->send(new BusinessCreationReportMail(
+                $this->config,
+                $summary,
+                $this->insights,
+            ));
+        } catch (\Throwable $e)
+        {
+            Log::error('Business creation report email failed', [
+                'session_id' => $this->session?->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
         if ($this->session)
         {
             $this->session->update(['completed_at' => now()]);
