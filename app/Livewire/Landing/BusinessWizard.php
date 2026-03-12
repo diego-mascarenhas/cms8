@@ -2,11 +2,11 @@
 
 namespace App\Livewire\Landing;
 
+use App\Jobs\LoadBusinessCreationInsightsJob;
 use App\Mail\BusinessCreationReportMail;
 use App\Models\BusinessCreationAiLog;
 use App\Models\BusinessCreationSession;
 use App\Models\Prompt;
-use App\Services\ApolloService;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use Carbon\Carbon;
@@ -41,6 +41,9 @@ class BusinessWizard extends Component
     public array $insights = [];
 
     public bool $insightsLoading = false;
+
+    /** Fase actual del proceso (apollo, web, ai) para el subtítulo del loader. Solo landing. */
+    public ?string $insightsPhase = null;
 
     /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
     public $logo = null;
@@ -169,7 +172,7 @@ class BusinessWizard extends Component
             }
         }
         $existing = $this->session->fresh()->config ?? [];
-        foreach (['_summary', '_summary_problematica_hash'] as $internal)
+        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase'] as $internal)
         {
             if (array_key_exists($internal, $existing))
             {
@@ -269,99 +272,68 @@ class BusinessWizard extends Component
         $this->summaryLoading = false;
     }
 
-    public function loadInsights(ApolloService $apolloService): void
+    public function loadInsights(): void
     {
         if (! $this->session)
         {
             return;
         }
-        @set_time_limit(120);
-        $this->insightsLoading = true;
-        $this->insights = [];
-
-        $location = $this->normalizeLocationForSearch();
         $industry = trim((string) ($this->config['business_industry'] ?? ''));
         $description = trim((string) ($this->config['business_description'] ?? ''));
-        $website = trim((string) ($this->config['business_website'] ?? ''));
-
-        $filtersSectorAndZone = $this->buildSectorAndLocationFilters($location, $industry);
-
-        try
+        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
+        if ($industry === '' || $description === '' || $tagline === '')
         {
-            $businessesNearby = 0;
-            $prospects = 0;
-            $byIndustry = [];
-
-            if ($filtersSectorAndZone !== [])
-            {
-                $orgResult = $apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
-                $businessesNearby = $orgResult['total_entries'] ?? 0;
-                $peopleResult = $apolloService->searchPeople($filtersSectorAndZone, 1, 1);
-                $prospects = $peopleResult['total_entries'] ?? 0;
-            }
-
-            if ($industry !== '')
-            {
-                $industryOnlyFilters = ['q_keywords' => $industry];
-                $industryResult = $apolloService->searchOrganizations(array_merge($location, $industryOnlyFilters), 1, 1);
-                $byIndustry = [$industry => $industryResult['total_entries'] ?? 0];
-            }
-
-            $chartSeries = [
-                'categories' => array_keys($byIndustry) ?: ['Tu sector'],
-                'series' => array_values($byIndustry) ?: [0],
-            ];
-            if ($businessesNearby > 0 && count($chartSeries['categories']) === 1 && $chartSeries['series'][0] === 0)
-            {
-                $chartSeries['categories'] = ['En tu zona', 'Prospectos'];
-                $chartSeries['series'] = [$businessesNearby, $prospects];
-            } elseif ($businessesNearby > 0 || $prospects > 0)
-            {
-                $chartSeries['categories'] = array_merge(['Negocios en tu zona', 'Prospectos'], $chartSeries['categories']);
-                $chartSeries['series'] = array_merge([$businessesNearby, $prospects], $chartSeries['series']);
-            }
-
-            $websiteContent = $this->fetchWebsiteContent($website);
-            $linksContext = $this->buildLinksContext();
-            $potentialClientsSummary = $this->generateMarketReport(
-                $description,
-                $website,
-                $websiteContent,
-                $linksContext,
-                $industry,
-                $location,
-                $businessesNearby,
-                $prospects,
-                $byIndustry,
-            );
-
-            $this->insights = array_filter([
-                'businesses_nearby' => $businessesNearby > 0 ? $businessesNearby : null,
-                'prospects' => $prospects > 0 ? $prospects : null,
-                'by_industry' => $byIndustry ?: null,
-                'chart_series' => ($chartSeries['categories'] && array_sum($chartSeries['series']) > 0) ? $chartSeries : null,
-                'potential_clients_summary' => $potentialClientsSummary,
-            ]);
-        } catch (\Throwable $e)
-        {
-            Log::warning('Landing business insights failed', ['error' => $e->getMessage()]);
-            try
-            {
-                $websiteContent = $this->fetchWebsiteContent($website);
-                $linksContext = $this->buildLinksContext();
-                $fallbackReport = $this->generateMarketReport($description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, []);
-                $this->insights = ['potential_clients_summary' => $fallbackReport];
-            } catch (\Throwable $inner)
-            {
-                $this->insights = ['potential_clients_summary' => 'No se pudo generar el informe. Comprueba Rubro, Ubicación o País y vuelve a intentarlo.'];
-            }
+            return;
         }
+        $this->persistConfig();
+        LoadBusinessCreationInsightsJob::dispatch($this->session->id);
+        $this->insightsLoading = true;
+        $this->insights = [];
+        $this->insightsPhase = 'market_data';
+    }
 
-        $this->insightsLoading = false;
-
+    /**
+     * Borra el informe de la sesión en BD (solo landing, solo para uso en local).
+     * Permite volver a ejecutar "Generar informe".
+     */
+    public function clearReportFromSession(): void
+    {
+        if (! $this->session)
+        {
+            return;
+        }
         $existing = $this->session->fresh()->config ?? [];
-        $existing['_insights'] = $this->insights;
+        unset($existing['_insights'], $existing['_insights_phase']);
         $this->session->update(['config' => $existing]);
+
+        $this->insights = [];
+        $this->insightsLoading = false;
+        $this->insightsPhase = null;
+    }
+
+    public function hydrate(): void
+    {
+        if ($this->step === 6 && $this->insightsLoading && $this->session)
+        {
+            $this->checkInsightsReady();
+        }
+    }
+
+    public function checkInsightsReady(): void
+    {
+        if (! $this->insightsLoading || ! $this->session)
+        {
+            return;
+        }
+        $session = $this->session->fresh();
+        $this->insightsPhase = $session->config['_insights_phase'] ?? null;
+        $insights = $session->config['_insights'] ?? null;
+        if (! empty($insights) && is_array($insights))
+        {
+            $this->insights = $insights;
+            $this->insightsLoading = false;
+            $this->insightsPhase = null;
+        }
     }
 
     public function submit(): void

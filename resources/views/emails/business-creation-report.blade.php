@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('Tu informe de negocio') }}</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; margin: 0; }
-        .container { max-width: 600px; margin: 0 auto; }
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
+        .container { max-width: 600px; width: 100%; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; word-wrap: break-word; }
         .header { border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 24px; }
         .header-logo { display: block; margin-bottom: 16px; }
         .header-logo img { height: 40px; width: auto; vertical-align: middle; }
@@ -14,9 +14,9 @@
         .section { margin-bottom: 24px; }
         .section h2 { font-size: 1.1rem; color: #1e40af; margin: 0 0 12px 0; }
         .section p { margin: 0 0 8px 0; }
-        .summary-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 12px 0; }
-        .insight-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px 20px; margin: 12px 0; font-size: 0.95rem; }
-        .report-content { font-size: 0.9375rem; line-height: 1.6; }
+        .summary-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 12px 0; overflow-wrap: break-word; word-wrap: break-word; max-width: 100%; box-sizing: border-box; }
+        .insight-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px 20px; margin: 12px 0; font-size: 0.95rem; overflow-wrap: break-word; word-wrap: break-word; max-width: 100%; box-sizing: border-box; }
+        .report-content { font-size: 0.9375rem; line-height: 1.6; overflow-wrap: break-word; word-wrap: break-word; max-width: 100%; }
         .report-content h1, .report-content h2, .report-content h3 { font-weight: 600; color: #1e293b; margin: 0 0 8px 0; }
         .report-content h1 { font-size: 1.25rem; margin-top: 16px; }
         .report-content h1:first-child { margin-top: 0; }
@@ -24,8 +24,8 @@
         .report-content h3 { font-size: 1rem; margin-top: 12px; }
         .report-content p { margin: 0 0 10px 0; }
         .report-content p:last-child { margin-bottom: 0; }
-        .report-content ul, .report-content ol { margin: 0 0 10px 0; padding-left: 20px; }
-        .report-content li { margin-bottom: 4px; }
+        .report-content ul, .report-content ol { margin: 0 0 10px 0; padding-left: 20px; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-content li { margin-bottom: 4px; overflow-wrap: break-word; word-wrap: break-word; }
         .report-content strong { font-weight: 600; }
         .report-content em { font-style: italic; }
         .report-content a { color: #2563eb; text-decoration: underline; }
@@ -83,6 +83,7 @@
             <div class="insight-box">
                 <div class="report-content">{!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}</div>
             </div>
+            <p class="footer-note" style="font-size: 0.85rem; color: #64748b; margin-top: 8px; margin-bottom: 0;">{{ __('Los indicadores de mercado se han obtenido a partir de bases de datos de empresas y profesionales (sector y ubicación).') }}</p>
         </div>
         @endif
 
