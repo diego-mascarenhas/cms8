@@ -75,14 +75,24 @@ class BusinessWizard extends Component
         $saved = $this->session->config ?? [];
         foreach (self::$configKeys as $key)
         {
-            $this->config[$key] = $saved[$key] ?? ($key === 'language' ? [] : '');
+            $this->config[$key] = $saved[$key] ?? ($key === 'language' ? '' : '');
+        }
+        if (is_array($this->config['language'] ?? null))
+        {
+            $this->config['language'] = $this->config['language'][0] ?? '';
+        }
+        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
+        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
+        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        {
+            $this->summary = $saved['_summary'];
         }
     }
 
     public function nextStep(): void
     {
         $this->persistConfig();
-        if ($this->step < 5)
+        if ($this->step < 6)
         {
             $this->step++;
         }
@@ -100,7 +110,7 @@ class BusinessWizard extends Component
     public function goToStep(int $step): void
     {
         $this->persistConfig();
-        if ($step >= 1 && $step <= 5)
+        if ($step >= 1 && $step <= 6)
         {
             $this->step = $step;
         }
@@ -121,10 +131,27 @@ class BusinessWizard extends Component
                 $payload[$key] = is_array($value) ? $value : (string) $value;
             }
         }
+        $existing = $this->session->fresh()->config ?? [];
+        foreach (['_summary', '_summary_problematica_hash'] as $internal)
+        {
+            if (array_key_exists($internal, $existing))
+            {
+                $payload[$internal] = $existing[$internal];
+            }
+        }
         $this->session->update([
             'config' => $payload,
             'current_step' => $this->step,
         ]);
+    }
+
+    public function triggerSummaryIfChanged(AssistantChatService $assistant): void
+    {
+        if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
+        {
+            return;
+        }
+        $this->generateSummary($assistant);
     }
 
     public function generateSummary(AssistantChatService $assistant): void
@@ -133,10 +160,18 @@ class BusinessWizard extends Component
         {
             return;
         }
+        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
+        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
+        $saved = $this->session->fresh()->config ?? [];
+        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        {
+            $this->summary = $saved['_summary'];
+            $this->summaryLoading = false;
+
+            return;
+        }
         $this->summaryLoading = true;
         $this->summary = null;
-
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
         $contextParts = [];
         $contextParts[] = 'Datos del negocio:';
         $contextParts[] = '- Nombre: '.trim((string) ($this->config['business_name'] ?? ''));
@@ -200,6 +235,10 @@ class BusinessWizard extends Component
                 'request_payload' => $userMessage,
                 'response_payload' => $this->summary,
             ]);
+            $current = $this->session->fresh()->config ?? [];
+            $current['_summary'] = $this->summary;
+            $current['_summary_problematica_hash'] = $hash;
+            $this->session->update(['config' => $current]);
         } catch (\Throwable $e)
         {
             Log::error('Landing business summary failed', ['error' => $e->getMessage()]);

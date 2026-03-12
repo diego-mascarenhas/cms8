@@ -33,6 +33,9 @@ class BusinessConfigWizard extends Component
 
     public bool $summaryLoading = false;
 
+    /** Last problemática text we sent to AI; skip reprocessing if unchanged. */
+    public ?string $lastProcessedProblematica = null;
+
     /** @var array<string, mixed> */
     public array $insights = [];
 
@@ -60,14 +63,18 @@ class BusinessConfigWizard extends Component
         }
         foreach (self::$configKeys as $key)
         {
-            $this->config[$key] = $saved[$key] ?? ($key === 'language' ? [] : '');
+            $this->config[$key] = $saved[$key] ?? ($key === 'language' ? '' : '');
+        }
+        if (is_array($this->config['language'] ?? null))
+        {
+            $this->config['language'] = $this->config['language'][0] ?? '';
         }
     }
 
     public function nextStep(): void
     {
         $this->persistConfig();
-        if ($this->step < 5)
+        if ($this->step < 6)
         {
             $this->step++;
         }
@@ -85,7 +92,7 @@ class BusinessConfigWizard extends Component
     public function goToStep(int $step): void
     {
         $this->persistConfig();
-        if ($step >= 1 && $step <= 5)
+        if ($step >= 1 && $step <= 6)
         {
             $this->step = $step;
         }
@@ -114,12 +121,26 @@ class BusinessConfigWizard extends Component
         $this->dispatch('saved');
     }
 
+    public function triggerSummaryIfChanged(AssistantChatService $assistant): void
+    {
+        if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
+        {
+            return;
+        }
+        $this->generateSummary($assistant);
+    }
+
     public function generateSummary(AssistantChatService $assistant): void
     {
+        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
+        if ($problematica !== '' && $problematica === $this->lastProcessedProblematica && $this->summary !== null)
+        {
+            $this->summaryLoading = false;
+
+            return;
+        }
         $this->summaryLoading = true;
         $this->summary = null;
-
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
         $contextParts = [];
         $contextParts[] = 'Datos del negocio:';
         $contextParts[] = '- Nombre: '.trim((string) ($this->config['business_name'] ?? ''));
@@ -188,6 +209,7 @@ class BusinessConfigWizard extends Component
             $this->summary = 'Error al generar el resumen. Intenta de nuevo.';
         }
 
+        $this->lastProcessedProblematica = $problematica;
         $this->summaryLoading = false;
     }
 

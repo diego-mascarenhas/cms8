@@ -1,26 +1,29 @@
 <div>
+    <style>
+        .wizard-modern .bs-stepper-icon .wizard-step-icon { font-size: 1.75rem; }
+    </style>
     <div class="bs-stepper wizard-icons wizard-modern wizard-modern-icons-example mt-2">
         <div class="bs-stepper-header">
-            @foreach ([1 => 'Datos básicos del negocio', 2 => 'Información personal', 3 => 'Dirección', 4 => 'Redes sociales', 5 => 'Revisar y enviar'] as $num => $label)
+            @php
+                $steps = [
+                    1 => ['label' => 'Datos del negocio', 'icon' => 'ti-building-store'],
+                    2 => ['label' => 'Información personal', 'icon' => 'ti-user'],
+                    3 => ['label' => 'Dirección', 'icon' => 'ti-map-pin'],
+                    4 => ['label' => 'Redes sociales', 'icon' => 'ti-brand-facebook'],
+                    5 => ['label' => 'Problemática actual', 'icon' => 'ti-message-question'],
+                    6 => ['label' => 'Revisar y enviar', 'icon' => 'ti-circle-check'],
+                ];
+            @endphp
+            @foreach ($steps as $num => $stepConfig)
                 <div class="step {{ $step === $num ? 'active' : '' }}">
                     <button type="button" class="step-trigger" wire:click="goToStep({{ $num }})">
                         <span class="bs-stepper-icon">
-                            @if ($num === 1)
-                                <svg viewBox="0 0 54 54"><use xlink:href="{{ asset('assets/svg/icons/form-wizard-account.svg#wizardAccount') }}"></use></svg>
-                            @elseif ($num === 2)
-                                <svg viewBox="0 0 58 54"><use xlink:href="{{ asset('assets/svg/icons/form-wizard-personal.svg#wizardPersonal') }}"></use></svg>
-                            @elseif ($num === 3)
-                                <svg viewBox="0 0 54 54"><use xlink:href="{{ asset('assets/svg/icons/form-wizard-address.svg#wizardAddress') }}"></use></svg>
-                            @elseif ($num === 4)
-                                <svg viewBox="0 0 54 54"><use xlink:href="{{ asset('assets/svg/icons/form-wizard-social-link.svg#wizardSocialLink') }}"></use></svg>
-                            @else
-                                <svg viewBox="0 0 54 54"><use xlink:href="{{ asset('assets/svg/icons/form-wizard-submit.svg#wizardSubmit') }}"></use></svg>
-                            @endif
+                            <i class="ti {{ $stepConfig['icon'] }} wizard-step-icon"></i>
                         </span>
-                        <span class="bs-stepper-label">{{ $label }}</span>
+                        <span class="bs-stepper-label">{{ $stepConfig['label'] }}</span>
                     </button>
                 </div>
-                @if ($num < 5)
+                @if ($num < 6)
                     <div class="line"><i class="ti ti-chevron-right"></i></div>
                 @endif
             @endforeach
@@ -29,7 +32,7 @@
             @if ($step === 1)
                 <div class="content active" wire:key="step-1">
                     <div class="content-header mb-3">
-                        <h6 class="mb-0">Datos básicos del negocio</h6>
+                        <h6 class="mb-0">Datos del negocio</h6>
                         <small>Nombre, rubro, ubicación, logo y descripción de tu negocio.</small>
                     </div>
                     <div class="row g-3">
@@ -135,15 +138,13 @@
                             </select>
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label d-block">Idioma</label>
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (['Español', 'Inglés', 'Francés'] as $lang)
-                                    <label class="form-check form-check-inline mb-0">
-                                        <input type="checkbox" class="form-check-input" wire:model.live="config.language" value="{{ $lang }}">
-                                        <span class="form-check-label">{{ $lang }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
+                            <label class="form-label">Idioma</label>
+                            <select class="form-select" wire:model.blur="config.language">
+                                <option value="">Seleccionar idioma</option>
+                                <option value="Español">Español</option>
+                                <option value="Inglés">Inglés</option>
+                                <option value="Francés">Francés</option>
+                            </select>
                         </div>
                         <div class="col-12 d-flex justify-content-between">
                             <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
@@ -216,7 +217,7 @@
                             <input type="text" class="form-control" wire:model.blur="config.tiktok" placeholder="https://tiktok.com/@" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label"><i class="ti ti-brand-whatsapp ti-sm me-1 text-body"></i> WhatsApp</label>
+                            <label class="form-label"><i class="ti ti-brand-whatsapp ti-sm me-1 text-success"></i> WhatsApp</label>
                             <input type="text" class="form-control" wire:model.blur="config.whatsapp_url" placeholder="https://wa.me/..." />
                         </div>
                         <div class="col-sm-6">
@@ -241,15 +242,13 @@
 
             @if ($step === 5)
                 <div class="content active" wire:key="step-5">
+                    <div class="content-header mb-3">
+                        <h6 class="mb-0">Problemática actual de tu negocio</h6>
+                        <small>Describe el reto o la situación actual. El Asistente AI generará un resumen conciso de lo que necesitas para mejorar.</small>
+                    </div>
                     <div class="mb-4">
-                        <label class="form-label"><i class="ti ti-message-question ti-sm me-1 text-body"></i> Problemática actual de tu negocio</label>
-                        <textarea class="form-control" wire:model.blur="config.business_problematica" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. El Asistente AI de Humano generará un resumen conciso de lo que necesitas para mejorar."></textarea>
-                        <div class="d-flex justify-content-end mt-2">
-                            <button type="button" class="btn btn-primary" wire:click="generateSummary" wire:loading.attr="disabled">
-                                <span wire:loading.remove wire:target="generateSummary"><i class="ti ti-sparkles ti-sm me-1"></i> Generar resumen con IA</span>
-                                <span wire:loading wire:target="generateSummary">Generando…</span>
-                            </button>
-                        </div>
+                        <label class="form-label"><i class="ti ti-message-question ti-sm me-1 text-body"></i> Problemática actual</label>
+                        <textarea class="form-control" wire:model.blur="config.business_problematica" wire:blur="triggerSummaryIfChanged" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. El Asistente AI generará un resumen conciso al salir del campo (si el texto cambió)."></textarea>
                     </div>
                     @if ($summaryLoading || $summary)
                         <div class="card border-primary mb-4">
@@ -269,6 +268,19 @@
                             </div>
                         </div>
                     @endif
+                    <div class="col-12 d-flex justify-content-between">
+                        <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
+                        <button type="button" class="btn btn-primary" wire:click="nextStep"><span class="align-middle d-sm-inline-block d-none me-sm-1">Siguiente</span><i class="ti ti-arrow-right"></i></button>
+                    </div>
+                </div>
+            @endif
+
+            @if ($step === 6)
+                <div class="content active" wire:key="step-6">
+                    <div class="content-header mb-3">
+                        <h6 class="mb-0">Revisar y enviar</h6>
+                        <small>Revisa los datos de mercado y envía tu configuración.</small>
+                    </div>
                     <div class="mb-4">
                         <h6 class="mb-2">Datos de mercado</h6>
                         <p class="text-muted small mb-2">Indicadores de mercado, análisis de tu web y enlaces, posicionamiento frente a competidores y recomendaciones según tu sector y ubicación.</p>
