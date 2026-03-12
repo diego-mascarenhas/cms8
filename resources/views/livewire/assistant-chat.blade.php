@@ -76,7 +76,7 @@
         <div class="p-3 border-top">
             <form wire:submit="sendMessage">
                 <div class="d-flex align-items-center gap-1 mb-2">
-                    <input type="file" id="assistant-chat-image" wire:model="image" accept="image/*" class="d-none">
+                    <input type="file" id="assistant-chat-image" wire:model="image" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg" class="d-none">
                     <input type="file" id="assistant-chat-audio" wire:model="audio" accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" class="d-none">
                     <button type="button" class="btn btn-icon btn-label-secondary flex-shrink-0" onclick="document.getElementById('assistant-chat-image').click()" title="{{ __('Subir imagen') }}" aria-label="{{ __('Subir imagen') }}" @if($loading) disabled @endif>
                         <i class="ti ti-photo"></i>

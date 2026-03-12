@@ -8,6 +8,9 @@
   --humano-primary-hover: #1d4ed8;
   --humano-primary-light: #dbeafe;
   --humano-body-bg: #f8fafc;
+  /* Bootstrap theme: use blue globally so all .btn-primary, .btn-outline-primary, stepper, etc. match */
+  --bs-primary: #2563eb;
+  --bs-primary-rgb: 37, 99, 235;
 }
 
 body,
@@ -40,8 +43,12 @@ body,
 .bg-label-hover-primary { background-color: var(--humano-primary-light) !important; color: var(--humano-primary) !important; }
 .bg-label-hover-primary:hover { background-color: var(--humano-primary) !important; color: #fff !important; }
 
-.btn-outline-primary { border-color: var(--humano-primary); color: var(--humano-primary); }
-.btn-outline-primary:hover { background-color: var(--humano-primary-light) !important; color: var(--humano-primary) !important; }
+.btn-outline-primary,
+a.btn-outline-primary { border-color: #2563eb !important; color: #2563eb !important; }
+.btn-outline-primary:hover,
+a.btn-outline-primary:hover { background-color: var(--humano-primary-light) !important; border-color: #2563eb !important; color: #2563eb !important; }
+.btn-outline-primary:focus,
+a.btn-outline-primary:focus { box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25); }
 
 a { color: var(--humano-primary); }
 a:hover { color: var(--humano-primary-hover); }
