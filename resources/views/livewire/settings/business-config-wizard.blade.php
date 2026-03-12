@@ -2,6 +2,9 @@
     <style>
         .wizard-modern .bs-stepper-icon .wizard-step-icon { font-size: 1.75rem; }
 
+        .business-wizard-time-input::-webkit-calendar-picker-indicator { display: none; }
+        .business-wizard-time-input::-webkit-datetime-edit-ampm-field { display: none; }
+
         /* AI futuristic loader — full takeover when loading */
         .ai-loader-overlay {
             animation: ai-loader-fade-in 0.4s ease-out;
@@ -288,11 +291,11 @@
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-calendar-event ti-sm me-1 text-body"></i> Fecha de nacimiento</label>
-                            <input type="text" id="business-wizard-birth-date" class="form-control flatpickr-birth-date" wire:model.live="config.birth_date" placeholder="YYYY-MM-DD" />
+                            <input type="text" id="business-wizard-birth-date" class="form-control flatpickr-birth-date" wire:model.live="config.birth_date" value="{{ $config['birth_date'] ?? '' }}" placeholder="DD-MM-AAAA" />
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label"><i class="ti ti-clock ti-sm me-1 text-body"></i> Hora de nacimiento</label>
-                            <input type="time" class="form-control" wire:model.blur="config.birth_time" placeholder="HH:MM" />
+                            <label class="form-label">Hora de nacimiento</label>
+                            <input type="time" class="form-control business-wizard-time-input" wire:model.blur="config.birth_time" placeholder="HH:MM" />
                         </div>
                         <div class="col-sm-6">
                             <label class="form-label"><i class="ti ti-mail ti-sm me-1 text-body"></i> Email de contacto</label>
