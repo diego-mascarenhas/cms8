@@ -42,6 +42,9 @@ class BusinessWizard extends Component
 
     public bool $insightsLoading = false;
 
+    /** Fase actual del proceso (apollo, web, ai) para el subtítulo del loader. Solo landing. */
+    public ?string $insightsPhase = null;
+
     /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
     public $logo = null;
 
@@ -169,7 +172,7 @@ class BusinessWizard extends Component
             }
         }
         $existing = $this->session->fresh()->config ?? [];
-        foreach (['_summary', '_summary_problematica_hash'] as $internal)
+        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase'] as $internal)
         {
             if (array_key_exists($internal, $existing))
             {
@@ -286,6 +289,7 @@ class BusinessWizard extends Component
         LoadBusinessCreationInsightsJob::dispatch($this->session->id);
         $this->insightsLoading = true;
         $this->insights = [];
+        $this->insightsPhase = 'market_data';
     }
 
     /**
@@ -322,11 +326,13 @@ class BusinessWizard extends Component
             return;
         }
         $session = $this->session->fresh();
+        $this->insightsPhase = $session->config['_insights_phase'] ?? null;
         $insights = $session->config['_insights'] ?? null;
         if (! empty($insights) && is_array($insights))
         {
             $this->insights = $insights;
             $this->insightsLoading = false;
+            $this->insightsPhase = null;
         }
     }
 

@@ -83,6 +83,7 @@
             <div class="insight-box">
                 <div class="report-content">{!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}</div>
             </div>
+            <p class="footer-note" style="font-size: 0.85rem; color: #64748b; margin-top: 8px; margin-bottom: 0;">{{ __('Los indicadores de mercado se han obtenido a partir de bases de datos de empresas y profesionales (sector y ubicación).') }}</p>
         </div>
         @endif
 

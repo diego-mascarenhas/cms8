@@ -477,6 +477,14 @@
                     <div class="mb-4">
                         <h6 class="mb-2">Datos de mercado</h6>
                         <p class="text-muted small mb-2">Indicadores de mercado, análisis de tu web y enlaces, posicionamiento frente a competidores y recomendaciones según tu sector y ubicación.</p>
+                        @php
+                            $insightsLoaderSubtitle = match($insightsPhase ?? '') {
+                                'market_data' => 'Consultando datos de mercado y sector...',
+                                'web' => 'Analizando tu web...',
+                                'recommendations' => 'Generando recomendaciones con el asistente Humano.App...',
+                                default => 'Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar',
+                            };
+                        @endphp
                         @if (!$insightsLoading && empty($insights))
                             @php
                                 $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
@@ -512,7 +520,7 @@
                                         <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
                                     </div>
                                     <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
-                                    <p class="mb-0 small text-muted">Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar</p>
+                                    <p class="mb-0 small text-muted">{{ $insightsLoaderSubtitle }}</p>
                                     <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                                 </div>
                             </div>
@@ -529,7 +537,7 @@
                                     <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
                                 </div>
                                 <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
-                                <p class="mb-0 small text-muted">Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar</p>
+                                <p class="mb-0 small text-muted">{{ $insightsLoaderSubtitle }}</p>
                                 <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                             </div>
                             </div>
@@ -644,6 +652,7 @@
                                         <div class="potential-clients-content">
                                             {!! \Illuminate\Support\Str::markdown($insights['potential_clients_summary']) !!}
                                         </div>
+                                        <p class="small text-muted mb-0 mt-2">{{ __('Los indicadores de mercado se han obtenido a partir de bases de datos de empresas y profesionales (sector y ubicación).') }}</p>
                                     </div>
                                 </div>
                             @endif

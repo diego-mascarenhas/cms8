@@ -41,6 +41,9 @@ class BusinessConfigWizard extends Component
 
     public bool $insightsLoading = false;
 
+    /** Fase del proceso para el loader (solo landing la rellena). */
+    public ?string $insightsPhase = null;
+
     /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
     public $logo = null;
 

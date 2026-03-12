@@ -35,6 +35,8 @@ class BusinessCreationInsightsService
 
         $filtersSectorAndZone = $this->buildSectorAndLocationFilters($location, $industry);
 
+        $this->setInsightsPhase($session, 'market_data');
+
         try
         {
             $businessesNearby = 0;
@@ -67,11 +69,14 @@ class BusinessCreationInsightsService
                 }
             }
 
+            $sectorTotalCount = 0;
             if ($industry !== '')
             {
                 $industryOnlyFilters = ['q_keywords' => $industry];
                 $industryResult = $this->apolloService->searchOrganizations(array_merge($location, $industryOnlyFilters), 1, 1);
                 $byIndustry = [$industry => $industryResult['total_entries'] ?? 0];
+                $sectorOnlyResult = $this->apolloService->searchOrganizations($industryOnlyFilters, 1, 1);
+                $sectorTotalCount = $sectorOnlyResult['total_entries'] ?? 0;
             }
 
             $chartSeries = [
@@ -93,8 +98,11 @@ class BusinessCreationInsightsService
                 $chartSeries = null;
             }
 
+            $this->setInsightsPhase($session, 'web');
             $websiteContent = $this->fetchWebsiteContent($website);
             $linksContext = $this->buildLinksContext($config);
+
+            $this->setInsightsPhase($session, 'recommendations');
             $potentialClientsSummary = $this->generateMarketReport(
                 $session,
                 $config,
@@ -107,6 +115,7 @@ class BusinessCreationInsightsService
                 $businessesNearby,
                 $prospects,
                 $byIndustry,
+                $sectorTotalCount,
             );
 
             $insights = array_filter([
@@ -136,22 +145,31 @@ class BusinessCreationInsightsService
 
         $existing = $session->fresh()->config ?? [];
         $existing['_insights'] = $insights;
+        unset($existing['_insights_phase']);
         $session->update(['config' => $existing]);
 
         return $insights;
     }
 
+    private function setInsightsPhase(BusinessCreationSession $session, string $phase): void
+    {
+        $existing = $session->fresh()->config ?? [];
+        $existing['_insights_phase'] = $phase;
+        $session->update(['config' => $existing]);
+    }
+
     /**
+     * Ubicación para búsqueda: solo ciudad y país (menos restrictivo que incluir dirección).
+     *
      * @param  array<string, mixed>  $config
      * @return array<string, mixed>
      */
     private function normalizeLocationForSearch(array $config): array
     {
         $city = trim((string) ($config['city'] ?? ''));
-        $addressLocation = trim((string) ($config['business_location'] ?? ''));
         $country = trim((string) ($config['country'] ?? ''));
 
-        $locations = array_filter([$city, $addressLocation, $country]);
+        $locations = array_filter([$city, $country]);
         if ($locations === [])
         {
             return [];
@@ -289,6 +307,7 @@ class BusinessCreationInsightsService
         int $businessesNearby,
         int $prospects,
         array $byIndustry,
+        int $sectorTotalCount = 0,
     ): ?string {
         $locationStr = implode(', ', array_filter($location['organization_locations'] ?? []));
         $industryCount = array_sum($byIndustry);
@@ -310,12 +329,26 @@ class BusinessCreationInsightsService
         {
             $contextParts[] = "\n**Enlaces (redes, etc.):**\n".$linksContext;
         }
-        $contextParts[] = "\n**Datos de mercado:**";
-        $contextParts[] = '- Negocios en su zona: '.$businessesNearby;
-        $contextParts[] = '- Prospectos: '.$prospects;
-        if ($byIndustry !== [])
+        $contextParts[] = "\n**Datos de mercado** (indicadores obtenidos de bases de datos de empresas y profesionales por sector y ubicación):";
+        if ($businessesNearby > 0)
         {
-            $contextParts[] = '- Empresas en el sector: '.$industryCount;
+            $contextParts[] = '- Negocios en su zona (sector + ubicación): '.$businessesNearby;
+        }
+        if ($prospects > 0)
+        {
+            $contextParts[] = '- Prospectos en su zona: '.$prospects;
+        }
+        if ($byIndustry !== [] && $industryCount > 0)
+        {
+            $contextParts[] = '- Empresas en el sector en su zona: '.$industryCount;
+        }
+        if ($sectorTotalCount > 0)
+        {
+            $contextParts[] = '- Empresas en el sector (referencia global): '.$sectorTotalCount;
+        }
+        if ($businessesNearby === 0 && $prospects === 0 && $industryCount === 0 && $sectorTotalCount === 0)
+        {
+            $contextParts[] = '- No se incluyen cifras en zona (ningún resultado con los filtros usados).';
         }
 
         $arquetipoContext = $this->buildArquetipoContext($config);
@@ -338,6 +371,8 @@ class BusinessCreationInsightsService
         $instruction = <<<PROMPT
 Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan.{$arquetipoInstruction}
 
+Las cifras "en su zona" dependen del filtro de ubicación; si son bajas o cero pero el sector tiene muchas empresas a nivel global (referencia global), no digas que el mercado está vacío ni que parten de cero: en muchos sectores (p. ej. desarrollo de software) hay gran actividad mundial. Usa la referencia global para matizar el posicionamiento.
+
 Responde en Markdown, con estas secciones (usa **negrita** para los títulos):
 
 1. **Definición del producto/servicio**
@@ -345,7 +380,7 @@ Responde en Markdown, con estas secciones (usa **negrita** para los títulos):
 3. **Cliente ideal**
 4. **Oportunidades y recomendaciones**
 
-Sé específico y práctico. No menciones fuentes de datos ni APIs.
+Sé específico y práctico. No nombres proveedores ni APIs; puedes aludir de forma genérica a "los datos de mercado", "los indicadores de sector" o "las cifras consultadas".
 PROMPT;
 
         try
