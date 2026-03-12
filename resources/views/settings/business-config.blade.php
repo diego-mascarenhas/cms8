@@ -13,6 +13,7 @@
 <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 @endsection
 
 @section('content')
@@ -66,11 +67,24 @@ document.addEventListener('livewire:init', function() {
         var el = document.getElementById('business-wizard-birth-date');
         if (!el || typeof flatpickr === 'undefined') return;
         if (el._flatpickr) {
-            el._flatpickr.destroy();
+            var fp = el._flatpickr;
+            var altInDoc = fp.altInput && document.body.contains(fp.altInput);
+            if (altInDoc) {
+                if (el.value) {
+                    fp.setDate(el.value, false);
+                }
+                return;
+            }
+            fp.destroy();
+            delete el._flatpickr;
         }
         flatpickr(el, {
             dateFormat: 'Y-m-d',
+            altInput: true,
+            altFormat: 'd-m-Y',
+            locale: 'es',
             allowInput: false,
+            defaultDate: el.value || null,
             onChange: function(selectedDates, dateStr) {
                 var root = el.closest('[wire\\:id]');
                 if (root) {

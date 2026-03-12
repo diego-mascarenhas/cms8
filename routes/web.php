@@ -1,13 +1,14 @@
 <?php
 
+use App\Helpers\Helpers as Helper;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CategoryController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
@@ -97,7 +98,12 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
-Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))->name('landing.business-creation');
+Route::get('/launch/{token?}', function (?string $token = null)
+{
+    \App\Helpers\Helpers::updatePageConfig(['myStyle' => 'light', 'force_style_light' => true]);
+
+    return view('landing-business-creation', ['token' => $token]);
+})->name('landing.business-creation');
 
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
@@ -110,6 +116,7 @@ Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLea
 Route::get('/register-for-prospects', function ()
 {
     session()->put('url.intended', route('subscription.index').'#prospectos');
+
     return redirect()->route('register');
 })->name('register.redirect-to-prospects');
 Route::redirect('/prospectflow', '/prospect/search');
