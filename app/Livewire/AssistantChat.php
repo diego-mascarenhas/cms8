@@ -79,10 +79,10 @@ class AssistantChat extends Component
         }
 
         $this->validate([
-            'image' => 'nullable|image|max:20480',
+            'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:20480',
             'audio' => 'nullable|file|mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg|max:25600',
         ], [
-            'image.image' => __('El archivo debe ser una imagen.'),
+            'image.mimes' => __('El archivo debe ser una imagen (JPG, PNG, GIF, WebP, BMP o SVG).'),
             'image.max' => __('La imagen no puede superar 20 MB.'),
             'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
             'audio.max' => __('El audio no puede superar 25 MB.'),

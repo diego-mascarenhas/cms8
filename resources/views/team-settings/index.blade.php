@@ -95,6 +95,17 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-building-store mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Business Configuration') }}</h5>
+                            <p class="card-text">{{ __('Configure your business details step by step') }}</p>
+                            <a href="{{ route('team-settings.business-config', $team) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-phone mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Twilio Integration</h5>
                             <p class="card-text">Configure Twilio API settings for SMS and WhatsApp</p>

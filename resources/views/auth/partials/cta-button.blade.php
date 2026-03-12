@@ -3,8 +3,8 @@
     <i class="ti ti-robot me-2 ti-md"></i>
     {{ __('Prueba Humano Assistant') }}
   </a>
-  <a href="{{ route('prospect-search') }}" class="btn btn-outline-primary btn-lg">
-    <i class="ti ti-target me-2 ti-md"></i>
-    {{ __('Búsqueda de prospectos') }}
+  <a href="{{ route('landing.business-creation') }}" class="btn btn-outline-primary btn-lg">
+    <i class="ti ti-building-store me-2 ti-md"></i>
+    {{ __('Crear tu negocio') }}
   </a>
 </div>
