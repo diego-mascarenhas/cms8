@@ -8,6 +8,8 @@
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: 0 auto; }
         .header { border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 24px; }
+        .header-logo { display: block; margin-bottom: 16px; }
+        .header-logo img { height: 40px; width: auto; vertical-align: middle; }
         .header h1 { margin: 0; font-size: 1.5rem; color: #1e40af; }
         .section { margin-bottom: 24px; }
         .section h2 { font-size: 1.1rem; color: #1e40af; margin: 0 0 12px 0; }
@@ -35,6 +37,9 @@
 <body>
     <div class="container">
         <div class="header">
+            <a href="{{ config('app.url') }}" class="header-logo" style="display: block; margin-bottom: 16px;">
+                <img src="{{ url(Helper::logoAsset('dark')) }}" alt="{{ config('app.name') }}" height="40" style="height: 40px; width: auto; vertical-align: middle;" />
+            </a>
             <h1>{{ __('Tu informe de negocio') }}</h1>
             <p>{{ __('Resumen de la configuración y recomendaciones generadas.') }}</p>
         </div>

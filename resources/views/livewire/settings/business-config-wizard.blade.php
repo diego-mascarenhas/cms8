@@ -444,21 +444,19 @@
                                         Generando resumen con el Asistente AI de Humano…
                                     </div>
                                 @elseif ($summary)
-                                    <div class="potential-clients-content">{!! \Illuminate\Support\Str::markdown($summary) !!}</div>
-                                @endif
-                            </div>
-                        </div>
-                        @if ($summary)
-                            <div class="card border-secondary mb-4">
-                                <div class="card-body">
-                                    <p class="mb-2">¿Te gustaría profundizar en alguno de estos puntos?</p>
+                                    @php
+                                        $summaryDisplay = preg_replace('/\s*¿Te gustaría profundizar en alguno de estos puntos\?\s*/u', "\n", (string) $summary);
+                                    @endphp
+                                    <div class="potential-clients-content">{!! \Illuminate\Support\Str::markdown($summaryDisplay) !!}</div>
+                                    <p class="mb-1 mt-3 fw-medium">¿Te gustaría profundizar en alguno de estos puntos?</p>
+                                    <p class="small text-muted mb-2">De ser así, un consultor de nuestro equipo podría contactarte para profundizar sobre estos puntos.</p>
                                     <div class="d-flex gap-2 flex-wrap">
                                         <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
                                         <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
                                     </div>
-                                </div>
+                                @endif
                             </div>
-                        @endif
+                        </div>
                     @endif
                     <div class="col-12 d-flex justify-content-between">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>

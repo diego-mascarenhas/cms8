@@ -35,9 +35,16 @@ class BusinessCreationReportMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
+        $envelope = new Envelope(
             subject: __('Tu informe de negocio').' - '.config('app.name'),
         );
+        $copyTo = config('mail.from.address');
+        if ($copyTo && $copyTo !== 'hello@example.com')
+        {
+            $envelope = $envelope->bcc($copyTo);
+        }
+
+        return $envelope;
     }
 
     public function content(): Content

@@ -70,6 +70,7 @@ class BusinessWizard extends Component
         'address', 'landmark', 'pincode', 'city',
         'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
         'whatsapp_url', 'telegram', 'pinterest', 'threads',
+        'wants_profundizar',
     ];
 
     public function mount(?string $token = null): void
@@ -136,6 +137,16 @@ class BusinessWizard extends Component
         {
             $this->step = $step;
         }
+    }
+
+    public function setWantsProfundizar(string $value): void
+    {
+        if ($value !== 'si' && $value !== 'no')
+        {
+            return;
+        }
+        $this->config['wants_profundizar'] = $value;
+        $this->persistConfig();
     }
 
     protected function persistConfig(): void
