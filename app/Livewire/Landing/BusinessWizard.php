@@ -110,6 +110,10 @@ class BusinessWizard extends Component
         {
             $this->summary = $saved['_summary'];
         }
+        if (! empty($saved['_insights']) && is_array($saved['_insights']))
+        {
+            $this->insights = $saved['_insights'];
+        }
     }
 
     public function nextStep(): void
@@ -218,28 +222,12 @@ class BusinessWizard extends Component
         $contextParts[] = '- Eslogan: '.trim((string) ($this->config['business_tagline'] ?? ''));
         $contextParts[] = '- Descripción: '.trim((string) ($this->config['business_description'] ?? ''));
 
-        $birthDate = $this->config['birth_date'] ?? null;
-        if ($birthDate)
+        $arquetipoContext = $this->buildArquetipoContext();
+        if ($arquetipoContext !== '')
         {
-            try
-            {
-                $astral = new AstralChartService;
-                $birthCarbon = Carbon::parse($birthDate);
-                $zodiac = $astral->getZodiacSign($birthCarbon);
-                $northNode = $astral->getNorthNode($birthCarbon);
-                $contextParts[] = '';
-                $contextParts[] = 'Arquetipo humano (fecha y hora de nacimiento):';
-                $contextParts[] = '- Signo zodiacal: '.($zodiac['sign'] ?? '').' '.($zodiac['symbol'] ?? '').' ('.($zodiac['element'] ?? '').')';
-                $contextParts[] = '- Nodo Norte: '.($northNode['north'] ?? '');
-                $contextParts[] = '- Nodo Sur: '.($northNode['south'] ?? '');
-                if (! empty($this->config['birth_time']))
-                {
-                    $contextParts[] = '- Hora de nacimiento: '.$this->config['birth_time'];
-                }
-            } catch (\Throwable $e)
-            {
-                Log::warning('AstralChartService in landing business summary', ['error' => $e->getMessage()]);
-            }
+            $contextParts[] = '';
+            $contextParts[] = 'Arquetipo humano (fecha y hora de nacimiento):';
+            $contextParts[] = $arquetipoContext;
         }
 
         $context = implode("\n", $contextParts);
@@ -370,6 +358,10 @@ class BusinessWizard extends Component
         }
 
         $this->insightsLoading = false;
+
+        $existing = $this->session->fresh()->config ?? [];
+        $existing['_insights'] = $this->insights;
+        $this->session->update(['config' => $existing]);
     }
 
     public function submit(): void
@@ -564,14 +556,25 @@ class BusinessWizard extends Component
             $contextParts[] = '- Empresas en el sector: '.$industryCount;
         }
 
+        $arquetipoContext = $this->buildArquetipoContext();
+        if ($arquetipoContext !== '')
+        {
+            $contextParts[] = "\n**Arquetipo humano (personalidad según fecha/hora de nacimiento):**";
+            $contextParts[] = $arquetipoContext;
+        }
+
         $fullContext = implode("\n", $contextParts);
         if (trim($description) === '' && $websiteContent === '' && $linksContext === '')
         {
             return null;
         }
 
-        $instruction = <<<'PROMPT'
-Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan.
+        $arquetipoInstruction = $arquetipoContext !== ''
+            ? ' Ten en cuenta el arquetipo humano indicado para que las recomendaciones sean acordes a su personalidad.'
+            : '';
+
+        $instruction = <<<PROMPT
+Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan.{$arquetipoInstruction}
 
 Responde en Markdown, con estas secciones (usa **negrita** para los títulos):
 
@@ -605,6 +608,38 @@ PROMPT;
             Log::warning('Landing market report failed', ['error' => $e->getMessage()]);
 
             return null;
+        }
+    }
+
+    private function buildArquetipoContext(): string
+    {
+        $birthDate = $this->config['birth_date'] ?? null;
+        if (! $birthDate)
+        {
+            return '';
+        }
+        try
+        {
+            $astral = new AstralChartService;
+            $birthCarbon = Carbon::parse($birthDate);
+            $zodiac = $astral->getZodiacSign($birthCarbon);
+            $northNode = $astral->getNorthNode($birthCarbon);
+            $lines = [
+                '- Signo zodiacal: '.($zodiac['sign'] ?? '').' '.($zodiac['symbol'] ?? '').' ('.($zodiac['element'] ?? '').')',
+                '- Nodo Norte: '.($northNode['north'] ?? ''),
+                '- Nodo Sur: '.($northNode['south'] ?? ''),
+            ];
+            if (! empty($this->config['birth_time']))
+            {
+                $lines[] = '- Hora de nacimiento: '.$this->config['birth_time'];
+            }
+
+            return implode("\n", $lines);
+        } catch (\Throwable $e)
+        {
+            Log::warning('AstralChartService in landing arquetipo context', ['error' => $e->getMessage()]);
+
+            return '';
         }
     }
 
