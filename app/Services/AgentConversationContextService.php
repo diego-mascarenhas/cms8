@@ -84,6 +84,7 @@ class AgentConversationContextService
         return $conversation->messages()
             ->where('agent', self::AGENT_NAME)
             ->orderBy('created_at')
+            ->orderByRaw("CASE WHEN role = 'user' THEN 0 ELSE 1 END")
             ->limit($limit)
             ->get()
             ->map(fn (AgentConversationMessage $m) => [

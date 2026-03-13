@@ -151,22 +151,22 @@
                       .catch(error => console.error('Error sending user message:', error));
                 }
 
-                // Create a new message for AI response (left side, like in assistant view)
+                // AI suggested reply (right side = our reply to the client)
                 let aiMsg = document.createElement('li');
-                aiMsg.className = 'chat-message';
+                aiMsg.className = 'chat-message chat-message-right';
                 aiMsg.innerHTML = `
                     <div class="d-flex overflow-hidden">
-                        <div class="user-avatar flex-shrink-0 me-3">
-                            <div class="avatar avatar-sm">
-                                <span class="avatar-initial rounded-circle bg-label-info">AI</span>
-                            </div>
-                        </div>
                         <div class="chat-message-wrapper flex-grow-1">
                             <div class="chat-message-text">
                                 <p class="mb-0">${currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p>
                             </div>
-                            <div class="text-muted mt-1">
+                            <div class="text-end text-muted mt-1">
                                 <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
+                            </div>
+                        </div>
+                        <div class="user-avatar flex-shrink-0 ms-3">
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded-circle bg-label-info">AI</span>
                             </div>
                         </div>
                     </div>
@@ -228,11 +228,11 @@
                     return;
                 }
                 var html = messages.map(function(m) {
-                    var isUser = m.role === 'user';
+                    var isAssistant = m.role === 'assistant';
                     var content = escapeHtml(m.content).replace(/\n/g, '<br>');
                     var time = formatDate(m.created_at);
-                    var sideClass = isUser ? 'chat-message-right' : '';
-                    var timeClass = isUser ? 'text-end' : '';
+                    var sideClass = isAssistant ? 'chat-message-right' : '';
+                    var timeClass = isAssistant ? 'text-end' : '';
                     return '<li class="chat-message ' + sideClass + '">' +
                         '<div class="d-flex overflow-hidden">' +
                         '<div class="chat-message-wrapper flex-grow-1">' +
@@ -650,13 +650,13 @@
                         <ul class="list-unstyled chat-history" id="assistant-messages-list">
                             @if ($viewAssistant ?? false)
                                 @forelse(($assistantMessages ?? []) as $msg)
-                                    <li class="chat-message {{ $msg['role'] === 'user' ? 'chat-message-right' : '' }}">
+                                    <li class="chat-message {{ $msg['role'] === 'assistant' ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
                                                     <p class="mb-0">{!! nl2br(e($msg['content'])) !!}</p>
                                                 </div>
-                                                <div class="text-muted mt-1 {{ $msg['role'] === 'user' ? 'text-end' : '' }}">
+                                                <div class="text-muted mt-1 {{ $msg['role'] === 'assistant' ? 'text-end' : '' }}">
                                                     <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
                                                 </div>
                                             </div>
