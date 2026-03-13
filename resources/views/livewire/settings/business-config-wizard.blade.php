@@ -428,39 +428,65 @@
             @endif
 
             @if ($step === 5)
-                <div class="content active" wire:key="step-5">
+                <div class="content active" wire:key="step-5" @if(method_exists($this, 'checkSummaryReady')) wire:poll.3s="checkSummaryReady" @endif>
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Desafío de tu negocio</h6>
                         <small>Describe el reto o la situación actual. El Asistente AI generará un resumen conciso de lo que necesitas para mejorar.</small>
                     </div>
                     <div class="mb-4">
                         <label class="form-label"><i class="ti ti-puzzle ti-sm me-1 text-body"></i> Desafío</label>
-                        <textarea class="form-control" wire:model.blur="config.business_problematica" wire:blur="triggerSummaryIfChanged" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. El Asistente AI generará un resumen conciso al salir del campo (si el texto cambió)."></textarea>
+                        <textarea class="form-control" wire:model.blur="config.business_problematica" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. Luego pulsa «Generar resumen» para que el Asistente AI genere un resumen conciso."></textarea>
+                        @php
+                            $canLoadSummary = filled($config['business_problematica'] ?? null);
+                        @endphp
+                        @if (!$summaryLoading && !$summary && $canLoadSummary)
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-primary" wire:click="triggerSummaryIfChanged">
+                                    <i class="ti ti-report-analytics ti-sm me-1"></i> Generar resumen
+                                </button>
+                            </div>
+                        @endif
                     </div>
-                    @if ($summaryLoading || $summary)
+                    @if ($summaryLoading)
+                        <div class="d-flex justify-content-center">
+                            <div class="ai-loader-overlay p-4 p-md-5 text-center">
+                                <div class="ai-loader-grid" aria-hidden="true"></div>
+                                <div class="ai-loader-scan-line" aria-hidden="true"></div>
+                                <div class="ai-loader-core">
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <span class="ai-loader-ring" aria-hidden="true"></span>
+                                    <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                                </div>
+                                <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
+                                <p class="mb-0 small text-muted">Generando resumen con el asistente Humano.App…</p>
+                                <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                            </div>
+                        </div>
+                    @elseif ($summary)
+                        @if (app()->environment('local') && method_exists($this, 'clearSummaryFromSession'))
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="clearSummaryFromSession" title="Quitar el resumen guardado para poder generarlo de nuevo (solo local)">
+                                    <i class="ti ti-trash ti-sm me-1"></i> Eliminar resumen
+                                </button>
+                            </div>
+                        @endif
                         <div class="card border-primary mb-4">
                             <div class="card-header bg-label-primary d-flex align-items-center gap-2">
                                 <i class="ti ti-report-analytics ti-md"></i>
                                 <span class="fw-medium">Resumen para mejorar tu empresa</span>
                             </div>
                             <div class="card-body">
-                                @if ($summaryLoading)
-                                    <div class="text-muted text-center py-3">
-                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                        Generando resumen con el Asistente AI de Humano…
-                                    </div>
-                                @elseif ($summary)
-                                    @php
-                                        $summaryDisplay = preg_replace('/\s*¿Te gustaría profundizar en alguno de estos puntos\?\s*/u', "\n", (string) $summary);
-                                    @endphp
-                                    <div class="potential-clients-content">{!! \Illuminate\Support\Str::markdown($summaryDisplay) !!}</div>
-                                    <p class="mb-1 mt-3 fw-medium">¿Te gustaría profundizar en alguno de estos puntos?</p>
-                                    <p class="small text-muted mb-2">De ser así, un consultor de nuestro equipo podría contactarte para profundizar sobre estos puntos.</p>
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
-                                        <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
-                                    </div>
-                                @endif
+                                @php
+                                    $summaryDisplay = preg_replace('/\s*¿Te gustaría profundizar en alguno de estos puntos\?\s*/u', "\n", (string) $summary);
+                                @endphp
+                                <div class="potential-clients-content">{!! \Illuminate\Support\Str::markdown($summaryDisplay) !!}</div>
+                                <p class="mb-1 mt-3 fw-medium">¿Te gustaría profundizar en alguno de estos puntos?</p>
+                                <p class="small text-muted mb-2">De ser así, un consultor de nuestro equipo podría contactarte para profundizar sobre estos puntos.</p>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
+                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -472,7 +498,7 @@
             @endif
 
             @if ($step === 6)
-                <div class="content active" wire:key="step-6">
+                <div class="content active" wire:key="step-6" @if(method_exists($this, 'checkInsightsReady')) wire:poll.3s="checkInsightsReady" @endif>
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Revisar y enviar</h6>
                         <small>Revisa los datos de mercado y envía tu configuración.</small>

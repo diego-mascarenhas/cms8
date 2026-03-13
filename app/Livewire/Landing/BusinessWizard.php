@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Landing;
 
+use App\Jobs\GenerateBusinessSummaryJob;
 use App\Jobs\LoadBusinessCreationInsightsJob;
 use App\Mail\BusinessCreationReportMail;
 use App\Models\BusinessCreationAiLog;
@@ -150,6 +151,10 @@ class BusinessWizard extends Component
         {
             $this->step = $step;
             $this->persistConfigWithStepEntry();
+            if ($step === 5 && $this->session)
+            {
+                $this->syncSummaryFromSession();
+            }
         }
     }
 
@@ -212,13 +217,35 @@ class BusinessWizard extends Component
         ]);
     }
 
+    /**
+     * Load cached summary from session when entering step 5 (Desafío) so the UI shows the cached resumen.
+     */
+    protected function syncSummaryFromSession(): void
+    {
+        $saved = $this->session->fresh()->config ?? [];
+        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
+        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
+        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        {
+            $this->summary = $saved['_summary'];
+            $this->summaryLoading = false;
+        }
+    }
+
     public function triggerSummaryIfChanged(AssistantChatService $assistant): void
     {
         if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
         {
             return;
         }
-        $this->generateSummary($assistant);
+        if (! $this->session)
+        {
+            return;
+        }
+        $this->persistConfig();
+        GenerateBusinessSummaryJob::dispatch($this->session->id);
+        $this->summaryLoading = true;
+        $this->summary = null;
     }
 
     public function generateSummary(AssistantChatService $assistant): void
@@ -287,6 +314,7 @@ class BusinessWizard extends Component
             $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
             $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
             $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
+            $metadata['desafio_prompt'] = $problematica;
             BusinessCreationAiLog::create([
                 'business_creation_session_id' => $this->session->id,
                 'type' => 'summary',
@@ -346,17 +374,61 @@ class BusinessWizard extends Component
         $this->insightsPhase = null;
     }
 
+    /**
+     * Borra el resumen del desafío de la sesión (solo landing, solo para uso en local).
+     * Permite volver a procesar y regenerar el resumen.
+     */
+    public function clearSummaryFromSession(): void
+    {
+        if (! $this->session)
+        {
+            return;
+        }
+        $existing = $this->session->fresh()->config ?? [];
+        unset($existing['_summary'], $existing['_summary_problematica_hash']);
+        $this->session->update(['config' => $existing]);
+
+        $this->summary = '';
+        $this->summaryLoading = false;
+    }
+
+    /**
+     * Polled when on step 5: syncs _summary from session (from queue job) into component state.
+     */
+    public function checkSummaryReady(): void
+    {
+        if (! $this->session || $this->step !== 5)
+        {
+            return;
+        }
+        $session = $this->session->fresh();
+        $summary = $session->config['_summary'] ?? null;
+        if ($summary !== null && $summary !== '')
+        {
+            $this->summary = (string) $summary;
+            $this->summaryLoading = false;
+        }
+    }
+
     public function hydrate(): void
     {
         if ($this->step === 6 && $this->insightsLoading && $this->session)
         {
             $this->checkInsightsReady();
         }
+        if ($this->step === 5 && $this->summaryLoading && $this->session)
+        {
+            $this->checkSummaryReady();
+        }
     }
 
+    /**
+     * Polled when on step 6: syncs _insights from session (from queue job) into component state.
+     * When using Redis queue the job runs in a worker and writes to the session model; this picks it up.
+     */
     public function checkInsightsReady(): void
     {
-        if (! $this->insightsLoading || ! $this->session)
+        if (! $this->session || $this->step !== 6)
         {
             return;
         }
