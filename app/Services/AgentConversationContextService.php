@@ -97,6 +97,32 @@ class AgentConversationContextService
     }
 
     /**
+     * Persist only the agent's reply (when toggle is OFF - human reply). Keeps conversation context for the AI.
+     */
+    public function persistAgentReply(int $userId, string $assistantContent): void
+    {
+        $conversation = $this->getOrCreateConversation($userId, 'Chat');
+
+        $conversation->touch();
+
+        $actorId = auth()->id() ?? $userId;
+
+        AgentConversationMessage::create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversation->id,
+            'user_id' => $actorId,
+            'agent' => self::AGENT_NAME,
+            'role' => 'assistant',
+            'content' => $assistantContent,
+            'attachments' => '[]',
+            'tool_calls' => '[]',
+            'tool_results' => '[]',
+            'usage' => '[]',
+            'meta' => [],
+        ]);
+    }
+
+    /**
      * Append user and assistant messages to the conversation and update conversation timestamp.
      */
     public function persistMessages(int $userId, string $userContent, string $assistantContent, ?string $routedTo = null): void

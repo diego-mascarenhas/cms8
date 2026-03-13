@@ -11,6 +11,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\TwilioService;
 use App\Services\UserResolverService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
@@ -116,8 +117,15 @@ class ChatController extends Controller
         $assistantContactId = $selectedAssistantUser
             ? (Contact::withoutGlobalScopes()->where('user_id', $selectedAssistantUser->id)->first()?->id ?? '')
             : '';
+        // Preference owner = client user when viewing a client's conversation, else the operator (auth user)
+        $preferenceUserId = $viewAssistant && auth()->check()
+            ? ($selectedAssistantUser ? $selectedAssistantUser->id : auth()->id())
+            : null;
+        $userChatAiToggleDefault = $preferenceUserId !== null
+            ? $this->getChatAiToggleDefaultForUser($preferenceUserId)
+            : true;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId'));
     }
 
     /**
@@ -167,6 +175,47 @@ class ChatController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Get chat_ai_toggle_default for a user (client or operator) from the settings table.
+     */
+    private function getChatAiToggleDefaultForUser(int $userId): bool
+    {
+        $row = DB::table('settings')
+            ->where('group', 'user_'.$userId)
+            ->where('name', 'chat_ai_toggle_default')
+            ->value('payload');
+
+        if ($row === null)
+        {
+            return true;
+        }
+
+        $decoded = json_decode($row, true);
+
+        return (bool) $decoded;
+    }
+
+    /**
+     * Set chat_ai_toggle_default for a user (client or operator) in the settings table.
+     */
+    private function setChatAiToggleDefaultForUser(int $userId, bool $value): void
+    {
+        $group = 'user_'.$userId;
+        $name = 'chat_ai_toggle_default';
+        $payload = json_encode($value);
+        $now = now();
+
+        DB::table('settings')->updateOrInsert(
+            ['group' => $group, 'name' => $name],
+            [
+                'locked' => false,
+                'payload' => $payload,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
     }
 
     /**
@@ -301,6 +350,34 @@ class ChatController extends Controller
     }
 
     /**
+     * Save default AI toggle preference for the conversation's user (client or operator).
+     * Optional user_id = client user id; when omitted, saves for the authenticated operator.
+     */
+    public function updateAiTogglePreference(Request $request)
+    {
+        $request->validate([
+            'on' => 'required|boolean',
+            'user_id' => 'nullable|integer|exists:users,id',
+        ]);
+
+        if (! auth()->check())
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $userId = $request->integer('user_id', 0) ?: null;
+        if ($userId !== null && $userId !== auth()->id() && ! $this->canViewAssistantConversation($userId))
+        {
+            return response()->json(['success' => false], 403);
+        }
+
+        $targetUserId = $userId ?? auth()->id();
+        $this->setChatAiToggleDefaultForUser($targetUserId, $request->boolean('on'));
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Chat assistant: process message with context from agent_conversations.
      * When recipient (phone) or contact_id is provided, context is that user's conversation; otherwise the auth user's.
      */
@@ -365,12 +442,13 @@ class ChatController extends Controller
         ]);
     }
 
-    public function sendMessage(Request $request, TwilioService $twilioService, ChatAssistantReplyService $replyService)
+    public function sendMessage(Request $request, TwilioService $twilioService, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
     {
         $request->validate([
             'to' => 'required|string',
             'message' => 'required|string',
             'use_ai' => 'boolean',
+            'contact_id' => 'nullable|integer|exists:contacts,id',
         ]);
 
         try
@@ -414,8 +492,15 @@ class ChatController extends Controller
                 Log::warning('Chat assistant failed, sending original message: '.($replyResponse['message'] ?? 'Unknown error'));
             }
 
-            // Send original message
+            // Send original message (agent's reply when toggle is OFF)
             $result = $twilioService->sendWhatsApp($request->to, $request->message);
+
+            // Persist agent's reply into conversation context so the AI has it for future turns
+            $contextUser = $userResolver->resolveUserForConversation($request->to, $request->input('contact_id'));
+            if ($contextUser !== null)
+            {
+                $contextService->persistAgentReply($contextUser->id, $request->message);
+            }
 
             return response()->json(['success' => true, 'message' => 'Message sent']);
         } catch (\Exception $e)

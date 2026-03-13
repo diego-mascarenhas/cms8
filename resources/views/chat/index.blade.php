@@ -34,36 +34,76 @@
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
 
-        @if($viewAssistant ?? false)
-        if (useAiToggle) { useAiToggle.checked = true; }
-        @endif
+        (function persistAiTogglePreference() {
+            var keyEl = document.getElementById('chat-conversation-key');
+            var key = keyEl ? keyEl.value : '';
+            var storageKey = 'chat-ai-toggle-';
+            var userDefault = {{ json_encode($userChatAiToggleDefault ?? true) }};
+            if (!useAiToggle) return;
+            if (key) {
+                var stored = localStorage.getItem(storageKey + key);
+                if (stored !== null) {
+                    useAiToggle.checked = stored === 'on';
+                } else {
+                    useAiToggle.checked = userDefault;
+                }
+                useAiToggle.addEventListener('change', function() {
+                    localStorage.setItem(storageKey + key, useAiToggle.checked ? 'on' : 'off');
+                    var token = document.querySelector('meta[name="csrf-token"]');
+                    if (token) {
+                        var body = { on: useAiToggle.checked };
+                        var prefUserIdEl = document.getElementById('preference-user-id');
+                        if (prefUserIdEl && prefUserIdEl.value) body.user_id = parseInt(prefUserIdEl.value, 10);
+                        fetch('{{ route("chat.ai-toggle-preference") }}', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token.getAttribute('content') },
+                            body: JSON.stringify(body)
+                        }).catch(function() {});
+                    }
+                });
+            } else {
+                useAiToggle.checked = userDefault;
+            }
+        })();
 
         let currentUserMessage = '';
         let currentAiResponse = '';
 
-        // Override the default form submission when AI is toggled on
+        // Single submit handler (capture so we run before app-chat.js): toggle OFF = only your message, toggle ON = assistant
         formSendMessage.addEventListener('submit', function(e) {
-            if (useAiToggle && useAiToggle.checked && messageInput.value.trim()) {
-                e.preventDefault();
-                e.stopPropagation();
-                currentUserMessage = messageInput.value.trim();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
+            if (!msg) return;
+            var aiOn = useAiToggle && useAiToggle.checked;
+            var tokenEl = document.querySelector('meta[name="csrf-token"]');
+            var token = tokenEl ? tokenEl.getAttribute('content') : '';
+            var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+            var cidEl = document.getElementById('contact-id');
+            var contactId = (cidEl && cidEl.value && parseInt(cidEl.value, 10)) ? parseInt(cidEl.value, 10) : undefined;
 
-                // Show the user's message in the preview modal
-                document.getElementById('userMessagePreview').textContent = currentUserMessage;
+            if (!aiOn) {
+                var body = { to: toVal, message: msg, use_ai: false };
+                if (contactId) body.contact_id = contactId;
+                fetch('{{ route("chat.send") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(body)
+                }).then(function(r) { return r.json(); }).then(function() {
+                    messageInput.value = '';
+                    if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                }).catch(function() {});
+                return;
+            }
 
-                // Reset and show the preview modal
-                document.getElementById('aiPreviewLoader').classList.remove('d-none');
-                document.getElementById('aiPreviewContent').classList.add('d-none');
-                document.getElementById('aiResponsePreview').textContent = '';
-                previewModal.show();
+            currentUserMessage = msg;
+            document.getElementById('userMessagePreview').textContent = currentUserMessage;
+            document.getElementById('aiPreviewLoader').classList.remove('d-none');
+            document.getElementById('aiPreviewContent').classList.add('d-none');
+            document.getElementById('aiResponsePreview').textContent = '';
+            previewModal.show();
 
-                // Get assistant response with context (agent_conversations)
-                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const cleanTo = recipientInput.value.replace('whatsapp:', '');
-                const contactIdInput = document.getElementById('contact-id');
-                const contactId = contactIdInput ? contactIdInput.value : '';
-
-                fetch('{{ route("chat.assistant") }}', {
+            fetch('{{ route("chat.assistant") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -71,8 +111,8 @@
                     },
                     body: JSON.stringify({
                         message: currentUserMessage,
-                        recipient: cleanTo || undefined,
-                        contact_id: (contactId && parseInt(contactId, 10)) ? parseInt(contactId, 10) : undefined
+                        recipient: toVal || undefined,
+                        contact_id: contactId
                     })
                 })
                 .then(response => response.json())
@@ -97,9 +137,8 @@
                     currentAiResponse = '';
                 });
 
-                return false;
-            }
-        });
+            return false;
+        }, true);
 
         // Send the previewed AI response when confirmed
         sendAiResponseBtn.addEventListener('click', function() {
@@ -764,6 +803,18 @@
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center">
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">
+                            @php
+                                $chatConversationKey = '';
+                                if ($viewAssistant ?? false) {
+                                    $chatConversationKey = isset($selectedAssistantUser) && $selectedAssistantUser
+                                        ? 'assistant-' . $selectedAssistantUser->id
+                                        : 'assistant-me';
+                                } elseif (!empty($selectedPhone)) {
+                                    $chatConversationKey = 'phone-' . $selectedPhone;
+                                }
+                            @endphp
+                            <input type="hidden" id="chat-conversation-key" value="{{ $chatConversationKey }}">
+                            <input type="hidden" id="preference-user-id" value="{{ $preferenceUserId ?? '' }}">
                             @if(isset($selectedContact) && $selectedContact)
                                 <input type="hidden" id="contact-id" value="{{ $selectedContact->id }}">
                             @elseif($selectedAssistantUser ?? null)

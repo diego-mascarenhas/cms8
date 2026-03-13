@@ -33,6 +33,7 @@
     "spatie/laravel-google-calendar": "^3.8",
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.20",
+    "spatie/laravel-settings": "^3.7",
     "spatie/laravel-tags": "^4.10",
     "squareetlabs/laravel-verifactu": "^1.0",
     "symfony/http-client": "^7.3",
