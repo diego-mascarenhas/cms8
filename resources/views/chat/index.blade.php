@@ -34,6 +34,10 @@
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
 
+        @if($viewAssistant ?? false)
+        if (useAiToggle) { useAiToggle.checked = true; }
+        @endif
+
         let currentUserMessage = '';
         let currentAiResponse = '';
 
@@ -102,9 +106,8 @@
             if (currentUserMessage && currentAiResponse) {
                 previewModal.hide();
 
-                // Send the user message first
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const cleanTo = recipientInput.value.replace('whatsapp:', '');
+                const cleanTo = recipientInput.value.replace('whatsapp:', '').trim();
 
                 // Add the original message to the UI
                 let renderMsg = document.createElement('li');
@@ -131,38 +134,39 @@
                 `;
                 document.querySelector('.chat-history').appendChild(renderMsg);
 
-                // Send the user message to the server
-                fetch('/chat/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify({
-                        to: cleanTo,
-                        message: currentUserMessage,
-                        use_ai: false
-                    })
-                }).then(response => response.json())
-                  .catch(error => console.error('Error sending user message:', error));
+                // Send the user message to WhatsApp only when there is a recipient (not in assistant-only view)
+                if (cleanTo) {
+                    fetch('/chat/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            to: cleanTo,
+                            message: currentUserMessage,
+                            use_ai: false
+                        })
+                    }).then(response => response.json())
+                      .catch(error => console.error('Error sending user message:', error));
+                }
 
-                // Create a new message for AI response
+                // Create a new message for AI response (left side, like in assistant view)
                 let aiMsg = document.createElement('li');
-                aiMsg.className = 'chat-message chat-message-right';
+                aiMsg.className = 'chat-message';
                 aiMsg.innerHTML = `
                     <div class="d-flex overflow-hidden">
-                        <div class="chat-message-wrapper flex-grow-1">
-                            <div class="chat-message-text">
-                                <p class="mb-0">${currentAiResponse}</p>
-                            </div>
-                            <div class="text-end text-muted mt-1">
-                                <i class='ti ti-clock ti-xs me-1'></i>
-                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
+                        <div class="user-avatar flex-shrink-0 me-3">
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded-circle bg-label-info">AI</span>
                             </div>
                         </div>
-                        <div class="user-avatar flex-shrink-0 ms-3">
-                            <div class="avatar avatar-sm">
-                                <span class="avatar-initial rounded-circle bg-label-primary">AI</span>
+                        <div class="chat-message-wrapper flex-grow-1">
+                            <div class="chat-message-text">
+                                <p class="mb-0">${currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p>
+                            </div>
+                            <div class="text-muted mt-1">
+                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
                             </div>
                         </div>
                     </div>
@@ -173,27 +177,85 @@
                 const chatHistory = document.querySelector('.chat-history-body');
                 if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
 
-                // Send the AI message to the server
-                fetch('/chat/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify({
+                // Send the AI message to WhatsApp only when there is a recipient
+                if (cleanTo) {
+                    fetch('/chat/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
                         to: cleanTo,
                         message: currentAiResponse,
                         use_ai: false
                     })
                 }).then(response => response.json())
                   .catch(error => console.error('Error sending AI message:', error));
+                }
 
                 // Clear the input
                 messageInput.value = '';
                 currentUserMessage = '';
                 currentAiResponse = '';
+                if (window.refreshAssistantHistory) window.refreshAssistantHistory();
             }
         });
+
+        @if($viewAssistant ?? false)
+        // Poll assistant history so messages from terminal appear without full page reload
+        (function() {
+            var list = document.getElementById('assistant-messages-list');
+            if (!list) return;
+            var assistantUserId = {!! json_encode(optional($selectedAssistantUser)->id) !!};
+            var historyUrl = '{{ route("chat.assistant-history") }}' + (assistantUserId ? '?user_id=' + assistantUserId : '');
+            var refreshBtn = document.getElementById('assistant-refresh-btn');
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            function formatDate(iso) {
+                var d = new Date(iso);
+                return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+            function renderMessages(messages) {
+                if (!messages || messages.length === 0) {
+                    var extra = assistantUserId ? '' : '<p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? "" }}) para ver la misma conversación.</p>';
+                    list.innerHTML = '<li class="text-center p-4 assistant-empty-state">' +
+                        '<p class="text-muted mb-0">Aún no hay mensajes. Escribe abajo o usa <code>php artisan chat:simulate</code>.</p>' + extra + '</li>';
+                    return;
+                }
+                var html = messages.map(function(m) {
+                    var isUser = m.role === 'user';
+                    var content = escapeHtml(m.content).replace(/\n/g, '<br>');
+                    var time = formatDate(m.created_at);
+                    var sideClass = isUser ? 'chat-message-right' : '';
+                    var timeClass = isUser ? 'text-end' : '';
+                    return '<li class="chat-message ' + sideClass + '">' +
+                        '<div class="d-flex overflow-hidden">' +
+                        '<div class="chat-message-wrapper flex-grow-1">' +
+                        '<div class="chat-message-text"><p class="mb-0">' + content + '</p></div>' +
+                        '<div class="text-muted mt-1 ' + timeClass + '"><small>' + time + '</small></div>' +
+                        '</div></div></li>';
+                }).join('');
+                list.innerHTML = html;
+                var body = document.querySelector('.chat-history-body');
+                if (body) body.scrollTop = body.scrollHeight;
+            }
+            function fetchHistory() {
+                fetch(historyUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) { renderMessages(data.messages || []); })
+                    .catch(function() {});
+            }
+            setInterval(fetchHistory, 5000);
+            if (refreshBtn) refreshBtn.addEventListener('click', fetchHistory);
+            window.addEventListener('focus', fetchHistory);
+            window.refreshAssistantHistory = fetchHistory;
+        })();
+        @endif
     });
     </script>
 @endsection
@@ -317,6 +379,34 @@
                     </div>
                     <!-- Chats -->
                     <ul class="list-unstyled chat-contact-list" id="chat-list">
+                        @auth
+                        <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
+                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-online">
+                                    <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Asistente</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Mi conversación con el bot</p>
+                                </div>
+                            </a>
+                        </li>
+                        @foreach($assistantClients ?? [] as $client)
+                            @if($client->id !== auth()->id())
+                            <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
+                                <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 avatar avatar-online">
+                                        <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
+                                    </div>
+                                    <div class="chat-contact-info flex-grow-1 ms-2">
+                                        <h6 class="chat-contact-name text-truncate m-0">{{ $client->name ?? $client->email }}</h6>
+                                        <p class="chat-contact-status text-muted text-truncate mb-0">{{ $client->phone ?? $client->email }}</p>
+                                    </div>
+                                </a>
+                            </li>
+                            @endif
+                        @endforeach
+                        @endauth
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
                                 <h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6>
@@ -498,7 +588,34 @@
             <div class="col app-chat-history bg-body">
                 <div class="chat-history-wrapper">
                     <div class="chat-history-header border-bottom">
-                        @if ($selectedPhone)
+                        @if ($viewAssistant ?? false)
+                        <div class="d-flex overflow-hidden align-items-center justify-content-between w-100">
+                            <div class="d-flex overflow-hidden align-items-center">
+                                <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
+                                    data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
+                                <div class="flex-shrink-0 avatar">
+                                    @if($selectedAssistantUser ?? null)
+                                        <span class="avatar-initial rounded-circle bg-label-success">{{ substr($selectedAssistantUser->name ?? $selectedAssistantUser->email ?? '?', 0, 2) }}</span>
+                                    @else
+                                        <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
+                                    @endif
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="m-0">{{ $selectedAssistantUser->name ?? $selectedAssistantUser->email ?? 'Asistente' }}</h6>
+                                    <small class="user-status text-muted">
+                                        @if($selectedAssistantUser ?? null)
+                                            {{ $selectedAssistantUser->phone ?? $selectedAssistantUser->email }} — Responde tú o activa la IA
+                                        @else
+                                            Misma conversación que en <code>php artisan chat:simulate</code>
+                                        @endif
+                                    </small>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="assistant-refresh-btn" title="Actualizar mensajes del terminal">
+                                <i class="ti ti-refresh me-1"></i>Recargar
+                            </button>
+                        </div>
+                        @elseif ($selectedPhone)
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex overflow-hidden align-items-center">
                                 <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
@@ -530,8 +647,30 @@
                         @endif
                     </div>
                     <div class="chat-history-body bg-body">
-                        <ul class="list-unstyled chat-history">
-                            @if (!$selectedPhone)
+                        <ul class="list-unstyled chat-history" id="assistant-messages-list">
+                            @if ($viewAssistant ?? false)
+                                @forelse(($assistantMessages ?? []) as $msg)
+                                    <li class="chat-message {{ $msg['role'] === 'user' ? 'chat-message-right' : '' }}">
+                                        <div class="d-flex overflow-hidden">
+                                            <div class="chat-message-wrapper flex-grow-1">
+                                                <div class="chat-message-text">
+                                                    <p class="mb-0">{!! nl2br(e($msg['content'])) !!}</p>
+                                                </div>
+                                                <div class="text-muted mt-1 {{ $msg['role'] === 'user' ? 'text-end' : '' }}">
+                                                    <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                @empty
+                                    <li class="text-center p-4 assistant-empty-state">
+                                        <p class="text-muted mb-0">Aún no hay mensajes. Escribe abajo o usa <code>php artisan chat:simulate --phone=...</code> para simular a este cliente.</p>
+                                        @if(!($selectedAssistantUser ?? null))
+                                        <p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? '' }}) para ver tu conversación.</p>
+                                        @endif
+                                    </li>
+                                @endforelse
+                            @elseif (!$selectedPhone)
                                 <li class="text-center p-4">
                                     <p class="text-muted mb-0">Selecciona una conversación para ver los mensajes</p>
                                 </li>
@@ -624,9 +763,11 @@
                     <div class="chat-history-footer shadow-sm">
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center">
                             @csrf
-                            <input type="hidden" id="recipient" value="{{ $selectedPhone }}">
+                            <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">
                             @if(isset($selectedContact) && $selectedContact)
                                 <input type="hidden" id="contact-id" value="{{ $selectedContact->id }}">
+                            @elseif($selectedAssistantUser ?? null)
+                                <input type="hidden" id="contact-id" value="{{ $assistantContactId ?? '' }}">
                             @else
                                 <input type="hidden" id="contact-id" value="">
                             @endif

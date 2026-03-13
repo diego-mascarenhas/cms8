@@ -65,6 +65,37 @@ class AgentConversationContextService
     }
 
     /**
+     * Get messages for display in the UI (e.g. web chat). Same conversation as terminal chat:simulate.
+     *
+     * @return array<int, array{role: string, content: string, created_at: \Carbon\Carbon}>
+     */
+    public function getMessagesForDisplay(int $userId, int $limit = 50): array
+    {
+        $conversation = AgentConversation::where('user_id', $userId)
+            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (! $conversation)
+        {
+            return [];
+        }
+
+        return $conversation->messages()
+            ->where('agent', self::AGENT_NAME)
+            ->orderBy('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (AgentConversationMessage $m) => [
+                'role' => $m->role,
+                'content' => $m->content,
+                'created_at' => $m->created_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Append user and assistant messages to the conversation and update conversation timestamp.
      */
     public function persistMessages(int $userId, string $userContent, string $assistantContent, ?string $routedTo = null): void

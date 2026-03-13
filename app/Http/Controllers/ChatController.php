@@ -48,10 +48,31 @@ class ChatController extends Controller
 
         // If a contact is selected, get their messages
         $selectedPhone = request('phone');
+        $viewAssistant = request('view') === 'assistant';
+        $assistantUserId = request()->integer('user_id', 0) ?: null;
         $messages = collect();
         $selectedUser = null;
+        $assistantMessages = [];
+        $selectedAssistantUser = null;
+        $assistantClients = collect();
 
-        if ($selectedPhone)
+        if ($viewAssistant && auth()->check())
+        {
+            $contextService = app(AgentConversationContextService::class);
+            if ($assistantUserId && $this->canViewAssistantConversation($assistantUserId))
+            {
+                $selectedAssistantUser = User::withoutGlobalScopes()->find($assistantUserId);
+                if ($selectedAssistantUser)
+                {
+                    $assistantMessages = $contextService->getMessagesForDisplay($selectedAssistantUser->id, 50);
+                }
+            }
+            if (! $selectedAssistantUser)
+            {
+                $assistantMessages = $contextService->getMessagesForDisplay(auth()->id(), 50);
+            }
+            $assistantClients = $this->getAssistantClientsList();
+        } elseif ($selectedPhone)
         {
             // Get all messages for this conversation
             $messages = Conversation::where('channel', 'whatsapp')
@@ -91,7 +112,101 @@ class ChatController extends Controller
             $message->body = TextHelper::sanitizeAndLink($message->body);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users'));
+        $clientRecipientPhone = $selectedAssistantUser ? $this->getWhatsAppPhoneForUser($selectedAssistantUser) : '';
+        $assistantContactId = $selectedAssistantUser
+            ? (Contact::withoutGlobalScopes()->where('user_id', $selectedAssistantUser->id)->first()?->id ?? '')
+            : '';
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId'));
+    }
+
+    /**
+     * Get phone for WhatsApp (recipient field) from a user.
+     */
+    private function getWhatsAppPhoneForUser(User $user): string
+    {
+        $phone = $user->phone !== null ? (string) $user->phone : null;
+        if ($phone === null || $phone === '')
+        {
+            $contact = Contact::withoutGlobalScopes()->where('user_id', $user->id)->first();
+            if ($contact && $contact->phone)
+            {
+                $phone = preg_replace('/[^0-9]/', '', (string) $contact->phone);
+            }
+        }
+        if ($phone !== null && $phone !== '' && ! str_starts_with($phone, 'whatsapp:'))
+        {
+            $phone = 'whatsapp:'.ltrim($phone, '+');
+        }
+
+        return $phone ?? '';
+    }
+
+    /**
+     * Whether the current user can view the assistant conversation for the given user_id (same user, same team, or placeholder client).
+     */
+    private function canViewAssistantConversation(int $userId): bool
+    {
+        if ($userId === auth()->id())
+        {
+            return true;
+        }
+        $user = User::withoutGlobalScopes()->with('teams')->find($userId);
+        if (! $user)
+        {
+            return false;
+        }
+        $currentTeam = auth()->user()->currentTeam;
+        if ($currentTeam && $user->teams->contains('id', $currentTeam->id))
+        {
+            return true;
+        }
+        if ($user->teams->isEmpty())
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Users that have an assistant conversation (for sidebar list). Current user + same team + placeholder (no team).
+     */
+    private function getAssistantClientsList()
+    {
+        $contextService = app(AgentConversationContextService::class);
+        $userIds = \App\Models\AgentConversation::whereHas('messages', fn ($q) => $q->where('agent', AgentConversationContextService::AGENT_NAME))
+            ->distinct()
+            ->pluck('user_id');
+
+        if ($userIds->isEmpty())
+        {
+            return collect();
+        }
+
+        return User::withoutGlobalScopes()
+            ->with('teams')
+            ->whereIn('id', $userIds)
+            ->get()
+            ->filter(function (User $u)
+            {
+                if ($u->id === auth()->id())
+                {
+                    return true;
+                }
+                $currentTeam = auth()->user()->currentTeam;
+                if ($currentTeam && $u->teams->contains('id', $currentTeam->id))
+                {
+                    return true;
+                }
+                if ($u->teams->isEmpty())
+                {
+                    return true;
+                }
+
+                return false;
+            })
+            ->values();
     }
 
     /**
@@ -156,6 +271,33 @@ class ChatController extends Controller
             ->get();
 
         return response()->json(['messages' => $messages]);
+    }
+
+    /**
+     * Get assistant conversation history as JSON (for polling / live update). Optional user_id for client view.
+     */
+    public function assistantHistory(AgentConversationContextService $contextService)
+    {
+        if (! auth()->check())
+        {
+            return response()->json(['messages' => []], 401);
+        }
+
+        $userId = request()->integer('user_id', 0) ?: null;
+        if ($userId && ! $this->canViewAssistantConversation($userId))
+        {
+            return response()->json(['messages' => []], 403);
+        }
+        $targetUserId = $userId ?? auth()->id();
+        $messages = $contextService->getMessagesForDisplay($targetUserId, 50);
+
+        return response()->json([
+            'messages' => array_map(fn ($m) => [
+                'role' => $m['role'],
+                'content' => $m['content'],
+                'created_at' => $m['created_at']->toIso8601String(),
+            ], $messages),
+        ]);
     }
 
     /**

@@ -18,6 +18,8 @@ class HumanoStartCommand extends Command
 
     private const OPT_DEMO_ONLY = 'Load demo data only (requires DB already seeded)';
 
+    private const OPT_CHAT = 'Chat (conversar con el asistente en terminal)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -55,6 +57,7 @@ class HumanoStartCommand extends Command
                 [
                     self::OPT_FRESH,
                     self::OPT_DEMO_ONLY,
+                    self::OPT_CHAT,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -76,6 +79,9 @@ class HumanoStartCommand extends Command
             } elseif ($choice === self::OPT_DEMO_ONLY)
             {
                 $this->runDemo();
+            } elseif ($choice === self::OPT_CHAT)
+            {
+                $this->call('chat:simulate');
             }
 
             $this->newLine();
