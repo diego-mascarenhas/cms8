@@ -147,6 +147,7 @@ class TeamHumanoSeeder extends Seeder
             'attendances',  // Attendance tracking
             'collaborators',  // Team collaboration
             'notifications',  // Notification system
+            'chat',  // Live chat (WhatsApp, assistant)
         ];
 
         // Get all modules by their keys

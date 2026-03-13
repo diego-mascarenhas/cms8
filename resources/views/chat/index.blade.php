@@ -41,6 +41,7 @@
         formSendMessage.addEventListener('submit', function(e) {
             if (useAiToggle && useAiToggle.checked && messageInput.value.trim()) {
                 e.preventDefault();
+                e.stopPropagation();
                 currentUserMessage = messageInput.value.trim();
 
                 // Show the user's message in the preview modal
@@ -52,19 +53,22 @@
                 document.getElementById('aiResponsePreview').textContent = '';
                 previewModal.show();
 
-                // Get AI response preview
+                // Get assistant response with context (agent_conversations)
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 const cleanTo = recipientInput.value.replace('whatsapp:', '');
+                const contactIdInput = document.getElementById('contact-id');
+                const contactId = contactIdInput ? contactIdInput.value : '';
 
-                fetch('{{ route("claude.prompts.preview") }}', {
+                fetch('{{ route("chat.assistant") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': token
                     },
                     body: JSON.stringify({
-                        prompt_name: 'default',
-                        test_message: currentUserMessage
+                        message: currentUserMessage,
+                        recipient: cleanTo || undefined,
+                        contact_id: (contactId && parseInt(contactId, 10)) ? parseInt(contactId, 10) : undefined
                     })
                 })
                 .then(response => response.json())
@@ -73,8 +77,8 @@
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
 
                     if (data.success) {
-                        currentAiResponse = data.response;
-                        document.getElementById('aiResponsePreview').textContent = data.response;
+                        currentAiResponse = data.response || '';
+                        document.getElementById('aiResponsePreview').textContent = currentAiResponse;
                     } else {
                         document.getElementById('aiResponsePreview').innerHTML =
                             '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
@@ -621,6 +625,11 @@
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center">
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedPhone }}">
+                            @if(isset($selectedContact) && $selectedContact)
+                                <input type="hidden" id="contact-id" value="{{ $selectedContact->id }}">
+                            @else
+                                <input type="hidden" id="contact-id" value="">
+                            @endif
 
                             <div class="d-flex align-items-center w-100">
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"

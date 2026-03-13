@@ -84,6 +84,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Assistant chat stub (testing)
+    |--------------------------------------------------------------------------
+    |
+    | When true, the chat assistant returns a stub response instead of calling
+    | Claude. Use for testing the flow without API usage. Can be overridden
+    | per team via Team Settings > Chat / Asistente > Modo prueba.
+    |
+    */
+    'assistant_chat_stub' => env('ASSISTANT_CHAT_STUB', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

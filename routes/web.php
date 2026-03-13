@@ -1,6 +1,5 @@
 <?php
 
-use App\Helpers\Helpers as Helper;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
@@ -397,6 +396,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
     Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
     // Chatbot (Livewire assistant with general router + flows)

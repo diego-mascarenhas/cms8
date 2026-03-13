@@ -30,6 +30,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             'notifications.notifications_email' => 'nullable|in:0,1',
             'notifications.notifications_sms' => 'nullable|in:0,1',
 
+            // Chat / Assistant settings
+            'chat.assistant_chat_stub' => 'nullable|in:0,1',
+
             // Twilio settings
             'twilio.twilio_sid' => 'nullable|string|max:255',
             'twilio.twilio_token' => 'nullable|string|max:255',

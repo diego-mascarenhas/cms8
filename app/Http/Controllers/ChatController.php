@@ -6,8 +6,10 @@ use App\Helpers\TextHelper;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\User;
-use App\Services\ClaudeService;
+use App\Services\AgentConversationContextService;
+use App\Services\ChatAssistantReplyService;
 use App\Services\TwilioService;
+use App\Services\UserResolverService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -156,15 +158,78 @@ class ChatController extends Controller
         return response()->json(['messages' => $messages]);
     }
 
-    public function sendMessage(Request $request)
+    /**
+     * Chat assistant: process message with context from agent_conversations.
+     * When recipient (phone) or contact_id is provided, context is that user's conversation; otherwise the auth user's.
+     */
+    public function assistant(Request $request, UserResolverService $userResolver, AgentConversationContextService $contextService, ChatAssistantReplyService $replyService)
+    {
+        $request->validate([
+            'message' => 'required|string|max:16000',
+            'recipient' => 'nullable|string|max:50',
+            'contact_id' => 'nullable|integer|exists:contacts,id',
+        ]);
+
+        $contextUser = null;
+
+        if ($request->filled('recipient'))
+        {
+            $contextUser = $userResolver->resolveUserForConversation($request->input('recipient'), $request->input('contact_id'));
+        }
+
+        if ($contextUser === null && $request->filled('contact_id'))
+        {
+            $contextUser = $userResolver->resolveUserForConversation(null, (int) $request->input('contact_id'));
+        }
+
+        if ($contextUser === null && ! $request->filled('recipient'))
+        {
+            if (! auth()->check())
+            {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+            }
+            $contextUser = auth()->user();
+        }
+
+        if ($contextUser === null)
+        {
+            return response()->json(['success' => false, 'message' => 'Could not resolve user for conversation'], 400);
+        }
+
+        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
+        $teamId = auth()->user()?->currentTeam?->id;
+        $replyResponse = $replyService->getReply($request->input('message'), $history, $teamId);
+
+        if (! $replyResponse['success'])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $replyResponse['message'] ?? 'Assistant failed',
+            ], 500);
+        }
+
+        $assistantText = $replyResponse['text'] ?? '';
+        $contextService->persistMessages(
+            $contextUser->id,
+            $request->input('message'),
+            $assistantText,
+            $replyResponse['routed_to'] ?? null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'response' => $assistantText,
+            'action_performed' => null,
+        ]);
+    }
+
+    public function sendMessage(Request $request, TwilioService $twilioService, ChatAssistantReplyService $replyService)
     {
         $request->validate([
             'to' => 'required|string',
             'message' => 'required|string',
             'use_ai' => 'boolean',
         ]);
-
-        $twilioService = app(TwilioService::class);
 
         try
         {
@@ -184,14 +249,13 @@ class ChatController extends Controller
             {
                 // Get chat history for context
                 $history = $this->getChatHistory($request->to, 10);
+                $teamId = auth()->user()?->currentTeam?->id;
+                $replyResponse = $replyService->getReply($request->message, $history, $teamId);
 
-                // Process with Claude
-                $claudeResponse = $this->processWithClaude($request->message, $history);
-
-                // If Claude responded successfully, use its response
-                if ($claudeResponse['success'])
+                // If assistant responded successfully, use its response
+                if ($replyResponse['success'])
                 {
-                    $aiMessage = $claudeResponse['text'];
+                    $aiMessage = $replyResponse['text'];
 
                     // Send the AI message
                     $result = $twilioService->sendWhatsApp($request->to, $aiMessage);
@@ -204,8 +268,8 @@ class ChatController extends Controller
                     ]);
                 }
 
-                // If Claude failed, continue with original message
-                Log::warning('Claude AI failed, sending original message: '.$claudeResponse['message']);
+                // If assistant failed, continue with original message
+                Log::warning('Chat assistant failed, sending original message: '.($replyResponse['message'] ?? 'Unknown error'));
             }
 
             // Send original message
@@ -222,20 +286,6 @@ class ChatController extends Controller
 
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
-
-    /**
-     * Process a message with Claude to get AI assistance
-     *
-     * @param  string  $message  The user message
-     * @param  array  $history  Previous conversation history
-     * @return array Response from Claude
-     */
-    private function processWithClaude($message, $history = [])
-    {
-        $claudeService = app(ClaudeService::class);
-
-        return $claudeService->chat($message, $history);
     }
 
     /**
