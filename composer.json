@@ -23,7 +23,7 @@
     "laravel/sanctum": "^4.0",
     "laravel/telescope": "^5.15",
     "laravel/tinker": "^2.8",
-    "livewire/livewire": "^3.0",
+    "livewire/livewire": "^4.0",
     "nyholm/psr7": "^1.8",
     "php-ffmpeg/php-ffmpeg": "^1.4",
     "sbsaga/toon": "^1.2",
