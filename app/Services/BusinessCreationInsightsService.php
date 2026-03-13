@@ -39,6 +39,9 @@ class BusinessCreationInsightsService
         $aiPhaseTimeline[] = ['phase' => 'market_data', 'started_at' => now()->toIso8601String()];
         $this->setInsightsPhase($session, 'market_data');
 
+        $apolloStartedAt = null;
+        $apolloFinishedAt = null;
+
         try
         {
             $businessesNearby = 0;
@@ -49,6 +52,7 @@ class BusinessCreationInsightsService
             $seniorityDirector = 0;
             $seniorityManager = 0;
 
+            $apolloStartedAt = now();
             if ($filtersSectorAndZone !== [])
             {
                 $orgResult = $this->apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
@@ -79,6 +83,10 @@ class BusinessCreationInsightsService
                 $byIndustry = [$industry => $industryResult['total_entries'] ?? 0];
                 $sectorOnlyResult = $this->apolloService->searchOrganizations($industryOnlyFilters, 1, 1);
                 $sectorTotalCount = $sectorOnlyResult['total_entries'] ?? 0;
+            }
+            if ($apolloStartedAt !== null)
+            {
+                $apolloFinishedAt = now();
             }
 
             $chartSeries = [
@@ -123,6 +131,8 @@ class BusinessCreationInsightsService
                 $byIndustry,
                 $sectorTotalCount,
                 $aiPhaseTimeline,
+                $apolloStartedAt,
+                $apolloFinishedAt,
             );
 
             $insights = array_filter([
@@ -142,7 +152,7 @@ class BusinessCreationInsightsService
             {
                 $websiteContent = $this->fetchWebsiteContent($website);
                 $linksContext = $this->buildLinksContext($config);
-                $fallbackReport = $this->generateMarketReport($session, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0);
+                $fallbackReport = $this->generateMarketReport($session, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0, [], null, null);
                 $insights = ['potential_clients_summary' => $fallbackReport];
             } catch (\Throwable $inner)
             {
@@ -317,6 +327,8 @@ class BusinessCreationInsightsService
         array $byIndustry,
         int $sectorTotalCount = 0,
         array $aiPhaseTimeline = [],
+        ?Carbon $apolloStartedAt = null,
+        ?Carbon $apolloFinishedAt = null,
     ): ?string {
         $locationStr = implode(', ', array_filter($location['organization_locations'] ?? []));
         $industryCount = array_sum($byIndustry);
@@ -412,6 +424,12 @@ PROMPT;
                 $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
                 $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
                 $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
+                if ($apolloStartedAt !== null && $apolloFinishedAt !== null)
+                {
+                    $metadata['apollo_started_at'] = $apolloStartedAt->toIso8601String();
+                    $metadata['apollo_finished_at'] = $apolloFinishedAt->toIso8601String();
+                    $metadata['apollo_duration_seconds'] = (int) $apolloStartedAt->diffInSeconds($apolloFinishedAt);
+                }
                 BusinessCreationAiLog::create([
                     'business_creation_session_id' => $session->id,
                     'type' => 'market_report',
