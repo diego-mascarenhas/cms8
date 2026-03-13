@@ -118,6 +118,11 @@ class BusinessWizard extends Component
         {
             $this->insights = $saved['_insights'];
         }
+        if ($this->step === 6 && ! empty($saved['_insights_phase']) && empty($saved['_insights']))
+        {
+            $this->insightsLoading = true;
+            $this->insightsPhase = $saved['_insights_phase'];
+        }
         if (empty($saved['_step_history']))
         {
             $this->persistConfigWithStepEntry();
