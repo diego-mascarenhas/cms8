@@ -149,6 +149,16 @@
             return false;
         }, true);
 
+        // Refresh WhatsApp QR image periodically so it appears when the Node service has it
+        (function() {
+            var qrImg = document.getElementById('chat-whatsapp-qr-img');
+            if (qrImg && qrImg.dataset.qrBase) {
+                setInterval(function() {
+                    qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                }, 4000);
+            }
+        })();
+
         // Send the previewed AI response when confirmed (capture so we run first)
         sendAiResponseBtn.addEventListener('click', function() {
             if (currentUserMessage && currentAiResponse) {
@@ -315,8 +325,14 @@
             <div class="col app-chat-sidebar-left app-sidebar overflow-hidden" id="app-chat-sidebar-left">
                 <div
                     class="chat-sidebar-left-user sidebar-header d-flex flex-column justify-content-center align-items-center flex-wrap px-4 pt-5">
-                    <div class="avatar avatar-xl avatar-online">
-                        <img src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar" class="rounded-circle">
+                    @php
+                        $sidebarLeftAvatarStatus = 'avatar-online';
+                        if (($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus['status']) && ($whatsappStatus['status'] ?? '') !== 'connected') {
+                            $sidebarLeftAvatarStatus = 'avatar-offline';
+                        }
+                    @endphp
+                    <div class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
+                        <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot" style="font-size: 2rem;"></i></span>
                     </div>
                     @if(($whatsappDriver ?? 'twilio') === 'local' && !empty($whatsappStatus['number']))
                         <h5 class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
@@ -341,9 +357,11 @@
                         @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
-                                <a href="{{ route('chat.whatsapp-connect') }}" class="btn btn-sm btn-success" target="_blank" rel="noopener">
-                                    <i class="ti ti-brand-whatsapp me-1"></i>{{ __('Open QR in new tab') }}
-                                </a>
+                                @if(!empty($qrImageUrl))
+                                    <div class="d-inline-block p-2 bg-white border rounded text-center">
+                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block" width="200" height="200" loading="lazy" data-qr-base="{{ url($qrImageUrl) }}">
+                                    </div>
+                                @endif
                                 <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>
                             </div>
                         @elseif(($whatsappDriver ?? 'twilio') !== 'local')
@@ -425,10 +443,9 @@
                                 $avatarStatusClass = 'avatar-offline';
                             }
                         @endphp
-                        <div class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3" data-bs-toggle="sidebar"
+                        <div class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
-                            <img class="user-avatar rounded-circle cursor-pointer"
-                                src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar">
+                            <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
                         </div>
                         <div class="flex-grow-1 input-group input-group-merge rounded-pill">
                             <span class="input-group-text" id="basic-addon-search31"><i class="ti ti-search"></i></span>
@@ -508,19 +525,6 @@
                                     </a>
                                 </li>
                             @endforeach
-                        @endif
-                        @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
-                        <li class="chat-contact-list-item mt-2 pt-2 border-top">
-                            <a href="{{ route('chat.whatsapp-connect') }}" class="d-flex align-items-center">
-                                <div class="flex-shrink-0 avatar">
-                                    <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
-                                </div>
-                                <div class="chat-contact-info flex-grow-1 ms-2">
-                                    <h6 class="chat-contact-name text-truncate m-0">{{ __('WhatsApp connection') }}</h6>
-                                    <p class="chat-contact-status text-muted text-truncate mb-0">{{ __('Scan QR to link') }}</p>
-                                </div>
-                            </a>
-                        </li>
                         @endif
                     </ul>
                     <!-- Contacts -->

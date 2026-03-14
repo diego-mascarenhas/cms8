@@ -144,12 +144,19 @@ class ChatController extends Controller
 
         $whatsappDriver = config('whatsapp.driver');
         $whatsappStatus = null;
+        $qrImageUrl = null;
         if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
         {
-            $whatsappStatus = app(WhatsAppGateway::class)->getConnectionStatus();
+            $gateway = app(WhatsAppGateway::class);
+            $whatsappStatus = $gateway->getConnectionStatus();
+            $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+            if ($baseUrl !== '')
+            {
+                $qrImageUrl = route('chat.whatsapp-qr-image');
+            }
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'qrImageUrl'));
     }
 
     /**
@@ -733,6 +740,49 @@ class ChatController extends Controller
     public function sendTemplateMessage(Request $request)
     {
         return $this->sendWithTemplate($request);
+    }
+
+    /**
+     * Proxy for WhatsApp QR image (same-origin so it loads on HTTPS).
+     */
+    public function whatsappQrImage()
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return $this->transparentPngResponse();
+        }
+        $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+        if ($baseUrl === '')
+        {
+            return $this->transparentPngResponse();
+        }
+        $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->get($baseUrl.'/qr.png');
+        if (! $response->successful())
+        {
+            return $this->transparentPngResponse();
+        }
+
+        $body = $response->body();
+        if (strlen($body) < 10)
+        {
+            return $this->transparentPngResponse();
+        }
+
+        return response($body)
+            ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    /**
+     * 1x1 transparent PNG so img tag does not show broken icon.
+     */
+    private function transparentPngResponse(): \Illuminate\Http\Response
+    {
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true);
+
+        return response($png)
+            ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'no-store');
     }
 
     /**
