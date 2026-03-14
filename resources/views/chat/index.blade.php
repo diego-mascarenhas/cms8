@@ -969,6 +969,27 @@
                                 @endif
                             </div>
                         </div>
+                        @else
+                        {{-- Empty state: show WhatsApp connection hint when no conversation selected --}}
+                        @if (($whatsappDriver ?? '') === 'local')
+                            <div class="d-flex align-items-center justify-content-between w-100">
+                                <div class="d-flex overflow-hidden align-items-center">
+                                    <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
+                                        data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
+                                    @if (($whatsappStatus['status'] ?? '') === 'connected')
+                                        <small class="text-muted">
+                                            <i class="ti ti-brand-whatsapp ti-xs me-1"></i>{{ __('WhatsApp connected') }}
+                                        </small>
+                                    @else
+                                        <small class="text-muted">
+                                            <a href="#" class="text-primary text-decoration-none" data-bs-toggle="sidebar" data-overlay data-target="#app-chat-sidebar-left">
+                                                <i class="ti ti-qrcode ti-xs me-1"></i>{{ __('Open sidebar to scan QR and link WhatsApp') }}
+                                            </a>
+                                        </small>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                         @endif
                     </div>
                     <div class="chat-history-body bg-body">

@@ -5,6 +5,9 @@
  * Env: LARAVEL_WEBHOOK_URL, WEBHOOK_SECRET, PORT, AUTH_DIR
  */
 const path = require('path');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
@@ -17,6 +20,38 @@ const PORT = process.env.PORT || 3000;
 const AUTH_DIR = process.env.AUTH_DIR || path.join(__dirname, 'auth');
 const LARAVEL_WEBHOOK_URL = process.env.LARAVEL_WEBHOOK_URL || 'http://localhost:80/webhook/whatsapp-local';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
+
+/** POST JSON to URL; for HTTPS, allow self-signed certs (e.g. local Herd). */
+function postJsonToWebhook(urlString, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlString);
+    const isHttps = u.protocol === 'https:';
+    const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+    const opts = {
+      hostname: u.hostname,
+      port: u.port || (isHttps ? 443 : 80),
+      path: u.pathname + u.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bodyStr),
+        ...headers,
+      },
+    };
+    if (isHttps) {
+      opts.rejectUnauthorized = false;
+    }
+    const mod = isHttps ? https : http;
+    const req = mod.request(opts, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, text: Buffer.concat(chunks).toString() }));
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
 
 const app = express();
 app.use(express.json());
@@ -85,16 +120,11 @@ function makeSocket() {
 
         if (LARAVEL_WEBHOOK_URL) {
           try {
-            const res = await fetch(LARAVEL_WEBHOOK_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(WEBHOOK_SECRET && { 'X-Webhook-Secret': WEBHOOK_SECRET }),
-              },
-              body: JSON.stringify(payload),
-            });
+            const webhookHeaders = {};
+            if (WEBHOOK_SECRET) webhookHeaders['X-Webhook-Secret'] = WEBHOOK_SECRET;
+            const res = await postJsonToWebhook(LARAVEL_WEBHOOK_URL, payload, webhookHeaders);
             if (!res.ok) {
-              console.error('Webhook error:', res.status, await res.text());
+              console.error('Webhook error:', res.status, res.text);
             }
           } catch (e) {
             console.error('Webhook request failed:', e.message);

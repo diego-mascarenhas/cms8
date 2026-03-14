@@ -440,24 +440,9 @@ class TwilioService implements WhatsAppGateway
             $body = $request->input('Body');
             $numMedia = (int) $request->input('NumMedia', 0);
 
-            // DEBUG: Log original numbers for troubleshooting
-            Log::info('Raw phone numbers from Twilio', [
-                'original_from' => $from,
-                'original_to' => $to,
-                'body' => $body,
-            ]);
-
             // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
             $cleanFrom = preg_replace('/[^0-9]/', '', $from);
             $cleanTo = preg_replace('/[^0-9]/', '', $to);
-
-            // DEBUG: Log cleaned numbers
-            Log::info('Cleaned phone numbers', [
-                'clean_from' => $cleanFrom,
-                'clean_to' => $cleanTo,
-                'from_length' => strlen($cleanFrom),
-                'to_length' => strlen($cleanTo),
-            ]);
 
             // Determine the channel type
             $channel = 'sms';

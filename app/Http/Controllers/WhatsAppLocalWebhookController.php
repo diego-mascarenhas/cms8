@@ -28,15 +28,14 @@ class WhatsAppLocalWebhookController extends Controller
         $normalized = $this->normalizePayload($payload);
         if ($normalized === null)
         {
-            // Likely a ping, health check or non-message event; avoid warning spam
             Log::debug('WhatsApp local webhook: payload ignored (missing from/body)', ['payload' => $payload]);
 
             return response()->json(['error' => 'Invalid payload: from and body required'], 422);
         }
 
         $team = $this->resolveTeam($request);
-        // When Node does not send team_id/hash (e.g. single-tenant local), use first team so conversation is stored and chat list works
-        if ($team === null) {
+        if ($team === null)
+        {
             $team = Team::orderBy('id')->first();
         }
         $twilioService = new TwilioService($team);
@@ -69,7 +68,8 @@ class WhatsAppLocalWebhookController extends Controller
         $cleanFrom = preg_replace('/[^0-9]/', '', $from);
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
         $body = (string) $body;
-        if ($body === '') {
+        if ($body === '')
+        {
             $body = ' '; // allow media-only messages so conversation appears in chat list
         }
 

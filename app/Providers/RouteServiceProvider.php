@@ -46,6 +46,12 @@ class RouteServiceProvider extends ServiceProvider
             Route::post('/stripe/webhook/{category}', [\App\Http\Controllers\CategoryStripeWebhookController::class, 'handleWebhook'])
                 ->where('category', 'mentoring|mailer|prospecting|hosting|support');
 
+            // Local WhatsApp (Baileys) webhook - NO web middleware to avoid CSRF
+            Route::post('/webhook/whatsapp-local', [\App\Http\Controllers\WhatsAppLocalWebhookController::class, 'handleIncomingMessage'])
+                ->name('webhook.whatsapp-local');
+            Route::post('/webhook/whatsapp-local/{hash}', [\App\Http\Controllers\WhatsAppLocalWebhookController::class, 'handleIncomingMessage'])
+                ->name('webhook.whatsapp-local.team');
+
             // Mailbox package removed - routes commented out
             // Route::middleware('mailbox')
             // 	->prefix('mailbox')

@@ -69,7 +69,6 @@ use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
-use App\Http\Controllers\WhatsAppLocalWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // auth
@@ -851,12 +850,6 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 // Editor
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
-
-// Local WhatsApp (Baileys) webhook - no auth
-Route::post('/webhook/whatsapp-local', [WhatsAppLocalWebhookController::class, 'handleIncomingMessage'])
-    ->name('webhook.whatsapp-local');
-Route::post('/webhook/whatsapp-local/{hash}', [WhatsAppLocalWebhookController::class, 'handleIncomingMessage'])
-    ->name('webhook.whatsapp-local.team');
 
 // Twilio Webhook Routes (legacy - without hash)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
