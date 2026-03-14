@@ -419,7 +419,13 @@
             <div class="col app-chat-contacts app-sidebar flex-grow-0 overflow-hidden border-end" id="app-chat-contacts">
                 <div class="sidebar-header">
                     <div class="d-flex align-items-center me-3 me-lg-0">
-                        <div class="flex-shrink-0 avatar avatar-online me-3" data-bs-toggle="sidebar"
+                        @php
+                            $avatarStatusClass = 'avatar-online';
+                            if (($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus['status']) && ($whatsappStatus['status'] ?? '') !== 'connected') {
+                                $avatarStatusClass = 'avatar-offline';
+                            }
+                        @endphp
+                        <div class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
                             <img class="user-avatar rounded-circle cursor-pointer"
                                 src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar">
