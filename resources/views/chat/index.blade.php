@@ -931,7 +931,7 @@
                                         @if($selectedAssistantUser ?? null)
                                             {{ $selectedAssistantUser->phone ?? $selectedAssistantUser->email }} — Responde tú o activa la IA
                                         @else
-                                            Misma conversación que en <code>php artisan chat:simulate</code>
+                                            {{ __('Ask the assistant anything you need below.') }}
                                         @endif
                                     </small>
                                 </div>

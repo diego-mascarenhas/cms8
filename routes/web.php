@@ -1015,6 +1015,7 @@ Route::prefix('help')->name('help.')->group(function ()
 {
     Route::get('/', [HelpController::class, 'index'])->name('index');
     Route::get('/usage', [HelpController::class, 'usage'])->name('usage');
+    Route::get('/chat-assistant', [HelpController::class, 'chatAssistant'])->name('chat-assistant');
     Route::get('/contacts', [HelpController::class, 'contacts'])->name('contacts');
     Route::get('/api', [HelpController::class, 'api'])->name('api');
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');

@@ -1251,5 +1251,17 @@
   "Use \"Budget received\" above, then click to generate AI interpretation, dimension, timeline and resources.": "Usa \"Presupuesto recibido\" arriba y haz clic para generar la interpretación de la IA, dimensión, tiempos y recursos.",
   "AI interpretation": "Interpretación de la IA",
   "Write or paste the budget text first, then click Generate.": "Escribe o pega primero el texto del presupuesto y luego haz clic en Generar.",
-  "Type your message here...": "Escribe tu mensaje aquí..."
+  "Type your message here...": "Escribe tu mensaje aquí...",
+  "Unified assistant chat session": "Sesión unificada del asistente",
+  "Ask the assistant anything you need below.": "Escribe abajo para pedirle al asistente lo que necesites.",
+  "Chat and Assistant": "Chat y asistente",
+  "In the Chat section you can talk to the assistant and, if configured, manage WhatsApp conversations.": "En la sección Chat puedes hablar con el asistente y, si está configurado, gestionar conversaciones de WhatsApp.",
+  "Assistant view": "Vista del asistente",
+  "When you open the assistant chat (without selecting a specific client), the conversation is unified: the messages you see are the same as those in the terminal session.": "Cuando abres el chat del asistente (sin elegir un cliente concreto), la conversación es unificada: los mensajes que ves son los mismos que los de la sesión en terminal.",
+  "For developers or advanced users: that session corresponds to the same context used by the Artisan command:": "Para desarrolladores o usuarios avanzados: esa sesión corresponde al mismo contexto que usa el comando Artisan:",
+  "So you can interact with the assistant from the web interface and, if you run the command in the terminal, you will see the same conversation. The reverse is also true: messages sent from the terminal appear in the Chat assistant view after refreshing.": "Así puedes interactuar con el asistente desde la web y, si ejecutas el comando en terminal, verás la misma conversación. También al revés: los mensajes enviados desde terminal aparecen en la vista del asistente al recargar.",
+  "Chat with a client": "Chat con un cliente",
+  "If you select a client or contact in the chat list, the conversation is specific to that recipient (e.g. WhatsApp). The assistant can suggest replies; you can enable or disable this with the robot toggle next to the message box.": "Si eliges un cliente o contacto en la lista del chat, la conversación es para ese destinatario (p. ej. WhatsApp). El asistente puede sugerir respuestas; puedes activar o desactivar esto con el interruptor del robot junto al cuadro de mensaje.",
+  "How the assistant chat works and its relation with the terminal command php artisan chat:simulate.": "Cómo funciona el chat del asistente y su relación con el comando de terminal php artisan chat:simulate.",
+  "View documentation": "Ver documentación"
 }

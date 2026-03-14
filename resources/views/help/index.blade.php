@@ -47,6 +47,17 @@
                                 </div>
 
                                 <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-warning">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-message-chatbot display-4 text-warning mb-3"></i>
+                                            <h5 class="card-title">{{ __('Chat and Assistant') }}</h5>
+                                            <p class="card-text">{{ __('How the assistant chat works and its relation with the terminal command php artisan chat:simulate.') }}</p>
+                                            <a href="{{ route('help.chat-assistant') }}" class="btn btn-warning">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-secondary">
                                         <div class="card-body text-center">
                                             <i class="ti ti-settings display-4 text-secondary mb-3"></i>
