@@ -551,7 +551,7 @@
                         }
                     @endphp
                     <div id="chat-sidebar-wa-avatar" class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
-                        <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot" style="font-size: 2rem;"></i></span>
+                        <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp" style="font-size: 2rem;"></i></span>
                     </div>
                     @if(($whatsappDriver ?? 'twilio') === 'local')
                         @if(($whatsappStatus['status'] ?? '') === 'connected' && !empty($whatsappStatus['number']))
@@ -685,7 +685,7 @@
                         @endphp
                         <div class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
-                            <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
+                            <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
                         </div>
                         <div class="flex-grow-1 input-group input-group-merge rounded-pill">
                             <span class="input-group-text" id="basic-addon-search31"><i class="ti ti-search"></i></span>
