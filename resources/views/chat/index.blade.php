@@ -40,6 +40,7 @@
             var storageKey = 'chat-ai-toggle-';
             var userDefault = {{ json_encode($userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
+            var initializing = true;
             if (key) {
                 var stored = localStorage.getItem(storageKey + key);
                 if (stored !== null) {
@@ -47,11 +48,14 @@
                 } else {
                     useAiToggle.checked = userDefault;
                 }
+                setTimeout(function() { initializing = false; }, 0);
                 useAiToggle.addEventListener('change', function() {
-                    localStorage.setItem(storageKey + key, useAiToggle.checked ? 'on' : 'off');
+                    if (initializing) return;
+                    var aiOn = useAiToggle.checked;
+                    localStorage.setItem(storageKey + key, aiOn ? 'on' : 'off');
                     var token = document.querySelector('meta[name="csrf-token"]');
                     if (token) {
-                        var body = { on: useAiToggle.checked };
+                        var body = { on: aiOn };
                         var prefUserIdEl = document.getElementById('preference-user-id');
                         if (prefUserIdEl && prefUserIdEl.value) body.user_id = parseInt(prefUserIdEl.value, 10);
                         fetch('{{ route("chat.ai-toggle-preference") }}', {
@@ -69,13 +73,18 @@
         let currentUserMessage = '';
         let currentAiResponse = '';
 
-        // Single submit handler (capture so we run before app-chat.js): toggle OFF = only your message, toggle ON = assistant
-        formSendMessage.addEventListener('submit', function(e) {
+        // Submit: handle on document in capture phase so we always run before app-chat.js. Toggle OFF = only your message, ON = assistant
+        document.addEventListener('submit', function(e) {
+            if (!e.target || e.target.id !== 'chat-form') return;
             e.preventDefault();
+            e.stopPropagation();
             e.stopImmediatePropagation();
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
             if (!msg) return;
-            var aiOn = useAiToggle && useAiToggle.checked;
+            // Read toggle from the form being submitted so we never use a stale reference
+            var form = e.target;
+            var toggleInForm = form && form.querySelector ? form.querySelector('#use-ai-toggle') : null;
+            var aiOn = toggleInForm ? !!toggleInForm.checked : false;
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -140,7 +149,7 @@
             return false;
         }, true);
 
-        // Send the previewed AI response when confirmed
+        // Send the previewed AI response when confirmed (capture so we run first)
         sendAiResponseBtn.addEventListener('click', function() {
             if (currentUserMessage && currentAiResponse) {
                 previewModal.hide();
