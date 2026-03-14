@@ -108,7 +108,7 @@ class DatabaseSeeder extends Seeder
         $this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');
         $this->call([
             TeamRevisionAlphaSeeder::class,  // Production data import
-            // TeamDemoSeeder::class,  // Demo data (alternative)
+            TeamDemoSeeder::class,  // Demo team (Chat on, Users hidden, modules in module_team)
             TeamHumanoSeeder::class,  // Humano team setup
             DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
         ]);

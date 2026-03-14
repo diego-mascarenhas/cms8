@@ -129,10 +129,10 @@ class TeamDemoSeeder extends Seeder
 
         $defaultModuleKeys = [
             'dashboard',
-            'users',
             'contacts',
             'clients',
             'prospecting',
+            'chat',
             'services',
             'projects',
             'tasks',
@@ -1097,17 +1097,16 @@ class TeamDemoSeeder extends Seeder
         // Get invoice and payment types
         $invoiceType = InvoiceType::first();
         $paymentType = PaymentType::first();
-        $paymentAccount = PaymentAccount::where('team_id', $this->teamId)->first();
+        $paymentAccount = PaymentAccount::withoutGlobalScopes()->where('team_id', $this->teamId)->first();
 
         if (! $paymentAccount)
         {
             $this->command->warn('⚠️  No payment account found, creating one...');
-            $paymentAccount = PaymentAccount::create([
+            $paymentAccount = PaymentAccount::withoutGlobalScopes()->create([
                 'team_id' => $this->teamId,
+                'code' => 'MAIN',
                 'name' => 'Cuenta Principal',
-                'type' => 'bank',
                 'currency_id' => 840,  // USD
-                'balance' => 0,
                 'status' => 1,
             ]);
         }
@@ -1176,9 +1175,10 @@ class TeamDemoSeeder extends Seeder
                 $status = collect($invoiceStatuses)->random();
                 $balance = $status == 1 ? 0 : $totalAmount;  // If paid, balance is 0
 
-                $invoice = Invoice::firstOrCreate(
+                $invoice = Invoice::withoutGlobalScopes()->firstOrCreate(
                     ['number' => $invoiceNumber, 'enterprise_id' => $enterprise->id],
                     [
+                        'team_id' => $this->teamId,
                         'billing_id' => $billing->id,
                         'type_id' => $invoiceType?->id ?? 1,
                         'operation' => 'sell',
@@ -1222,12 +1222,18 @@ class TeamDemoSeeder extends Seeder
                 // 6. Create payment if invoice is paid
                 if ($status == 1 && $paymentType && $paymentAccount)
                 {
-                    Payment::firstOrCreate(
-                        ['invoice_id' => $invoice->id, 'enterprise_id' => $enterprise->id],
+                    $paymentDate = $invoiceDate->copy()->addDays(rand(1, 15));
+                    if ($paymentDate->lt('2024-07-01'))
+                    {
+                        $paymentDate = $paymentDate->setDate(2024, 7, 1);
+                    }
+                    Payment::withoutGlobalScopes()->firstOrCreate(
+                        ['invoice_id' => $invoice->id],
                         [
                             'team_id' => $this->teamId,
+                            'enterprise_id' => $enterprise->id,
                             'transaction_type' => 'income',
-                            'date' => $invoiceDate->copy()->addDays(rand(1, 15))->toDateString(),
+                            'date' => $paymentDate->toDateString(),
                             'account_id' => $paymentAccount->id,
                             'type_id' => $paymentType->id,
                             'amount' => $totalAmount,
@@ -1275,9 +1281,10 @@ class TeamDemoSeeder extends Seeder
             );
 
             $invoiceType = InvoiceType::first();
-            $invoice = Invoice::firstOrCreate(
+            $invoice = Invoice::withoutGlobalScopes()->firstOrCreate(
                 ['enterprise_id' => $enterprise->id, 'number' => '2024-'.$enterprise->id],
                 [
+                    'team_id' => $this->teamId,
                     'billing_id' => $billing->id,
                     'type_id' => $invoiceType?->id ?? 1,
                     'operation' => 'sell',
@@ -1316,22 +1323,31 @@ class TeamDemoSeeder extends Seeder
             $this->call(PaymentAccountSeeder::class);
         }
 
-        $account = PaymentAccount::where('team_id', $this->teamId)->first();
+        $account = PaymentAccount::withoutGlobalScopes()->where('team_id', $this->teamId)->first();
         $paymentType = PaymentType::first();
-        $invoices = Invoice::whereHas('enterprise', function ($q)
-        {
-            $q->where('team_id', $this->teamId);
-        })->where('status', 1)->get();
+        $invoices = Invoice::withoutGlobalScopes()
+            ->where('team_id', $this->teamId)
+            ->where('status', 1)
+            ->get();
 
-        foreach ($invoices->take(3) as $invoice)
+        foreach ($invoices->take(10) as $invoice)
         {
-            Payment::firstOrCreate(
+            $paymentDate = $invoice->due_date;
+            if (is_string($paymentDate))
+            {
+                $paymentDate = \Carbon\Carbon::parse($paymentDate);
+            }
+            if ($paymentDate->lt('2024-07-01'))
+            {
+                $paymentDate = \Carbon\Carbon::parse('2024-07-01');
+            }
+            Payment::withoutGlobalScopes()->firstOrCreate(
                 ['invoice_id' => $invoice->id],
                 [
                     'team_id' => $this->teamId,
                     'enterprise_id' => $invoice->enterprise_id,
                     'transaction_type' => 'income',
-                    'date' => $invoice->due_date,
+                    'date' => $paymentDate->toDateString(),
                     'account_id' => $account?->id ?? 1,
                     'type_id' => $paymentType?->id ?? 1,
                     'amount' => $invoice->total_amount,
