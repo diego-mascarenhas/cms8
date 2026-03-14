@@ -743,6 +743,36 @@ class ChatController extends Controller
     }
 
     /**
+     * JSON endpoint for WhatsApp connection status (used by frontend to poll when not connected).
+     */
+    public function whatsappStatus()
+    {
+        $driver = config('whatsapp.driver');
+        $status = null;
+        $number = null;
+        $numberFormatted = null;
+        if ($driver === 'local' && app()->bound(WhatsAppGateway::class))
+        {
+            $gateway = app(WhatsAppGateway::class);
+            $status = $gateway->getConnectionStatus();
+            if (is_array($status))
+            {
+                $number = $status['number'] ?? null;
+                $numberFormatted = ($number !== null && $number !== '')
+                    ? \App\Helpers\PhoneHelper::formatForDisplayReadable($number)
+                    : null;
+            }
+        }
+
+        return response()->json([
+            'driver' => $driver,
+            'status' => (is_array($status) ? ($status['status'] ?? 'disconnected') : 'disconnected'),
+            'number' => $number ?? null,
+            'numberFormatted' => $numberFormatted ?? null,
+        ]);
+    }
+
+    /**
      * Proxy for WhatsApp QR image (same-origin so it loads on HTTPS).
      */
     public function whatsappQrImage()

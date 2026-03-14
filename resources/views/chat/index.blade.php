@@ -403,6 +403,89 @@
                 });
             });
         }
+
+        // When disconnected, auto-request new QR so the image appears without user clicking the button
+        var waConnectionBlock = document.getElementById('chat-sidebar-whatsapp-connection-block');
+        if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') === 'disconnected') {
+            var qrContainer = document.getElementById('chat-qr-container');
+            var qrImg = document.getElementById('chat-whatsapp-qr-img');
+            var refreshForm = document.getElementById('chat-refresh-qr-form');
+            if (qrContainer && qrImg && qrImg.dataset.qrBase && refreshForm) {
+                var token = refreshForm.querySelector('input[name="_token"]');
+                qrContainer.classList.add('chat-qr-loading');
+                qrImg.classList.add('d-none');
+                fetch(refreshForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: '_token=' + encodeURIComponent(token ? token.value : '')
+                }).then(function () {
+                    var qrRetries = 0;
+                    var maxRetries = 24;
+                    function setQrSrc() {
+                        var src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                        qrImg.onload = function () {
+                            if (qrImg.naturalWidth > 20) {
+                                qrContainer.classList.remove('chat-qr-loading');
+                                qrImg.classList.remove('d-none');
+                                qrImg.onload = null;
+                                qrImg.onerror = null;
+                            } else if (qrRetries < maxRetries) {
+                                qrRetries += 1;
+                                setTimeout(setQrSrc, 2500);
+                            } else {
+                                qrContainer.classList.remove('chat-qr-loading');
+                                qrImg.onload = null;
+                                qrImg.onerror = null;
+                            }
+                        };
+                        qrImg.onerror = function () {
+                            qrContainer.classList.remove('chat-qr-loading');
+                            qrImg.classList.remove('d-none');
+                            qrImg.onload = null;
+                            qrImg.onerror = null;
+                        };
+                        qrImg.src = src;
+                    }
+                    setQrSrc();
+                }).catch(function () {
+                    qrContainer.classList.remove('chat-qr-loading');
+                    qrImg.classList.remove('d-none');
+                });
+            }
+        }
+
+        // Poll WhatsApp status when local driver and not connected, so UI updates without refresh
+        if (waConnectionBlock) {
+            var waStatusUrl = '{{ route("chat.whatsapp-status") }}';
+            var connectedLabel = '{{ __("Connected") }}';
+            var waPoll = setInterval(function () {
+                fetch(waStatusUrl, { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.status === 'connected') {
+                            clearInterval(waPoll);
+                            waConnectionBlock.classList.add('d-none');
+                            var titleEl = document.getElementById('chat-sidebar-wa-title');
+                            var badgeEl = document.getElementById('chat-sidebar-wa-badge');
+                            var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
+                            if (titleEl && data.numberFormatted) titleEl.textContent = data.numberFormatted;
+                            if (badgeEl) {
+                                badgeEl.textContent = connectedLabel;
+                                badgeEl.className = 'badge bg-success mt-1';
+                            }
+                            if (avatarEl) {
+                                avatarEl.classList.remove('avatar-offline');
+                                avatarEl.classList.add('avatar-online');
+                            }
+                        }
+                    })
+                    .catch(function () {});
+            }, 3000);
+        }
     });
     </script>
 @endsection
@@ -420,14 +503,14 @@
                             $sidebarLeftAvatarStatus = 'avatar-offline';
                         }
                     @endphp
-                    <div class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
+                    <div id="chat-sidebar-wa-avatar" class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
                         <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot" style="font-size: 2rem;"></i></span>
                     </div>
                     @if(($whatsappDriver ?? 'twilio') === 'local')
                         @if(($whatsappStatus['status'] ?? '') === 'connected' && !empty($whatsappStatus['number']))
-                            <h5 class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
+                            <h5 id="chat-sidebar-wa-title" class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
                         @else
-                            <h5 class="mt-2 mb-0">{{ __('Disconnected') }}</h5>
+                            <h5 id="chat-sidebar-wa-title" class="mt-2 mb-0">{{ __('Disconnected') }}</h5>
                         @endif
                     @else
                         <h5 class="mt-2 mb-0">{{ auth()->user()->name ?? 'John Doe' }}</h5>
@@ -438,7 +521,7 @@
                             $badgeClass = $status === 'connected' ? 'success' : ($status === 'waiting_qr' ? 'warning' : 'secondary');
                             $statusLabel = $status === 'connected' ? __('Connected') : ($status === 'waiting_qr' ? __('Scan QR') : __('Disconnected'));
                         @endphp
-                        <span class="badge bg-{{ $badgeClass }} mt-1">{{ $statusLabel }}</span>
+                        <span id="chat-sidebar-wa-badge" class="badge bg-{{ $badgeClass }} mt-1">{{ $statusLabel }}</span>
                     @else
                         <span>Admin</span>
                     @endif
@@ -448,6 +531,7 @@
                 <div class="sidebar-body px-4 pb-4">
                     <div class="my-4">
                         @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
+                            <div id="chat-sidebar-whatsapp-connection-block" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
@@ -471,6 +555,7 @@
                                 @if(session('success'))
                                     <p class="small text-success mb-0 mt-2">{{ session('success') }}</p>
                                 @endif
+                            </div>
                             </div>
                         @elseif(($whatsappDriver ?? 'twilio') !== 'local')
                             <small class="text-muted text-uppercase">{{ __('Status') }}</small>
