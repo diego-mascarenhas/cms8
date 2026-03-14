@@ -35,6 +35,10 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         $team = $this->resolveTeam($request);
+        // When Node does not send team_id/hash (e.g. single-tenant local), use first team so conversation is stored and chat list works
+        if ($team === null) {
+            $team = Team::orderBy('id')->first();
+        }
         $twilioService = new TwilioService($team);
         $gateway = app(WhatsAppGateway::class);
 
@@ -55,13 +59,19 @@ class WhatsAppLocalWebhookController extends Controller
         $body = $payload['body'] ?? $payload['message'] ?? $payload['text'] ?? '';
         $messageId = $payload['id'] ?? $payload['messageId'] ?? $payload['key'] ?? uniqid('wa_', true);
 
-        if ($from === null || $body === '')
+        if ($from === null)
         {
             return null;
         }
 
-        $cleanFrom = preg_replace('/[^0-9]/', '', (string) $from);
-        $cleanTo = preg_replace('/[^0-9]/', '', (string) $to);
+        $from = preg_replace('/:\d+$/', '', (string) $from);
+        $to = preg_replace('/:\d+$/', '', (string) $to);
+        $cleanFrom = preg_replace('/[^0-9]/', '', $from);
+        $cleanTo = preg_replace('/[^0-9]/', '', $to);
+        $body = (string) $body;
+        if ($body === '') {
+            $body = ' '; // allow media-only messages so conversation appears in chat list
+        }
 
         $normalized = [
             'MessageSid' => is_string($messageId) ? $messageId : json_encode($messageId),

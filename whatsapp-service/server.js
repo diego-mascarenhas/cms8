@@ -76,7 +76,7 @@ function makeSocket() {
         const id = msg.key.id;
 
         const payload = {
-          from: from.replace('@s.whatsapp.net', ''),
+          from: from.replace('@s.whatsapp.net', '').replace(/:\d+$/, ''),
           to: ourJid ? ourJid.replace('@s.whatsapp.net', '').replace(/:\d+$/, '') : '',
           body,
           id,

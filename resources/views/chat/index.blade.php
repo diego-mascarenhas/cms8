@@ -91,10 +91,14 @@
             e.stopImmediatePropagation();
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
             if (!msg) return;
-            // Read toggle from the form being submitted so we never use a stale reference
             var form = e.target;
+            var sendBtn = form.querySelector('.send-msg-btn');
+            if (sendBtn) sendBtn.disabled = true;
+            function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
+            // Read toggle from the form being submitted so we never use a stale reference
+            var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
             var toggleInForm = form && form.querySelector ? form.querySelector('#use-ai-toggle') : null;
-            var aiOn = toggleInForm ? !!toggleInForm.checked : false;
+            var aiOn = isAssistantViewForm ? true : (toggleInForm ? !!toggleInForm.checked : false);
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -111,16 +115,24 @@
                 }).then(function(r) { return r.json(); }).then(function() {
                     messageInput.value = '';
                     if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                }).catch(function() {});
+                }).catch(function() {}).finally(reenableSend);
                 return;
             }
 
+            var isAssistantView = isAssistantViewForm;
             currentUserMessage = msg;
-            document.getElementById('userMessagePreview').textContent = currentUserMessage;
-            document.getElementById('aiPreviewLoader').classList.remove('d-none');
-            document.getElementById('aiPreviewContent').classList.add('d-none');
-            document.getElementById('aiResponsePreview').textContent = '';
-            previewModal.show();
+
+            if (isAssistantView) {
+                document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                document.getElementById('aiPreviewContent').classList.add('d-none');
+                document.getElementById('aiResponsePreview').textContent = '';
+            } else {
+                document.getElementById('userMessagePreview').textContent = currentUserMessage;
+                document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                document.getElementById('aiPreviewContent').classList.add('d-none');
+                document.getElementById('aiResponsePreview').textContent = '';
+                previewModal.show();
+            }
 
             fetch('{{ route("chat.assistant") }}', {
                     method: 'POST',
@@ -141,20 +153,49 @@
 
                     if (data.success) {
                         currentAiResponse = data.response || '';
-                        document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                        if (!isAssistantView) {
+                            document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                        } else {
+                            var list = document.getElementById('assistant-messages-list');
+                            if (list) {
+                                var empty = list.querySelector('.assistant-empty-state');
+                                if (empty) empty.remove();
+                                var esc = function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+                                var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                var userLi = document.createElement('li');
+                                userLi.className = 'chat-message chat-message-right';
+                                userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + esc(currentUserMessage) + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                                list.appendChild(userLi);
+                                var aiLi = document.createElement('li');
+                                aiLi.className = 'chat-message';
+                                aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                                list.appendChild(aiLi);
+                                var body = document.querySelector('.chat-history-body');
+                                if (body) body.scrollTop = body.scrollHeight;
+                            }
+                            messageInput.value = '';
+                            currentUserMessage = '';
+                            currentAiResponse = '';
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        }
                     } else {
-                        document.getElementById('aiResponsePreview').innerHTML =
-                            '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
                         currentAiResponse = '';
+                        if (!isAssistantView) {
+                            document.getElementById('aiResponsePreview').innerHTML =
+                                '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
+                        } else if (window.refreshAssistantHistory) window.refreshAssistantHistory();
                     }
                 })
                 .catch(error => {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
-                    document.getElementById('aiResponsePreview').innerHTML =
-                        '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
                     currentAiResponse = '';
-                });
+                    if (!isAssistantView) {
+                        document.getElementById('aiResponsePreview').innerHTML =
+                            '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
+                    } else if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                })
+                .finally(function() { reenableSend(); });
 
             return false;
         }, true);
@@ -219,9 +260,9 @@
                       .catch(error => console.error('Error sending user message:', error));
                 }
 
-                // AI suggested reply (right side = our reply to the client)
+                // AI suggested reply (left side = bot)
                 let aiMsg = document.createElement('li');
-                aiMsg.className = 'chat-message chat-message-right';
+                aiMsg.className = 'chat-message';
                 aiMsg.innerHTML = `
                     <div class="d-flex overflow-hidden">
                         <div class="chat-message-wrapper flex-grow-1">
@@ -299,8 +340,8 @@
                     var isAssistant = m.role === 'assistant';
                     var content = escapeHtml(m.content).replace(/\n/g, '<br>');
                     var time = formatDate(m.created_at);
-                    var sideClass = isAssistant ? 'chat-message-right' : '';
-                    var timeClass = isAssistant ? 'text-end' : '';
+                    var sideClass = isAssistant ? '' : 'chat-message-right';
+                    var timeClass = isAssistant ? '' : 'text-end';
                     return '<li class="chat-message ' + sideClass + '">' +
                         '<div class="d-flex overflow-hidden">' +
                         '<div class="chat-message-wrapper flex-grow-1">' +
@@ -928,13 +969,13 @@
                         <ul class="list-unstyled chat-history" id="assistant-messages-list">
                             @if ($viewAssistant ?? false)
                                 @forelse(($assistantMessages ?? []) as $msg)
-                                    <li class="chat-message {{ $msg['role'] === 'assistant' ? 'chat-message-right' : '' }}">
+                                    <li class="chat-message {{ $msg['role'] !== 'assistant' ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
                                                     <p class="mb-0">{!! nl2br(e($msg['content'])) !!}</p>
                                                 </div>
-                                                <div class="text-muted mt-1 {{ $msg['role'] === 'assistant' ? 'text-end' : '' }}">
+                                                <div class="text-muted mt-1 {{ $msg['role'] !== 'assistant' ? 'text-end' : '' }}">
                                                     <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
                                                 </div>
                                             </div>
@@ -1039,7 +1080,7 @@
                     </div>
                     <!-- Chat message form -->
                     <div class="chat-history-footer shadow-sm">
-                        <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center">
+                        <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center" @if($viewAssistant ?? false) data-view-assistant="1" @endif>
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">
                             @php
@@ -1064,8 +1105,9 @@
 
                             <div class="d-flex align-items-center w-100">
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
-                                    placeholder="Type your message here..." style="resize: none;"></textarea>
+                                    placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
 
+                                @if(!($viewAssistant ?? false))
                                 <div class="d-flex align-items-center me-3">
                                     <div class="form-check form-switch mb-0">
                                         <input type="checkbox" class="form-check-input" id="use-ai-toggle">
@@ -1074,6 +1116,7 @@
                                         </label>
                                     </div>
                                 </div>
+                                @endif
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
@@ -1082,9 +1125,9 @@
                                     <i class="ti ti-photo ti-sm cursor-pointer mx-3"></i>
                                     <input type="file" id="attach-doc" hidden>
                                 </label> --}}
-                                <button type="submit" class="btn btn-primary d-flex send-msg-btn">
-                                    <i class="ti ti-send me-md-1 me-0"></i>
-                                    <span class="align-middle d-md-inline-block d-none">Send</span>
+                                <button type="submit" class="btn btn-primary d-flex send-msg-btn waves-effect waves-light">
+                                    <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
+                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Send') }}</span>
                                 </button>
                             </div>
                         </form>

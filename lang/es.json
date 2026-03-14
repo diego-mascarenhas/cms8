@@ -1250,5 +1250,6 @@
   "Generate from budget text": "Generar desde el texto del presupuesto",
   "Use \"Budget received\" above, then click to generate AI interpretation, dimension, timeline and resources.": "Usa \"Presupuesto recibido\" arriba y haz clic para generar la interpretación de la IA, dimensión, tiempos y recursos.",
   "AI interpretation": "Interpretación de la IA",
-  "Write or paste the budget text first, then click Generate.": "Escribe o pega primero el texto del presupuesto y luego haz clic en Generar."
+  "Write or paste the budget text first, then click Generate.": "Escribe o pega primero el texto del presupuesto y luego haz clic en Generar.",
+  "Type your message here...": "Escribe tu mensaje aquí..."
 }
