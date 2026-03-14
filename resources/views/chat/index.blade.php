@@ -17,6 +17,12 @@
             background-color: #d1e7dd;
             border-radius: 0.375rem;
         }
+        .chat-history-header {
+            min-height: 4.5rem;
+        }
+        #app-chat-contacts .sidebar-header {
+            min-height: 4.5rem;
+        }
     </style>
 @endsection
 
@@ -930,8 +936,8 @@
                                     </small>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="assistant-refresh-btn" title="Actualizar mensajes del terminal">
-                                <i class="ti ti-refresh me-1"></i>Recargar
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="Actualizar mensajes del terminal" aria-label="Recargar">
+                                <i class="ti ti-refresh"></i>
                             </button>
                         </div>
                         @elseif ($selectedPhone)
