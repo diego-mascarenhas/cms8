@@ -108,9 +108,9 @@ Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
 Route::redirect('/propspect/search', '/prospect/search', 301);
-Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
-Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
-Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
+Route::get('/prospecting', [ProspectSearchController::class, 'index'])->name('prospecting');
+Route::post('/prospecting/search', [ProspectSearchController::class, 'searchPeople'])->name('prospecting.search');
+Route::post('/prospecting/lead', [ProspectSearchController::class, 'storeLead'])->name('prospecting.lead');
 
 Route::get('/register-for-prospects', function ()
 {
@@ -122,6 +122,9 @@ Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+
+// Demo: auto-login as admin of the demo team
+Route::get('/demo', [AuthController::class, 'demoLogin'])->name('demo.login');
 
 // SLA Acceptance Routes (public - no auth required, autologin handled in controller)
 Route::get('/sla/accept/{token}', [SLAController::class, 'showAcceptance'])->name('sla.accept');
