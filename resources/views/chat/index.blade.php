@@ -8,6 +8,16 @@
 
 @section('page-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-chat.css') }}" />
+    <style>
+        #chat-qr-container {
+            min-width: 200px;
+            min-height: 200px;
+        }
+        #chat-qr-container.chat-qr-loading {
+            background-color: #d1e7dd;
+            border-radius: 0.375rem;
+        }
+    </style>
 @endsection
 
 @section('vendor-script')
@@ -323,9 +333,14 @@
                 var btn = refreshQrForm.querySelector('button[type="submit"]');
                 var msgEl = document.getElementById('chat-refresh-qr-message');
                 var qrImg = document.getElementById('chat-whatsapp-qr-img');
+                var qrContainer = document.getElementById('chat-qr-container');
                 var baseUrl = refreshQrForm.action;
                 var token = refreshQrForm.querySelector('input[name="_token"]');
                 if (btn) btn.disabled = true;
+                if (qrContainer) {
+                    qrContainer.classList.add('chat-qr-loading');
+                    if (qrImg) qrImg.classList.add('d-none');
+                }
                 fetch(baseUrl, {
                     method: 'POST',
                     headers: {
@@ -342,10 +357,42 @@
                         msgEl.classList.remove('d-none');
                     }
                     if (qrImg && qrImg.dataset.qrBase) {
-                        qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                        var qrRetries = 0;
+                        var maxRetries = 24;
+                        function setQrSrc() {
+                            var src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                            qrImg.onload = function () {
+                                if (qrImg.naturalWidth > 20) {
+                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                    qrImg.classList.remove('d-none');
+                                    qrImg.onload = null;
+                                    qrImg.onerror = null;
+                                } else if (qrRetries < maxRetries) {
+                                    qrRetries += 1;
+                                    setTimeout(setQrSrc, 2500);
+                                } else {
+                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                    qrImg.onload = null;
+                                    qrImg.onerror = null;
+                                }
+                            };
+                            qrImg.onerror = function () {
+                                if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                qrImg.classList.remove('d-none');
+                                qrImg.onload = null;
+                                qrImg.onerror = null;
+                            };
+                            qrImg.src = src;
+                        }
+                        setQrSrc();
+                    } else {
+                        if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                        if (qrImg) qrImg.classList.remove('d-none');
                     }
                 })
                 .catch(function () {
+                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                    if (qrImg) qrImg.classList.remove('d-none');
                     if (msgEl) {
                         msgEl.textContent = '{{ __("An error occurred. Try again.") }}';
                         msgEl.classList.remove('d-none');
