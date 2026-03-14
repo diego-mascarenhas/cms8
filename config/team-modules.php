@@ -58,11 +58,11 @@ return [
         'funnel' => false,
         'integrations' => false,
         // Additional modules (content)
-        'multimedia' => false,
+        'multimedia' => true,
         'content-sections' => false,
-        'contents' => false,
+        'contents' => true,
         'website' => true,
-        'academy' => false,
+        'academy' => true,
         'landings' => false,
         // Additional modules (support)
         'tickets' => false,

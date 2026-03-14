@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('module_prompts', function (Blueprint $table)
         {
             $table->id();
+            $table->unsignedBigInteger('team_id');
             $table->unsignedTinyInteger('module_id');
             $table->string('section_key');
             $table->string('section_label');
@@ -23,7 +24,8 @@ return new class extends Migration
             $table->integer('order')->default(0);
             $table->timestamps();
 
-            $table->unique(['module_id', 'section_key']);
+            $table->unique(['team_id', 'module_id', 'section_key']);
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
             $table->foreign('module_id')->references('id')->on('modules')->onDelete('cascade');
         });
     }

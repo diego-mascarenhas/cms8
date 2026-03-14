@@ -51,7 +51,7 @@ class AssistantChatService
         // When a promptKey is specified, skip the router and use that prompt directly.
         if ($promptKey !== null)
         {
-            $prompt = Prompt::findByRoutingKey($promptKey);
+            $prompt = Prompt::findByRoutingKey($promptKey, $teamId);
             if (! $prompt)
             {
                 return [
@@ -61,7 +61,8 @@ class AssistantChatService
             }
         } else
         {
-            $routerPrompt = Prompt::active()->where('section_key', 'general')->first();
+            $routerBase = $teamId !== null ? Prompt::forTeam($teamId) : Prompt::query();
+            $routerPrompt = $routerBase->active()->where('section_key', 'general')->first();
             if (! $routerPrompt)
             {
                 return [
@@ -70,7 +71,7 @@ class AssistantChatService
                 ];
             }
 
-            $prompt = $this->resolveRoute($routerPrompt, $content);
+            $prompt = $this->resolveRoute($routerPrompt, $content, $teamId);
             if ($prompt === null)
             {
                 return [
@@ -176,12 +177,12 @@ class AssistantChatService
     /**
      * Resolve the router instruction, replacing {{ROUTING_KEYS}} with the dynamic list from the DB.
      */
-    private function resolveRouterInstruction(Prompt $routerPrompt): string
+    private function resolveRouterInstruction(Prompt $routerPrompt, ?int $teamId = null): string
     {
         $instruction = $routerPrompt->prompt_instruction;
         if (str_contains($instruction, '{{ROUTING_KEYS}}'))
         {
-            $instruction = str_replace('{{ROUTING_KEYS}}', Prompt::buildRoutableKeysList(), $instruction);
+            $instruction = str_replace('{{ROUTING_KEYS}}', Prompt::buildRoutableKeysList($teamId), $instruction);
         }
 
         return $instruction;
@@ -190,9 +191,9 @@ class AssistantChatService
     /**
      * Resolve the target prompt from the general router and user message.
      */
-    public function resolveRoute(Prompt $routerPrompt, string $userContent): ?Prompt
+    public function resolveRoute(Prompt $routerPrompt, string $userContent, ?int $teamId = null): ?Prompt
     {
-        $instruction = $this->resolveRouterInstruction($routerPrompt);
+        $instruction = $this->resolveRouterInstruction($routerPrompt, $teamId);
         $routerMessage = $instruction."\n\n---\n\nEntrada del usuario:\n\n".$userContent;
 
         try
@@ -208,15 +209,15 @@ class AssistantChatService
         {
             Log::warning('AssistantChat router failed', ['error' => $e->getMessage()]);
 
-            return Prompt::findByRoutingKey('landing');
+            return Prompt::findByRoutingKey('landing', $teamId);
         }
 
         $firstLine = trim(explode("\n", $text)[0] ?? '');
         $firstLine = preg_replace('/^[\s`*#\-]+|[\s`*]+$/u', '', $firstLine);
         $key = trim($firstLine);
 
-        $target = Prompt::findByRoutingKey($key);
+        $target = Prompt::findByRoutingKey($key, $teamId);
 
-        return $target ?? Prompt::findByRoutingKey('landing');
+        return $target ?? Prompt::findByRoutingKey('landing', $teamId);
     }
 }

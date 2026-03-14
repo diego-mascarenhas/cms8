@@ -13,6 +13,8 @@ use App\Models\EnterpriseTaxStatusType;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
+use App\Models\List60;
+use App\Models\List60Status;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\Payment;
@@ -77,6 +79,7 @@ class TeamDemoSeeder extends Seeder
         $this->seedDemoServices();
         $this->createClientContactsWithInvoicesAndPayments();
         $this->createFinalizedContacts();
+        $this->seedDemoList60();
         $this->createProjectCategoriesAndProjects();
         $this->createProjectBoardsWithTasks();
 
@@ -131,6 +134,7 @@ class TeamDemoSeeder extends Seeder
             'dashboard',
             'contacts',
             'clients',
+            'list60',
             'prospecting',
             'chat',
             'services',
@@ -140,6 +144,9 @@ class TeamDemoSeeder extends Seeder
             'invoices',
             'payments',
             'attendances',
+            'academy',
+            'multimedia',
+            'contents',
         ];
 
         foreach ($defaultModuleKeys as $moduleKey)
@@ -894,6 +901,50 @@ class TeamDemoSeeder extends Seeder
             ->count();
 
         $this->command->info("✅ {$count} contacts marked as finalized");
+    }
+
+    private function seedDemoList60(): void
+    {
+        $this->command->info('📋 Creating List60 entries for demo contacts...');
+
+        $contacts = Contact::withoutGlobalScopes()
+            ->where('team_id', $this->teamId)
+            ->get();
+
+        if ($contacts->isEmpty())
+        {
+            $this->command->warn('⚠️  No contacts found for List60');
+
+            return;
+        }
+
+        $team = Team::find($this->teamId);
+        $responsibleId = $team?->user_id ?? 1;
+        $status = List60Status::first();
+        $statusId = $status ? $status->id : 1;
+        $typeId = 1; // EnterpriseType default
+
+        $created = 0;
+        foreach ($contacts as $contact)
+        {
+            $exists = List60::where('contact_id', $contact->id)->exists();
+            if ($exists)
+            {
+                continue;
+            }
+
+            List60::create([
+                'contact_id' => $contact->id,
+                'type_id' => $typeId,
+                'date_next' => now()->addDays(rand(1, 60)),
+                'notes' => null,
+                'responsible_id' => $responsibleId,
+                'status_id' => $statusId,
+            ]);
+            $created++;
+        }
+
+        $this->command->info("✅ {$created} List60 entries created for demo team");
     }
 
     private function createProjectCategoriesAndProjects(): void

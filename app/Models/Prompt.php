@@ -11,6 +11,7 @@ class Prompt extends Model
     protected $table = 'module_prompts';
 
     protected $fillable = [
+        'team_id',
         'module_id',
         'section_key',
         'section_label',
@@ -19,6 +20,27 @@ class Prompt extends Model
         'is_active',
         'order',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $builder->where('module_prompts.team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function scopeForTeam(Builder $query, int $teamId): Builder
+    {
+        return $query->withoutGlobalScope('team')->where('module_prompts.team_id', $teamId);
+    }
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -46,10 +68,13 @@ class Prompt extends Model
     /**
      * Find a prompt by module key and section key (e.g. "contacts:landing").
      * For "landing" only, finds the first prompt with section_key landing.
+     * When $teamId is null, uses current user's team (global scope applies).
      */
-    public static function findByRoutingKey(string $routingKey): ?self
+    public static function findByRoutingKey(string $routingKey, ?int $teamId = null): ?self
     {
         $routingKey = trim($routingKey);
+        $query = $teamId !== null ? self::forTeam($teamId) : self::query();
+
         if (str_contains($routingKey, ':'))
         {
             [$moduleKey, $sectionKey] = explode(':', $routingKey, 2);
@@ -59,10 +84,10 @@ class Prompt extends Model
                 return null;
             }
 
-            return self::where('module_id', $module->id)->where('section_key', trim($sectionKey))->first();
+            return $query->where('module_id', $module->id)->where('section_key', trim($sectionKey))->first();
         }
 
-        return self::where('section_key', $routingKey)->first();
+        return $query->where('section_key', $routingKey)->first();
     }
 
     public function isGeneralRouter(): bool
@@ -73,10 +98,12 @@ class Prompt extends Model
     /**
      * Build the list of routable keys from active prompts (all except general) for the router instruction.
      * Returns a string to inject in place of {{ROUTING_KEYS}} in the general prompt.
+     * When $teamId is null, uses current user's team (global scope applies).
      */
-    public static function buildRoutableKeysList(): string
+    public static function buildRoutableKeysList(?int $teamId = null): string
     {
-        $prompts = self::active()
+        $query = $teamId !== null ? self::forTeam($teamId) : self::query();
+        $prompts = $query->active()
             ->with('module')
             ->where('section_key', '!=', 'general')
             ->orderBy('order')

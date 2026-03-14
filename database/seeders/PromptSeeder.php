@@ -22,10 +22,14 @@ class PromptSeeder extends Seeder
             return;
         }
 
+        $teamId = \App\Models\Team::min('id') ?? 1;
+
         foreach ($prompts as $data)
         {
-            Prompt::updateOrCreate(
+            $data['team_id'] = $data['team_id'] ?? $teamId;
+            Prompt::withoutGlobalScope('team')->updateOrCreate(
                 [
+                    'team_id' => $data['team_id'],
                     'module_id' => $data['module_id'],
                     'section_key' => $data['section_key'],
                 ],

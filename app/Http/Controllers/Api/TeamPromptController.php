@@ -33,7 +33,7 @@ class TeamPromptController extends Controller
             return response()->json(['success' => false, 'message' => 'Team not found'], 401);
         }
 
-        $prompts = Prompt::query()
+        $prompts = Prompt::forTeam((int) $teamId)
             ->active()
             ->whereHas('module', function ($q) use ($teamId)
             {
@@ -91,11 +91,11 @@ class TeamPromptController extends Controller
         $dbPrompt = null;
         if (str_contains($name, ':'))
         {
-            $dbPrompt = Prompt::findByRoutingKey($name);
+            $dbPrompt = Prompt::findByRoutingKey($name, (int) $teamId);
         }
         if ($dbPrompt === null)
         {
-            $dbPrompt = Prompt::query()
+            $dbPrompt = Prompt::forTeam((int) $teamId)
                 ->active()
                 ->where('section_key', $name)
                 ->whereHas('module', function ($q) use ($teamId)
@@ -123,7 +123,7 @@ class TeamPromptController extends Controller
 
     protected function invokeDbPrompt(int $promptId, string $testMessage, $teamId): JsonResponse
     {
-        $prompt = Prompt::with('module')->find($promptId);
+        $prompt = $teamId ? Prompt::forTeam((int) $teamId)->with('module')->find($promptId) : Prompt::with('module')->find($promptId);
         if (! $prompt)
         {
             return response()->json(['success' => false, 'message' => 'Prompt no encontrado'], 404);
