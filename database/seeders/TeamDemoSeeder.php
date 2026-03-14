@@ -137,12 +137,10 @@ class TeamDemoSeeder extends Seeder
             'list60',
             'prospecting',
             'chat',
-            'services',
             'projects',
             'tasks',
             'times',
             'invoices',
-            'payments',
             'attendances',
             'academy',
             'multimedia',
@@ -163,6 +161,38 @@ class TeamDemoSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
                 $this->command->info("✅ Enabled module: {$module->name} ({$moduleKey})");
+            }
+        }
+
+        $modulesDisabledForDemo = [
+            'users' => 'Usuarios',
+            'services' => 'Servicios',
+            'products' => 'Productos',
+            'orders' => 'Orders',
+            'payments' => 'Pagos',
+            'expenses' => 'Gastos',
+            'templates' => 'Plantillas',
+            'website' => 'Sitio web (Entradas, Páginas)',
+        ];
+
+        foreach ($modulesDisabledForDemo as $moduleKey => $label)
+        {
+            $module = Module::where('key', $moduleKey)->first();
+            if ($module)
+            {
+                $now = now();
+                DB::table('module_team')->updateOrInsert(
+                    [
+                        'module_id' => $module->id,
+                        'team_id' => $team->id,
+                    ],
+                    [
+                        'status' => 0,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]
+                );
+                $this->command->info("✅ Disabled module: {$label} ({$moduleKey})");
             }
         }
     }
