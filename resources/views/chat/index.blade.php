@@ -128,17 +128,11 @@
             var isAssistantView = isAssistantViewForm;
             currentUserMessage = msg;
 
-            if (isAssistantView) {
-                document.getElementById('aiPreviewLoader').classList.remove('d-none');
-                document.getElementById('aiPreviewContent').classList.add('d-none');
-                document.getElementById('aiResponsePreview').textContent = '';
-            } else {
-                document.getElementById('userMessagePreview').textContent = currentUserMessage;
-                document.getElementById('aiPreviewLoader').classList.remove('d-none');
-                document.getElementById('aiPreviewContent').classList.add('d-none');
-                document.getElementById('aiResponsePreview').textContent = '';
-                previewModal.show();
-            }
+            document.getElementById('userMessagePreview').textContent = currentUserMessage;
+            document.getElementById('aiPreviewLoader').classList.remove('d-none');
+            document.getElementById('aiPreviewContent').classList.add('d-none');
+            document.getElementById('aiResponsePreview').textContent = '';
+            previewModal.show();
 
             fetch('{{ route("chat.assistant") }}', {
                     method: 'POST',
@@ -159,47 +153,19 @@
 
                     if (data.success) {
                         currentAiResponse = data.response || '';
-                        if (!isAssistantView) {
-                            document.getElementById('aiResponsePreview').textContent = currentAiResponse;
-                        } else {
-                            var list = document.getElementById('assistant-messages-list');
-                            if (list) {
-                                var empty = list.querySelector('.assistant-empty-state');
-                                if (empty) empty.remove();
-                                var esc = function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
-                                var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                                var userLi = document.createElement('li');
-                                userLi.className = 'chat-message chat-message-right';
-                                userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + esc(currentUserMessage) + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
-                                list.appendChild(userLi);
-                                var aiLi = document.createElement('li');
-                                aiLi.className = 'chat-message';
-                                aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
-                                list.appendChild(aiLi);
-                                var body = document.querySelector('.chat-history-body');
-                                if (body) body.scrollTop = body.scrollHeight;
-                            }
-                            messageInput.value = '';
-                            currentUserMessage = '';
-                            currentAiResponse = '';
-                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                        }
+                        document.getElementById('aiResponsePreview').textContent = currentAiResponse;
                     } else {
                         currentAiResponse = '';
-                        if (!isAssistantView) {
-                            document.getElementById('aiResponsePreview').innerHTML =
-                                '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
-                        } else if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        document.getElementById('aiResponsePreview').innerHTML =
+                            '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
                     }
                 })
                 .catch(error => {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
                     currentAiResponse = '';
-                    if (!isAssistantView) {
-                        document.getElementById('aiResponsePreview').innerHTML =
-                            '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
-                    } else if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                    document.getElementById('aiResponsePreview').innerHTML =
+                        '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
                 })
                 .finally(function() { reenableSend(); });
 
@@ -221,95 +187,42 @@
             if (currentUserMessage && currentAiResponse) {
                 previewModal.hide();
 
-                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const cleanTo = recipientInput.value.replace('whatsapp:', '').trim();
+                var form = document.getElementById('chat-form');
+                var isAssistantView = form && form.getAttribute('data-view-assistant') === '1';
+                var list = isAssistantView ? document.getElementById('assistant-messages-list') : document.querySelector('.chat-history');
+                var esc = function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+                var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-                // Add the original message to the UI
-                let renderMsg = document.createElement('li');
-                renderMsg.className = 'chat-message chat-message-right';
-                renderMsg.innerHTML = `
-                    <div class="d-flex overflow-hidden">
-                        <div class="chat-message-wrapper flex-grow-1">
-                            <div class="chat-message-text">
-                                <p class="mb-0">${currentUserMessage}</p>
-                            </div>
-                            <div class="text-end text-muted mt-1">
-                                <i class='ti ti-check ti-xs me-1 text-success'></i>
-                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
-                            </div>
-                        </div>
-                        <div class="user-avatar flex-shrink-0 ms-3">
-                            <div class="avatar avatar-sm">
-                                <span class="avatar-initial rounded-circle bg-label-primary">
-                                    {{ substr(auth()->user()->name ?? 'U', 0, 2) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.querySelector('.chat-history').appendChild(renderMsg);
+                if (isAssistantView && list) {
+                    var empty = list.querySelector('.assistant-empty-state');
+                    if (empty) empty.remove();
+                    var aiLi = document.createElement('li');
+                    aiLi.className = 'chat-message';
+                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    list.appendChild(aiLi);
+                    var body = document.querySelector('.chat-history-body');
+                    if (body) body.scrollTop = body.scrollHeight;
+                } else if (list) {
+                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
 
-                // Send the user message to WhatsApp only when there is a recipient (not in assistant-only view)
-                if (cleanTo) {
-                    fetch('/chat/send', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token
-                        },
-                        body: JSON.stringify({
-                            to: cleanTo,
-                            message: currentUserMessage,
-                            use_ai: false
-                        })
-                    }).then(response => response.json())
-                      .catch(error => console.error('Error sending user message:', error));
+                    var aiMsg = document.createElement('li');
+                    aiMsg.className = 'chat-message';
+                    aiMsg.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div><div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-info">AI</span></div></div></div>';
+                    list.appendChild(aiMsg);
+
+                    var chatHistory = document.querySelector('.chat-history-body');
+                    if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                    if (cleanTo) {
+                        fetch('{{ route("chat.send") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify({ to: cleanTo, message: currentAiResponse, use_ai: false })
+                        }).then(function(r) { return r.json(); }).catch(function(err) { console.error('Error sending AI message:', err); });
+                    }
                 }
 
-                // AI suggested reply (left side = bot)
-                let aiMsg = document.createElement('li');
-                aiMsg.className = 'chat-message';
-                aiMsg.innerHTML = `
-                    <div class="d-flex overflow-hidden">
-                        <div class="chat-message-wrapper flex-grow-1">
-                            <div class="chat-message-text">
-                                <p class="mb-0">${currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p>
-                            </div>
-                            <div class="text-end text-muted mt-1">
-                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
-                            </div>
-                        </div>
-                        <div class="user-avatar flex-shrink-0 ms-3">
-                            <div class="avatar avatar-sm">
-                                <span class="avatar-initial rounded-circle bg-label-info">AI</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.querySelector('.chat-history').appendChild(aiMsg);
-
-                // Scroll to bottom
-                const chatHistory = document.querySelector('.chat-history-body');
-                if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
-
-                // Send the AI message to WhatsApp only when there is a recipient
-                if (cleanTo) {
-                    fetch('/chat/send', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token
-                        },
-                        body: JSON.stringify({
-                        to: cleanTo,
-                        message: currentAiResponse,
-                        use_ai: false
-                    })
-                }).then(response => response.json())
-                  .catch(error => console.error('Error sending AI message:', error));
-                }
-
-                // Clear the input
                 messageInput.value = '';
                 currentUserMessage = '';
                 currentAiResponse = '';
@@ -950,6 +863,8 @@
                                         <img src="{{ Storage::url($selectedUser->profile_photo_path) }}"
                                             alt="{{ $selectedUser->name }}" class="rounded-circle"
                                             data-bs-toggle="sidebar" data-overlay data-target="#app-chat-sidebar-right">
+                                    @else
+                                        <span class="avatar-initial rounded-circle bg-label-secondary">{{ strtoupper(substr(optional($selectedUser)->name ?? $selectedPhone ?? '?', 0, 2)) ?: '?' }}</span>
                                     @endif
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
