@@ -893,6 +893,7 @@
   "WhatsApp": "WhatsApp",
   "WhatsApp connection": "Conexión WhatsApp",
   "If you don't see the QR code, open it in a new tab.": "Si no ves el código QR, ábrelo en una nueva pestaña.",
+  "If you don't see the QR code, generate a new one below.": "Si no ves el código QR, genera uno nuevo abajo.",
   "Generate new QR code": "Generar nuevo código QR",
   "Request sent. Wait a few seconds for the QR code to appear.": "Solicitud enviada. Espera unos segundos a que aparezca el código QR.",
   "The box below updates every few seconds until the QR code appears.": "El recuadro inferior se actualiza cada pocos segundos hasta que aparezca el código QR.",

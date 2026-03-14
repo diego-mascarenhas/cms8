@@ -747,27 +747,51 @@ class ChatController extends Controller
      */
     public function whatsappQrImage()
     {
+        // #region agent log
+        $logPath = base_path('.cursor/debug-aac33a.log');
+        $log = function (array $data) use ($logPath): void {
+            if (is_writable($logPath) || is_writable(dirname($logPath))) {
+                $line = json_encode(array_merge([
+                    'sessionId' => 'aac33a',
+                    'location' => 'ChatController::whatsappQrImage',
+                    'timestamp' => (int) (microtime(true) * 1000),
+                ], $data))."\n";
+                @file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);
+            }
+        };
+        // #endregion
+
         if (config('whatsapp.driver') !== 'local')
         {
+            $log(['message' => 'Driver not local', 'data' => ['driver' => config('whatsapp.driver')]]);
             return $this->transparentPngResponse();
         }
         $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
+            $log(['message' => 'Empty base_url']);
             return $this->transparentPngResponse();
         }
-        $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->get($baseUrl.'/qr.png');
+        $url = $baseUrl.'/qr.png';
+        $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->get($url);
+        $status = $response->status();
+        $body = $response->body();
+        $bodyLen = strlen($body);
+        $isPng = ($bodyLen >= 8 && substr($body, 0, 8) === "\x89PNG\r\n\x1a\n");
+
         if (! $response->successful())
         {
+            $log(['message' => 'Node response not successful', 'data' => ['url' => $url, 'status' => $status, 'bodyLen' => $bodyLen, 'bodyPreview' => substr($body, 0, 200)]]);
             return $this->transparentPngResponse();
         }
 
-        $body = $response->body();
-        if (strlen($body) < 10)
+        if ($bodyLen < 10)
         {
+            $log(['message' => 'Body too short', 'data' => ['bodyLen' => $bodyLen]]);
             return $this->transparentPngResponse();
         }
 
+        $log(['message' => 'Serving QR PNG', 'data' => ['status' => $status, 'bodyLen' => $bodyLen, 'isPng' => $isPng]]);
         return response($body)
             ->header('Content-Type', 'image/png')
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -792,7 +816,7 @@ class ChatController extends Controller
     {
         if (config('whatsapp.driver') !== 'local')
         {
-            return redirect()->route('chat.whatsapp-connect');
+            return redirect()->route('chat.index');
         }
         $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl !== '')
@@ -800,24 +824,7 @@ class ChatController extends Controller
             \Illuminate\Support\Facades\Http::timeout(10)->get($baseUrl.'/refresh');
         }
 
-        return redirect()->route('chat.whatsapp-connect')->with('success', __('Request sent. Wait a few seconds for the QR code to appear.'));
-    }
-
-    /**
-     * Show WhatsApp connection (QR / status) when using local driver.
-     */
-    public function whatsappConnect()
-    {
-        $gateway = app(WhatsAppGateway::class);
-        $driver = config('whatsapp.driver');
-        $qrUrl = $gateway->getQrUrl();
-        $status = $gateway->getConnectionStatus();
-
-        return view('chat.whatsapp-connect', [
-            'driver' => $driver,
-            'qrUrl' => $qrUrl,
-            'status' => $status,
-        ]);
+        return redirect()->route('chat.index')->with('success', __('Request sent. Wait a few seconds for the QR code to appear.'));
     }
 
     /**

@@ -142,11 +142,35 @@ app.get('/qr', (req, res) => {
 });
 
 app.get('/qr.png', (req, res) => {
+  // #region agent log
+  const path = require('path');
+  const logPath = path.join(__dirname, '..', '.cursor', 'debug-aac33a.log');
+  const log = (data) => {
+    const line = JSON.stringify({
+      sessionId: 'aac33a',
+      location: 'server.js:/qr.png',
+      timestamp: Date.now(),
+      ...data,
+    }) + '\n';
+    try {
+      require('fs').appendFileSync(logPath, line);
+    } catch (e) {}
+  };
+  // #endregion
+  log({
+    message: 'qr.png requested',
+    data: { connectionStatus, hasCurrentQR: !!currentQR },
+  });
   if (connectionStatus !== 'waiting_qr' || !currentQR) {
+    log({ message: 'qr.png returning 404', data: { connectionStatus, hasCurrentQR: !!currentQR } });
     return res.status(404).json({ error: 'No QR code available' });
   }
   QRCode.toBuffer(currentQR, (err, buffer) => {
-    if (err) return res.status(500).json({ error: 'QR generation failed' });
+    if (err) {
+      log({ message: 'QRCode.toBuffer error', data: { error: err.message } });
+      return res.status(500).json({ error: 'QR generation failed' });
+    }
+    log({ message: 'qr.png returning PNG', data: { bufferLength: buffer.length } });
     res.type('png').send(buffer);
   });
 });
@@ -167,6 +191,11 @@ app.get('/refresh', async (req, res) => {
     ourJid = null;
     currentQR = null;
     connectionStatus = 'disconnected';
+    // Clear auth so the new socket has no credentials and Baileys will emit a QR
+    if (fs.existsSync(AUTH_DIR)) {
+      fs.rmSync(AUTH_DIR, { recursive: true });
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+    }
     sock = await makeSocket();
     res.json({ ok: true, message: 'Reconnecting to get a new QR code.' });
   } catch (e) {

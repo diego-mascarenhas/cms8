@@ -362,15 +362,21 @@
                                         <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}"
                                             onload="var el=this; var fb=document.getElementById('chat-qr-fallback'); if(el.naturalWidth>20){el.classList.remove('d-none'); if(fb)fb.classList.add('d-none');} else {if(fb)fb.classList.remove('d-none');}"
                                             onerror="this.classList.add('d-none'); document.getElementById('chat-qr-fallback').classList.remove('d-none');">
-                                        <div id="chat-qr-fallback" class="mb-2">
-                                            <p class="small text-muted mb-2">{{ __('If you don\'t see the QR code, open it in a new tab.') }}</p>
-                                            <a href="{{ route('chat.whatsapp-connect') }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
-                                                <i class="ti ti-external-link me-1"></i>{{ __('Open QR in new tab') }}
-                                            </a>
+                                        <div id="chat-qr-fallback" class="mb-2 d-none">
+                                            <p class="small text-muted mb-2">{{ __('If you don\'t see the QR code, generate a new one below.') }}</p>
                                         </div>
                                     </div>
                                 @endif
                                 <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>
+                                <form method="POST" action="{{ route('chat.whatsapp-refresh-qr') }}" class="mt-2">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+                                        <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
+                                    </button>
+                                </form>
+                                @if(session('success'))
+                                    <p class="small text-success mb-0 mt-2">{{ session('success') }}</p>
+                                @endif
                             </div>
                         @elseif(($whatsappDriver ?? 'twilio') !== 'local')
                             <small class="text-muted text-uppercase">{{ __('Status') }}</small>

@@ -398,7 +398,6 @@ Route::middleware(['auth'])->group(function ()
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
-    Route::get('/chat/whatsapp-connect', [ChatController::class, 'whatsappConnect'])->name('chat.whatsapp-connect');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
     Route::post('/chat/whatsapp-logout', [ChatController::class, 'whatsappLogout'])->name('chat.whatsapp-logout');
