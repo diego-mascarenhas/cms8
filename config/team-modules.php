@@ -16,11 +16,12 @@ return [
     'defaults' => [
         // Core modules
         'dashboard' => true,
-        'users' => true,
+        'users' => false,
         'settings' => true,
         'contacts' => true,
         'clients' => true,
         'list60' => true,
+        'prospecting' => true,
         'services' => false,
         'projects' => false,
         'tasks' => true,
