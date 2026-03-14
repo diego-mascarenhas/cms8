@@ -347,6 +347,11 @@ class TwilioService implements WhatsAppGateway
         return null;
     }
 
+    public function logout(): bool
+    {
+        return false;
+    }
+
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))

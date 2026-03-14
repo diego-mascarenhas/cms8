@@ -15,23 +15,53 @@
     </div>
 </div>
 
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible mb-3" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
 <div class="card">
     <div class="card-body">
         @if($driver === 'local')
             @if($qrUrl)
+                @if(empty($status) || ($status['status'] ?? '') !== 'connected')
+                    <form method="POST" action="{{ route('chat.whatsapp-refresh-qr') }}" class="mb-3">
+                        @csrf
+                        <button type="submit" class="btn btn-warning">
+                            <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
+                        </button>
+                    </form>
+                @endif
                 <p class="text-muted mb-3">{{ __('Scan the QR code with WhatsApp on your phone. If the box below is empty (e.g. when using HTTPS), use the button to open the QR in a new tab.') }}</p>
                 <a href="{{ $qrUrl }}" target="_blank" rel="noopener" class="btn btn-primary mb-3">
                     <i class="ti ti-external-link me-1"></i>{{ __('Open QR in new tab') }}
                 </a>
+                <p class="small text-muted mb-2">{{ __('The box below updates every few seconds until the QR code appears.') }}</p>
                 <div class="border rounded p-3 d-inline-block bg-light">
                     <iframe
+                        id="whatsapp-qr-iframe"
                         src="{{ $qrUrl }}"
                         title="WhatsApp QR"
                         width="320"
                         height="400"
                         class="border-0"
+                        data-qr-url="{{ $qrUrl }}"
                     ></iframe>
                 </div>
+                @if(empty($status) || ($status['status'] ?? '') !== 'connected')
+                <script>
+                    (function() {
+                        var iframe = document.getElementById('whatsapp-qr-iframe');
+                        if (iframe && iframe.dataset.qrUrl) {
+                            setInterval(function() {
+                                iframe.src = iframe.dataset.qrUrl + '?t=' + Date.now();
+                            }, 5000);
+                        }
+                    })();
+                </script>
+                @endif
             @else
                 <p class="text-muted">{{ __('QR code URL not configured. Set WHATSAPP_LOCAL_BASE_URL and ensure the Node.js service is running.') }}</p>
             @endif

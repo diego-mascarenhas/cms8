@@ -786,6 +786,24 @@ class ChatController extends Controller
     }
 
     /**
+     * Force the Node service to reconnect and generate a new QR (when disconnected).
+     */
+    public function whatsappRefreshQr(Request $request)
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return redirect()->route('chat.whatsapp-connect');
+        }
+        $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+        if ($baseUrl !== '')
+        {
+            \Illuminate\Support\Facades\Http::timeout(10)->get($baseUrl.'/refresh');
+        }
+
+        return redirect()->route('chat.whatsapp-connect')->with('success', __('Request sent. Wait a few seconds for the QR code to appear.'));
+    }
+
+    /**
      * Show WhatsApp connection (QR / status) when using local driver.
      */
     public function whatsappConnect()

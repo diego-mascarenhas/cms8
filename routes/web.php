@@ -400,6 +400,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/whatsapp-connect', [ChatController::class, 'whatsappConnect'])->name('chat.whatsapp-connect');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
+    Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
     Route::post('/chat/whatsapp-logout', [ChatController::class, 'whatsappLogout'])->name('chat.whatsapp-logout');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
@@ -825,7 +826,7 @@ Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->
 Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
-Route::view('/strategy', 'strategy.index')->name('strategy.index');
+Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
 Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 

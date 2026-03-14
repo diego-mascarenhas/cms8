@@ -358,8 +358,16 @@
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
-                                    <div class="d-inline-block p-2 bg-white border rounded text-center">
-                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block" width="200" height="200" loading="lazy" data-qr-base="{{ url($qrImageUrl) }}">
+                                    <div class="d-inline-block text-center" id="chat-qr-container">
+                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}"
+                                            onload="var el=this; var fb=document.getElementById('chat-qr-fallback'); if(el.naturalWidth>20){el.classList.remove('d-none'); if(fb)fb.classList.add('d-none');} else {if(fb)fb.classList.remove('d-none');}"
+                                            onerror="this.classList.add('d-none'); document.getElementById('chat-qr-fallback').classList.remove('d-none');">
+                                        <div id="chat-qr-fallback" class="mb-2">
+                                            <p class="small text-muted mb-2">{{ __('If you don\'t see the QR code, open it in a new tab.') }}</p>
+                                            <a href="{{ route('chat.whatsapp-connect') }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
+                                                <i class="ti ti-external-link me-1"></i>{{ __('Open QR in new tab') }}
+                                            </a>
+                                        </div>
                                     </div>
                                 @endif
                                 <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>

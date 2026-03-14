@@ -228,7 +228,15 @@
         </li>
         @endauth
         <!-- Language -->
-        @if ($configData['showLanguageSelector'] && Auth::user()->hasRole('developer'))
+        {{-- #region agent log --}}
+        @php
+        $___log = base_path('.cursor/debug-aac33a.log');
+        if (file_exists($___log) || is_writable(dirname($___log))) {
+            file_put_contents($___log, json_encode(['sessionId' => 'aac33a', 'location' => 'navbar.blade.php:language', 'message' => 'Navbar render', 'data' => ['auth_check' => auth()->check(), 'route' => request()->route()?->getName()], 'timestamp' => (int)(microtime(true)*1000), 'hypothesisId' => 'A'])."\n", FILE_APPEND | LOCK_EX);
+        }
+        @endphp
+        {{-- #endregion --}}
+        @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                 <i class='ti ti-language rounded-circle ti-md'></i>
@@ -312,7 +320,7 @@
         @endif
 
         <!-- Quick links  -->
-        @if ($configData['showQuickAccess'] || Auth::user()->hasRole('developer'))
+        @if ($configData['showQuickAccess'] || (Auth::check() && Auth::user()->hasRole('developer')))
             <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
                     data-bs-auto-close="outside" aria-expanded="false">

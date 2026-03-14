@@ -151,6 +151,29 @@ app.get('/qr.png', (req, res) => {
   });
 });
 
+app.get('/refresh', async (req, res) => {
+  if (connectionStatus === 'connected') {
+    return res.json({ ok: true, status: 'connected' });
+  }
+  try {
+    if (sock) {
+      try {
+        sock.end(undefined);
+      } catch (e) {
+        // ignore
+      }
+      sock = null;
+    }
+    ourJid = null;
+    currentQR = null;
+    connectionStatus = 'disconnected';
+    sock = await makeSocket();
+    res.json({ ok: true, message: 'Reconnecting to get a new QR code.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/send-message', async (req, res) => {
   if (connectionStatus !== 'connected' || !sock) {
     return res.status(503).json({ error: 'WhatsApp not connected. Scan QR first.' });
