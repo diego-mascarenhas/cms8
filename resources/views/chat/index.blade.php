@@ -314,6 +314,48 @@
             window.refreshAssistantHistory = fetchHistory;
         })();
         @endif
+
+        // Generate new QR: submit via AJAX so sidebar stays open
+        var refreshQrForm = document.getElementById('chat-refresh-qr-form');
+        if (refreshQrForm) {
+            refreshQrForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var btn = refreshQrForm.querySelector('button[type="submit"]');
+                var msgEl = document.getElementById('chat-refresh-qr-message');
+                var qrImg = document.getElementById('chat-whatsapp-qr-img');
+                var baseUrl = refreshQrForm.action;
+                var token = refreshQrForm.querySelector('input[name="_token"]');
+                if (btn) btn.disabled = true;
+                fetch(baseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: '_token=' + encodeURIComponent(token ? token.value : '')
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (msgEl && data.message) {
+                        msgEl.textContent = data.message;
+                        msgEl.classList.remove('d-none');
+                    }
+                    if (qrImg && qrImg.dataset.qrBase) {
+                        qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                    }
+                })
+                .catch(function () {
+                    if (msgEl) {
+                        msgEl.textContent = '{{ __("An error occurred. Try again.") }}';
+                        msgEl.classList.remove('d-none');
+                    }
+                })
+                .finally(function () {
+                    if (btn) btn.disabled = false;
+                });
+            });
+        }
     });
     </script>
 @endsection
@@ -334,10 +376,14 @@
                     <div class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
                         <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot" style="font-size: 2rem;"></i></span>
                     </div>
-                    @if(($whatsappDriver ?? 'twilio') === 'local' && !empty($whatsappStatus['number']))
-                        <h5 class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
+                    @if(($whatsappDriver ?? 'twilio') === 'local')
+                        @if(($whatsappStatus['status'] ?? '') === 'connected' && !empty($whatsappStatus['number']))
+                            <h5 class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
+                        @else
+                            <h5 class="mt-2 mb-0">{{ __('Disconnected') }}</h5>
+                        @endif
                     @else
-                        <h5 class="mt-2 mb-0">John Doe</h5>
+                        <h5 class="mt-2 mb-0">{{ auth()->user()->name ?? 'John Doe' }}</h5>
                     @endif
                     @if(($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus))
                         @php
@@ -368,12 +414,13 @@
                                     </div>
                                 @endif
                                 <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>
-                                <form method="POST" action="{{ route('chat.whatsapp-refresh-qr') }}" class="mt-2">
+                                <form id="chat-refresh-qr-form" method="POST" action="{{ route('chat.whatsapp-refresh-qr') }}" class="mt-2">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-warning w-100">
                                         <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
                                     </button>
                                 </form>
+                                <p id="chat-refresh-qr-message" class="small text-success mb-0 mt-2 d-none"></p>
                                 @if(session('success'))
                                     <p class="small text-success mb-0 mt-2">{{ session('success') }}</p>
                                 @endif

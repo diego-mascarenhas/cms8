@@ -1136,6 +1136,7 @@
   "Stop Timer": "Detener Temporizador",
   "Timer stopped": "Temporizador detenido",
   "An error occurred": "Ha ocurrido un error",
+  "An error occurred. Try again.": "Ha ocurrido un error. Inténtalo de nuevo.",
   "Record deleted successfully": "Registro eliminado exitosamente",
   "An error occurred while deleting the record": "Ha ocurrido un error al eliminar el registro",
   "Add time entry manually": "Agregar entrada de tiempo manualmente",

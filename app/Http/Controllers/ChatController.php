@@ -816,7 +816,9 @@ class ChatController extends Controller
     {
         if (config('whatsapp.driver') !== 'local')
         {
-            return redirect()->route('chat.index');
+            return $request->expectsJson()
+                ? response()->json(['ok' => false], 400)
+                : redirect()->route('chat.index');
         }
         $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl !== '')
@@ -824,7 +826,14 @@ class ChatController extends Controller
             \Illuminate\Support\Facades\Http::timeout(10)->get($baseUrl.'/refresh');
         }
 
-        return redirect()->route('chat.index')->with('success', __('Request sent. Wait a few seconds for the QR code to appear.'));
+        $message = __('Request sent. Wait a few seconds for the QR code to appear.');
+
+        if ($request->expectsJson())
+        {
+            return response()->json(['ok' => true, 'message' => $message]);
+        }
+
+        return redirect()->route('chat.index')->with('success', $message);
     }
 
     /**
