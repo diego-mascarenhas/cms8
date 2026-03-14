@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\WhatsAppGateway;
 use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
@@ -17,13 +18,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
 
-class TwilioService
+class TwilioService implements WhatsAppGateway
 {
     protected $client;
 
     protected $team;
 
     protected $config;
+
+    /** @var WhatsAppGateway|null Override for sending when processing local webhook */
+    protected $sendingGateway = null;
 
     public function __construct(?Team $team = null)
     {
@@ -112,7 +116,7 @@ class TwilioService
     /**
      * Check if Twilio is properly configured
      */
-    public function isConfigured()
+    public function isConfigured(): bool
     {
         return $this->client !== null;
     }
@@ -313,8 +317,49 @@ class TwilioService
         }
     }
 
+    /**
+     * Gateway to use for sending (when processing incoming with alternate gateway).
+     */
+    protected function getSender(): WhatsAppGateway
+    {
+        return $this->sendingGateway ?? $this;
+    }
+
+    public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+    {
+        return $this->sendWhatsApp($to, $message, $metadata, $userId);
+    }
+
+    public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+    {
+        $this->sendWhatsAppWithMedia($to, $mediaPath, 'media');
+
+        return true;
+    }
+
+    public function getQrUrl(): ?string
+    {
+        return null;
+    }
+
+    public function getConnectionStatus(): ?array
+    {
+        return null;
+    }
+
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
+        if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
+        {
+            return app(WhatsAppGateway::class)->sendMessage($to, $message, $metadata, $userId);
+        }
+
+        $sender = $this->getSender();
+        if ($sender !== $this)
+        {
+            return $sender->sendMessage($to, $message, $metadata, $userId);
+        }
+
         if (! $this->isConfigured())
         {
             throw new \Exception('Twilio not configured for team: '.($this->team ? $this->team->name : 'No team'));
@@ -379,8 +424,9 @@ class TwilioService
         }
     }
 
-    public function processIncomingMessage($request)
+    public function processIncomingMessage($request, ?WhatsAppGateway $gateway = null)
     {
+        $this->sendingGateway = $gateway ?? $this;
         try
         {
             $messageSid = $request->input('MessageSid');
@@ -471,7 +517,11 @@ class TwilioService
             if ($channel == 'whatsapp')
             {
                 $chatController = app(\App\Http\Controllers\ChatController::class);
-                $registrationResponse = $chatController->processRegistration($cleanFrom, $body);
+                $registrationResponse = $chatController->processRegistration(
+                    $cleanFrom,
+                    $body,
+                    $this->getSender() !== $this ? $this->getSender() : null,
+                );
 
                 // If this was a registration step, we've already handled it
                 if ($registrationResponse)
@@ -564,6 +614,9 @@ class TwilioService
             Log::error('Error processing incoming message: '.$e->getMessage());
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        } finally
+        {
+            $this->sendingGateway = null;
         }
     }
 
@@ -1439,9 +1492,23 @@ class TwilioService
     }
 
     /**
+     * Send WhatsApp message with media attachment (public for gateway use).
+     */
+    public function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type = 'media')
+    {
+        $sender = $this->getSender();
+        if ($sender !== $this)
+        {
+            return $sender->sendMedia($phoneNumber, $mediaPath, null);
+        }
+
+        return $this->doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type);
+    }
+
+    /**
      * Send WhatsApp message with media attachment using Twilio API
      */
-    private function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
+    private function doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
     {
         try
         {

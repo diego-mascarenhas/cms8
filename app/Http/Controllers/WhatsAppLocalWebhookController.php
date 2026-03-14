@@ -1,0 +1,100 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Contracts\WhatsAppGateway;
+use App\Models\Team;
+use App\Services\TwilioService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class WhatsAppLocalWebhookController extends Controller
+{
+    /**
+     * Handle incoming message webhook from the local Node.js WhatsApp service (Baileys).
+     * Normalizes the payload to Twilio-like format and reuses TwilioService::processIncomingMessage.
+     */
+    public function handleIncomingMessage(Request $request)
+    {
+        $secret = config('whatsapp.local.webhook_secret');
+        if ($secret && $request->header('X-Webhook-Secret') !== $secret)
+        {
+            Log::warning('WhatsApp local webhook: invalid or missing secret');
+
+            return response('Unauthorized', 401);
+        }
+
+        $payload = $request->all();
+        $normalized = $this->normalizePayload($payload);
+        if ($normalized === null)
+        {
+            // Likely a ping, health check or non-message event; avoid warning spam
+            Log::debug('WhatsApp local webhook: payload ignored (missing from/body)', ['payload' => $payload]);
+
+            return response()->json(['error' => 'Invalid payload: from and body required'], 422);
+        }
+
+        $team = $this->resolveTeam($request);
+        $twilioService = new TwilioService($team);
+        $gateway = app(WhatsAppGateway::class);
+
+        $fakeRequest = Request::create('/', 'POST', $normalized);
+
+        return $twilioService->processIncomingMessage($fakeRequest, $gateway);
+    }
+
+    /**
+     * Normalize Node/Baileys webhook payload to Twilio-like keys for processIncomingMessage.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function normalizePayload(array $payload): ?array
+    {
+        $from = $payload['from'] ?? $payload['remoteJid'] ?? null;
+        $to = $payload['to'] ?? $payload['ourJid'] ?? '';
+        $body = $payload['body'] ?? $payload['message'] ?? $payload['text'] ?? '';
+        $messageId = $payload['id'] ?? $payload['messageId'] ?? $payload['key'] ?? uniqid('wa_', true);
+
+        if ($from === null || $body === '')
+        {
+            return null;
+        }
+
+        $cleanFrom = preg_replace('/[^0-9]/', '', (string) $from);
+        $cleanTo = preg_replace('/[^0-9]/', '', (string) $to);
+
+        $normalized = [
+            'MessageSid' => is_string($messageId) ? $messageId : json_encode($messageId),
+            'From' => 'whatsapp:'.$cleanFrom,
+            'To' => 'whatsapp:'.$cleanTo,
+            'Body' => $body,
+            'NumMedia' => $payload['numMedia'] ?? $payload['hasMedia'] ?? 0,
+        ];
+
+        if (! empty($payload['mediaUrl']))
+        {
+            $normalized['MediaUrl0'] = $payload['mediaUrl'];
+            $normalized['MediaContentType0'] = $payload['mediaContentType'] ?? 'application/octet-stream';
+            $normalized['NumMedia'] = 1;
+        }
+
+        return $normalized;
+    }
+
+    private function resolveTeam(Request $request): ?Team
+    {
+        $teamId = $request->input('team_id');
+        if ($teamId)
+        {
+            return Team::find($teamId);
+        }
+
+        $hash = $request->route('hash') ?? $request->input('webhook_hash');
+        if ($hash)
+        {
+            return Team::findByWebhookHash($hash);
+        }
+
+        return null;
+    }
+}

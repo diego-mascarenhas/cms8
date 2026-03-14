@@ -13,6 +13,8 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'twilio/webhook',
+        'webhook/whatsapp-local',
+        'webhook/whatsapp-local/*',
         'lead',  // form submissions and external lead sources
         'stripe/webhook', // Stripe webhook handler (default and per-category)
         'stripe/webhook/*',

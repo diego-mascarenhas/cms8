@@ -318,49 +318,67 @@
                     <div class="avatar avatar-xl avatar-online">
                         <img src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar" class="rounded-circle">
                     </div>
-                    <h5 class="mt-2 mb-0">John Doe</h5>
-                    <span>Admin</span>
+                    @if(($whatsappDriver ?? 'twilio') === 'local' && !empty($whatsappStatus['number']))
+                        <h5 class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
+                    @else
+                        <h5 class="mt-2 mb-0">John Doe</h5>
+                    @endif
+                    @if(($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus))
+                        @php
+                            $status = $whatsappStatus['status'] ?? 'unreachable';
+                            $badgeClass = $status === 'connected' ? 'success' : ($status === 'waiting_qr' ? 'warning' : 'secondary');
+                            $statusLabel = $status === 'connected' ? __('Connected') : ($status === 'waiting_qr' ? __('Scan QR') : __('Disconnected'));
+                        @endphp
+                        <span class="badge bg-{{ $badgeClass }} mt-1">{{ $statusLabel }}</span>
+                    @else
+                        <span>Admin</span>
+                    @endif
                     <i class="ti ti-x ti-sm cursor-pointer close-sidebar" data-bs-toggle="sidebar" data-overlay
                         data-target="#app-chat-sidebar-left"></i>
                 </div>
                 <div class="sidebar-body px-4 pb-4">
                     <div class="my-4">
-                        <small class="text-muted text-uppercase">About</small>
-                        <textarea id="chat-sidebar-left-user-about" class="form-control chat-sidebar-left-user-about mt-3" rows="4"
-                            maxlength="120">Dessert chocolate cake lemon drops jujubes. Biscuit cupcake ice cream bear claw brownie brownie marshmallow.</textarea>
+                        @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
+                            <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
+                            <div class="d-grid gap-2 mt-3">
+                                <a href="{{ route('chat.whatsapp-connect') }}" class="btn btn-sm btn-success" target="_blank" rel="noopener">
+                                    <i class="ti ti-brand-whatsapp me-1"></i>{{ __('Open QR in new tab') }}
+                                </a>
+                                <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>
+                            </div>
+                        @elseif(($whatsappDriver ?? 'twilio') !== 'local')
+                            <small class="text-muted text-uppercase">{{ __('Status') }}</small>
+                            <div class="d-grid gap-2 mt-3">
+                                <div class="form-check form-check-success">
+                                    <input name="chat-user-status" class="form-check-input" type="radio" value="active"
+                                        id="user-active" checked>
+                                    <label class="form-check-label" for="user-active">{{ __('Active') }}</label>
+                                </div>
+                                <div class="form-check form-check-danger">
+                                    <input name="chat-user-status" class="form-check-input" type="radio" value="busy"
+                                        id="user-busy">
+                                    <label class="form-check-label" for="user-busy">{{ __('Busy') }}</label>
+                                </div>
+                                <div class="form-check form-check-warning">
+                                    <input name="chat-user-status" class="form-check-input" type="radio" value="away"
+                                        id="user-away">
+                                    <label class="form-check-label" for="user-away">{{ __('Away') }}</label>
+                                </div>
+                                <div class="form-check form-check-secondary">
+                                    <input name="chat-user-status" class="form-check-input" type="radio" value="offline"
+                                        id="user-offline">
+                                    <label class="form-check-label" for="user-offline">{{ __('Offline') }}</label>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                     <div class="my-4">
-                        <small class="text-muted text-uppercase">Status</small>
-                        <div class="d-grid gap-2 mt-3">
-                            <div class="form-check form-check-success">
-                                <input name="chat-user-status" class="form-check-input" type="radio" value="active"
-                                    id="user-active" checked>
-                                <label class="form-check-label" for="user-active">Active</label>
-                            </div>
-                            <div class="form-check form-check-danger">
-                                <input name="chat-user-status" class="form-check-input" type="radio" value="busy"
-                                    id="user-busy">
-                                <label class="form-check-label" for="user-busy">Busy</label>
-                            </div>
-                            <div class="form-check form-check-warning">
-                                <input name="chat-user-status" class="form-check-input" type="radio" value="away"
-                                    id="user-away">
-                                <label class="form-check-label" for="user-away">Away</label>
-                            </div>
-                            <div class="form-check form-check-secondary">
-                                <input name="chat-user-status" class="form-check-input" type="radio" value="offline"
-                                    id="user-offline">
-                                <label class="form-check-label" for="user-offline">Offline</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="my-4">
-                        <small class="text-muted text-uppercase">Settings</small>
+                        <small class="text-muted text-uppercase">{{ __('Settings') }}</small>
                         <ul class="list-unstyled d-grid gap-2 me-3 mt-3">
                             <li class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <i class='ti ti-message me-1 ti-sm'></i>
-                                    <span class="align-middle">Two-step Verification</span>
+                                    <i class='ti ti-robot me-1 ti-sm'></i>
+                                    <span class="align-middle">{{ __('Humano Assistant replies') }}</span>
                                 </div>
                                 <label class="switch switch-primary me-4 switch-sm">
                                     <input type="checkbox" class="switch-input" checked="" />
@@ -373,7 +391,7 @@
                             <li class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <i class='ti ti-bell me-1 ti-sm'></i>
-                                    <span class="align-middle">Notification</span>
+                                    <span class="align-middle">{{ __('Notification') }}</span>
                                 </div>
                                 <label class="switch switch-primary me-4 switch-sm">
                                     <input type="checkbox" class="switch-input" />
@@ -383,19 +401,15 @@
                                     </span>
                                 </label>
                             </li>
-                            <li>
-                                <i class="ti ti-user-plus me-1 ti-sm"></i>
-                                <span class="align-middle">Invite Friends</span>
-                            </li>
-                            <li>
-                                <i class="ti ti-trash me-1 ti-sm"></i>
-                                <span class="align-middle">Delete Account</span>
-                            </li>
                         </ul>
                     </div>
-                    <div class="d-flex mt-4">
-                        <button class="btn btn-primary" data-bs-toggle="sidebar" data-overlay
-                            data-target="#app-chat-sidebar-left">Logout</button>
+                    <div class="d-flex mt-4 d-none">
+                        <form method="POST" action="{{ route('chat.whatsapp-logout') }}" class="w-100">
+                            @csrf
+                            <button type="submit" class="btn btn-label-danger w-100">
+                                <i class="ti ti-unlink me-1"></i>{{ __('Unlink WhatsApp') }}
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -412,8 +426,8 @@
                         </div>
                         <div class="flex-grow-1 input-group input-group-merge rounded-pill">
                             <span class="input-group-text" id="basic-addon-search31"><i class="ti ti-search"></i></span>
-                            <input type="text" class="form-control chat-search-input" placeholder="Search..."
-                                aria-label="Search..." aria-describedby="basic-addon-search31">
+                            <input type="text" class="form-control chat-search-input" placeholder="{{ __('Search') }}..."
+                                aria-label="{{ __('Search') }}" aria-describedby="basic-addon-search31">
                         </div>
                     </div>
                     <i class="ti ti-x cursor-pointer d-lg-none d-block position-absolute mt-2 me-1 top-0 end-0"
@@ -423,7 +437,7 @@
                 <div class="sidebar-body">
 
                     <div class="chat-contact-list-item-title">
-                        <h5 class="text-primary mb-0 px-4 pt-3 pb-2">Chats</h5>
+                        <h5 class="text-primary mb-0 px-4 pt-3 pb-2">{{ __('Chats') }}</h5>
                     </div>
                     <!-- Chats -->
                     <ul class="list-unstyled chat-contact-list" id="chat-list">
@@ -488,6 +502,19 @@
                                     </a>
                                 </li>
                             @endforeach
+                        @endif
+                        @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
+                        <li class="chat-contact-list-item mt-2 pt-2 border-top">
+                            <a href="{{ route('chat.whatsapp-connect') }}" class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar">
+                                    <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">{{ __('WhatsApp connection') }}</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">{{ __('Scan QR to link') }}</p>
+                                </div>
+                            </a>
+                        </li>
                         @endif
                     </ul>
                     <!-- Contacts -->

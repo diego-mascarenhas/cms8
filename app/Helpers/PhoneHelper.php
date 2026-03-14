@@ -167,6 +167,36 @@ class PhoneHelper
     }
 
     /**
+     * Format phone number for readable display (e.g. +34 722 372 858).
+     * Strips WhatsApp JID suffix (e.g. :11) and groups digits with spaces.
+     */
+    public static function formatForDisplayReadable($phone): ?string
+    {
+        if (empty($phone))
+        {
+            return null;
+        }
+        $raw = preg_replace('/:\d+$/', '', (string) $phone);
+        $cleaned = preg_replace('/\D/', '', $raw);
+        if ($cleaned === '')
+        {
+            return null;
+        }
+        $len = strlen($cleaned);
+        if ($len <= 3)
+        {
+            return '+'.$cleaned;
+        }
+        // Country code: 1 digit for 1x, else first 2
+        $codeLen = (strlen($cleaned) >= 11 && $cleaned[0] === '1') ? 1 : 2;
+        $code = substr($cleaned, 0, $codeLen);
+        $rest = substr($cleaned, $codeLen);
+        $groups = trim(chunk_split($rest, 3, ' '));
+
+        return '+'.$code.' '.$groups;
+    }
+
+    /**
      * Check if phone number is valid Argentine mobile
      */
     public static function isArgentineMobile($phone)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -18,34 +19,50 @@ class ChatController extends Controller
 {
     public function index()
     {
-        // Get unique WhatsApp contacts (phone numbers)
-        $contacts = Conversation::where('channel', 'whatsapp')
-            ->selectRaw('DISTINCT `from`, MAX(created_at) as last_message_at')
+        // Unique WhatsApp contacts: numbers that wrote to you (inbound) or you wrote to (outbound)
+        $inboundPhones = Conversation::where('channel', 'whatsapp')
             ->where('direction', 'inbound')
-            ->groupBy('from')
-            ->orderBy('last_message_at', 'desc')
-            ->get();
+            ->distinct()
+            ->pluck('from');
+        $outboundPhones = Conversation::where('channel', 'whatsapp')
+            ->where('direction', 'outbound')
+            ->distinct()
+            ->pluck('to');
+        $allPhones = $inboundPhones->merge($outboundPhones)->unique()->filter()->values();
 
-        // Get the last message from each contact and enrich with user data
-        foreach ($contacts as $contact)
+        $contacts = collect();
+        foreach ($allPhones as $phone)
         {
-            $lastMessage = Conversation::where('from', $contact->from)
-                ->where('channel', 'whatsapp')
+            $lastMessage = Conversation::where('channel', 'whatsapp')
+                ->where(function ($query) use ($phone)
+                {
+                    $query->where('from', $phone)->orWhere('to', $phone);
+                })
                 ->latest()
                 ->first();
-
-            $contact->last_message = $lastMessage->body;
-            $contact->last_message_time = $lastMessage->created_at->diffForHumans();
-
-            // Get user information if available
-            $userData = $this->getUserByPhone($contact->from);
+            if (! $lastMessage)
+            {
+                continue;
+            }
+            $contact = (object) [
+                'from' => $phone,
+                'last_message' => $lastMessage->body,
+                'last_message_time' => $lastMessage->created_at->diffForHumans(),
+                'last_message_at' => $lastMessage->created_at,
+            ];
+            $userData = $this->getUserByPhone($phone);
             if ($userData)
             {
                 $contact->user_name = $userData->name;
                 $contact->user_photo = $userData->profile_photo_path;
                 $contact->user_id = $userData->id;
             }
+            $contacts->push($contact);
         }
+        $contacts = $contacts->sortByDesc(function ($c)
+        {
+            return $c->last_message_at ? $c->last_message_at->timestamp : 0;
+        })->values();
 
         // If a contact is selected, get their messages
         $selectedPhone = request('phone');
@@ -125,7 +142,14 @@ class ChatController extends Controller
             ? $this->getChatAiToggleDefaultForUser($preferenceUserId)
             : true;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId'));
+        $whatsappDriver = config('whatsapp.driver');
+        $whatsappStatus = null;
+        if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
+        {
+            $whatsappStatus = app(WhatsAppGateway::class)->getConnectionStatus();
+        }
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus'));
     }
 
     /**
@@ -543,11 +567,12 @@ class ChatController extends Controller
      *
      * @param  string  $phone  The phone number
      * @param  string  $message  The user message
+     * @param  WhatsAppGateway|null  $gateway  Optional gateway for sending (e.g. local webhook)
      * @return array|null Response to send or null if no registration in progress
      */
-    public function processRegistration($phone, $message)
+    public function processRegistration($phone, $message, ?WhatsAppGateway $gateway = null)
     {
-        $twilioService = app(TwilioService::class);
+        $sender = $gateway ?? app(TwilioService::class);
         $lastMessage = Conversation::where('to', $phone)
             ->where('channel', 'whatsapp')
             ->orderBy('created_at', 'desc')
@@ -570,8 +595,7 @@ class ChatController extends Controller
             {
                 $response = "¡Bienvenido a nuestra mesa de ayuda!\nVemos que aún nuca nos has escrito por aquí.\n\n¿Podrás decirnos tu nombre completo?";
 
-                // The TwilioService will save the message in the database
-                $result = $twilioService->sendWhatsApp($phone, $response, ['registration_step' => 'name']);
+                $sender->sendMessage($phone, $response, ['registration_step' => 'name']);
 
                 return ['success' => true, 'message' => 'Registration initiated'];
             }
@@ -588,15 +612,14 @@ class ChatController extends Controller
             if (strlen(trim($name)) < 3)
             {
                 $response = "No parece ser un nombre válido.\n\n¿Podrías escribirlo nuevamente?";
-                $twilioService->sendWhatsApp($phone, $response, ['registration_step' => 'name']);
+                $sender->sendMessage($phone, $response, ['registration_step' => 'name']);
 
                 return ['success' => true, 'message' => 'Invalid name'];
             }
 
             $response = "¡Gracias, $name!\n\n¿Podrás decirnos tu dirección de email para asociarla a tu cuenta?";
 
-            // The TwilioService will save the message to database
-            $twilioService->sendWhatsApp($phone, $response, [
+            $sender->sendMessage($phone, $response, [
                 'registration_step' => 'email',
                 'user_name' => $name,
             ]);
@@ -613,7 +636,7 @@ class ChatController extends Controller
             if (! filter_var($email, FILTER_VALIDATE_EMAIL))
             {
                 $response = "No parece ser una dirección de email válida.\n\n¿Podrás escribirla nuevamente?";
-                $twilioService->sendWhatsApp($phone, $response, [
+                $sender->sendMessage($phone, $response, [
                     'registration_step' => 'email',
                     'user_name' => $userName,
                 ]);
@@ -643,15 +666,14 @@ class ChatController extends Controller
 
                 $response = "¡Gracias por registrarte!\n\nVamos a confirmar tus datos y a partir de ahora todas las comunicaciones con nosotros estarán validadas con este número telefónico.\nEn breve nos pondremos en contacto por este mismo medio.";
 
-                // The TwilioService will save the message to database with user_id
-                $twilioService->sendWhatsApp($phone, $response, null, $user->id);
+                $sender->sendMessage($phone, $response, null, $user->id);
 
                 return ['success' => true, 'message' => 'User registered', 'user_id' => $user->id];
             } catch (\Exception $e)
             {
                 Log::error('User registration error: '.$e->getMessage());
                 $response = "Lo sentimos, ha ocurrido un error al crear tu cuenta.\nPor favor escríbenos a administracion@revisionalpha.com para que podamos ayudarte.";
-                $twilioService->sendWhatsApp($phone, $response);
+                $sender->sendMessage($phone, $response);
 
                 return ['success' => false, 'message' => 'Registration error'];
             }
@@ -711,5 +733,38 @@ class ChatController extends Controller
     public function sendTemplateMessage(Request $request)
     {
         return $this->sendWithTemplate($request);
+    }
+
+    /**
+     * Show WhatsApp connection (QR / status) when using local driver.
+     */
+    public function whatsappConnect()
+    {
+        $gateway = app(WhatsAppGateway::class);
+        $driver = config('whatsapp.driver');
+        $qrUrl = $gateway->getQrUrl();
+        $status = $gateway->getConnectionStatus();
+
+        return view('chat.whatsapp-connect', [
+            'driver' => $driver,
+            'qrUrl' => $qrUrl,
+            'status' => $status,
+        ]);
+    }
+
+    /**
+     * End WhatsApp session (unlink device) when using local driver.
+     */
+    public function whatsappLogout(Request $request)
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return redirect()->route('chat.index');
+        }
+
+        $gateway = app(WhatsAppGateway::class);
+        $gateway->logout();
+
+        return redirect()->route('chat.index')->with('success', __('WhatsApp session closed. Scan QR to link again.'));
     }
 }

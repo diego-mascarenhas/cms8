@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Contracts\WhatsAppGateway;
 use App\Models\SubscriptionProduct;
 use App\Observers\SubscriptionProductObserver;
 use App\Services\Stripe\StripeProductService;
+use App\Services\TwilioService;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\TwilioWhatsAppGateway;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 use Stripe\StripeClient;
@@ -23,6 +27,19 @@ class AppServiceProvider extends ServiceProvider
             return new StripeProductService(
                 new StripeClient(config('cashier.secret')),
             );
+        });
+
+        $this->app->bind(WhatsAppGateway::class, function ($app)
+        {
+            if (config('whatsapp.driver') === 'local')
+            {
+                return new LocalWhatsAppGateway(
+                    config('whatsapp.local.base_url', ''),
+                    config('whatsapp.local.webhook_secret'),
+                );
+            }
+
+            return new TwilioWhatsAppGateway(TwilioService::forCurrentUser());
         });
     }
 
