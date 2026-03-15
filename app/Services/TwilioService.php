@@ -365,6 +365,11 @@ class TwilioService implements WhatsAppGateway
         return null;
     }
 
+    /**
+     * End WhatsApp session / unlink device (local driver only). Not supported for Twilio.
+     *
+     * @see WhatsAppGateway::logout()
+     */
     public function logout(): bool
     {
         return false;
@@ -612,14 +617,13 @@ class TwilioService implements WhatsAppGateway
                         ->values()
                         ->toArray();
 
-                    // Process with Claude
-                    $claudeService = app(\App\Services\ClaudeService::class);
-                    $claudeResponse = $claudeService->chat($body, $history);
+                    $replyService = app(\App\Services\ChatAssistantReplyService::class);
+                    $teamId = $this->team?->id;
+                    $replyResponse = $replyService->getReply($body, $history, $teamId, false);
 
-                    // If Claude responded successfully, send the response and persist to agent context
-                    if ($claudeResponse['success'])
+                    if ($replyResponse['success'] ?? false)
                     {
-                        $aiMessage = $claudeResponse['text'];
+                        $aiMessage = $replyResponse['text'] ?? '';
 
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
                         $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage);
@@ -627,7 +631,7 @@ class TwilioService implements WhatsAppGateway
                         Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                     } else
                     {
-                        Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
+                        Log::warning('Failed to get AI response: '.($replyResponse['message'] ?? 'Unknown error'));
                     }
                 } catch (\Exception $e)
                 {

@@ -10,20 +10,18 @@ use Laravel\Ai\Messages\UserMessage;
 use function Laravel\Ai\agent;
 
 /**
- * Returns the assistant reply for chat/WhatsApp. Uses Claude by default; can use a stub for testing.
- * When withTools is true (e.g. assistant view), uses laravel/ai agent() with tools so the assistant can perform actions (create contact, task, send WhatsApp, etc.).
+ * Returns the assistant reply for chat/WhatsApp. Uses laravel/ai; can use a stub for testing.
+ * When withTools is true (e.g. assistant view), uses agent() with tools for actions (create contact, task, send WhatsApp, etc.).
  */
 class ChatAssistantReplyService
 {
     public function __construct(
-        protected ClaudeService $claudeService,
         protected AssistantToolsService $assistantTools,
     ) {}
 
     /**
      * Get assistant reply for the given message and history.
      * When stub mode is enabled (config or team), returns a canned response for testing.
-     * When withTools is true, uses laravel/ai agent() with tools (same stack as rest of app; avoids direct API 400 issues).
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
@@ -35,27 +33,26 @@ class ChatAssistantReplyService
             return $this->getStubReply($message);
         }
 
-        if ($withTools)
-        {
-            return $this->getReplyWithLaravelAi($message, $history);
-        }
+        $instructions = $withTools
+            ? $this->getAssistantToolsSystemPrompt()
+            : AssistantSystemPrompt::get();
+        $tools = $withTools ? $this->buildLaravelAiTools() : [];
 
-        return $this->claudeService->chat($message, $history, null, $teamId);
+        return $this->getReplyWithLaravelAi($message, $history, $instructions, $tools);
     }
 
     /**
-     * Use laravel/ai agent with tools (Prism gateway) for assistant actions.
+     * Use laravel/ai agent (Prism gateway) for assistant reply.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
+     * @param  array<int, \Laravel\Ai\Contracts\Tool>  $tools
      * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
      */
-    protected function getReplyWithLaravelAi(string $message, array $history): array
+    protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = []): array
     {
         try
         {
             $historyMessages = $this->historyToMessages($history);
-            $tools = $this->buildLaravelAiTools();
-            $instructions = $this->getAssistantToolsSystemPrompt();
 
             $agent = agent(
                 instructions: $instructions,
