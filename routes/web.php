@@ -402,6 +402,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
     Route::post('/chat/whatsapp-logout', [ChatController::class, 'whatsappLogout'])->name('chat.whatsapp-logout');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::get('/chat/list', [ChatController::class, 'getChatList'])->name('chat.list');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/chat/assistant-history', [ChatController::class, 'assistantHistory'])->name('chat.assistant-history');
     Route::patch('/chat/ai-toggle-preference', [ChatController::class, 'updateAiTogglePreference'])->name('chat.ai-toggle-preference');

@@ -228,40 +228,58 @@ class TwilioService implements WhatsAppGateway
     }
 
     /**
-     * Send automatic greeting if it's the first message of the day
+     * Send automatic greeting if it's the first message of the day.
+     * Returns the greeting text when sent, null otherwise (so caller can persist to agent context).
      */
-    private function sendAutoGreeting($phoneNumber)
+    private function sendAutoGreeting($phoneNumber): ?string
     {
-        // Check if it's the first message today
         if (! $this->isFirstMessageToday($phoneNumber))
         {
-            return false;
+            return null;
         }
 
-        // Get user information
         $user = $this->getUserByPhone($phoneNumber);
-
-        if ($user && ! empty($user->name))
+        $name = $user && ! empty($user->name) ? trim($user->name) : null;
+        if ($name === null || $name === '')
         {
-            $greeting = "¡Hola {$user->name}! 👋";
-
-            try
-            {
-                // Send the greeting
-                $this->sendWhatsApp($phoneNumber, $greeting);
-
-                Log::info("Auto greeting sent to {$phoneNumber}: {$greeting}");
-
-                return true;
-            } catch (\Exception $e)
-            {
-                Log::error("Failed to send auto greeting to {$phoneNumber}: ".$e->getMessage());
-
-                return false;
-            }
+            $name = 'Usuario '.$phoneNumber;
         }
 
-        return false;
+        $greeting = "¡Hola {$name}! 👋";
+
+        try
+        {
+            $this->sendWhatsApp($phoneNumber, $greeting);
+            Log::info("Auto greeting sent to {$phoneNumber}: {$greeting}");
+
+            return $greeting;
+        } catch (\Exception $e)
+        {
+            Log::error("Failed to send auto greeting to {$phoneNumber}: ".$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * Persist a WhatsApp user message and assistant reply into agent_conversation_messages
+     * so the assistant has context for follow-up messages (web or auto-respond).
+     */
+    private function persistWhatsAppExchangeToAgentContext(string $phone, string $userMessage, string $assistantMessage): void
+    {
+        try
+        {
+            $userResolver = app(UserResolverService::class);
+            $contextService = app(AgentConversationContextService::class);
+            $contextUser = $userResolver->resolveUserForConversation($phone, null);
+            if ($contextUser !== null)
+            {
+                $contextService->persistMessages($contextUser->id, $userMessage, $assistantMessage, null);
+            }
+        } catch (\Throwable $e)
+        {
+            Log::warning('Could not persist WhatsApp exchange to agent context: '.$e->getMessage());
+        }
     }
 
     public function sendSms($to, $message)
@@ -483,10 +501,14 @@ class TwilioService implements WhatsAppGateway
                 'metadata' => $request->except(['_token']),
             ]);
 
-            // Send automatic greeting if it's WhatsApp and first message of the day
+            // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
             if ($channel == 'whatsapp')
             {
-                $this->sendAutoGreeting($cleanFrom);
+                $greetingSent = $this->sendAutoGreeting($cleanFrom);
+                if ($greetingSent !== null)
+                {
+                    $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $greetingSent);
+                }
             }
 
             // Send email notification for new message
@@ -579,13 +601,13 @@ class TwilioService implements WhatsAppGateway
                     $claudeService = app(\App\Services\ClaudeService::class);
                     $claudeResponse = $claudeService->chat($body, $history);
 
-                    // If Claude responded successfully, send the response
+                    // If Claude responded successfully, send the response and persist to agent context
                     if ($claudeResponse['success'])
                     {
                         $aiMessage = $claudeResponse['text'];
 
-                        // Send the AI message
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
+                        $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage);
 
                         Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                     } else

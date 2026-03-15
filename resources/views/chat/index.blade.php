@@ -285,6 +285,125 @@
         })();
         @endif
 
+        // Poll WhatsApp conversation messages so new incoming/sent messages appear without refresh
+        (function () {
+            var body = document.getElementById('chat-history-body');
+            if (!body) return;
+            var pollPhone = body.getAttribute('data-poll-phone');
+            var isAssistant = body.getAttribute('data-view-assistant') === '1';
+            if (!pollPhone || isAssistant) return;
+
+            var list = document.getElementById('assistant-messages-list');
+            var messagesUrl = '{{ url("chat/messages") }}/' + encodeURIComponent(pollPhone);
+
+            function escapeHtml(s) {
+                var div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+            function formatTime(createdAt) {
+                if (!createdAt) return '';
+                var d = new Date(createdAt);
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+            function statusIcon(status) {
+                if (status === 'failed' || status === 'undelivered') return '<i class="ti ti-alert-circle ti-xs me-1 text-danger"></i>';
+                if (status === 'read') return '<i class="ti ti-checks ti-xs me-1 text-primary"></i>';
+                if (status === 'delivered') return '<i class="ti ti-checks ti-xs me-1 text-success"></i>';
+                if (status === 'sent') return '<i class="ti ti-check ti-xs me-1 text-success"></i>';
+                return '<i class="ti ti-clock ti-xs me-1"></i>';
+            }
+            function renderContactMessages(messages) {
+                if (!messages || messages.length === 0) {
+                    list.innerHTML = '<li class="text-center p-4"><p class="text-muted mb-0">Aún no hay mensajes en esta conversación.</p></li>';
+                    return;
+                }
+                var html = messages.map(function (m) {
+                    var inbound = (m.direction || '').toLowerCase() === 'inbound';
+                    var sideClass = inbound ? '' : 'chat-message-right';
+                    var timeClass = inbound ? '' : 'text-end';
+                    var bodyEscaped = escapeHtml(m.body || '').replace(/\n/g, '<br>');
+                    var time = formatTime(m.created_at);
+                    var fromSuffix = (m.from || '').toString().slice(-2);
+                    var media = (typeof m.media === 'string' ? (function () { try { return JSON.parse(m.media); } catch (e) { return []; } })() : m.media) || [];
+                    var mediaHtml = media.length ? media.map(function (item) {
+                        var url = item.url || item;
+                        var ct = (item.content_type || '').toLowerCase();
+                        if (ct.indexOf('image/') === 0) {
+                            return '<a href="#" data-bs-toggle="modal" data-bs-target="#chatImageModal" data-img="' + escapeHtml(url) + '"><img src="' + escapeHtml(url) + '" alt="media" style="max-width:200px;max-height:200px;border-radius:8px;margin-bottom:4px;"></a>';
+                        }
+                        return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(typeof item === 'object' ? (item.filename || 'Archivo') : 'Archivo') + '</a>';
+                    }).join('') : '';
+                    if (inbound) {
+                        return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="user-avatar flex-shrink-0 me-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span></div></div><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1"><small>' + time + '</small></div></div></div></li>';
+                    }
+                    return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status) + '<small>' + time + '</small></div></div><div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-primary">' + escapeHtml(fromSuffix) + '</span></div></div></div></li>';
+                }).join('');
+                list.innerHTML = html;
+                var scrollEl = document.querySelector('.chat-history-body');
+                if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+            }
+
+            function fetchContactMessages() {
+                fetch(messagesUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) { renderContactMessages(data.messages || []); })
+                    .catch(function () {});
+            }
+            setInterval(fetchContactMessages, 4000);
+            window.addEventListener('focus', fetchContactMessages);
+        })();
+
+        // Poll WhatsApp conversation list so new chats appear in the sidebar without refresh
+        (function () {
+            var listEl = document.getElementById('chat-list-whatsapp');
+            if (!listEl) return;
+            var chatUrl = listEl.getAttribute('data-chat-url') || '{{ route("chat.index") }}';
+            var listUrl = '{{ route("chat.list") }}';
+
+            function escapeHtml(s) {
+                if (s == null) return '';
+                var div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+            function limit(str, n) {
+                if (str == null) return '';
+                return String(str).length > n ? String(str).slice(0, n) + '...' : String(str);
+            }
+            function renderChatList(contacts, selectedPhone) {
+                selectedPhone = selectedPhone || '';
+                if (!contacts || contacts.length === 0) {
+                    listEl.innerHTML = '<li class="chat-contact-list-item chat-list-item-0"><h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6></li>';
+                    return;
+                }
+                var html = contacts.map(function (c) {
+                    var active = (c.from === selectedPhone) ? ' active' : '';
+                    var name = escapeHtml(c.user_name || c.from);
+                    var lastMsg = escapeHtml(limit(c.last_message, 30));
+                    var time = escapeHtml(c.last_message_time || '');
+                    var fromSuffix = String(c.from).slice(-2);
+                    var avatar = c.user_photo
+                        ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
+                        : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
+                    var href = chatUrl + (chatUrl.indexOf('?') >= 0 ? '&' : '?') + 'phone=' + encodeURIComponent(c.from);
+                    return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar avatar-online">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div><small class="text-muted mb-auto">' + time + '</small></a></li>';
+                }).join('');
+                listEl.innerHTML = html;
+            }
+            function fetchChatList() {
+                fetch(listUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var selected = listEl.getAttribute('data-selected-phone') || '';
+                        renderChatList(data.contacts || [], selected);
+                    })
+                    .catch(function () {});
+            }
+            setInterval(fetchChatList, 5000);
+            window.addEventListener('focus', fetchChatList);
+        })();
+
         // Generate new QR: submit via AJAX so sidebar stays open
         var refreshQrForm = document.getElementById('chat-refresh-qr-form');
         if (refreshQrForm) {
@@ -645,6 +764,8 @@
                             @endif
                         @endforeach
                         @endauth
+                    </ul>
+                    <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}">
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
                                 <h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6>
@@ -907,7 +1028,7 @@
                         @endif
                         @endif
                     </div>
-                    <div class="chat-history-body bg-body">
+                    <div class="chat-history-body bg-body" id="chat-history-body" data-poll-phone="{{ $selectedPhone ?? '' }}" data-view-assistant="{{ ($viewAssistant ?? false) ? '1' : '0' }}">
                         <ul class="list-unstyled chat-history" id="assistant-messages-list">
                             @if ($viewAssistant ?? false)
                                 @forelse(($assistantMessages ?? []) as $msg)

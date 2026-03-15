@@ -12,14 +12,44 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\TwilioService;
 use App\Services\UserResolverService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
-    public function index()
+    /**
+     * Normalize phone for deduplication: strip WhatsApp JID suffix (e.g. :11).
+     */
+    private function normalizePhoneForList(string $phone): string
     {
-        // Unique WhatsApp contacts: numbers that wrote to you (inbound) or you wrote to (outbound)
+        $stripped = preg_replace('/:\d+$/', '', trim($phone));
+
+        return $stripped !== '' ? $stripped : $phone;
+    }
+
+    /**
+     * Apply conversation filter by phone (normalized + JID suffix variant).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
+     */
+    private function applyConversationPhoneFilter($query, string $phone): void
+    {
+        $norm = $this->normalizePhoneForList($phone);
+        $query->where(function ($q) use ($norm)
+        {
+            $q->where('from', $norm)->orWhere('to', $norm)
+                ->orWhere('from', 'like', $norm.':%')
+                ->orWhere('to', 'like', $norm.':%');
+        });
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, user_name?: string, user_photo?: string, user_id?: int}>
+     */
+    private function getWhatsAppContacts(): \Illuminate\Support\Collection
+    {
         $inboundPhones = Conversation::where('channel', 'whatsapp')
             ->where('direction', 'inbound')
             ->distinct()
@@ -28,15 +58,21 @@ class ChatController extends Controller
             ->where('direction', 'outbound')
             ->distinct()
             ->pluck('to');
-        $allPhones = $inboundPhones->merge($outboundPhones)->unique()->filter()->values();
+        $allRaw = $inboundPhones->merge($outboundPhones)->filter()->values();
+        $normalizedUnique = $allRaw->map(fn ($p) => $this->normalizePhoneForList((string) $p))
+            ->unique()
+            ->values();
 
         $contacts = collect();
-        foreach ($allPhones as $phone)
+        foreach ($normalizedUnique as $normalizedPhone)
         {
             $lastMessage = Conversation::where('channel', 'whatsapp')
-                ->where(function ($query) use ($phone)
+                ->where(function ($query) use ($normalizedPhone)
                 {
-                    $query->where('from', $phone)->orWhere('to', $phone);
+                    $query->where('from', $normalizedPhone)
+                        ->orWhere('to', $normalizedPhone)
+                        ->orWhere('from', 'like', $normalizedPhone.':%')
+                        ->orWhere('to', 'like', $normalizedPhone.':%');
                 })
                 ->latest()
                 ->first();
@@ -45,12 +81,12 @@ class ChatController extends Controller
                 continue;
             }
             $contact = (object) [
-                'from' => $phone,
+                'from' => $normalizedPhone,
                 'last_message' => $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
             ];
-            $userData = $this->getUserByPhone($phone);
+            $userData = $this->getUserByPhone($normalizedPhone);
             if ($userData)
             {
                 $contact->user_name = $userData->name;
@@ -59,13 +95,19 @@ class ChatController extends Controller
             }
             $contacts->push($contact);
         }
-        $contacts = $contacts->sortByDesc(function ($c)
+
+        return $contacts->sortByDesc(function ($c)
         {
             return $c->last_message_at ? $c->last_message_at->timestamp : 0;
         })->values();
+    }
 
-        // If a contact is selected, get their messages
-        $selectedPhone = request('phone');
+    public function index()
+    {
+        $contacts = $this->getWhatsAppContacts();
+
+        // If a contact is selected, get their messages (normalize phone so JID suffix doesn't duplicate)
+        $selectedPhone = request('phone') ? $this->normalizePhoneForList((string) request('phone')) : null;
         $viewAssistant = request('view') === 'assistant';
         $assistantUserId = request()->integer('user_id', 0) ?: null;
         $messages = collect();
@@ -92,22 +134,26 @@ class ChatController extends Controller
             $assistantClients = $this->getAssistantClientsList();
         } elseif ($selectedPhone)
         {
-            // Get all messages for this conversation
+            // Get all messages for this conversation (match normalized phone and JID suffix variant)
             $messages = Conversation::where('channel', 'whatsapp')
                 ->where(function ($query) use ($selectedPhone)
                 {
-                    $query->where('from', $selectedPhone)
-                        ->orWhere('to', $selectedPhone);
+                    $this->applyConversationPhoneFilter($query, $selectedPhone);
                 })
                 ->orderBy('created_at')
                 ->get();
 
             // Mark inbound messages as read when user views the conversation
+            $norm = $this->normalizePhoneForList($selectedPhone);
             Conversation::where('channel', 'whatsapp')
                 ->where('direction', 'inbound')
-                ->where('from', $selectedPhone)
                 ->where('status', 'received')
+                ->where(function ($q) use ($norm)
+                {
+                    $q->where('from', $norm)->orWhere('from', 'like', $norm.':%');
+                })
                 ->update(['status' => 'read']);
+            Cache::forget(Conversation::CACHE_KEY_INBOUND_UNREAD);
 
             // Get user information for the header
             $selectedUser = $this->getUserByPhone($selectedPhone);
@@ -344,13 +390,40 @@ class ChatController extends Controller
         $messages = Conversation::where('channel', 'whatsapp')
             ->where(function ($query) use ($phone)
             {
-                $query->where('from', $phone)
-                    ->orWhere('to', $phone);
+                $this->applyConversationPhoneFilter($query, (string) $phone);
             })
             ->orderBy('created_at')
             ->get();
 
         return response()->json(['messages' => $messages]);
+    }
+
+    /**
+     * Get WhatsApp conversation list as JSON for sidebar polling (live update without page refresh).
+     */
+    public function getChatList()
+    {
+        $contacts = $this->getWhatsAppContacts();
+        $list = $contacts->map(function ($c)
+        {
+            $item = [
+                'from' => $c->from,
+                'last_message' => $c->last_message ?? '',
+                'last_message_time' => $c->last_message_time ?? '',
+            ];
+            if (! empty($c->user_name))
+            {
+                $item['user_name'] = $c->user_name;
+            }
+            if (! empty($c->user_photo))
+            {
+                $item['user_photo'] = Storage::url($c->user_photo);
+            }
+
+            return $item;
+        })->values()->all();
+
+        return response()->json(['contacts' => $list]);
     }
 
     /**
@@ -779,8 +852,10 @@ class ChatController extends Controller
     {
         // #region agent log
         $logPath = base_path('.cursor/debug-aac33a.log');
-        $log = function (array $data) use ($logPath): void {
-            if (is_writable($logPath) || is_writable(dirname($logPath))) {
+        $log = function (array $data) use ($logPath): void
+        {
+            if (is_writable($logPath) || is_writable(dirname($logPath)))
+            {
                 $line = json_encode(array_merge([
                     'sessionId' => 'aac33a',
                     'location' => 'ChatController::whatsappQrImage',
@@ -794,12 +869,14 @@ class ChatController extends Controller
         if (config('whatsapp.driver') !== 'local')
         {
             $log(['message' => 'Driver not local', 'data' => ['driver' => config('whatsapp.driver')]]);
+
             return $this->transparentPngResponse();
         }
         $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
             $log(['message' => 'Empty base_url']);
+
             return $this->transparentPngResponse();
         }
         $url = $baseUrl.'/qr.png';
@@ -812,16 +889,19 @@ class ChatController extends Controller
         if (! $response->successful())
         {
             $log(['message' => 'Node response not successful', 'data' => ['url' => $url, 'status' => $status, 'bodyLen' => $bodyLen, 'bodyPreview' => substr($body, 0, 200)]]);
+
             return $this->transparentPngResponse();
         }
 
         if ($bodyLen < 10)
         {
             $log(['message' => 'Body too short', 'data' => ['bodyLen' => $bodyLen]]);
+
             return $this->transparentPngResponse();
         }
 
         $log(['message' => 'Serving QR PNG', 'data' => ['status' => $status, 'bodyLen' => $bodyLen, 'isPng' => $isPng]]);
+
         return response($body)
             ->header('Content-Type', 'image/png')
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');

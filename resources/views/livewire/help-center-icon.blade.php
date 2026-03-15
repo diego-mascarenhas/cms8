@@ -1,4 +1,4 @@
-<div wire:poll.60s>
+<div wire:poll.30s>
 	<li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
 		<a class="nav-link dropdown-toggle hide-arrow" href="{{ route('chat.index') }}">
 			<i class="ti ti-lifebuoy ti-md"></i>
