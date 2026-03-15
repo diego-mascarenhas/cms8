@@ -581,7 +581,8 @@ class ChatController extends Controller
 
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
-        $replyResponse = $replyService->getReply($request->input('message'), $history, $teamId);
+        $withTools = ! $request->filled('recipient') && ! $request->filled('contact_id');
+        $replyResponse = $replyService->getReply($request->input('message'), $history, $teamId, $withTools);
 
         if (! $replyResponse['success'])
         {

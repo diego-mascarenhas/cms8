@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\ClaudeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use Laravel\Ai\AnonymousAgent;
 use Tests\TestCase;
 
 class ChatAssistantTest extends TestCase
@@ -33,16 +33,7 @@ class ChatAssistantTest extends TestCase
     public function test_assistant_returns_response_with_context_for_authenticated_user(): void
     {
         $user = User::factory()->create();
-
-        $this->mock(ClaudeService::class, function ($mock): void
-        {
-            $mock->shouldReceive('chat')
-                ->once()
-                ->andReturn([
-                    'success' => true,
-                    'text' => 'Test assistant response',
-                ]);
-        });
+        AnonymousAgent::fake(['Test assistant response']);
 
         $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
             'message' => 'Hello',

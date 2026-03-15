@@ -179,6 +179,146 @@ class ClaudeService
     }
 
     /**
+     * Send a message to Claude with tools; if Claude returns tool_use, execute tools and continue until a final text response.
+     *
+     * @param  string  $message  Current user message
+     * @param  array<int, array{direction: string, body: string}>  $history  Conversation history
+     * @param  array<int, array{name: string, description: string, input_schema: array}>  $tools  Tool definitions for Messages API
+     * @param  callable(string, array): string  $toolExecutor  Called with (toolName, input) returns result string
+     * @param  string|null  $systemPrompt  Optional system prompt
+     * @param  int|null  $teamIdForLog  Optional team ID for token logging
+     * @param  int  $maxToolRounds  Maximum number of tool-use rounds (default 5)
+     * @return array{success: bool, text?: string, message?: string, routed_to?: null}
+     */
+    public function chatWithTools(
+        string $message,
+        array $history = [],
+        array $tools = [],
+        ?callable $toolExecutor = null,
+        ?string $systemPrompt = null,
+        ?int $teamIdForLog = null,
+        int $maxToolRounds = 5,
+    ): array {
+        try
+        {
+            $messages = $this->formatConversationHistory($message, $history);
+            $systemPrompt = $systemPrompt ?? $this->systemPrompt;
+            $maxTokens = (int) $this->maxTokens;
+            $rounds = 0;
+
+            while (true)
+            {
+                $payload = [
+                    'model' => $this->model,
+                    'max_tokens' => $maxTokens,
+                    'messages' => $messages,
+                ];
+
+                if (! empty($systemPrompt))
+                {
+                    $payload['system'] = $systemPrompt;
+                }
+
+                if (! empty($tools))
+                {
+                    $payload['tools'] = $tools;
+                }
+
+                $response = Http::withHeaders([
+                    'x-api-key' => $this->apiKey,
+                    'anthropic-version' => '2023-06-01',
+                    'Content-Type' => 'application/json',
+                ])->post("{$this->baseUrl}/messages", $payload);
+
+                if (! $response->successful())
+                {
+                    Log::error('Claude API Error (chatWithTools): '.$response->body());
+
+                    return [
+                        'success' => false,
+                        'message' => 'Error communicating with Claude API: '.$response->status(),
+                    ];
+                }
+
+                $data = $response->json();
+                $stopReason = $data['stop_reason'] ?? null;
+
+                if ($stopReason !== 'tool_use' || $rounds >= $maxToolRounds)
+                {
+                    $responseText = '';
+                    if (isset($data['content']) && is_array($data['content']))
+                    {
+                        foreach ($data['content'] as $content)
+                        {
+                            if (isset($content['type']) && $content['type'] === 'text' && isset($content['text']))
+                            {
+                                $responseText .= $content['text'];
+                            }
+                        }
+                    }
+
+                    return [
+                        'success' => true,
+                        'text' => $responseText ?: 'No response text',
+                        'routed_to' => null,
+                    ];
+                }
+
+                $toolUseBlocks = [];
+                foreach ($data['content'] as $block)
+                {
+                    if (isset($block['type']) && $block['type'] === 'tool_use')
+                    {
+                        $toolUseBlocks[] = $block;
+                    }
+                }
+
+                if (empty($toolUseBlocks) || $toolExecutor === null)
+                {
+                    return [
+                        'success' => true,
+                        'text' => 'Tool use requested but no tool executor provided.',
+                        'routed_to' => null,
+                    ];
+                }
+
+                $toolResults = [];
+                foreach ($toolUseBlocks as $block)
+                {
+                    $id = $block['id'] ?? '';
+                    $name = $block['name'] ?? '';
+                    $input = is_array($block['input'] ?? null) ? $block['input'] : [];
+                    $result = $toolExecutor($name, $input);
+                    $toolResults[] = [
+                        'type' => 'tool_result',
+                        'tool_use_id' => $id,
+                        'content' => $result,
+                    ];
+                }
+
+                $messages[] = [
+                    'role' => 'assistant',
+                    'content' => $data['content'],
+                ];
+                $messages[] = [
+                    'role' => 'user',
+                    'content' => $toolResults,
+                ];
+
+                $rounds++;
+            }
+        } catch (\Exception $e)
+        {
+            Log::error('Claude Service Error (chatWithTools): '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Error processing Claude request: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Generate presupuesto data from the budget text: AI interpretation, dimension, estimated times, resources.
      * Optimized for software development budgets.
      *
