@@ -101,10 +101,10 @@
             var sendBtn = form.querySelector('.send-msg-btn');
             if (sendBtn) sendBtn.disabled = true;
             function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
-            // Read toggle from the form being submitted so we never use a stale reference
+            // When assistant view: always use AI. When chat with contact: use AI only if toggle is checked
             var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
-            var toggleInForm = form && form.querySelector ? form.querySelector('#use-ai-toggle') : null;
-            var aiOn = isAssistantViewForm ? true : (toggleInForm ? !!toggleInForm.checked : false);
+            var useAiToggleEl = document.getElementById('use-ai-toggle');
+            var aiOn = isAssistantViewForm ? true : (useAiToggleEl ? useAiToggleEl.checked : false);
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -864,7 +864,7 @@
                                             alt="{{ $selectedUser->name }}" class="rounded-circle"
                                             data-bs-toggle="sidebar" data-overlay data-target="#app-chat-sidebar-right">
                                     @else
-                                        <span class="avatar-initial rounded-circle bg-label-secondary">{{ strtoupper(substr(optional($selectedUser)->name ?? $selectedPhone ?? '?', 0, 2)) ?: '?' }}</span>
+                                        <span class="avatar-initial rounded-circle bg-label-success">{{ substr($selectedPhone ?? '?', -2) }}</span>
                                     @endif
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
