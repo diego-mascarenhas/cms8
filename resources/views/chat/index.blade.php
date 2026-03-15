@@ -86,6 +86,36 @@
             }
         })();
 
+        (function syncSidebarAiToggleWithFooter() {
+            var sidebar = document.getElementById('sidebar-ai-replies-toggle');
+            if (!sidebar || !useAiToggle) return;
+            sidebar.checked = useAiToggle.checked;
+            sidebar.addEventListener('change', function () {
+                useAiToggle.checked = sidebar.checked;
+                useAiToggle.dispatchEvent(new Event('change'));
+            });
+            useAiToggle.addEventListener('change', function () {
+                if (sidebar.checked !== useAiToggle.checked) {
+                    sidebar.checked = useAiToggle.checked;
+                }
+            });
+        })();
+
+        (function persistNotificationToggle() {
+            var notifToggle = document.getElementById('sidebar-notification-toggle');
+            if (!notifToggle) return;
+            var tokenEl = document.querySelector('meta[name="csrf-token"]');
+            var token = tokenEl ? tokenEl.getAttribute('content') : '';
+            notifToggle.addEventListener('change', function () {
+                if (!token) return;
+                fetch('{{ route("chat.notification-preference") }}', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ on: notifToggle.checked })
+                }).catch(function () {});
+            });
+        })();
+
         let currentUserMessage = '';
         let currentAiResponse = '';
 
@@ -674,7 +704,7 @@
                                     <span class="align-middle">{{ __('Humano Assistant replies') }}</span>
                                 </div>
                                 <label class="switch switch-primary me-4 switch-sm">
-                                    <input type="checkbox" class="switch-input" checked="" />
+                                    <input type="checkbox" class="switch-input" id="sidebar-ai-replies-toggle" checked="" />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
@@ -687,7 +717,7 @@
                                     <span class="align-middle">{{ __('Notification') }}</span>
                                 </div>
                                 <label class="switch switch-primary me-4 switch-sm">
-                                    <input type="checkbox" class="switch-input" />
+                                    <input type="checkbox" class="switch-input" id="sidebar-notification-toggle" {{ ($notifyNewContactEmail ?? false) ? 'checked' : '' }} />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>

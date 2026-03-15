@@ -511,12 +511,23 @@ class TwilioService implements WhatsAppGateway
                 }
             }
 
-            // Send email notification for new message
-            $notificationEmail = config('services.notifications.email');
-            if ($notificationEmail)
+            // Send email only when notification is enabled and this is a new client (first inbound from this number)
+            $isNewClient = Conversation::where('channel', $channel)
+                ->where('direction', 'inbound')
+                ->where(function ($q) use ($cleanFrom)
+                {
+                    $q->where('from', $cleanFrom)->orWhere('from', 'like', $cleanFrom.':%');
+                })
+                ->count() === 1;
+            $notifyEnabled = $this->team && filter_var(
+                $this->team->getSetting('notify_new_contact_email', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            $notificationEmail = config('services.notifications.email') ?: config('app.notification_email');
+            if ($isNewClient && $notifyEnabled && $notificationEmail)
             {
                 Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
-                Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
+                Log::info("New contact email notification sent to {$notificationEmail} for from {$cleanFrom}");
             }
 
             // Queue AI sentiment analysis for WhatsApp (all channels use same job)
@@ -577,8 +588,12 @@ class TwilioService implements WhatsAppGateway
                 }
             }
 
-            // Automatic AI response using Claude
-            if (config('services.claude.auto_respond', false) && $channel == 'whatsapp')
+            // Automatic AI response using Claude (enabled when team has "Respuestas del Asistente Humano" ON)
+            $assistantAutoRespond = $this->team && filter_var(
+                $this->team->getSetting('assistant_auto_respond', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            if ($assistantAutoRespond && $channel == 'whatsapp')
             {
                 try
                 {
