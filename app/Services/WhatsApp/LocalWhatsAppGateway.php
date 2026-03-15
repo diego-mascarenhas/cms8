@@ -109,19 +109,4 @@ class LocalWhatsAppGateway implements WhatsAppGateway
 
         return $response->json();
     }
-
-    /**
-     * End WhatsApp session / unlink device (optional; not in interface). Next connection will require QR scan.
-     */
-    public function logout(): bool
-    {
-        if (! $this->isConfigured())
-        {
-            return false;
-        }
-
-        $response = Http::timeout(10)->post(rtrim($this->baseUrl, '/').'/logout');
-
-        return $response->successful();
-    }
 }
