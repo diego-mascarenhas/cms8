@@ -276,6 +276,7 @@ class TwilioService implements WhatsAppGateway
             $contextUser = $userResolver->resolveUserForConversation($phone, null);
             if ($contextUser !== null)
             {
+                $teamId = $this->team ? (int) $this->team->id : null;
                 $contextService->persistMessages(
                     $contextUser->id,
                     $userMessage,
@@ -285,6 +286,7 @@ class TwilioService implements WhatsAppGateway
                     $replyResponse['meta'] ?? [],
                     $replyResponse['tool_calls'] ?? [],
                     $replyResponse['tool_results'] ?? [],
+                    $teamId,
                 );
             }
         } catch (\Throwable $e)
@@ -380,6 +382,12 @@ class TwilioService implements WhatsAppGateway
     {
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
         {
+            $sender = $this->getSender();
+            if ($sender !== $this)
+            {
+                return $sender->sendMessage($to, $message, $metadata, $userId);
+            }
+
             return app(WhatsAppGateway::class)->sendMessage($to, $message, $metadata, $userId);
         }
 
@@ -465,8 +473,15 @@ class TwilioService implements WhatsAppGateway
             $numMedia = (int) $request->input('NumMedia', 0);
 
             // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
-            $cleanFrom = preg_replace('/[^0-9]/', '', $from);
-            $cleanTo = preg_replace('/[^0-9]/', '', $to);
+            $cleanFrom = preg_replace('/[^0-9]/', '', (string) $from);
+            $cleanTo = preg_replace('/[^0-9]/', '', (string) $to);
+
+            if ($cleanFrom === '' && (strpos((string) $from, 'whatsapp') !== false || strpos((string) $to, 'whatsapp') !== false))
+            {
+                Log::warning('Incoming WhatsApp message ignored: missing or invalid From', ['From' => $from, 'To' => $to]);
+
+                return response()->json(['status' => 'ignored', 'reason' => 'missing_from'], 200);
+            }
 
             // Determine the channel type
             $channel = 'sms';
@@ -503,10 +518,14 @@ class TwilioService implements WhatsAppGateway
                 'body' => $body,
                 'status' => 'received',
                 'direction' => 'inbound',
-                'team_id' => $this->team ? $this->team->id : null,
                 'media' => ! empty($media) ? $media : null,
                 'metadata' => $request->except(['_token']),
             ]);
+
+            if ($channel === 'whatsapp' && $this->team)
+            {
+                app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom);
+            }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
             if ($channel == 'whatsapp')
@@ -597,21 +616,36 @@ class TwilioService implements WhatsAppGateway
 
             // Automatic AI response using Claude (enabled when team has "Respuestas del Asistente Humano" ON)
             $assistantAutoRespond = $this->team && filter_var(
-                $this->team->getSetting('assistant_auto_respond', '0'),
+                $this->team->getSetting('assistant_auto_respond', '1'),
                 FILTER_VALIDATE_BOOLEAN,
             );
             if ($assistantAutoRespond && $channel == 'whatsapp')
             {
                 try
                 {
-                    // Get recent chat history for context
-                    $history = Conversation::where('channel', 'whatsapp')
+                    $teamNumber = $this->team ? preg_replace('/[^0-9]/', '', (string) $this->team->getWhatsAppFrom()) : null;
+
+                    $historyQuery = Conversation::where('channel', 'whatsapp')
                         ->where(function ($query) use ($cleanFrom)
                         {
                             $query
                                 ->where('from', $cleanFrom)
                                 ->orWhere('to', $cleanFrom);
-                        })
+                        });
+
+                    if ($teamNumber !== null && $teamNumber !== '')
+                    {
+                        $historyQuery->where(function ($query) use ($teamNumber)
+                        {
+                            $query
+                                ->where('from', $teamNumber)
+                                ->orWhere('to', $teamNumber)
+                                ->orWhere('from', 'like', $teamNumber.':%')
+                                ->orWhere('to', 'like', $teamNumber.':%');
+                        });
+                    }
+
+                    $history = $historyQuery
                         ->orderBy('created_at', 'desc')
                         ->limit(10)
                         ->get()

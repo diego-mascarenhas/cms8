@@ -4,6 +4,7 @@ namespace App\Services\WhatsApp;
 
 use App\Contracts\WhatsAppGateway;
 use App\Models\Conversation;
+use App\Models\Team;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +13,29 @@ class LocalWhatsAppGateway implements WhatsAppGateway
     public function __construct(
         protected string $baseUrl,
         protected ?string $webhookSecret = null,
+        protected ?int $teamId = null,
     ) {}
+
+    private function statusUrl(): string
+    {
+        $url = rtrim($this->baseUrl, '/').'/status';
+        if ($this->teamId !== null)
+        {
+            $url .= (str_contains($url, '?') ? '&' : '?').'team_id='.$this->teamId;
+        }
+
+        return $url;
+    }
+
+    private function sendBody(array $payload): array
+    {
+        if ($this->teamId !== null)
+        {
+            $payload['team_id'] = $this->teamId;
+        }
+
+        return $payload;
+    }
 
     public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
     {
@@ -23,10 +46,10 @@ class LocalWhatsAppGateway implements WhatsAppGateway
 
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
         $response = Http::timeout(15)
-            ->post(rtrim($this->baseUrl, '/').'/send-message', [
+            ->post(rtrim($this->baseUrl, '/').'/send-message', $this->sendBody([
                 'to' => $cleanTo,
                 'body' => $message,
-            ]);
+            ]));
 
         if (! $response->successful())
         {
@@ -43,10 +66,17 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         // message_sid is unique: use a fallback so we never insert duplicate null
         $messageSid = $messageId !== null && $messageId !== '' ? (string) $messageId : 'wa_'.uniqid('', true);
 
+        $cleanFrom = '';
+        if ($this->teamId !== null)
+        {
+            $teamNumber = Team::find($this->teamId)?->getWhatsAppFrom();
+            $cleanFrom = $teamNumber !== null && $teamNumber !== '' ? preg_replace('/[^0-9]/', '', (string) $teamNumber) : '';
+        }
+
         Conversation::create([
             'message_sid' => $messageSid,
             'channel' => 'whatsapp',
-            'from' => '', // Local session number filled by Node or left empty
+            'from' => $cleanFrom,
             'to' => $cleanTo,
             'body' => $message,
             'status' => 'sent',
@@ -69,11 +99,11 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         $url = str_starts_with($mediaPath, 'http') ? $mediaPath : url($mediaPath);
 
         $response = Http::timeout(30)
-            ->post(rtrim($this->baseUrl, '/').'/send-media', [
+            ->post(rtrim($this->baseUrl, '/').'/send-media', $this->sendBody([
                 'to' => $cleanTo,
                 'mediaUrl' => $url,
                 'caption' => $caption,
-            ]);
+            ]));
 
         return $response->successful();
     }
@@ -90,7 +120,13 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             return null;
         }
 
-        return rtrim($this->baseUrl, '/').'/qr';
+        $url = rtrim($this->baseUrl, '/').'/qr';
+        if ($this->teamId !== null)
+        {
+            $url .= '?team_id='.$this->teamId;
+        }
+
+        return $url;
     }
 
     public function getConnectionStatus(): ?array
@@ -100,7 +136,7 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             return null;
         }
 
-        $response = Http::timeout(5)->get(rtrim($this->baseUrl, '/').'/status');
+        $response = Http::timeout(5)->get($this->statusUrl());
 
         if (! $response->successful())
         {

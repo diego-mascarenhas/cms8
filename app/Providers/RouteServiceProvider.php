@@ -51,6 +51,9 @@ class RouteServiceProvider extends ServiceProvider
                 ->name('webhook.whatsapp-local');
             Route::post('/webhook/whatsapp-local/{hash}', [\App\Http\Controllers\WhatsAppLocalWebhookController::class, 'handleIncomingMessage'])
                 ->name('webhook.whatsapp-local.team');
+            // Callback from Node when WhatsApp session connects: link number to team (token in body, no CSRF)
+            Route::post('/chat/whatsapp-linked', [\App\Http\Controllers\ChatController::class, 'whatsappLinked'])
+                ->name('chat.whatsapp-linked');
 
             // Mailbox package removed - routes commented out
             // Route::middleware('mailbox')

@@ -13,25 +13,56 @@ class AgentConversationContextService
     public const DEFAULT_HISTORY_LIMIT = 20;
 
     /**
-     * Get or create an agent conversation for the given user_id.
+     * Resolve team ID for scoping: from auth user's current team, or null (conversations without team stay hidden in team context).
      */
-    public function getOrCreateConversation(int $userId, string $title = 'Chat'): AgentConversation
+    private function resolveTeamId(?int $teamId = null): ?int
     {
-        $conversation = AgentConversation::where('user_id', $userId)
+        if ($teamId !== null)
+        {
+            return $teamId;
+        }
+
+        return auth()->check() && auth()->user()->currentTeam
+            ? (int) auth()->user()->currentTeam->id
+            : null;
+    }
+
+    /**
+     * Get or create an agent conversation for the given user_id, scoped to the given team (or current user's team).
+     */
+    public function getOrCreateConversation(int $userId, string $title = 'Chat', ?int $teamId = null): AgentConversation
+    {
+        $teamId = $this->resolveTeamId($teamId);
+        $query = AgentConversation::where('user_id', $userId)
             ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderByDesc('updated_at');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+
+        $conversation = $query->first();
 
         if ($conversation)
         {
             return $conversation;
         }
 
-        return AgentConversation::create([
+        $payload = [
             'id' => (string) Str::uuid(),
             'user_id' => $userId,
             'title' => Str::limit($title, 255),
-        ]);
+        ];
+        if ($teamId !== null)
+        {
+            $payload['team_id'] = $teamId;
+        }
+
+        return AgentConversation::create($payload);
     }
 
     /**
@@ -40,12 +71,22 @@ class AgentConversationContextService
      *
      * @return array<int, array{direction: string, body: string}>
      */
-    public function getHistoryForPrompt(int $userId, int $limit = self::DEFAULT_HISTORY_LIMIT): array
+    public function getHistoryForPrompt(int $userId, int $limit = self::DEFAULT_HISTORY_LIMIT, ?int $teamId = null): array
     {
-        $conversation = AgentConversation::where('user_id', $userId)
+        $teamId = $this->resolveTeamId($teamId);
+        $query = AgentConversation::where('user_id', $userId)
             ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderByDesc('updated_at');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+
+        $conversation = $query->first();
 
         if (! $conversation)
         {
@@ -65,16 +106,26 @@ class AgentConversationContextService
     }
 
     /**
-     * Get messages for display in the UI (e.g. web chat). Same conversation as terminal chat:simulate.
+     * Get messages for display in the UI (e.g. web chat). Scoped to team so each team only sees its own assistant conversations.
      *
      * @return array<int, array{role: string, content: string, created_at: \Carbon\Carbon}>
      */
-    public function getMessagesForDisplay(int $userId, int $limit = 50): array
+    public function getMessagesForDisplay(int $userId, int $limit = 50, ?int $teamId = null): array
     {
-        $conversation = AgentConversation::where('user_id', $userId)
+        $teamId = $this->resolveTeamId($teamId);
+        $query = AgentConversation::where('user_id', $userId)
             ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderByDesc('updated_at');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+
+        $conversation = $query->first();
 
         if (! $conversation)
         {
@@ -111,8 +162,9 @@ class AgentConversationContextService
         array $meta = [],
         array $toolCalls = [],
         array $toolResults = [],
+        ?int $teamId = null,
     ): void {
-        $conversation = $this->getOrCreateConversation($userId, 'Chat');
+        $conversation = $this->getOrCreateConversation($userId, 'Chat', $teamId);
 
         $conversation->touch();
 
@@ -150,8 +202,9 @@ class AgentConversationContextService
         array $assistantMeta = [],
         array $assistantToolCalls = [],
         array $assistantToolResults = [],
+        ?int $teamId = null,
     ): void {
-        $conversation = $this->getOrCreateConversation($userId, $userContent);
+        $conversation = $this->getOrCreateConversation($userId, $userContent, $teamId);
 
         $conversation->touch();
 

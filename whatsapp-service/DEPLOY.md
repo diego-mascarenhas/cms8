@@ -23,11 +23,11 @@
 
 ## 2. Add to Forge deploy script
 
-Append the following **after** `$FORGE_PHP artisan up` (so the WhatsApp service is started/restarted on every deploy):
+For **zero-downtime** deploys (using `$CREATE_RELEASE()` / `$ACTIVATE_RELEASE()`), add this block **after** `$ACTIVATE_RELEASE()` and `$RESTART_QUEUES()` so the WhatsApp service runs the new release:
 
 ```bash
 # --- WhatsApp Node service (Baileys) ---
-WHATSAPP_DIR="/home/forge/humano.revisionalpha.net/whatsapp-service"
+WHATSAPP_DIR="$FORGE_RELEASE_DIRECTORY/whatsapp-service"
 if [ -d "$WHATSAPP_DIR" ] && [ -f "$WHATSAPP_DIR/package.json" ]; then
   cd "$WHATSAPP_DIR"
   npm ci --production 2>/dev/null || npm install --production
@@ -41,7 +41,12 @@ if [ -d "$WHATSAPP_DIR" ] && [ -f "$WHATSAPP_DIR/package.json" ]; then
 fi
 ```
 
-Adjust `WHATSAPP_DIR` if your project path is different. If you use a different branch variable, replace the path accordingly.
+- **Zero-downtime**: Use `WHATSAPP_DIR="$FORGE_RELEASE_DIRECTORY/whatsapp-service"` so PM2 runs the code from the release you just activated.
+- **Classic deploy** (no release dirs): Use a fixed path like `WHATSAPP_DIR="/home/forge/humano.revisionalpha.net/whatsapp-service"` and run this block after `$FORGE_PHP artisan up`.
+
+**Staging + production on the same server:** Use a different **PM2 name** per site (e.g. `WHATSAPP_PM2_NAME=whatsapp-service-staging` in Forge env for staging) and a different **PORT** in each site’s `whatsapp-service/.env` (e.g. staging `3001`, production `3000`). Otherwise both sites would share one process and one port and conflict.
+
+See `docs/FORGE-DEPLOYMENT.md` for the full zero-downtime script and same-server setup.
 
 ## 3. Manual commands (optional)
 

@@ -6,11 +6,13 @@ use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\TwilioService;
 use App\Services\UserResolverService;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -49,30 +51,146 @@ class ChatController extends Controller
     }
 
     /**
+     * Scope Conversation query to the current user's team (by WhatsApp Assistant number).
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>
+     */
+    private function conversationQueryForTeam()
+    {
+        $team = auth()->check() ? auth()->user()->currentTeam : null;
+        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : null;
+
+        $query = Conversation::where('channel', 'whatsapp');
+
+        if ($teamNumber !== null && $teamNumber !== '')
+        {
+            $query->where(function ($q) use ($teamNumber)
+            {
+                $q->where('from', $teamNumber)
+                    ->orWhere('to', $teamNumber)
+                    ->orWhere('from', 'like', $teamNumber.':%')
+                    ->orWhere('to', 'like', $teamNumber.':%');
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * For non-admin users, return list of external phone numbers they are allowed to see (their own + contacts they are responsible for). Null means no restriction (admin).
+     *
+     * @return array<int, string>|null
+     */
+    private function allowedExternalPhonesForChat(): ?array
+    {
+        if (! auth()->check() || auth()->user()->hasRole('admin'))
+        {
+            return null;
+        }
+
+        $user = auth()->user();
+        $team = $user->currentTeam;
+        if (! $team)
+        {
+            return [];
+        }
+
+        $phones = [];
+        $userPhone = $user->phone ? preg_replace('/[^0-9]/', '', (string) $user->phone) : null;
+        if ($userPhone !== null && $userPhone !== '')
+        {
+            $phones[] = $userPhone;
+        }
+
+        $contactPhones = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('responsible_id', $user->id)
+            ->get()
+            ->flatMap(function (Contact $c)
+            {
+                $p = $c->phone ? preg_replace('/[^0-9]/', '', (string) $c->phone) : null;
+
+                return $p ? [$p] : [];
+            })
+            ->unique()
+            ->values()
+            ->all();
+
+        return array_values(array_unique(array_merge($phones, $contactPhones)));
+    }
+
+    /**
+     * When driver is local, return a gateway for the current team's Node instance (one per team = no disconnects).
+     */
+    private function getLocalGatewayForCurrentTeam(): ?WhatsAppGateway
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return null;
+        }
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return null;
+        }
+        $baseUrl = $team->getWhatsAppServiceBaseUrl();
+        if ($baseUrl === '')
+        {
+            return null;
+        }
+
+        return new LocalWhatsAppGateway($baseUrl, config('whatsapp.local.webhook_secret'), $team->id);
+    }
+
+    /**
      * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, unread_count: int, user_name?: string, user_photo?: string, user_id?: int}>
      */
     private function getWhatsAppContacts(): \Illuminate\Support\Collection
     {
-        $inboundPhones = Conversation::where('channel', 'whatsapp')
-            ->where('direction', 'inbound')
-            ->distinct()
-            ->pluck('from');
-        $outboundPhones = Conversation::where('channel', 'whatsapp')
-            ->where('direction', 'outbound')
-            ->distinct()
-            ->pluck('to');
+        $team = auth()->check() ? auth()->user()->currentTeam : null;
+        if (! $team || ! $team->getWhatsAppFrom())
+        {
+            return collect();
+        }
+
+        $query = $this->conversationQueryForTeam();
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+
+        $inboundPhones = (clone $query)->where('direction', 'inbound')->distinct()->pluck('from');
+        $outboundPhones = (clone $query)->where('direction', 'outbound')->distinct()->pluck('to');
         $allRaw = $inboundPhones->merge($outboundPhones)->filter()->values();
-        $normalizedUnique = $allRaw->map(fn ($p) => $this->normalizePhoneForList((string) $p))
-            ->unique()
-            ->values();
+
+        $team = auth()->check() ? auth()->user()->currentTeam : null;
+        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
+
+        $byDigits = [];
+        foreach ($allRaw as $raw)
+        {
+            $norm = $this->normalizePhoneForList((string) $raw);
+            $digits = preg_replace('/[^0-9]/', '', $norm);
+            if ($digits !== '' && ! isset($byDigits[$digits]))
+            {
+                $byDigits[$digits] = $norm;
+            }
+        }
+        $normalizedUnique = collect(array_values($byDigits));
+
+        if ($allowedPhones !== null)
+        {
+            $normalizedUnique = $normalizedUnique->filter(fn ($p) => $p !== $teamNumber && in_array(preg_replace('/[^0-9]/', '', (string) $p), $allowedPhones, true))->values();
+        } else
+        {
+            $normalizedUnique = $normalizedUnique->filter(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p) !== $teamNumber)->values();
+        }
 
         $contacts = collect();
         foreach ($normalizedUnique as $normalizedPhone)
         {
-            $lastMessage = Conversation::where('channel', 'whatsapp')
-                ->where(function ($query) use ($normalizedPhone)
+            $digitsOnly = preg_replace('/[^0-9]/', '', (string) $normalizedPhone);
+            $lastMessage = (clone $query)
+                ->where(function ($q) use ($normalizedPhone)
                 {
-                    $query->where('from', $normalizedPhone)
+                    $q->where('from', $normalizedPhone)
                         ->orWhere('to', $normalizedPhone)
                         ->orWhere('from', 'like', $normalizedPhone.':%')
                         ->orWhere('to', 'like', $normalizedPhone.':%');
@@ -83,7 +201,7 @@ class ChatController extends Controller
             {
                 continue;
             }
-            $unreadCount = Conversation::where('channel', 'whatsapp')
+            $unreadCount = (clone $query)
                 ->where('direction', 'inbound')
                 ->where('status', 'received')
                 ->where(function ($q) use ($normalizedPhone)
@@ -94,7 +212,7 @@ class ChatController extends Controller
                 ->count();
 
             $contact = (object) [
-                'from' => $normalizedPhone,
+                'from' => $digitsOnly,
                 'last_message' => $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
@@ -120,8 +238,12 @@ class ChatController extends Controller
     {
         $contacts = $this->getWhatsAppContacts();
 
-        // If a contact is selected, get their messages (normalize phone so JID suffix doesn't duplicate)
-        $selectedPhone = request('phone') ? $this->normalizePhoneForList((string) request('phone')) : null;
+        // If a contact is selected, get their messages (normalize to digits so list dedupe and active state match)
+        $selectedPhone = request('phone') ? preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) request('phone'))) : null;
+        if ($selectedPhone !== null && $selectedPhone === '')
+        {
+            $selectedPhone = null;
+        }
         $viewAssistant = request('view') === 'assistant';
         $assistantUserId = request()->integer('user_id', 0) ?: null;
         $messages = collect();
@@ -148,29 +270,45 @@ class ChatController extends Controller
             $assistantClients = $this->getAssistantClientsList();
         } elseif ($selectedPhone)
         {
-            // Get all messages for this conversation (match normalized phone and JID suffix variant)
-            $messages = Conversation::where('channel', 'whatsapp')
-                ->where(function ($query) use ($selectedPhone)
-                {
-                    $this->applyConversationPhoneFilter($query, $selectedPhone);
-                })
-                ->orderBy('created_at')
-                ->get();
+            $allowedPhones = $this->allowedExternalPhonesForChat();
+            $normPhone = preg_replace('/[^0-9]/', '', (string) $selectedPhone);
+            if ($allowedPhones !== null && ! in_array($normPhone, $allowedPhones, true))
+            {
+                $messages = collect();
+                $selectedUser = null;
+            } else
+            {
+                // Get all messages for this conversation (match normalized phone and JID suffix variant)
+                $messages = $this->conversationQueryForTeam()
+                    ->where(function ($query) use ($selectedPhone)
+                    {
+                        $this->applyConversationPhoneFilter($query, $selectedPhone);
+                    })
+                    ->orderBy('created_at')
+                    ->get();
 
-            // Mark inbound messages as read when user views the conversation
-            $norm = $this->normalizePhoneForList($selectedPhone);
-            Conversation::where('channel', 'whatsapp')
-                ->where('direction', 'inbound')
-                ->where('status', 'received')
-                ->where(function ($q) use ($norm)
-                {
-                    $q->where('from', $norm)->orWhere('from', 'like', $norm.':%');
-                })
-                ->update(['status' => 'read']);
+                // Mark inbound messages as read when user views the conversation
+                $norm = $this->normalizePhoneForList($selectedPhone);
+                $this->conversationQueryForTeam()
+                    ->where('direction', 'inbound')
+                    ->where('status', 'received')
+                    ->where(function ($q) use ($norm)
+                    {
+                        $q->where('from', $norm)->orWhere('from', 'like', $norm.':%');
+                    })
+                    ->update(['status' => 'read']);
+            }
+            $team = auth()->check() ? auth()->user()->currentTeam : null;
+            if ($team)
+            {
+                Cache::forget('inbound_received_count_team_'.$team->id);
+            }
             Cache::forget(Conversation::CACHE_KEY_INBOUND_UNREAD);
 
-            // Get user information for the header
-            $selectedUser = $this->getUserByPhone($selectedPhone);
+            if ($allowedPhones === null || in_array($normPhone, $allowedPhones, true))
+            {
+                $selectedUser = $this->getUserByPhone($selectedPhone);
+            }
         }
 
         $hasContact = false;
@@ -204,15 +342,33 @@ class ChatController extends Controller
 
         $whatsappDriver = config('whatsapp.driver');
         $whatsappStatus = null;
+        $teamWhatsAppNumber = null;
+        $teamWhatsAppNumberFormatted = null;
+        $teamWhatsAppIsConnected = false;
         $qrImageUrl = null;
         if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
         {
-            $gateway = app(WhatsAppGateway::class);
+            $gateway = $this->getLocalGatewayForCurrentTeam() ?? app(WhatsAppGateway::class);
             $whatsappStatus = $gateway->getConnectionStatus();
-            $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+            $baseUrl = auth()->user()->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
             if ($baseUrl !== '')
             {
                 $qrImageUrl = route('chat.whatsapp-qr-image');
+            }
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $team = auth()->user()->currentTeam;
+                $teamWhatsAppNumber = $team->getWhatsAppFrom();
+                $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
+                    ? \App\Helpers\PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
+                    : null;
+                $gatewayNumber = is_array($whatsappStatus) ? ($whatsappStatus['number'] ?? null) : null;
+                $teamNumNorm = $teamWhatsAppNumber ? preg_replace('/[^0-9]/', '', (string) $teamWhatsAppNumber) : '';
+                $gatewayNumNorm = $gatewayNumber ? preg_replace('/[^0-9]/', '', (string) $gatewayNumber) : '';
+                $teamWhatsAppIsConnected = ($whatsappStatus['status'] ?? '') === 'connected'
+                    && $teamNumNorm !== ''
+                    && $gatewayNumNorm !== ''
+                    && $teamNumNorm === $gatewayNumNorm;
             }
         }
 
@@ -221,10 +377,10 @@ class ChatController extends Controller
             : false;
 
         $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
-            ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '0'), FILTER_VALIDATE_BOOLEAN)
+            ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
     }
 
     /**
@@ -318,14 +474,20 @@ class ChatController extends Controller
     }
 
     /**
-     * Users that have an assistant conversation (for sidebar list). Current user + same team + placeholder (no team).
+     * Users that have an assistant conversation (for sidebar list). Scoped to current team so each team only sees its own.
      */
     private function getAssistantClientsList()
     {
-        $contextService = app(AgentConversationContextService::class);
-        $userIds = \App\Models\AgentConversation::whereHas('messages', fn ($q) => $q->where('agent', AgentConversationContextService::AGENT_NAME))
-            ->distinct()
-            ->pluck('user_id');
+        $teamId = auth()->check() && auth()->user()->currentTeam ? auth()->user()->currentTeam->id : null;
+        $query = \App\Models\AgentConversation::whereHas('messages', fn ($q) => $q->where('agent', AgentConversationContextService::AGENT_NAME));
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+        $userIds = $query->distinct()->pluck('user_id');
 
         if ($userIds->isEmpty())
         {
@@ -409,13 +571,36 @@ class ChatController extends Controller
 
     public function getMessages(Request $request, $phone)
     {
-        $messages = Conversation::where('channel', 'whatsapp')
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $normPhone = preg_replace('/[^0-9]/', '', (string) $phone);
+        if ($allowedPhones !== null && ! in_array($normPhone, $allowedPhones, true))
+        {
+            return response()->json(['messages' => []], 403);
+        }
+
+        $messages = $this->conversationQueryForTeam()
             ->where(function ($query) use ($phone)
             {
                 $this->applyConversationPhoneFilter($query, (string) $phone);
             })
             ->orderBy('created_at')
             ->get();
+
+        $norm = $this->normalizePhoneForList((string) $phone);
+        $this->conversationQueryForTeam()
+            ->where('direction', 'inbound')
+            ->where('status', 'received')
+            ->where(function ($q) use ($norm)
+            {
+                $q->where('from', $norm)->orWhere('from', 'like', $norm.':%');
+            })
+            ->update(['status' => 'read']);
+
+        $team = auth()->check() ? auth()->user()->currentTeam : null;
+        if ($team)
+        {
+            Cache::forget('inbound_received_count_team_'.$team->id);
+        }
 
         return response()->json(['messages' => $messages]);
     }
@@ -667,6 +852,15 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
     {
+        if (config('whatsapp.driver') === 'local')
+        {
+            $teamGateway = $this->getLocalGatewayForCurrentTeam();
+            if ($teamGateway !== null)
+            {
+                $gateway = $teamGateway;
+            }
+        }
+
         $hasAudio = $request->hasFile('audio');
         $request->validate([
             'to' => 'required|string',
@@ -974,6 +1168,7 @@ class ChatController extends Controller
 
     /**
      * JSON endpoint for WhatsApp connection status (used by frontend to poll when not connected).
+     * Returns gateway status and the current team's linked number so the UI shows per-team number.
      */
     public function whatsappStatus()
     {
@@ -981,9 +1176,12 @@ class ChatController extends Controller
         $status = null;
         $number = null;
         $numberFormatted = null;
+        $teamNumber = null;
+        $teamNumberFormatted = null;
+        $isTeamConnected = false;
         if ($driver === 'local' && app()->bound(WhatsAppGateway::class))
         {
-            $gateway = app(WhatsAppGateway::class);
+            $gateway = $this->getLocalGatewayForCurrentTeam() ?? app(WhatsAppGateway::class);
             $status = $gateway->getConnectionStatus();
             if (is_array($status))
             {
@@ -992,6 +1190,18 @@ class ChatController extends Controller
                     ? \App\Helpers\PhoneHelper::formatForDisplayReadable($number)
                     : null;
             }
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $team = auth()->user()->currentTeam;
+                $teamNumber = $team->getWhatsAppFrom();
+                $statusStr = is_array($status) ? ($status['status'] ?? 'disconnected') : 'disconnected';
+                $teamNumberFormatted = $teamNumber
+                    ? \App\Helpers\PhoneHelper::formatForDisplayReadable($teamNumber)
+                    : null;
+                $teamNumNorm = $teamNumber ? preg_replace('/[^0-9]/', '', (string) $teamNumber) : '';
+                $gatewayNumNorm = $number ? preg_replace('/[^0-9]/', '', (string) $number) : '';
+                $isTeamConnected = $statusStr === 'connected' && $teamNumNorm !== '' && $gatewayNumNorm !== '' && $teamNumNorm === $gatewayNumNorm;
+            }
         }
 
         return response()->json([
@@ -999,26 +1209,55 @@ class ChatController extends Controller
             'status' => (is_array($status) ? ($status['status'] ?? 'disconnected') : 'disconnected'),
             'number' => $number ?? null,
             'numberFormatted' => $numberFormatted ?? null,
+            'teamNumber' => $teamNumber ?? null,
+            'teamNumberFormatted' => $teamNumberFormatted ?? null,
+            'isTeamConnected' => $isTeamConnected,
         ]);
     }
 
     /**
      * Proxy for WhatsApp QR image (same-origin so it loads on HTTPS).
+     * When user is authenticated with a team, passes a signed link token so the Node can associate the connected number with that team.
      */
-    public function whatsappQrImage()
+    public function whatsappQrImage(Request $request)
     {
         if (config('whatsapp.driver') !== 'local')
         {
             return $this->transparentPngResponse();
         }
-        $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+        $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
             return $this->transparentPngResponse();
         }
         $url = $baseUrl.'/qr.png';
-        $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->get($url);
-        $status = $response->status();
+        $headers = [];
+        $hasToken = false;
+        $team = auth()->user()?->currentTeam;
+        if ($team)
+        {
+            $url .= (str_contains($url, '?') ? '&' : '?').'team_id='.$team->id;
+        }
+        if (auth()->check() && $team)
+        {
+            $token = $team->generateWhatsAppLinkToken();
+            $url .= (str_contains($url, '?') ? '&' : '?').'link_token='.urlencode($token);
+            $hasToken = true;
+        }
+        if ($request->query('link_current'))
+        {
+            $url .= (str_contains($url, '?') ? '&' : '?').'link_current=1';
+        }
+        try
+        {
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->withHeaders($headers)->get($url);
+            $status = $response->status();
+        } catch (\Throwable $e)
+        {
+            report($e);
+
+            return $this->transparentPngResponse();
+        }
         $body = $response->body();
         $bodyLen = strlen($body);
         $isPng = ($bodyLen >= 8 && substr($body, 0, 8) === "\x89PNG\r\n\x1a\n");
@@ -1061,10 +1300,16 @@ class ChatController extends Controller
                 ? response()->json(['ok' => false], 400)
                 : redirect()->route('chat.index');
         }
-        $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
+        $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
+        $team = auth()->user()?->currentTeam;
         if ($baseUrl !== '')
         {
-            \Illuminate\Support\Facades\Http::timeout(10)->get($baseUrl.'/refresh');
+            $refreshUrl = $baseUrl.'/refresh';
+            if ($team)
+            {
+                $refreshUrl .= (str_contains($refreshUrl, '?') ? '&' : '?').'team_id='.$team->id;
+            }
+            \Illuminate\Support\Facades\Http::timeout(10)->get($refreshUrl);
         }
 
         $message = __('Request sent. Wait a few seconds for the QR code to appear.');
@@ -1075,5 +1320,91 @@ class ChatController extends Controller
         }
 
         return redirect()->route('chat.index')->with('success', $message);
+    }
+
+    /**
+     * Callback from the Node WhatsApp service when a session connects.
+     * Validates the link token (15 min expiry), extracts the team, and saves the connected number as the team's whatsapp_from.
+     * Protected by X-Webhook-Secret when configured.
+     */
+    public function whatsappLinked(Request $request)
+    {
+        $token = $request->input('link_token') ?? $request->input('token');
+        $number = $request->input('number') ?? $request->input('to');
+
+        if (empty($token) || $number === null || $number === '')
+        {
+            Log::warning('WhatsApp linked callback: missing link_token or number');
+
+            return response()->json(['error' => 'Missing link_token and number'], 422);
+        }
+
+        $team = Team::fromWhatsAppLinkToken($token);
+        if (! $team)
+        {
+            Log::warning('WhatsApp linked callback: invalid or expired token');
+
+            return response()->json(['error' => 'Invalid or expired token'], 400);
+        }
+
+        $normalized = preg_replace('/[^0-9]/', '', (string) $number);
+        if ($normalized === '')
+        {
+            return response()->json(['error' => 'Invalid number'], 422);
+        }
+
+        Team::ensureOnlyTeamHasWhatsAppNumber($team->id, $normalized);
+        $team->setSetting('whatsapp_from', $normalized);
+        $team->setSetting('assistant_auto_respond', '1');
+        Log::info('WhatsApp number linked to team', ['team_id' => $team->id, 'number' => $normalized]);
+
+        return response()->json(['ok' => true, 'team_id' => $team->id]);
+    }
+
+    /**
+     * Link the number currently connected in the Node service to the current team.
+     * Use when auth files exist (e.g. after DB fresh) but team has no whatsapp_from saved.
+     */
+    public function linkCurrentNumberFromService(Request $request)
+    {
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
+        }
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return response()->json(['ok' => false, 'error' => 'Only for local driver'], 400);
+        }
+
+        $number = $request->input('number');
+        $normalized = $number !== null && $number !== '' ? preg_replace('/[^0-9]/', '', (string) $number) : '';
+        if ($normalized === '')
+        {
+            return response()->json(['ok' => false, 'error' => 'Missing or invalid number'], 422);
+        }
+
+        $gateway = $this->getLocalGatewayForCurrentTeam();
+        if (! $gateway)
+        {
+            return response()->json(['ok' => false, 'error' => 'Gateway not available'], 503);
+        }
+
+        $status = $gateway->getConnectionStatus();
+        if (! is_array($status) || ($status['status'] ?? '') !== 'connected')
+        {
+            return response()->json(['ok' => false, 'error' => 'Service not connected'], 400);
+        }
+        $gatewayNumber = preg_replace('/[^0-9]/', '', (string) ($status['number'] ?? ''));
+        if ($gatewayNumber === '' || $gatewayNumber !== $normalized)
+        {
+            return response()->json(['ok' => false, 'error' => 'Number not connected in service or mismatch'], 400);
+        }
+
+        $team = auth()->user()->currentTeam;
+        Team::ensureOnlyTeamHasWhatsAppNumber($team->id, $normalized);
+        $team->setSetting('whatsapp_from', $normalized);
+        Log::info('WhatsApp number re-linked to team from service', ['team_id' => $team->id, 'number' => $normalized]);
+
+        return response()->json(['ok' => true, 'team_id' => $team->id]);
     }
 }

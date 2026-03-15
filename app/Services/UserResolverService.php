@@ -9,6 +9,65 @@ use Illuminate\Support\Str;
 class UserResolverService
 {
     /**
+     * Ensure the WhatsApp writer (phone) is linked to a Contact in the given team (contact.user_id set).
+     * If a contact exists for this team+phone, updates user_id if missing. If no contact, creates a minimal one.
+     */
+    public function linkPhoneToContactInTeam(int $teamId, string $phone): void
+    {
+        $cleanNumber = preg_replace('/[^0-9]/', '', $phone);
+        if ($cleanNumber === '')
+        {
+            return;
+        }
+
+        $user = $this->findUserByPhone($cleanNumber);
+        if ($user === null)
+        {
+            $user = $this->createUserForPhone($cleanNumber);
+        }
+        if ($user === null)
+        {
+            return;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($q) use ($cleanNumber)
+            {
+                $q->whereHas('sources', function ($q2) use ($cleanNumber)
+                {
+                    $q2->where('source_id', 2)->where('value', $cleanNumber);
+                })
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', '') = ?", [$cleanNumber]);
+            })
+            ->first();
+
+        if ($contact)
+        {
+            if (empty($contact->user_id))
+            {
+                $contact->update(['user_id' => $user->id]);
+            }
+
+            return;
+        }
+
+        try
+        {
+            Contact::withoutGlobalScopes()->create([
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'name' => 'Contacto '.$cleanNumber,
+                'phone' => $cleanNumber,
+                'status_id' => 1,
+            ]);
+        } catch (\Throwable $e)
+        {
+            report($e);
+        }
+    }
+
+    /**
      * Resolve the user_id to use for an agent conversation from phone and/or contact.
      * If no user exists for the contact/phone, creates one so conversations can be associated.
      *

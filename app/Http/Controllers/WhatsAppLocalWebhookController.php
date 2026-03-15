@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Models\Team;
 use App\Services\TwilioService;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -55,7 +56,9 @@ class WhatsAppLocalWebhookController extends Controller
             $team = Team::orderBy('id')->first();
         }
         $twilioService = new TwilioService($team);
-        $gateway = app(WhatsAppGateway::class);
+        $gateway = $team && config('whatsapp.driver') === 'local' && $team->getWhatsAppServiceBaseUrl() !== ''
+            ? new LocalWhatsAppGateway($team->getWhatsAppServiceBaseUrl(), config('whatsapp.local.webhook_secret'), $team->id)
+            : app(WhatsAppGateway::class);
 
         $fakeRequest = Request::create('/', 'POST', $normalized);
 
@@ -83,6 +86,14 @@ class WhatsAppLocalWebhookController extends Controller
         $to = preg_replace('/:\d+$/', '', (string) $to);
         $cleanFrom = preg_replace('/[^0-9]/', '', $from);
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
+
+        if ($cleanFrom === '' || strlen($cleanFrom) < 8)
+        {
+            Log::debug('WhatsApp local webhook: payload ignored (invalid or missing sender number)', ['payload' => $payload]);
+
+            return null;
+        }
+
         $body = (string) $body;
         if ($body === '')
         {
@@ -142,6 +153,20 @@ class WhatsAppLocalWebhookController extends Controller
 
     private function resolveTeam(Request $request): ?Team
     {
+        $to = $request->input('to');
+        if (! empty($to))
+        {
+            $normalized = preg_replace('/[^0-9]/', '', (string) $to);
+            if ($normalized !== '')
+            {
+                $team = Team::findByWhatsAppNumber($normalized);
+                if ($team !== null)
+                {
+                    return $team;
+                }
+            }
+        }
+
         $teamId = $request->input('team_id');
         if ($teamId)
         {

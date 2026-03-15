@@ -42,10 +42,18 @@ class AssistantChat extends Component
             return;
         }
 
-        $conversation = AgentConversation::where('user_id', auth()->id())
+        $teamId = auth()->user()->currentTeam?->id;
+        $query = AgentConversation::where('user_id', auth()->id())
             ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderByDesc('updated_at');
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+        $conversation = $query->first();
 
         if ($conversation)
         {
@@ -173,11 +181,17 @@ class AssistantChat extends Component
 
         if ($this->conversationId === null)
         {
-            $conversation = AgentConversation::create([
+            $teamId = auth()->user()->currentTeam?->id;
+            $payload = [
                 'id' => (string) Str::uuid(),
                 'user_id' => $userId,
                 'title' => Str::limit($userContent, 50),
-            ]);
+            ];
+            if ($teamId !== null)
+            {
+                $payload['team_id'] = $teamId;
+            }
+            $conversation = AgentConversation::create($payload);
             $this->conversationId = $conversation->id;
         }
 

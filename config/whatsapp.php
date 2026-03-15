@@ -21,7 +21,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Base URL of the Node.js WhatsApp service. Used when driver is "local".
-    | Example: http://localhost:3000
+    | For one number per team without disconnecting others, run one Node instance
+    | per team and set team setting "whatsapp_service_url" per team (e.g. port
+    | 3000 for team 1, 3001 for team 2). Fallback: this base_url.
     |
     */
     'local' => [

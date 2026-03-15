@@ -14,7 +14,7 @@
             min-height: 200px;
         }
         #chat-qr-container.chat-qr-loading {
-            background-color: #d1e7dd;
+            background-color: #f0f0f0;
             border-radius: 0.375rem;
         }
         .chat-history-header {
@@ -620,7 +620,9 @@
             function renderChatList(contacts, selectedPhone) {
                 selectedPhone = selectedPhone || '';
                 if (!contacts || contacts.length === 0) {
-                    listEl.innerHTML = '<li class="chat-contact-list-item chat-list-item-0"><h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6></li>';
+                    var hasWa = listEl.getAttribute('data-team-has-wa-number') === '1';
+                    var msg = hasWa ? '{{ __("No WhatsApp conversations") }}' : '{{ __("Link a WhatsApp number in the sidebar to see conversations here.") }}';
+                    listEl.innerHTML = '<li class="chat-contact-list-item chat-list-item-0"><h6 class="text-muted mb-0">' + msg + '</h6></li>';
                     return;
                 }
                 var html = contacts.map(function (c) {
@@ -641,11 +643,17 @@
                 listEl.innerHTML = html;
             }
             function fetchChatList() {
+                var body = document.getElementById('chat-history-body');
+                var isAssistantView = body && body.getAttribute('data-view-assistant') === '1';
                 fetch(listUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         var selected = listEl.getAttribute('data-selected-phone') || '';
-                        renderChatList(data.contacts || [], selected);
+                        var contacts = data.contacts || [];
+                        if (isAssistantView) {
+                            selected = '';
+                        }
+                        renderChatList(contacts, selected);
                     })
                     .catch(function () {});
             }
@@ -693,6 +701,7 @@
                                 if (qrImg.naturalWidth > 20) {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     qrImg.classList.remove('d-none');
+                                    if (document.getElementById('chat-qr-fallback')) document.getElementById('chat-qr-fallback').classList.add('d-none');
                                     qrImg.onload = null;
                                     qrImg.onerror = null;
                                 } else if (qrRetries < maxRetries) {
@@ -712,7 +721,7 @@
                             };
                             qrImg.src = src;
                         }
-                        setQrSrc();
+                        setTimeout(setQrSrc, 4000);
                     } else {
                         if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                         if (qrImg) qrImg.classList.remove('d-none');
@@ -732,94 +741,195 @@
             });
         }
 
-        // When disconnected, auto-request new QR so the image appears without user clicking the button
+        // When disconnected, try to show QR image only (do NOT call refresh — that wipes auth and forces re-scan).
+        // If Node restarted, /status will trigger socket restore from auth; polling will then show connected.
         var waConnectionBlock = document.getElementById('chat-sidebar-whatsapp-connection-block');
-        if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') === 'disconnected') {
+        if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') !== 'connected') {
             var qrContainer = document.getElementById('chat-qr-container');
             var qrImg = document.getElementById('chat-whatsapp-qr-img');
-            var refreshForm = document.getElementById('chat-refresh-qr-form');
-            if (qrContainer && qrImg && qrImg.dataset.qrBase && refreshForm) {
-                var token = refreshForm.querySelector('input[name="_token"]');
-                qrContainer.classList.add('chat-qr-loading');
-                qrImg.classList.add('d-none');
-                fetch(refreshForm.action, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: '_token=' + encodeURIComponent(token ? token.value : '')
-                }).then(function () {
-                    var qrRetries = 0;
-                    var maxRetries = 24;
-                    function setQrSrc() {
-                        var src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                        qrImg.onload = function () {
-                            if (qrImg.naturalWidth > 20) {
-                                qrContainer.classList.remove('chat-qr-loading');
-                                qrImg.classList.remove('d-none');
-                                qrImg.onload = null;
-                                qrImg.onerror = null;
-                            } else if (qrRetries < maxRetries) {
-                                qrRetries += 1;
-                                setTimeout(setQrSrc, 2500);
-                            } else {
-                                qrContainer.classList.remove('chat-qr-loading');
-                                qrImg.onload = null;
-                                qrImg.onerror = null;
-                            }
-                        };
-                        qrImg.onerror = function () {
-                            qrContainer.classList.remove('chat-qr-loading');
+            if (qrContainer && qrImg && qrImg.dataset.qrBase) {
+                var qrRetries = 0;
+                var maxRetries = 24;
+                function setQrSrc() {
+                    var src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                    var fallbackEl = document.getElementById('chat-qr-fallback');
+                    qrImg.onload = function () {
+                        if (qrImg.naturalWidth > 20) {
+                            if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                             qrImg.classList.remove('d-none');
+                            if (fallbackEl) fallbackEl.classList.add('d-none');
                             qrImg.onload = null;
                             qrImg.onerror = null;
-                        };
-                        qrImg.src = src;
-                    }
-                    setQrSrc();
-                }).catch(function () {
-                    qrContainer.classList.remove('chat-qr-loading');
-                    qrImg.classList.remove('d-none');
-                });
+                        } else if (qrRetries < maxRetries) {
+                            qrRetries += 1;
+                            if (fallbackEl) fallbackEl.classList.remove('d-none');
+                            setTimeout(setQrSrc, 2500);
+                        } else {
+                            if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                            qrImg.classList.add('d-none');
+                            if (fallbackEl) fallbackEl.classList.remove('d-none');
+                            qrImg.onload = null;
+                            qrImg.onerror = null;
+                        }
+                    };
+                    qrImg.onerror = function () {
+                        if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                        qrImg.classList.add('d-none');
+                        if (fallbackEl) fallbackEl.classList.remove('d-none');
+                        qrImg.onload = null;
+                        qrImg.onerror = null;
+                    };
+                    qrContainer.classList.add('chat-qr-loading');
+                    qrImg.classList.add('d-none');
+                    qrImg.src = src;
+                }
+                setQrSrc();
             }
         }
 
-        // Poll WhatsApp status when local driver and not connected, so UI updates without refresh
+        // "Link current number to this team" – request QR URL so Node receives token and callbacks if already connected
+        var linkCurrentNumberBtn = document.getElementById('chat-link-current-number-btn');
+        if (linkCurrentNumberBtn && linkCurrentNumberBtn.dataset.qrUrl) {
+            linkCurrentNumberBtn.addEventListener('click', function () {
+                var url = linkCurrentNumberBtn.dataset.qrUrl;
+                if (!url) return;
+                url = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'link_current=1';
+                linkCurrentNumberBtn.disabled = true;
+                fetch(url, { credentials: 'same-origin' }).then(function () {
+                    linkCurrentNumberBtn.disabled = false;
+                    var statusUrl = '{{ route("chat.whatsapp-status") }}';
+                    fetch(statusUrl, { headers: { 'Accept': 'application/json' } }).then(function (r) { return r.json(); }).then(function (data) {
+                        if (data.isTeamConnected && data.teamNumberFormatted) {
+                            if (window.location && window.location.reload) window.location.reload();
+                        }
+                    }).catch(function () { linkCurrentNumberBtn.disabled = false; });
+                }).catch(function () { linkCurrentNumberBtn.disabled = false; });
+            });
+        }
+
+        // Poll WhatsApp status so UI always reflects current team (fixes wrong state when switching team)
+        var waStatusUrl = '{{ route("chat.whatsapp-status") }}';
+        var connectedLabel = '{{ __("Connected") }}';
+        var disconnectedLabel = '{{ __("Disconnected") }}';
+        var scanQrLabel = '{{ __("Scan QR") }}';
+        function applyWaStatus(data) {
+            var titleEl = document.getElementById('chat-sidebar-wa-title');
+            var badgeEl = document.getElementById('chat-sidebar-wa-badge');
+            var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
+            var contactsWaAvatar = document.getElementById('chat-contacts-wa-avatar');
+            var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
+            var displayNumber = data.teamNumberFormatted || null;
+            if (titleEl) titleEl.textContent = displayNumber || '{{ __("Not linked") }}';
+            if (data.isTeamConnected) {
+                if (waConnectionBlock) { waConnectionBlock.classList.add('d-none'); }
+                if (linkExistingBlock) { linkExistingBlock.classList.add('d-none'); }
+                if (badgeEl) { badgeEl.textContent = connectedLabel; badgeEl.className = 'badge bg-success mt-1'; }
+                if (avatarEl) { avatarEl.classList.remove('avatar-offline'); avatarEl.classList.add('avatar-online'); }
+                if (contactsWaAvatar) { contactsWaAvatar.classList.remove('avatar-offline'); contactsWaAvatar.classList.add('avatar-online'); }
+            } else {
+                if (waConnectionBlock) {
+                    waConnectionBlock.classList.remove('d-none');
+                    var qrImgReload = document.getElementById('chat-whatsapp-qr-img');
+                    if (qrImgReload && qrImgReload.dataset.qrBase) {
+                        qrImgReload.src = qrImgReload.dataset.qrBase + '?t=' + Date.now();
+                    }
+                }
+                if (linkExistingBlock && data.status === 'connected' && data.number) {
+                    linkExistingBlock.dataset.number = data.number;
+                    linkExistingBlock.classList.remove('d-none');
+                } else if (linkExistingBlock) {
+                    linkExistingBlock.classList.add('d-none');
+                }
+                if (badgeEl) {
+                    var status = data.status || 'disconnected';
+                    badgeEl.textContent = status === 'waiting_qr' ? scanQrLabel : disconnectedLabel;
+                    badgeEl.className = status === 'waiting_qr' ? 'badge bg-warning mt-1' : 'badge bg-secondary mt-1';
+                }
+                if (avatarEl) { avatarEl.classList.remove('avatar-online'); avatarEl.classList.add('avatar-offline'); }
+                if (contactsWaAvatar) { contactsWaAvatar.classList.remove('avatar-online'); contactsWaAvatar.classList.add('avatar-offline'); }
+            }
+        }
         if (waConnectionBlock) {
-            var waStatusUrl = '{{ route("chat.whatsapp-status") }}';
-            var connectedLabel = '{{ __("Connected") }}';
+            fetch(waStatusUrl, { headers: { 'Accept': 'application/json' } }).then(function (r) { return r.json(); }).then(applyWaStatus).catch(function () {});
             var waPoll = setInterval(function () {
                 fetch(waStatusUrl, { headers: { 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
-                        if (data.status === 'connected') {
-                            clearInterval(waPoll);
-                            waConnectionBlock.classList.add('d-none');
-                            var titleEl = document.getElementById('chat-sidebar-wa-title');
-                            var badgeEl = document.getElementById('chat-sidebar-wa-badge');
-                            var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
-                            if (titleEl && data.numberFormatted) titleEl.textContent = data.numberFormatted;
-                            if (badgeEl) {
-                                badgeEl.textContent = connectedLabel;
-                                badgeEl.className = 'badge bg-success mt-1';
-                            }
-                            if (avatarEl) {
-                                avatarEl.classList.remove('avatar-offline');
-                                avatarEl.classList.add('avatar-online');
-                            }
-                        }
+                        applyWaStatus(data);
+                        if (data.isTeamConnected) clearInterval(waPoll);
                     })
                     .catch(function () {});
             }, 3000);
+        }
+
+        var btnGenerateNewQr = document.getElementById('chat-btn-generate-new-qr');
+        if (btnGenerateNewQr) {
+            btnGenerateNewQr.addEventListener('click', function () {
+                var qrImg = document.getElementById('chat-whatsapp-qr-img');
+                var qrContainer = document.getElementById('chat-qr-container');
+                var fallbackEl = document.getElementById('chat-qr-fallback');
+                var token = document.querySelector('meta[name="csrf-token"]');
+                var t = token ? token.getAttribute('content') : '';
+                if (!t) return;
+                btnGenerateNewQr.disabled = true;
+                fetch('{{ route("chat.whatsapp-refresh-qr") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': t,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: '_token=' + encodeURIComponent(t)
+                })
+                .then(function () {
+                    if (fallbackEl) fallbackEl.classList.add('d-none');
+                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
+                    if (qrImg) qrImg.classList.remove('d-none');
+                    setTimeout(function () {
+                        if (qrImg && qrImg.dataset.qrBase) {
+                            qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                        }
+                        btnGenerateNewQr.disabled = false;
+                    }, 4000);
+                })
+                .catch(function () { btnGenerateNewQr.disabled = false; });
+            });
+        }
+
+        var btnLinkExisting = document.getElementById('chat-btn-link-existing-number');
+        var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
+        if (btnLinkExisting && linkExistingBlock) {
+            btnLinkExisting.addEventListener('click', function () {
+                var number = linkExistingBlock.dataset.number;
+                if (!number) return;
+                var token = document.querySelector('meta[name="csrf-token"]');
+                var t = token ? token.getAttribute('content') : '';
+                btnLinkExisting.disabled = true;
+                fetch('{{ route("chat.link-current-number") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': t,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ number: number })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.ok) { if (window.location) window.location.reload(); }
+                    else { btnLinkExisting.disabled = false; }
+                })
+                .catch(function () { btnLinkExisting.disabled = false; });
+            });
         }
     });
     </script>
 @endsection
 
 @section('content')
-    <div class="app-chat card overflow-hidden">
+    <div class="app-chat card overflow-hidden" data-team-id="{{ auth()->user()->currentTeam?->id ?? '' }}">
         <div class="row g-0">
             <!-- Sidebar Left -->
             <div class="col app-chat-sidebar-left app-sidebar overflow-hidden" id="app-chat-sidebar-left">
@@ -827,27 +937,24 @@
                     class="chat-sidebar-left-user sidebar-header d-flex flex-column justify-content-center align-items-center flex-wrap px-4 pt-5">
                     @php
                         $sidebarLeftAvatarStatus = 'avatar-online';
-                        if (($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus['status']) && ($whatsappStatus['status'] ?? '') !== 'connected') {
-                            $sidebarLeftAvatarStatus = 'avatar-offline';
+                        if (($whatsappDriver ?? 'twilio') === 'local') {
+                            $sidebarLeftAvatarStatus = ($teamWhatsAppIsConnected ?? false) ? 'avatar-online' : 'avatar-offline';
                         }
                     @endphp
                     <div id="chat-sidebar-wa-avatar" class="avatar avatar-xl {{ $sidebarLeftAvatarStatus }}">
                         <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp" style="font-size: 2rem;"></i></span>
                     </div>
                     @if(($whatsappDriver ?? 'twilio') === 'local')
-                        @if(($whatsappStatus['status'] ?? '') === 'connected' && !empty($whatsappStatus['number']))
-                            <h5 id="chat-sidebar-wa-title" class="mt-2 mb-0">{{ \App\Helpers\PhoneHelper::formatForDisplayReadable($whatsappStatus['number']) }}</h5>
-                        @else
-                            <h5 id="chat-sidebar-wa-title" class="mt-2 mb-0">{{ __('Disconnected') }}</h5>
-                        @endif
+                        <h5 id="chat-sidebar-wa-title" class="mt-2 mb-0">{{ !empty($teamWhatsAppNumberFormatted ?? null) ? $teamWhatsAppNumberFormatted : __('Not linked') }}</h5>
                     @else
                         <h5 class="mt-2 mb-0">{{ auth()->user()->name ?? 'John Doe' }}</h5>
                     @endif
                     @if(($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus))
                         @php
+                            $waConnected = $teamWhatsAppIsConnected ?? false;
                             $status = $whatsappStatus['status'] ?? 'unreachable';
-                            $badgeClass = $status === 'connected' ? 'success' : ($status === 'waiting_qr' ? 'warning' : 'secondary');
-                            $statusLabel = $status === 'connected' ? __('Connected') : ($status === 'waiting_qr' ? __('Scan QR') : __('Disconnected'));
+                            $badgeClass = $waConnected ? 'success' : ($status === 'waiting_qr' ? 'warning' : 'secondary');
+                            $statusLabel = $waConnected ? __('Connected') : ($status === 'waiting_qr' ? __('Scan QR') : __('Disconnected'));
                         @endphp
                         <span id="chat-sidebar-wa-badge" class="badge bg-{{ $badgeClass }} mt-1">{{ $statusLabel }}</span>
                     @else
@@ -858,8 +965,8 @@
                 </div>
                 <div class="sidebar-body px-4 pb-4">
                     <div class="my-4">
-                        @if(($whatsappDriver ?? 'twilio') === 'local' && (($whatsappStatus['status'] ?? '') !== 'connected'))
-                            <div id="chat-sidebar-whatsapp-connection-block" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
+                        @if(($whatsappDriver ?? 'twilio') === 'local')
+                            <div id="chat-sidebar-whatsapp-connection-block" class="{{ ($teamWhatsAppIsConnected ?? false) ? 'd-none' : '' }}" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
@@ -868,21 +975,19 @@
                                             onload="var el=this; var fb=document.getElementById('chat-qr-fallback'); if(el.naturalWidth>20){el.classList.remove('d-none'); if(fb)fb.classList.add('d-none');} else {if(fb)fb.classList.remove('d-none');}"
                                             onerror="this.classList.add('d-none'); document.getElementById('chat-qr-fallback').classList.remove('d-none');">
                                         <div id="chat-qr-fallback" class="mb-2 d-none">
-                                            <p class="small text-muted mb-2">{{ __('If you don\'t see the QR code, generate a new one below.') }}</p>
+                                            <p class="small text-muted mb-2">{{ __('If this team is already linked, reload the page to refresh. Otherwise wait a few seconds for the QR code to appear.') }}</p>
+                                            <button type="button" id="chat-btn-generate-new-qr" class="btn btn-sm btn-outline-warning w-100">
+                                                <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
+                                            </button>
                                         </div>
                                     </div>
                                 @endif
-                                <p class="small text-muted mb-0">{{ __('Scan with WhatsApp to link this device.') }}</p>
-                                <form id="chat-refresh-qr-form" method="POST" action="{{ route('chat.whatsapp-refresh-qr') }}" class="mt-2">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-warning w-100">
-                                        <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
+                                <div id="chat-link-existing-number-block" class="d-none mt-2" data-number="">
+                                    <p class="small text-muted mb-2">{{ __('A number is connected in the service but not linked to this team.') }}</p>
+                                    <button type="button" id="chat-btn-link-existing-number" class="btn btn-sm btn-primary w-100">
+                                        <i class="ti ti-link me-1"></i>{{ __('Link to this team') }}
                                     </button>
-                                </form>
-                                <p id="chat-refresh-qr-message" class="small text-success mb-0 mt-2 d-none"></p>
-                                @if(session('success'))
-                                    <p class="small text-success mb-0 mt-2">{{ session('success') }}</p>
-                                @endif
+                                </div>
                             </div>
                             </div>
                         @elseif(($whatsappDriver ?? 'twilio') !== 'local')
@@ -930,10 +1035,10 @@
                             <li class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <i class='ti ti-bell me-1 ti-sm'></i>
-                                    <span class="align-middle">{{ __('Notification') }}</span>
+                                    <span class="align-middle">{{ __('Notification by email') }}</span>
                                 </div>
-                                <label class="switch switch-primary me-4 switch-sm">
-                                    <input type="checkbox" class="switch-input" id="sidebar-notification-toggle" {{ ($notifyNewContactEmail ?? false) ? 'checked' : '' }} />
+                                <label class="switch switch-primary me-4 switch-sm opacity-50">
+                                    <input type="checkbox" class="switch-input" id="sidebar-notification-toggle" {{ ($notifyNewContactEmail ?? false) ? 'checked' : '' }} disabled />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
@@ -952,11 +1057,11 @@
                     <div class="d-flex align-items-center me-3 me-lg-0">
                         @php
                             $avatarStatusClass = 'avatar-online';
-                            if (($whatsappDriver ?? 'twilio') === 'local' && isset($whatsappStatus['status']) && ($whatsappStatus['status'] ?? '') !== 'connected') {
-                                $avatarStatusClass = 'avatar-offline';
+                            if (($whatsappDriver ?? 'twilio') === 'local') {
+                                $avatarStatusClass = ($teamWhatsAppIsConnected ?? false) ? 'avatar-online' : 'avatar-offline';
                             }
                         @endphp
-                        <div class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" data-bs-toggle="sidebar"
+                        <div id="chat-contacts-wa-avatar" class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
                             <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
                         </div>
@@ -1006,10 +1111,10 @@
                         @endforeach
                         @endauth
                     </ul>
-                    <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}">
+                    <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
-                                <h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6>
+                                <h6 class="text-muted mb-0">{{ !empty($teamWhatsAppNumber) ? __('No WhatsApp conversations') : __('Link a WhatsApp number in the sidebar to see conversations here.') }}</h6>
                             </li>
                         @else
                             @foreach ($contacts as $contact)
@@ -1258,7 +1363,7 @@
                                 <div class="d-flex overflow-hidden align-items-center">
                                     <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
                                         data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
-                                    @if (($whatsappStatus['status'] ?? '') === 'connected')
+                                    @if ($teamWhatsAppIsConnected ?? false)
                                         <small class="text-muted">
                                             <i class="ti ti-brand-whatsapp ti-xs me-1"></i>{{ __('WhatsApp connected') }}
                                         </small>
