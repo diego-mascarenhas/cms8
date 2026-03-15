@@ -41,9 +41,4 @@ interface WhatsAppGateway
      * @return array{status: string, number?: string}|null
      */
     public function getConnectionStatus(): ?array;
-
-    /**
-     * End WhatsApp session / unlink device (local driver only). Returns false for Twilio.
-     */
-    public function logout(): bool;
 }

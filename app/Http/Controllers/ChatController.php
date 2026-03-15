@@ -1018,7 +1018,10 @@ class ChatController extends Controller
         }
 
         $gateway = app(WhatsAppGateway::class);
-        $gateway->logout();
+        if (method_exists($gateway, 'logout'))
+        {
+            $gateway->logout();
+        }
 
         return redirect()->route('chat.index')->with('success', __('WhatsApp session closed. Scan QR to link again.'));
     }

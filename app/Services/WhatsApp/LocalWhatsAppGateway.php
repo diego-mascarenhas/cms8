@@ -111,7 +111,7 @@ class LocalWhatsAppGateway implements WhatsAppGateway
     }
 
     /**
-     * End WhatsApp session (unlink device). Next connection will require QR scan.
+     * End WhatsApp session / unlink device (optional; not in interface). Next connection will require QR scan.
      */
     public function logout(): bool
     {

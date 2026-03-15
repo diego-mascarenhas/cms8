@@ -37,9 +37,4 @@ class TwilioWhatsAppGateway implements WhatsAppGateway
     {
         return null;
     }
-
-    public function logout(): bool
-    {
-        return false;
-    }
 }
