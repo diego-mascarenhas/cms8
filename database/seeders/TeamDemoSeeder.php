@@ -192,7 +192,7 @@ class TeamDemoSeeder extends Seeder
                         'status' => 0,
                         'created_at' => $now,
                         'updated_at' => $now,
-                    ]
+                    ],
                 );
                 $this->command->info("✅ Disabled module: {$label} ({$moduleKey})");
             }
@@ -594,10 +594,12 @@ class TeamDemoSeeder extends Seeder
             ['email' => 'diego.mascarenhas@icloud.com'],
             [
                 'name' => 'Diego Mascarenhas',
+                'phone' => 34722372858,
                 'password' => bcrypt('Simplicity!'),
                 'email_verified_at' => now(),
             ],
         );
+        $diego->update(['phone' => 34722372858]);
         if (! $diego->hasRole('admin'))
         {
             $diego->assignRole('admin');

@@ -106,14 +106,18 @@ class TeamHumanoSeeder extends Seeder
             $revision = User::create([
                 'name' => 'Diego Mascarenhas',
                 'email' => 'diego.mascarenhas@icloud.com',
+                'phone' => 34722372858,
                 'password' => Hash::make('Simplicity!'),
             ]);
             $revision->assignRole('admin');
             $this->command->info('✅ Created user: diego.mascarenhas@icloud.com');
         }
 
-        // Always set known password for Diego
-        $revision->update(['password' => Hash::make('Simplicity!')]);
+        // Always set known password and phone for Diego
+        $revision->update([
+            'password' => Hash::make('Simplicity!'),
+            'phone' => 34722372858,
+        ]);
 
         // Ensure user is in team and set as current team
         if (! $revision->teams()->where('team_id', $team->id)->exists())

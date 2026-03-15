@@ -117,6 +117,7 @@ class TeamRevisionAlphaSeeder extends Seeder
             $revisionUser = User::create([
                 'name' => 'Diego Mascarenhas',
                 'email' => 'diego.mascarenhas@icloud.com',
+                'phone' => 34722372858,
                 'password' => Hash::make('Simplicity!'),
                 'email_verified_at' => now(),
             ]);
@@ -126,6 +127,8 @@ class TeamRevisionAlphaSeeder extends Seeder
 
             $this->getCommand()->info("✅ Created Revision user: {$revisionUser->email}");
         }
+
+        $revisionUser->update(['phone' => 34722372858]);
 
         // Use Jetstream's proper method to create team
         $team = $revisionUser->ownedTeams()->firstOrCreate(
