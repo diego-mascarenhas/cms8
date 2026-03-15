@@ -161,6 +161,11 @@ class AssistantToolsService
                 $user?->setRelation('currentTeam', $team);
             }
             $teamId = $team?->id ?? $this->contextTeamId;
+            // Log in the context user so Gate/policies see them (e.g. create contact from WhatsApp).
+            if ($user)
+            {
+                auth()->login($user);
+            }
         }
 
         if (! $user || ! $teamId)
