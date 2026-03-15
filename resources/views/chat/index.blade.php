@@ -942,14 +942,6 @@
                             </li>
                         </ul>
                     </div>
-                    <div class="d-flex mt-4 d-none">
-                        <form method="POST" action="{{ route('chat.whatsapp-logout') }}" class="w-100">
-                            @csrf
-                            <button type="submit" class="btn btn-label-danger w-100">
-                                <i class="ti ti-unlink me-1"></i>{{ __('Unlink WhatsApp') }}
-                            </button>
-                        </form>
-                    </div>
                 </div>
             </div>
             <!-- /Sidebar Left-->

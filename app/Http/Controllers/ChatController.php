@@ -1070,18 +1070,4 @@ class ChatController extends Controller
 
         return redirect()->route('chat.index')->with('success', $message);
     }
-
-    /**
-     * End WhatsApp session (unlink device) when using local driver.
-     */
-    public function whatsappLogout(Request $request)
-    {
-        if (config('whatsapp.driver') !== 'local')
-        {
-            return redirect()->route('chat.index');
-        }
-
-        $gateway = app(WhatsAppGateway::class);
-        return redirect()->route('chat.index')->with('success', __('WhatsApp session closed. Scan QR to link again.'));
-    }
 }
