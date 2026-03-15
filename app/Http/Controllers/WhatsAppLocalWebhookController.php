@@ -6,7 +6,10 @@ use App\Contracts\WhatsAppGateway;
 use App\Models\Team;
 use App\Services\TwilioService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Transcription;
 
 class WhatsAppLocalWebhookController extends Controller
 {
@@ -25,6 +28,19 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         $payload = $request->all();
+
+        if (! empty($payload['audio_base64']) && config('ai.providers.openai.key'))
+        {
+            $transcript = $this->transcribeIncomingAudio(
+                $payload['audio_base64'],
+                $payload['audio_content_type'] ?? 'audio/ogg',
+            );
+            if ($transcript !== null && $transcript !== '')
+            {
+                $payload['body'] = $transcript;
+            }
+        }
+
         $normalized = $this->normalizePayload($payload);
         if ($normalized === null)
         {
@@ -89,6 +105,39 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return $normalized;
+    }
+
+    /**
+     * Decode base64 audio from webhook and transcribe via Laravel AI (OpenAI). Returns transcript or null on failure.
+     */
+    private function transcribeIncomingAudio(string $audioBase64, string $contentType): ?string
+    {
+        $tmpDir = storage_path('app/temp');
+        if (! is_dir($tmpDir))
+        {
+            @mkdir($tmpDir, 0755, true);
+        }
+        $extension = $contentType === 'audio/ogg' ? 'ogg' : (str_contains($contentType, 'webm') ? 'webm' : 'ogg');
+        $tmpPath = $tmpDir.'/incoming_audio_'.uniqid('', true).'.'.$extension;
+        $decoded = base64_decode($audioBase64, true);
+        if ($decoded === false || @file_put_contents($tmpPath, $decoded) === false)
+        {
+            return null;
+        }
+        try
+        {
+            $file = new UploadedFile($tmpPath, 'audio.'.$extension, $contentType, 0, true);
+            $transcript = (string) Transcription::fromUpload($file)->generate(provider: Lab::OpenAI);
+            @unlink($tmpPath);
+
+            return trim($transcript) !== '' ? trim($transcript) : null;
+        } catch (\Throwable $e)
+        {
+            Log::warning('WhatsApp local webhook: transcription failed', ['error' => $e->getMessage()]);
+            @unlink($tmpPath);
+
+            return null;
+        }
     }
 
     private function resolveTeam(Request $request): ?Team

@@ -18,9 +18,7 @@ class TwilioWhatsAppGateway implements WhatsAppGateway
 
     public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
     {
-        $this->twilioService->sendWhatsAppWithMedia($to, $mediaPath, 'media');
-
-        return true;
+        return $this->twilioService->sendWhatsAppWithMedia($to, $mediaPath, 'media', $caption);
     }
 
     public function isConfigured(): bool

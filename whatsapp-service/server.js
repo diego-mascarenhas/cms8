@@ -11,7 +11,7 @@ const { URL } = require('url');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage, getContentType } = require('baileys');
 const QRCode = require('qrcode');
 const pino = require('pino');
 const fs = require('fs');
@@ -106,7 +106,8 @@ function makeSocket() {
       if (connectionStatus !== 'connected') return;
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
-        const body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+        const contentType = getContentType(msg.message);
+        let body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
         const from = msg.key.remoteJid;
         const id = msg.key.id;
 
@@ -117,6 +118,17 @@ function makeSocket() {
           id,
           messageId: id,
         };
+
+        if (contentType === 'audioMessage' && body === '') {
+          try {
+            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { reuploadRequest: socket.updateMediaMessage });
+            const mimetype = msg.message?.audioMessage?.mimetype || 'audio/ogg; codecs=opus';
+            payload.audio_base64 = buffer.toString('base64');
+            payload.audio_content_type = mimetype.split(';')[0].trim();
+          } catch (e) {
+            console.error('Download incoming audio failed:', e.message);
+          }
+        }
 
         if (LARAVEL_WEBHOOK_URL) {
           try {
@@ -172,35 +184,11 @@ app.get('/qr', (req, res) => {
 });
 
 app.get('/qr.png', (req, res) => {
-  // #region agent log
-  const path = require('path');
-  const logPath = path.join(__dirname, '..', '.cursor', 'debug-aac33a.log');
-  const log = (data) => {
-    const line = JSON.stringify({
-      sessionId: 'aac33a',
-      location: 'server.js:/qr.png',
-      timestamp: Date.now(),
-      ...data,
-    }) + '\n';
-    try {
-      require('fs').appendFileSync(logPath, line);
-    } catch (e) {}
-  };
-  // #endregion
-  log({
-    message: 'qr.png requested',
-    data: { connectionStatus, hasCurrentQR: !!currentQR },
-  });
   if (connectionStatus !== 'waiting_qr' || !currentQR) {
-    log({ message: 'qr.png returning 404', data: { connectionStatus, hasCurrentQR: !!currentQR } });
     return res.status(404).json({ error: 'No QR code available' });
   }
   QRCode.toBuffer(currentQR, (err, buffer) => {
-    if (err) {
-      log({ message: 'QRCode.toBuffer error', data: { error: err.message } });
-      return res.status(500).json({ error: 'QR generation failed' });
-    }
-    log({ message: 'qr.png returning PNG', data: { bufferLength: buffer.length } });
+    if (err) return res.status(500).json({ error: 'QR generation failed' });
     res.type('png').send(buffer);
   });
 });
@@ -262,10 +250,24 @@ app.post('/send-media', async (req, res) => {
   try {
     const resp = await fetch(mediaUrl);
     const buffer = Buffer.from(await resp.arrayBuffer());
-    const sent = await sock.sendMessage(jid, {
-      image: buffer,
-      caption: caption || undefined,
-    });
+    const contentType = (resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const urlPath = new URL(mediaUrl).pathname || '';
+    let messageContent;
+    if (contentType.startsWith('audio/') || /\.(webm|ogg|mp3|m4a|wav|aac|opus)$/i.test(urlPath)) {
+      messageContent = {
+        audio: buffer,
+        mimetype: contentType || 'audio/webm',
+        ptt: true,
+      };
+      if (caption) messageContent.caption = caption;
+    } else if (contentType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(urlPath)) {
+      messageContent = { image: buffer, caption: caption || undefined };
+    } else if (contentType.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(urlPath)) {
+      messageContent = { video: buffer, caption: caption || undefined };
+    } else {
+      messageContent = { document: buffer, caption: caption || undefined };
+    }
+    const sent = await sock.sendMessage(jid, messageContent);
     res.json({ id: sent?.key?.id, success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -1524,22 +1524,24 @@ class TwilioService implements WhatsAppGateway
 
     /**
      * Send WhatsApp message with media attachment (public for gateway use).
+     *
+     * @param  string|null  $caption  Optional text (e.g. "[Mensaje de voz]") to send with the media
      */
-    public function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type = 'media')
+    public function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type = 'media', $caption = null)
     {
         $sender = $this->getSender();
         if ($sender !== $this)
         {
-            return $sender->sendMedia($phoneNumber, $mediaPath, null);
+            return $sender->sendMedia($phoneNumber, $mediaPath, $caption);
         }
 
-        return $this->doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type);
+        return $this->doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type, $caption);
     }
 
     /**
      * Send WhatsApp message with media attachment using Twilio API
      */
-    private function doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
+    private function doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type, $caption = null)
     {
         try
         {
@@ -1572,26 +1574,29 @@ class TwilioService implements WhatsAppGateway
             // Get the full public URL for the media
             $publicUrl = url($mediaPath);
 
-            // For local development, we'll use a placeholder or skip media
+            // Body text: use caption when provided (e.g. voice message); for QR types use the legacy text
+            $isQrType = in_array($type, ['generic_qr', 'personalized_qr'], true);
+            $bodyText = $caption ?? ($isQrType ? '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.' : '🎤 Mensaje de voz');
+
+            // For local development, Twilio cannot fetch .test URLs; send text only (caption or fallback)
             if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false)
             {
-                Log::info("Local environment detected, skipping media send for: {$publicUrl}");
-                // In local environment, we'll just send the text message
+                Log::info("Local environment detected, sending text instead of media: {$publicUrl}");
                 $message = $this->client->messages->create(
                     $whatsappTo,
                     [
                         'from' => $whatsappFrom,
-                        'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.\n\n🔗 Enlace directo: {$publicUrl}",
+                        'body' => $bodyText,
                     ],
                 );
             } else
             {
-                // Production environment - send with media
+                // Production: send with media and optional caption
                 $message = $this->client->messages->create(
                     $whatsappTo,
                     [
                         'from' => $whatsappFrom,
-                        'body' => '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.',
+                        'body' => $bodyText,
                         'mediaUrl' => [$publicUrl],
                     ],
                 );

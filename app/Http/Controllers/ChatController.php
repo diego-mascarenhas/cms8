@@ -564,13 +564,6 @@ class ChatController extends Controller
             'audio.max' => __('El audio no puede superar 25 MB.'),
         ]);
 
-        // #region agent log
-        $debugLogPath = base_path('.cursor/debug-cd916b.log');
-        if (is_writable(dirname($debugLogPath)) || is_writable($debugLogPath)) {
-            @file_put_contents($debugLogPath, json_encode(['sessionId' => 'cd916b', 'location' => 'ChatController::assistant', 'message' => 'validation passed', 'data' => ['hasAudio' => $hasAudio], 'timestamp' => (int) (microtime(true) * 1000), 'hypothesisId' => 'A'])."\n", FILE_APPEND | LOCK_EX);
-        }
-        // #endregion
-
         $message = trim((string) $request->input('message', ''));
         if ($hasAudio)
         {
@@ -1008,33 +1001,13 @@ class ChatController extends Controller
      */
     public function whatsappQrImage()
     {
-        // #region agent log
-        $logPath = base_path('.cursor/debug-aac33a.log');
-        $log = function (array $data) use ($logPath): void
-        {
-            if (is_writable($logPath) || is_writable(dirname($logPath)))
-            {
-                $line = json_encode(array_merge([
-                    'sessionId' => 'aac33a',
-                    'location' => 'ChatController::whatsappQrImage',
-                    'timestamp' => (int) (microtime(true) * 1000),
-                ], $data))."\n";
-                @file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);
-            }
-        };
-        // #endregion
-
         if (config('whatsapp.driver') !== 'local')
         {
-            $log(['message' => 'Driver not local', 'data' => ['driver' => config('whatsapp.driver')]]);
-
             return $this->transparentPngResponse();
         }
         $baseUrl = rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
-            $log(['message' => 'Empty base_url']);
-
             return $this->transparentPngResponse();
         }
         $url = $baseUrl.'/qr.png';
@@ -1046,19 +1019,13 @@ class ChatController extends Controller
 
         if (! $response->successful())
         {
-            $log(['message' => 'Node response not successful', 'data' => ['url' => $url, 'status' => $status, 'bodyLen' => $bodyLen, 'bodyPreview' => substr($body, 0, 200)]]);
-
             return $this->transparentPngResponse();
         }
 
         if ($bodyLen < 10)
         {
-            $log(['message' => 'Body too short', 'data' => ['bodyLen' => $bodyLen]]);
-
             return $this->transparentPngResponse();
         }
-
-        $log(['message' => 'Serving QR PNG', 'data' => ['status' => $status, 'bodyLen' => $bodyLen, 'isPng' => $isPng]]);
 
         return response($body)
             ->header('Content-Type', 'image/png')
