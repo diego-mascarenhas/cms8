@@ -67,7 +67,8 @@ class ChatSimulateCommand extends Command
             }
 
             $history = $contextService->getHistoryForPrompt($user->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
-            $reply = $replyService->getReply($message, $history, $teamId);
+            $withTools = $teamId !== null;
+            $reply = $replyService->getReply($message, $history, $teamId, $withTools);
 
             if (! $reply['success'])
             {

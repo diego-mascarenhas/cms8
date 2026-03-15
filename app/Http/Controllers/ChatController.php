@@ -614,7 +614,8 @@ class ChatController extends Controller
 
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
-        $withTools = ! $request->filled('recipient') && ! $request->filled('contact_id');
+        // Enable tools whenever the user has a team so the assistant can access contacts, tasks, etc. (even from a contact chat)
+        $withTools = $teamId !== null;
         $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools);
 
         if (! $replyResponse['success'])
@@ -729,7 +730,8 @@ class ChatController extends Controller
                 // Get chat history for context
                 $history = $this->getChatHistory($request->to, 10);
                 $teamId = auth()->user()?->currentTeam?->id;
-                $replyResponse = $replyService->getReply($message, $history, $teamId);
+                $withTools = $teamId !== null;
+                $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools);
 
                 // If assistant responded successfully, use its response
                 if ($replyResponse['success'])
