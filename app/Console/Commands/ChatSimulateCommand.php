@@ -80,7 +80,16 @@ class ChatSimulateCommand extends Command
             $this->line('<fg=green>Asistente:</> '.$text);
             $this->newLine();
 
-            $contextService->persistMessages($user->id, $message, $text, $reply['routed_to'] ?? null);
+            $contextService->persistMessages(
+                $user->id,
+                $message,
+                $text,
+                $reply['routed_to'] ?? null,
+                $reply['usage'] ?? [],
+                $reply['meta'] ?? [],
+                $reply['tool_calls'] ?? [],
+                $reply['tool_results'] ?? [],
+            );
         }
 
         return self::SUCCESS;

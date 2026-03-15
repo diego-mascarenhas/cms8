@@ -631,6 +631,10 @@ class ChatController extends Controller
             $message,
             $assistantText,
             $replyResponse['routed_to'] ?? null,
+            $replyResponse['usage'] ?? [],
+            $replyResponse['meta'] ?? [],
+            $replyResponse['tool_calls'] ?? [],
+            $replyResponse['tool_results'] ?? [],
         );
 
         $payload = [

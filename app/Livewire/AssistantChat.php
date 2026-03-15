@@ -133,7 +133,14 @@ class AssistantChat extends Component
 
         if (auth()->check())
         {
-            $this->persistMessages($userContent, $result['response'], $result['routed_to']);
+            $this->persistMessages(
+                $userContent,
+                $result['response'],
+                $result['routed_to'],
+                $result['usage'] ?? [],
+                $result['tool_calls'] ?? [],
+                $result['tool_results'] ?? [],
+            );
         }
 
         $this->dispatch('scroll-to-bottom');
@@ -145,8 +152,19 @@ class AssistantChat extends Component
         $this->conversationId = null;
     }
 
-    protected function persistMessages(string $userContent, string $assistantContent, ?string $routedTo): void
-    {
+    /**
+     * @param  array<string, int>  $usage
+     * @param  array<int, mixed>  $toolCalls
+     * @param  array<int, mixed>  $toolResults
+     */
+    protected function persistMessages(
+        string $userContent,
+        string $assistantContent,
+        ?string $routedTo,
+        array $usage = [],
+        array $toolCalls = [],
+        array $toolResults = [],
+    ): void {
         $userId = auth()->id();
         if (! $userId)
         {
@@ -178,11 +196,11 @@ class AssistantChat extends Component
             'agent' => self::AGENT_NAME,
             'role' => 'user',
             'content' => $userContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => '[]',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => [],
+            'meta' => [],
         ]);
 
         AgentConversationMessage::create([
@@ -192,11 +210,11 @@ class AssistantChat extends Component
             'agent' => self::AGENT_NAME,
             'role' => 'assistant',
             'content' => $assistantContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => ['routed_to' => $routedTo],
+            'attachments' => [],
+            'tool_calls' => $toolCalls,
+            'tool_results' => $toolResults,
+            'usage' => $usage,
+            'meta' => array_filter(['routed_to' => $routedTo]),
         ]);
     }
 

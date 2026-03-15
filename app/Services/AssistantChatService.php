@@ -44,6 +44,9 @@ class AssistantChatService
                 return [
                     'response' => __('No se pudo transcribir el audio. Comprueba que OPENAI_API_KEY esté configurada.'),
                     'routed_to' => null,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
                 ];
             }
         }
@@ -57,6 +60,9 @@ class AssistantChatService
                 return [
                     'response' => __('No se encontró el prompt con la clave: ').$promptKey,
                     'routed_to' => null,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
                 ];
             }
         } else
@@ -68,6 +74,9 @@ class AssistantChatService
                 return [
                     'response' => __('No hay prompt general configurado. Configura el enrutador en Prompts.'),
                     'routed_to' => null,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
                 ];
             }
 
@@ -77,6 +86,9 @@ class AssistantChatService
                 return [
                     'response' => __('No se pudo determinar el flujo. Intenta ser más específico.'),
                     'routed_to' => null,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
                 ];
             }
         }
@@ -101,6 +113,9 @@ class AssistantChatService
             return [
                 'response' => __('Error al comunicar con la IA: ').$e->getMessage(),
                 'routed_to' => $prompt->section_label,
+                'usage' => [],
+                'tool_calls' => [],
+                'tool_results' => [],
             ];
         }
 
@@ -127,9 +142,27 @@ class AssistantChatService
             }
         }
 
+        $usageArray = [];
+        if (isset($response->usage))
+        {
+            $promptTokens = $response->usage->promptTokens ?? 0;
+            $completionTokens = $response->usage->completionTokens ?? 0;
+            $usageArray = [
+                'prompt_tokens' => $promptTokens,
+                'completion_tokens' => $completionTokens,
+                'total_tokens' => $promptTokens + $completionTokens,
+            ];
+        }
+
+        $toolCalls = isset($response->toolCalls) && is_array($response->toolCalls) ? $response->toolCalls : [];
+        $toolResults = isset($response->toolResults) && is_array($response->toolResults) ? $response->toolResults : [];
+
         $result = [
             'response' => $text,
             'routed_to' => $prompt->section_label,
+            'usage' => $usageArray,
+            'tool_calls' => $toolCalls,
+            'tool_results' => $toolResults,
         ];
 
         if ($respondWithVoice && $text !== '' && config('ai.providers.eleven.key'))

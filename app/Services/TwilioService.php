@@ -264,8 +264,10 @@ class TwilioService implements WhatsAppGateway
     /**
      * Persist a WhatsApp user message and assistant reply into agent_conversation_messages
      * so the assistant has context for follow-up messages (web or auto-respond).
+     *
+     * @param  array<string, mixed>  $replyResponse  Optional full reply from getReply (usage, tool_calls, tool_results).
      */
-    private function persistWhatsAppExchangeToAgentContext(string $phone, string $userMessage, string $assistantMessage): void
+    private function persistWhatsAppExchangeToAgentContext(string $phone, string $userMessage, string $assistantMessage, array $replyResponse = []): void
     {
         try
         {
@@ -274,7 +276,16 @@ class TwilioService implements WhatsAppGateway
             $contextUser = $userResolver->resolveUserForConversation($phone, null);
             if ($contextUser !== null)
             {
-                $contextService->persistMessages($contextUser->id, $userMessage, $assistantMessage, null);
+                $contextService->persistMessages(
+                    $contextUser->id,
+                    $userMessage,
+                    $assistantMessage,
+                    $replyResponse['routed_to'] ?? null,
+                    $replyResponse['usage'] ?? [],
+                    $replyResponse['meta'] ?? [],
+                    $replyResponse['tool_calls'] ?? [],
+                    $replyResponse['tool_results'] ?? [],
+                );
             }
         } catch (\Throwable $e)
         {
@@ -617,7 +628,7 @@ class TwilioService implements WhatsAppGateway
                         $aiMessage = $replyResponse['text'] ?? '';
 
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
-                        $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage);
+                        $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
 
                         Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                     } else

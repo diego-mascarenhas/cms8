@@ -63,10 +63,36 @@ class ChatAssistantReplyService
             $response = $agent->prompt($message, [], Lab::Anthropic);
             $text = $response->text ?? '';
 
+            $usage = [];
+            if (isset($response->usage))
+            {
+                $promptTokens = $response->usage->promptTokens ?? 0;
+                $completionTokens = $response->usage->completionTokens ?? 0;
+                $usage = [
+                    'prompt_tokens' => $promptTokens,
+                    'completion_tokens' => $completionTokens,
+                    'total_tokens' => $promptTokens + $completionTokens,
+                ];
+            }
+
+            $toolCalls = [];
+            $toolResults = [];
+            if (isset($response->toolCalls) && is_array($response->toolCalls))
+            {
+                $toolCalls = $response->toolCalls;
+            }
+            if (isset($response->toolResults) && is_array($response->toolResults))
+            {
+                $toolResults = $response->toolResults;
+            }
+
             return [
                 'success' => true,
                 'text' => $text !== '' ? $text : 'No response text',
                 'routed_to' => null,
+                'usage' => $usage,
+                'tool_calls' => $toolCalls,
+                'tool_results' => $toolResults,
             ];
         } catch (\Throwable $e)
         {
@@ -78,6 +104,9 @@ class ChatAssistantReplyService
             return [
                 'success' => false,
                 'message' => 'Error communicating with assistant: '.$e->getMessage(),
+                'usage' => [],
+                'tool_calls' => [],
+                'tool_results' => [],
             ];
         }
     }
@@ -183,6 +212,9 @@ EOT;
             'success' => true,
             'text' => '[Modo prueba] Recibí: «'.mb_substr($message, 0, 100).(mb_strlen($message) > 100 ? '…' : '').'». En producción aquí respondería el asistente.',
             'routed_to' => null,
+            'usage' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
         ];
     }
 }

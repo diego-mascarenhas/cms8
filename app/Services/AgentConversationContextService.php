@@ -98,9 +98,20 @@ class AgentConversationContextService
 
     /**
      * Persist only the agent's reply (when toggle is OFF - human reply). Keeps conversation context for the AI.
+     *
+     * @param  array<string, int>  $usage  e.g. ['prompt_tokens' => 1, 'completion_tokens' => 2, 'total_tokens' => 3]
+     * @param  array<string, mixed>  $meta
+     * @param  array<int, mixed>  $toolCalls
+     * @param  array<int, mixed>  $toolResults
      */
-    public function persistAgentReply(int $userId, string $assistantContent): void
-    {
+    public function persistAgentReply(
+        int $userId,
+        string $assistantContent,
+        array $usage = [],
+        array $meta = [],
+        array $toolCalls = [],
+        array $toolResults = [],
+    ): void {
         $conversation = $this->getOrCreateConversation($userId, 'Chat');
 
         $conversation->touch();
@@ -114,19 +125,32 @@ class AgentConversationContextService
             'agent' => self::AGENT_NAME,
             'role' => 'assistant',
             'content' => $assistantContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => [],
+            'attachments' => [],
+            'tool_calls' => $toolCalls,
+            'tool_results' => $toolResults,
+            'usage' => $usage,
+            'meta' => $meta,
         ]);
     }
 
     /**
      * Append user and assistant messages to the conversation and update conversation timestamp.
+     *
+     * @param  array<string, int>  $assistantUsage  e.g. ['prompt_tokens' => 1, 'completion_tokens' => 2, 'total_tokens' => 3]
+     * @param  array<string, mixed>  $assistantMeta  e.g. ['routed_to' => '...']
+     * @param  array<int, mixed>  $assistantToolCalls
+     * @param  array<int, mixed>  $assistantToolResults
      */
-    public function persistMessages(int $userId, string $userContent, string $assistantContent, ?string $routedTo = null): void
-    {
+    public function persistMessages(
+        int $userId,
+        string $userContent,
+        string $assistantContent,
+        ?string $routedTo = null,
+        array $assistantUsage = [],
+        array $assistantMeta = [],
+        array $assistantToolCalls = [],
+        array $assistantToolResults = [],
+    ): void {
         $conversation = $this->getOrCreateConversation($userId, $userContent);
 
         $conversation->touch();
@@ -140,12 +164,14 @@ class AgentConversationContextService
             'agent' => self::AGENT_NAME,
             'role' => 'user',
             'content' => $userContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => '[]',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => [],
+            'meta' => [],
         ]);
+
+        $meta = $routedTo !== null ? array_merge($assistantMeta, ['routed_to' => $routedTo]) : $assistantMeta;
 
         AgentConversationMessage::create([
             'id' => (string) Str::uuid(),
@@ -154,11 +180,11 @@ class AgentConversationContextService
             'agent' => self::AGENT_NAME,
             'role' => 'assistant',
             'content' => $assistantContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => $routedTo ? ['routed_to' => $routedTo] : [],
+            'attachments' => [],
+            'tool_calls' => $assistantToolCalls,
+            'tool_results' => $assistantToolResults,
+            'usage' => $assistantUsage,
+            'meta' => $meta,
         ]);
     }
 }
