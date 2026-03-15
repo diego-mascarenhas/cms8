@@ -23,6 +23,14 @@
                         <div class="col-12">
                             <p class="lead">{{ __('Welcome to the Humano application help center. Here you will find comprehensive documentation to help you make the most of our platform.') }}</p>
 
+                            <div class="alert alert-primary mb-4" role="alert">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="ti ti-book me-2"></i>
+                                    {{ __('User Manual') }}
+                                </h6>
+                                <p class="mb-0">{{ __('For a non-technical guide to what you can do in the platform (contacts, projects, tasks, billing, etc.), see the') }} <a href="{{ route('manual.index') }}" class="alert-link">{{ __('User Manual') }}</a>.</p>
+                            </div>
+
                             <div class="row mt-4">
                                 <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-primary">

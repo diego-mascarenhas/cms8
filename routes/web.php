@@ -39,6 +39,7 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\ManualController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\MultimediaController;
@@ -1003,6 +1004,26 @@ Route::middleware(['web', 'auth'])->group(function ()
     Route::get('/accounting/customer/{id}', [App\Http\Controllers\AccountingController::class, 'customerInvoices'])->name('accounting.customer');
     Route::get('/accounting/download-quarter', [App\Http\Controllers\AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+});
+
+// User Manual Routes (Public - No Authentication Required)
+Route::prefix('manual')->name('manual.')->group(function ()
+{
+    Route::get('/', [ManualController::class, 'index'])->name('index');
+    Route::get('/getting-started', [ManualController::class, 'gettingStarted'])->name('getting-started');
+    Route::get('/dashboard', [ManualController::class, 'dashboard'])->name('dashboard');
+    Route::get('/contacts', [ManualController::class, 'contacts'])->name('contacts');
+    Route::get('/clients', [ManualController::class, 'clients'])->name('clients');
+    Route::get('/collaborators', [ManualController::class, 'collaborators'])->name('collaborators');
+    Route::get('/services', [ManualController::class, 'services'])->name('services');
+    Route::get('/projects', [ManualController::class, 'projects'])->name('projects');
+    Route::get('/tasks', [ManualController::class, 'tasks'])->name('tasks');
+    Route::get('/chat', [ManualController::class, 'chat'])->name('chat');
+    Route::get('/products-and-orders', [ManualController::class, 'productsAndOrders'])->name('products-and-orders');
+    Route::get('/billing', [ManualController::class, 'billing'])->name('billing');
+    Route::get('/campaigns', [ManualController::class, 'campaigns'])->name('campaigns');
+    Route::get('/team', [ManualController::class, 'team'])->name('team');
+    Route::get('/more-features', [ManualController::class, 'moreFeatures'])->name('more-features');
 });
 
 // Help Documentation Routes (Public - No Authentication Required)
