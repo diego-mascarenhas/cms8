@@ -35,13 +35,4 @@ class TwilioWhatsAppGateway implements WhatsAppGateway
     {
         return null;
     }
-
-    /**
-     * No-op for Twilio driver. Present for interface compatibility when WhatsAppGateway
-     * still declares logout() (e.g. older deployments).
-     */
-    public function logout(): bool
-    {
-        return $this->twilioService->logout();
-    }
 }

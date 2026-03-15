@@ -365,15 +365,6 @@ class TwilioService implements WhatsAppGateway
         return null;
     }
 
-    /**
-     * No-op for Twilio: there is no session to log out. Present for interface compatibility
-     * when WhatsAppGateway still declares logout() (e.g. older deployments).
-     */
-    public function logout(): bool
-    {
-        return true;
-    }
-
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
