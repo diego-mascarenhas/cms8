@@ -383,11 +383,14 @@
                     var lastMsg = escapeHtml(limit(c.last_message, 30));
                     var time = escapeHtml(c.last_message_time || '');
                     var fromSuffix = String(c.from).slice(-2);
+                    var unread = parseInt(c.unread_count, 10) || 0;
+                    var badge = unread > 0 ? '<span class="badge bg-success rounded-pill text-white" style="font-size: 0.7rem; min-width: 1.25rem;">' + (unread > 99 ? '99+' : unread) + '</span>' : '';
                     var avatar = c.user_photo
                         ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
                         : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
                     var href = chatUrl + (chatUrl.indexOf('?') >= 0 ? '&' : '?') + 'phone=' + encodeURIComponent(c.from);
-                    return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar avatar-online">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div><small class="text-muted mb-auto">' + time + '</small></a></li>';
+                    var rightCol = '<div class="d-flex flex-column align-items-end flex-shrink-0 gap-1"><small class="text-muted">' + time + '</small>' + (badge ? badge : '') + '</div>';
+                    return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
                 }).join('');
                 listEl.innerHTML = html;
             }
@@ -739,7 +742,7 @@
                         @auth
                         <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
                             <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="d-flex align-items-center">
-                                <div class="flex-shrink-0 avatar avatar-online">
+                                <div class="flex-shrink-0 avatar">
                                     <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
@@ -752,7 +755,7 @@
                             @if($client->id !== auth()->id())
                             <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
                                 <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
-                                    <div class="flex-shrink-0 avatar avatar-online">
+                                    <div class="flex-shrink-0 avatar">
                                         <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
                                     </div>
                                     <div class="chat-contact-info flex-grow-1 ms-2">
@@ -776,7 +779,7 @@
                                     data-phone="{{ $contact->from }}">
                                     <a href="{{ route('chat.index', ['phone' => $contact->from]) }}"
                                         class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 avatar avatar-online">
+                                        <div class="flex-shrink-0 avatar">
                                             @if (isset($contact->user_photo))
                                                 <img src="{{ Storage::url($contact->user_photo) }}"
                                                     alt="{{ $contact->user_name ?? $contact->from }}"
@@ -787,7 +790,7 @@
                                                 </span>
                                             @endif
                                         </div>
-                                        <div class="chat-contact-info flex-grow-1 ms-2">
+                                        <div class="chat-contact-info flex-grow-1 ms-2 min-w-0">
                                             <h6 class="chat-contact-name text-truncate m-0">
                                                 {{ $contact->user_name ?? $contact->from }}
                                             </h6>
@@ -795,7 +798,12 @@
                                                 {{ Str::limit($contact->last_message, 30) }}
                                             </p>
                                         </div>
-                                        <small class="text-muted mb-auto">{{ $contact->last_message_time }}</small>
+                                        <div class="d-flex flex-column align-items-end flex-shrink-0 gap-1">
+                                            <small class="text-muted">{{ $contact->last_message_time }}</small>
+                                            @if (($contact->unread_count ?? 0) > 0)
+                                                <span class="badge bg-success rounded-pill text-white" style="font-size: 0.7rem; min-width: 1.25rem;">{{ $contact->unread_count > 99 ? '99+' : $contact->unread_count }}</span>
+                                            @endif
+                                        </div>
                                     </a>
                                 </li>
                             @endforeach

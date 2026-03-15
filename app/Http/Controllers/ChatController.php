@@ -46,7 +46,7 @@ class ChatController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, user_name?: string, user_photo?: string, user_id?: int}>
+     * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, unread_count: int, user_name?: string, user_photo?: string, user_id?: int}>
      */
     private function getWhatsAppContacts(): \Illuminate\Support\Collection
     {
@@ -80,11 +80,22 @@ class ChatController extends Controller
             {
                 continue;
             }
+            $unreadCount = Conversation::where('channel', 'whatsapp')
+                ->where('direction', 'inbound')
+                ->where('status', 'received')
+                ->where(function ($q) use ($normalizedPhone)
+                {
+                    $q->where('from', $normalizedPhone)
+                        ->orWhere('from', 'like', $normalizedPhone.':%');
+                })
+                ->count();
+
             $contact = (object) [
                 'from' => $normalizedPhone,
                 'last_message' => $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
+                'unread_count' => $unreadCount,
             ];
             $userData = $this->getUserByPhone($normalizedPhone);
             if ($userData)
@@ -410,6 +421,7 @@ class ChatController extends Controller
                 'from' => $c->from,
                 'last_message' => $c->last_message ?? '',
                 'last_message_time' => $c->last_message_time ?? '',
+                'unread_count' => (int) ($c->unread_count ?? 0),
             ];
             if (! empty($c->user_name))
             {
