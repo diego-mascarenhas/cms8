@@ -9,8 +9,8 @@ use Illuminate\Support\Str;
 class UserResolverService
 {
     /**
-     * Ensure the WhatsApp writer (phone) is linked to a Contact in the given team (contact.user_id set).
-     * If a contact exists for this team+phone, updates user_id if missing. If no contact, creates a minimal one.
+     * Ensure the WhatsApp writer (phone) is linked to a User (by phone) and, if that user is admin, to the team they are writing to.
+     * Also links to a Contact in the given team when applicable (contact.user_id set).
      */
     public function linkPhoneToContactInTeam(int $teamId, string $phone): void
     {
@@ -28,6 +28,11 @@ class UserResolverService
         if ($user === null)
         {
             return;
+        }
+
+        if ($user->hasRole('admin') && ! $user->teams()->where('team_id', $teamId)->exists())
+        {
+            $user->teams()->attach($teamId, ['role' => 'admin']);
         }
 
         $contact = Contact::withoutGlobalScopes()

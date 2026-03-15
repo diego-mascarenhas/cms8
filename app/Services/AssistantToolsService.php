@@ -14,15 +14,28 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Defines and executes tools available to the chat assistant (create contact, task, send WhatsApp, etc.).
- * All operations are scoped to the authenticated user's current team.
+ * All operations are scoped to the authenticated user's current team (or to the request context when e.g. writing via WhatsApp).
  */
 class AssistantToolsService
 {
     public const MAX_TOOL_RESULT_LENGTH = 4000;
 
+    protected ?int $contextUserId = null;
+
+    protected ?int $contextTeamId = null;
+
     public function __construct(
         protected ?WhatsAppGateway $whatsAppGateway = null,
     ) {}
+
+    /**
+     * Set user and team context for tool execution when not in an HTTP auth context (e.g. WhatsApp webhook).
+     */
+    public function setRequestContext(?int $userId, ?int $teamId): void
+    {
+        $this->contextUserId = $userId;
+        $this->contextTeamId = $teamId;
+    }
 
     /**
      * Tool definitions for Claude Messages API (name, description, input_schema).
@@ -118,21 +131,42 @@ class AssistantToolsService
                     'required' => [],
                 ],
             ],
+            [
+                'name' => 'get_my_profile',
+                'description' => 'Get the current user\'s profile: name, email, phone, current team, and their role in that team. Use when the user asks for their profile, "mis datos", "mi perfil", "quién soy", or similar.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
         ];
     }
 
     /**
      * Execute a tool by name and return a short text result for Claude.
+     * User and team are resolved from auth() or from setRequestContext() (e.g. WhatsApp).
      */
     public function execute(string $name, array $input): string
     {
         $user = auth()->user();
-        if (! $user || ! $user->currentTeam)
+        $teamId = $user?->currentTeam?->id;
+
+        if ((! $user || ! $teamId) && $this->contextUserId !== null && $this->contextTeamId !== null)
+        {
+            $user = User::withoutGlobalScopes()->find($this->contextUserId);
+            $team = $user ? \App\Models\Team::withoutGlobalScopes()->find($this->contextTeamId) : null;
+            if ($team)
+            {
+                $user?->setRelation('currentTeam', $team);
+            }
+            $teamId = $team?->id ?? $this->contextTeamId;
+        }
+
+        if (! $user || ! $teamId)
         {
             return 'Error: Not authenticated or no team selected.';
         }
-
-        $teamId = $user->currentTeam->id;
 
         try
         {
@@ -142,9 +176,10 @@ class AssistantToolsService
                 'create_contact' => $this->createContact($teamId, $user->id, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
-                'send_whatsapp_message' => $this->sendWhatsAppMessage($input),
+                'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
                 'list_team_users' => $this->listTeamUsers($teamId),
+                'get_my_profile' => $this->getMyProfile($user, $teamId),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -307,7 +342,7 @@ class AssistantToolsService
         return "Unknown report_type: {$reportType}. Use summary, contacts, or tasks.";
     }
 
-    private function sendWhatsAppMessage(array $input): string
+    private function sendWhatsAppMessage(User $user, array $input): string
     {
         $contactId = isset($input['contact_id']) ? (int) $input['contact_id'] : null;
         $phone = isset($input['phone']) ? preg_replace('/[^0-9]/', '', (string) $input['phone']) : null;
@@ -343,7 +378,7 @@ class AssistantToolsService
             return 'WhatsApp is not configured for this team.';
         }
 
-        $gateway->sendMessage($phone, $message, null, auth()->id());
+        $gateway->sendMessage($phone, $message, null, $user->id);
 
         return $this->truncate("WhatsApp message sent to {$phone}.");
     }
@@ -411,6 +446,28 @@ class AssistantToolsService
         $lines = $users->map(fn ($u) => "  - {$u->name} ({$u->email}) id: {$u->id}")->implode("\n");
 
         return $this->truncate("Team members:\n".($lines ?: '  (none)'));
+    }
+
+    private function getMyProfile(User $user, int $teamId): string
+    {
+        $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
+        $roleInTeam = null;
+        if ($team)
+        {
+            $membership = $user->teams()->where('team_id', $team->id)->first();
+            $roleInTeam = $membership?->pivot?->role ?? null;
+        }
+
+        $parts = [
+            'Name: '.$user->name,
+            'Email: '.($user->email ?? '—'),
+            'Phone: '.($user->phone !== null ? (string) $user->phone : '—'),
+            'Current team: '.($team ? $team->name : '—'),
+            'Role in team: '.($roleInTeam ?? '—'),
+            'Global roles: '.(implode(', ', $user->roles->pluck('name')->all()) ?: '—'),
+        ];
+
+        return $this->truncate("Profile:\n".implode("\n", $parts));
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

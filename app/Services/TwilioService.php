@@ -656,7 +656,8 @@ class TwilioService implements WhatsAppGateway
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
                     $teamId = $this->team?->id;
                     $withTools = $teamId !== null;
-                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools);
+                    $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id);
 
                     if ($replyResponse['success'] ?? false)
                     {

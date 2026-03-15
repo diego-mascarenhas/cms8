@@ -22,15 +22,21 @@ class ChatAssistantReplyService
     /**
      * Get assistant reply for the given message and history.
      * When stub mode is enabled (config or team), returns a canned response for testing.
+     * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null): array
     {
         if ($this->useStub($teamId))
         {
             return $this->getStubReply($message);
+        }
+
+        if ($withTools && $contextUserId !== null && $teamId !== null)
+        {
+            $this->assistantTools->setRequestContext($contextUserId, $teamId);
         }
 
         $instructions = $withTools
@@ -174,6 +180,8 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 
 When they ask to create or modify something, use:
 - create_contact, assign_contact_to_category, create_task, send_whatsapp_message
+
+When they ask for their profile, "mis datos", "mi perfil", "quién soy", or "qué rol tengo", use get_my_profile and reply with the returned data in a friendly way.
 
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 EOT;

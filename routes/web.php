@@ -184,6 +184,32 @@ Route::middleware(['auth'])->group(function ()
         return redirect()->route('dashboard');
     });
 
+    Route::get('/profile/data', function (\Illuminate\Http\Request $request)
+    {
+        $user = $request->user();
+        $team = $user->currentTeam;
+        $roleInTeam = null;
+        if ($team)
+        {
+            $membership = $user->teams()->where('team_id', $team->id)->first();
+            $roleInTeam = $membership?->pivot?->role ?? null;
+        }
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone !== null ? (string) $user->phone : null,
+            'profile_photo_url' => $user->profile_photo_url ?? null,
+            'current_team' => $team ? [
+                'id' => $team->id,
+                'name' => $team->name,
+            ] : null,
+            'role_in_team' => $roleInTeam,
+            'roles' => $user->roles->pluck('name')->values()->all(),
+        ]);
+    })->name('profile.data');
+
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
     Route::get('/team/{team}/settings/business-config', [TeamSettingController::class, 'businessConfig'])->name('team-settings.business-config');
