@@ -217,15 +217,11 @@ class ChatController extends Controller
             ? filter_var(auth()->user()->currentTeam->getSetting('notify_new_contact_email', '0'), FILTER_VALIDATE_BOOLEAN)
             : false;
 
-        if (auth()->check() && auth()->user()->currentTeam && $this->getChatAiToggleDefaultForUser(auth()->id()))
-        {
-            if (auth()->user()->currentTeam->getSetting('assistant_auto_respond', '0') !== '1')
-            {
-                auth()->user()->currentTeam->setSetting('assistant_auto_respond', '1');
-            }
-        }
+        $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
+            ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '0'), FILTER_VALIDATE_BOOLEAN)
+            : false;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'qrImageUrl', 'notifyNewContactEmail'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
     }
 
     /**
@@ -507,6 +503,23 @@ class ChatController extends Controller
         {
             auth()->user()->currentTeam->setSetting('assistant_auto_respond', $on ? '1' : '0');
         }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Save team setting: assistant auto-responds to inbound WhatsApp messages (sidebar "Respuestas del Asistente Humano").
+     */
+    public function updateAssistantAutoRespond(Request $request)
+    {
+        $request->validate(['on' => 'required|boolean']);
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        auth()->user()->currentTeam->setSetting('assistant_auto_respond', $request->boolean('on') ? '1' : '0');
 
         return response()->json(['success' => true]);
     }
