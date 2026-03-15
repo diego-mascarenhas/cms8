@@ -365,6 +365,15 @@ class TwilioService implements WhatsAppGateway
         return null;
     }
 
+    /**
+     * No-op for Twilio: there is no session to log out. Present for interface compatibility
+     * when WhatsAppGateway still declares logout() (e.g. older deployments).
+     */
+    public function logout(): bool
+    {
+        return true;
+    }
+
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
@@ -464,8 +473,9 @@ class TwilioService implements WhatsAppGateway
                 $channel = 'whatsapp';
             }
 
-            // Log the incoming message
-            Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
+            // Log the incoming message (body may be empty for voice notes; media holds the audio)
+            $bodyPreview = trim((string) $body) !== '' ? $body : ($numMedia > 0 ? '(audio/media)' : '(empty)');
+            Log::info("Incoming {$channel} message from {$cleanFrom}: {$bodyPreview}");
 
             // Process media if present
             $media = [];

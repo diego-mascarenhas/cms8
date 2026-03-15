@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Audio;
+use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Transcription;
 
 class ChatController extends Controller
 {
@@ -544,14 +547,51 @@ class ChatController extends Controller
     /**
      * Chat assistant: process message with context from agent_conversations.
      * When recipient (phone) or contact_id is provided, context is that user's conversation; otherwise the auth user's.
+     * Accepts optional audio file (multipart): transcribes via Laravel AI and uses as message.
+     * When respond_with_audio is true, returns TTS audio (base64) using ElevenLabs.
      */
     public function assistant(Request $request, UserResolverService $userResolver, AgentConversationContextService $contextService, ChatAssistantReplyService $replyService)
     {
+        $hasAudio = $request->hasFile('audio');
         $request->validate([
-            'message' => 'required|string|max:16000',
+            'message' => ['required_without:audio', 'nullable', 'string', 'max:16000'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
+            'respond_with_audio' => 'nullable|boolean',
             'recipient' => 'nullable|string|max:50',
             'contact_id' => 'nullable|integer|exists:contacts,id',
+        ], [
+            'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
+            'audio.max' => __('El audio no puede superar 25 MB.'),
         ]);
+
+        // #region agent log
+        $debugLogPath = base_path('.cursor/debug-cd916b.log');
+        if (is_writable(dirname($debugLogPath)) || is_writable($debugLogPath)) {
+            @file_put_contents($debugLogPath, json_encode(['sessionId' => 'cd916b', 'location' => 'ChatController::assistant', 'message' => 'validation passed', 'data' => ['hasAudio' => $hasAudio], 'timestamp' => (int) (microtime(true) * 1000), 'hypothesisId' => 'A'])."\n", FILE_APPEND | LOCK_EX);
+        }
+        // #endregion
+
+        $message = trim((string) $request->input('message', ''));
+        if ($hasAudio)
+        {
+            try
+            {
+                $transcript = (string) Transcription::fromUpload($request->file('audio'))->generate(provider: Lab::OpenAI);
+                $message = $message !== '' ? $message."\n\n[Audio]: ".trim($transcript) : trim($transcript);
+            } catch (\Throwable $e)
+            {
+                Log::warning('Chat assistant transcription failed', ['error' => $e->getMessage()]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => __('No se pudo transcribir el audio. Comprueba que OPENAI_API_KEY esté configurada.'),
+                ], 422);
+            }
+        }
+        if ($message === '')
+        {
+            return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+        }
 
         $contextUser = null;
 
@@ -582,7 +622,7 @@ class ChatController extends Controller
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
         $withTools = ! $request->filled('recipient') && ! $request->filled('contact_id');
-        $replyResponse = $replyService->getReply($request->input('message'), $history, $teamId, $withTools);
+        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools);
 
         if (! $replyResponse['success'])
         {
@@ -595,31 +635,62 @@ class ChatController extends Controller
         $assistantText = $replyResponse['text'] ?? '';
         $contextService->persistMessages(
             $contextUser->id,
-            $request->input('message'),
+            $message,
             $assistantText,
             $replyResponse['routed_to'] ?? null,
         );
 
-        return response()->json([
+        $payload = [
             'success' => true,
             'response' => $assistantText,
             'action_performed' => null,
-        ]);
+        ];
+        if ($hasAudio)
+        {
+            $payload['transcript'] = $message;
+        }
+        if ($request->boolean('respond_with_audio') && $assistantText !== '' && config('ai.providers.eleven.key'))
+        {
+            $maxCharsForTts = 1000;
+            $textForTts = strlen($assistantText) > $maxCharsForTts ? substr($assistantText, 0, $maxCharsForTts).'…' : $assistantText;
+            try
+            {
+                $audioResponse = Audio::of($textForTts)->generate(provider: Lab::ElevenLabs);
+                $payload['audio_base64'] = $audioResponse->audio;
+                $payload['audio_mime'] = $audioResponse->mimeType() ?? 'audio/mpeg';
+            } catch (\Throwable $e)
+            {
+                Log::warning('Chat assistant TTS failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return response()->json($payload);
     }
 
-    public function sendMessage(Request $request, TwilioService $twilioService, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
+    public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
     {
+        $hasAudio = $request->hasFile('audio');
         $request->validate([
             'to' => 'required|string',
-            'message' => 'required|string',
+            'message' => ['required_without:audio', 'nullable', 'string'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
             'use_ai' => 'boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
+        ], [
+            'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
+            'audio.max' => __('El audio no puede superar 25 MB.'),
         ]);
+
+        $message = trim((string) $request->input('message', ''));
+        if ($hasAudio && $message === '')
+        {
+            $message = __('[Mensaje de voz]');
+        }
 
         try
         {
             // Check if this number needs registration
-            $registrationResponse = $this->processRegistration($request->to, $request->message);
+            $registrationResponse = $this->processRegistration($request->to, $message);
             if ($registrationResponse)
             {
                 return response()->json([
@@ -629,13 +700,39 @@ class ChatController extends Controller
                 ]);
             }
 
+            // Send as media (audio) when audio file is provided
+            if ($hasAudio)
+            {
+                $file = $request->file('audio');
+                $path = $file->store('temp/chat', 'public');
+                $publicRelativePath = 'storage/'.$path;
+                try
+                {
+                    $sent = $gateway->sendMedia($request->to, $publicRelativePath, $message !== '' ? $message : null);
+                    if (! $sent)
+                    {
+                        return response()->json(['success' => false, 'error' => __('No se pudo enviar el audio.')], 500);
+                    }
+                } finally
+                {
+                    Storage::disk('public')->delete($path);
+                }
+                $contextUser = $userResolver->resolveUserForConversation($request->to, $request->input('contact_id'));
+                if ($contextUser !== null && $message !== '')
+                {
+                    $contextService->persistAgentReply($contextUser->id, $message);
+                }
+
+                return response()->json(['success' => true, 'message' => __('Mensaje de voz enviado.')]);
+            }
+
             // Check if AI assistance was requested
             if ($request->input('use_ai', false))
             {
                 // Get chat history for context
                 $history = $this->getChatHistory($request->to, 10);
                 $teamId = auth()->user()?->currentTeam?->id;
-                $replyResponse = $replyService->getReply($request->message, $history, $teamId);
+                $replyResponse = $replyService->getReply($message, $history, $teamId);
 
                 // If assistant responded successfully, use its response
                 if ($replyResponse['success'])
@@ -643,7 +740,7 @@ class ChatController extends Controller
                     $aiMessage = $replyResponse['text'];
 
                     // Send the AI message
-                    $result = $twilioService->sendWhatsApp($request->to, $aiMessage);
+                    $gateway->sendMessage($request->to, $aiMessage);
 
                     return response()->json([
                         'success' => true,
@@ -658,13 +755,13 @@ class ChatController extends Controller
             }
 
             // Send original message (agent's reply when toggle is OFF)
-            $result = $twilioService->sendWhatsApp($request->to, $request->message);
+            $gateway->sendMessage($request->to, $message);
 
             // Persist agent's reply into conversation context so the AI has it for future turns
             $contextUser = $userResolver->resolveUserForConversation($request->to, $request->input('contact_id'));
             if ($contextUser !== null)
             {
-                $contextService->persistAgentReply($contextUser->id, $request->message);
+                $contextService->persistAgentReply($contextUser->id, $message);
             }
 
             return response()->json(['success' => true, 'message' => 'Message sent']);

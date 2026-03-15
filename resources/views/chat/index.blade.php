@@ -23,6 +23,18 @@
         #app-chat-contacts .sidebar-header {
             min-height: 4.5rem;
         }
+        .recording-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--bs-danger);
+            animation: chat-recording-pulse 1s ease-in-out infinite;
+        }
+        @keyframes chat-recording-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
     </style>
 @endsection
 
@@ -42,7 +54,7 @@
             modalImg.src = imgUrl;
         });
 
-        // Claude AI preview handling
+        // Humano Assistant preview handling
         const formSendMessage = document.getElementById('chat-form');
         const messageInput = document.querySelector('.message-input');
         const useAiToggle = document.getElementById('use-ai-toggle');
@@ -118,6 +130,109 @@
 
         let currentUserMessage = '';
         let currentAiResponse = '';
+        let currentAiAudioBase64 = '';
+        let currentAiAudioMime = '';
+
+        (function() {
+            var micBtn = document.getElementById('chat-mic-btn');
+            var recordStatus = document.getElementById('chat-record-status');
+            var recordedReady = document.getElementById('chat-recorded-ready');
+            var recordedDuration = document.getElementById('chat-recorded-duration');
+            var cancelBtn = document.getElementById('chat-record-cancel');
+            var micIcon = document.getElementById('chat-mic-icon');
+            var pendingRecordedAudio = null;
+            var mediaRecorder = null;
+            var recordChunks = [];
+            var recordStream = null;
+            var recordStartTime = null;
+
+            window.getPendingRecordedAudio = function() {
+                var b = pendingRecordedAudio;
+                pendingRecordedAudio = null;
+                if (recordedReady) recordedReady.classList.add('d-none');
+                return b;
+            };
+            window.hasPendingRecordedAudio = function() { return pendingRecordedAudio !== null; };
+
+            function stopRecording() {
+                if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+                mediaRecorder.stop();
+                if (recordStream) {
+                    recordStream.getTracks().forEach(function(t) { t.stop(); });
+                    recordStream = null;
+                }
+                mediaRecorder = null;
+            }
+
+            function showRecordedReady(durationSec) {
+                if (recordStatus) recordStatus.classList.add('d-none');
+                if (recordedReady && recordedDuration) {
+                    recordedDuration.textContent = '{{ __("Audio") }} (' + Math.round(durationSec) + 's). {{ __("Enviar con el botón o añade texto.") }}';
+                    recordedReady.classList.remove('d-none');
+                }
+                if (micBtn) {
+                    micBtn.classList.remove('btn-danger');
+                    micBtn.classList.add('btn-label-secondary');
+                    if (micIcon) micIcon.className = 'ti ti-microphone ti-sm';
+                }
+            }
+
+            function resetRecordUI() {
+                pendingRecordedAudio = null;
+                if (recordStatus) recordStatus.classList.add('d-none');
+                if (recordedReady) recordedReady.classList.add('d-none');
+                if (micBtn) {
+                    micBtn.classList.remove('btn-danger');
+                    micBtn.classList.add('btn-label-secondary');
+                    if (micIcon) micIcon.className = 'ti ti-microphone ti-sm';
+                }
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    stopRecording();
+                    resetRecordUI();
+                });
+            }
+
+            if (micBtn) {
+                micBtn.addEventListener('click', function() {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        stopRecording();
+                        return;
+                    }
+                    if (pendingRecordedAudio) {
+                        resetRecordUI();
+                        return;
+                    }
+                    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+                        recordStream = stream;
+                        recordChunks = [];
+                        recordStartTime = Date.now();
+                        var mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) recordChunks.push(e.data); };
+                        mediaRecorder.onstop = function() {
+                            var duration = (Date.now() - recordStartTime) / 1000;
+                            var blob = new Blob(recordChunks, { type: mimeType });
+                            pendingRecordedAudio = blob;
+                            showRecordedReady(duration);
+                        };
+                        mediaRecorder.start();
+                        if (recordStatus) {
+                            recordStatus.classList.remove('d-none');
+                            recordStatus.classList.add('d-flex');
+                        }
+                        micBtn.classList.remove('btn-label-secondary');
+                        micBtn.classList.add('btn-danger');
+                        if (micIcon) micIcon.className = 'ti ti-square ti-sm';
+                    }).catch(function(err) {
+                        console.error('Microphone access failed', err);
+                        alert('{{ __("No se puede acceder al micrófono. Comprueba los permisos del navegador.") }}');
+                    });
+                });
+            }
+        })();
 
         // Submit: handle on document in capture phase so we always run before app-chat.js. Toggle OFF = only your message, ON = assistant
         document.addEventListener('submit', function(e) {
@@ -125,13 +240,13 @@
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
-            if (!msg) return;
             var form = e.target;
+            var hasAudio = window.hasPendingRecordedAudio && window.hasPendingRecordedAudio();
+            var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
+            if (!msg && !hasAudio) return;
             var sendBtn = form.querySelector('.send-msg-btn');
             if (sendBtn) sendBtn.disabled = true;
             function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
-            // When assistant view: always use AI. When chat with contact: use AI only if toggle is checked
             var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
             var useAiToggleEl = document.getElementById('use-ai-toggle');
             var aiOn = isAssistantViewForm ? true : (useAiToggleEl ? useAiToggleEl.checked : false);
@@ -142,62 +257,155 @@
             var contactId = (cidEl && cidEl.value && parseInt(cidEl.value, 10)) ? parseInt(cidEl.value, 10) : undefined;
 
             if (!aiOn) {
-                var body = { to: toVal, message: msg, use_ai: false };
-                if (contactId) body.contact_id = contactId;
-                fetch('{{ route("chat.send") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                    body: JSON.stringify(body)
-                }).then(function(r) { return r.json(); }).then(function() {
-                    messageInput.value = '';
-                    if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                }).catch(function() {}).finally(reenableSend);
+                if (hasAudio) {
+                    var audioBlob = window.getPendingRecordedAudio && window.getPendingRecordedAudio();
+                    if (!audioBlob) { reenableSend(); return; }
+                    var fd = new FormData();
+                    fd.append('_token', token);
+                    fd.append('to', toVal);
+                    fd.append('message', msg || '');
+                    fd.append('audio', audioBlob, 'recording.webm');
+                    if (contactId) fd.append('contact_id', contactId);
+                    fetch('{{ route("chat.send") }}', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': token } })
+                        .then(function(r) { return r.json(); })
+                        .then(function() {
+                            messageInput.value = '';
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        }).catch(function() {}).finally(reenableSend);
+                } else {
+                    var body = { to: toVal, message: msg, use_ai: false };
+                    if (contactId) body.contact_id = contactId;
+                    fetch('{{ route("chat.send") }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                        body: JSON.stringify(body)
+                    }).then(function(r) { return r.json(); }).then(function() {
+                        messageInput.value = '';
+                        if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                    }).catch(function() {}).finally(reenableSend);
+                }
                 return;
             }
 
             var isAssistantView = isAssistantViewForm;
-            currentUserMessage = msg;
+            currentUserMessage = msg || (hasAudio ? '{{ __("[Mensaje de voz]") }}' : '');
+            currentAiAudioBase64 = '';
+            currentAiAudioMime = '';
 
             document.getElementById('userMessagePreview').textContent = currentUserMessage;
             document.getElementById('aiPreviewLoader').classList.remove('d-none');
             document.getElementById('aiPreviewContent').classList.add('d-none');
             document.getElementById('aiResponsePreview').textContent = '';
+            var previewAudioEl = document.getElementById('aiResponsePreviewAudio');
+            if (previewAudioEl) previewAudioEl.innerHTML = '';
             previewModal.show();
 
-            fetch('{{ route("chat.assistant") }}', {
+            var assistantUrl = '{{ route("chat.assistant") }}';
+            var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
+
+            if (hasAudio) {
+                var audioBlob = window.getPendingRecordedAudio && window.getPendingRecordedAudio();
+                if (!audioBlob) { reenableSend(); return; }
+                var formData = new FormData();
+                formData.append('_token', token);
+                formData.append('message', msg);
+                formData.append('audio', audioBlob, 'recording.webm');
+                if (respondWithAudio) formData.append('respond_with_audio', '1');
+                if (toVal) formData.append('recipient', toVal);
+                if (contactId) formData.append('contact_id', contactId);
+                fetch(assistantUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } })
+                    .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
+                    .then(function(res) {
+                        var data;
+                        try {
+                            data = JSON.parse(res.body);
+                        } catch (e) {
+                            if (res.status === 419) throw new Error('{{ __("Sesión caducada. Recarga la página.") }}');
+                            if (res.status >= 400) throw new Error('{{ __("Error del servidor. Intenta de nuevo o recarga la página.") }}');
+                            throw new Error('{{ __("Respuesta no válida del servidor.") }}');
+                        }
+                        document.getElementById('aiPreviewLoader').classList.add('d-none');
+                        document.getElementById('aiPreviewContent').classList.remove('d-none');
+                        if (data.success) {
+                            if (data.transcript) {
+                                currentUserMessage = data.transcript;
+                                var up = document.getElementById('userMessagePreview');
+                                if (up) up.textContent = currentUserMessage;
+                            }
+                            currentAiResponse = data.response || '';
+                            document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                            if (data.audio_base64 && data.audio_mime) {
+                                currentAiAudioBase64 = data.audio_base64;
+                                currentAiAudioMime = data.audio_mime;
+                                var container = document.getElementById('aiResponsePreviewAudio');
+                                if (container) {
+                                    container.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
+                                }
+                            }
+                        } else {
+                            document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (data.message || 'Error') + '</div>';
+                        }
+                    })
+                    .catch(function(err) {
+                        document.getElementById('aiPreviewLoader').classList.add('d-none');
+                        document.getElementById('aiPreviewContent').classList.remove('d-none');
+                        document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (err.message || '{{ __("Error de conexión") }}') + '</div>';
+                    })
+                    .finally(function() { reenableSend(); });
+            } else {
+                fetch(assistantUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
                     body: JSON.stringify({
                         message: currentUserMessage,
                         recipient: toVal || undefined,
-                        contact_id: contactId
+                        contact_id: contactId,
+                        respond_with_audio: respondWithAudio
                     })
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
+                .then(function(res) {
+                    var data;
+                    try {
+                        data = JSON.parse(res.body);
+                    } catch (e) {
+                        if (res.status === 419) throw new Error('{{ __("Sesión caducada. Recarga la página.") }}');
+                        if (res.status >= 400) throw new Error('{{ __("Error del servidor. Intenta de nuevo o recarga la página.") }}');
+                        throw new Error('{{ __("Respuesta no válida del servidor.") }}');
+                    }
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
-
                     if (data.success) {
+                        if (data.transcript) {
+                            currentUserMessage = data.transcript;
+                            var upEl = document.getElementById('userMessagePreview');
+                            if (upEl) upEl.textContent = currentUserMessage;
+                        }
                         currentAiResponse = data.response || '';
                         document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                        if (data.audio_base64 && data.audio_mime) {
+                            currentAiAudioBase64 = data.audio_base64;
+                            currentAiAudioMime = data.audio_mime;
+                            var container = document.getElementById('aiResponsePreviewAudio');
+                            if (container) {
+                                container.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
+                            }
+                        }
                     } else {
                         currentAiResponse = '';
                         document.getElementById('aiResponsePreview').innerHTML =
                             '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
                     }
                 })
-                .catch(error => {
+                .catch(function(error) {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
                     currentAiResponse = '';
                     document.getElementById('aiResponsePreview').innerHTML =
-                        '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
+                        '<div class="alert alert-danger">' + (error.message || '{{ __("Error de conexión") }}') + '</div>';
                 })
                 .finally(function() { reenableSend(); });
+            }
 
             return false;
         }, true);
@@ -226,9 +434,14 @@
                 if (isAssistantView && list) {
                     var empty = list.querySelector('.assistant-empty-state');
                     if (empty) empty.remove();
+                    var userLi = document.createElement('li');
+                    userLi.className = 'chat-message chat-message-right';
+                    userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (currentUserMessage || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    list.appendChild(userLi);
                     var aiLi = document.createElement('li');
                     aiLi.className = 'chat-message';
-                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    var audioHtml = (currentAiAudioBase64 && currentAiAudioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + currentAiAudioMime + ';base64,' + currentAiAudioBase64 + '" type="' + currentAiAudioMime + '"></audio></div>' : '';
+                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
                     list.appendChild(aiLi);
                     var body = document.querySelector('.chat-history-body');
                     if (body) body.scrollTop = body.scrollHeight;
@@ -361,6 +574,9 @@
                         var ct = (item.content_type || '').toLowerCase();
                         if (ct.indexOf('image/') === 0) {
                             return '<a href="#" data-bs-toggle="modal" data-bs-target="#chatImageModal" data-img="' + escapeHtml(url) + '"><img src="' + escapeHtml(url) + '" alt="media" style="max-width:200px;max-height:200px;border-radius:8px;margin-bottom:4px;"></a>';
+                        }
+                        if (ct.indexOf('audio/') === 0) {
+                            return '<audio controls class="mt-1" style="max-width:240px;max-height:40px;"><source src="' + escapeHtml(url) + '" type="' + escapeHtml(ct) + '"></audio>';
                         }
                         return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(typeof item === 'object' ? (item.filename || 'Archivo') : 'Archivo') + '</a>';
                     }).join('') : '';
@@ -1125,13 +1341,20 @@
                                                     @if (!empty($media))
                                                         <div class="chat-media mt-2">
                                                             @foreach ($media as $item)
-                                                                @if(Str::startsWith($item['content_type'], 'image/'))
+                                                                @php
+                                                                    $contentType = $item['content_type'] ?? '';
+                                                                @endphp
+                                                                @if(Str::startsWith($contentType, 'image/'))
                                                                     <a href="#" data-bs-toggle="modal" data-bs-target="#chatImageModal" data-img="{{ $item['url'] }}">
                                                                         <img src="{{ $item['url'] }}" alt="media" style="max-width: 200px; max-height: 200px; border-radius: 8px; margin-bottom: 4px;">
                                                                     </a>
+                                                                @elseif(Str::startsWith($contentType, 'audio/'))
+                                                                    <audio controls class="mt-1" style="max-width: 240px; max-height: 40px;">
+                                                                        <source src="{{ $item['url'] }}" type="{{ $contentType }}">
+                                                                    </audio>
                                                                 @else
                                                                     <a href="{{ $item['url'] }}" target="_blank" rel="noopener">
-                                                                        {{ basename($item['url']) }}
+                                                                        {{ basename($item['url'] ?? '') }}
                                                                     </a>
                                                                 @endif
                                                             @endforeach
@@ -1204,7 +1427,28 @@
                                 <input type="hidden" id="contact-id" value="">
                             @endif
 
-                            <div class="d-flex align-items-center w-100">
+                            <div class="d-flex align-items-center w-100 flex-grow-1">
+                                @if($viewAssistant ?? false)
+                                <div class="d-flex align-items-center me-2">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox" class="form-check-input" id="respond-with-audio" title="{{ __('Respuesta por voz') }}">
+                                        <label class="form-check-label text-muted" for="respond-with-audio" title="{{ __('Respuesta por voz') }}">
+                                            <i class="ti ti-speakerphone ti-sm"></i>
+                                        </label>
+                                    </div>
+                                </div>
+                                @endif
+                                <button type="button" class="btn btn-icon flex-shrink-0 me-2" id="chat-mic-btn" title="{{ __('Grabar mensaje de voz') }}" aria-label="{{ __('Grabar mensaje de voz') }}">
+                                    <i class="ti ti-microphone ti-sm" id="chat-mic-icon"></i>
+                                </button>
+                                <div id="chat-record-status" class="d-none align-items-center me-2 small text-danger flex-shrink-0">
+                                    <span class="recording-dot me-1"></span>
+                                    <span id="chat-record-status-text">{{ __('Grabando...') }}</span>
+                                </div>
+                                <div id="chat-recorded-ready" class="d-none align-items-center me-2 small text-success flex-shrink-0">
+                                    <span id="chat-recorded-duration"></span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger" id="chat-record-cancel">{{ __('Cancelar') }}</button>
+                                </div>
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
 
@@ -1221,11 +1465,6 @@
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
-                                {{-- <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
-                                <label for="attach-doc" class="form-label mb-0">
-                                    <i class="ti ti-photo ti-sm cursor-pointer mx-3"></i>
-                                    <input type="file" id="attach-doc" hidden>
-                                </label> --}}
                                 <button type="submit" class="btn btn-primary d-flex send-msg-btn waves-effect waves-light">
                                     <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
                                     <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Send') }}</span>
@@ -1360,12 +1599,12 @@
     }
     </style>
 
-    <!-- Claude AI Preview Modal -->
+    <!-- Humano Assistant Preview Modal -->
     <div class="modal fade" id="claudePreviewModal" tabindex="-1" aria-labelledby="claudePreviewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="claudePreviewModalLabel">Claude's Response Preview</h5>
+                    <h5 class="modal-title" id="claudePreviewModalLabel">{{ __('Humano Assistant - Vista previa') }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1373,7 +1612,7 @@
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2">Claude is thinking...</p>
+                        <p class="mt-2">{{ __('Humano Assistant está pensando...') }}</p>
                     </div>
                     <div id="aiPreviewContent" class="d-none">
                         <div class="card">
@@ -1381,8 +1620,9 @@
                                 <h6 class="mb-2">Your message:</h6>
                                 <p id="userMessagePreview" class="mb-3"></p>
                                 <hr>
-                                <h6 class="mb-2">Claude's response:</h6>
+                                <h6 class="mb-2">{{ __('Respuesta de Humano Assistant:') }}</h6>
                                 <p id="aiResponsePreview"></p>
+                                <div id="aiResponsePreviewAudio" class="mt-2"></div>
                             </div>
                         </div>
                     </div>
