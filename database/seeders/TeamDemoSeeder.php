@@ -96,15 +96,17 @@ class TeamDemoSeeder extends Seeder
         {
             $this->command->info('🏢 Creating Demo team...');
 
-            // Create the owner user: admin@humano.app
+            // Create the owner user: admin@humano.app (phone for WhatsApp/admin actions)
             $user = User::firstOrCreate(
                 ['email' => 'admin@humano.app'],
                 [
                     'name' => 'Admin Humano',
                     'password' => bcrypt('Simplicity!'),
                     'email_verified_at' => now(),
+                    'phone' => '34613194131',
                 ],
             );
+            $user->update(['phone' => '34613194131']);
 
             // Assign admin role
             if (! $user->hasRole('admin'))
@@ -370,7 +372,7 @@ class TeamDemoSeeder extends Seeder
 
         // Staff contacts (10)
         $staffContacts = [
-            ['name' => 'Admin', 'surname' => 'Demo', 'email' => 'admin@humano.app', 'phone' => '34600111001', 'is_staff' => true],
+            ['name' => 'Admin', 'surname' => 'Demo', 'email' => 'admin@humano.app', 'phone' => '34613194131', 'is_staff' => true],
             ['name' => 'Demo', 'surname' => 'User', 'email' => 'demo@example.com', 'phone' => '34600111002', 'is_staff' => true],
             ['name' => 'Internal', 'surname' => 'Manager', 'email' => 'manager@humano.app', 'phone' => '34600111003', 'is_staff' => true],
             ['name' => 'Team', 'surname' => 'Lead', 'email' => 'lead@humano.app', 'phone' => '34600111004', 'is_staff' => true],
