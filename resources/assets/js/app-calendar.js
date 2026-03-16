@@ -162,11 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event click function
     function eventClick(info) {
+      info.jsEvent.preventDefault();
       eventToUpdate = info.event;
-      if (eventToUpdate.url) {
-        info.jsEvent.preventDefault();
-        window.open(eventToUpdate.url, '_blank');
-      }
       bsAddEventSidebar.show();
       // For update event set offcanvas title text
       if (offcanvasTitle) {

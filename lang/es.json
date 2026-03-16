@@ -578,6 +578,7 @@
   "Task breakdown with category, resource level and value per module. No times.": "Desglose por tarea: categoría, nivel de recurso y valor por módulo. Sin tiempos.",
   "Task breakdown with module (title), resource level and value per module. No times.": "Desglose por tarea: módulo (título de lo pedido), nivel de recurso y valor por módulo. Sin tiempos.",
   "Module": "Módulo",
+  "Notes": "Notas",
   "Level": "Nivel",
   "Value": "Valor",
   "Public preview": "Vista previa pública",

@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->string('google_event_id')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['team_id', 'start', 'end'], 'calendar_events_team_date_idx');
         });

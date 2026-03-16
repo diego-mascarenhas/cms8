@@ -182,7 +182,7 @@
               <input type="text" class="form-control" id="eventLocation" name="eventLocation" placeholder="{{ __('Enter Location') }}" />
             </div>
             <div class="mb-3">
-              <label class="form-label" for="eventDescription">{{ __('Description') }}</label>
+              <label class="form-label" for="eventDescription">{{ __('Notes') }}</label>
               <textarea class="form-control" name="eventDescription" id="eventDescription"></textarea>
             </div>
             <div class="mb-3 d-flex justify-content-sm-between justify-content-start my-4">

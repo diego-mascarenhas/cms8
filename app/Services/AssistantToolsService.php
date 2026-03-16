@@ -683,6 +683,7 @@ class AssistantToolsService
 
         $busy = CalendarEvent::withoutGlobalScopes()
             ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
             ->where(function ($q) use ($start, $end)
             {
                 $q->whereBetween('start', [$start, $end])
@@ -780,8 +781,7 @@ class AssistantToolsService
             {
                 return 'Invalid end date format.';
             }
-        }
-        else
+        } else
         {
             $end = (clone $start)->addDays(7)->endOfDay();
         }
@@ -793,6 +793,7 @@ class AssistantToolsService
 
         $events = CalendarEvent::withoutGlobalScopes()
             ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
             ->where('end', '>', $start)
             ->where('start', '<', $end)
             ->orderBy('start')
@@ -821,6 +822,7 @@ class AssistantToolsService
 
         $event = CalendarEvent::withoutGlobalScopes()
             ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
             ->find($eventId);
 
         if (! $event)
