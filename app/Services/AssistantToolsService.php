@@ -180,18 +180,48 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_calendar_event',
-                'description' => 'Create an event in the team calendar using local database (not Google).',
+                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end in Y-m-d H:i or ISO 8601. When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'title' => ['type' => 'string', 'description' => 'Event title'],
-                        'start' => ['type' => 'string', 'description' => 'Start datetime (Y-m-d H:i:s or ISO 8601).'],
-                        'end' => ['type' => 'string', 'description' => 'End datetime (Y-m-d H:i:s or ISO 8601).'],
+                        'start' => ['type' => 'string', 'description' => 'Start datetime: Y-m-d H:i:s or ISO 8601. For "today"/"hoy" use the real current date (e.g. 2026-03-16).'],
+                        'end' => ['type' => 'string', 'description' => 'End datetime: Y-m-d H:i:s or ISO 8601. Same date as start when user says "today"/"hoy" unless they specify duration.'],
                         'notes' => ['type' => 'string', 'description' => 'Optional notes'],
                         'url' => ['type' => 'string', 'description' => 'Optional URL'],
                         'label' => ['type' => 'string', 'description' => 'Optional label such as Business, Personal, etc.'],
                     ],
                     'required' => ['title', 'start', 'end'],
+                ],
+            ],
+            [
+                'name' => 'list_calendar_events',
+                'description' => 'List calendar events in a date range. Use this to find an event by title or date before updating or when the user asks what events they have. Returns event id, title, start and end so you can use the id in update_calendar_event.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'start' => ['type' => 'string', 'description' => 'Start of range (Y-m-d or Y-m-d H:i or ISO 8601).'],
+                        'end' => ['type' => 'string', 'description' => 'End of range (Y-m-d or Y-m-d H:i or ISO 8601). Optional; defaults to 7 days after start.'],
+                    ],
+                    'required' => ['start'],
+                ],
+            ],
+            [
+                'name' => 'update_calendar_event',
+                'description' => 'Update an existing calendar event. Use list_calendar_events first to get the event id when the user says "modifica el evento X" or "cambia la reunión de hoy". Pass event_id and only the fields to change (title, start, end, notes, url, label, all_day).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'event_id' => ['type' => 'integer', 'description' => 'ID of the event to update (from list_calendar_events).'],
+                        'title' => ['type' => 'string', 'description' => 'New title (optional).'],
+                        'start' => ['type' => 'string', 'description' => 'New start datetime Y-m-d H:i or ISO 8601 (optional).'],
+                        'end' => ['type' => 'string', 'description' => 'New end datetime (optional).'],
+                        'all_day' => ['type' => 'boolean', 'description' => 'Whether the event is all-day (optional).'],
+                        'notes' => ['type' => 'string', 'description' => 'New notes (optional).'],
+                        'url' => ['type' => 'string', 'description' => 'New URL (optional).'],
+                        'label' => ['type' => 'string', 'description' => 'New label (optional).'],
+                    ],
+                    'required' => ['event_id'],
                 ],
             ],
         ];
@@ -239,6 +269,8 @@ class AssistantToolsService
                 'get_my_profile' => $this->getMyProfile($user, $teamId),
                 'check_calendar_availability' => $this->checkCalendarAvailability($teamId, $input),
                 'create_calendar_event' => $this->createCalendarEvent($teamId, $input),
+                'list_calendar_events' => $this->listCalendarEvents($teamId, $input),
+                'update_calendar_event' => $this->updateCalendarEvent($teamId, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -716,6 +748,141 @@ class AssistantToolsService
 
         return $this->truncate(
             'Calendar event created: '.$event->title.' (id: '.$event->id.') from '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
+        );
+    }
+
+    private function listCalendarEvents(int $teamId, array $input): string
+    {
+        $startRaw = (string) ($input['start'] ?? '');
+        if ($startRaw === '')
+        {
+            return 'start is required.';
+        }
+
+        try
+        {
+            $start = \Carbon\Carbon::parse($startRaw)->startOfDay();
+        } catch (\Throwable)
+        {
+            return 'Invalid start date format.';
+        }
+
+        $endRaw = (string) ($input['end'] ?? '');
+        if ($endRaw !== '')
+        {
+            try
+            {
+                $end = \Carbon\Carbon::parse($endRaw)->endOfDay();
+            } catch (\Throwable)
+            {
+                return 'Invalid end date format.';
+            }
+        }
+        else
+        {
+            $end = (clone $start)->addDays(7)->endOfDay();
+        }
+
+        if ($end->lessThan($start))
+        {
+            return 'End must be after start.';
+        }
+
+        $events = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('end', '>', $start)
+            ->where('start', '<', $end)
+            ->orderBy('start')
+            ->get(['id', 'title', 'start', 'end']);
+
+        if ($events->isEmpty())
+        {
+            return $this->truncate('No events found between '.$start->format('Y-m-d').' and '.$end->format('Y-m-d').'.');
+        }
+
+        $lines = $events->map(function (CalendarEvent $event)
+        {
+            return '  id '.$event->id.': '.$event->title.' — '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i');
+        })->implode("\n");
+
+        return $this->truncate("Calendar events:\n".$lines);
+    }
+
+    private function updateCalendarEvent(int $teamId, array $input): string
+    {
+        $eventId = (int) ($input['event_id'] ?? 0);
+        if ($eventId < 1)
+        {
+            return 'event_id is required and must be a positive integer.';
+        }
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($eventId);
+
+        if (! $event)
+        {
+            return 'Event with id '.$eventId.' not found. Use list_calendar_events to see available events.';
+        }
+
+        $updates = [];
+
+        if (array_key_exists('title', $input) && trim((string) $input['title']) !== '')
+        {
+            $updates['title'] = trim((string) $input['title']);
+        }
+        if (array_key_exists('notes', $input))
+        {
+            $updates['notes'] = $input['notes'] === '' || $input['notes'] === null ? null : (string) $input['notes'];
+        }
+        if (array_key_exists('url', $input))
+        {
+            $updates['url'] = $input['url'] === '' || $input['url'] === null ? null : (string) $input['url'];
+        }
+        if (array_key_exists('label', $input) && trim((string) $input['label']) !== '')
+        {
+            $updates['label'] = trim((string) $input['label']);
+        }
+        if (array_key_exists('all_day', $input))
+        {
+            $updates['all_day'] = (bool) $input['all_day'];
+        }
+
+        if (array_key_exists('start', $input) && trim((string) $input['start']) !== '')
+        {
+            try
+            {
+                $updates['start'] = \Carbon\Carbon::parse($input['start']);
+            } catch (\Throwable)
+            {
+                return 'Invalid start datetime format.';
+            }
+        }
+        if (array_key_exists('end', $input) && trim((string) $input['end']) !== '')
+        {
+            try
+            {
+                $updates['end'] = \Carbon\Carbon::parse($input['end']);
+            } catch (\Throwable)
+            {
+                return 'Invalid end datetime format.';
+            }
+        }
+
+        $newStart = $updates['start'] ?? $event->start;
+        $newEnd = $updates['end'] ?? $event->end;
+        if ($newEnd->lessThanOrEqualTo($newStart))
+        {
+            return 'End must be after start.';
+        }
+
+        if (! empty($updates))
+        {
+            $event->update($updates);
+        }
+
+        return $this->truncate(
+            'Event updated: '.$event->title.' (id: '.$event->id.') — '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
         );
     }
 

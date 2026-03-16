@@ -40,7 +40,7 @@ class ChatAssistantReplyService
         }
 
         $instructions = $withTools
-            ? $this->getAssistantToolsSystemPrompt()
+            ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
         $tools = $withTools ? $this->buildLaravelAiTools() : [];
 
@@ -166,10 +166,26 @@ class ChatAssistantReplyService
     /**
      * System prompt for the assistant when tools are enabled (manage contacts, tasks, reports, WhatsApp).
      */
-    protected function getAssistantToolsSystemPrompt(): string
+    protected function getAssistantToolsSystemPrompt(?int $contextUserId = null): string
     {
-        return <<<'EOT'
+        $today = now()->format('Y-m-d');
+        $todayLabel = now()->translatedFormat('l d \d\e F \d\e Y');
+
+        $user = auth()->user();
+        if ($user === null && $contextUserId !== null)
+        {
+            $user = \App\Models\User::withoutGlobalScopes()->find($contextUserId);
+        }
+        $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('root'));
+        $adminInstruction = $isAdmin
+            ? "\nIf the user is an admin, do not end your message with closing questions like \"¿Necesitás algo más?\", \"¿Algo más?\", \"¿En qué más puedo ayudarte?\" or similar; just end with the useful answer.\n"
+            : '';
+
+        return <<<EOT
 You are the Humano CRM assistant. You HAVE REAL ACCESS to the user's data (contacts, tasks, team) through the tools below. The data is from their actual team and database — this is not a simulation or demo.
+{$adminInstruction}
+
+CURRENT DATE: Today is {$today} ({$todayLabel}). When the user says "hoy", "today", or "ahora" for a calendar event, you MUST use this date ({$today}) in start and end — e.g. "hoy a las 15" → start {$today} 15:00:00, end {$today} 15:30:00.
 
 When the user asks to see their contacts, list of contacts, "lista de contactos", tasks, report, summary, or similar, USE the appropriate tool:
 - get_account_report with report_type "contacts" → list of contacts (real data from their team)
@@ -181,6 +197,13 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 
 When they ask to create or modify something, use:
 - create_contact, update_contact (to add or change phone, email, or name), get_contact_categories (to see a contact's categories), assign_contact_to_category (to add another category to a contact), create_task, send_whatsapp_message
+
+When they ask to schedule an event, appointment, or meeting ("agendar", "cita", "reunión", "evento", "reservar", "poner en el calendario"), use the calendar tools:
+- check_calendar_availability (start, end) → to see if the slot is free before confirming
+- create_calendar_event (title, start, end; optional: notes, url, label) → to create the event. For "hoy"/"today" use the CURRENT DATE given above in start/end (e.g. {$today} 15:00:00). Use ISO or Y-m-d H:i format. For "mañana" use tomorrow; for weekday names use the next occurrence. Confirm the created event briefly (title, date/time).
+When they ask to edit, change, or modify an existing event ("modificar", "editar", "cambiar el evento", "cambia la hora de", "reprogramar"), use:
+- list_calendar_events (start, end) → to find the event in that date range and get its id
+- update_calendar_event (event_id, and only the fields to change: title, start, end, notes, url, label, all_day) → to apply the change. Confirm the update briefly.
 
 When they ask for their profile, "mis datos", "mi perfil", "quién soy", or "qué rol tengo", use get_my_profile and reply with the returned data in a friendly way.
 

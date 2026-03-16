@@ -35,11 +35,25 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+        .typing-dots span {
+            animation: typing-dot 1.4s ease-in-out infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing-dot {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+        .assistant-markdown p { margin-bottom: 0.5em; }
+        .assistant-markdown p:last-child { margin-bottom: 0; }
+        .assistant-markdown strong { font-weight: 600; }
+        .assistant-markdown ul, .assistant-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5em; }
     </style>
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 @endsection
 
 @section('page-script')
@@ -132,6 +146,50 @@
         let currentAiResponse = '';
         let currentAiAudioBase64 = '';
         let currentAiAudioMime = '';
+
+        function renderMarkdownForChat(text) {
+            if (!text) return '';
+            if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                return marked.parse(String(text), { gfm: true, breaks: true });
+            }
+            return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        }
+        function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime) {
+            removeAssistantTypingIndicator();
+            var list = document.getElementById('assistant-messages-list');
+            if (!list) return;
+            var empty = list.querySelector('.assistant-empty-state');
+            if (empty) empty.remove();
+            var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            var userLi = document.createElement('li');
+            userLi.className = 'chat-message chat-message-right';
+            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (userMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            list.appendChild(userLi);
+            var audioHtml = (audioBase64 && audioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + audioMime + ';base64,' + audioBase64 + '" type="' + audioMime + '"></audio></div>' : '';
+            var aiLi = document.createElement('li');
+            aiLi.className = 'chat-message';
+            aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + renderMarkdownForChat(aiMsg || '') + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            list.appendChild(aiLi);
+            var body = document.querySelector('.chat-history-body');
+            if (body) body.scrollTop = body.scrollHeight;
+        }
+        function showAssistantTypingIndicator() {
+            var list = document.getElementById('assistant-messages-list');
+            if (!list || document.getElementById('assistant-typing-indicator')) return;
+            var empty = list.querySelector('.assistant-empty-state');
+            if (empty) empty.remove();
+            var li = document.createElement('li');
+            li.id = 'assistant-typing-indicator';
+            li.className = 'chat-message';
+            li.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text text-muted"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>{{ __("Pensando...") }}</div></div></div>';
+            list.appendChild(li);
+            var body = document.querySelector('.chat-history-body');
+            if (body) body.scrollTop = body.scrollHeight;
+        }
+        function removeAssistantTypingIndicator() {
+            var el = document.getElementById('assistant-typing-indicator');
+            if (el) el.remove();
+        }
 
         (function() {
             var micBtn = document.getElementById('chat-mic-btn');
@@ -298,7 +356,8 @@
             document.getElementById('aiResponsePreview').textContent = '';
             var previewAudioEl = document.getElementById('aiResponsePreviewAudio');
             if (previewAudioEl) previewAudioEl.innerHTML = '';
-            previewModal.show();
+            if (!isAssistantView) previewModal.show();
+            if (isAssistantView) showAssistantTypingIndicator();
 
             var assistantUrl = '{{ route("chat.assistant") }}';
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
@@ -342,6 +401,15 @@
                                     container.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
                                 }
                             }
+                            if (isAssistantView) {
+                                appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                                messageInput.value = '';
+                                currentUserMessage = '';
+                                currentAiResponse = '';
+                                currentAiAudioBase64 = '';
+                                currentAiAudioMime = '';
+                                if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                            }
                         } else {
                             document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (data.message || 'Error') + '</div>';
                         }
@@ -350,8 +418,9 @@
                         document.getElementById('aiPreviewLoader').classList.add('d-none');
                         document.getElementById('aiPreviewContent').classList.remove('d-none');
                         document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (err.message || '{{ __("Error de conexión") }}') + '</div>';
+                        if (isAssistantView) removeAssistantTypingIndicator();
                     })
-                    .finally(function() { reenableSend(); });
+                    .finally(function() { if (isAssistantView) removeAssistantTypingIndicator(); reenableSend(); });
             } else {
                 fetch(assistantUrl, {
                     method: 'POST',
@@ -391,6 +460,15 @@
                                 container.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
                             }
                         }
+                        if (isAssistantView) {
+                            appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                            messageInput.value = '';
+                            currentUserMessage = '';
+                            currentAiResponse = '';
+                            currentAiAudioBase64 = '';
+                            currentAiAudioMime = '';
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        }
                     } else {
                         currentAiResponse = '';
                         document.getElementById('aiResponsePreview').innerHTML =
@@ -403,8 +481,9 @@
                     currentAiResponse = '';
                     document.getElementById('aiResponsePreview').innerHTML =
                         '<div class="alert alert-danger">' + (error.message || '{{ __("Error de conexión") }}') + '</div>';
+                    if (isAssistantView) removeAssistantTypingIndicator();
                 })
-                .finally(function() { reenableSend(); });
+                .finally(function() { if (isAssistantView) removeAssistantTypingIndicator(); reenableSend(); });
             }
 
             return false;
@@ -441,7 +520,8 @@
                     var aiLi = document.createElement('li');
                     aiLi.className = 'chat-message';
                     var audioHtml = (currentAiAudioBase64 && currentAiAudioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + currentAiAudioMime + ';base64,' + currentAiAudioBase64 + '" type="' + currentAiAudioMime + '"></audio></div>' : '';
-                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    var aiContent = typeof renderMarkdownForChat === 'function' ? renderMarkdownForChat(currentAiResponse) : currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + aiContent + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
                     list.appendChild(aiLi);
                     var body = document.querySelector('.chat-history-body');
                     if (body) body.scrollTop = body.scrollHeight;
@@ -500,14 +580,17 @@
                 }
                 var html = messages.map(function(m) {
                     var isAssistant = m.role === 'assistant';
-                    var content = escapeHtml(m.content).replace(/\n/g, '<br>');
+                    var content = isAssistant && typeof renderMarkdownForChat === 'function'
+                        ? renderMarkdownForChat(m.content || '')
+                        : escapeHtml(m.content || '').replace(/\n/g, '<br>');
                     var time = formatDate(m.created_at);
                     var sideClass = isAssistant ? '' : 'chat-message-right';
                     var timeClass = isAssistant ? '' : 'text-end';
+                    var contentWrap = isAssistant ? '<div class="assistant-markdown mb-0">' + content + '</div>' : '<p class="mb-0">' + content + '</p>';
                     return '<li class="chat-message ' + sideClass + '">' +
                         '<div class="d-flex overflow-hidden">' +
                         '<div class="chat-message-wrapper flex-grow-1">' +
-                        '<div class="chat-message-text"><p class="mb-0">' + content + '</p></div>' +
+                        '<div class="chat-message-text">' + contentWrap + '</div>' +
                         '<div class="text-muted mt-1 ' + timeClass + '"><small>' + time + '</small></div>' +
                         '</div></div></li>';
                 }).join('');
@@ -1386,8 +1469,8 @@
                                     <li class="chat-message {{ $msg['role'] !== 'assistant' ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
                                             <div class="chat-message-wrapper flex-grow-1">
-                                                <div class="chat-message-text">
-                                                    <p class="mb-0">{!! nl2br(e($msg['content'])) !!}</p>
+                                                <div class="chat-message-text assistant-markdown">
+                                                    <div class="mb-0">{!! \Illuminate\Support\Str::markdown($msg['content']) !!}</div>
                                                 </div>
                                                 <div class="text-muted mt-1 {{ $msg['role'] !== 'assistant' ? 'text-end' : '' }}">
                                                     <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
