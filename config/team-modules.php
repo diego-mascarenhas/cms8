@@ -25,6 +25,7 @@ return [
         'services' => false,
         'projects' => false,
         'tasks' => true,
+        'calendar' => true,
         'notifications' => false,
         'templates' => false,
         // Additional modules (billing)

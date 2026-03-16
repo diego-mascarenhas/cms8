@@ -20,6 +20,13 @@
       "module_key": "today"
     },
     {
+      "url": "app/calendar",
+      "name": "Calendar",
+      "icon": "menu-icon tf-icons ti ti-calendar",
+      "slug": "app-calendar",
+      "module_key": "calendar"
+    },
+    {
       "url": "prospect/search",
       "name": "Buscar clientes",
       "icon": "menu-icon tf-icons ti ti-target",

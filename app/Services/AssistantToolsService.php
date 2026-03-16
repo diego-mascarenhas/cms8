@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Module;
@@ -165,6 +166,34 @@ class AssistantToolsService
                     'required' => [],
                 ],
             ],
+            [
+                'name' => 'check_calendar_availability',
+                'description' => 'Check if the team calendar has events (busy slots) between start and end datetimes. Use ISO 8601 format like 2026-03-16T10:00:00.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'start' => ['type' => 'string', 'description' => 'Start datetime (Y-m-d H:i:s or ISO 8601).'],
+                        'end' => ['type' => 'string', 'description' => 'End datetime (optional, defaults to one hour after start).'],
+                    ],
+                    'required' => ['start'],
+                ],
+            ],
+            [
+                'name' => 'create_calendar_event',
+                'description' => 'Create an event in the team calendar using local database (not Google).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'title' => ['type' => 'string', 'description' => 'Event title'],
+                        'start' => ['type' => 'string', 'description' => 'Start datetime (Y-m-d H:i:s or ISO 8601).'],
+                        'end' => ['type' => 'string', 'description' => 'End datetime (Y-m-d H:i:s or ISO 8601).'],
+                        'notes' => ['type' => 'string', 'description' => 'Optional notes'],
+                        'url' => ['type' => 'string', 'description' => 'Optional URL'],
+                        'label' => ['type' => 'string', 'description' => 'Optional label such as Business, Personal, etc.'],
+                    ],
+                    'required' => ['title', 'start', 'end'],
+                ],
+            ],
         ];
     }
 
@@ -187,10 +216,6 @@ class AssistantToolsService
             }
             $teamId = $team?->id ?? $this->contextTeamId;
             // Log in the context user so Gate/policies see them (e.g. create contact from WhatsApp).
-            if ($user)
-            {
-                auth()->login($user);
-            }
         }
 
         if (! $user || ! $teamId)
@@ -212,6 +237,8 @@ class AssistantToolsService
                 'create_task' => $this->createTask($teamId, $user->id, $input),
                 'list_team_users' => $this->listTeamUsers($teamId),
                 'get_my_profile' => $this->getMyProfile($user, $teamId),
+                'check_calendar_availability' => $this->checkCalendarAvailability($teamId, $input),
+                'create_calendar_event' => $this->createCalendarEvent($teamId, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -582,6 +609,114 @@ class AssistantToolsService
         ];
 
         return $this->truncate("Profile:\n".implode("\n", $parts));
+    }
+
+    private function checkCalendarAvailability(int $teamId, array $input): string
+    {
+        $startRaw = (string) ($input['start'] ?? '');
+        if ($startRaw === '')
+        {
+            return 'start is required.';
+        }
+
+        try
+        {
+            $start = \Carbon\Carbon::parse($startRaw);
+        } catch (\Throwable)
+        {
+            return 'Invalid start datetime format.';
+        }
+
+        $endRaw = (string) ($input['end'] ?? '');
+        if ($endRaw !== '')
+        {
+            try
+            {
+                $end = \Carbon\Carbon::parse($endRaw);
+            } catch (\Throwable)
+            {
+                return 'Invalid end datetime format.';
+            }
+        } else
+        {
+            $end = (clone $start)->addHour();
+        }
+
+        if ($end->lessThanOrEqualTo($start))
+        {
+            return 'End must be after start.';
+        }
+
+        $busy = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($q) use ($start, $end)
+            {
+                $q->whereBetween('start', [$start, $end])
+                    ->orWhereBetween('end', [$start, $end])
+                    ->orWhere(function ($inner) use ($start, $end)
+                    {
+                        $inner->where('start', '<=', $start)->where('end', '>=', $end);
+                    });
+            })
+            ->orderBy('start')
+            ->get();
+
+        if ($busy->isEmpty())
+        {
+            return $this->truncate('The calendar is free between '.$start->toDateTimeString().' and '.$end->toDateTimeString().'.');
+        }
+
+        $lines = $busy->map(function (CalendarEvent $event)
+        {
+            return '- '.$event->title.' ('.$event->start?->format('Y-m-d H:i').' → '.$event->end?->format('Y-m-d H:i').')';
+        })->implode("\n");
+
+        return $this->truncate("There are events in that range:\n".$lines);
+    }
+
+    private function createCalendarEvent(int $teamId, array $input): string
+    {
+        $title = trim((string) ($input['title'] ?? ''));
+        if ($title === '')
+        {
+            return 'title is required.';
+        }
+
+        $startRaw = (string) ($input['start'] ?? '');
+        $endRaw = (string) ($input['end'] ?? '');
+        if ($startRaw === '' || $endRaw === '')
+        {
+            return 'start and end are required.';
+        }
+
+        try
+        {
+            $start = \Carbon\Carbon::parse($startRaw);
+            $end = \Carbon\Carbon::parse($endRaw);
+        } catch (\Throwable)
+        {
+            return 'Invalid start or end datetime format.';
+        }
+
+        if ($end->lessThanOrEqualTo($start))
+        {
+            return 'End must be after start.';
+        }
+
+        $event = CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'title' => $title,
+            'start' => $start,
+            'end' => $end,
+            'all_day' => (bool) ($input['all_day'] ?? false),
+            'notes' => isset($input['notes']) && $input['notes'] !== '' ? (string) $input['notes'] : null,
+            'url' => isset($input['url']) && $input['url'] !== '' ? (string) $input['url'] : null,
+            'label' => isset($input['label']) && $input['label'] !== '' ? (string) $input['label'] : 'Business',
+        ]);
+
+        return $this->truncate(
+            'Calendar event created: '.$event->title.' (id: '.$event->id.') from '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
+        );
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

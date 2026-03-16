@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
+use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Enterprise;
@@ -83,6 +84,8 @@ class TeamDemoSeeder extends Seeder
         $this->createProjectCategoriesAndProjects();
         $this->createProjectBoardsWithTasks();
 
+        $this->seedDemoCalendarEvents();
+
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
 
@@ -139,6 +142,7 @@ class TeamDemoSeeder extends Seeder
             'list60',
             'prospecting',
             'chat',
+            'calendar',
             'projects',
             'tasks',
             'times',
@@ -1469,5 +1473,89 @@ class TeamDemoSeeder extends Seeder
         {
             DB::table('message_type')->updateOrInsert(['id' => $type['id']], $type);
         }
+    }
+
+    private function seedDemoCalendarEvents(): void
+    {
+        $this->command->info('📅 Creating demo calendar events...');
+
+        $teamId = $this->teamId;
+        $base = now()->startOfMonth();
+
+        $events = [
+            [
+                'title' => 'Design Review',
+                'start' => $base->copy()->setDay(16)->setTime(9, 52),
+                'end' => $base->copy()->setDay(16)->setTime(11, 0),
+                'label' => 'Business',
+                'notes' => 'Review Q1 designs with the team',
+            ],
+            [
+                'title' => 'Dinner',
+                'start' => $base->copy()->setDay(18)->setTime(0, 0),
+                'end' => $base->copy()->setDay(18)->setTime(1, 0),
+                'all_day' => false,
+                'label' => 'Personal',
+                'notes' => 'Team dinner',
+            ],
+            [
+                'title' => 'Dart Game',
+                'start' => $base->copy()->setDay(18)->setTime(18, 0),
+                'end' => $base->copy()->setDay(18)->setTime(19, 30),
+                'label' => 'Personal',
+            ],
+            [
+                'title' => 'Doctor\'s',
+                'start' => $base->copy()->setDay(20)->setTime(9, 0),
+                'end' => $base->copy()->setDay(20)->setTime(10, 0),
+                'label' => 'Personal',
+                'notes' => 'Annual check-up',
+            ],
+            [
+                'title' => 'Meeting with client',
+                'start' => $base->copy()->setDay(20)->setTime(14, 0),
+                'end' => $base->copy()->setDay(20)->setTime(15, 30),
+                'label' => 'Business',
+                'url' => 'https://meet.example.com/demo',
+            ],
+            [
+                'title' => 'Family Trip',
+                'start' => $base->copy()->setDay(22)->setTime(8, 0),
+                'end' => $base->copy()->setDay(24)->setTime(20, 0),
+                'all_day' => true,
+                'label' => 'Family',
+                'notes' => 'Weekend getaway',
+            ],
+            [
+                'title' => 'Monthly Meeting',
+                'start' => $base->copy()->endOfMonth()->setTime(10, 0),
+                'end' => $base->copy()->endOfMonth()->setTime(12, 0),
+                'label' => 'Business',
+                'notes' => 'Monthly all-hands',
+            ],
+        ];
+
+        foreach ($events as $data)
+        {
+            $start = $data['start'];
+            $end = $data['end'] ?? $start->copy()->addHour();
+
+            CalendarEvent::withoutGlobalScopes()->firstOrCreate(
+                [
+                    'team_id' => $teamId,
+                    'title' => $data['title'],
+                    'start' => $start,
+                ],
+                [
+                    'end' => $end,
+                    'all_day' => $data['all_day'] ?? false,
+                    'notes' => $data['notes'] ?? null,
+                    'url' => $data['url'] ?? null,
+                    'label' => $data['label'] ?? 'Business',
+                ],
+            );
+        }
+
+        $this->command->info('✅ Demo calendar events created');
     }
 }

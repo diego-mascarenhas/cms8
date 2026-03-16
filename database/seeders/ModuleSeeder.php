@@ -62,6 +62,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Task management module',
             'is_enabled' => true,  // On by default
         ],
+        'calendar' => [
+            'name' => 'Calendar',
+            'icon' => 'calendar',
+            'description' => 'Calendar and appointments module',
+            'is_enabled' => true,  // On by default
+        ],
         'notifications' => [
             'name' => 'Notifications',
             'icon' => 'speakerphone',
