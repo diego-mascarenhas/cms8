@@ -169,12 +169,13 @@
             <div class="mb-3 select2-primary">
               <label class="form-label" for="eventGuests">{{ __('Add Guests') }}</label>
               <select class="select2 select-event-guests form-select" id="eventGuests" name="eventGuests" multiple>
-                <option data-avatar="1.png" value="Jane Foster">Jane Foster</option>
-                <option data-avatar="3.png" value="Donna Frank">Donna Frank</option>
-                <option data-avatar="5.png" value="Gabrielle Robertson">Gabrielle Robertson</option>
-                <option data-avatar="7.png" value="Lori Spears">Lori Spears</option>
-                <option data-avatar="9.png" value="Sandy Vega">Sandy Vega</option>
-                <option data-avatar="11.png" value="Cheryl May">Cheryl May</option>
+                @foreach($calendarContacts ?? [] as $contact)
+                  @php
+                    $contactName = trim(($contact->name ?? '') . ' ' . ($contact->surname ?? ''));
+                    $avatarUrl = $contactName !== '' ? \App\Helpers\AvatarHelper::generate($contactName, 32) : '';
+                  @endphp
+                  <option data-avatar-url="{{ $avatarUrl }}" value="{{ $contact->id }}">{{ $contactName }}{{ $contact->email ? ' (' . $contact->email . ')' : '' }}</option>
+                @endforeach
               </select>
             </div>
             <div class="mb-3">

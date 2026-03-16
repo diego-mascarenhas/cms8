@@ -4,6 +4,7 @@ namespace App\Http\Controllers\apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
+use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -12,9 +13,13 @@ class Calendar extends Controller
     public function index()
     {
         $eventsUrl = route('app-calendar-events');
+        $contacts = Contact::select('id', 'name', 'surname', 'email')
+            ->orderBy('name')
+            ->get();
 
         return view('content.apps.app-calendar', [
             'calendarEventsApiUrl' => $eventsUrl,
+            'calendarContacts' => $contacts,
         ]);
     }
 

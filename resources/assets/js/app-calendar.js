@@ -95,19 +95,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!option.id) {
           return option.text;
         }
-        var $avatar =
-          "<div class='d-flex flex-wrap align-items-center'>" +
-          "<div class='avatar avatar-xs me-2'>" +
-          "<img src='" +
-          assetsPath +
-          'img/avatars/' +
-          $(option.element).data('avatar') +
-          "' alt='avatar' class='rounded-circle' />" +
-          '</div>' +
-          option.text +
-          '</div>';
-
-        return $avatar;
+        var avatarUrl = $(option.element).data('avatar-url');
+        var avatarHtml;
+        if (avatarUrl) {
+          avatarHtml = "<div class='avatar avatar-xs me-2'><img src=\"" + avatarUrl.replace(/"/g, '&quot;') + "\" alt='avatar' class='rounded-circle' /></div>";
+        } else {
+          var fallback = $(option.element).data('avatar') || '1.png';
+          avatarHtml = "<div class='avatar avatar-xs me-2'><img src='" + assetsPath + "img/avatars/" + fallback + "' alt='avatar' class='rounded-circle' /></div>";
+        }
+        return "<div class='d-flex flex-wrap align-items-center'>" + avatarHtml + option.text + '</div>';
       }
       eventGuests.wrap('<div class="position-relative"></div>').select2({
         placeholder: calendarStrings.selectValue || 'Select value',
