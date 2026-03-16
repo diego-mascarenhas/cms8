@@ -69,8 +69,19 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'get_contact_categories',
+                'description' => 'List the categories a contact belongs to. Use when the user asks "en qué categorías está", "qué categorías tiene", or which categories a contact is in.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID'],
+                    ],
+                    'required' => ['contact_id'],
+                ],
+            ],
+            [
                 'name' => 'assign_contact_to_category',
-                'description' => 'Assign an existing contact to a category. The category is created if it does not exist.',
+                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use to add more categories to a contact.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -78,6 +89,20 @@ class AssistantToolsService
                         'category_name' => ['type' => 'string', 'description' => 'Category name (created if missing)'],
                     ],
                     'required' => ['contact_id', 'category_name'],
+                ],
+            ],
+            [
+                'name' => 'update_contact',
+                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name. Use this to add or change the phone number, email, or name of a contact.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID to update'],
+                        'phone' => ['type' => 'string', 'description' => 'Phone number (with country code, digits only). Optional.'],
+                        'email' => ['type' => 'string', 'description' => 'Email address. Optional.'],
+                        'name' => ['type' => 'string', 'description' => 'Full name. Optional.'],
+                    ],
+                    'required' => ['contact_id'],
                 ],
             ],
             [
@@ -178,8 +203,10 @@ class AssistantToolsService
             return match ($name)
             {
                 'list_contact_categories' => $this->listContactCategories($teamId),
+                'get_contact_categories' => $this->getContactCategories($teamId, $input),
                 'create_contact' => $this->createContact($teamId, $user->id, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $input),
+                'update_contact' => $this->updateContact($teamId, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
@@ -303,6 +330,88 @@ class AssistantToolsService
         $contact->categories()->syncWithoutDetaching([$categoryId]);
 
         return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}.");
+    }
+
+    private function getContactCategories(int $teamId, array $input): string
+    {
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        if ($contactId < 1)
+        {
+            return 'contact_id is required.';
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($contactId);
+
+        if (! $contact)
+        {
+            return "Contact with id {$contactId} not found.";
+        }
+
+        if (! Gate::allows('view', $contact))
+        {
+            return 'You do not have permission to view this contact.';
+        }
+
+        $categories = $contact->categories()->orderBy('name')->get(['id', 'name']);
+        if ($categories->isEmpty())
+        {
+            return $this->truncate("Contact {$contact->name} (id: {$contact->id}) has no categories. You can add one with assign_contact_to_category.");
+        }
+
+        $lines = $categories->map(fn ($c) => "  - {$c->name} (id: {$c->id})")->implode("\n");
+
+        return $this->truncate("Categories for {$contact->name} (id: {$contact->id}):\n".$lines);
+    }
+
+    private function updateContact(int $teamId, array $input): string
+    {
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        if ($contactId < 1)
+        {
+            return 'contact_id is required.';
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($contactId);
+
+        if (! $contact)
+        {
+            return "Contact with id {$contactId} not found.";
+        }
+
+        if (! Gate::allows('update', $contact))
+        {
+            return 'You do not have permission to update this contact.';
+        }
+
+        $updates = [];
+        if (array_key_exists('phone', $input) && (string) $input['phone'] !== '')
+        {
+            $phone = preg_replace('/[^0-9]/', '', (string) $input['phone']);
+            $updates['phone'] = $phone !== '' ? (int) $phone : null;
+        }
+        if (array_key_exists('email', $input))
+        {
+            $email = trim((string) $input['email']);
+            $updates['email'] = $email !== '' ? $email : null;
+        }
+        if (array_key_exists('name', $input) && trim((string) $input['name']) !== '')
+        {
+            $updates['name'] = trim((string) $input['name']);
+        }
+
+        if (empty($updates))
+        {
+            return 'Provide at least one field to update: phone, email, or name.';
+        }
+
+        $contact->update($updates);
+        $updated = array_keys($updates);
+
+        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) updated: ".implode(', ', $updated).'.');
     }
 
     private function getAccountReport(int $teamId, array $input): string

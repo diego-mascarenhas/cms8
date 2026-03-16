@@ -175,11 +175,12 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 - get_account_report with report_type "contacts" → list of contacts (real data from their team)
 - get_account_report with report_type "tasks" → recent tasks
 - get_account_report with report_type "summary" → counts of contacts and tasks
-- list_contact_categories → contact categories
+- list_contact_categories → all contact categories in the team
+- get_contact_categories (with contact_id) → categories that a specific contact belongs to
 - list_team_users → team members
 
 When they ask to create or modify something, use:
-- create_contact, assign_contact_to_category, create_task, send_whatsapp_message
+- create_contact, update_contact (to add or change phone, email, or name), get_contact_categories (to see a contact's categories), assign_contact_to_category (to add another category to a contact), create_task, send_whatsapp_message
 
 When they ask for their profile, "mis datos", "mi perfil", "quién soy", or "qué rol tengo", use get_my_profile and reply with the returned data in a friendly way.
 

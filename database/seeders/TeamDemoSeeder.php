@@ -206,37 +206,25 @@ class TeamDemoSeeder extends Seeder
         $contactsModuleId = Module::where('key', 'contacts')->first()?->id;
         $enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
 
-        // Main contact category
-        $mainContactCategory = Category::updateOrCreate([
-            'name' => 'Contactos',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-            'parent_id' => null,
-        ], [
-            'description' => 'Categoría principal para contactos',
-            'status' => 1,
-        ]);
-
-        // Subcategories
-        Category::updateOrCreate([
-            'name' => 'Staff',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos internos del equipo',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-
-        Category::updateOrCreate([
-            'name' => 'Contacto Potencial',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos interesados',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
+        // Contact categories (all at root, no parent)
+        $contactCategories = [
+            ['name' => 'Staff', 'description' => 'Contactos internos del equipo'],
+            ['name' => 'Tester', 'description' => 'Contactos de prueba o testing'],
+            ['name' => 'Referido', 'description' => 'Contactos referidos por clientes'],
+            ['name' => 'Developer', 'description' => 'Desarrolladores o equipo técnico'],
+        ];
+        foreach ($contactCategories as $cat)
+        {
+            Category::updateOrCreate([
+                'name' => $cat['name'],
+                'module_id' => $contactsModuleId,
+                'team_id' => $this->teamId,
+            ], [
+                'description' => $cat['description'],
+                'parent_id' => null,
+                'status' => 1,
+            ]);
+        }
 
         // Enterprise categories
         Category::updateOrCreate([
@@ -363,7 +351,7 @@ class TeamDemoSeeder extends Seeder
             ->where('team_id', $this->teamId)
             ->first();
 
-        $clientCategory = Category::where('name', 'Contacto Potencial')
+        $clientCategory = Category::where('name', 'Referido')
             ->where('team_id', $this->teamId)
             ->first();
 

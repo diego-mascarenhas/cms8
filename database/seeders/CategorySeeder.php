@@ -65,7 +65,7 @@ class CategorySeeder extends Seeder
             ],
         );
 
-        // OVH service categories as subcategories
+        // OVH service categories (all at same level, no subgroups)
         Category::firstOrCreate(
             ['id' => 401],
             [
@@ -73,7 +73,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Virtual servers for hosting applications and websites',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -85,7 +85,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Shared hosting solutions for websites',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -97,7 +97,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Domain name registration and management',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -109,7 +109,7 @@ class CategorySeeder extends Seeder
                 'description' => 'DNS management for domains',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -121,7 +121,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Email services attached to domains',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -133,7 +133,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Professional email hosting solutions',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -145,7 +145,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Control panel licenses for web hosting management',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -157,7 +157,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Dedicated database servers',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -169,7 +169,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Infrastructure as a Service cloud platform',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );
@@ -181,7 +181,7 @@ class CategorySeeder extends Seeder
                 'description' => 'Private virtual network',
                 'module_id' => $hostingModuleId,
                 'team_id' => null,
-                'parent_id' => 1,
+                'parent_id' => null,
                 'status' => 1,
             ],
         );

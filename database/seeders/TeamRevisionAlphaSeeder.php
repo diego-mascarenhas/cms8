@@ -225,55 +225,26 @@ class TeamRevisionAlphaSeeder extends Seeder
         $contactsModuleId = Module::where('key', 'contacts')->first()?->id;
         $enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
 
-        // Categories for contacts module
-        // 1. Create main category
-        $mainContactCategory = Category::updateOrCreate([
-            'name' => 'Contactos',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-            'parent_id' => null,
-        ], [
-            'description' => 'Categoría principal para contactos',
-            'status' => 1,
-        ]);
-
-        // 2. Create subcategories with parent_id pointing to main
-        Category::updateOrCreate([
-            'name' => 'Staff',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos internos del equipo',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'CMS+',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos importados de CMS+',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'Contacto Potencial',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos interesados en nuestros servicios',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'Referido',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos referidos por clientes',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
+        // Contact categories (all at root, no parent)
+        $contactCategories = [
+            ['name' => 'Staff', 'description' => 'Contactos internos del equipo'],
+            ['name' => 'Tester', 'description' => 'Contactos de prueba o testing'],
+            ['name' => 'CMS+', 'description' => 'Contactos importados de CMS+'],
+            ['name' => 'Referido', 'description' => 'Contactos referidos por clientes'],
+            ['name' => 'Developer', 'description' => 'Desarrolladores o equipo técnico'],
+        ];
+        foreach ($contactCategories as $cat)
+        {
+            Category::updateOrCreate([
+                'name' => $cat['name'],
+                'module_id' => $contactsModuleId,
+                'team_id' => $this->teamId,
+            ], [
+                'description' => $cat['description'],
+                'parent_id' => null,
+                'status' => 1,
+            ]);
+        }
 
         // Categories for enterprises module
         Category::updateOrCreate([
