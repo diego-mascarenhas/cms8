@@ -294,6 +294,36 @@ document.addEventListener('DOMContentLoaded', function () {
       successCallback(selectedEvents);
     }
 
+    var titleUpdateTimeoutId = null;
+
+    function scheduleTitleAndLabelsUpdate() {
+      if (titleUpdateTimeoutId) clearTimeout(titleUpdateTimeoutId);
+      titleUpdateTimeoutId = setTimeout(function () {
+        titleUpdateTimeoutId = null;
+        applyTitleAndCapitalizeLabels();
+      }, 50);
+    }
+
+    function applyTitleAndCapitalizeLabels() {
+      var titleEl = calendarEl.querySelector('.fc-toolbar-title');
+      if (titleEl && typeof calendar !== 'undefined' && calendar.view && calendar.view.title) {
+        var apiTitle = calendar.view.title;
+        if (apiTitle) {
+          var normalized = apiTitle.charAt(0).toUpperCase() + apiTitle.slice(1);
+          titleEl.textContent = normalized;
+        }
+      }
+      var dayHeaders = calendarEl.querySelectorAll('.fc-col-header-cell-cushion');
+      dayHeaders.forEach(function (el) {
+        if (el.textContent) {
+          var d = el.textContent.trim();
+          if (d && d.charAt(0) !== d.charAt(0).toUpperCase()) {
+            el.textContent = d.charAt(0).toUpperCase() + d.slice(1).toLowerCase();
+          }
+        }
+      });
+    }
+
     // Init FullCalendar
     // ------------------------------------------------
     let calendar = new Calendar(calendarEl, {
@@ -355,28 +385,14 @@ document.addEventListener('DOMContentLoaded', function () {
       datesSet: function () {
         modifyToggler();
         translateFcButtonTitles();
-        capitalizeFcLabels();
+        scheduleTitleAndLabelsUpdate();
       },
       viewDidMount: function () {
         modifyToggler();
         translateFcButtonTitles();
-        capitalizeFcLabels();
+        scheduleTitleAndLabelsUpdate();
       }
     });
-
-    function capitalizeFcLabels() {
-      var titleEl = calendarEl.querySelector('.fc-toolbar-title');
-      if (titleEl && titleEl.textContent) {
-        var t = titleEl.textContent;
-        titleEl.textContent = t.charAt(0).toUpperCase() + t.slice(1);
-      }
-      var dayHeaders = calendarEl.querySelectorAll('.fc-col-header-cell-cushion');
-      dayHeaders.forEach(function (el) {
-        if (el.textContent) {
-          el.textContent = el.textContent.charAt(0).toUpperCase() + el.textContent.slice(1).toLowerCase();
-        }
-      });
-    }
 
     function translateFcButtonTitles() {
       var btnTitles = {
