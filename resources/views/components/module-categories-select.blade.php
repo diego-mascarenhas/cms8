@@ -1,8 +1,10 @@
 @props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría'])
 
 <div class="form-group">
-    <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-placeholder="{{ $emptyText }}" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }} @if($disabled) disabled @endif>
+    @if($label !== null && $label !== '')
+        <label for="{{ $id }}" class="form-label">{{ $label }}</label>
+    @endif
+    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" data-placeholder="{{ $emptyText }}" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }} @if($disabled) disabled @endif>
         @if($showNull || $allowEmpty)
             <option value="">{{ $emptyText }}</option>
         @endif
@@ -98,18 +100,30 @@
                     ->get()
                     ->groupBy('parent_id');
             }
+
+            $isContactsModule = ($moduleKey === 'contacts');
         @endphp
 
         @foreach($parentCategories as $parentCategory)
-            <optgroup label="{{ $parentCategory->name }}">
-                @if(isset($allSubcategories[$parentCategory->id]))
-                    @foreach($allSubcategories[$parentCategory->id] as $subcategory)
-                        <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
-                            {{ $subcategory->name }}
-                        </option>
-                    @endforeach
-                @endif
-            </optgroup>
+            @php
+                $hasSubcategories = isset($allSubcategories[$parentCategory->id]);
+            @endphp
+            @if($isContactsModule && !$hasSubcategories)
+                {{-- Contacts: when category has no subcategories (flat), make it selectable --}}
+                <option value="{{ $parentCategory->id }}" {{ $selected == $parentCategory->id ? 'selected' : '' }}>
+                    {{ $parentCategory->name }}
+                </option>
+            @else
+                <optgroup label="{{ $parentCategory->name }}">
+                    @if($hasSubcategories)
+                        @foreach($allSubcategories[$parentCategory->id] as $subcategory)
+                            <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
+                                {{ $subcategory->name }}
+                            </option>
+                        @endforeach
+                    @endif
+                </optgroup>
+            @endif
         @endforeach
     </select>
 
@@ -119,3 +133,17 @@
         </span>
     @enderror
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if ($.fn.select2 && $('#{{ $id }}').length) {
+            $('#{{ $id }}').select2({
+                placeholder: '{{ $emptyText }}',
+                allowClear: {{ $allowEmpty ? 'true' : 'false' }},
+                width: '100%',
+            });
+        }
+    });
+</script>
+@endpush
