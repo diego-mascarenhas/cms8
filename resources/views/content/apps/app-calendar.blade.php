@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Fullcalendar - Apps')
+@section('title', __('Calendar'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/fullcalendar/fullcalendar.css') }}" />
@@ -21,6 +21,7 @@
 <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
 @endsection
 
@@ -28,6 +29,31 @@
 @if(isset($calendarEventsApiUrl))
 <script>window.calendarEventsApiUrl = @json($calendarEventsApiUrl);</script>
 @endif
+<script>
+  window.calendarLocale = @json(app()->getLocale());
+  window.calendarStrings = {
+    addEvent: @json(__('Add Event')),
+    updateEvent: @json(__('Update Event')),
+    add: @json(__('Add')),
+    update: @json(__('Update')),
+    sidebar: @json(__('Sidebar')),
+    selectValue: @json(__('Select value')),
+    pleaseEnterEventTitle: @json(__('Please enter event title ')),
+    pleaseEnterStartDate: @json(__('Please enter start date ')),
+    pleaseEnterEndDate: @json(__('Please enter end date ')),
+    close: @json(__('Close')),
+    fcMonth: @json(__('Month')),
+    fcWeek: @json(__('Week')),
+    fcDay: @json(__('Day')),
+    fcList: @json(__('List')),
+    fcMonthTitle: @json(__('month view')),
+    fcWeekTitle: @json(__('week view')),
+    fcDayTitle: @json(__('day view')),
+    fcListTitle: @json(__('list view')),
+    fcToday: @json(__('Today')),
+    fcAllDay: @json(__('all-day'))
+  };
+</script>
 <script src="{{ asset('assets/js/app-calendar-events.js') }}"></script>
 <script src="{{ asset('assets/js/app-calendar.js') }}"></script>
 @endsection
@@ -100,7 +126,7 @@
       <div class="offcanvas offcanvas-end event-sidebar" tabindex="-1" id="addEventSidebar" aria-labelledby="addEventSidebarLabel">
         <div class="offcanvas-header my-1">
           <h5 class="offcanvas-title" id="addEventSidebarLabel">{{ __('Add Event') }}</h5>
-          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}"></button>
         </div>
         <div class="offcanvas-body pt-0">
           <form class="event-form pt-0" id="eventForm" onsubmit="return false">

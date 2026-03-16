@@ -11,10 +11,17 @@
 
 'use strict';
 
+const calendarStrings = window.calendarStrings || {};
+const calendarLocale = window.calendarLocale || 'es';
+
 let direction = 'ltr';
 
 if (isRtl) {
   direction = 'rtl';
+}
+
+if (typeof moment !== 'undefined' && moment.locale) {
+  moment.locale(calendarLocale);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -70,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return $badge;
       }
       eventLabel.wrap('<div class="position-relative"></div>').select2({
-        placeholder: 'Select value',
+        placeholder: calendarStrings.selectValue || 'Select value',
         dropdownParent: eventLabel.parent(),
         templateResult: renderBadges,
         templateSelection: renderBadges,
@@ -102,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return $avatar;
       }
       eventGuests.wrap('<div class="position-relative"></div>').select2({
-        placeholder: 'Select value',
+        placeholder: calendarStrings.selectValue || 'Select value',
         dropdownParent: eventGuests.parent(),
         closeOnSelect: false,
         templateResult: renderGuestAvatar,
@@ -113,11 +120,14 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
+    var flatpickrLocale = calendarLocale === 'es' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.es ? 'es' : undefined;
+
     // Event start (flatpicker)
     if (eventStartDate) {
       var start = eventStartDate.flatpickr({
         enableTime: true,
         altFormat: 'Y-m-dTH:i:S',
+        locale: flatpickrLocale,
         onReady: function (selectedDates, dateStr, instance) {
           if (instance.isMobile) {
             instance.mobileInput.setAttribute('step', null);
@@ -131,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var end = eventEndDate.flatpickr({
         enableTime: true,
         altFormat: 'Y-m-dTH:i:S',
+        locale: flatpickrLocale,
         onReady: function (selectedDates, dateStr, instance) {
           if (instance.isMobile) {
             instance.mobileInput.setAttribute('step', null);
@@ -139,11 +150,13 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Inline sidebar calendar (flatpicker)
+    // Inline sidebar calendar (flatpickr) - week starts Monday in Spanish
     if (inlineCalendar) {
       inlineCalInstance = inlineCalendar.flatpickr({
         monthSelectorType: 'static',
-        inline: true
+        inline: true,
+        locale: flatpickrLocale,
+        firstDayOfWeek: 1
       });
     }
 
@@ -155,11 +168,11 @@ document.addEventListener('DOMContentLoaded', function () {
         window.open(eventToUpdate.url, '_blank');
       }
       bsAddEventSidebar.show();
-      // For update event set offcanvas title text: Update Event
+      // For update event set offcanvas title text
       if (offcanvasTitle) {
-        offcanvasTitle.innerHTML = 'Update Event';
+        offcanvasTitle.innerHTML = calendarStrings.updateEvent || 'Update Event';
       }
-      btnSubmit.innerHTML = 'Update';
+      btnSubmit.innerHTML = calendarStrings.update || 'Update';
       btnSubmit.classList.add('btn-update-event');
       btnSubmit.classList.remove('btn-add-event');
       btnDeleteEvent.classList.remove('d-none');
@@ -293,16 +306,28 @@ document.addEventListener('DOMContentLoaded', function () {
       eventResizableFromStart: true,
       customButtons: {
         sidebarToggle: {
-          text: 'Sidebar'
+          text: calendarStrings.sidebar || 'Sidebar'
         }
       },
       headerToolbar: {
         start: 'sidebarToggle, prev,next, title',
         end: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
       },
+      buttonText: {
+        today: calendarStrings.fcToday || 'Today',
+        month: calendarStrings.fcMonth || 'Month',
+        week: calendarStrings.fcWeek || 'Week',
+        day: calendarStrings.fcDay || 'Day',
+        list: calendarStrings.fcList || 'List'
+      },
+      allDayContent: function (arg) {
+        return calendarStrings.fcAllDay || 'all-day';
+      },
+      firstDay: 1,
       direction: direction,
+      locale: calendarLocale,
       initialDate: new Date(),
-      navLinks: true, // can click day/week names to navigate views
+      navLinks: true,
       eventClassNames: function ({ event: calendarEvent }) {
         const colorName = calendarsColor[calendarEvent._def.extendedProps.calendar];
         // Background Color
@@ -313,11 +338,11 @@ document.addEventListener('DOMContentLoaded', function () {
         resetValues();
         bsAddEventSidebar.show();
 
-        // For new event set offcanvas title text: Add Event
+        // For new event set offcanvas title text
         if (offcanvasTitle) {
-          offcanvasTitle.innerHTML = 'Add Event';
+          offcanvasTitle.innerHTML = calendarStrings.addEvent || 'Add Event';
         }
-        btnSubmit.innerHTML = 'Add';
+        btnSubmit.innerHTML = calendarStrings.add || 'Add';
         btnSubmit.classList.remove('btn-update-event');
         btnSubmit.classList.add('btn-add-event');
         btnDeleteEvent.classList.add('d-none');
@@ -329,11 +354,44 @@ document.addEventListener('DOMContentLoaded', function () {
       },
       datesSet: function () {
         modifyToggler();
+        translateFcButtonTitles();
+        capitalizeFcLabels();
       },
       viewDidMount: function () {
         modifyToggler();
+        translateFcButtonTitles();
+        capitalizeFcLabels();
       }
     });
+
+    function capitalizeFcLabels() {
+      var titleEl = calendarEl.querySelector('.fc-toolbar-title');
+      if (titleEl && titleEl.textContent) {
+        var t = titleEl.textContent;
+        titleEl.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      }
+      var dayHeaders = calendarEl.querySelectorAll('.fc-col-header-cell-cushion');
+      dayHeaders.forEach(function (el) {
+        if (el.textContent) {
+          el.textContent = el.textContent.charAt(0).toUpperCase() + el.textContent.slice(1).toLowerCase();
+        }
+      });
+    }
+
+    function translateFcButtonTitles() {
+      var btnTitles = {
+        'fc-dayGridMonth-button': calendarStrings.fcMonthTitle || 'month view',
+        'fc-timeGridWeek-button': calendarStrings.fcWeekTitle || 'week view',
+        'fc-timeGridDay-button': calendarStrings.fcDayTitle || 'day view',
+        'fc-listMonth-button': calendarStrings.fcListTitle || 'list view'
+      };
+      Object.keys(btnTitles).forEach(function (cls) {
+        var btn = calendarEl.querySelector('.fc-toolbar-chunk:last-child .' + cls);
+        if (btn) {
+          btn.setAttribute('title', btnTitles[cls]);
+        }
+      });
+    }
 
     // Render calendar
     calendar.render();
@@ -348,21 +406,21 @@ document.addEventListener('DOMContentLoaded', function () {
         eventTitle: {
           validators: {
             notEmpty: {
-              message: 'Please enter event title '
+              message: calendarStrings.pleaseEnterEventTitle || 'Please enter event title '
             }
           }
         },
         eventStartDate: {
           validators: {
             notEmpty: {
-              message: 'Please enter start date '
+              message: calendarStrings.pleaseEnterStartDate || 'Please enter start date '
             }
           }
         },
         eventEndDate: {
           validators: {
             notEmpty: {
-              message: 'Please enter end date '
+              message: calendarStrings.pleaseEnterEndDate || 'Please enter end date '
             }
           }
         }
@@ -561,9 +619,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Hide left sidebar if the right sidebar is open
     btnToggleSidebar.addEventListener('click', e => {
       if (offcanvasTitle) {
-        offcanvasTitle.innerHTML = 'Add Event';
+        offcanvasTitle.innerHTML = calendarStrings.addEvent || 'Add Event';
       }
-      btnSubmit.innerHTML = 'Add';
+      btnSubmit.innerHTML = calendarStrings.add || 'Add';
       btnSubmit.classList.remove('btn-update-event');
       btnSubmit.classList.add('btn-add-event');
       btnDeleteEvent.classList.add('d-none');
