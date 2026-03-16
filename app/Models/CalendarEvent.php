@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CalendarEvent extends Model
@@ -40,5 +42,11 @@ class CalendarEvent extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
+    }
+
+    public function guests(): BelongsToMany
+    {
+        return $this->belongsToMany(Contact::class, 'calendar_event_contact')
+            ->withTimestamps();
     }
 }

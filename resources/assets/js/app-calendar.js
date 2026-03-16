@@ -259,7 +259,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 extendedProps: {
                   calendar: ev.extendedProps?.calendar || 'Business',
                   location: ev.extendedProps?.location || '',
-                  description: ev.extendedProps?.description || ''
+                  description: ev.extendedProps?.description || '',
+                  guests: Array.isArray(ev.extendedProps?.guests) ? ev.extendedProps.guests : []
                 }
               };
               const idx = merged.findIndex((e) => String(e.id) === String(ev.id));
@@ -539,7 +540,8 @@ document.addEventListener('DOMContentLoaded', function () {
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
-          description: (eventData.extendedProps && eventData.extendedProps.description) || ''
+          description: (eventData.extendedProps && eventData.extendedProps.description) || '',
+          guests: (eventData.extendedProps && eventData.extendedProps.guests) || []
         }).then(function (res) {
           if (res.ok) calendar.refetchEvents();
         }).catch(function () { calendar.refetchEvents(); });
@@ -563,7 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
-          description: (eventData.extendedProps && eventData.extendedProps.description) || ''
+          description: (eventData.extendedProps && eventData.extendedProps.description) || '',
+          guests: (eventData.extendedProps && eventData.extendedProps.guests) || []
         }).then(function (res) {
           if (res.ok) calendar.refetchEvents();
         }).catch(function () { calendar.refetchEvents(); });

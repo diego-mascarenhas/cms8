@@ -37,6 +37,7 @@ class Calendar extends Controller
         }
 
         $events = CalendarEvent::query()
+            ->with('guests:id,name,surname,email')
             ->where('end', '>', $start)
             ->where('start', '<', $end)
             ->orderBy('start')
@@ -55,6 +56,12 @@ class Calendar extends Controller
      */
     public function store(Request $request)
     {
+        $teamId = auth()->user()?->currentTeam?->id;
+        if (! $teamId)
+        {
+            return response()->json(['error' => 'No team selected'], 403);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'start' => 'required|date',
@@ -64,13 +71,9 @@ class Calendar extends Controller
             'label' => 'nullable|string|max:64',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'guests' => 'nullable|array',
+            'guests.*' => 'integer|exists:contacts,id',
         ]);
-
-        $teamId = auth()->user()?->currentTeam?->id;
-        if (! $teamId)
-        {
-            return response()->json(['error' => 'No team selected'], 403);
-        }
 
         $event = CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $teamId,
@@ -84,7 +87,9 @@ class Calendar extends Controller
             'notes' => $validated['description'] ?? null,
         ]);
 
-        return response()->json($this->eventToFullCalendar($event), 201);
+        $this->syncEventGuests($event, $teamId, $validated['guests'] ?? []);
+
+        return response()->json($this->eventToFullCalendar($event->load('guests')), 201);
     }
 
     /**
@@ -107,6 +112,8 @@ class Calendar extends Controller
             'label' => 'nullable|string|max:64',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'guests' => 'nullable|array',
+            'guests.*' => 'integer|exists:contacts,id',
         ]);
 
         $event->fill([
@@ -121,7 +128,12 @@ class Calendar extends Controller
         ]);
         $event->save();
 
-        return response()->json($this->eventToFullCalendar($event->fresh()));
+        if (array_key_exists('guests', $validated))
+        {
+            $this->syncEventGuests($event, $teamId, $validated['guests']);
+        }
+
+        return response()->json($this->eventToFullCalendar($event->fresh()->load('guests')));
     }
 
     /**
@@ -142,6 +154,10 @@ class Calendar extends Controller
 
     private function eventToFullCalendar(CalendarEvent $event): array
     {
+        $guests = $event->relationLoaded('guests')
+            ? $event->guests->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+            : $event->guests()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
         return [
             'id' => $event->id,
             'title' => $event->title,
@@ -153,7 +169,19 @@ class Calendar extends Controller
                 'calendar' => $event->label ?? 'Business',
                 'location' => $event->location ?? '',
                 'description' => $event->notes ?? '',
+                'guests' => $guests,
             ],
         ];
+    }
+
+    private function syncEventGuests(CalendarEvent $event, int $teamId, array $contactIds): void
+    {
+        $contactIds = array_values(array_unique(array_map('intval', $contactIds)));
+        $validIds = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('id', $contactIds)
+            ->pluck('id')
+            ->all();
+        $event->guests()->sync($validIds);
     }
 }
