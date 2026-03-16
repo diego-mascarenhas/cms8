@@ -177,22 +177,19 @@ document.addEventListener('DOMContentLoaded', function () {
       btnSubmit.classList.remove('btn-add-event');
       btnDeleteEvent.classList.remove('d-none');
 
-      eventTitle.value = eventToUpdate.title;
+      eventTitle.value = eventToUpdate.title || '';
+      eventUrl.value = eventToUpdate.url || '';
       start.setDate(eventToUpdate.start, true, 'Y-m-d');
       eventToUpdate.allDay === true ? (allDaySwitch.checked = true) : (allDaySwitch.checked = false);
       eventToUpdate.end !== null
         ? end.setDate(eventToUpdate.end, true, 'Y-m-d')
         : end.setDate(eventToUpdate.start, true, 'Y-m-d');
-      eventLabel.val(eventToUpdate.extendedProps.calendar).trigger('change');
-      eventToUpdate.extendedProps.location !== undefined
-        ? (eventLocation.value = eventToUpdate.extendedProps.location)
-        : null;
-      eventToUpdate.extendedProps.guests !== undefined
+      eventLabel.val(eventToUpdate.extendedProps && eventToUpdate.extendedProps.calendar ? eventToUpdate.extendedProps.calendar : 'Business').trigger('change');
+      eventLocation.value = (eventToUpdate.extendedProps && eventToUpdate.extendedProps.location !== undefined) ? eventToUpdate.extendedProps.location : '';
+      eventToUpdate.extendedProps && eventToUpdate.extendedProps.guests !== undefined
         ? eventGuests.val(eventToUpdate.extendedProps.guests).trigger('change')
-        : null;
-      eventToUpdate.extendedProps.description !== undefined
-        ? (eventDescription.value = eventToUpdate.extendedProps.description)
-        : null;
+        : eventGuests.val([]).trigger('change');
+      eventDescription.value = (eventToUpdate.extendedProps && eventToUpdate.extendedProps.description !== undefined) ? eventToUpdate.extendedProps.description : '';
 
       // // Call removeEvent function
       // btnDeleteEvent.addEventListener('click', e => {
@@ -258,19 +255,24 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const merged = [...currentEvents];
             apiEvents.forEach((ev) => {
-              if (!merged.find((e) => String(e.id) === String(ev.id))) {
-                merged.push({
-                  id: ev.id,
-                  title: ev.title,
-                  start: ev.start,
-                  end: ev.end,
-                  allDay: ev.allDay || false,
-                  extendedProps: {
-                    calendar: ev.extendedProps?.calendar || 'Business',
-                    location: ev.location || '',
-                    description: ev.description || ''
-                  }
-                });
+              const fcEv = {
+                id: ev.id,
+                title: ev.title,
+                start: ev.start,
+                end: ev.end,
+                allDay: ev.allDay || false,
+                url: ev.url || '',
+                extendedProps: {
+                  calendar: ev.extendedProps?.calendar || 'Business',
+                  location: ev.extendedProps?.location || '',
+                  description: ev.extendedProps?.description || ''
+                }
+              };
+              const idx = merged.findIndex((e) => String(e.id) === String(ev.id));
+              if (idx >= 0) {
+                merged[idx] = fcEv;
+              } else {
+                merged.push(fcEv);
               }
             });
             successCallback(merged);
@@ -473,48 +475,87 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
+    function calendarApiBaseUrl() {
+      if (typeof window.calendarEventsApiUrl === 'undefined' || !window.calendarEventsApiUrl) return null;
+      return String(window.calendarEventsApiUrl).split('?')[0];
+    }
+
+    function calendarApiFetch(method, url, body) {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      };
+      const csrf = document.querySelector('meta[name="csrf-token"]');
+      if (csrf && csrf.getAttribute('content')) {
+        opts.headers['X-CSRF-TOKEN'] = csrf.getAttribute('content');
+      }
+      if (body && method !== 'GET') opts.body = JSON.stringify(body);
+      return fetch(url, opts);
+    }
+
     // Add Event
     // ------------------------------------------------
     function addEvent(eventData) {
-      // ? Add new event data to current events object and refetch it to display on calender
-      // ? You can write below code to AJAX call success response
-
+      const base = calendarApiBaseUrl();
+      if (base) {
+        calendarApiFetch('POST', base, {
+          title: eventData.title,
+          start: eventData.start,
+          end: eventData.end,
+          all_day: eventData.allDay || false,
+          url: eventData.url || '',
+          label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
+          location: (eventData.extendedProps && eventData.extendedProps.location) || '',
+          description: (eventData.extendedProps && eventData.extendedProps.description) || ''
+        }).then(function (res) {
+          if (res.ok) calendar.refetchEvents();
+        }).catch(function () { calendar.refetchEvents(); });
+        return;
+      }
       currentEvents.push(eventData);
       calendar.refetchEvents();
-
-      // ? To add event directly to calender (won't update currentEvents object)
-      // calendar.addEvent(eventData);
     }
 
     // Update Event
     // ------------------------------------------------
     function updateEvent(eventData) {
-      // ? Update existing event data to current events object and refetch it to display on calender
-      // ? You can write below code to AJAX call success response
-      eventData.id = parseInt(eventData.id);
-      currentEvents[currentEvents.findIndex(el => el.id === eventData.id)] = eventData; // Update event by id
+      eventData.id = parseInt(eventData.id, 10);
+      const base = calendarApiBaseUrl();
+      if (base && eventData.id > 0 && !isNaN(eventData.id)) {
+        calendarApiFetch('PUT', base + '/' + eventData.id, {
+          title: eventData.title,
+          start: eventData.start,
+          end: eventData.end,
+          all_day: eventData.allDay || false,
+          url: eventData.url || '',
+          label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
+          location: (eventData.extendedProps && eventData.extendedProps.location) || '',
+          description: (eventData.extendedProps && eventData.extendedProps.description) || ''
+        }).then(function (res) {
+          if (res.ok) calendar.refetchEvents();
+        }).catch(function () { calendar.refetchEvents(); });
+        return;
+      }
+      currentEvents[currentEvents.findIndex(el => el.id === eventData.id)] = eventData;
       calendar.refetchEvents();
-
-      // ? To update event directly to calender (won't update currentEvents object)
-      // let propsToUpdate = ['id', 'title', 'url'];
-      // let extendedPropsToUpdate = ['calendar', 'guests', 'location', 'description'];
-
-      // updateEventInCalendar(eventData, propsToUpdate, extendedPropsToUpdate);
     }
 
     // Remove Event
     // ------------------------------------------------
-
     function removeEvent(eventId) {
-      // ? Delete existing event data to current events object and refetch it to display on calender
-      // ? You can write below code to AJAX call success response
+      const id = parseInt(eventId, 10);
+      const base = calendarApiBaseUrl();
+      if (base && id > 0 && !isNaN(id)) {
+        calendarApiFetch('DELETE', base + '/' + id).then(function (res) {
+          if (res.ok) calendar.refetchEvents();
+        }).catch(function () { calendar.refetchEvents(); });
+        return;
+      }
       currentEvents = currentEvents.filter(function (event) {
         return event.id != eventId;
       });
       calendar.refetchEvents();
-
-      // ? To delete event directly to calender (won't update currentEvents object)
-      // removeEventInCalendar(eventId);
     }
 
     // (Update Event In Calendar (UI Only)

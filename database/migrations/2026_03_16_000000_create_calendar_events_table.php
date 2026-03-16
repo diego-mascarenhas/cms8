@@ -22,6 +22,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->string('url')->nullable();
             $table->string('label')->nullable();
+            $table->string('location')->nullable();
             $table->string('google_event_id')->nullable();
             $table->timestamps();
 

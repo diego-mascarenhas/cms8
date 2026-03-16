@@ -824,11 +824,14 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
-// Calendar (local DB, Livewire)
+// Calendar (local DB)
 Route::middleware(['auth'])->prefix('app')->group(function ()
 {
     Route::get('/calendar', [Calendar::class, 'index'])->name('app-calendar');
     Route::get('/calendar/events', [Calendar::class, 'events'])->name('app-calendar-events');
+    Route::post('/calendar/events', [Calendar::class, 'store'])->name('app-calendar-events-store');
+    Route::put('/calendar/events/{event}', [Calendar::class, 'update'])->name('app-calendar-events-update');
+    Route::delete('/calendar/events/{event}', [Calendar::class, 'destroy'])->name('app-calendar-events-destroy');
 });
 
 Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');

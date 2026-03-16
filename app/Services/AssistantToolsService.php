@@ -190,6 +190,7 @@ class AssistantToolsService
                         'notes' => ['type' => 'string', 'description' => 'Optional notes'],
                         'url' => ['type' => 'string', 'description' => 'Optional URL'],
                         'label' => ['type' => 'string', 'description' => 'Optional label such as Business, Personal, etc.'],
+                        'location' => ['type' => 'string', 'description' => 'Optional location/place for the event (e.g. office, Zoom, address).'],
                     ],
                     'required' => ['title', 'start', 'end'],
                 ],
@@ -220,6 +221,7 @@ class AssistantToolsService
                         'notes' => ['type' => 'string', 'description' => 'New notes (optional).'],
                         'url' => ['type' => 'string', 'description' => 'New URL (optional).'],
                         'label' => ['type' => 'string', 'description' => 'New label (optional).'],
+                        'location' => ['type' => 'string', 'description' => 'New location/place (optional).'],
                     ],
                     'required' => ['event_id'],
                 ],
@@ -744,6 +746,7 @@ class AssistantToolsService
             'notes' => isset($input['notes']) && $input['notes'] !== '' ? (string) $input['notes'] : null,
             'url' => isset($input['url']) && $input['url'] !== '' ? (string) $input['url'] : null,
             'label' => isset($input['label']) && $input['label'] !== '' ? (string) $input['label'] : 'Business',
+            'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
 
         return $this->truncate(
@@ -842,6 +845,10 @@ class AssistantToolsService
         if (array_key_exists('label', $input) && trim((string) $input['label']) !== '')
         {
             $updates['label'] = trim((string) $input['label']);
+        }
+        if (array_key_exists('location', $input))
+        {
+            $updates['location'] = $input['location'] === '' || $input['location'] === null ? null : trim((string) $input['location']);
         }
         if (array_key_exists('all_day', $input))
         {

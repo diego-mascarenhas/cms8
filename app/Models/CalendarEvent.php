@@ -19,6 +19,7 @@ class CalendarEvent extends Model
         'notes',
         'url',
         'label',
+        'location',
         'google_event_id',
     ];
 
