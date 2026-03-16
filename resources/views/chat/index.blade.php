@@ -76,6 +76,15 @@
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
 
+        if (messageInput && formSendMessage) {
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    formSendMessage.requestSubmit();
+                }
+            });
+        }
+
         (function persistAiTogglePreference() {
             var keyEl = document.getElementById('chat-conversation-key');
             var key = keyEl ? keyEl.value : '';
@@ -155,7 +164,6 @@
             return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
         }
         function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime) {
-            removeAssistantTypingIndicator();
             var list = document.getElementById('assistant-messages-list');
             if (!list) return;
             var empty = list.querySelector('.assistant-empty-state');
@@ -170,6 +178,7 @@
             aiLi.className = 'chat-message';
             aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + renderMarkdownForChat(aiMsg || '') + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
             list.appendChild(aiLi);
+            removeAssistantTypingIndicator();
             var body = document.querySelector('.chat-history-body');
             if (body) body.scrollTop = body.scrollHeight;
         }
@@ -181,7 +190,7 @@
             var li = document.createElement('li');
             li.id = 'assistant-typing-indicator';
             li.className = 'chat-message';
-            li.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text text-muted"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>{{ __("Pensando...") }}</div></div></div>';
+            li.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text text-muted"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div></div></div>';
             list.appendChild(li);
             var body = document.querySelector('.chat-history-body');
             if (body) body.scrollTop = body.scrollHeight;
