@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // Use API events when calendarEventsApiUrl is set (e.g. Google Calendar), otherwise use hardcoded events
       currentEvents = typeof window.calendarEventsApiUrl !== 'undefined' ? [] : events,
       isFormValid = false,
+      submitRequested = false,
       inlineCalInstance;
 
     // Init event Offcanvas
@@ -457,11 +458,49 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })
       .on('core.form.valid', function () {
-        // Jump to the next step when all fields in the current step are valid
         isFormValid = true;
+        if (!submitRequested) return;
+        submitRequested = false;
+        if (btnSubmit.classList.contains('btn-add-event')) {
+          const newEvent = {
+            id: calendar.getEvents().length + 1,
+            title: eventTitle.value,
+            start: eventStartDate.value,
+            end: eventEndDate.value,
+            startStr: eventStartDate.value,
+            endStr: eventEndDate.value,
+            display: 'block',
+            extendedProps: {
+              location: eventLocation.value,
+              guests: eventGuests.val(),
+              calendar: eventLabel.val(),
+              description: eventDescription.value
+            }
+          };
+          if (eventUrl.value) newEvent.url = eventUrl.value;
+          if (allDaySwitch.checked) newEvent.allDay = true;
+          addEvent(newEvent);
+        } else {
+          const eventData = {
+            id: eventToUpdate.id,
+            title: eventTitle.value,
+            start: eventStartDate.value,
+            end: eventEndDate.value,
+            url: eventUrl.value,
+            extendedProps: {
+              location: eventLocation.value,
+              guests: eventGuests.val(),
+              calendar: eventLabel.val(),
+              description: eventDescription.value
+            },
+            display: 'block',
+            allDay: allDaySwitch.checked
+          };
+          updateEvent(eventData);
+        }
+        bsAddEventSidebar.hide();
       })
       .on('core.form.invalid', function () {
-        // if fields are invalid
         isFormValid = false;
       });
 
@@ -590,59 +629,12 @@ document.addEventListener('DOMContentLoaded', function () {
       calendar.getEventById(eventId).remove();
     }
 
-    // Add new event
+    // Add / Update event: request validation on submit button click; add/update runs in core.form.valid
     // ------------------------------------------------
-    btnSubmit.addEventListener('click', e => {
-      if (btnSubmit.classList.contains('btn-add-event')) {
-        if (isFormValid) {
-          let newEvent = {
-            id: calendar.getEvents().length + 1,
-            title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
-            startStr: eventStartDate.value,
-            endStr: eventEndDate.value,
-            display: 'block',
-            extendedProps: {
-              location: eventLocation.value,
-              guests: eventGuests.val(),
-              calendar: eventLabel.val(),
-              description: eventDescription.value
-            }
-          };
-          if (eventUrl.value) {
-            newEvent.url = eventUrl.value;
-          }
-          if (allDaySwitch.checked) {
-            newEvent.allDay = true;
-          }
-          addEvent(newEvent);
-          bsAddEventSidebar.hide();
-        }
-      } else {
-        // Update event
-        // ------------------------------------------------
-        if (isFormValid) {
-          let eventData = {
-            id: eventToUpdate.id,
-            title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
-            url: eventUrl.value,
-            extendedProps: {
-              location: eventLocation.value,
-              guests: eventGuests.val(),
-              calendar: eventLabel.val(),
-              description: eventDescription.value
-            },
-            display: 'block',
-            allDay: allDaySwitch.checked ? true : false
-          };
-
-          updateEvent(eventData);
-          bsAddEventSidebar.hide();
-        }
-      }
+    btnSubmit.addEventListener('click', function (e) {
+      e.preventDefault();
+      submitRequested = true;
+      fv.validate();
     });
 
     // Call removeEvent function
