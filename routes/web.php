@@ -849,6 +849,12 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
+// Today: open calendar in list view
+Route::get('/today', function ()
+{
+    return redirect()->to(route('app-calendar').'?view=listMonth');
+})->name('today')->middleware('auth');
+
 // Calendar (local DB)
 Route::middleware(['auth'])->prefix('app')->group(function ()
 {

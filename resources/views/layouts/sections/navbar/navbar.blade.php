@@ -206,7 +206,7 @@
             data-stop-url="/attendance/:ID/stop">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
                aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
-                <i class="ti ti-clock ti-md text-muted" id="quick-timer-icon"></i>
+                <i class="ti ti-clock ti-md" id="quick-timer-icon"></i>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
                 <li class="px-3 pt-2 pb-1 d-flex align-items-center">
@@ -223,7 +223,7 @@
                 <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
                 <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
                 <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
-                <li><a class="dropdown-item text-danger" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
             </ul>
         </li>
         @endauth
@@ -328,6 +328,40 @@
                         @php
                             $teamShortcuts = auth()->user()->currentTeam ? auth()->user()->currentTeam->getSetting('team_shortcuts', []) : [];
                         @endphp
+
+                        {{-- Fixed shortcuts (before custom team shortcuts) --}}
+                        <div class="row row-bordered overflow-visible g-0">
+                            <div class="dropdown-shortcuts-item col">
+                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                    <i class="ti ti-calendar fs-4"></i>
+                                </span>
+                                <a href="{{ route('app-calendar') }}" class="stretched-link">{{ __('Calendario') }}</a>
+                                <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
+                            </div>
+                            <div class="dropdown-shortcuts-item col">
+                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                    <i class="ti ti-files fs-4"></i>
+                                </span>
+                                <a href="{{ url('documentation/list') }}" class="stretched-link">{{ __('Documentación') }}</a>
+                                <small class="text-muted mb-0">{{ __('Documentos') }}</small>
+                            </div>
+                        </div>
+                        <div class="row row-bordered overflow-visible g-0">
+                            <div class="dropdown-shortcuts-item col">
+                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                    <i class="ti ti-target fs-4"></i>
+                                </span>
+                                <a href="{{ route('prospect.search') }}" class="stretched-link">{{ __('Buscar clientes') }}</a>
+                                <small class="text-muted mb-0">{{ __('Prospección') }}</small>
+                            </div>
+                            <div class="dropdown-shortcuts-item col">
+                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                    <i class="ti ti-hourglass-low fs-4"></i>
+                                </span>
+                                <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Tiempos') }}</a>
+                                <small class="text-muted mb-0">{{ __('Registro de tiempos') }}</small>
+                            </div>
+                        </div>
 
                         @if(count($teamShortcuts) > 0)
                             @foreach($teamShortcuts as $index => $shortcut)

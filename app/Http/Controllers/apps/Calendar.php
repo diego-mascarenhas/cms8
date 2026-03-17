@@ -10,16 +10,24 @@ use Illuminate\Support\Carbon;
 
 class Calendar extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $eventsUrl = route('app-calendar-events');
         $contacts = Contact::select('id', 'name', 'surname', 'email')
             ->orderBy('name')
             ->get();
 
+        $initialView = $request->query('view');
+        $allowedViews = ['dayGridMonth', 'timeGridWeek', 'timeGridDay', 'listMonth'];
+        if (! in_array($initialView, $allowedViews, true))
+        {
+            $initialView = 'dayGridMonth';
+        }
+
         return view('content.apps.app-calendar', [
             'calendarEventsApiUrl' => $eventsUrl,
             'calendarContacts' => $contacts,
+            'calendarInitialView' => $initialView,
         ]);
     }
 

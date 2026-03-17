@@ -29,6 +29,9 @@
 @if(isset($calendarEventsApiUrl))
 <script>window.calendarEventsApiUrl = @json($calendarEventsApiUrl);</script>
 @endif
+@if(isset($calendarInitialView))
+<script>window.calendarInitialView = @json($calendarInitialView);</script>
+@endif
 <script>
   window.calendarLocale = @json(app()->getLocale());
   window.calendarStrings = {

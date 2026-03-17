@@ -323,8 +323,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Init FullCalendar
     // ------------------------------------------------
+    const initialView = typeof window.calendarInitialView !== 'undefined' ? window.calendarInitialView : 'dayGridMonth';
     let calendar = new Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
+      initialView: initialView,
       events: fetchEvents,
       plugins: [dayGridPlugin, interactionPlugin, listPlugin, timegridPlugin],
       editable: true,

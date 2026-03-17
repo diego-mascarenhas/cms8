@@ -20,20 +20,6 @@
       "module_key": "today"
     },
     {
-      "url": "app/calendar",
-      "name": "Calendar",
-      "icon": "menu-icon tf-icons ti ti-calendar",
-      "slug": "app-calendar",
-      "module_key": "calendar"
-    },
-    {
-      "url": "prospect/search",
-      "name": "Buscar clientes",
-      "icon": "menu-icon tf-icons ti ti-target",
-      "slug": "prospect.search",
-      "module_key": "prospecting"
-    },
-    {
       "url": "contact/list",
       "name": "Contacts",
       "icon": "menu-icon tf-icons ti ti-users",
@@ -81,20 +67,6 @@
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
       "slug": "task",
       "module_key": "tasks"
-    },
-    {
-      "url": "time/list",
-      "name": "Times",
-      "icon": "menu-icon tf-icons ti ti-hourglass-low",
-      "slug": "time",
-      "module_key": "times"
-    },
-    {
-      "url": "documentation/list",
-      "name": "Documentación",
-      "icon": "menu-icon tf-icons ti ti-files",
-      "slug": "documentation-list",
-      "module_key": "documentation"
     },
     {
       "menuHeader": "E-commerce"
