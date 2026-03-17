@@ -7,10 +7,12 @@ use App\DataTables\StripeSubscriptionDataTable;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Models\SubscriptionProduct;
+use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamStripeCustomerService;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
+use Stripe\StripeClient;
 
 class SubscriptionController extends Controller
 {
@@ -24,8 +26,9 @@ class SubscriptionController extends Controller
 
     /**
      * Sync client subscriptions from Stripe to local stripe_subscriptions table.
+     * Uses the current team's Stripe API key (test or live) from team settings.
      */
-    public function syncFromStripe(SyncStripeSubscriptionsAction $sync)
+    public function syncFromStripe()
     {
         $team = auth()->user()->currentTeam;
         if (! $team)
@@ -33,6 +36,14 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.index')->with('error', __('Equipo no seleccionado.'));
         }
 
+        $secret = $team->getSetting('stripe_secret');
+        if (empty($secret))
+        {
+            return redirect()->route('subscription.index')->with('error', __('Configura la clave secreta de Stripe en Ajustes del equipo para poder sincronizar. Puedes usar la API de test (claves que empiezan por sk_test_).'));
+        }
+
+        $stripeService = new StripeSubscriptionService(new StripeClient($secret));
+        $sync = new SyncStripeSubscriptionsAction($stripeService);
         $count = $sync->handle($team);
 
         return redirect()->route('subscription.index')->with('success', __('Suscripciones sincronizadas desde Stripe: :count procesadas.', ['count' => $count]));
