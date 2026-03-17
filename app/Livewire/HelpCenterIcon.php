@@ -19,21 +19,22 @@ class HelpCenterIcon extends Component
             15,
             function () use ($teamNumber)
             {
-                $query = Conversation::where('channel', 'whatsapp')
-                    ->where('direction', 'inbound')
-                    ->where('status', 'received');
-                if ($teamNumber !== '')
+                if ($teamNumber === '')
                 {
-                    $query->where(function ($q) use ($teamNumber)
+                    return 0;
+                }
+
+                return Conversation::where('channel', 'whatsapp')
+                    ->where('direction', 'inbound')
+                    ->where('status', 'received')
+                    ->where(function ($q) use ($teamNumber)
                     {
                         $q->where('from', $teamNumber)
                             ->orWhere('to', $teamNumber)
                             ->orWhere('from', 'like', $teamNumber.':%')
                             ->orWhere('to', 'like', $teamNumber.':%');
-                    });
-                }
-
-                return $query->count();
+                    })
+                    ->count();
             },
         );
 

@@ -748,6 +748,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
+    Route::post('/template/generate-html', [TemplateController::class, 'generateHtml'])->name('template.generate-html')->middleware('throttle:10,1');
+    Route::get('/template/generate-html/result/{token}', [TemplateController::class, 'generateHtmlResult'])->name('template.generate-html.result');
     Route::get('/template/list', [TemplateController::class, 'index'])->name('template.index');
     Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
     Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');

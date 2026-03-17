@@ -15,7 +15,7 @@
     "google/apiclient": "^2.19",
     "guzzlehttp/guzzle": "^7.9",
     "idoneo/humano-academy": "dev-main",
-    "jd-dotlogics/laravel-grapesjs": "^3.4",
+    "jd-dotlogics/laravel-grapesjs": "3.4.1",
     "laravel/ai": "^0.2",
     "laravel/cashier": "^15.0",
     "laravel/framework": "^12.0",

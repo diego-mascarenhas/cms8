@@ -63,6 +63,28 @@
 </script>
 @endif
 
+@if(session('warning'))
+<div id="toast-warning-container" class="toast-top-right">
+    <div class="toast toast-warning" aria-live="polite" style="display: block;">
+        <div class="toast-message">{{ session('warning') }}</div>
+    </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var toastElement = document.getElementById('toast-warning-container');
+    if (toastElement) {
+      var toast = new bootstrap.Toast(toastElement, {
+          animation: true,
+          delay: 5000,
+          autohide: true
+      });
+      toast.show();
+    }
+  });
+</script>
+@endif
+
 <div class="card">
     <div class="card-body">
         {{ $dataTable->table() }}

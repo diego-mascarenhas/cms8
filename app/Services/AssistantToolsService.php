@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Jobs\GenerateTemplateHtmlJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
@@ -10,6 +11,7 @@ use App\Models\Module;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
+use App\Models\Template;
 use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
@@ -258,6 +260,55 @@ class AssistantToolsService
                     'required' => ['ticket_id', 'message'],
                 ],
             ],
+            [
+                'name' => 'list_templates',
+                'description' => 'List email templates for the current team. Use when the user asks for templates, "lista de plantillas", "plantillas", or to choose one before activating/suspending or modifying. Returns id, name, status (active/suspended).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'create_template',
+                'description' => 'Create a new email template. Provide name; optionally ai_prompt to generate HTML with AI (generation runs in background; user gets the view and editor links immediately). Always return the public view link and editor link so the user can open or edit the template.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'name' => ['type' => 'string', 'description' => 'Template name'],
+                        'ai_prompt' => ['type' => 'string', 'description' => 'Optional: describe the template to generate HTML with AI (e.g. "Newsletter with logo and CTA button")'],
+                    ],
+                    'required' => ['name'],
+                ],
+            ],
+            [
+                'name' => 'update_template_status',
+                'description' => 'Activate or suspend an email template. Use when the user says "activar plantilla X", "suspender plantilla Y", "activar la plantilla", "desactivar la plantilla". Pass template_id and status: active or suspended.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'template_id' => ['type' => 'integer', 'description' => 'Template ID (from list_templates)'],
+                        'status' => [
+                            'type' => 'string',
+                            'description' => 'active or suspended',
+                            'enum' => ['active', 'suspended'],
+                        ],
+                    ],
+                    'required' => ['template_id', 'status'],
+                ],
+            ],
+            [
+                'name' => 'update_template',
+                'description' => 'Update an email template (e.g. change name). Use when the user asks to rename or modify template details. Pass template_id and optional name. For changing HTML content, tell the user to open the editor link.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'template_id' => ['type' => 'integer', 'description' => 'Template ID to update'],
+                        'name' => ['type' => 'string', 'description' => 'New template name (optional)'],
+                    ],
+                    'required' => ['template_id'],
+                ],
+            ],
         ];
     }
 
@@ -307,6 +358,10 @@ class AssistantToolsService
                 'update_calendar_event' => $this->updateCalendarEvent($teamId, $input),
                 'create_ticket' => $this->createTicket($teamId, $user->id, $input),
                 'add_ticket_response' => $this->addTicketResponse($teamId, $user->id, $input),
+                'list_templates' => $this->listTemplates($teamId),
+                'create_template' => $this->createTemplate($teamId, $user->id, $input),
+                'update_template_status' => $this->updateTemplateStatus($teamId, $user, $input),
+                'update_template' => $this->updateTemplate($teamId, $user, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -1027,6 +1082,125 @@ class AssistantToolsService
         $type = $isInternalNote ? 'Internal note' : 'Reply';
 
         return $this->truncate("{$type} added to ticket #{$ticket->id} ({$ticket->subject}).{$statusNote}");
+    }
+
+    private function listTemplates(int $teamId): string
+    {
+        $templates = Template::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'status_id']);
+
+        if ($templates->isEmpty())
+        {
+            return 'No templates yet. Use create_template to create one.';
+        }
+
+        $lines = $templates->map(fn ($t) => sprintf('  - %s (id: %d, status: %s)', $t->name, $t->id, (int) $t->status_id === 1 ? 'active' : 'suspended'))->implode("\n");
+
+        return "Templates:\n".$lines;
+    }
+
+    private function createTemplate(int $teamId, int $userId, array $input): string
+    {
+        $user = User::withoutGlobalScopes()->find($userId);
+        if (! $user || ! $user->can('template.create'))
+        {
+            return 'You do not have permission to create templates.';
+        }
+
+        $name = trim((string) ($input['name'] ?? ''));
+        if ($name === '')
+        {
+            return 'Template name is required.';
+        }
+
+        $aiPrompt = isset($input['ai_prompt']) ? trim((string) $input['ai_prompt']) : null;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => $name,
+            'status_id' => 1,
+            'gjs_data' => null,
+        ]);
+
+        $viewUrl = url()->route('template.show', $template->getHashedId());
+        $editorUrl = url()->route('template.editor', $template->getHashedId());
+
+        $out = "Template created: {$template->name} (id: {$template->id}). View (public link): {$viewUrl} — Editor: {$editorUrl}";
+        if ($aiPrompt !== null && $aiPrompt !== '')
+        {
+            GenerateTemplateHtmlJob::dispatch($aiPrompt, $teamId, '', $template->id);
+            $out .= '. AI generation is running in the background; the template will be updated with the generated HTML shortly. You can already open the editor to see or edit it.';
+        }
+
+        return $this->truncate($out);
+    }
+
+    private function updateTemplateStatus(int $teamId, User $user, array $input): string
+    {
+        $templateId = (int) ($input['template_id'] ?? 0);
+        $status = trim((string) ($input['status'] ?? ''));
+
+        if ($templateId < 1)
+        {
+            return 'template_id is required.';
+        }
+        if (! in_array($status, ['active', 'suspended'], true))
+        {
+            return 'status must be "active" or "suspended".';
+        }
+
+        $template = Template::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($templateId);
+
+        if (! $template)
+        {
+            return "Template with id {$templateId} not found.";
+        }
+
+        if (! $user->can('template.edit'))
+        {
+            return 'You do not have permission to update this template.';
+        }
+
+        $template->update(['status_id' => $status === 'active' ? 1 : 0]);
+
+        return $this->truncate("Template \"{$template->name}\" (id: {$template->id}) is now ".$status.'.');
+    }
+
+    private function updateTemplate(int $teamId, User $user, array $input): string
+    {
+        $templateId = (int) ($input['template_id'] ?? 0);
+        if ($templateId < 1)
+        {
+            return 'template_id is required.';
+        }
+
+        $template = Template::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($templateId);
+
+        if (! $template)
+        {
+            return "Template with id {$templateId} not found.";
+        }
+
+        if (! $user->can('template.edit'))
+        {
+            return 'You do not have permission to update this template.';
+        }
+
+        $name = isset($input['name']) ? trim((string) $input['name']) : null;
+        if ($name === null || $name === '')
+        {
+            return 'No changes provided. Pass "name" to rename the template.';
+        }
+
+        $template->update(['name' => $name]);
+
+        return $this->truncate("Template (id: {$template->id}) renamed to: {$name}. View: ".url()->route('template.show', $template->getHashedId()));
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

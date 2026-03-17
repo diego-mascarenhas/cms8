@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="csrf-token" content="">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit {{ $model->editor_page_title }}</title>
 
@@ -78,14 +78,16 @@
 </head>
 
 <body>
-    <div class="d-flex align-items-center gap-2 mb-3" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px;">
-      <span style="font-size: 14px; color: #444; font-family: 'Public Sans', Arial, Helvetica, sans-serif; font-weight: 400; min-width: 260px; margin-right: 18px;">¿Tienes tu diseño publicado en la web?</span>
-      <input type="text" id="import-url-input" placeholder="Pega la URL para importar HTML"
-        style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; max-width: 600px; width: 100%; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
-      <button id="import-url-btn"
-        style="padding: 6px 16px; background: #7367f0; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif;">
-        Importar HTML
-      </button>
+    <div style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+      <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
+        <span style="font-size: 14px; color: #444; font-family: 'Public Sans', Arial, Helvetica, sans-serif; font-weight: 400; min-width: 140px;">Generar con IA</span>
+        <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Newsletter de bienvenida con logo, título y botón CTA"
+          style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; flex: 1; min-width: 200px; max-width: 500px; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
+        <button type="button" id="generate-ai-btn"
+          style="padding: 6px 16px; background: #28a745; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif;">
+          Generar con IA
+        </button>
+      </div>
     </div>
     <div id="{{ str_replace('#', '', $editorConfig->container ?? 'editor') }}"></div>
 
@@ -105,26 +107,85 @@
         return null;
     }
 
+    function getCsrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        var match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
-            document.getElementById('import-url-btn').addEventListener('click', async function() {
-                const url = document.getElementById('import-url-input').value;
-                if (!url) return alert('Ingresa una URL');
-                try {
-                    const response = await fetch('/api/fetch-html?url=' + encodeURIComponent(url));
-                    const data = await response.json();
-                    const editor = getGrapesEditorInstance();
-                    if (!editor) return alert('No se encontró la instancia de GrapesJS');
-                    if (data.html) {
-                        editor.setComponents(data.html);
-                        alert('HTML importado. Ahora puedes editar y guardar el template.');
-                    } else {
-                        alert('No se pudo importar el HTML: ' + (data.error || 'Error desconocido'));
+            var generateAiBtn = document.getElementById('generate-ai-btn');
+            if (generateAiBtn) {
+                generateAiBtn.addEventListener('click', async function() {
+                    var promptInput = document.getElementById('generate-ai-prompt');
+                    var prompt = promptInput && promptInput.value ? promptInput.value.trim() : '';
+                    if (!prompt) {
+                        alert('Describe el template que quieres generar.');
+                        return;
                     }
-                } catch (e) {
-                    alert('Error al importar: ' + e.message);
-                }
-            });
+                    var btn = this;
+                    var originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Generando...';
+                    try {
+                        var response = await fetch('/template/generate-html', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': getCsrfToken(),
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ prompt: prompt })
+                        });
+                        var rawText = await response.text();
+                        var data = rawText ? (function(){ try { return JSON.parse(rawText); } catch(e) { return {}; } })() : {};
+                        if (response.status !== 202 || !data.token) {
+                            alert('Error al iniciar: ' + (data.error || 'Respuesta inesperada'));
+                            return;
+                        }
+                        var token = data.token;
+                        var pollUrl = '/template/generate-html/result/' + encodeURIComponent(token);
+                        var maxWait = 120000;
+                        var interval = 2000;
+                        var start = Date.now();
+                        var editor = getGrapesEditorInstance();
+                        if (!editor) {
+                            alert('No se encontró la instancia de GrapesJS');
+                            return;
+                        }
+                        for (;;) {
+                            var res = await fetch(pollUrl, { headers: { 'Accept': 'application/json' } });
+                            var text = await res.text();
+                            var result = text ? (function(){ try { return JSON.parse(text); } catch(e) { return null; } })() : null;
+                            if (res.status === 404 || !result) {
+                                alert('Error: token no válido o expirado.');
+                                break;
+                            }
+                            if (result.status === 'completed' && result.html) {
+                                editor.setComponents(result.html);
+                                alert('HTML generado. Ahora puedes editar y guardar el template.');
+                                break;
+                            }
+                            if (result.status === 'failed') {
+                                alert('No se pudo generar el HTML: ' + (result.error || 'Error desconocido'));
+                                break;
+                            }
+                            if (Date.now() - start >= maxWait) {
+                                alert('Tiempo de espera agotado. Intenta de nuevo.');
+                                break;
+                            }
+                            await new Promise(function(r) { setTimeout(r, interval); });
+                        }
+                    } catch (e) {
+                        alert('Error al generar: ' + (e.message || 'Error de conexión'));
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }
+                });
+            }
         }, 1500); // Espera 1.5s para asegurar que el editor esté inicializado
     });
     </script>

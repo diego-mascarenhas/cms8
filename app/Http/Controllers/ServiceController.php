@@ -166,9 +166,9 @@ class ServiceController extends Controller
             $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
             $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
                 ?? \App\Models\ServiceType::orderBy('id')->value('id');
-            if (! $input['service_type_id'])
+            if (empty($input['service_type_id']))
             {
-                return redirect()->back()->withErrors(['category_id' => __('Debe existir al menos un tipo de servicio (service type) vinculado a categorías.')])->withInput();
+                $input['service_type_id'] = null;
             }
             unset($input['category_id']);
 
@@ -289,9 +289,9 @@ class ServiceController extends Controller
         $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
         $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
             ?? \App\Models\ServiceType::orderBy('id')->value('id');
-        if (! $input['service_type_id'])
+        if (empty($input['service_type_id']))
         {
-            return redirect()->back()->withErrors(['category_id' => __('Debe existir al menos un tipo de servicio (service type) vinculado a categorías.')])->withInput();
+            $input['service_type_id'] = null;
         }
         unset($input['category_id']);
 
