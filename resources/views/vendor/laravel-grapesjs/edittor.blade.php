@@ -78,14 +78,14 @@
 </head>
 
 <body>
-    <div style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
       <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
-        <span style="font-size: 14px; color: #444; font-family: 'Public Sans', Arial, Helvetica, sans-serif; font-weight: 400; min-width: 140px;">Generar con IA</span>
-        <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Newsletter de bienvenida con logo, título y botón CTA"
-          style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; flex: 1; min-width: 200px; max-width: 500px; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
+        <img src="{{ asset('assets/logo-dark.svg') }}" alt="Humano" style="height: 36px; width: auto; min-width: 100px; object-fit: contain;" />
+        <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Cambiar el color del botón, renombrar la plantilla, o describir contenido para generar"
+          style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; flex: 1 1 75%; min-width: 840px; max-width: 1200px; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
         <button type="button" id="generate-ai-btn"
-          style="padding: 6px 16px; background: #28a745; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif;">
-          Generar con IA
+          style="padding: 0.5rem 1.25rem; background: #7367f0; color: #fff; border: none; border-radius: 0.375rem; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif; white-space: nowrap; box-shadow: 0 4px 8px rgba(115, 103, 240, 0.35);">
+          Crear con el Asistente Humano
         </button>
       </div>
     </div>
@@ -122,64 +122,37 @@
                     var promptInput = document.getElementById('generate-ai-prompt');
                     var prompt = promptInput && promptInput.value ? promptInput.value.trim() : '';
                     if (!prompt) {
-                        alert('Describe el template que quieres generar.');
+                        alert('Escribe tu solicitud (cambios, renombrar, generar contenido, etc.).');
                         return;
                     }
+                    var bar = document.getElementById('editor-assistant-bar');
+                    var templateHashedId = bar && bar.getAttribute ? bar.getAttribute('data-template-hashed-id') : '';
                     var btn = this;
                     var originalText = btn.textContent;
                     btn.disabled = true;
-                    btn.textContent = 'Generando...';
+                    btn.textContent = 'Enviando...';
+                    promptInput.value = '';
                     try {
-                        var response = await fetch('/template/generate-html', {
+                        var body = { message: prompt };
+                        if (templateHashedId) body.template_hashed_id = templateHashedId;
+                        var response = await fetch('{{ route("chat.assistant") }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': getCsrfToken(),
                                 'Accept': 'application/json'
                             },
-                            body: JSON.stringify({ prompt: prompt })
+                            body: JSON.stringify(body)
                         });
                         var rawText = await response.text();
                         var data = rawText ? (function(){ try { return JSON.parse(rawText); } catch(e) { return {}; } })() : {};
-                        if (response.status !== 202 || !data.token) {
-                            alert('Error al iniciar: ' + (data.error || 'Respuesta inesperada'));
-                            return;
-                        }
-                        var token = data.token;
-                        var pollUrl = '/template/generate-html/result/' + encodeURIComponent(token);
-                        var maxWait = 120000;
-                        var interval = 2000;
-                        var start = Date.now();
-                        var editor = getGrapesEditorInstance();
-                        if (!editor) {
-                            alert('No se encontró la instancia de GrapesJS');
-                            return;
-                        }
-                        for (;;) {
-                            var res = await fetch(pollUrl, { headers: { 'Accept': 'application/json' } });
-                            var text = await res.text();
-                            var result = text ? (function(){ try { return JSON.parse(text); } catch(e) { return null; } })() : null;
-                            if (res.status === 404 || !result) {
-                                alert('Error: token no válido o expirado.');
-                                break;
-                            }
-                            if (result.status === 'completed' && result.html) {
-                                editor.setComponents(result.html);
-                                alert('HTML generado. Ahora puedes editar y guardar el template.');
-                                break;
-                            }
-                            if (result.status === 'failed') {
-                                alert('No se pudo generar el HTML: ' + (result.error || 'Error desconocido'));
-                                break;
-                            }
-                            if (Date.now() - start >= maxWait) {
-                                alert('Tiempo de espera agotado. Intenta de nuevo.');
-                                break;
-                            }
-                            await new Promise(function(r) { setTimeout(r, interval); });
+                        if (data.success && data.response) {
+                            alert(data.response);
+                        } else {
+                            alert(data.message || data.error || 'No se pudo enviar. Intenta de nuevo.');
                         }
                     } catch (e) {
-                        alert('Error al generar: ' + (e.message || 'Error de conexión'));
+                        alert('Error: ' + (e.message || 'Error de conexión'));
                     } finally {
                         btn.disabled = false;
                         btn.textContent = originalText;

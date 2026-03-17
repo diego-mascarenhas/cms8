@@ -271,7 +271,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_template',
-                'description' => 'Create a new email template. Provide name; optionally ai_prompt to generate HTML with AI (generation runs in background; user gets the view and editor links immediately). Always return the public view link and editor link so the user can open or edit the template.',
+                'description' => 'Create a NEW email template from scratch only. Use ONLY when the user explicitly asks to create a new template (e.g. "crear plantilla", "nueva plantilla"). Do NOT use for modifying an existing template — use update_template or update_template_status instead, or direct the user to the editor link for content/design changes. Provide name; optionally ai_prompt for AI-generated HTML. Returns view and editor links.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -299,7 +299,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_template',
-                'description' => 'Update an email template (e.g. change name). Use when the user asks to rename or modify template details. Pass template_id and optional name. For changing HTML content, tell the user to open the editor link.',
+                'description' => 'Modify an EXISTING template (e.g. rename). Use when the user asks to change an existing template\'s name or details ("cambia el nombre", "renombrar plantilla"). Pass template_id (from list_templates) and name. If the user said "la plantilla" or "esa", use list_templates first to get the template_id. For HTML/design changes, tell the user to open the editor link — do not create a new template.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -344,7 +344,7 @@ class AssistantToolsService
             {
                 'list_contact_categories' => $this->listContactCategories($teamId),
                 'get_contact_categories' => $this->getContactCategories($teamId, $input),
-                'create_contact' => $this->createContact($teamId, $user->id, $input),
+                'create_contact' => $this->createContact($teamId, $user, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $input),
                 'update_contact' => $this->updateContact($teamId, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
@@ -394,9 +394,9 @@ class AssistantToolsService
         return "Contact categories:\n".$lines;
     }
 
-    private function createContact(int $teamId, int $creatorId, array $input): string
+    private function createContact(int $teamId, User $user, array $input): string
     {
-        if (! Gate::allows('create', Contact::class))
+        if (! Gate::forUser($user)->allows('create', Contact::class))
         {
             return 'You do not have permission to create contacts.';
         }
@@ -420,7 +420,7 @@ class AssistantToolsService
 
         $contact = Contact::withoutGlobalScopes()->create([
             'team_id' => $teamId,
-            'creator_id' => $creatorId,
+            'creator_id' => $user->id,
             'name' => $name,
             'surname' => null,
             'email' => $email,
@@ -1104,7 +1104,8 @@ class AssistantToolsService
     private function createTemplate(int $teamId, int $userId, array $input): string
     {
         $user = User::withoutGlobalScopes()->find($userId);
-        if (! $user || ! $user->can('template.create'))
+        $canCreate = $user && ($user->hasRole('admin') || $user->hasRole('root') || $user->can('template.create'));
+        if (! $canCreate)
         {
             return 'You do not have permission to create templates.';
         }

@@ -744,6 +744,7 @@ class ChatController extends Controller
             'respond_with_audio' => 'nullable|boolean',
             'recipient' => 'nullable|string|max:50',
             'contact_id' => 'nullable|integer|exists:contacts,id',
+            'template_hashed_id' => 'nullable|string|max:512',
         ], [
             'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
             'audio.max' => __('El audio no puede superar 25 MB.'),
@@ -769,6 +770,20 @@ class ChatController extends Controller
         if ($message === '')
         {
             return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+        }
+
+        if ($request->filled('template_hashed_id'))
+        {
+            $template = \App\Models\Template::findByHash($request->input('template_hashed_id'));
+            if ($template && auth()->check() && auth()->user()->currentTeam && (int) $template->team_id === (int) auth()->user()->currentTeam->id)
+            {
+                $message = sprintf(
+                    "Estoy editando la plantilla «%s» (id: %d). Mi solicitud: %s",
+                    $template->name,
+                    $template->id,
+                    $message
+                );
+            }
         }
 
         $contextUser = null;
@@ -821,6 +836,7 @@ class ChatController extends Controller
             $replyResponse['meta'] ?? [],
             $replyResponse['tool_calls'] ?? [],
             $replyResponse['tool_results'] ?? [],
+            $teamId
         );
 
         $payload = [
