@@ -10,6 +10,8 @@ use App\Models\Module;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
+use App\Models\Ticket;
+use App\Models\TicketResponse;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
@@ -226,6 +228,36 @@ class AssistantToolsService
                     'required' => ['event_id'],
                 ],
             ],
+            [
+                'name' => 'create_ticket',
+                'description' => 'Create a support ticket. Use when the user asks to open a ticket, "crear ticket", "abrir un ticket", or report an issue. Requires team tickets module. Subject and description required; priority optional (low, medium, high, urgent).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'subject' => ['type' => 'string', 'description' => 'Ticket subject/title'],
+                        'description' => ['type' => 'string', 'description' => 'Ticket description or initial message'],
+                        'priority' => [
+                            'type' => 'string',
+                            'description' => 'Priority: low, medium, high, or urgent (optional, default medium)',
+                            'enum' => ['low', 'medium', 'high', 'urgent'],
+                        ],
+                    ],
+                    'required' => ['subject', 'description'],
+                ],
+            ],
+            [
+                'name' => 'add_ticket_response',
+                'description' => 'Add a reply to an existing support ticket (as admin/support). Use when the user asks to respond to a ticket, "responder al ticket X", or "contestá el ticket". Pass ticket_id and message. Optionally set is_internal_note to true for internal notes (admin only, not visible to client).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'ticket_id' => ['type' => 'integer', 'description' => 'ID of the ticket to reply to'],
+                        'message' => ['type' => 'string', 'description' => 'Reply message text'],
+                        'is_internal_note' => ['type' => 'boolean', 'description' => 'If true, add as internal note (admin only, not visible to client). Default false.'],
+                    ],
+                    'required' => ['ticket_id', 'message'],
+                ],
+            ],
         ];
     }
 
@@ -273,6 +305,8 @@ class AssistantToolsService
                 'create_calendar_event' => $this->createCalendarEvent($teamId, $input),
                 'list_calendar_events' => $this->listCalendarEvents($teamId, $input),
                 'update_calendar_event' => $this->updateCalendarEvent($teamId, $input),
+                'create_ticket' => $this->createTicket($teamId, $user->id, $input),
+                'add_ticket_response' => $this->addTicketResponse($teamId, $user->id, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -893,6 +927,106 @@ class AssistantToolsService
         return $this->truncate(
             'Event updated: '.$event->title.' (id: '.$event->id.') — '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
         );
+    }
+
+    private function createTicket(int $teamId, int $userId, array $input): string
+    {
+        $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
+        if (! $team || ! $team->hasModule('tickets'))
+        {
+            return 'Tickets module is not enabled for this team.';
+        }
+
+        if (! Gate::allows('create', Ticket::class))
+        {
+            return 'You do not have permission to create tickets.';
+        }
+
+        $subject = trim((string) ($input['subject'] ?? ''));
+        $description = trim((string) ($input['description'] ?? ''));
+        if ($subject === '' || $description === '')
+        {
+            return 'subject and description are required to create a ticket.';
+        }
+
+        $priority = isset($input['priority']) && in_array($input['priority'], ['low', 'medium', 'high', 'urgent'], true)
+            ? $input['priority']
+            : 'medium';
+
+        $ticket = Ticket::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'user_id' => $userId,
+            'subject' => $subject,
+            'description' => $description,
+            'priority' => $priority,
+            'status' => 'open',
+        ]);
+
+        return $this->truncate("Ticket created: {$ticket->subject} (id: {$ticket->id}). Priority: {$priority}. The user can view it and add replies from the Tickets section.");
+    }
+
+    private function addTicketResponse(int $teamId, int $userId, array $input): string
+    {
+        $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
+        if (! $team || ! $team->hasModule('tickets'))
+        {
+            return 'Tickets module is not enabled for this team.';
+        }
+
+        $ticketId = (int) ($input['ticket_id'] ?? 0);
+        if ($ticketId < 1)
+        {
+            return 'ticket_id is required.';
+        }
+
+        $ticket = Ticket::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($ticketId);
+
+        if (! $ticket)
+        {
+            return "Ticket with id {$ticketId} not found.";
+        }
+
+        if (! Gate::allows('update', $ticket))
+        {
+            return 'You do not have permission to reply to this ticket.';
+        }
+
+        $message = trim((string) ($input['message'] ?? ''));
+        if ($message === '')
+        {
+            return 'message is required to add a reply.';
+        }
+
+        $isInternalNote = (bool) ($input['is_internal_note'] ?? false);
+        $user = User::withoutGlobalScopes()->find($userId);
+        if ($isInternalNote && (! $user || ! $user->hasRole('admin')))
+        {
+            return 'Only admins can add internal notes. Use is_internal_note false for a normal reply visible to the client.';
+        }
+
+        TicketResponse::withoutGlobalScopes()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $userId,
+            'message' => $message,
+            'is_internal_note' => $isInternalNote,
+        ]);
+
+        $statusNote = '';
+        if (! $isInternalNote && in_array($ticket->status, ['open', 'waiting_client'], true))
+        {
+            $ticket->update(['status' => 'in_progress']);
+            $statusNote = ' Ticket status set to in progress.';
+        } elseif (! $isInternalNote && $ticket->status === 'in_progress')
+        {
+            $ticket->update(['status' => 'waiting_client']);
+            $statusNote = ' Ticket status set to waiting client.';
+        }
+
+        $type = $isInternalNote ? 'Internal note' : 'Reply';
+
+        return $this->truncate("{$type} added to ticket #{$ticket->id} ({$ticket->subject}).{$statusNote}");
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

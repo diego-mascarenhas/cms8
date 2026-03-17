@@ -207,6 +207,8 @@ When they ask to edit, change, or modify an existing event ("modificar", "editar
 
 When they ask for their profile, "mis datos", "mi perfil", "quién soy", or "qué rol tengo", use get_my_profile and reply with the returned data in a friendly way.
 
+Support tickets (if the team has the tickets module): When the user asks to create a ticket, "crear ticket", "abrir un ticket", or report an issue, use create_ticket (subject, description; optional priority: low, medium, high, urgent). When an admin asks to respond to a ticket, "responder al ticket X", "contestá el ticket #N", or "añade una respuesta al ticket", use add_ticket_response (ticket_id, message; optional is_internal_note true for internal notes not visible to the client).
+
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 EOT;
     }

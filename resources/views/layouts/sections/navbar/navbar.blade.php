@@ -410,6 +410,17 @@
         </li>
         <!--/ Mail -->
 
+        {{-- Tickets (after Mailbox, before Chat) --}}
+        @auth
+        @if (auth()->user()->currentTeam?->hasModule('tickets') && auth()->user()->can('viewAny', \App\Models\Ticket::class))
+        <li class="nav-item me-3 me-xl-1">
+            <a class="nav-link" href="{{ url('ticket/list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Tickets') }}">
+                <i class="ti ti-ticket ti-md"></i>
+            </a>
+        </li>
+        @endif
+        @endauth
+
         <!-- WhatsApp Support -->
         @if(config('app.whatsapp_support'))
             <li class="nav-item me-3 me-xl-1">

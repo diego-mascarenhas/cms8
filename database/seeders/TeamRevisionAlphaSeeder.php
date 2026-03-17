@@ -93,6 +93,9 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 8. Assign core modules to team
         $this->assignCoreModules($team);
 
+        // 8.1. Ensure tickets module is active for Revision Alpha (support tickets)
+        $team->enableModule('tickets');
+
         // 9. Create demo clients (REVISION ALPHA, IDONEO) and their projects
         $this->createDemoClientsAndProjects();
 

@@ -66,6 +66,7 @@ use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
@@ -220,7 +221,17 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
 
-    // Team Mailboxes
+    // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
+    Route::get('/mailboxes', function ()
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        return redirect()->route('team.mailboxes.index', $team);
+    })->name('mailboxes.index');
     Route::get('/team/{team}/mailboxes', [TeamMailboxController::class, 'index'])->name('team.mailboxes.index');
     Route::get('/team/{team}/mailboxes/create', [TeamMailboxController::class, 'create'])->name('team.mailboxes.create');
     Route::post('/team/{team}/mailboxes', [TeamMailboxController::class, 'store'])->name('team.mailboxes.store');
@@ -564,6 +575,20 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
     Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
     Route::get('/task/{id}/total-time', [TaskController::class, 'getTotalTime'])->name('task.total-time');
+
+    // Ticket Routes
+    Route::get('/ticket/list', [TicketController::class, 'index'])->name('ticket.index');
+    Route::get('/ticket/create', [TicketController::class, 'create'])->name('ticket.create');
+    Route::post('/ticket', [TicketController::class, 'store'])->name('ticket.store');
+    Route::get('/ticket/{id}', [TicketController::class, 'show'])->name('ticket.show');
+    Route::post('/ticket/{id}/response', [TicketController::class, 'addResponse'])->name('ticket.response');
+    Route::post('/ticket/{id}/status', [TicketController::class, 'updateStatus'])->name('ticket.status');
+    Route::post('/ticket/{id}/assign', [TicketController::class, 'assign'])->name('ticket.assign');
+    Route::post('/ticket/{id}/priority', [TicketController::class, 'updatePriority'])->name('ticket.priority');
+    Route::post('/ticket/{id}/close', [TicketController::class, 'close'])->name('ticket.close');
+    Route::post('/ticket/{id}/rate', [TicketController::class, 'rate'])->name('ticket.rate');
+    Route::get('/ticket/{id}/attachment/{media}', [TicketController::class, 'downloadAttachment'])->name('ticket.attachment');
+    Route::delete('/ticket/{id}', [TicketController::class, 'destroy'])->name('ticket.destroy');
 
     // Multimedia Routes
     Route::get('/multimedia/list', [MultimediaController::class, 'index'])->name('multimedia.index');

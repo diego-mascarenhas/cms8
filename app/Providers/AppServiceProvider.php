@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Contracts\WhatsAppGateway;
 use App\Models\SubscriptionProduct;
+use App\Models\TicketResponse;
 use App\Observers\SubscriptionProductObserver;
+use App\Observers\TicketResponseObserver;
 use App\Services\Stripe\StripeProductService;
 use App\Services\TwilioService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register SubscriptionProduct Observer
         SubscriptionProduct::observe(SubscriptionProductObserver::class);
+        TicketResponse::observe(TicketResponseObserver::class);
 
         // Only register CustomTranslator when not in console mode to prevent bootstrap issues
         if (! $this->app->runningInConsole())
