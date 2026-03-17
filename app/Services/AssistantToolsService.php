@@ -7,6 +7,8 @@ use App\Jobs\GenerateTemplateHtmlJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactStatus;
+use App\Models\Message;
 use App\Models\Module;
 use App\Models\Task;
 use App\Models\TaskBoard;
@@ -309,6 +311,70 @@ class AssistantToolsService
                     'required' => ['template_id'],
                 ],
             ],
+            [
+                'name' => 'list_messages',
+                'description' => 'List campaign messages (News/campaigns) for the current team. Use when the user asks for "mensajes", "campañas", "lista de campañas", or to choose one before creating or editing. Returns id, name, channel (email/WhatsApp), template, category, status (active/inactive).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'create_message',
+                'description' => 'Create a NEW campaign message (News) only. Use ONLY when the user explicitly asks to create a new campaign ("crear mensaje", "crear campaña", "crear News"). Do NOT use for changing an existing campaign — use update_message or update_message_status instead. Provide name, template_id (from list_templates), channel (email or whatsapp), text (alternative text, required). Optionally: category_name, contact_status_name, active.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'name' => ['type' => 'string', 'description' => 'Campaign/News name'],
+                        'template_id' => ['type' => 'integer', 'description' => 'Template ID (from list_templates)'],
+                        'channel' => [
+                            'type' => 'string',
+                            'description' => 'Channel: email or whatsapp',
+                            'enum' => ['email', 'whatsapp'],
+                        ],
+                        'text' => ['type' => 'string', 'description' => 'Alternative text (for WhatsApp or email fallback); required'],
+                        'category_name' => ['type' => 'string', 'description' => 'Contact category name as target audience (optional; use list_contact_categories to see names)'],
+                        'contact_status_name' => ['type' => 'string', 'description' => 'Contact status name, e.g. "En seguimiento" (optional)'],
+                        'active' => ['type' => 'boolean', 'description' => 'If true, campaign is created active (default false)'],
+                    ],
+                    'required' => ['name', 'template_id', 'channel', 'text'],
+                ],
+            ],
+            [
+                'name' => 'update_message_status',
+                'description' => 'Activate or pause a campaign message. Use when the user says "detener la campaña X", "pausar mensaje", "activar la campaña Y", "parar el mensaje". Pass message_id (from list_messages) and status: active or paused. Paused campaigns stop sending; active campaigns can send.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'message_id' => ['type' => 'integer', 'description' => 'Campaign message ID (from list_messages)'],
+                        'status' => [
+                            'type' => 'string',
+                            'description' => 'active or paused',
+                            'enum' => ['active', 'paused'],
+                        ],
+                    ],
+                    'required' => ['message_id', 'status'],
+                ],
+            ],
+            [
+                'name' => 'update_message',
+                'description' => 'Update an EXISTING campaign message (category, contact status, active/paused). Use when the user asks to change the current/last campaign: "enviar a categoría Staff y activarlo", "cambiar la campaña a categoría X", "activar la campaña", "poner la campaña en categoría Y". Do NOT use create_message for these — use list_messages to get message_id, then update_message. Pass message_id (required); optionally category_name, contact_status_name, status (active or paused).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'message_id' => ['type' => 'integer', 'description' => 'Campaign message ID to update (from list_messages)'],
+                        'category_name' => ['type' => 'string', 'description' => 'Contact category name as new audience (optional)'],
+                        'contact_status_name' => ['type' => 'string', 'description' => 'Contact status name, e.g. "En seguimiento" (optional)'],
+                        'status' => [
+                            'type' => 'string',
+                            'description' => 'active or paused (optional)',
+                            'enum' => ['active', 'paused'],
+                        ],
+                    ],
+                    'required' => ['message_id'],
+                ],
+            ],
         ];
     }
 
@@ -362,6 +428,10 @@ class AssistantToolsService
                 'create_template' => $this->createTemplate($teamId, $user->id, $input),
                 'update_template_status' => $this->updateTemplateStatus($teamId, $user, $input),
                 'update_template' => $this->updateTemplate($teamId, $user, $input),
+                'list_messages' => $this->listMessages($teamId),
+                'create_message' => $this->createMessage($teamId, $user, $input),
+                'update_message_status' => $this->updateMessageStatus($teamId, $user, $input),
+                'update_message' => $this->updateMessage($teamId, $user, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -1202,6 +1272,283 @@ class AssistantToolsService
         $template->update(['name' => $name]);
 
         return $this->truncate("Template (id: {$template->id}) renamed to: {$name}. View: ".url()->route('template.show-public', $template->getHashedId()));
+    }
+
+    private function listMessages(int $teamId): string
+    {
+        $messages = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->with(['template:id,name', 'category:id,name', 'type:id,name'])
+            ->orderBy('updated_at', 'desc')
+            ->get(['id', 'name', 'type_id', 'template_id', 'category_id', 'status_id']);
+
+        if ($messages->isEmpty())
+        {
+            return 'No campaign messages yet. Use create_message to create one (you need a template from list_templates first).';
+        }
+
+        $lines = $messages->map(function ($m)
+        {
+            $type = $m->type ? $m->type->name : '?';
+            $tpl = $m->template ? $m->template->name : '—';
+            $cat = $m->category ? $m->category->name : '—';
+            $status = (int) $m->status_id === 1 ? 'active' : 'inactive';
+
+            return sprintf('  - %s (id: %d, channel: %s, template: %s, category: %s, %s)', $m->name, $m->id, $type, $tpl, $cat, $status);
+        })->implode("\n");
+
+        return "Campaign messages (News):\n".$lines;
+    }
+
+    private function createMessage(int $teamId, User $user, array $input): string
+    {
+        $canCreate = $user->hasRole('admin') || $user->hasRole('root') || $user->can('message.create');
+        if (! $canCreate)
+        {
+            return 'You do not have permission to create campaign messages.';
+        }
+
+        $name = trim((string) ($input['name'] ?? ''));
+        if (mb_strlen($name) < 3)
+        {
+            return 'Campaign name is required (at least 3 characters).';
+        }
+
+        $templateId = (int) ($input['template_id'] ?? 0);
+        if ($templateId < 1)
+        {
+            return 'template_id is required (use list_templates to get an ID).';
+        }
+
+        $template = Template::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($templateId);
+        if (! $template)
+        {
+            return "Template with id {$templateId} not found in this team.";
+        }
+
+        $channel = strtolower(trim((string) ($input['channel'] ?? '')));
+        if (! in_array($channel, ['email', 'whatsapp'], true))
+        {
+            return 'channel must be "email" or "whatsapp".';
+        }
+        $typeId = $channel === 'whatsapp' ? 2 : 1;
+
+        $text = trim((string) ($input['text'] ?? ''));
+        if (mb_strlen($text) < 3)
+        {
+            return 'Alternative text is required (at least 3 characters).';
+        }
+        if (mb_strlen($text) > 255)
+        {
+            $text = mb_substr($text, 0, 255);
+        }
+
+        $categoryId = null;
+        $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
+        if ($categoryName !== null && $categoryName !== '')
+        {
+            $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
+            if ($categoryId === null)
+            {
+                return "Contact category \"{$categoryName}\" not found. Use list_contact_categories to see available categories.";
+            }
+        }
+
+        $contactStatusId = null;
+        $contactStatusName = isset($input['contact_status_name']) ? trim((string) $input['contact_status_name']) : null;
+        if ($contactStatusName !== null && $contactStatusName !== '')
+        {
+            $contactStatus = ContactStatus::where('name', $contactStatusName)->first();
+            if (! $contactStatus)
+            {
+                $contactStatus = ContactStatus::whereRaw('LOWER(name) = ?', [strtolower($contactStatusName)])->first();
+            }
+            if ($contactStatus)
+            {
+                $contactStatusId = $contactStatus->id;
+            }
+        }
+
+        $active = ! empty($input['active']);
+        $statusId = $active ? 1 : 0;
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => $name,
+            'type_id' => $typeId,
+            'category_id' => $categoryId,
+            'contact_status_id' => $contactStatusId,
+            'template_id' => $templateId,
+            'text' => $text,
+            'status_id' => $statusId,
+            'show_unsubscribe' => 1,
+            'enable_open_tracking' => 1,
+            'enable_click_tracking' => 1,
+            'min_hours_between_emails' => 48,
+        ]);
+
+        $editUrl = url()->route('message.edit', $message->id);
+        $showUrl = url()->route('message.show', $message->id);
+
+        $out = "Campaign message created: {$message->name} (id: {$message->id}). Channel: {$channel}. Template: {$template->name}.";
+        if ($categoryId)
+        {
+            $out .= " Audience: category \"{$categoryName}\".";
+        }
+        if ($contactStatusId)
+        {
+            $out .= " Contact status: {$contactStatusName}.";
+        }
+        $out .= ' '.($active ? 'Campaign is active.' : 'Campaign is inactive (activate from the platform to send).');
+        $out .= " Edit: {$editUrl} — View/send: {$showUrl}";
+
+        return $this->truncate($out);
+    }
+
+    private function updateMessageStatus(int $teamId, User $user, array $input): string
+    {
+        $messageId = (int) ($input['message_id'] ?? 0);
+        if ($messageId < 1)
+        {
+            return 'message_id is required (use list_messages to get an ID).';
+        }
+
+        $status = strtolower(trim((string) ($input['status'] ?? '')));
+        if (! in_array($status, ['active', 'paused'], true))
+        {
+            return 'status must be "active" or "paused".';
+        }
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($messageId);
+
+        if (! $message)
+        {
+            return "Campaign message with id {$messageId} not found.";
+        }
+
+        $canEdit = $user->hasRole('admin') || $user->hasRole('root') || $user->can('message.edit');
+        if (! $canEdit)
+        {
+            return 'You do not have permission to change this campaign status.';
+        }
+
+        $message->update(['status_id' => $status === 'active' ? 1 : 0]);
+
+        $label = $status === 'active' ? 'active' : 'paused (stopped)';
+
+        return $this->truncate("Campaign \"{$message->name}\" (id: {$message->id}) is now {$label}.");
+    }
+
+    private function updateMessage(int $teamId, User $user, array $input): string
+    {
+        $messageId = (int) ($input['message_id'] ?? 0);
+        if ($messageId < 1)
+        {
+            return 'message_id is required (use list_messages to get the ID of the campaign to update).';
+        }
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($messageId);
+
+        if (! $message)
+        {
+            return "Campaign message with id {$messageId} not found.";
+        }
+
+        $canEdit = $user->hasRole('admin') || $user->hasRole('root') || $user->can('message.edit');
+        if (! $canEdit)
+        {
+            return 'You do not have permission to update this campaign.';
+        }
+
+        $hasDeliveries = $message->deliveries()->exists();
+        $updates = [];
+
+        $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
+        if ($categoryName !== null && $categoryName !== '')
+        {
+            if ($hasDeliveries)
+            {
+                return 'Cannot change audience (category) because this campaign already has deliveries. You can only change status (active/paused).';
+            }
+            $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
+            if ($categoryId === null)
+            {
+                return "Contact category \"{$categoryName}\" not found. Use list_contact_categories to see available categories.";
+            }
+            $updates['category_id'] = $categoryId;
+        }
+
+        $contactStatusName = isset($input['contact_status_name']) ? trim((string) $input['contact_status_name']) : null;
+        if ($contactStatusName !== null && $contactStatusName !== '')
+        {
+            if ($hasDeliveries)
+            {
+                return 'Cannot change contact status filter because this campaign already has deliveries. You can only change status (active/paused).';
+            }
+            $contactStatus = ContactStatus::where('name', $contactStatusName)->first()
+                ?? ContactStatus::whereRaw('LOWER(name) = ?', [strtolower($contactStatusName)])->first();
+            if ($contactStatus)
+            {
+                $updates['contact_status_id'] = $contactStatus->id;
+            }
+        }
+
+        $status = isset($input['status']) ? strtolower(trim((string) $input['status'])) : null;
+        if ($status !== null && $status !== '')
+        {
+            if (! in_array($status, ['active', 'paused'], true))
+            {
+                return 'status must be "active" or "paused".';
+            }
+            $updates['status_id'] = $status === 'active' ? 1 : 0;
+        }
+
+        if ($updates === [])
+        {
+            return 'No changes provided. Pass at least one of: category_name, contact_status_name, status.';
+        }
+
+        $message->update($updates);
+
+        $parts = ['Campaign "'.$message->name.'" (id: '.$message->id.') updated.'];
+        if (isset($updates['category_id']))
+        {
+            $parts[] = "Audience: category \"{$categoryName}\".";
+        }
+        if (isset($updates['contact_status_id']))
+        {
+            $parts[] = "Contact status: {$contactStatusName}.";
+        }
+        if (isset($updates['status_id']))
+        {
+            $parts[] = 'Status: '.(($updates['status_id'] ?? 0) === 1 ? 'active' : 'paused').'.';
+        }
+        $parts[] = 'Edit: '.url()->route('message.edit', $message->id).' — View/send: '.url()->route('message.show', $message->id);
+
+        return $this->truncate(implode(' ', $parts));
+    }
+
+    private function resolveContactCategoryByName(int $teamId, string $categoryName): ?int
+    {
+        $module = Module::where('key', 'contacts')->first();
+        if (! $module)
+        {
+            return null;
+        }
+
+        $category = Category::withoutGlobalScopes()
+            ->where('module_id', $module->id)
+            ->where('team_id', $teamId)
+            ->where('name', $categoryName)
+            ->first();
+
+        return $category?->id;
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int
