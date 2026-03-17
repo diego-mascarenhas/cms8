@@ -178,6 +178,9 @@ Route::get('misc-comingsoon', function ()
     return view('content.pages.pages-misc-comingsoon');
 })->name('comingsoon');
 
+// Public template view (no auth) – for sharing view links from assistant/WhatsApp
+Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPublic'])->name('template.show-public');
+
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {

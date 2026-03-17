@@ -1125,7 +1125,7 @@ class AssistantToolsService
             'gjs_data' => null,
         ]);
 
-        $viewUrl = url()->route('template.show', $template->getHashedId());
+        $viewUrl = url()->route('template.show-public', $template->getHashedId());
         $editorUrl = url()->route('template.editor', $template->getHashedId());
 
         $out = "Template created: {$template->name} (id: {$template->id}). View (public link): {$viewUrl} — Editor: {$editorUrl}";
@@ -1201,7 +1201,7 @@ class AssistantToolsService
 
         $template->update(['name' => $name]);
 
-        return $this->truncate("Template (id: {$template->id}) renamed to: {$name}. View: ".url()->route('template.show', $template->getHashedId()));
+        return $this->truncate("Template (id: {$template->id}) renamed to: {$name}. View: ".url()->route('template.show-public', $template->getHashedId()));
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

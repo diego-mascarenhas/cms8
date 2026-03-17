@@ -13,6 +13,9 @@ use function Laravel\Ai\agent;
  */
 class TemplateHtmlGenerationService
 {
+    /** Placeholder replaced at render time with the app logo URL. Do not change. */
+    public const LOGO_URL_PLACEHOLDER = '{{APP_LOGO_URL}}';
+
     private const SYSTEM_INSTRUCTIONS = <<<'TEXT'
 You are an email template HTML generator. The output will be loaded into GrapesJS (a visual block editor), so keep the structure clean and avoid unnecessary wrappers that would make editing harder.
 
@@ -25,6 +28,7 @@ Rules:
 - Use semantic structure: tables for layout, cells for sections. Prefer simple, editable blocks (e.g. one table per section) so GrapesJS can parse and edit them easily.
 - Common elements: logo area, headline, paragraph text, CTA button (styled <a>), footer.
 - Do not wrap the output in markdown code blocks or add any explanation. Return raw HTML only.
+- IMAGES: Do NOT use external image URLs (no placeholder.com, picsum.photos, or any other external domain). For logos, use exactly this placeholder in the img src: {{APP_LOGO_URL}} (the application will replace it with the real logo). For other images, use a styled div with placeholder text (e.g. "Image") or the same {{APP_LOGO_URL}} if a generic image is needed; never use external URLs.
 TEXT;
 
     /**
@@ -66,23 +70,6 @@ TEXT;
      */
     public function generate(string $prompt, ?Team $team = null): array
     {
-        // #region agent log
-        $debugLog = static function (string $message, array $data, string $hypothesisId): void
-        {
-            $path = '/Users/magoo/Sites/humano/.cursor/debug-c4b735.log';
-            $line = json_encode([
-                'sessionId' => 'c4b735',
-                'timestamp' => (int) (microtime(true) * 1000),
-                'location' => 'TemplateHtmlGenerationService::generate',
-                'message' => $message,
-                'data' => $data,
-                'hypothesisId' => $hypothesisId,
-            ])."\n";
-            @file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
-        };
-        $debugLog('service generate entry', ['prompt_len' => strlen($prompt)], 'B');
-        // #endregion
-
         try
         {
             $companyContext = self::buildCompanyContext($team);
@@ -92,25 +79,13 @@ TEXT;
                 $userPrompt = "Company context (use this to personalize the template):\n".$companyContext."\n\nUser request: ".$prompt;
             }
 
-            // #region agent log
-            $debugLog('before agent()', [], 'B');
-            // #endregion
-
             $agent = agent(
                 instructions: self::SYSTEM_INSTRUCTIONS,
                 messages: [],
                 tools: [],
             );
 
-            // #region agent log
-            $debugLog('before agent->prompt()', [], 'B');
-            // #endregion
-
             $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
-
-            // #region agent log
-            $debugLog('after agent->prompt()', ['has_text' => isset($response->text)], 'B');
-            // #endregion
 
             $text = trim($response->text ?? '');
 
@@ -126,17 +101,9 @@ TEXT;
                 return ['success' => false, 'error' => 'Could not extract HTML from AI response.'];
             }
 
-            // #region agent log
-            $debugLog('returning success', ['html_len' => strlen($html)], 'B');
-            // #endregion
-
             return ['success' => true, 'html' => $html];
         } catch (\Throwable $e)
         {
-            // #region agent log
-            $debugLog('Throwable in service', ['class' => get_class($e), 'message' => $e->getMessage()], 'B');
-            // #endregion
-
             return [
                 'success' => false,
                 'error' => 'Generation failed: '.$e->getMessage(),

@@ -115,6 +115,21 @@ class TemplateController extends Controller
     }
 
     /**
+     * Public view of a template (no auth). Used for shared links from assistant/WhatsApp.
+     */
+    public function showPublic(string $hashedId)
+    {
+        $page = Template::findByHash($hashedId);
+
+        if (! $page)
+        {
+            abort(404, 'Template not found.');
+        }
+
+        return view('template.show', compact('page'));
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(string $hashedId)
