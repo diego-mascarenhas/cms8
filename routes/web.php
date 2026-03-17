@@ -50,6 +50,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentSubscriptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
@@ -841,6 +842,14 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
+
+    // Payment subscriptions (forms of payment for services)
+    Route::get('/payment-subscription', [PaymentSubscriptionController::class, 'index'])->name('payment-subscription.index');
+    Route::get('/payment-subscription/create', [PaymentSubscriptionController::class, 'create'])->name('payment-subscription.create');
+    Route::post('/payment-subscription', [PaymentSubscriptionController::class, 'store'])->name('payment-subscription.store');
+    Route::get('/payment-subscription/{id}/edit', [PaymentSubscriptionController::class, 'edit'])->name('payment-subscription.edit');
+    Route::put('/payment-subscription/{id}', [PaymentSubscriptionController::class, 'update'])->name('payment-subscription.update');
+    Route::delete('/payment-subscription/{id}', [PaymentSubscriptionController::class, 'destroy'])->name('payment-subscription.destroy');
 
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');

@@ -3,9 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
-use App\Models\Enterprise;
-use App\Models\PaymentSubscription;
 use App\Models\Service;
+use App\Models\StripeSubscription;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -116,11 +115,11 @@ class ServiceController extends Controller
 
         $enterprise_id = $request->input('enterprise_id');
         $teamId = auth()->user()->currentTeam?->id;
-        $paymentSubscriptions = $teamId
-            ? PaymentSubscription::where('team_id', $teamId)->orderBy('name')->orderBy('provider')->get()
+        $stripeSubscriptions = $teamId
+            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
 
-        return view('service.form', compact('enterprise_id', 'paymentSubscriptions'));
+        return view('service.form', compact('enterprise_id', 'stripeSubscriptions'));
     }
 
     /**
@@ -134,8 +133,8 @@ class ServiceController extends Controller
         {
             $validator = \Validator::make($request->all(), [
                 'enterprise_id' => 'required|exists:enterprises,id',
-                'subscription_id' => ['nullable', 'exists:payment_subscriptions,id'],
-                'category_id' => 'required|exists:categories,id',
+                'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+                'category_id' => ['nullable', 'exists:categories,id'],
                 'operation' => 'required|in:buy,sell',
                 'description' => 'nullable|string',
                 'currency_id' => 'nullable|exists:currencies,id',
@@ -148,16 +147,6 @@ class ServiceController extends Controller
                 'data' => 'nullable|array',
                 'responsible_id' => 'nullable|exists:users,id',
             ]);
-
-            if ($validator->fails() === false && $request->filled('subscription_id'))
-            {
-                $enterprise = Enterprise::find($request->input('enterprise_id'));
-                $sub = PaymentSubscription::find($request->input('subscription_id'));
-                if ($enterprise && $sub && (int) $enterprise->team_id !== (int) $sub->team_id)
-                {
-                    $validator->errors()->add('subscription_id', __('La suscripción debe pertenecer al equipo de la empresa.'));
-                }
-            }
 
             if ($validator->fails())
             {
@@ -175,6 +164,13 @@ class ServiceController extends Controller
 
             $input = $request->all();
             $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
+            $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
+                ?? \App\Models\ServiceType::orderBy('id')->value('id');
+            if (! $input['service_type_id'])
+            {
+                return redirect()->back()->withErrors(['category_id' => __('Debe existir al menos un tipo de servicio (service type) vinculado a categorías.')])->withInput();
+            }
+            unset($input['category_id']);
 
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
@@ -246,7 +242,7 @@ class ServiceController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Service::findOrFail($id);
+        $data = Service::with('serviceType')->findOrFail($id);
         $this->authorize('update', $data);
 
         if (! $data)
@@ -256,11 +252,11 @@ class ServiceController extends Controller
 
         $enterprise_id = $data->enterprise_id;
         $teamId = auth()->user()->currentTeam?->id;
-        $paymentSubscriptions = $teamId
-            ? PaymentSubscription::where('team_id', $teamId)->orderBy('name')->orderBy('provider')->get()
+        $stripeSubscriptions = $teamId
+            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
 
-        return view('service.form', compact('data', 'enterprise_id', 'paymentSubscriptions'));
+        return view('service.form', compact('data', 'enterprise_id', 'stripeSubscriptions'));
     }
 
     /**
@@ -273,8 +269,8 @@ class ServiceController extends Controller
 
         $rules = [
             'enterprise_id' => 'required|exists:enterprises,id',
-            'subscription_id' => ['nullable', 'exists:payment_subscriptions,id'],
-            'category_id' => 'required|exists:categories,id',
+            'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+            'category_id' => ['nullable', 'exists:categories,id'],
             'operation' => 'required|in:buy,sell',
             'description' => 'nullable|string',
             'currency_id' => 'nullable|exists:currencies,id',
@@ -289,18 +285,15 @@ class ServiceController extends Controller
         ];
         $request->validate($rules);
 
-        if ($request->filled('subscription_id'))
-        {
-            $enterprise = Enterprise::find($request->input('enterprise_id'));
-            $sub = PaymentSubscription::find($request->input('subscription_id'));
-            if ($enterprise && $sub && (int) $enterprise->team_id !== (int) $sub->team_id)
-            {
-                return redirect()->back()->withErrors(['subscription_id' => __('La suscripción debe pertenecer al equipo de la empresa.')])->withInput();
-            }
-        }
-
         $input = $request->all();
         $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
+        $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
+            ?? \App\Models\ServiceType::orderBy('id')->value('id');
+        if (! $input['service_type_id'])
+        {
+            return redirect()->back()->withErrors(['category_id' => __('Debe existir al menos un tipo de servicio (service type) vinculado a categorías.')])->withInput();
+        }
+        unset($input['category_id']);
 
         // Format dates
         if (! empty($input['next_billing']))

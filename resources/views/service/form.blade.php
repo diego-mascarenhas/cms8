@@ -46,10 +46,6 @@
             <input type="hidden" name="id" value="{{ $data->id }}">
         @endif
 
-        @if(isset($enterprise_id))
-            <input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
-        @endif
-
         <!-- Basic Information Card -->
         <div class="card mb-4">
             <h5 class="card-header">{{ __('Basic Information') }}</h5>
@@ -67,36 +63,47 @@
                     <div class="col-md-6">
                         <x-module-categories-select
                             id="category_id"
-                            label="Categoría"
+                            label="{{ __('Tipo de plan') }}"
                             moduleKey="services"
-                            :selected="old('category_id', $data->category_id ?? null)"
+                            :selected="old('category_id', isset($data) ? $data->serviceType?->category_id ?? $data->category_id : null)"
+                        />
+                    </div>
+
+                    <div class="col-md-6">
+                        <x-client-select
+                            id="enterprise_id"
+                            label="{{ __('Empresa') }} (*)"
+                            :selected="old('enterprise_id', isset($data) ? $data->enterprise_id : ($enterprise_id ?? ''))"
+                            :allowNull="false"
                         />
                     </div>
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="subscription_id" class="form-label">{{ __('Suscripción de pago') }}</label>
+                            <label for="subscription_id" class="form-label">{{ __('Suscripción') }}</label>
                             <select id="subscription_id" name="subscription_id" class="form-select" data-allow-clear="true">
-                                <option value="">{{ __('Ninguna') }}</option>
-                                @isset($paymentSubscriptions)
-                                    @foreach($paymentSubscriptions as $sub)
-                                        <option value="{{ $sub->id }}" {{ old('subscription_id', $data->subscription_id ?? '') == $sub->id ? 'selected' : '' }}>
-                                            {{ $sub->display_label }}
+                                <option value="" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') === '' ? 'selected' : '' }}>{{ __('Subscripción local') }}</option>
+                                @isset($stripeSubscriptions)
+                                    @foreach($stripeSubscriptions as $stripeSub)
+                                        <option value="{{ $stripeSub->id }}" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') == $stripeSub->id ? 'selected' : '' }}>
+                                            {{ $stripeSub->customer_name ?: $stripeSub->customer_email }} — {{ $stripeSub->plan_name ?: '—' }} ({{ $stripeSub->status ?? '—' }})
                                         </option>
                                     @endforeach
                                 @endisset
                             </select>
-                            <small class="text-muted">{{ __('Stripe, PayPal, Mercado Pago o facturación local') }}</small>
+                            <small class="text-muted">
+                                {{ __('Suscripciones de clientes en Stripe.') }}
+                                <a href="{{ route('subscription.index') }}" target="_blank" rel="noopener">{{ __('Ver todas') }}</a>
+                            </small>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="operation" class="form-label">{{ __('Operation') }}</label>
+                            <label for="operation" class="form-label">{{ __('Operación') }}</label>
                             <select id="operation" name="operation" class="form-select" required>
-                                <option value="">{{ __('Select Operation') }}</option>
-                                <option value="buy" {{ isset($data) && $data->operation == 'buy' ? 'selected' : '' }}>{{ __('Buy') }}</option>
-                                <option value="sell" {{ isset($data) && $data->operation == 'sell' ? 'selected' : '' }}>{{ __('Sell') }}</option>
+                                <option value="sell" {{ old('operation', isset($data) ? $data->operation : 'sell') === 'sell' ? 'selected' : '' }}>{{ __('Venta') }}</option>
+                                <option value="buy" {{ old('operation', isset($data) ? $data->operation : 'sell') === 'buy' ? 'selected' : '' }}>{{ __('Compra') }}</option>
                             </select>
                         </div>
                     </div>

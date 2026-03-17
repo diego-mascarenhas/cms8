@@ -108,20 +108,18 @@
             @php
                 $hasSubcategories = isset($allSubcategories[$parentCategory->id]);
             @endphp
-            @if($isContactsModule && !$hasSubcategories)
-                {{-- Contacts: when category has no subcategories (flat), make it selectable --}}
+            @if(!$hasSubcategories)
+                {{-- Parent with no subcategories: make it selectable so user can choose it --}}
                 <option value="{{ $parentCategory->id }}" {{ $selected == $parentCategory->id ? 'selected' : '' }}>
                     {{ $parentCategory->name }}
                 </option>
             @else
                 <optgroup label="{{ $parentCategory->name }}">
-                    @if($hasSubcategories)
-                        @foreach($allSubcategories[$parentCategory->id] as $subcategory)
-                            <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
-                                {{ $subcategory->name }}
-                            </option>
-                        @endforeach
-                    @endif
+                    @foreach($allSubcategories[$parentCategory->id] as $subcategory)
+                        <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
+                            {{ $subcategory->name }}
+                        </option>
+                    @endforeach
                 </optgroup>
             @endif
         @endforeach

@@ -41,6 +41,19 @@ class ServiceStripeSubscriptionSeeder extends Seeder
             return;
         }
 
+        // Global option (team_id = null) so all teams see at least "Facturación local"
+        PaymentSubscription::firstOrCreate(
+            [
+                'team_id' => null,
+                'provider' => 'local',
+                'name' => 'Facturación local',
+            ],
+            [
+                'status' => 'active',
+                'data' => ['interval' => 'month'],
+            ],
+        );
+
         $sub = PaymentSubscription::firstOrCreate(
             [
                 'team_id' => $team->id,

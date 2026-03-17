@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PaymentSubscription extends Model
 {
@@ -26,14 +25,6 @@ class PaymentSubscription extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
-    }
-
-    /**
-     * Services linked to this payment subscription.
-     */
-    public function services(): HasMany
-    {
-        return $this->hasMany(Service::class, 'subscription_id');
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Module;
+use App\Models\ServiceType;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
@@ -76,6 +77,9 @@ class TeamRevisionAlphaSeeder extends Seeder
 
         // 3.2. Create Revision Alpha content categories
         $this->createRevisionAlphaContentCategories();
+
+        // 3.3. Create Revision Alpha service categories and service types
+        $this->createRevisionAlphaServiceCategoriesAndTypes();
 
         // 4. Create professional email template
         $this->createProfessionalEmailTemplate();
@@ -489,6 +493,72 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->getCommand()->info('✅ Created Revision Alpha content categories');
         $this->getCommand()->info("   - Categories created: {$created}");
         $this->getCommand()->info("   - Categories updated: {$updated}");
+    }
+
+    /**
+     * Create Revision Alpha service categories and service types (Hosting, Web Cloud, VPS, etc.)
+     */
+    private function createRevisionAlphaServiceCategoriesAndTypes(): void
+    {
+        $this->getCommand()->info('📦 Creating Revision Alpha service categories and service types...');
+
+        $servicesModule = Module::where('key', 'services')->first();
+        if (! $servicesModule)
+        {
+            $this->getCommand()->warn('⚠️  Services module not found. Skipping service categories and types.');
+
+            return;
+        }
+
+        $parentCategory = Category::updateOrCreate([
+            'name' => 'Categoría de servicio',
+            'module_id' => $servicesModule->id,
+            'team_id' => $this->teamId,
+            'parent_id' => null,
+        ], [
+            'description' => 'Tipos de servicio para Revision Alpha',
+            'status' => 1,
+            'order' => 0,
+        ]);
+
+        $serviceItems = [
+            'Hosting',
+            'Web Cloud',
+            'VPS',
+            'Domain',
+            'Backups',
+            'Mailer',
+            'WhatsApp',
+        ];
+
+        $order = 0;
+        foreach ($serviceItems as $name)
+        {
+            $subCategory = Category::updateOrCreate([
+                'name' => $name,
+                'module_id' => $servicesModule->id,
+                'team_id' => $this->teamId,
+                'parent_id' => $parentCategory->id,
+            ], [
+                'description' => "Servicio: {$name}",
+                'status' => 1,
+                'order' => $order++,
+            ]);
+
+            ServiceType::updateOrCreate(
+                [
+                    'name' => $name,
+                    'category_id' => $subCategory->id,
+                ],
+                [
+                    'description' => "Tipo de plan: {$name}",
+                    'status' => true,
+                    'order' => $subCategory->order,
+                ],
+            );
+        }
+
+        $this->getCommand()->info('✅ Created Revision Alpha service categories and service types ('.count($serviceItems).' items)');
     }
 
     /**

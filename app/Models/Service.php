@@ -120,13 +120,13 @@ class Service extends Model
     }
 
     /**
-     * Payment subscription (payment_subscriptions) this service is linked to.
+     * Stripe subscription (stripe_subscriptions, from /subscription) this service is linked to.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function paymentSubscription()
+    public function stripeSubscription()
     {
-        return $this->belongsTo(PaymentSubscription::class, 'subscription_id');
+        return $this->belongsTo(StripeSubscription::class, 'subscription_id');
     }
 
     public function responsible()
