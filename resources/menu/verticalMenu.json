@@ -89,6 +89,13 @@
       "menuHeader": "Billing"
     },
     {
+      "url": "subscription",
+      "name": "Subscriptions",
+      "icon": "menu-icon tf-icons ti ti-repeat",
+      "slug": "subscription.index",
+      "module_key": "subscriptions"
+    },
+    {
       "url": "invoice/list",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",

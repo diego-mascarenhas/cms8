@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Subscriptions\SyncStripeSubscriptions as SyncStripeSubscriptionsAction;
+use App\DataTables\StripeSubscriptionDataTable;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Models\SubscriptionProduct;
@@ -13,151 +15,27 @@ use Stripe\Stripe;
 class SubscriptionController extends Controller
 {
     /**
-     * Display the subscription plans page
+     * Display client subscriptions (Stripe) list.
      */
-    public function index()
+    public function index(StripeSubscriptionDataTable $dataTable)
+    {
+        return $dataTable->render('subscription.index');
+    }
+
+    /**
+     * Sync client subscriptions from Stripe to local stripe_subscriptions table.
+     */
+    public function syncFromStripe(SyncStripeSubscriptionsAction $sync)
     {
         $team = auth()->user()->currentTeam;
-
-        // Get only active subscription (exclude canceled)
-        $subscription = $team->subscriptions()
-            ->where('type', 'mailer')
-            ->where('stripe_status', '!=', 'canceled')
-            ->first();
-
-        // Get current plan from active subscription or fallback to free
-        if ($subscription && $subscription->active())
+        if (! $team)
         {
-            $currentPlan = EmailPlan::fromStripePriceId($subscription->stripe_price);
-        } else
-        {
-            $currentPlan = EmailPlan::FREE;
+            return redirect()->route('subscription.index')->with('error', __('Equipo no seleccionado.'));
         }
 
-        // Get plan usage configuration
-        $planConfig = [
-            'monthly_limit' => $currentPlan->getMonthlyLimit(),
-            'monthly_used' => (int) $team->getSetting('email_monthly_used', 0),
-            'daily_limit' => $currentPlan->getDailyLimit(),
-            'daily_used' => (int) $team->getSetting('email_daily_used', 0),
-            'contact_limit' => $currentPlan->getContactLimit(),
-        ];
+        $count = $sync->handle($team);
 
-        $stripeSubscription = null;
-
-        if ($subscription && $subscription->stripe_id)
-        {
-            try
-            {
-                Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
-                $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
-            } catch (\Exception $e)
-            {
-                \Log::error('Error fetching Stripe subscription: '.$e->getMessage());
-            }
-        }
-
-        // Get products from database (synced from Stripe)
-        $products = SubscriptionProduct::active()->get();
-
-        // Get all active subscription products grouped by category
-        $mentoringProducts = SubscriptionProduct::active()
-            ->where('category', 'mentoring')
-            ->orderBy('unit_amount')
-            ->get();
-
-        $mailerProducts = SubscriptionProduct::active()
-            ->where('category', 'mailer')
-            ->orderBy('unit_amount')
-            ->get();
-
-        $hostingProducts = SubscriptionProduct::active()
-            ->whereIn('category', ['hosting', 'support'])
-            ->orderByRaw("CASE WHEN category = 'hosting' THEN 0 ELSE 1 END")
-            ->orderBy('unit_amount', 'desc')
-            ->get();
-
-        $prospectProducts = SubscriptionProduct::active()
-            ->where('category', 'prospecting')
-            ->whereNotNull('recurring_interval')
-            ->orderBy('unit_amount')
-            ->get();
-
-        $prospectPacks = SubscriptionProduct::active()
-            ->where('category', 'prospecting')
-            ->whereNull('recurring_interval')
-            ->orderBy('unit_amount')
-            ->get();
-
-        // Get active subscriptions for each category
-        $activeSubscriptions = $team->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
-            ->get()
-            ->filter(fn ($sub) => $sub->active());
-
-        // Get active mentoring subscription to determine current plan
-        $mentoringSubscription = $activeSubscriptions->filter(function ($sub) use ($mentoringProducts)
-        {
-            return $mentoringProducts->contains(function ($product) use ($sub)
-            {
-                return $product->stripe_price === $sub->stripe_price;
-            });
-        })->first();
-
-        $currentMentoringPlan = null;
-        if ($mentoringSubscription)
-        {
-            $mentoringProduct = $mentoringProducts->firstWhere('stripe_price', $mentoringSubscription->stripe_price);
-            $currentMentoringPlan = $mentoringProduct?->plan;
-        }
-
-        // Get active hosting subscription
-        $hostingSubscription = $activeSubscriptions->filter(function ($sub) use ($hostingProducts)
-        {
-            return $hostingProducts->contains(function ($product) use ($sub)
-            {
-                return $product->stripe_price === $sub->stripe_price;
-            });
-        })->first();
-
-        // Fallback to EmailPlan if no products synced yet
-        $plans = $products->isEmpty() ? EmailPlan::getAll() : null;
-        $prices = $this->getStripePrices();
-        $prospectPrices = $this->getProspectStripePrices();
-        $prospectionConfig = $this->getProspectionExportConfig();
-
-        $team->resetProspectMonthlyLimitsIfNeeded();
-        $remainingProspectCredits = $team->getRemainingProspectCredits();
-        $currentProspectPlan = $team->getProspectPlan();
-
-        $prospectSubscription = $activeSubscriptions->filter(function ($sub) use ($prospectProducts)
-        {
-            return $prospectProducts->contains(fn ($product) => $product->stripe_price === $sub->stripe_price);
-        })->first();
-
-        return view('subscription.index', [
-            'team' => $team,
-            'currentPlan' => $currentPlan,
-            'planConfig' => $planConfig,
-            'subscription' => $subscription,
-            'stripeSubscription' => $stripeSubscription,
-            'plans' => $plans,
-            'products' => $products,
-            'prices' => $prices,
-            'mentoringProducts' => $mentoringProducts,
-            'mailerProducts' => $mailerProducts,
-            'hostingProducts' => $hostingProducts,
-            'currentMentoringPlan' => $currentMentoringPlan,
-            'mentoringSubscription' => $mentoringSubscription,
-            'hostingSubscription' => $hostingSubscription,
-            'prospectionConfig' => $prospectionConfig,
-            'prospectProducts' => $prospectProducts,
-            'prospectPacks' => $prospectPacks,
-            'remainingProspectCredits' => $remainingProspectCredits,
-            'currentProspectPlan' => $currentProspectPlan,
-            'prospectSubscription' => $prospectSubscription,
-            'prospectPrices' => $prospectPrices,
-        ]);
+        return redirect()->route('subscription.index')->with('success', __('Suscripciones sincronizadas desde Stripe: :count procesadas.', ['count' => $count]));
     }
 
     /**

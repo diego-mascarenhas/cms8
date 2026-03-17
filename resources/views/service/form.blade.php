@@ -75,6 +75,23 @@
 
                     <div class="col-md-6">
                         <div class="form-group">
+                            <label for="subscription_id" class="form-label">{{ __('Suscripción de pago') }}</label>
+                            <select id="subscription_id" name="subscription_id" class="form-select" data-allow-clear="true">
+                                <option value="">{{ __('Ninguna') }}</option>
+                                @isset($paymentSubscriptions)
+                                    @foreach($paymentSubscriptions as $sub)
+                                        <option value="{{ $sub->id }}" {{ old('subscription_id', $data->subscription_id ?? '') == $sub->id ? 'selected' : '' }}>
+                                            {{ $sub->display_label }}
+                                        </option>
+                                    @endforeach
+                                @endisset
+                            </select>
+                            <small class="text-muted">{{ __('Stripe, PayPal, Mercado Pago o facturación local') }}</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
                             <label for="operation" class="form-label">{{ __('Operation') }}</label>
                             <select id="operation" name="operation" class="form-select" required>
                                 <option value="">{{ __('Select Operation') }}</option>

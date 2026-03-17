@@ -84,6 +84,14 @@ class ModuleSeeder extends Seeder
 
     protected $additionalModules = [
         // BILLING GROUP
+        'subscriptions' => [
+            'name' => 'Subscriptions',
+            'icon' => 'repeat',
+            'description' => 'Subscriptions and billing plans module',
+            'group' => 'billing',
+            'order' => 0,
+            'is_enabled' => true,  // On by default
+        ],
         'invoices' => [
             'name' => 'Invoices',
             'icon' => 'file-invoice',

@@ -831,6 +831,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Subscription Management
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');
     Route::post('/subscription/validate-coupon', [SubscriptionController::class, 'validateCoupon'])->name('subscription.validate-coupon');

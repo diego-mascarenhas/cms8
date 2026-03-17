@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
+use App\Models\Enterprise;
+use App\Models\PaymentSubscription;
 use App\Models\Service;
 use Carbon\Carbon;
 use DB;
@@ -23,7 +25,7 @@ class ServiceController extends Controller
     public function index(ServiceDataTable $dataTable)
     {
         $this->authorize('viewAny', Service::class);
-        
+
         $teamId = auth()->user()->currentTeam->id;
 
         // Relevant dates
@@ -111,10 +113,14 @@ class ServiceController extends Controller
     public function create(Request $request)
     {
         $this->authorize('create', Service::class);
-        
-        $enterprise_id = $request->input('enterprise_id');
 
-        return view('service.form', compact('enterprise_id'));
+        $enterprise_id = $request->input('enterprise_id');
+        $teamId = auth()->user()->currentTeam?->id;
+        $paymentSubscriptions = $teamId
+            ? PaymentSubscription::where('team_id', $teamId)->orderBy('name')->orderBy('provider')->get()
+            : collect();
+
+        return view('service.form', compact('enterprise_id', 'paymentSubscriptions'));
     }
 
     /**
@@ -123,11 +129,12 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', Service::class);
-        
+
         try
         {
             $validator = \Validator::make($request->all(), [
                 'enterprise_id' => 'required|exists:enterprises,id',
+                'subscription_id' => ['nullable', 'exists:payment_subscriptions,id'],
                 'category_id' => 'required|exists:categories,id',
                 'operation' => 'required|in:buy,sell',
                 'description' => 'nullable|string',
@@ -141,6 +148,16 @@ class ServiceController extends Controller
                 'data' => 'nullable|array',
                 'responsible_id' => 'nullable|exists:users,id',
             ]);
+
+            if ($validator->fails() === false && $request->filled('subscription_id'))
+            {
+                $enterprise = Enterprise::find($request->input('enterprise_id'));
+                $sub = PaymentSubscription::find($request->input('subscription_id'));
+                if ($enterprise && $sub && (int) $enterprise->team_id !== (int) $sub->team_id)
+                {
+                    $validator->errors()->add('subscription_id', __('La suscripción debe pertenecer al equipo de la empresa.'));
+                }
+            }
 
             if ($validator->fails())
             {
@@ -157,6 +174,7 @@ class ServiceController extends Controller
             }
 
             $input = $request->all();
+            $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
 
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
@@ -237,8 +255,12 @@ class ServiceController extends Controller
         }
 
         $enterprise_id = $data->enterprise_id;
+        $teamId = auth()->user()->currentTeam?->id;
+        $paymentSubscriptions = $teamId
+            ? PaymentSubscription::where('team_id', $teamId)->orderBy('name')->orderBy('provider')->get()
+            : collect();
 
-        return view('service.form', compact('data', 'enterprise_id'));
+        return view('service.form', compact('data', 'enterprise_id', 'paymentSubscriptions'));
     }
 
     /**
@@ -249,8 +271,9 @@ class ServiceController extends Controller
         $service = Service::findOrFail($id);
         $this->authorize('update', $service);
 
-        $request->validate([
+        $rules = [
             'enterprise_id' => 'required|exists:enterprises,id',
+            'subscription_id' => ['nullable', 'exists:payment_subscriptions,id'],
             'category_id' => 'required|exists:categories,id',
             'operation' => 'required|in:buy,sell',
             'description' => 'nullable|string',
@@ -263,9 +286,21 @@ class ServiceController extends Controller
             'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
             'data' => 'nullable|array',
             'responsible_id' => 'nullable|exists:users,id',
-        ]);
+        ];
+        $request->validate($rules);
+
+        if ($request->filled('subscription_id'))
+        {
+            $enterprise = Enterprise::find($request->input('enterprise_id'));
+            $sub = PaymentSubscription::find($request->input('subscription_id'));
+            if ($enterprise && $sub && (int) $enterprise->team_id !== (int) $sub->team_id)
+            {
+                return redirect()->back()->withErrors(['subscription_id' => __('La suscripción debe pertenecer al equipo de la empresa.')])->withInput();
+            }
+        }
 
         $input = $request->all();
+        $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
 
         // Format dates
         if (! empty($input['next_billing']))

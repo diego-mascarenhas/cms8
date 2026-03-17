@@ -43,6 +43,7 @@ class Service extends Model
 
     protected $fillable = [
         'enterprise_id',
+        'subscription_id',
         'service_type_id',
         'operation',
         'description',
@@ -118,6 +119,16 @@ class Service extends Model
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
+    /**
+     * Payment subscription (payment_subscriptions) this service is linked to.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function paymentSubscription()
+    {
+        return $this->belongsTo(PaymentSubscription::class, 'subscription_id');
+    }
+
     public function responsible()
     {
         return $this->belongsTo(User::class, 'responsible_id');
@@ -132,7 +143,6 @@ class Service extends Model
     {
         return $this->hasMany(Service::class);
     }
-
 
     /**
      * Get domain from data
