@@ -2,9 +2,8 @@
     @if(!$contact->user_id)
         <!-- Pending acceptance - show accept button -->
         @role('admin')
-            <a href="{{ route('collaborator.accept', $contact->id) }}" class="btn btn-sm btn-success" title="{{ __('Aceptar colaborador') }}">
-                <i class="ti ti-check me-1"></i>{{ __('Aceptar') }}
-            </a>
+            <a href="{{ route('collaborator.accept', $contact->id) }}" class="text-success me-2" title="{{ __('Aceptar colaborador') }}"><i class="ti ti-check ti-sm"></i></a>
+            <a href="{{ route('collaborator.show', $contact->id) }}" class="text-body me-2" title="{{ __('Ver colaborador') }}"><i class="ti ti-eye ti-sm"></i></a>
         @endrole
     @else
         <!-- Normal actions for accepted collaborators -->
