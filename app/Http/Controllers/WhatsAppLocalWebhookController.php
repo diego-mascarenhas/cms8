@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
+use App\Models\Prospect;
 use App\Models\Team;
 use App\Services\TwilioService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -55,6 +56,13 @@ class WhatsAppLocalWebhookController extends Controller
         {
             $team = Team::orderBy('id')->first();
         }
+
+        $cleanFrom = preg_replace('/[^0-9]/', '', (string) str_replace('whatsapp:', '', $normalized['From'] ?? ''));
+        if (strlen($cleanFrom) >= 8 && $team)
+        {
+            Prospect::captureFromWhatsApp($cleanFrom, $team->id);
+        }
+
         $twilioService = new TwilioService($team);
         $gateway = $team && config('whatsapp.driver') === 'local' && $team->getWhatsAppServiceBaseUrl() !== ''
             ? new LocalWhatsAppGateway($team->getWhatsAppServiceBaseUrl(), config('whatsapp.local.webhook_secret'), $team->id)

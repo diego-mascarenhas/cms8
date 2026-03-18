@@ -490,6 +490,11 @@ class TwilioService implements WhatsAppGateway
                 $channel = 'whatsapp';
             }
 
+            if ($channel === 'whatsapp' && $this->team && strlen($cleanFrom) >= 8)
+            {
+                \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $this->team->id);
+            }
+
             // Log the incoming message (body may be empty for voice notes; media holds the audio)
             $bodyPreview = trim((string) $body) !== '' ? $body : ($numMedia > 0 ? '(audio/media)' : '(empty)');
             Log::info("Incoming {$channel} message from {$cleanFrom}: {$bodyPreview}");

@@ -99,7 +99,12 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
-Route::get('/wapify', fn () => view('homes.wapify'))->name('wapify');
+Route::get('/wapify', function ()
+{
+    \Illuminate\Support\Facades\App::setLocale('es');
+
+    return view('homes.wapify');
+})->name('wapify');
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
 Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))
     ->name('landing.business-creation');

@@ -264,4 +264,14 @@ return [
     'public_home_route' => env('PUBLIC_HOME_ROUTE'),
     'public_home_path' => env('PUBLIC_HOME_PATH'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Wapify: WhatsApp store link (demo store)
+    |--------------------------------------------------------------------------
+    | Phone number (digits only, e.g. 349999999999) and optional pre-filled text.
+    | Opens: https://api.whatsapp.com/send/?phone=...&text=...
+    */
+    'wapify_whatsapp_phone' => env('WAPIFY_WHATSAPP_PHONE', ''),
+    'wapify_whatsapp_text' => env('WAPIFY_WHATSAPP_TEXT', 'Hola!'),
+
 ];
