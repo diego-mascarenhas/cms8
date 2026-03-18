@@ -110,10 +110,6 @@ class Helpers
         {
             $styleVal = $_COOKIE['style'];
         }
-        if (Config::get('custom.custom.force_style_light'))
-        {
-            $styleVal = 'light';
-        }
         // layout classes
         $layoutClasses = [
             'layout' => $data['myLayout'],

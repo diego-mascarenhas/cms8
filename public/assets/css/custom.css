@@ -13,8 +13,11 @@
   --bs-primary-rgb: 37, 99, 235;
 }
 
-body,
-.bg-body { background: var(--humano-body-bg) !important; }
+/* Only in light mode — a global body !important was forcing a white-ish bg over the whole app in dark mode. */
+html.light-style body,
+html.light-style .bg-body {
+  background: var(--humano-body-bg) !important;
+}
 
 .text-primary { color: var(--humano-primary) !important; }
 
