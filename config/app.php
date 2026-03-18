@@ -250,4 +250,18 @@ return [
     */
     'google_analytics_id' => env('GOOGLE_ANALYTICS_ID', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public home for guests (URL "/")
+    |--------------------------------------------------------------------------
+    |
+    | If PUBLIC_HOME_ROUTE (named route) or PUBLIC_HOME_PATH (internal path like
+    | /landing) is set, guests visiting "/" are sent there instead of login.
+    | Leave both empty so guests go to login. Authenticated users always go to
+    | the dashboard from "/".
+    |
+    */
+    'public_home_route' => env('PUBLIC_HOME_ROUTE'),
+    'public_home_path' => env('PUBLIC_HOME_PATH'),
+
 ];
