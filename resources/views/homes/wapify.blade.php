@@ -35,7 +35,7 @@
     <header class="valign-wrapper">
         <div class="row">
             <div class="col l6 m6 s12 offset-l6">
-                <h1 class="black-text">Tu transcriptor de audio para WhatsApp</h1>
+                <h1 class="black-text">Lleva tu negocio a WhatsApp y conecta con más clientes</h1>
                 <a href="#qr" class="waves-effect waves-light btn lime accent-3 black-text" aria-label="{{ __('Scroll to QR section') }}">
                     <i class="material-icons">arrow_drop_down</i>
                 </a>
