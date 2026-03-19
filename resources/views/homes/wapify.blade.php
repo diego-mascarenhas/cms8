@@ -46,7 +46,7 @@
             <div class="col l6 m6 s12">
                 <div class="center-align">
                     <div class="card white z-depth-2 wapify-qr-card">
-                        <a href="{{ $wa['web_url'] }}" target="_blank" rel="noopener noreferrer" title="Abrir en WhatsApp Web" class="wapify-qr-link">
+                        <a href="{{ $wa['api_url'] }}" target="_blank" rel="noopener noreferrer" title="Abrir en WhatsApp" class="wapify-qr-link">
                             <img src="{{ $wapifyQrSrc }}" alt="QR para WhatsApp" class="wapify-qr-img">
                         </a>
                         <p class="black-text wapify-qr-cta">
