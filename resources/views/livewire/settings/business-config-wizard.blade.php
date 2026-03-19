@@ -700,7 +700,13 @@
                     @endif
                     <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
-                        <button type="button" class="btn btn-success" wire:click="submit" @disabled(!$canSubmit)>
+                        <button
+                            type="button"
+                            class="btn btn-success"
+                            wire:click="submit"
+                            onclick="return confirm('Te enviaremos el informe completo por email. ¿Deseas continuar?')"
+                            @disabled(!$canSubmit)
+                        >
                             <i class="ti ti-send ti-sm me-1"></i>
                             @if ($canSubmit)
                                 Enviar informe completo por email

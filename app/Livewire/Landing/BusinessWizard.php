@@ -10,6 +10,7 @@ use App\Models\BusinessCreationSession;
 use App\Models\Prompt;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
+use App\Services\BusinessCreationInsightsService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -189,7 +190,7 @@ class BusinessWizard extends Component
             }
         }
         $existing = $this->session->fresh()->config ?? [];
-        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase', '_step_history'] as $internal)
+        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase', '_insights_requested_at', '_step_history'] as $internal)
         {
             if (array_key_exists($internal, $existing))
             {
@@ -354,6 +355,9 @@ class BusinessWizard extends Component
             return;
         }
         $this->persistConfig();
+        $existing = $this->session->fresh()->config ?? [];
+        $existing['_insights_requested_at'] = now()->toIso8601String();
+        $this->session->update(['config' => $existing]);
         LoadBusinessCreationInsightsJob::dispatch($this->session->id);
         $this->insightsLoading = true;
         $this->insights = [];
@@ -371,7 +375,7 @@ class BusinessWizard extends Component
             return;
         }
         $existing = $this->session->fresh()->config ?? [];
-        unset($existing['_insights'], $existing['_insights_phase']);
+        unset($existing['_insights'], $existing['_insights_phase'], $existing['_insights_requested_at']);
         $this->session->update(['config' => $existing]);
 
         $this->insights = [];
@@ -431,12 +435,13 @@ class BusinessWizard extends Component
      * Polled when on step 6: syncs _insights from session (from queue job) into component state.
      * When using Redis queue the job runs in a worker and writes to the session model; this picks it up.
      */
-    public function checkInsightsReady(): void
+    public function checkInsightsReady(?BusinessCreationInsightsService $insightsService = null): void
     {
         if (! $this->session || $this->step !== 6)
         {
             return;
         }
+        $insightsService ??= app(BusinessCreationInsightsService::class);
         $session = $this->session->fresh();
         $this->insightsPhase = $session->config['_insights_phase'] ?? null;
         $insights = $session->config['_insights'] ?? null;
@@ -445,7 +450,54 @@ class BusinessWizard extends Component
             $this->insights = $insights;
             $this->insightsLoading = false;
             $this->insightsPhase = null;
+
+            $existing = $session->config ?? [];
+            unset($existing['_insights_requested_at']);
+            $session->update(['config' => $existing]);
+
+            return;
         }
+
+        $requestedAt = $session->config['_insights_requested_at'] ?? null;
+        if (! is_string($requestedAt) || $requestedAt === '')
+        {
+            return;
+        }
+
+        try
+        {
+            $queuedForSeconds = Carbon::parse($requestedAt)->diffInSeconds(now());
+        } catch (\Throwable)
+        {
+            return;
+        }
+
+        if ($queuedForSeconds < 45)
+        {
+            return;
+        }
+
+        try
+        {
+            $this->insights = $insightsService->run($session);
+        } catch (\Throwable $e)
+        {
+            Log::warning('Landing insights fallback failed', [
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->insights = [
+                'potential_clients_summary' => 'No se pudo generar el informe ahora. Intenta de nuevo en unos minutos.',
+            ];
+        }
+
+        $this->insightsLoading = false;
+        $this->insightsPhase = null;
+
+        $existing = $session->fresh()->config ?? [];
+        $existing['_insights'] = $this->insights;
+        unset($existing['_insights_phase'], $existing['_insights_requested_at']);
+        $session->update(['config' => $existing]);
     }
 
     public function submit(): void
@@ -492,7 +544,13 @@ class BusinessWizard extends Component
         $summary = $this->summary ?? ($this->session->fresh()->config['_summary'] ?? null);
         try
         {
-            Mail::to($email)->send(new BusinessCreationReportMail(
+            $mailer = Mail::to($email);
+            $copyTo = trim((string) config('mail.from.address', ''));
+            if ($copyTo !== '' && strcasecmp($copyTo, $email) !== 0)
+            {
+                $mailer->bcc($copyTo);
+            }
+            $mailer->send(new BusinessCreationReportMail(
                 $this->config,
                 $summary,
                 $this->insights,
