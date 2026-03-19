@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.typekit.net/fbh6wfi.css">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Wapify</title>
+</head>
+
+<body class="lime accent-3">
+    <nav class="lime accent-3">
+        <div class="nav-wrapper">
+            <a href="#qr" id="logo" class="brand-logo"><img src="img/Logo wapify.me sin fondo.png" alt=""></a>
+        </div>
+    </nav>
+    <header class="valign-wrapper">
+        <div class="row ">
+            <div class="col l6 m6 s12 offset-l6">
+                <h1 class="black-text">Your audio transcriber for WhatsApp</h1>
+                <a href="#qr" class="waves-effect waves-light btn lime accent-3 black-text"><i
+                        class="material-icons">arrow_drop_down</i></a>
+            </div>
+
+        </div>
+    </header>
+    <section class="container valign-wrapper">
+        <div class="row">
+            <div class="col l6 m6 s12">
+                <img src="img/Untitled.png" alt="">
+            </div>
+            <article class="col l6 m6 s12">
+                <h2 id="qr" class="black-text">Scan the QR code and you're done!</h2>
+                <a href="#logo" class="brand-logo"><img src="img/Logo wapify.me sin fondo.png" alt=""></a>
+            </article>
+
+        </div>
+
+    </section>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('a[href^="#"]').on('click', function (event) {
+                event.preventDefault();
+
+                var target = this.hash;
+                var $target = $(target);
+
+                $('html, body').animate({
+                    scrollTop: $target.offset().top
+                }, 1000, 'swing');
+            });
+        });
+    </script>
+</body>
+
+</html>
