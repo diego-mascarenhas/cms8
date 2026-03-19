@@ -1318,5 +1318,17 @@
   "Open store in WhatsApp": "Abrir tienda en WhatsApp",
   "Scan to open store in WhatsApp": "Escanea para abrir la tienda en WhatsApp",
   "Open in WhatsApp": "Abrir en WhatsApp",
-  "Scan the QR and try it now!": "¡Escanea el QR y pruébalo ahora!"
+  "Scan the QR and try it now!": "¡Escanea el QR y pruébalo ahora!",
+  "Your commerce command center": "Tu centro de comando de comercio",
+  "Connect WooCommerce to mirror your catalogue, prepare for syncing products from client stores, and feed assistants with live data. Flexible commerce, centralized here—like WooCommerce for WordPress, built for your teams.": "Conecta WooCommerce para reflejar tu catálogo, preparar la sincronización de productos de las tiendas de tus clientes y alimentar a los asistentes con datos en vivo. Comercio flexible, centralizado aquí: como WooCommerce para WordPress, pensado para tus equipos.",
+  "Connect WooCommerce store": "Conectar tienda WooCommerce",
+  "View setup guide": "Ver guía de configuración",
+  "WooCommerce storefront": "Escaparate WooCommerce",
+  "Manage products from your connected store. Multi-store sync for client shops is planned so every catalogue stays aligned from one workspace—similar to flexible commerce on WooCommerce.": "Gestiona los productos de tu tienda conectada. La sincronización multitienda para las tiendas de clientes está planificada para mantener cada catálogo alineado desde un solo espacio de trabajo, similar al comercio flexible de WooCommerce.",
+  "Add product": "Añadir producto",
+  "Open store": "Abrir tienda",
+  "Local catalogue until WooCommerce is connected": "Catálogo local hasta conectar WooCommerce",
+  "Synced from your WooCommerce store": "Sincronizado con tu tienda WooCommerce",
+  "Sync content with assistant": "Sincronizar contenido con el asistente",
+  "Last sync": "Última sincronización"
 }

@@ -172,6 +172,20 @@ class ProductController extends Controller
     }
 
     /**
+     * Remove the specified local product from storage (not WooCommerce API).
+     */
+    public function destroy(string $id): RedirectResponse
+    {
+        $product = Product::query()->findOrFail($id);
+
+        $this->authorize('delete', $product);
+
+        $product->delete();
+
+        return redirect()->route('product.index')->with('success', __('Product deleted successfully.'));
+    }
+
+    /**
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */

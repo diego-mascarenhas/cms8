@@ -7,35 +7,39 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
+{{-- Commerce hero banner (product.commerce-hero): hidden for now; enable when needed --}}
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3">{{ __('Productos') }}</h4>
-		<p class="text-muted">{{ __('Gestiona tus productos') }}</p>
+		<h4 class="mb-1 mt-3">{{ __('Products') }}</h4>
+		<p class="text-muted mb-0">{{ __('Local catalogue until WooCommerce is connected') }}</p>
 	</div>
 	<div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
+		@can('create', \App\Models\Product::class)
+		<a href="{{ route('product.create') }}" class="btn btn-primary">
+			<i class="ti ti-plus me-1"></i>{{ __('Add product') }}
+		</a>
+		@endcan
 		@if (!empty($wordpressConfigured))
 		<form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
 			@csrf
 			<button type="submit" class="btn btn-primary">
-				<i class="ti ti-refresh me-1"></i>{{ __('Sincronizar contenido con el asistente') }}
+				<i class="ti ti-refresh me-1"></i>{{ __('Sync content with assistant') }}
 			</button>
 		</form>
 		@endif
-		@can('product.create')
-		<a href="{{ route('product.create') }}" class="btn btn-primary">
-			<i class="ti ti-plus me-1"></i> {{ __('Agregar Producto') }}
-		</a>
-		@endcan
 		@if (!empty($lastSyncedAt))
-		<span class="text-muted small">{{ __('Última sincronización') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
+		<span class="text-muted small">{{ __('Last sync') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
 		@endif
 	</div>
 </div>
@@ -132,5 +136,42 @@
 
 @push('scripts')
 {{ $dataTable->scripts() }}
+<script>
+function deleteProduct(productId) {
+	Swal.fire({
+		title: '{{ __('¿Estás seguro?') }}',
+		text: "{{ __('¡No podrás revertir esto!') }}",
+		icon: 'warning',
+		showCancelButton: true,
+		buttonsStyling: false,
+		customClass: {
+			confirmButton: 'btn btn-danger me-2',
+			cancelButton: 'btn btn-label-secondary'
+		},
+		confirmButtonText: '{{ __('Sí, eliminar') }}',
+		cancelButtonText: '{{ __('Cancelar') }}',
+		allowOutsideClick: false,
+		allowEscapeKey: false
+	}).then((result) => {
+		if (result.isConfirmed) {
+			const form = document.createElement('form');
+			form.method = 'POST';
+			form.action = '/product/' + productId;
+			const csrfToken = document.createElement('input');
+			csrfToken.type = 'hidden';
+			csrfToken.name = '_token';
+			csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+			form.appendChild(csrfToken);
+			const methodInput = document.createElement('input');
+			methodInput.type = 'hidden';
+			methodInput.name = '_method';
+			methodInput.value = 'DELETE';
+			form.appendChild(methodInput);
+			document.body.appendChild(form);
+			form.submit();
+		}
+	});
+}
+</script>
 @endpush
 

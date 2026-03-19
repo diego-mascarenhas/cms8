@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\LanguageVariant;
 use App\Models\Mailbox;
 use App\Models\Multimedia;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\Prompt;
 use App\Models\Service;
@@ -28,6 +29,7 @@ use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
 use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
+use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\PromptPolicy;
 use App\Policies\ServicePolicy;
@@ -45,6 +47,7 @@ class AuthServiceProvider extends ServiceProvider
         Enterprise::class => ClientPolicy::class,
         Contact::class => ContactPolicy::class,
         Fare::class => FarePolicy::class,
+        Product::class => ProductPolicy::class,
         Project::class => ProjectPolicy::class,
         Service::class => ServicePolicy::class,
         Invoice::class => InvoicePolicy::class,

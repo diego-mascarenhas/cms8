@@ -37,13 +37,25 @@ class ProductDataTable extends DataTable
             })
             ->addColumn('action', function ($product)
             {
+                $user = auth()->user();
                 $html = '<div class="d-flex justify-content-center align-items-center">';
-                if (auth()->user()->can('product.show'))
+
+                if ($user && $user->can('view', $product))
                 {
-                    $html .= '<a href="'.route('product.show', $product->id).'" class="text-body">
-                        <i class="ti ti-edit ti-sm me-2"></i>
-                    </a>';
+                    $html .= '<a href="'.e(route('product.show', $product->id)).'" class="text-body" title="'.e(__('View')).'">'
+                        .'<i class="ti ti-eye ti-sm me-2"></i></a>';
                 }
+                if ($user && $user->can('update', $product))
+                {
+                    $html .= '<a href="'.e(route('product.edit', $product->id)).'" class="text-body" title="'.e(__('Edit')).'">'
+                        .'<i class="ti ti-edit ti-sm me-2"></i></a>';
+                }
+                if ($user && $user->can('delete', $product))
+                {
+                    $html .= '<a href="#" class="text-danger" title="'.e(__('Delete')).'" onclick="deleteProduct('.$product->id.'); return false;">'
+                        .'<i class="ti ti-trash ti-sm"></i></a>';
+                }
+
                 $html .= '</div>';
 
                 return $html;

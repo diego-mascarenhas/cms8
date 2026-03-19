@@ -89,6 +89,9 @@ class TeamDemoSeeder extends Seeder
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
 
+        // 15. Demo product catalogue (WooCommerce-style list / local products)
+        $this->call(TeamDemoProductsSeeder::class);
+
         $this->command->info('✅ Demo Team setup completed successfully');
     }
 

@@ -17,12 +17,12 @@
 		<p class="text-muted">{{ __('Detalles del Producto') }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		@can('product.edit')
+		@can('update', $product)
 		<a href="{{ route('product.edit', $product->id) }}" class="btn btn-primary waves-effect waves-light">
 			<i class="ti ti-edit me-1"></i>{{ __('Editar Producto') }}
 		</a>
 		@endcan
-		@can('product.destroy')
+		@can('delete', $product)
 		<button type="button" class="btn btn-danger" onclick="deleteProduct({{ $product->id }})">
 			<i class="ti ti-trash me-1"></i>{{ __('Eliminar Producto') }}
 		</button>
