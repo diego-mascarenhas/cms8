@@ -55,7 +55,7 @@ class AgentConversationContextService
         $payload = [
             'id' => (string) Str::uuid(),
             'user_id' => $userId,
-            'title' => Str::limit($title, 255),
+            'title' => $this->normalizeConversationTitle($title),
         ];
         if ($teamId !== null)
         {
@@ -204,7 +204,11 @@ class AgentConversationContextService
         array $assistantToolResults = [],
         ?int $teamId = null,
     ): void {
-        $conversation = $this->getOrCreateConversation($userId, $userContent, $teamId);
+        $conversation = $this->getOrCreateConversation(
+            $userId,
+            $this->previewTitleFromUserMessage($userContent),
+            $teamId,
+        );
 
         $conversation->touch();
 
@@ -239,5 +243,43 @@ class AgentConversationContextService
             'usage' => $assistantUsage,
             'meta' => $meta,
         ]);
+    }
+
+    /**
+     * Ensure title fits MySQL varchar(255) safely (multibyte / promos pasted on WhatsApp).
+     */
+    private function normalizeConversationTitle(string $title): string
+    {
+        $t = preg_replace('/\s+/u', ' ', trim($title));
+        if ($t === '')
+        {
+            return 'Chat';
+        }
+
+        if (function_exists('mb_substr'))
+        {
+            return mb_substr($t, 0, 191);
+        }
+
+        return substr($t, 0, 191);
+    }
+
+    /**
+     * Short preview for new conversations (full body stays in agent_conversation_messages.content).
+     */
+    private function previewTitleFromUserMessage(string $userContent): string
+    {
+        $t = preg_replace('/\s+/u', ' ', trim($userContent));
+        if ($t === '')
+        {
+            return 'Chat';
+        }
+
+        if (function_exists('mb_substr'))
+        {
+            return mb_substr($t, 0, 100);
+        }
+
+        return substr($t, 0, 100);
     }
 }
