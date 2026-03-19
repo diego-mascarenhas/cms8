@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -59,9 +60,13 @@ class UserResolverService
 
         try
         {
+            $team = Team::query()->find($teamId);
+            $creatorId = $team?->user_id ?? $user->id;
+
             Contact::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
                 'user_id' => $user->id,
+                'creator_id' => $creatorId,
                 'name' => 'Contacto '.$cleanNumber,
                 'phone' => $cleanNumber,
                 'status_id' => 1,

@@ -151,6 +151,50 @@
 			</div>
 		</div>
 
+		@if(!empty($order->metadata['items']) && is_array($order->metadata['items']))
+		<div class="card mb-4">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="card-title mb-0">{{ __('Productos') }}</h5>
+				@if(!empty($order->metadata['source']) && $order->metadata['source'] === 'whatsapp')
+					<span class="badge bg-label-success">{{ __('WhatsApp') }}</span>
+				@endif
+			</div>
+			<div class="card-body p-0">
+				<div class="table-responsive">
+					<table class="table table-striped mb-0">
+						<thead>
+							<tr>
+								<th class="ps-4">{{ __('Producto') }}</th>
+								<th>{{ __('Categoría') }}</th>
+								<th class="text-end">{{ __('Precio unit.') }}</th>
+								<th class="text-end">{{ __('Cant.') }}</th>
+								<th class="text-end pe-4">{{ __('Subtotal') }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach($order->metadata['items'] as $line)
+							<tr>
+								<td class="ps-4">
+									@if(!empty($line['product_id']))
+										<span class="fw-medium">{{ $line['name'] ?? '—' }}</span>
+										<small class="text-muted d-block">ID {{ $line['product_id'] }}</small>
+									@else
+										<span class="fw-medium">{{ $line['name'] ?? '—' }}</span>
+									@endif
+								</td>
+								<td>{{ $line['category_name'] ?? '—' }}</td>
+								<td class="text-end">{{ $order->currency ? $order->currency->symbol : '$' }}{{ number_format((float) ($line['unit_price'] ?? 0), 2) }}</td>
+								<td class="text-end">{{ (int) ($line['quantity'] ?? 0) }}</td>
+								<td class="text-end pe-4">{{ $order->currency ? $order->currency->symbol : '$' }}{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
+							</tr>
+							@endforeach
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+		@endif
+
 		<!-- Order Notes Card -->
 		@if($order->notes)
 		<div class="card mb-4">

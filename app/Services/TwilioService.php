@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
@@ -354,6 +355,61 @@ class TwilioService implements WhatsAppGateway
     protected function getSender(): WhatsAppGateway
     {
         return $this->sendingGateway ?? $this;
+    }
+
+    /**
+     * Cache flag: user was asked "¿Confirmar compra?" after checkout — only then treat SÍ/NO as cart commands.
+     */
+    private function checkoutPendingCacheKey(string $phoneNumber): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phoneNumber);
+
+        return 'whatsapp_checkout_pending:'.$digits;
+    }
+
+    private function forgetCheckoutPending(string $phoneNumber): void
+    {
+        Cache::forget($this->checkoutPendingCacheKey($phoneNumber));
+    }
+
+    private function rememberCheckoutPending(string $phoneNumber): void
+    {
+        Cache::put($this->checkoutPendingCacheKey($phoneNumber), true, now()->addMinutes(45));
+    }
+
+    private function hasCheckoutPending(string $phoneNumber): bool
+    {
+        return (bool) Cache::get($this->checkoutPendingCacheKey($phoneNumber));
+    }
+
+    /**
+     * Team that owns the WhatsApp inbox (webhook context), not the customer's default team.
+     */
+    private function resolveCartTeamId(string $phoneNumber): int
+    {
+        if ($this->team)
+        {
+            return (int) $this->team->id;
+        }
+
+        $user = $this->getUserByPhone($phoneNumber);
+        if ($user && ! isset($user->is_contact) && $user->currentTeam)
+        {
+            return (int) $user->currentTeam->id;
+        }
+
+        return 1;
+    }
+
+    /**
+     * Normalize short replies (e.g. "SÍ!", "si.") for keyword matching.
+     */
+    private function normalizeWhatsAppCommandText(string $message): string
+    {
+        $t = mb_strtolower(trim($message));
+        $t = preg_replace('/\s+/u', ' ', $t) ?? $t;
+
+        return trim($t, " \t\n\r\0\x0B!?.¡¿");
     }
 
     public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
@@ -1065,14 +1121,7 @@ class TwilioService implements WhatsAppGateway
     {
         try
         {
-            // Find user and their team for product filtering
-            $user = $this->getUserByPhone($phoneNumber);
-            $teamId = 1;  // Default to team 1 for demo
-
-            if ($user && ! isset($user->is_contact) && $user->currentTeam)
-            {
-                $teamId = $user->currentTeam->id;
-            }
+            $teamId = $this->resolveCartTeamId($phoneNumber);
 
             // Get active products that are WhatsApp enabled for the specific team
             $products = \App\Models\Product::withoutGlobalScope('team')
@@ -1115,10 +1164,11 @@ class TwilioService implements WhatsAppGateway
                 }
             }
 
-            $message .= "💡 *Para comprar:*\n";
-            $message .= "• *comprar [nombre]* o *comprar [código]*\n";
-            $message .= "• O contacta soporte: https://revisionalpha.com/contactenos\n\n";
-            $message .= '🛒 *Tu carrito:* Escribe *carrito* para ver tus productos seleccionados';
+            $message .= "🛒 *Cómo comprar por aquí:*\n";
+            $message .= "• Escribe *comprar [nombre]* o *comprar [código]*\n";
+            $message .= "• *carrito* → ver qué llevas | *checkout* → cerrar pedido\n";
+            $message .= "• También podés preguntarme por un producto y te guío paso a paso.\n\n";
+            $message .= '📞 Soporte: https://revisionalpha.com/contactenos';
 
             $this->sendWhatsApp($phoneNumber, $message);
 
@@ -1925,17 +1975,8 @@ class TwilioService implements WhatsAppGateway
                 'phone_format' => 'Raw from WhatsApp',
             ]);
 
-            // Clean and normalize the message
-            $normalizedMessage = strtolower(trim($message));
-
-            // Find user and their team for product filtering
-            $user = $this->getUserByPhone($phoneNumber);
-            $teamId = 1;  // Default to team 1 for demo
-
-            if ($user && ! isset($user->is_contact) && $user->currentTeam)
-            {
-                $teamId = $user->currentTeam->id;
-            }
+            $normalizedMessage = $this->normalizeWhatsAppCommandText($message);
+            $teamId = $this->resolveCartTeamId($phoneNumber);
 
             // Set cart session for this phone number
             Cart::session($phoneNumber);
@@ -1949,16 +1990,32 @@ class TwilioService implements WhatsAppGateway
                 'storage_key' => 'cart_'.$phoneNumber,
             ]);
 
-            // Check for checkout confirmation commands (YES responses)
-            if (in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder']))
+            $affirmativeCheckout = ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'];
+            $negativeCheckout = ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar'];
+
+            // Only treat SÍ/NO as checkout answers after we sent "¿Quieres confirmar tu compra?"
+            if (in_array($normalizedMessage, $affirmativeCheckout, true))
             {
-                return $this->confirmCheckout($phoneNumber, $teamId);
+                if ($this->hasCheckoutPending($phoneNumber))
+                {
+                    $this->forgetCheckoutPending($phoneNumber);
+
+                    return $this->confirmCheckout($phoneNumber, $teamId);
+                }
+
+                return null;
             }
 
-            // Check for continue shopping commands (NO responses)
-            if (in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar']))
+            if (in_array($normalizedMessage, $negativeCheckout, true))
             {
-                return $this->continueShoppingFromCheckout($phoneNumber);
+                if ($this->hasCheckoutPending($phoneNumber))
+                {
+                    $this->forgetCheckoutPending($phoneNumber);
+
+                    return $this->continueShoppingFromCheckout($phoneNumber);
+                }
+
+                return null;
             }
 
             // Check for add to cart commands (comprar, contratar)
@@ -1976,8 +2033,10 @@ class TwilioService implements WhatsAppGateway
             }
 
             // Check for clear cart commands
-            if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']))
+            if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart'], true))
             {
+                $this->forgetCheckoutPending($phoneNumber);
+
                 return $this->clearCart($phoneNumber);
             }
 
@@ -2069,7 +2128,7 @@ class TwilioService implements WhatsAppGateway
             $response .= "**Opciones:**\n";
             $response .= "• Escribe 'carrito' para ver todos tus productos\n";
             $response .= "• Escribe 'comprar [producto]' para agregar más\n";
-            $response .= "• Escribe 'checkout' para finalizar tu compra";
+            $response .= '• *checkout* — cuando quieras cerrar el pedido (te pediré confirmación con *SÍ*)';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2103,8 +2162,7 @@ class TwilioService implements WhatsAppGateway
             if ($cartItems->isEmpty())
             {
                 $response = "🛒 **Tu carrito está vacío**\n\n";
-                $response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
-                $response .= "💡 **Tip**: Usa 'comprar [producto]' para agregar items";
+                $response .= "📋 *comprar [nombre o código]* para agregar | *productos* catálogo | preguntame por un producto.\n";
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2129,10 +2187,10 @@ class TwilioService implements WhatsAppGateway
             $response .= '💰 **TOTAL: $'.number_format(Cart::getTotal(), 2)."**\n";
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 
-            $response .= "**Opciones:**\n";
-            $response .= "• Escribe 'checkout' para finalizar tu compra\n";
-            $response .= "• Escribe 'comprar [producto]' para agregar más\n";
-            $response .= "• Escribe 'vaciar carrito' para empezar de nuevo";
+            $response .= "**Siguiente paso:**\n";
+            $response .= "• *checkout* — te mostraré el total y pediré *SÍ* para confirmar el pedido\n";
+            $response .= "• *comprar [producto]* — sumar otro ítem\n";
+            $response .= '• *vaciar carrito* — empezar de cero';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2190,8 +2248,9 @@ class TwilioService implements WhatsAppGateway
 
             if ($cartItems->isEmpty())
             {
+                $this->forgetCheckoutPending($phoneNumber);
                 $response = "❌ **Tu carrito está vacío**\n\n";
-                $response .= "📋 Escribe 'productos' para ver nuestro catálogo";
+                $response .= '📋 *comprar [producto]* para agregar | *productos* para el catálogo';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2209,10 +2268,12 @@ class TwilioService implements WhatsAppGateway
 
             $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
-            $response .= "❓ **¿Quieres confirmar tu compra?**\n\n";
-            $response .= 'Responde *SÍ* para proceder o *NO* para seguir comprando.';
+            $response .= "❓ **¿Confirmamos el pedido?**\n\n";
+            $response .= "Responde *SÍ* solo ahora para confirmar este pedido, o *NO* para seguir agregando productos.\n";
+            $response .= '(Si no ves este mensaje como último paso, escribe *carrito* o *checkout* de nuevo.)';
 
             $this->sendWhatsApp($phoneNumber, $response);
+            $this->rememberCheckoutPending($phoneNumber);
 
             // Log checkout initiation
             Log::info('Checkout initiated - awaiting confirmation', [
@@ -2226,6 +2287,7 @@ class TwilioService implements WhatsAppGateway
         } catch (\Exception $e)
         {
             Log::error('Error initiating checkout: '.$e->getMessage());
+            $this->forgetCheckoutPending($phoneNumber);
             $this->sendWhatsApp($phoneNumber, '❌ Error al procesar checkout. Contacta soporte.');
 
             return ['success' => false, 'message' => 'Error in checkout'];
@@ -2243,8 +2305,9 @@ class TwilioService implements WhatsAppGateway
 
             if ($cartItems->isEmpty())
             {
+                $this->forgetCheckoutPending($phoneNumber);
                 $response = "❌ **Tu carrito está vacío**\n\n";
-                $response .= "📋 Escribe 'productos' para ver nuestro catálogo";
+                $response .= '📋 Escribe *productos* o preguntá por un producto; para sumar: *comprar [nombre o código]*.';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2252,8 +2315,30 @@ class TwilioService implements WhatsAppGateway
             }
 
             $total = Cart::getTotal();
+            $cleanDigits = preg_replace('/[^0-9]/', '', (string) $phoneNumber);
 
-            $response = "✅ **¡Compra Confirmada!**\n\n";
+            try
+            {
+                $order = app(WhatsAppCheckoutOrderService::class)->createFromWhatsAppCart(
+                    $teamId,
+                    $cleanDigits,
+                    $cartItems,
+                    (float) $total,
+                );
+            } catch (\Throwable $e)
+            {
+                Log::error('WhatsApp checkout order create failed: '.$e->getMessage(), [
+                    'exception' => $e,
+                    'team_id' => $teamId,
+                    'phone' => $cleanDigits,
+                ]);
+                $this->forgetCheckoutPending($phoneNumber);
+                $this->sendWhatsApp($phoneNumber, '❌ No pudimos registrar tu pedido. Probá *checkout* de nuevo o escribinos.');
+
+                return ['success' => false, 'message' => 'Order create failed'];
+            }
+
+            $response = "✅ **¡Compra confirmada!**\n\n";
             $response .= "📋 **Resumen del pedido:**\n";
 
             foreach ($cartItems as $item)
@@ -2264,41 +2349,34 @@ class TwilioService implements WhatsAppGateway
             $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 
-            $response .= "📧 **Próximos pasos:**\n";
-            $response .= "• Te enviaremos un email con los detalles completos\n";
-            $response .= "• Incluirá enlaces de pago seguros y opciones de entrega\n";
-            $response .= '• Número de orden: #'.strtoupper(substr(md5($phoneNumber.time()), 0, 8))."\n\n";
+            $response .= "🧾 **Tu pedido quedó registrado**\n";
+            $response .= '• **Nº de orden:** #'.$order->order_number."\n";
+            $response .= "• Guardá ese número por si necesitás seguimiento por acá.\n\n";
 
-            $response .= "💳 **El proceso continúa por email:**\n";
-            $response .= "• Enlaces de pago seguros\n";
-            $response .= "• Instrucciones detalladas\n";
-            $response .= "• Confirmación de entrega\n\n";
-
-            $response .= "📞 **¿Dudas? Contáctanos:**\n";
-            $response .= "• WhatsApp: Responde aquí directamente\n";
+            $response .= "📞 **¿Dudas?**\n";
+            $response .= "• Respondé en este chat\n";
             $response .= "• Web: https://revisionalpha.com/contactenos\n\n";
 
-            $response .= "¡Gracias por confiar en nosotros! 🎉\n";
-            $response .= '📬 Revisa tu email en los próximos minutos.';
+            $response .= '¡Gracias por tu compra! 🎉';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
-            // Log successful checkout
-            Log::info('Checkout confirmed and processed', [
+            Log::info('Checkout confirmed and order created', [
                 'phone' => $phoneNumber,
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
                 'items_count' => $cartItems->count(),
                 'total' => $total,
-                'items' => $cartItems->toArray(),
-                'order_id' => strtoupper(substr(md5($phoneNumber.time()), 0, 8)),
             ]);
 
-            // Clear the cart after successful checkout
             Cart::clear();
+            $this->forgetCheckoutPending($phoneNumber);
 
             return ['success' => true, 'message' => $response];
         } catch (\Exception $e)
         {
             Log::error('Error confirming checkout: '.$e->getMessage());
+            $this->forgetCheckoutPending($phoneNumber);
             $this->sendWhatsApp($phoneNumber, '❌ Error al confirmar compra. Por favor inténtalo nuevamente.');
 
             return ['success' => false, 'message' => 'Error confirming checkout'];
@@ -2312,14 +2390,14 @@ class TwilioService implements WhatsAppGateway
     {
         try
         {
-            $response = "🛍️ **¡Perfecto!**\n\n";
-            $response .= "Puedes seguir agregando productos a tu carrito.\n\n";
-            $response .= "📋 **Opciones disponibles:**\n";
-            $response .= "• Escribe '*productos*' para ver el catálogo completo\n";
-            $response .= "• Usa '*comprar [producto]*' para agregar items\n";
-            $response .= "• Escribe '*carrito*' para ver tu carrito actual\n";
-            $response .= "• Usa '*checkout*' cuando estés listo para finalizar\n\n";
-            $response .= '💡 **Tip:** Tu carrito actual se mantiene guardado';
+            $response = "🛍️ **Seguimos con tu compra**\n\n";
+            $response .= "Tu carrito sigue igual. Podés sumar más productos o revisar el total.\n\n";
+            $response .= "📋 **Pasos:**\n";
+            $response .= "• *comprar [nombre o código]* — agregar al carrito\n";
+            $response .= "• *carrito* — ver ítems y subtotales\n";
+            $response .= "• *checkout* — pedir confirmación del pedido\n";
+            $response .= "• *productos* — catálogo completo\n\n";
+            $response .= '💡 Decime qué producto querés y te ayudo a agregarlo.';
 
             $this->sendWhatsApp($phoneNumber, $response);
 

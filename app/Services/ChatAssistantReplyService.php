@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Team;
 use App\Tools\AssistantTool;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -17,6 +18,7 @@ class ChatAssistantReplyService
 {
     public function __construct(
         protected AssistantToolsService $assistantTools,
+        protected AssistantCapabilitiesOverviewService $capabilitiesOverview,
     ) {}
 
     /**
@@ -32,6 +34,22 @@ class ChatAssistantReplyService
         if ($this->useStub($teamId))
         {
             return $this->getStubReply($message);
+        }
+
+        if ($withTools && $teamId !== null && $this->capabilitiesOverview->shouldOfferOverview($history, $message, $withTools))
+        {
+            $team = Team::withoutGlobalScopes()->with('modules')->find($teamId);
+            if ($team)
+            {
+                return [
+                    'success' => true,
+                    'text' => $this->capabilitiesOverview->buildOverviewMessage($team),
+                    'routed_to' => 'capabilities_overview',
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                ];
+            }
         }
 
         $this->assistantTools->clearRequestContext();
@@ -199,10 +217,12 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 When they ask to create or modify something, use:
 - create_contact, update_contact (to add or change phone, email, or name), get_contact_categories (to see a contact's categories), assign_contact_to_category (to add another category to a contact), create_task, send_whatsapp_message
 
-Product catalog and WhatsApp purchases (when the team sells products):
-- list_product_catalog (optional category_name) → full catalog grouped by category with id, code, name, price. Use for "catálogo", "productos", "qué tienen", "lista de ropa", etc.
-- search_products (query) → find by name or code/SKU. Use for "código ABC", "precio de X", "tenés zapatillas".
-- add_to_whatsapp_cart (product_id OR product_code OR product_name; optional quantity) → adds to the customer's WhatsApp cart when they are writing from WhatsApp (or when the web assistant has the recipient phone). After adding, tell them in Spanish they can write *carrito* and *checkout* to finish. If the tool says there is no phone context, explain they must write from WhatsApp or use: comprar [nombre o código].
+Product catalog and WhatsApp PURCHASE flow (priority when the user wants to buy — team has products module):
+- list_product_catalog (optional category_name) → full catalog with id, code, name, price. Use for "catálogo", "productos", "qué venden".
+- search_products (query) → find by name or code. Use before offering to add to cart.
+- add_to_whatsapp_cart (product_id OR product_code OR product_name; optional quantity) → YOU MUST call this tool as soon as the user confirms they want the product (e.g. "sí", "si", "dale", "ok", "agregalo", "quiero", "sí por favor", "añadilo", "mandale") after you showed them a specific product in the same conversation. Do NOT only reply with text — actually add to cart with the same id/code/name you found. If they confirm without naming again, use the product from your previous search_products / list result.
+- After a successful add_to_whatsapp_cart, reply in Spanish with: what was added, cart reminder (*carrito*), and next step (*checkout* to close the order). Say clearly that *SÍ* alone only confirms checkout AFTER they run *checkout*, not before.
+- If the tool says there is no phone context, tell them to write *comprar [nombre o código]* from WhatsApp.
 
 When they ask to schedule an event, appointment, or meeting ("agendar", "cita", "reunión", "evento", "reservar", "poner en el calendario"), use the calendar tools:
 - check_calendar_availability (start, end) → to see if the slot is free before confirming
