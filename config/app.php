@@ -266,12 +266,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Wapify: WhatsApp store link (demo store)
+    | Wapify: WhatsApp link for QR (chillerlan/php-qrcode) and buttons
     |--------------------------------------------------------------------------
-    | Phone number (digits only, e.g. 349999999999) and optional pre-filled text.
-    | Opens: https://api.whatsapp.com/send/?phone=...&text=...
+    | Optional full URL for QR payload. If empty, built from phone + text.
+    | Default phone 34613194131 when WAPIFY_WHATSAPP_PHONE is not set.
     */
-    'wapify_whatsapp_phone' => env('WAPIFY_WHATSAPP_PHONE', ''),
+    'wapify_whatsapp_link' => env('WAPIFY_WHATSAPP_LINK', ''),
+    'wapify_whatsapp_phone' => env('WAPIFY_WHATSAPP_PHONE', '34613194131'),
     'wapify_whatsapp_text' => env('WAPIFY_WHATSAPP_TEXT', 'Hola!'),
 
 ];

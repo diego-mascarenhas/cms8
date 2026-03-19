@@ -48,8 +48,48 @@ header{
   height: 95vh;
 }
 
-section{
-  height: 100vh;
+section.wapify-section {
+  min-height: 100vh;
+}
+
+section.wapify-section .row {
+  width: 100%;
+}
+
+.wapify-qr-card {
+  border-radius: 4px;
+  display: inline-block;
+  padding: 0.75rem 0.75rem 1rem;
+  text-align: center;
+}
+
+.wapify-qr-img {
+  display: block;
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+
+.wapify-qr-cta {
+  margin: 1rem 0 0;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.wapify-qr-link {
+  display: inline-block;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.wapify-link-muted {
+  text-decoration: underline;
+}
+
+.wapify-hero-img {
+  width: 300px;
+  max-width: 100%;
+  height: auto;
 }
 
 .brand-logo img{

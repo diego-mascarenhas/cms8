@@ -8,11 +8,6 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://use.typekit.net/fbh6wfi.css">
     <link rel="stylesheet" href="{{ asset('homes/wapify/css/style.css') }}">
-    <style>
-        .wapify-section { min-height: 100vh; display: flex; align-items: center; }
-        .wapify-section .row { width: 100%; }
-        .wapify-whatsapp-btn { display: inline-block !important; visibility: visible !important; margin-top: 1.5rem; }
-    </style>
     <title>Wapify</title>
     @if(config('app.google_analytics_id'))
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
@@ -42,31 +37,23 @@
             </div>
         </div>
     </header>
-    <section class="container wapify-section">
-        <div class="row valign-wrapper">
+    @php
+        $wa = \App\Helpers\WapifyWhatsAppHelper::resolve();
+        $wapifyQrSrc = \App\Helpers\WapifyWhatsAppHelper::qrDataUri($wa['qr_data']);
+    @endphp
+    <section class="container valign-wrapper wapify-section">
+        <div class="row">
             <div class="col l6 m6 s12">
-                @php
-                    $phone = preg_replace('/\D/', '', (string) config('app.wapify_whatsapp_phone', ''));
-                    $whatsappText = (string) config('app.wapify_whatsapp_text', 'Hola!');
-                    $storeUrl = $phone !== '' ? 'https://api.whatsapp.com/send/?phone=' . $phone . '&text=' . rawurlencode($whatsappText) : '';
-                    $storeQrImageUrl = $storeUrl !== '' ? 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' . rawurlencode($storeUrl) : null;
-                @endphp
-                @if($storeQrImageUrl)
                 <div class="center-align">
-                    <div class="card white z-depth-2 center-align" style="border-radius: 4px; display: inline-block; padding: 0.75rem;">
-                        <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer" aria-label="{{ __('Open store in WhatsApp') }}">
-                            <img src="{{ $storeQrImageUrl }}" alt="{{ __('Scan to open store in WhatsApp') }}" style="display: block; width: 220px; height: 220px;">
+                    <div class="card white z-depth-2 wapify-qr-card">
+                        <a href="{{ $wa['web_url'] }}" target="_blank" rel="noopener noreferrer" title="Abrir en WhatsApp Web" class="wapify-qr-link">
+                            <img src="{{ $wapifyQrSrc }}" alt="QR para WhatsApp" class="wapify-qr-img">
                         </a>
+                        <p class="black-text wapify-qr-cta">
+                            O <a href="{{ route('landing.business-creation') }}" class="black-text wapify-link-muted">Crea tu negocio</a>
+                        </p>
                     </div>
-                    <p class="wapify-whatsapp-btn" style="margin-bottom: 0;">
-                        <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer" class="waves-effect waves-light btn white black-text z-depth-1 wapify-whatsapp-btn" style="text-transform: uppercase;">
-                            {{ __('Open in WhatsApp') }}
-                        </a>
-                    </p>
                 </div>
-                @else
-                <img src="{{ asset('homes/wapify/img/hero.png') }}" alt="" class="responsive-img">
-                @endif
             </div>
             <article class="col l6 m6 s12">
                 <h2 id="qr" class="black-text">{{ __('Scan the QR and try it now!') }}</h2>
