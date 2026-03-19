@@ -10,6 +10,7 @@ Este documento describe la implementación del sistema de productos consultable 
 - **Agrupación por categorías** para mejor organización
 - **Información detallada** de cada producto (nombre, precio, descripción)
 - **Integración con Twilio** para respuestas automáticas
+- **Asistente IA** (Respuestas del Asistente Humano): puede listar catálogo por categoría, buscar por nombre o **código/SKU**, y usar `add_to_whatsapp_cart` para el número que escribe por WhatsApp (o el destinatario en el chat web). El cliente sigue pudiendo usar *carrito* y *checkout*.
 
 ### 🛍️ Comandos Disponibles
 - `productos` - Ver catálogo completo
@@ -123,8 +124,8 @@ Usuario: "productos"
   💰 $59.99
   📝 Hosting web premium con 50GB de espacio...
 
-💡 Para contratar:
-• Escribe: contratar [nombre del producto]
+💡 Para comprar:
+• comprar [nombre] o comprar [código]
 • O contacta soporte: https://revisionalpha.com/contactenos
 
 🛒 Tu carrito: Escribe carrito para ver tus productos seleccionados

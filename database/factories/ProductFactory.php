@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProductCatalogStatus;
+use App\Enums\ProductStockStatus;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
@@ -57,13 +59,26 @@ class ProductFactory extends Factory
 
         return [
             'name' => $this->faker->randomElement($productNames),
+            'code' => strtoupper($this->faker->unique()->bothify('PRD-###??')),
             'description' => $this->faker->randomElement($descriptions),
+            'short_description' => null,
             'price' => $this->faker->randomElement($prices),
-            'currency_id' => Currency::inRandomOrder()->first()?->id ?? 1,
+            'sale_price' => null,
+            'currency_id' => Currency::query()->where('code', 'ARS')->value('id')
+                ?? Currency::inRandomOrder()->value('id')
+                ?? 1,
+            'store_id' => null,
             'category_id' => Category::inRandomOrder()->first()?->id ?? 1,
             'status' => true,
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'stock_status' => ProductStockStatus::InStock,
+            'manage_stock' => false,
+            'stock_quantity' => null,
+            'size_options' => [],
+            'color_options' => [],
             'whatsapp_enabled' => true,
             'team_id' => Team::inRandomOrder()->first()?->id ?? 1,
+            'image' => null,
         ];
     }
 
@@ -74,6 +89,7 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => false,
+            'catalog_status' => ProductCatalogStatus::Draft,
         ]);
     }
 

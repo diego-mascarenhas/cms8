@@ -778,10 +778,10 @@ class ChatController extends Controller
             if ($template && auth()->check() && auth()->user()->currentTeam && (int) $template->team_id === (int) auth()->user()->currentTeam->id)
             {
                 $message = sprintf(
-                    "Estoy editando la plantilla «%s» (id: %d). Mi solicitud: %s",
+                    'Estoy editando la plantilla «%s» (id: %d). Mi solicitud: %s',
                     $template->name,
                     $template->id,
-                    $message
+                    $message,
                 );
             }
         }
@@ -816,7 +816,10 @@ class ChatController extends Controller
         $teamId = auth()->user()?->currentTeam?->id;
         // Enable tools whenever the user has a team so the assistant can access contacts, tasks, etc. (even from a contact chat)
         $withTools = $teamId !== null;
-        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools);
+        $customerPhone = $request->filled('recipient')
+            ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
+            : null;
+        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, null, $customerPhone !== '' ? $customerPhone : null);
 
         if (! $replyResponse['success'])
         {
@@ -836,7 +839,7 @@ class ChatController extends Controller
             $replyResponse['meta'] ?? [],
             $replyResponse['tool_calls'] ?? [],
             $replyResponse['tool_results'] ?? [],
-            $teamId
+            $teamId,
         );
 
         $payload = [
@@ -941,7 +944,8 @@ class ChatController extends Controller
                 $history = $this->getChatHistory($request->to, 10);
                 $teamId = auth()->user()?->currentTeam?->id;
                 $withTools = $teamId !== null;
-                $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools);
+                $toDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to'));
+                $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, auth()->id(), $toDigits !== '' ? $toDigits : null);
 
                 // If assistant responded successfully, use its response
                 if ($replyResponse['success'])

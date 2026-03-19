@@ -14,20 +14,20 @@ class ProductWooCommerceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_product_create_redirects_to_index_when_woocommerce_not_configured(): void
+    public function test_product_create_shows_standalone_form(): void
     {
         $user = $this->createUserWithTeamAndRole('admin');
 
         $response = $this->actingAs($user)->get(route('product.create'));
 
-        $response->assertRedirect(route('product.index'));
-        $response->assertSessionHas('error');
+        $response->assertOk();
+        $response->assertSee(__('Create and edit products stored in Humano. No external store connection required.'), false);
     }
 
-    public function test_product_index_shows_woocommerce_list_when_configured(): void
+    public function test_product_index_uses_humano_datatable_when_woocommerce_configured(): void
     {
         Http::fake([
-            '*wp-json/wc/v3/products*' => Http::response([['id' => 1, 'name' => 'Test Product', 'price' => '10.00', 'status' => 'publish', 'stock_status' => 'instock']], 200),
+            '*wp-json/wc/v3/products*' => Http::response([['id' => 1, 'name' => 'Woo Only Product', 'price' => '10.00', 'status' => 'publish', 'stock_status' => 'instock']], 200),
         ]);
 
         $user = $this->createUserWithTeamAndRole('admin');
@@ -37,8 +37,9 @@ class ProductWooCommerceTest extends TestCase
         $response = $this->actingAs($user)->get(route('product.index'));
 
         $response->assertOk();
-        $response->assertSee('Test Product', false);
+        $response->assertSee('id="product-table"', false);
         $response->assertSee(__('Add product'), false);
+        $response->assertDontSee('Woo Only Product', false);
     }
 
     public function test_product_index_without_woocommerce_shows_add_product_button_for_admin(): void

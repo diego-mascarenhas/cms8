@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -21,15 +22,36 @@ class ProductDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->editColumn('status', function ($product)
             {
-                return $product->status
-                    ? '<span class="badge bg-success">Activo</span>'
-                    : '<span class="badge bg-secondary">Inactivo</span>';
+                $catalog = $product->catalog_status;
+                if (! $catalog instanceof ProductCatalogStatus)
+                {
+                    $catalog = $product->status
+                        ? ProductCatalogStatus::Publish
+                        : ProductCatalogStatus::Draft;
+                }
+                $class = match ($catalog)
+                {
+                    ProductCatalogStatus::Publish => 'bg-success',
+                    ProductCatalogStatus::Draft => 'bg-secondary',
+                    ProductCatalogStatus::Pending => 'bg-warning',
+                    ProductCatalogStatus::Private => 'bg-info',
+                };
+
+                return '<span class="badge '.$class.'">'.e($catalog->label()).'</span>';
             })
             ->editColumn('price', function ($product)
             {
-                $currency = $product->currency ? $product->currency->code : 'USD';
+                $currency = $product->currency ? $product->currency->code : 'ARS';
+                $regular = number_format((float) $product->price, 2, ',', '.');
+                $current = number_format($product->currentSellingPrice(), 2, ',', '.');
 
-                return number_format($product->price, 2, ',', '.').' '.$currency;
+                if ($product->isOnSale())
+                {
+                    return '<span class="text-muted text-decoration-line-through">'.$regular.'</span> '
+                        .$current.' '.e($currency);
+                }
+
+                return $current.' '.e($currency);
             })
             ->editColumn('category.name', function ($product)
             {
@@ -61,12 +83,12 @@ class ProductDataTable extends DataTable
                 return $html;
             })
             ->setRowId('id')
-            ->rawColumns(['status', 'action']);
+            ->rawColumns(['status', 'price', 'action']);
     }
 
     public function query(Product $model): QueryBuilder
     {
-        return $model->newQuery()->with(['category', 'currency']);
+        return $model->newQuery()->with(['category', 'currency', 'store']);
     }
 
     public function html(): HtmlBuilder
@@ -93,6 +115,18 @@ class ProductDataTable extends DataTable
             Column::make('name')
                 ->title(__('Name'))
                 ->addClass('all')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('code')
+                ->title(__('Code'))
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('store.name')
+                ->title(__('Store'))
+                ->className('text-center')
+                ->addClass('min-phone')
                 ->orderable(true)
                 ->searchable(true),
             Column::make('category.name')

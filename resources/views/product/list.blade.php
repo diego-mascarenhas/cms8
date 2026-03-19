@@ -22,7 +22,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3">{{ __('Products') }}</h4>
-		<p class="text-muted mb-0">{{ __('Local catalogue until WooCommerce is connected') }}</p>
+		<p class="text-muted mb-0">{{ __('Manage your product catalogue in Humano. Works standalone without connecting a store.') }}</p>
 	</div>
 	<div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
 		@can('create', \App\Models\Product::class)

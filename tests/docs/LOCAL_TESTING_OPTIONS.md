@@ -50,6 +50,10 @@ php artisan queue:work --queue=mailer
 ### 1. **Crear Campaign Test**
 ```bash
 php artisan db:seed --class=TeamDemoSeeder
+# Demo product catalogue (Ropa/Calzado/Accesorios) runs with full install:
+# php artisan db:seed
+# Or alone after TeamDemo:
+# php artisan db:seed --class=TextileProductsSeeder
 ```
 
 ### 2. **Enviar Emails**

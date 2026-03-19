@@ -10,6 +10,7 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\Module;
+use App\Models\Product;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
@@ -17,6 +18,7 @@ use App\Models\Template;
 use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
+use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -31,17 +33,34 @@ class AssistantToolsService
 
     protected ?int $contextTeamId = null;
 
+    /** Digits-only WhatsApp number of the customer (inbound thread), for cart session. */
+    protected ?string $contextCustomerPhone = null;
+
     public function __construct(
         protected ?WhatsAppGateway $whatsAppGateway = null,
     ) {}
 
     /**
-     * Set user and team context for tool execution when not in an HTTP auth context (e.g. WhatsApp webhook).
+     * Reset tool execution context (avoid leaking phone/team between requests; service may be singleton).
      */
-    public function setRequestContext(?int $userId, ?int $teamId): void
+    public function clearRequestContext(): void
+    {
+        $this->contextUserId = null;
+        $this->contextTeamId = null;
+        $this->contextCustomerPhone = null;
+    }
+
+    /**
+     * Set user and team context for tool execution when not in an HTTP auth context (e.g. WhatsApp webhook).
+     * Optional customer phone (digits) links add_to_whatsapp_cart to the correct Cart session.
+     */
+    public function setRequestContext(?int $userId, ?int $teamId, ?string $customerPhoneDigits = null): void
     {
         $this->contextUserId = $userId;
         $this->contextTeamId = $teamId;
+        $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
+            ? preg_replace('/[^0-9]/', '', $customerPhoneDigits)
+            : null;
     }
 
     /**
@@ -375,6 +394,42 @@ class AssistantToolsService
                     'required' => ['message_id'],
                 ],
             ],
+            [
+                'name' => 'list_product_catalog',
+                'description' => 'List WhatsApp-enabled published products for the team catalog, grouped by category. Use when the user asks for catalog, "catálogo", "productos", "qué venden", or to browse by category. Optional category_name filters by category name (partial match).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'category_name' => ['type' => 'string', 'description' => 'Optional: only products in categories whose name contains this text'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'search_products',
+                'description' => 'Search sellable products by name fragment or by internal code (SKU). Use for "busco X", "tenés código ABC", "precio de la camiseta", etc. Returns id, name, code, price, category.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => 'string', 'description' => 'Text to match against product name (partial) or exact/partial code'],
+                    ],
+                    'required' => ['query'],
+                ],
+            ],
+            [
+                'name' => 'add_to_whatsapp_cart',
+                'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Requires the customer\'s WhatsApp session (inbound chat). Use when they want to buy, "agregar al carrito", "quiero comprar", after confirming product id or code. Pass exactly one of: product_id, product_code, or product_name.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'product_id' => ['type' => 'integer', 'description' => 'Product database id (from list_product_catalog or search_products)'],
+                        'product_code' => ['type' => 'string', 'description' => 'Product SKU/code (case-insensitive match)'],
+                        'product_name' => ['type' => 'string', 'description' => 'Product name (partial match, first hit)'],
+                        'quantity' => ['type' => 'integer', 'description' => 'Quantity (default 1, min 1)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
         ];
     }
 
@@ -432,6 +487,9 @@ class AssistantToolsService
                 'create_message' => $this->createMessage($teamId, $user, $input),
                 'update_message_status' => $this->updateMessageStatus($teamId, $user, $input),
                 'update_message' => $this->updateMessage($teamId, $user, $input),
+                'list_product_catalog' => $this->listProductCatalog($teamId, $input),
+                'search_products' => $this->searchProducts($teamId, $input),
+                'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 default => "Unknown tool: {$name}.",
             };
         } catch (\Throwable $e)
@@ -1578,6 +1636,221 @@ class AssistantToolsService
         ]);
 
         return $category->id;
+    }
+
+    private function teamHasProductsModule(int $teamId): bool
+    {
+        $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
+
+        return $team !== null && $team->hasModule('products');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Product>
+     */
+    private function whatsAppSellableProductsQuery(int $teamId): \Illuminate\Database\Eloquent\Builder
+    {
+        return Product::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->active()
+            ->whatsAppEnabled();
+    }
+
+    private function resolveWhatsAppProduct(int $teamId, array $input): ?Product
+    {
+        $id = isset($input['product_id']) ? (int) $input['product_id'] : 0;
+        if ($id > 0)
+        {
+            return $this->whatsAppSellableProductsQuery($teamId)->where('id', $id)->first();
+        }
+
+        $code = isset($input['product_code']) ? trim((string) $input['product_code']) : '';
+        if ($code !== '')
+        {
+            return $this->whatsAppSellableProductsQuery($teamId)
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($code)])
+                ->first();
+        }
+
+        $name = isset($input['product_name']) ? trim((string) $input['product_name']) : '';
+        if ($name !== '')
+        {
+            return $this->whatsAppSellableProductsQuery($teamId)
+                ->where('name', 'LIKE', '%'.$name.'%')
+                ->first();
+        }
+
+        return null;
+    }
+
+    private function listProductCatalog(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        $module = Module::where('key', 'products')->first();
+        if (! $module)
+        {
+            return 'Products module is not installed.';
+        }
+
+        $query = $this->whatsAppSellableProductsQuery($teamId)
+            ->with(['category:id,name', 'currency:id,symbol', 'store:id,name']);
+
+        $categoryFilter = isset($input['category_name']) ? trim((string) $input['category_name']) : '';
+        if ($categoryFilter !== '')
+        {
+            $query->whereHas('category', function ($q) use ($categoryFilter): void
+            {
+                $q->where('name', 'LIKE', '%'.$categoryFilter.'%');
+            });
+        }
+
+        $products = $query->orderBy('category_id')->orderBy('name')->limit(50)->get();
+
+        if ($products->isEmpty())
+        {
+            return 'No WhatsApp-enabled products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Enable products for WhatsApp in the catalog or adjust the filter.';
+        }
+
+        $lines = [];
+        foreach ($products->groupBy(fn (Product $p) => $p->category?->name ?? 'Sin categoría') as $categoryName => $group)
+        {
+            $lines[] = 'Category: '.$categoryName;
+            foreach ($group as $product)
+            {
+                $symbol = $product->currency?->symbol ?? '$';
+                $price = number_format($product->currentSellingPrice(), 2);
+                $codePart = $product->code ? ' code '.$product->code.',' : '';
+                $storePart = $product->store ? ' store '.($product->store->name).',' : '';
+                $lines[] = sprintf(
+                    '  id %d:%s%s %s — %s%s',
+                    $product->id,
+                    $codePart,
+                    $storePart,
+                    $product->name,
+                    $symbol,
+                    $price,
+                );
+            }
+            $lines[] = '';
+        }
+
+        $lines[] = 'To buy from WhatsApp: use add_to_whatsapp_cart with product_id or product_code, or tell the customer they can write: comprar [name or code]. Then: carrito, checkout.';
+
+        return $this->truncate(implode("\n", $lines));
+    }
+
+    private function searchProducts(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        $raw = trim((string) ($input['query'] ?? ''));
+        if ($raw === '')
+        {
+            return 'query is required (product name or code).';
+        }
+
+        $products = $this->whatsAppSellableProductsQuery($teamId)
+            ->with(['category:id,name', 'currency:id,symbol'])
+            ->where(function ($q) use ($raw): void
+            {
+                $q->where('name', 'LIKE', '%'.$raw.'%')
+                    ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($raw)])
+                    ->orWhere('code', 'LIKE', '%'.$raw.'%');
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        if ($products->isEmpty())
+        {
+            return 'No matching WhatsApp-enabled products for: '.$raw.'. Try list_product_catalog or a shorter name.';
+        }
+
+        $lines = $products->map(function (Product $product)
+        {
+            $symbol = $product->currency?->symbol ?? '$';
+            $price = number_format($product->currentSellingPrice(), 2);
+            $code = $product->code ? $product->code : '—';
+
+            return sprintf(
+                'id %d | code %s | %s | %s%s | category: %s',
+                $product->id,
+                $code,
+                $product->name,
+                $symbol,
+                $price,
+                $product->category->name ?? '—',
+            );
+        })->implode("\n");
+
+        return $this->truncate("Matches:\n".$lines);
+    }
+
+    private function addToWhatsAppCart(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return 'Cannot attach to a WhatsApp cart: no customer phone in this session. Tell the customer to write from WhatsApp, or use the commands: comprar [name or code], carrito, checkout. If you are in the web assistant with a recipient phone, open the assistant with that recipient selected.';
+        }
+
+        $product = $this->resolveWhatsAppProduct($teamId, $input);
+        if (! $product)
+        {
+            return 'Product not found or not available on WhatsApp. Use search_products or pass product_id / product_code / product_name (one required).';
+        }
+
+        $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 1;
+
+        Cart::session($this->contextCustomerPhone);
+        $cartItems = Cart::getContent();
+        $existingItem = $cartItems->where('id', $product->id)->first();
+
+        if ($existingItem)
+        {
+            Cart::update($product->id, [
+                'quantity' => [
+                    'relative' => false,
+                    'value' => (int) $existingItem->quantity + $quantity,
+                ],
+            ]);
+            $newQty = (int) $existingItem->quantity + $quantity;
+        } else
+        {
+            Cart::add([
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->currentSellingPrice(),
+                'quantity' => $quantity,
+                'attributes' => [
+                    'team_id' => $teamId,
+                    'currency_id' => $product->currency_id,
+                    'description' => $product->description,
+                    'category_name' => $product->category->name ?? '',
+                ],
+            ]);
+            $newQty = $quantity;
+        }
+
+        $symbol = $product->currency?->symbol ?? '$';
+        $total = Cart::getTotal();
+
+        $msg = "Added to WhatsApp cart for this customer: {$product->name} (id {$product->id}) x{$newQty} at {$symbol}".number_format($product->currentSellingPrice(), 2).'. ';
+        $msg .= 'Cart total: '.$symbol.number_format($total, 2).'. ';
+        $msg .= 'Tell them they can write *carrito* to review or *checkout* to finish.';
+
+        return $this->truncate($msg);
     }
 
     private function truncate(string $s): string

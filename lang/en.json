@@ -547,5 +547,18 @@
   "Generate from budget text": "Generate from budget text",
   "Use \"Budget received\" above, then click to generate AI interpretation, dimension, timeline and resources.": "Use \"Budget received\" above, then click to generate AI interpretation, dimension, timeline and resources.",
   "AI interpretation": "AI interpretation",
-  "Write or paste the budget text first, then click Generate.": "Write or paste the budget text first, then click Generate."
+  "Write or paste the budget text first, then click Generate.": "Write or paste the budget text first, then click Generate.",
+  "Manage your product catalogue in Humano. Works standalone without connecting a store.": "Manage your product catalogue in Humano. Works standalone without connecting a store.",
+  "Create and edit products stored in Humano. No external store connection required.": "Create and edit products stored in Humano. No external store connection required.",
+  "On backorder": "On backorder",
+  "Sale price must be less than or equal to regular price.": "Sale price must be less than or equal to regular price.",
+  "Product image URL": "Product image URL",
+  "HTTPS link to the product photo (optional).": "HTTPS link to the product photo (optional). Demo images use Unsplash.",
+  "Code": "Code",
+  "Store": "Store",
+  "Sizes": "Sizes",
+  "Colors": "Colors",
+  "Comma separated values.": "Comma separated values.",
+  "The code is required.": "The code is required.",
+  "The code has already been used in this team.": "The code has already been used in this team."
 }

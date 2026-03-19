@@ -662,7 +662,7 @@ class TwilioService implements WhatsAppGateway
                     $teamId = $this->team?->id;
                     $withTools = $teamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
-                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id);
+                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id, $cleanFrom);
 
                     if ($replyResponse['success'] ?? false)
                     {
@@ -998,8 +998,8 @@ class TwilioService implements WhatsAppGateway
     {
         try
         {
-            // Clean and normalize the message
-            $normalizedMessage = strtolower(trim($message));
+            // Clean and normalize the message (ASCII so "catálogo" matches "catalogo")
+            $normalizedMessage = strtolower(trim(\Illuminate\Support\Str::ascii($message)));
 
             // Check if message contains product-related keywords
             $productKeywords = [
@@ -1075,7 +1075,8 @@ class TwilioService implements WhatsAppGateway
             }
 
             // Get active products that are WhatsApp enabled for the specific team
-            $products = \App\Models\Product::where('team_id', $teamId)
+            $products = \App\Models\Product::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
                 ->active()
                 ->whatsAppEnabled()
                 ->with(['category', 'currency'])
@@ -1106,14 +1107,16 @@ class TwilioService implements WhatsAppGateway
                 foreach ($categoryProducts as $product)
                 {
                     $currency = $product->currency ? $product->currency->symbol : '$';
+                    $codeLine = $product->code ? "  🏷️ Código: *{$product->code}*\n" : '';
                     $message .= "• *{$product->name}*\n";
-                    $message .= "  💰 {$currency}".number_format($product->price, 2)."\n";
-                    $message .= '  📝 '.\Illuminate\Support\Str::limit($product->description, 80)."\n\n";
+                    $message .= $codeLine;
+                    $message .= "  💰 {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
+                    $message .= '  📝 '.\Illuminate\Support\Str::limit(strip_tags((string) $product->description), 80)."\n\n";
                 }
             }
 
-            $message .= "💡 *Para contratar:*\n";
-            $message .= "• Escribe: *comprar [nombre del producto]*\n";
+            $message .= "💡 *Para comprar:*\n";
+            $message .= "• *comprar [nombre]* o *comprar [código]*\n";
             $message .= "• O contacta soporte: https://revisionalpha.com/contactenos\n\n";
             $message .= '🛒 *Tu carrito:* Escribe *carrito* para ver tus productos seleccionados';
 
@@ -2000,18 +2003,24 @@ class TwilioService implements WhatsAppGateway
     {
         try
         {
-            // Search for product by name
-            $product = \App\Models\Product::where('team_id', $teamId)
-                ->where('name', 'LIKE', "%{$productName}%")
+            // Search by name (partial) or exact code (case-insensitive)
+            $needle = trim($productName);
+            $product = \App\Models\Product::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
                 ->where('status', true)
                 ->where('whatsapp_enabled', true)
+                ->where(function ($q) use ($needle)
+                {
+                    $q->where('name', 'LIKE', '%'.$needle.'%')
+                        ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($needle)]);
+                })
                 ->first();
 
             if (! $product)
             {
                 $response = "❌ **Producto no encontrado**: '{$productName}'\n\n";
                 $response .= "📋 Escribe 'productos' para ver nuestro catálogo completo\n";
-                $response .= '💡 **Tip**: Usa el nombre exacto del producto';
+                $response .= '💡 **Tip**: Usa el nombre o el *código* del producto';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2038,7 +2047,7 @@ class TwilioService implements WhatsAppGateway
                 Cart::add([
                     'id' => $product->id,
                     'name' => $product->name,
-                    'price' => $product->price,
+                    'price' => $product->currentSellingPrice(),
                     'quantity' => 1,
                     'attributes' => [
                         'team_id' => $teamId,
@@ -2053,7 +2062,7 @@ class TwilioService implements WhatsAppGateway
             $currency = $product->currency ? $product->currency->symbol : '$';
 
             $response = "✅ **{$product->name}** agregado al carrito!\n\n";
-            $response .= "💰 **Precio**: {$currency}".number_format($product->price, 2)."\n";
+            $response .= "💰 **Precio**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
             $response .= "📦 **Cantidad**: {$quantity}\n";
             $response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
             $response .= "🛒 **Total del carrito**: {$currency}".number_format(Cart::getTotal(), 2)."\n\n";

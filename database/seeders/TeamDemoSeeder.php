@@ -29,6 +29,10 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Demo team, categories, contacts, projects, etc.
+ * Product catalogue (textiles) is seeded by {@see TextileProductsSeeder} from {@see DatabaseSeeder} after this class.
+ */
 class TeamDemoSeeder extends Seeder
 {
     private $teamId = 1;
@@ -37,7 +41,7 @@ class TeamDemoSeeder extends Seeder
     {
         $this->command->info('🚀 Setting up Demo Team Data...');
 
-        // 1. Ensure team 1 exists
+        // 1. Use the primary "Demo" team from UserSeeder (first by id), not a duplicate "Demo's Team"
         $team = $this->ensureDemoTeamExists();
         $this->teamId = $team->id;
 
@@ -89,47 +93,52 @@ class TeamDemoSeeder extends Seeder
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
 
-        // 15. Demo product catalogue (WooCommerce-style list / local products)
-        $this->call(TeamDemoProductsSeeder::class);
-
         $this->command->info('✅ Demo Team setup completed successfully');
     }
 
     private function ensureDemoTeamExists(): Team
     {
-        $team = Team::find(1);
+        $user = User::firstOrCreate(
+            ['email' => 'admin@humano.app'],
+            [
+                'name' => 'Admin Humano',
+                'password' => bcrypt('Simplicity!'),
+                'email_verified_at' => now(),
+                'phone' => '34613194131',
+            ],
+        );
+        $user->update(['phone' => '34613194131']);
+
+        if (! $user->hasRole('admin'))
+        {
+            $user->assignRole('admin');
+        }
+
+        $team = $user->ownedTeams()->where('name', 'Demo')->orderBy('id')->first();
+
         if (! $team)
         {
-            $this->command->info('🏢 Creating Demo team...');
-
-            // Create the owner user: admin@humano.app (phone for WhatsApp/admin actions)
-            $user = User::firstOrCreate(
-                ['email' => 'admin@humano.app'],
-                [
-                    'name' => 'Admin Humano',
-                    'password' => bcrypt('Simplicity!'),
-                    'email_verified_at' => now(),
-                    'phone' => '34613194131',
-                ],
-            );
-            $user->update(['phone' => '34613194131']);
-
-            // Assign admin role
-            if (! $user->hasRole('admin'))
-            {
-                $user->assignRole('admin');
-            }
-
-            $team = $user->ownedTeams()->firstOrCreate(
-                ['name' => "Demo's Team"],
-                [
-                    'name' => "Demo's Team",
-                    'personal_team' => false,
-                ],
-            );
-
-            $user->update(['current_team_id' => $team->id]);
+            $team = Team::query()->where('name', 'Demo')->orderBy('id')->first();
         }
+
+        if ($team)
+        {
+            $user->update(['current_team_id' => $team->id]);
+
+            return $team;
+        }
+
+        $this->command->info('🏢 Creating Demo team (UserSeeder did not run or has no Demo team)...');
+
+        $team = $user->ownedTeams()->firstOrCreate(
+            ['name' => 'Demo'],
+            [
+                'name' => 'Demo',
+                'personal_team' => false,
+            ],
+        );
+
+        $user->update(['current_team_id' => $team->id]);
 
         return $team;
     }
@@ -176,8 +185,6 @@ class TeamDemoSeeder extends Seeder
         $modulesDisabledForDemo = [
             'users' => 'Usuarios',
             'services' => 'Servicios',
-            'products' => 'Productos',
-            'orders' => 'Orders',
             'payments' => 'Pagos',
             'expenses' => 'Gastos',
             'templates' => 'Plantillas',

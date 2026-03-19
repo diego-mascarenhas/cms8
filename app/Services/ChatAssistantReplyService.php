@@ -27,16 +27,17 @@ class ChatAssistantReplyService
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null): array
     {
         if ($this->useStub($teamId))
         {
             return $this->getStubReply($message);
         }
 
-        if ($withTools && $contextUserId !== null && $teamId !== null)
+        $this->assistantTools->clearRequestContext();
+        if ($withTools && $teamId !== null)
         {
-            $this->assistantTools->setRequestContext($contextUserId, $teamId);
+            $this->assistantTools->setRequestContext($contextUserId, $teamId, $contextCustomerPhone);
         }
 
         $instructions = $withTools
@@ -197,6 +198,11 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 
 When they ask to create or modify something, use:
 - create_contact, update_contact (to add or change phone, email, or name), get_contact_categories (to see a contact's categories), assign_contact_to_category (to add another category to a contact), create_task, send_whatsapp_message
+
+Product catalog and WhatsApp purchases (when the team sells products):
+- list_product_catalog (optional category_name) → full catalog grouped by category with id, code, name, price. Use for "catálogo", "productos", "qué tienen", "lista de ropa", etc.
+- search_products (query) → find by name or code/SKU. Use for "código ABC", "precio de X", "tenés zapatillas".
+- add_to_whatsapp_cart (product_id OR product_code OR product_name; optional quantity) → adds to the customer's WhatsApp cart when they are writing from WhatsApp (or when the web assistant has the recipient phone). After adding, tell them in Spanish they can write *carrito* and *checkout* to finish. If the tool says there is no phone context, explain they must write from WhatsApp or use: comprar [nombre o código].
 
 When they ask to schedule an event, appointment, or meeting ("agendar", "cita", "reunión", "evento", "reservar", "poner en el calendario"), use the calendar tools:
 - check_calendar_availability (start, end) → to see if the slot is free before confirming

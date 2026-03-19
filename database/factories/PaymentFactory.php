@@ -21,7 +21,7 @@ class PaymentFactory extends Factory
      */
     private function getDemoTeam(): Team
     {
-        return Team::find(1) ?? Team::factory()->create(['name' => "Demo's Team"]);
+        return Team::find(1) ?? Team::factory()->create(['name' => 'Demo']);
     }
 
     /**

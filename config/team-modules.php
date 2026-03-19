@@ -37,8 +37,8 @@ return [
         'accounting' => false,
         // Additional modules (ecommerce)
         'products' => true,
-        'orders' => false,
-        'stores' => false,
+        'orders' => true,
+        'stores' => true,
         // Additional modules (infrastructure)
         'servers' => false,
         'hosting' => false,

@@ -109,6 +109,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TeamRevisionAlphaSeeder::class,  // Production data import
             TeamDemoSeeder::class,  // Demo team (Chat on, Users hidden, modules in module_team)
+            TextileProductsSeeder::class,  // Demo product catalogue (Ropa, Calzado, Accesorios + stores)
             TeamHumanoSeeder::class,  // Humano team setup
             DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
         ]);

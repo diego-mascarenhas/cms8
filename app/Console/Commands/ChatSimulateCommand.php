@@ -68,7 +68,10 @@ class ChatSimulateCommand extends Command
 
             $history = $contextService->getHistoryForPrompt($user->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
             $withTools = $teamId !== null;
-            $reply = $replyService->getReply($message, $history, $teamId, $withTools);
+            $simPhone = $phone !== null && $phone !== ''
+                ? preg_replace('/[^0-9]/', '', (string) $phone)
+                : null;
+            $reply = $replyService->getReply($message, $history, $teamId, $withTools, $user->id, $simPhone !== '' ? $simPhone : null);
 
             if (! $reply['success'])
             {
