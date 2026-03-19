@@ -96,3 +96,32 @@ section.wapify-section .row {
   width: 200px;
   padding: 1rem 0rem 0rem 1rem;
 }
+
+.wapify-footer {
+  padding-bottom: 1.5rem;
+}
+
+.wapify-footer-inner {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+@media only screen and (max-width: 992px) {
+  .wapify-footer-inner {
+    text-align: center;
+  }
+}
+
+.wapify-footer-brand {
+  display: inline-block;
+  line-height: 0;
+}
+
+.wapify-footer-brand img {
+  width: 100px;
+  max-width: 100%;
+  height: auto;
+  padding: 1rem 0 0 1rem;
+  vertical-align: middle;
+}

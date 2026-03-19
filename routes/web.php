@@ -101,7 +101,7 @@ Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 Route::get('/wapify', function ()
 {
-    \Illuminate\Support\Facades\App::setLocale('es');
+    \Illuminate\Support\Facades\App::setLocale('es_AR');
 
     return view('homes.wapify');
 })->name('wapify');
