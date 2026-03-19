@@ -19,6 +19,7 @@ class AgentConversation extends Model
         'user_id',
         'team_id',
         'title',
+        'assistant_tool_flow_routing_key',
     ];
 
     public function user(): BelongsTo

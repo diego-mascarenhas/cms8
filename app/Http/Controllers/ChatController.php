@@ -819,7 +819,7 @@ class ChatController extends Controller
         $customerPhone = $request->filled('recipient')
             ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
             : null;
-        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, null, $customerPhone !== '' ? $customerPhone : null);
+        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, $contextUser->id, $customerPhone !== '' ? $customerPhone : null);
 
         if (! $replyResponse['success'])
         {
@@ -840,6 +840,8 @@ class ChatController extends Controller
             $replyResponse['tool_calls'] ?? [],
             $replyResponse['tool_results'] ?? [],
             $teamId,
+            (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
+            $replyResponse['assistant_flow_routing_key'] ?? null,
         );
 
         $payload = [

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Team;
 use App\Tools\AssistantTool;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -18,7 +17,8 @@ class ChatAssistantReplyService
 {
     public function __construct(
         protected AssistantToolsService $assistantTools,
-        protected AssistantCapabilitiesOverviewService $capabilitiesOverview,
+        protected AssistantToolIntentPromptService $toolIntentPrompts,
+        protected AgentConversationContextService $agentConversationContext,
     ) {}
 
     /**
@@ -27,29 +27,20 @@ class ChatAssistantReplyService
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
-     * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
+     * @return array{
+     *     success: bool,
+     *     text?: string,
+     *     message?: string,
+     *     routed_to?: string|null,
+     *     assistant_flow_routing_key_specified: bool,
+     *     assistant_flow_routing_key: ?string,
+     * }
      */
     public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null): array
     {
         if ($this->useStub($teamId))
         {
-            return $this->getStubReply($message);
-        }
-
-        if ($withTools && $teamId !== null && $this->capabilitiesOverview->shouldOfferOverview($history, $message, $withTools))
-        {
-            $team = Team::withoutGlobalScopes()->with('modules')->find($teamId);
-            if ($team)
-            {
-                return [
-                    'success' => true,
-                    'text' => $this->capabilitiesOverview->buildOverviewMessage($team),
-                    'routed_to' => 'capabilities_overview',
-                    'usage' => [],
-                    'tool_calls' => [],
-                    'tool_results' => [],
-                ];
-            }
+            return $this->mergeFlowPersistMeta($this->getStubReply($message), false, null);
         }
 
         $this->assistantTools->clearRequestContext();
@@ -58,12 +49,60 @@ class ChatAssistantReplyService
             $this->assistantTools->setRequestContext($contextUserId, $teamId, $contextCustomerPhone);
         }
 
+        $flowRoutedTo = null;
+        $flowPersistSpecified = false;
+        $flowPersistKey = null;
         $instructions = $withTools
             ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
+
+        if ($withTools && $teamId !== null && $contextUserId !== null)
+        {
+            $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
+            $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
+            $flowPrompt = $resolution['prompt'];
+            if ($flowPrompt)
+            {
+                $flowRoutedTo = $flowPrompt->section_label;
+                $flowBody = trim($flowPrompt->resolvedInstruction($teamId));
+                if ($flowBody !== '')
+                {
+                    $instructions .= "\n\n---\n\n## Team flow prompt: «{$flowPrompt->section_label}» (section_key: {$flowPrompt->section_key})\n\n";
+                    $instructions .= "Stay in this flow for follow-up messages in the same conversation until the user clearly changes topic (e.g. reset phrases). You still have access to all tools above.\n\n";
+                    $instructions .= $flowBody;
+                }
+            }
+
+            if ($resolution['persist_assistant_flow_key'] === 'set')
+            {
+                $flowPersistSpecified = true;
+                $flowPersistKey = $resolution['routing_key'];
+            } elseif ($resolution['persist_assistant_flow_key'] === 'clear')
+            {
+                $flowPersistSpecified = true;
+                $flowPersistKey = null;
+            }
+        }
+
         $tools = $withTools ? $this->buildLaravelAiTools() : [];
 
-        return $this->getReplyWithLaravelAi($message, $history, $instructions, $tools);
+        return $this->mergeFlowPersistMeta(
+            $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo),
+            $flowPersistSpecified,
+            $flowPersistKey,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $reply
+     * @return array<string, mixed>
+     */
+    protected function mergeFlowPersistMeta(array $reply, bool $assistantFlowRoutingKeySpecified, ?string $assistantFlowRoutingKey): array
+    {
+        $reply['assistant_flow_routing_key_specified'] = $assistantFlowRoutingKeySpecified;
+        $reply['assistant_flow_routing_key'] = $assistantFlowRoutingKey;
+
+        return $reply;
     }
 
     /**
@@ -73,7 +112,7 @@ class ChatAssistantReplyService
      * @param  array<int, \Laravel\Ai\Contracts\Tool>  $tools
      * @return array{success: bool, text?: string, message?: string, routed_to?: string|null}
      */
-    protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = []): array
+    protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
     {
         try
         {
@@ -114,10 +153,11 @@ class ChatAssistantReplyService
             return [
                 'success' => true,
                 'text' => $text !== '' ? $text : 'No response text',
-                'routed_to' => null,
+                'routed_to' => $routedTo,
                 'usage' => $usage,
                 'tool_calls' => $toolCalls,
                 'tool_results' => $toolResults,
+                'meta' => [],
             ];
         } catch (\Throwable $e)
         {
@@ -132,6 +172,7 @@ class ChatAssistantReplyService
                 'usage' => [],
                 'tool_calls' => [],
                 'tool_results' => [],
+                'meta' => [],
             ];
         }
     }
@@ -288,6 +329,7 @@ EOT;
             'usage' => [],
             'tool_calls' => [],
             'tool_results' => [],
+            'meta' => [],
         ];
     }
 }

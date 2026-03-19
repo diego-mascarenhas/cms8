@@ -93,6 +93,9 @@ class ChatSimulateCommand extends Command
                 $reply['meta'] ?? [],
                 $reply['tool_calls'] ?? [],
                 $reply['tool_results'] ?? [],
+                $teamId,
+                (bool) ($reply['assistant_flow_routing_key_specified'] ?? false),
+                $reply['assistant_flow_routing_key'] ?? null,
             );
         }
 

@@ -13,6 +13,46 @@ class AgentConversationContextService
     public const DEFAULT_HISTORY_LIMIT = 20;
 
     /**
+     * Latest chat_assistant conversation for the user (same scope as history), or null.
+     */
+    public function getAssistantConversationForUser(int $userId, ?int $teamId = null): ?AgentConversation
+    {
+        $teamId = $this->resolveTeamId($teamId);
+        $query = AgentConversation::where('user_id', $userId)
+            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
+            ->orderByDesc('updated_at');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+
+        return $query->first();
+    }
+
+    public function getAssistantToolFlowRoutingKey(int $userId, int $teamId): ?string
+    {
+        $conversation = $this->getAssistantConversationForUser($userId, $teamId);
+        $key = $conversation?->assistant_tool_flow_routing_key;
+
+        return $key !== null && $key !== '' ? $key : null;
+    }
+
+    public function clearAssistantToolFlowRoutingKey(int $userId, int $teamId): void
+    {
+        $conversation = $this->getAssistantConversationForUser($userId, $teamId);
+        if ($conversation === null)
+        {
+            return;
+        }
+
+        $conversation->update(['assistant_tool_flow_routing_key' => null]);
+    }
+
+    /**
      * Resolve team ID for scoping: from auth user's current team, or null (conversations without team stay hidden in team context).
      */
     private function resolveTeamId(?int $teamId = null): ?int
@@ -192,6 +232,7 @@ class AgentConversationContextService
      * @param  array<string, mixed>  $assistantMeta  e.g. ['routed_to' => '...']
      * @param  array<int, mixed>  $assistantToolCalls
      * @param  array<int, mixed>  $assistantToolResults
+     * @param  bool  $assistantFlowRoutingKeySpecified  When true, updates {@see AgentConversation::$assistant_tool_flow_routing_key} (null clears).
      */
     public function persistMessages(
         int $userId,
@@ -203,6 +244,8 @@ class AgentConversationContextService
         array $assistantToolCalls = [],
         array $assistantToolResults = [],
         ?int $teamId = null,
+        bool $assistantFlowRoutingKeySpecified = false,
+        ?string $assistantFlowRoutingKey = null,
     ): void {
         $conversation = $this->getOrCreateConversation(
             $userId,
@@ -243,6 +286,13 @@ class AgentConversationContextService
             'usage' => $assistantUsage,
             'meta' => $meta,
         ]);
+
+        if ($assistantFlowRoutingKeySpecified)
+        {
+            $conversation->update([
+                'assistant_tool_flow_routing_key' => $assistantFlowRoutingKey,
+            ]);
+        }
     }
 
     /**

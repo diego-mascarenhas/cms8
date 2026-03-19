@@ -288,6 +288,8 @@ class TwilioService implements WhatsAppGateway
                     $replyResponse['tool_calls'] ?? [],
                     $replyResponse['tool_results'] ?? [],
                     $teamId,
+                    (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
+                    $replyResponse['assistant_flow_routing_key'] ?? null,
                 );
             }
         } catch (\Throwable $e)
@@ -732,9 +734,11 @@ class TwilioService implements WhatsAppGateway
                     {
                         Log::warning('Failed to get AI response: '.($replyResponse['message'] ?? 'Unknown error'));
                     }
-                } catch (\Exception $e)
+                } catch (\Throwable $e)
                 {
-                    Log::error('Error in auto AI response: '.$e->getMessage());
+                    Log::error('Error in auto AI response: '.$e->getMessage(), [
+                        'exception' => $e,
+                    ]);
                 }
             }
 

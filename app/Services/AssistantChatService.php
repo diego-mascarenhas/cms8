@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Prompt;
-use App\Models\Team;
 use App\Models\TokenUsageLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -189,22 +188,7 @@ class AssistantChatService
      */
     private function resolveInstruction(Prompt $prompt, ?int $teamId): string
     {
-        $instruction = $prompt->prompt_instruction;
-
-        if (str_contains($instruction, '{{WORDPRESS_CONTEXT}}'))
-        {
-            if ($teamId && $team = Team::find($teamId))
-            {
-                $context = WordPressContextService::forTeam($team)->buildContext();
-            } else
-            {
-                $context = '_El contexto de WordPress no está disponible (requiere sesión autenticada con WordPress configurado)._';
-            }
-
-            $instruction = str_replace('{{WORDPRESS_CONTEXT}}', $context, $instruction);
-        }
-
-        return $instruction;
+        return $prompt->resolvedInstruction($teamId);
     }
 
     /**

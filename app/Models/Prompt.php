@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WordPressContextService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -119,5 +120,29 @@ class Prompt extends Model
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Instruction text with placeholders resolved (e.g. {{WORDPRESS_CONTEXT}}).
+     * Shared by AssistantChatService and ChatAssistantReplyService when attaching DB prompts to tool flows.
+     */
+    public function resolvedInstruction(?int $teamId): string
+    {
+        $instruction = (string) $this->prompt_instruction;
+
+        if (str_contains($instruction, '{{WORDPRESS_CONTEXT}}'))
+        {
+            if ($teamId && $team = Team::query()->find($teamId))
+            {
+                $context = WordPressContextService::forTeam($team)->buildContext();
+            } else
+            {
+                $context = '_El contexto de WordPress no está disponible (requiere sesión autenticada con WordPress configurado)._';
+            }
+
+            $instruction = str_replace('{{WORDPRESS_CONTEXT}}', $context, $instruction);
+        }
+
+        return $instruction;
     }
 }
