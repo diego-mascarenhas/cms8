@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="{{ __('wapify.meta_description') }}">
+
+    @php
+        $wapifyOgImageUrl = url('/homes/wapify/img/logo.png');
+        $wapifyPageUrl = route('wapify');
+    @endphp
+    <link rel="canonical" href="{{ $wapifyPageUrl }}">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ $wapifyPageUrl }}">
+    <meta property="og:title" content="{{ __('wapify.og_title') }}">
+    <meta property="og:description" content="{{ __('wapify.meta_description') }}">
+    <meta property="og:image" content="{{ $wapifyOgImageUrl }}">
+    <meta property="og:image:secure_url" content="{{ $wapifyOgImageUrl }}">
+    <meta property="og:image:alt" content="{{ __('wapify.brand_alt') }}">
+    <meta property="og:site_name" content="{{ __('wapify.og_site_name') }}">
+    <meta property="og:locale" content="es_AR">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ __('wapify.og_title') }}">
+    <meta name="twitter:description" content="{{ __('wapify.meta_description') }}">
+    <meta name="twitter:image" content="{{ $wapifyOgImageUrl }}">
+    <meta name="twitter:image:alt" content="{{ __('wapify.brand_alt') }}">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://use.typekit.net/fbh6wfi.css">

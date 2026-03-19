@@ -16,5 +16,8 @@ class WapifyLandingTest extends TestCase
         $response->assertSee('wapify-footer-brand', false);
         $response->assertSee('https://www.idoneo.dev', false);
         $response->assertSee('Escaneá el código QR', false);
+        $response->assertSee('property="og:image"', false);
+        $response->assertSee('homes/wapify/img/logo.png', false);
+        $response->assertSee('property="og:title"', false);
     }
 }

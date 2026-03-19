@@ -12,4 +12,9 @@ return [
     'brand_alt' => 'Wapify',
     'partner_link_title' => 'Idoneo',
     'partner_logo_alt' => 'Idoneo',
+
+    'meta_description' => 'Llevá tu negocio a WhatsApp, conectá con más clientes y probá el chat con un código QR.',
+
+    'og_title' => 'Wapify — tu negocio en WhatsApp',
+    'og_site_name' => 'Wapify',
 ];
