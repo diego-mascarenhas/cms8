@@ -7,7 +7,7 @@
     <meta name="description" content="{{ __('wapify.meta_description') }}">
 
     @php
-        $wapifyOgImageUrl = url('/homes/wapify/img/logo.png');
+        $wapifyOgImageUrl = url('/homes/wapify/img/og-wapify.png');
         $wapifyPageUrl = route('wapify');
     @endphp
     <link rel="canonical" href="{{ $wapifyPageUrl }}">
@@ -18,6 +18,8 @@
     <meta property="og:description" content="{{ __('wapify.meta_description') }}">
     <meta property="og:image" content="{{ $wapifyOgImageUrl }}">
     <meta property="og:image:secure_url" content="{{ $wapifyOgImageUrl }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="{{ __('wapify.brand_alt') }}">
     <meta property="og:site_name" content="{{ __('wapify.og_site_name') }}">
     <meta property="og:locale" content="es_AR">
