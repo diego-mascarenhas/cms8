@@ -1,0 +1,35 @@
+---
+description: Wapify landing (/wapify) — locale es_AR, copy, Open Graph, imagen compartida, footer
+globs: resources/views/homes/wapify.blade.php,lang/es_AR/wapify.php,public/homes/wapify/**,tests/Feature/WapifyLandingTest.php
+alwaysApply: false
+---
+
+# Wapify landing (`/wapify`)
+
+## Locale and copy
+
+- Route `wapify` in `routes/web.php` must call `App::setLocale('es_AR')` before returning the view.
+- All user-visible strings live in `lang/es_AR/wapify.php` and the Blade view uses `__('wapify.*')` keys only (no hardcoded Spanish in the template).
+
+## Open Graph / WhatsApp / Twitter
+
+- Use **absolute** URLs: `route('wapify')` for `canonical` and `og:url`; `url('/homes/wapify/img/og-wapify.png')` for `og:image` / `twitter:image` (and `og:image:secure_url` on HTTPS).
+- Include `og:title`, `og:description`, `og:image:width` (1200), `og:image:height` (630), `og:image:alt`, `og:site_name`, `og:locale` (`es_AR`), and Twitter `summary_large_image` fields mirroring title/description/image.
+- Title and description for sharing come from `wapify.og_title` and `wapify.meta_description` in `lang/es_AR/wapify.php`.
+
+## Imagen OG (`public/homes/wapify/img/og-wapify.png`)
+
+- **Size:** 1200×630 px (1.91∶1) — conventional for Meta/link previews; WhatsApp may still crop; keep important content centered with modest safe margin.
+- **Background:** `#c6ff00` (Materialize `lime accent-3`, same as the page body/nav).
+- **Source:** built from `logo.png` with PHP GD — replace light pixels (luminance ≥ 175) with the lime RGB so antialiasing does not leave a white “box”.
+- **Logo scale:** fit within ~**88%** of canvas width and height (proportional); adjust slightly if previews crop too much or show too much green.
+- After changing `logo.png` or dimensions, regenerate `og-wapify.png` and update meta width/height in `resources/views/homes/wapify.blade.php` if they change.
+
+## Layout and footer
+
+- Footer must **not** use Materialize `.container` (misaligns vs nav). Use `.wapify-footer-inner` (full width); `text-align: center` ≤992px to match centered `nav .brand-logo` on small screens.
+- Idoneo link: `https://www.idoneo.dev`, logo image `idoneo.svg`, footer logo width **100px** in CSS (`.wapify-footer-brand img`).
+
+## Tests
+
+- Extend or run `tests/Feature/WapifyLandingTest.php` when changing Wapify HTML, OG URLs, or critical copy.
