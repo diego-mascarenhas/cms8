@@ -47,6 +47,10 @@ class BusinessWizard extends Component
     /** Fase actual del proceso (apollo, web, ai) para el subtítulo del loader. Solo landing. */
     public ?string $insightsPhase = null;
 
+    public bool $finalFlowRequested = false;
+
+    public ?string $finalFlowPhase = null;
+
     /** @var \Illuminate\Http\UploadedFile|\Livewire\TemporaryUploadedFile|null */
     public $logo = null;
 
@@ -65,6 +69,8 @@ class BusinessWizard extends Component
     public bool $showEmailRequired = false;
 
     public bool $isLandingWizard = true;
+
+    public bool $reportSent = false;
 
     protected static array $configKeys = [
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
@@ -100,6 +106,7 @@ class BusinessWizard extends Component
 
         $this->token = $token;
         $this->step = (int) $this->session->current_step;
+        $this->reportSent = $this->session->completed_at !== null;
         $saved = $this->session->config ?? [];
         foreach (self::$configKeys as $key)
         {
@@ -238,7 +245,7 @@ class BusinessWizard extends Component
         }
     }
 
-    public function triggerSummaryIfChanged(AssistantChatService $assistant): void
+    public function triggerSummaryIfChanged(): void
     {
         if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
         {
@@ -406,7 +413,7 @@ class BusinessWizard extends Component
      */
     public function checkSummaryReady(): void
     {
-        if (! $this->session || $this->step !== 5)
+        if (! $this->session || ($this->step !== 5 && $this->step !== 6))
         {
             return;
         }
@@ -425,9 +432,13 @@ class BusinessWizard extends Component
         {
             $this->checkInsightsReady();
         }
-        if ($this->step === 5 && $this->summaryLoading && $this->session)
+        if (($this->step === 5 || $this->step === 6) && $this->summaryLoading && $this->session)
         {
             $this->checkSummaryReady();
+        }
+        if ($this->step === 6 && $this->finalFlowRequested)
+        {
+            $this->processFinalFlow();
         }
     }
 
@@ -503,13 +514,65 @@ class BusinessWizard extends Component
     public function submit(): void
     {
         $this->persistConfig();
+        $this->finalFlowRequested = true;
+        $this->processFinalFlow();
+    }
+
+    public function checkProcessingReady(): void
+    {
+        if ($this->step !== 6)
+        {
+            return;
+        }
+        if ($this->summaryLoading)
+        {
+            $this->checkSummaryReady();
+        }
+        if ($this->insightsLoading)
+        {
+            $this->checkInsightsReady();
+        }
+        if ($this->finalFlowRequested)
+        {
+            $this->processFinalFlow();
+        }
+    }
+
+    private function processFinalFlow(): void
+    {
+        if ($this->insightsLoading || $this->summaryLoading)
+        {
+            return;
+        }
+
+        $needsSummary = filled($this->config['business_problematica'] ?? null) && empty($this->summary ?? null);
+        if ($needsSummary)
+        {
+            $this->finalFlowPhase = 'summary';
+            $this->triggerSummaryIfChanged();
+
+            return;
+        }
+
+        $hasReport = ! empty($this->insights['potential_clients_summary'] ?? null);
+        if (! $hasReport)
+        {
+            $this->finalFlowPhase = 'insights';
+            $this->loadInsights();
+
+            return;
+        }
+
         $email = $this->getReportRecipientEmail();
         if ($email === null)
         {
             $this->showEmailRequired = true;
+            $this->finalFlowRequested = false;
+            $this->finalFlowPhase = null;
 
             return;
         }
+        $this->finalFlowPhase = 'email';
         $this->sendReportAndFinish($email);
     }
 
@@ -566,8 +629,10 @@ class BusinessWizard extends Component
         if ($this->session)
         {
             $this->session->update(['completed_at' => now()]);
+            $this->reportSent = true;
         }
-        $this->redirect(route('landing.gracias'), navigate: false);
+        $this->finalFlowRequested = false;
+        $this->finalFlowPhase = null;
     }
 
     private function normalizeLocationForSearch(): array

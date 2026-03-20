@@ -7,6 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 class BusinessCreationReportMail extends Mailable
 {
@@ -29,7 +30,14 @@ class BusinessCreationReportMail extends Mailable
     public function __construct(array $config, ?string $summary, array $insights)
     {
         $this->config = $config;
-        $this->summary = $summary;
+        $normalizedSummary = trim((string) $summary);
+        if (
+            Str::startsWith($normalizedSummary, 'Error al generar el resumen.')
+            || Str::startsWith($normalizedSummary, 'No se pudo generar el resumen.')
+        ) {
+            $normalizedSummary = '';
+        }
+        $this->summary = $normalizedSummary !== '' ? $normalizedSummary : null;
         $this->insights = $insights;
     }
 
