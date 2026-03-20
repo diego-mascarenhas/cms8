@@ -152,8 +152,8 @@
                                         value="{{ old('surname', $data->surname ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <label for="email" class="form-label">Email (*)</label>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}" required>
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}">
                                     @error('email')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

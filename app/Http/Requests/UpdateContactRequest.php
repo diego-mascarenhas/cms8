@@ -18,8 +18,8 @@ class UpdateContactRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
-            'email' => 'required|email:rfc,dns|max:255',
-            'phone' => 'nullable|numeric|digits_between:7,15',
+            'email' => 'nullable|email:rfc,dns|max:255',
+            'phone' => ['nullable', 'string', 'regex:/^\+?[0-9\s\-\(\)]+$/', 'min:7', 'max:25'],
             'birthday' => 'nullable|date',
             'status_id' => 'required|exists:contact_statuses,id',
             'country' => 'required|string|max:3',
