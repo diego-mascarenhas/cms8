@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Models\Prospect;
 use App\Models\Team;
-use App\Services\TwilioService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppInboundMessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +54,13 @@ class WhatsAppLocalWebhookController extends Controller
         $team = $this->resolveTeam($request);
         if ($team === null)
         {
-            $team = Team::orderBy('id')->first();
+            Log::warning('WhatsApp local webhook: unresolved team', [
+                'team_id' => $payload['team_id'] ?? null,
+                'to' => $payload['to'] ?? null,
+                'message_id' => $payload['id'] ?? $payload['messageId'] ?? null,
+            ]);
+
+            return response()->json(['status' => 'ignored', 'reason' => 'unresolved_team'], 202);
         }
 
         $cleanFrom = preg_replace('/[^0-9]/', '', (string) str_replace('whatsapp:', '', $normalized['From'] ?? ''));
@@ -63,14 +69,20 @@ class WhatsAppLocalWebhookController extends Controller
             Prospect::captureFromWhatsApp($cleanFrom, $team->id);
         }
 
-        $twilioService = new TwilioService($team);
+        $inboundMessageService = new WhatsAppInboundMessageService($team);
         $gateway = $team && config('whatsapp.driver') === 'local' && $team->getWhatsAppServiceBaseUrl() !== ''
             ? new LocalWhatsAppGateway($team->getWhatsAppServiceBaseUrl(), config('whatsapp.local.webhook_secret'), $team->id)
             : app(WhatsAppGateway::class);
 
         $fakeRequest = Request::create('/', 'POST', $normalized);
+        Log::info('WhatsApp local webhook routed', [
+            'team_id' => $team->id,
+            'message_sid' => $normalized['MessageSid'] ?? null,
+            'from' => $normalized['From'] ?? null,
+            'to' => $normalized['To'] ?? null,
+        ]);
 
-        return $twilioService->processIncomingMessage($fakeRequest, $gateway);
+        return $inboundMessageService->processIncomingMessage($fakeRequest, $gateway);
     }
 
     /**

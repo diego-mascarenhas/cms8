@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -548,9 +549,47 @@ class TwilioService implements WhatsAppGateway
                 $channel = 'whatsapp';
             }
 
+            if ($channel === 'whatsapp' && config('whatsapp.driver') === 'local')
+            {
+                if ($this->team === null || $cleanTo === '' || strlen($cleanTo) < 8)
+                {
+                    Log::warning('Incoming WhatsApp message ignored: unresolved local route', [
+                        'message_sid' => $messageSid,
+                        'from' => $cleanFrom,
+                        'to' => $cleanTo,
+                        'team_id' => $this->team?->id,
+                    ]);
+
+                    return response()->json(['status' => 'ignored', 'reason' => 'unresolved_route'], 202);
+                }
+            }
+
             if ($channel === 'whatsapp' && $this->team && strlen($cleanFrom) >= 8)
             {
                 \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $this->team->id);
+            }
+
+            if (! empty($messageSid))
+            {
+                $existingConversation = Conversation::query()
+                    ->where('message_sid', (string) $messageSid)
+                    ->first();
+                if ($existingConversation !== null)
+                {
+                    Log::info('Duplicate incoming message ignored', [
+                        'message_sid' => $messageSid,
+                        'conversation_id' => $existingConversation->id,
+                        'from' => $cleanFrom,
+                        'to' => $cleanTo,
+                        'team_id' => $this->team?->id,
+                    ]);
+
+                    return response()->json([
+                        'status' => 'success',
+                        'conversation_id' => $existingConversation->id,
+                        'duplicate' => true,
+                    ]);
+                }
             }
 
             // Log the incoming message (body may be empty for voice notes; media holds the audio)
@@ -572,9 +611,8 @@ class TwilioService implements WhatsAppGateway
                 }
             }
 
-            // Save incoming message to database
-            $conversation = Conversation::create([
-                'message_sid' => $messageSid,
+            // Save incoming message to database (idempotent by message_sid when provided).
+            $conversationPayload = [
                 'channel' => $channel,
                 'from' => $cleanFrom,
                 'to' => $cleanTo,
@@ -583,7 +621,49 @@ class TwilioService implements WhatsAppGateway
                 'direction' => 'inbound',
                 'media' => ! empty($media) ? $media : null,
                 'metadata' => $request->except(['_token']),
-            ]);
+            ];
+
+            if ($this->team)
+            {
+                $conversationPayload['team_id'] = $this->team->id;
+            }
+
+            try
+            {
+                if (! empty($messageSid))
+                {
+                    $conversation = Conversation::firstOrCreate(
+                        ['message_sid' => (string) $messageSid],
+                        $conversationPayload,
+                    );
+                } else
+                {
+                    $conversation = Conversation::create(array_merge(
+                        $conversationPayload,
+                        ['message_sid' => 'wa_'.uniqid('', true)],
+                    ));
+                }
+            } catch (QueryException $queryException)
+            {
+                if ((string) $queryException->getCode() !== '23000' || empty($messageSid))
+                {
+                    throw $queryException;
+                }
+
+                $conversation = Conversation::query()
+                    ->where('message_sid', (string) $messageSid)
+                    ->first();
+
+                if ($conversation === null)
+                {
+                    throw $queryException;
+                }
+
+                Log::warning('Recovered duplicate inbound insert race', [
+                    'message_sid' => $messageSid,
+                    'conversation_id' => $conversation->id,
+                ]);
+            }
 
             if ($channel === 'whatsapp' && $this->team)
             {
