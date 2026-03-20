@@ -20,6 +20,7 @@ use App\Models\TicketResponse;
 use App\Models\User;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Defines and executes tools available to the chat assistant (create contact, task, send WhatsApp, etc.).
@@ -762,6 +763,23 @@ class AssistantToolsService
         if (! $phone || $phone === '')
         {
             return 'Provide either contact_id or phone (digits with country code) to send WhatsApp.';
+        }
+
+        if ($this->contextCustomerPhone !== null && $this->contextCustomerPhone !== '')
+        {
+            if ($phone !== $this->contextCustomerPhone)
+            {
+                Log::warning('AssistantToolsService blocked cross-thread WhatsApp send', [
+                    'tool' => 'send_whatsapp_message',
+                    'requested_phone' => $phone,
+                    'context_customer_phone' => $this->contextCustomerPhone,
+                    'context_user_id' => $this->contextUserId,
+                    'context_team_id' => $this->contextTeamId,
+                    'input_contact_id' => $contactId,
+                ]);
+
+                return 'For WhatsApp inbound conversations, send_whatsapp_message can only reply to the current customer phone in this chat.';
+            }
         }
 
         $gateway = $this->whatsAppGateway ?? app(WhatsAppGateway::class);

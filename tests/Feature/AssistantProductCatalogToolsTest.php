@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\WhatsAppGateway;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
@@ -143,5 +144,65 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertSame(1, Cart::getContent()->count());
         $item = Cart::getContent()->first();
         $this->assertSame(2, (int) $item->quantity);
+    }
+
+    public function test_send_whatsapp_message_tool_is_locked_to_inbound_customer_phone_context(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $gateway = new class implements WhatsAppGateway
+        {
+            public ?string $lastTo = null;
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                $this->lastTo = $to;
+
+                return ['ok' => true];
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        };
+
+        $service = new AssistantToolsService($gateway);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, '5491111223344');
+
+        $blocked = $service->execute('send_whatsapp_message', [
+            'phone' => '5491188877766',
+            'message' => 'Hola',
+        ]);
+        $this->assertStringContainsString('can only reply to the current customer phone', $blocked);
+        $this->assertNull($gateway->lastTo);
+
+        $allowed = $service->execute('send_whatsapp_message', [
+            'phone' => '5491111223344',
+            'message' => 'Hola',
+        ]);
+        $this->assertStringContainsString('WhatsApp message sent to 5491111223344', $allowed);
+        $this->assertSame('5491111223344', $gateway->lastTo);
     }
 }
