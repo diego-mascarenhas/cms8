@@ -14,10 +14,12 @@ use App\Models\Product;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
+use App\Models\Team;
 use App\Models\Template;
 use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +64,33 @@ class AssistantToolsService
         $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
             ? preg_replace('/[^0-9]/', '', $customerPhoneDigits)
             : null;
+    }
+
+    /**
+     * Resolve the gateway for assistant tool sends. Local driver must use the team's Baileys base URL and team_id
+     * so outbound messages go through the correct socket (never the global container binding without team_id).
+     */
+    private function resolveWhatsAppGatewayForToolSend(): WhatsAppGateway
+    {
+        if ($this->whatsAppGateway !== null)
+        {
+            return $this->whatsAppGateway;
+        }
+
+        if (config('whatsapp.driver') === 'local' && $this->contextTeamId !== null)
+        {
+            $team = Team::withoutGlobalScopes()->find($this->contextTeamId);
+            if ($team !== null && $team->getWhatsAppServiceBaseUrl() !== '')
+            {
+                return new LocalWhatsAppGateway(
+                    $team->getWhatsAppServiceBaseUrl(),
+                    config('whatsapp.local.webhook_secret'),
+                    $team->id,
+                );
+            }
+        }
+
+        return app(WhatsAppGateway::class);
     }
 
     /**
@@ -782,7 +811,7 @@ class AssistantToolsService
             }
         }
 
-        $gateway = $this->whatsAppGateway ?? app(WhatsAppGateway::class);
+        $gateway = $this->resolveWhatsAppGatewayForToolSend();
         if (! $gateway->isConfigured())
         {
             return 'WhatsApp is not configured for this team.';

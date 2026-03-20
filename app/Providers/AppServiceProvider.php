@@ -7,6 +7,7 @@ use App\Models\SubscriptionProduct;
 use App\Models\TicketResponse;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TicketResponseObserver;
+use App\Services\AssistantToolsService;
 use App\Services\Stripe\StripeProductService;
 use App\Services\WhatsApp\CloudWhatsAppGateway;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -23,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(AssistantToolsService::class);
+
         // Register StripeProductService
         $this->app->singleton(StripeProductService::class, function ($app)
         {

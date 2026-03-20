@@ -10,6 +10,7 @@ use App\Models\Conversation;
 use App\Models\Service;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
@@ -175,8 +176,8 @@ class TwilioService implements WhatsAppGateway
             return $user;
         }
 
-        // Try without country code if not found
-        if (strlen($cleanNumber) > 9)
+        // Only try without-country-code for Spanish numbers (34 + 9 digits) to avoid false matches
+        if (strlen($cleanNumber) === 11 && str_starts_with($cleanNumber, '34'))
         {
             $withoutCountryCode = substr($cleanNumber, -9);
             $user = User::where('phone', $withoutCountryCode)->first();
@@ -447,6 +448,17 @@ class TwilioService implements WhatsAppGateway
                 return $sender->sendMessage($to, $message, $metadata, $userId);
             }
 
+            if ($this->team !== null && $this->team->getWhatsAppServiceBaseUrl() !== '')
+            {
+                $localGateway = new LocalWhatsAppGateway(
+                    $this->team->getWhatsAppServiceBaseUrl(),
+                    config('whatsapp.local.webhook_secret'),
+                    $this->team->id,
+                );
+
+                return $localGateway->sendMessage($to, $message, $metadata, $userId);
+            }
+
             return app(WhatsAppGateway::class)->sendMessage($to, $message, $metadata, $userId);
         }
 
@@ -667,7 +679,14 @@ class TwilioService implements WhatsAppGateway
 
             if ($channel === 'whatsapp' && $this->team)
             {
-                app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom);
+                $waProfileName = $request->input('WaProfileName');
+                $waProfileName = is_string($waProfileName) ? $waProfileName : null;
+                if ($waProfileName === null || $waProfileName === '')
+                {
+                    $fallbackProfile = $request->input('ProfileName');
+                    $waProfileName = is_string($fallbackProfile) && $fallbackProfile !== '' ? $fallbackProfile : null;
+                }
+                app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom, $waProfileName);
             }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context

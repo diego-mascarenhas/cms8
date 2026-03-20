@@ -33,7 +33,9 @@ In Laravel `.env`:
 - `WHATSAPP_LOCAL_BASE_URL=http://localhost:3000`
 - `WHATSAPP_LOCAL_WEBHOOK_SECRET` – optional, same as `WEBHOOK_SECRET` above
 
-Laravel sends `team_id` on every request so one instance serves all teams.
+Laravel sends `team_id` on every request so one instance serves all teams. Incoming message payloads include **`push_name`** (WhatsApp profile name) when Baileys provides it, so Laravel can label users/contacts instead of `Usuario {phone}`.
+
+**LID / wrong “phone” in logs:** WhatsApp often uses `…@lid` as chat id; the digits are **not** the user’s number. This service resolves the real number from Baileys `senderPn` / `participantPn` (and falls back to `remoteJidAlt` when present). Webhook JSON may include `from_jid`, `from_jid_resolved`, and `from_resolved_via` when the chat was `@lid`. Use Baileys **≥ 6.7.19** (`package.json`).
 
 ## Multiple teams (one number per team) — single instance
 

@@ -29,7 +29,22 @@ class WhatsAppLocalWebhookController extends Controller
             return response('Unauthorized', 401);
         }
 
+        $rawBody = $request->getContent();
+        Log::info('WhatsApp webhook raw body (pre-parse)', [
+            'bytes' => strlen($rawBody),
+            'body' => $this->rawWebhookBodyForLog($rawBody),
+        ]);
+
         $payload = $request->all();
+
+        Log::info('WhatsApp inbound payload', [
+            'from' => $payload['from'] ?? null,
+            'to' => $payload['to'] ?? null,
+            'body_preview' => isset($payload['body']) ? \Illuminate\Support\Str::limit((string) $payload['body'], 80) : null,
+            'push_name' => $payload['push_name'] ?? $payload['pushName'] ?? null,
+            'team_id' => $payload['team_id'] ?? null,
+            'id' => $payload['id'] ?? $payload['messageId'] ?? null,
+        ]);
 
         if (! empty($payload['audio_base64']) && config('ai.providers.openai.key'))
         {
@@ -135,6 +150,18 @@ class WhatsAppLocalWebhookController extends Controller
             $normalized['NumMedia'] = 1;
         }
 
+        $profileKeys = ['push_name', 'pushName', 'profile_name'];
+        foreach ($profileKeys as $key)
+        {
+            $raw = $payload[$key] ?? null;
+            if (is_string($raw) && trim($raw) !== '')
+            {
+                $normalized['WaProfileName'] = mb_substr(trim($raw), 0, 255);
+
+                break;
+            }
+        }
+
         return $normalized;
     }
 
@@ -169,6 +196,37 @@ class WhatsAppLocalWebhookController extends Controller
 
             return null;
         }
+    }
+
+    /**
+     * Raw POST body for logs: JSON as received, with audio_base64 replaced by length only (avoids huge log lines).
+     */
+    private function rawWebhookBodyForLog(string $rawBody): string
+    {
+        if ($rawBody === '')
+        {
+            return '';
+        }
+
+        $decoded = json_decode($rawBody, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+        {
+            if (! empty($decoded['audio_base64']) && is_string($decoded['audio_base64']))
+            {
+                $decoded['audio_base64'] = '[base64 omitted, '.strlen($decoded['audio_base64']).' bytes]';
+            }
+
+            $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            return $encoded !== false ? $encoded : $rawBody;
+        }
+
+        if (strlen($rawBody) > 65536)
+        {
+            return substr($rawBody, 0, 65536).'...[truncated, '.strlen($rawBody).' bytes total]';
+        }
+
+        return $rawBody;
     }
 
     private function resolveTeam(Request $request): ?Team

@@ -329,6 +329,9 @@ class ChatController extends Controller
         }
 
         $clientRecipientPhone = $selectedAssistantUser ? $this->getWhatsAppPhoneForUser($selectedAssistantUser) : '';
+        $assistantClientPhoneDisplay = $clientRecipientPhone !== ''
+            ? preg_replace('/[^0-9+]/', '', str_replace('whatsapp:', '', $clientRecipientPhone))
+            : ($selectedAssistantUser ? ($selectedAssistantUser->phone ?? $selectedAssistantUser->email ?? '') : '');
         $assistantContactId = $selectedAssistantUser
             ? (Contact::withoutGlobalScopes()->where('user_id', $selectedAssistantUser->id)->first()?->id ?? '')
             : '';
@@ -389,22 +392,30 @@ class ChatController extends Controller
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
     }
 
     /**
      * Get phone for WhatsApp (recipient field) from a user.
+     * Uses Contact (team_id + phone) — when someone writes, we save them in contacts with the team_id of the number they wrote to.
      */
     private function getWhatsAppPhoneForUser(User $user): string
     {
-        $phone = $user->phone !== null ? (string) $user->phone : null;
-        if ($phone === null || $phone === '')
+        $phone = null;
+        if (auth()->check() && auth()->user()->currentTeam)
         {
-            $contact = Contact::withoutGlobalScopes()->where('user_id', $user->id)->first();
+            $contact = Contact::withoutGlobalScopes()
+                ->where('user_id', $user->id)
+                ->where('team_id', auth()->user()->currentTeam->id)
+                ->first();
             if ($contact && $contact->phone)
             {
                 $phone = preg_replace('/[^0-9]/', '', (string) $contact->phone);
             }
+        }
+        if (($phone === null || $phone === '') && $user->phone !== null)
+        {
+            $phone = preg_replace('/[^0-9]/', '', (string) $user->phone);
         }
         if ($phone !== null && $phone !== '' && ! str_starts_with($phone, 'whatsapp:'))
         {
@@ -546,8 +557,8 @@ class ChatController extends Controller
             return $user;
         }
 
-        // Try without country code if not found
-        if (strlen($cleanNumber) > 9)
+        // Only try without-country-code for Spanish numbers (34 + 9 digits) to avoid false matches
+        if (strlen($cleanNumber) === 11 && str_starts_with($cleanNumber, '34'))
         {
             $withoutCountryCode = substr($cleanNumber, -9);
             $user = User::where('phone', $withoutCountryCode)->first();
@@ -828,6 +839,11 @@ class ChatController extends Controller
         $customerPhone = $request->filled('recipient')
             ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
             : null;
+        if (($customerPhone === null || $customerPhone === '') && $contextUser)
+        {
+            $fromUser = preg_replace('/[^0-9]/', '', $this->getWhatsAppPhoneForUser($contextUser));
+            $customerPhone = $fromUser !== '' ? $fromUser : null;
+        }
         $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, $contextUser->id, $customerPhone !== '' ? $customerPhone : null);
 
         if (! $replyResponse['success'])

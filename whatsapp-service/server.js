@@ -78,6 +78,58 @@ function getTeamId(req) {
   return id != null && String(id).trim() !== '' ? String(id).trim() : null;
 }
 
+/**
+ * JID user part as digits only (E.164 without +). Empty if invalid.
+ */
+function jidToDigits(jid) {
+  if (!jid || typeof jid !== 'string') return '';
+  const user = jid.split('@')[0] || '';
+  return user.replace(/:\d+$/, '').replace(/\D/g, '');
+}
+
+/**
+ * WhatsApp often sends DMs with remoteJid like "…@lid". The numeric part is an internal LID, NOT the phone.
+ * Baileys puts the real phone in key.senderPn (WA attr sender_pn) and groups in key.participantPn.
+ * See decode-wa-message.js / WAMessageKey in Baileys.
+ *
+ * @returns {{ digits: string, sourceJid: string, resolvedVia: string|null }}
+ */
+function resolveInboundSenderDigits(key) {
+  const remoteJid = key.remoteJid || '';
+  const remoteJidAlt = key.remoteJidAlt || null;
+  const participant = key.participant || null;
+  const participantAlt = key.participantAlt || null;
+  const senderPn = key.senderPn || null;
+  const participantPn = key.participantPn || null;
+
+  const isGroup = remoteJid.endsWith('@g.us');
+
+  if (isGroup) {
+    let jid = participant || '';
+    let resolvedVia = null;
+    if (participant && String(participant).endsWith('@lid') && participantPn) {
+      jid = participantPn;
+      resolvedVia = 'participantPn';
+    } else if (participant && String(participant).endsWith('@lid') && participantAlt && String(participantAlt).includes('@s.whatsapp.net')) {
+      jid = participantAlt;
+      resolvedVia = 'participantAlt';
+    }
+    return { digits: jidToDigits(jid), sourceJid: jid || participant || remoteJid, resolvedVia };
+  }
+
+  let jid = remoteJid;
+  let resolvedVia = null;
+  if (String(remoteJid).endsWith('@lid') && senderPn) {
+    jid = senderPn;
+    resolvedVia = 'senderPn';
+  } else if (String(remoteJid).endsWith('@lid') && remoteJidAlt && String(remoteJidAlt).includes('@s.whatsapp.net')) {
+    jid = remoteJidAlt;
+    resolvedVia = 'remoteJidAlt';
+  }
+
+  return { digits: jidToDigits(jid), sourceJid: jid || remoteJid, resolvedVia };
+}
+
 function getOrCreateSession(teamId) {
   if (!teamId) return null;
   if (!sessions[teamId]) {
@@ -167,14 +219,18 @@ async function makeSocket(teamId) {
       if (msg.key.fromMe) continue;
       const contentType = getContentType(msg.message);
       let body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
-      const from = msg.key.remoteJid;
       const id = msg.key.id;
 
-      const fromNormalized = (from || '').replace('@s.whatsapp.net', '').replace(/:\d+$/, '').replace(/\D/g, '');
+      const { digits: fromNormalized, sourceJid, resolvedVia } = resolveInboundSenderDigits(msg.key);
       const toNormalized = session.ourJid ? session.ourJid.replace('@s.whatsapp.net', '').replace(/:\d+$/, '').replace(/\D/g, '') : '';
       if (fromNormalized.length < 8) {
         continue;
       }
+
+      const pushName =
+        typeof msg.pushName === 'string' && msg.pushName.trim() !== ''
+          ? msg.pushName.trim()
+          : undefined;
 
       const payload = {
         from: fromNormalized,
@@ -184,6 +240,16 @@ async function makeSocket(teamId) {
         messageId: id,
         team_id: teamId,
       };
+      if (pushName) {
+        payload.push_name = pushName;
+      }
+      if (msg.key.remoteJid && String(msg.key.remoteJid).endsWith('@lid')) {
+        payload.from_jid = msg.key.remoteJid;
+        payload.from_jid_resolved = sourceJid;
+        if (resolvedVia) {
+          payload.from_resolved_via = resolvedVia;
+        }
+      }
 
       if (contentType === 'audioMessage' && body === '') {
         try {

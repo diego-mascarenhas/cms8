@@ -2,10 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Team;
+use App\Models\User;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -19,6 +24,18 @@ class WhatsAppLocalWebhookTest extends TestCase
         Config::set('whatsapp.driver', 'local');
         Config::set('whatsapp.local.base_url', 'http://localhost:3000');
         Config::set('whatsapp.local.webhook_secret', null);
+
+        $this->seed(CountrySeeder::class);
+        $this->seed(LanguageSeeder::class);
+
+        if (DB::table('contact_statuses')->where('id', 1)->doesntExist())
+        {
+            DB::table('contact_statuses')->insert([
+                'id' => 1,
+                'name' => 'Lead',
+                'label_class' => 'bg-label-success',
+            ]);
+        }
     }
 
     public function test_webhook_rejects_request_when_secret_configured_and_missing(): void
@@ -116,5 +133,38 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
 
         $response->assertStatus(422);
+    }
+
+    public function test_webhook_applies_push_name_from_baileys_payload(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => 'Hello',
+            'id' => 'msg_push_name_1',
+            'push_name' => 'María WhatsApp',
+        ]);
+
+        $response->assertStatus(200);
+
+        $user = User::withoutGlobalScopes()->where('email', 'wa-34600000099@chat.placeholder')->first();
+        $this->assertNotNull($user);
+        $this->assertSame('María WhatsApp', $user->name);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('user_id', $user->id)
+            ->first();
+        $this->assertNotNull($contact);
+        $this->assertSame('María WhatsApp', $contact->name);
+        $this->assertSame(34600000099, (int) $contact->phone);
     }
 }

@@ -86,6 +86,7 @@ Para que arranque al encender el Mac, ejecutar el comando que PM2 muestra al hac
 
 - **Enviar:** en Laravel, Chat → elegir o escribir número (ej. `34722372858`) → escribir y enviar. El mensaje sale por el WhatsApp vinculado.
 - **Recibir:** cuando alguien escribe a ese número, el Node hace POST a `LARAVEL_WEBHOOK_URL` y Laravel guarda en `conversations` y aplica la misma lógica que con Twilio (notificaciones, IA, carrito, etc.).
+- **Nombre en el chat:** el servicio Node envía el **nombre de perfil de WhatsApp** (Baileys `pushName`) como `push_name` en el JSON del webhook. Laravel lo usa para el `User` y el `Contact` cuando aún tenían el nombre automático (`Usuario …` / `Contacto …`); no sobrescribe nombres que ya pusiste a mano.
 - **Lista de chats:** se muestran tanto conversaciones en las que te escribieron (inbound) como a las que tú escribiste (outbound). “WhatsApp connection” está al final de la lista.
 
 ---
@@ -154,4 +155,4 @@ LIMIT 20;
 | POST | `/send-message` | Body: `{ to, body }` |
 | POST | `/send-media` | Body: `{ to, mediaUrl, caption? }` |
 
-Los mensajes entrantes se reenvían en POST a `LARAVEL_WEBHOOK_URL` con `from`, `to`, `body`, `id` (y opcionalmente `X-Webhook-Secret`).
+Los mensajes entrantes se reenvían en POST a `LARAVEL_WEBHOOK_URL` con `from`, `to`, `body`, `id`, `team_id`, y si WhatsApp lo envía, **`push_name`** (nombre visible del remitente). Opcional: cabecera `X-Webhook-Secret` si está configurada.

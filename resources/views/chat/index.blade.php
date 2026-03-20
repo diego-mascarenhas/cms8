@@ -1406,7 +1406,7 @@
                                     <h6 class="m-0">{{ $selectedAssistantUser->name ?? $selectedAssistantUser->email ?? 'Asistente' }}</h6>
                                     <small class="user-status text-muted">
                                         @if($selectedAssistantUser ?? null)
-                                            {{ $selectedAssistantUser->phone ?? $selectedAssistantUser->email }} — Responde tú o activa la IA
+                                            {{ $assistantClientPhoneDisplay ?? $selectedAssistantUser->email ?? '' }} — Responde tú o activa la IA
                                         @else
                                             {{ __('Ask the assistant anything you need below.') }}
                                         @endif
