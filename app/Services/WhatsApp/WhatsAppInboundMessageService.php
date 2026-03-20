@@ -3,9 +3,8 @@
 namespace App\Services\WhatsApp;
 
 use App\Models\Team;
-use App\Services\TwilioService;
 
-class WhatsAppInboundMessageService extends TwilioService
+class WhatsAppInboundMessageService extends WhatsAppMessageService
 {
     public function __construct(?Team $team = null)
     {

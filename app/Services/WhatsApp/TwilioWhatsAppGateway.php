@@ -3,27 +3,26 @@
 namespace App\Services\WhatsApp;
 
 use App\Contracts\WhatsAppGateway;
-use App\Services\TwilioService;
 
 class TwilioWhatsAppGateway implements WhatsAppGateway
 {
     public function __construct(
-        protected TwilioService $twilioService,
+        protected WhatsAppMessageService $whatsAppMessageService,
     ) {}
 
     public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
     {
-        return $this->twilioService->sendWhatsApp($to, $message, $metadata, $userId);
+        return $this->whatsAppMessageService->sendWhatsApp($to, $message, $metadata, $userId);
     }
 
     public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
     {
-        return $this->twilioService->sendWhatsAppWithMedia($to, $mediaPath, 'media', $caption);
+        return $this->whatsAppMessageService->sendWhatsAppWithMedia($to, $mediaPath, 'media', $caption);
     }
 
     public function isConfigured(): bool
     {
-        return $this->twilioService->isConfigured();
+        return $this->whatsAppMessageService->isConfigured();
     }
 
     public function getQrUrl(): ?string

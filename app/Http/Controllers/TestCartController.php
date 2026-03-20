@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Http\Request;
 
 class TestCartController extends Controller
 {
-    protected $twilioService;
+    protected $whatsAppMessageService;
 
-    public function __construct(TwilioService $twilioService)
+    public function __construct(WhatsAppMessageService $whatsAppMessageService)
     {
-        $this->twilioService = $twilioService;
+        $this->whatsAppMessageService = $whatsAppMessageService;
     }
 
     public function index()
@@ -42,7 +42,7 @@ class TestCartController extends Controller
         Cart::session($phone);
 
         // Test cart commands FIRST (higher priority)
-        $cartResult = $this->twilioService->processCartCommands($phone, $message);
+        $cartResult = $this->whatsAppMessageService->processCartCommands($phone, $message);
         if ($cartResult)
         {
             $response['processed'] = true;
@@ -51,7 +51,7 @@ class TestCartController extends Controller
         } else
         {
             // Test product commands
-            $productResult = $this->twilioService->processProductCommands($phone, $message);
+            $productResult = $this->whatsAppMessageService->processProductCommands($phone, $message);
             if ($productResult)
             {
                 $response['processed'] = true;

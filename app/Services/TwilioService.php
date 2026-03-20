@@ -82,7 +82,7 @@ class TwilioService implements WhatsAppGateway
             $team = auth()->user()->currentTeam;
         }
 
-        return new self($team);
+        return new static($team);
     }
 
     /**

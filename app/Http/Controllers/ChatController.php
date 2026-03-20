@@ -10,9 +10,9 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
-use App\Services\TwilioService;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +236,8 @@ class ChatController extends Controller
 
     public function index()
     {
+        $viewAssistant = request('view') === 'assistant';
+        $assistantUserId = request()->integer('user_id', 0) ?: null;
         $contacts = $this->getWhatsAppContacts();
 
         // If a contact is selected, get their messages (normalize to digits so list dedupe and active state match)
@@ -244,8 +246,6 @@ class ChatController extends Controller
         {
             $selectedPhone = null;
         }
-        $viewAssistant = request('view') === 'assistant';
-        $assistantUserId = request()->integer('user_id', 0) ?: null;
         $messages = collect();
         $selectedUser = null;
         $assistantMessages = [];
@@ -349,7 +349,16 @@ class ChatController extends Controller
         if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
         {
             $gateway = $this->getLocalGatewayForCurrentTeam() ?? app(WhatsAppGateway::class);
-            $whatsappStatus = $gateway->getConnectionStatus();
+            try
+            {
+                $whatsappStatus = $gateway->getConnectionStatus();
+            } catch (\Throwable $e)
+            {
+                $whatsappStatus = [
+                    'status' => 'disconnected',
+                    'number' => null,
+                ];
+            }
             $baseUrl = auth()->user()->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
             if ($baseUrl !== '')
             {
@@ -1025,7 +1034,7 @@ class ChatController extends Controller
      */
     public function processRegistration($phone, $message, ?WhatsAppGateway $gateway = null)
     {
-        $sender = $gateway ?? app(TwilioService::class);
+        $sender = $gateway ?? app(WhatsAppMessageService::class);
         $lastMessage = Conversation::where('to', $phone)
             ->where('channel', 'whatsapp')
             ->orderBy('created_at', 'desc')
@@ -1147,7 +1156,7 @@ class ChatController extends Controller
             'template' => 'string|nullable',
         ]);
 
-        $twilioService = app(TwilioService::class);
+        $twilioService = app(WhatsAppMessageService::class);
 
         try
         {

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\Team;
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -26,10 +26,10 @@ class TwilioWebhookController extends Controller
         }
         // If no hash provided, leave $team as null to use global .env configuration
 
-        // Create TwilioService instance with the correct team (or null for global config)
-        $twilioService = new TwilioService($team);
+        // Create message service instance with the correct team (or null for global config)
+        $messageService = new WhatsAppMessageService($team);
 
-        if (! $twilioService->isConfigured())
+        if (! $messageService->isConfigured())
         {
             $teamInfo = $team ? "team: {$team->name}" : 'global .env configuration';
             Log::error("Twilio not configured for {$teamInfo}");
@@ -37,7 +37,7 @@ class TwilioWebhookController extends Controller
             return response('Twilio not configured', 500);
         }
 
-        return $twilioService->processIncomingMessage($request);
+        return $messageService->processIncomingMessage($request);
     }
 
     /**

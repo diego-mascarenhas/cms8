@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Console\Command;
 
 class TestTwilio extends Command
@@ -11,7 +11,7 @@ class TestTwilio extends Command
 
     protected $description = 'Test Twilio messaging functionality';
 
-    public function handle(TwilioService $twilioService)
+    public function handle(WhatsAppMessageService $whatsAppMessageService)
     {
         $type = $this->option('type');
         $to = $this->option('to');
@@ -28,10 +28,10 @@ class TestTwilio extends Command
         {
             if ($type === 'sms')
             {
-                $result = $twilioService->sendSms($to, $message);
+                $result = $whatsAppMessageService->sendSms($to, $message);
             } else
             {
-                $result = $twilioService->sendWhatsApp($to, $message);
+                $result = $whatsAppMessageService->sendWhatsApp($to, $message);
             }
 
             $this->info('Message sent successfully!');

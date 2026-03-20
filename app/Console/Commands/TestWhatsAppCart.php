@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Console\Command;
 
 class TestWhatsAppCart extends Command
@@ -21,12 +21,12 @@ class TestWhatsAppCart extends Command
      */
     protected $description = 'Test WhatsApp cart functionality locally without webhooks';
 
-    protected $twilioService;
+    protected $whatsAppMessageService;
 
-    public function __construct(TwilioService $twilioService)
+    public function __construct(WhatsAppMessageService $whatsAppMessageService)
     {
         parent::__construct();
-        $this->twilioService = $twilioService;
+        $this->whatsAppMessageService = $whatsAppMessageService;
     }
 
     /**

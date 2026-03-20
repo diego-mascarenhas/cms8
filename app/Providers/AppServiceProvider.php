@@ -8,9 +8,9 @@ use App\Models\TicketResponse;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\Stripe\StripeProductService;
-use App\Services\TwilioService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\TwilioWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 use Stripe\StripeClient;
@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
 
-            return new TwilioWhatsAppGateway(TwilioService::forCurrentUser());
+            return new TwilioWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
         });
     }
 
