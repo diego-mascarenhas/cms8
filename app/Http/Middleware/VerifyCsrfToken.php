@@ -12,6 +12,12 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
+        'whatsapp/webhook',
+        'whatsapp/status',
+        'whatsapp/fallback',
+        'whatsapp/webhook/*',
+        'whatsapp/status/*',
+        'whatsapp/fallback/*',
         'twilio/webhook',
         'webhook/whatsapp-local',
         'webhook/whatsapp-local/*',

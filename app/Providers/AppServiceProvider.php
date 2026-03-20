@@ -8,8 +8,8 @@ use App\Models\TicketResponse;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\Stripe\StripeProductService;
+use App\Services\WhatsApp\CloudWhatsAppGateway;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
-use App\Services\WhatsApp\TwilioWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
 
-            return new TwilioWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
+            return new CloudWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
         });
     }
 

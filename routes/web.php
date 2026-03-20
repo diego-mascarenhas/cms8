@@ -72,6 +72,7 @@ use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // auth
@@ -926,15 +927,29 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
-// Twilio Webhook Routes (legacy - without hash)
+// WhatsApp webhook routes (canonical - without hash)
+Route::post('/whatsapp/webhook', [WhatsAppWebhookController::class, 'handleIncomingMessage'])
+    ->name('whatsapp.webhook');
+Route::post('/whatsapp/status', [WhatsAppWebhookController::class, 'handleMessageStatus'])
+    ->name('whatsapp.status');
+Route::post('/whatsapp/fallback', [WhatsAppWebhookController::class, 'handleFallback'])
+    ->name('whatsapp.fallback');
+
+// WhatsApp webhook routes (canonical - team-specific with hash)
+Route::post('/whatsapp/webhook/{hash}', [WhatsAppWebhookController::class, 'handleIncomingMessage'])
+    ->name('whatsapp.webhook.team');
+Route::post('/whatsapp/status/{hash}', [WhatsAppWebhookController::class, 'handleMessageStatus'])
+    ->name('whatsapp.status.team');
+Route::post('/whatsapp/fallback/{hash}', [WhatsAppWebhookController::class, 'handleFallback'])
+    ->name('whatsapp.fallback.team');
+
+// Twilio webhook routes (legacy aliases)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
     ->name('twilio.webhook');
 Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
     ->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
     ->name('twilio.fallback');
-
-// Twilio Webhook Routes (team-specific with hash)
 Route::post('/twilio/webhook/{hash}', [TwilioWebhookController::class, 'handleIncomingMessage'])
     ->name('twilio.webhook.team');
 Route::post('/twilio/status/{hash}', [TwilioWebhookController::class, 'handleMessageStatus'])

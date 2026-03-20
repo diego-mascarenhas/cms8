@@ -309,7 +309,7 @@ class TwilioService implements WhatsAppGateway
         try
         {
             // Get the status callback URL for this team
-            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
+            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('whatsapp.status'));
 
             $twilioMessage = $this->client->messages->create(
                 $to,
@@ -468,7 +468,7 @@ class TwilioService implements WhatsAppGateway
             $whatsappFromNumber = 'whatsapp:'.$this->config['whatsapp_from'];
 
             // Get the status callback URL for this team
-            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
+            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('whatsapp.status'));
 
             $twilioMessage = $this->client->messages->create(
                 $formattedTo,
@@ -856,7 +856,7 @@ class TwilioService implements WhatsAppGateway
             $whatsappFromNumber = 'whatsapp:'.$this->config['whatsapp_from'];
 
             // Get the status callback URL for this team
-            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
+            $statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('whatsapp.status'));
 
             // Prepare template parameters
             $contentSid = null;
@@ -1961,7 +1961,7 @@ class TwilioService implements WhatsAppGateway
         try
         {
             $formattedTo = 'whatsapp:'.$phoneNumber;
-            $statusCallbackUrl = url(route('twilio.status'));
+            $statusCallbackUrl = url(route('whatsapp.status'));
 
             // Format buttons for Twilio WhatsApp Interactive Messages
             $interactiveData = [
