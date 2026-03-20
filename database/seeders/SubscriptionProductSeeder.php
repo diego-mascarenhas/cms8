@@ -12,6 +12,14 @@ class SubscriptionProductSeeder extends Seeder
      */
     public function run(): void
     {
+        $stripeSecret = (string) (config('cashier.secret') ?? config('services.stripe.secret') ?? '');
+        if (blank(trim($stripeSecret)))
+        {
+            $this->command?->warn('Skipping SubscriptionProductSeeder: missing STRIPE_SECRET / CASHIER_SECRET.');
+
+            return;
+        }
+
         // Mailer Products (from https://revisionalpha.com/emailer)
         $mailerProducts = [
             [
