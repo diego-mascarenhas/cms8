@@ -11,7 +11,7 @@ const { URL } = require('url');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage, getContentType } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage, getContentType, extractMessageContent } = require('baileys');
 const QRCode = require('qrcode');
 const pino = require('pino');
 const fs = require('fs');
@@ -130,6 +130,72 @@ function resolveInboundSenderDigits(key) {
   return { digits: jidToDigits(jid), sourceJid: jid || remoteJid, resolvedVia };
 }
 
+/**
+ * Human-readable text from a Baileys proto message (after extractMessageContent).
+ * Plain conversation only uses conversation + extendedTextMessage; many WA payloads put text elsewhere.
+ */
+function textFromWaContent(content) {
+  if (!content || typeof content !== 'object') {
+    return '';
+  }
+  if (typeof content.conversation === 'string' && content.conversation.trim() !== '') {
+    return content.conversation;
+  }
+  const ext = content.extendedTextMessage;
+  if (ext && typeof ext.text === 'string' && ext.text.trim() !== '') {
+    return ext.text;
+  }
+  const im = content.imageMessage;
+  if (im && typeof im.caption === 'string' && im.caption.trim() !== '') {
+    return im.caption;
+  }
+  const vm = content.videoMessage;
+  if (vm && typeof vm.caption === 'string' && vm.caption.trim() !== '') {
+    return vm.caption;
+  }
+  const dm = content.documentMessage;
+  if (dm) {
+    if (typeof dm.caption === 'string' && dm.caption.trim() !== '') {
+      return dm.caption;
+    }
+    if (typeof dm.fileName === 'string' && dm.fileName.trim() !== '') {
+      return `[Document] ${dm.fileName}`;
+    }
+  }
+  const br = content.buttonsResponseMessage;
+  if (br) {
+    if (typeof br.selectedDisplayText === 'string' && br.selectedDisplayText.trim() !== '') {
+      return br.selectedDisplayText;
+    }
+    if (typeof br.selectedButtonId === 'string' && br.selectedButtonId.trim() !== '') {
+      return br.selectedButtonId;
+    }
+  }
+  const lr = content.listResponseMessage;
+  if (lr) {
+    if (typeof lr.title === 'string' && lr.title.trim() !== '') {
+      return lr.title;
+    }
+    const row = lr.singleSelectReply;
+    if (row && typeof row.selectedRowId === 'string' && row.selectedRowId.trim() !== '') {
+      return row.selectedRowId;
+    }
+  }
+  const ir = content.interactiveResponseMessage;
+  if (ir && ir.body && typeof ir.body.text === 'string' && ir.body.text.trim() !== '') {
+    return ir.body.text;
+  }
+  const loc = content.locationMessage;
+  if (loc && loc.degreesLatitude != null && loc.degreesLongitude != null) {
+    return `[Location] ${loc.degreesLatitude}, ${loc.degreesLongitude}`;
+  }
+  const cm = content.contactMessage;
+  if (cm && typeof cm.displayName === 'string' && cm.displayName.trim() !== '') {
+    return `[Contact] ${cm.displayName}`;
+  }
+  return '';
+}
+
 function getOrCreateSession(teamId) {
   if (!teamId) return null;
   if (!sessions[teamId]) {
@@ -218,7 +284,20 @@ async function makeSocket(teamId) {
     for (const msg of messages) {
       if (msg.key.fromMe) continue;
       const contentType = getContentType(msg.message);
-      let body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+      if (contentType === 'reactionMessage' || contentType === 'protocolMessage') {
+        continue;
+      }
+      const extracted = extractMessageContent(msg.message || {});
+      let body = textFromWaContent(extracted);
+      if (!body && contentType === 'stickerMessage') {
+        body = '[Sticker]';
+      }
+      if (!body && contentType === 'imageMessage') {
+        body = '[Image]';
+      }
+      if (!body && contentType === 'videoMessage') {
+        body = '[Video]';
+      }
       const id = msg.key.id;
 
       const { digits: fromNormalized, sourceJid, resolvedVia } = resolveInboundSenderDigits(msg.key);
