@@ -21,6 +21,115 @@
 
 @section('page-script')
     <script src="{{ asset('assets/js/app-email.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @if (! empty($mailComposePrefill))
+            window.setTimeout(function () {
+                var $sel = window.jQuery && window.jQuery('#emailContacts');
+                if ($sel && $sel.length) {
+                    $sel.trigger('change');
+                }
+                var elOpen = document.getElementById('emailComposeSidebar');
+                if (elOpen && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(elOpen).show();
+                }
+            }, 200);
+            @endif
+
+            var suggestUrl = @json(route('mail.compose-suggest'));
+            var tokenEl = document.querySelector('meta[name="csrf-token"]');
+            var csrf = tokenEl ? tokenEl.getAttribute('content') : '';
+            var contactIdEl = document.getElementById('mailComposeContactId');
+            var contactId = (contactIdEl && contactIdEl.value) ? parseInt(contactIdEl.value, 10) : null;
+            if (contactId !== null && Number.isNaN(contactId)) {
+                contactId = null;
+            }
+            var flowSel = document.getElementById('mailComposeFlowRoutingKey');
+            var hintEl = document.getElementById('mailComposeAiHint');
+            var suggestBtn = document.getElementById('mailComposeSuggestBtn');
+            var busy = false;
+
+            function mailComposeRecipientSummary() {
+                var $el = window.jQuery && window.jQuery('#emailContacts');
+                if (!$el || !$el.length) {
+                    return '';
+                }
+                var vals = $el.val();
+                if (!vals) {
+                    return '';
+                }
+                return Array.isArray(vals) ? vals.join(', ') : String(vals);
+            }
+
+            function setMailComposeBodyText(text) {
+                var plain = text || '';
+                var root = document.querySelector('.email-editor');
+                if (root && window.Quill && typeof window.Quill.find === 'function') {
+                    var q = window.Quill.find(root);
+                    if (q) {
+                        q.setText(plain);
+                        return;
+                    }
+                }
+                var ed = document.querySelector('.email-editor .ql-editor');
+                if (ed) {
+                    ed.innerText = plain;
+                }
+            }
+
+            function runMailComposeSuggest(flowKey) {
+                if (busy || !csrf) {
+                    return;
+                }
+                busy = true;
+                if (suggestBtn) {
+                    suggestBtn.disabled = true;
+                }
+                var fk = flowKey && String(flowKey).trim() !== '' ? String(flowKey).trim() : null;
+                var payload = {
+                    flow_routing_key: fk,
+                    hint: hintEl && hintEl.value ? hintEl.value.trim() : '',
+                    recipient_summary: mailComposeRecipientSummary(),
+                    contact_id: contactId
+                };
+                fetch(suggestUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify(payload)
+                }).then(function (r) {
+                    return r.json();
+                }).then(function (data) {
+                    if (data.success && data.response) {
+                        setMailComposeBodyText(data.response);
+                    } else if (data.message) {
+                        alert(data.message);
+                    }
+                }).catch(function () {
+                    alert(@json(__('Error de conexión')));
+                }).finally(function () {
+                    busy = false;
+                    if (suggestBtn) {
+                        suggestBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (flowSel) {
+                flowSel.addEventListener('change', function () {
+                    var v = flowSel.value ? String(flowSel.value).trim() : '';
+                    if (v !== '') {
+                        runMailComposeSuggest(v);
+                    }
+                });
+            }
+            if (suggestBtn) {
+                suggestBtn.addEventListener('click', function () {
+                    var v = flowSel && flowSel.value ? String(flowSel.value).trim() : '';
+                    runMailComposeSuggest(v);
+                });
+            }
+        });
+    </script>
 @endsection
 
 @section('content')
@@ -123,18 +232,16 @@
                     </div>
                     <div class="modal-body flex-grow-1 pb-sm-0 p-4 py-2">
                         <form class="email-compose-form">
+                            <input type="hidden" id="mailComposeContactId" value="{{ $mailComposeContactId ?? '' }}">
                             <div class="email-compose-to d-flex justify-content-between align-items-center">
                                 <label class="form-label mb-0" for="emailContacts">To:</label>
                                 <div class="select2-primary border-0 shadow-none flex-grow-1 mx-2">
                                     <select class="select2 select-email-contacts form-select" id="emailContacts"
                                         name="emailContacts" multiple>
-                                        <option data-avatar="1.png" value="Jane Foster">Jane Foster</option>
-                                        <option data-avatar="3.png" value="Donna Frank">Donna Frank</option>
-                                        <option data-avatar="5.png" value="Gabrielle Robertson">Gabrielle Robertson
-                                        </option>
-                                        <option data-avatar="7.png" value="Lori Spears">Lori Spears</option>
-                                        <option data-avatar="9.png" value="Sandy Vega">Sandy Vega</option>
-                                        <option data-avatar="11.png" value="Cheryl May">Cheryl May</option>
+                                        @if (! empty($mailComposePrefill) && ! empty($mailComposePrefill['email']))
+                                            <option value="{{ e($mailComposePrefill['email']) }}" selected
+                                                data-avatar="1.png">{{ e($mailComposePrefill['email']) }}</option>
+                                        @endif
                                     </select>
                                 </div>
                                 <div class="email-compose-toggle-wrapper">
@@ -158,6 +265,25 @@
                                     <input type="text" class="form-control border-0 shadow-none flex-grow-1 mx-2"
                                         id="email-bcc" placeholder="someone@email.com">
                                 </div>
+                            </div>
+                            <hr class="container-m-nx my-2">
+                            <div class="mb-3">
+                                <label class="form-label" for="mailComposeFlowRoutingKey">{{ __('Assistant flow prompt') }}</label>
+                                <div class="d-flex flex-wrap gap-2 align-items-start align-items-md-center">
+                                    <select class="form-select flex-grow-1" id="mailComposeFlowRoutingKey"
+                                        style="min-width: 220px;">
+                                        <option value="">{{ __('Automatic (detect from message)') }}</option>
+                                        @foreach (($assistantFlowPrompts ?? collect()) as $flowPrompt)
+                                            <option value="{{ e($flowPrompt['routing_key']) }}">{{ e($flowPrompt['section_label']) }}
+                                                ({{ e($flowPrompt['routing_key']) }})</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="mailComposeSuggestBtn">
+                                        {{ __('Suggest message') }}</button>
+                                </div>
+                                <label class="form-label mt-2 mb-0" for="mailComposeAiHint">{{ __('Brief instructions (optional)') }}</label>
+                                <textarea class="form-control form-control-sm mt-1" id="mailComposeAiHint" rows="2"
+                                    placeholder=""></textarea>
                             </div>
                             <hr class="container-m-nx my-2">
                             <div class="email-compose-subject d-flex align-items-center mb-2">

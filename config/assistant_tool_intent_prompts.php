@@ -33,6 +33,7 @@ return [
      */
     'intents_order' => [
         'chat_capabilities',
+        'wapify',
         'chat_commerce',
         'chat_calendar',
         'chat_tasks',
@@ -66,6 +67,32 @@ return [
                 'recorrido',
                 'capacidades',
                 'funciones',
+            ],
+        ],
+
+        'wapify' => [
+            'routing_keys' => [
+                'products:wapify_me',
+                'wapify_me',
+            ],
+            'phrases' => [
+                'wapify.me',
+                'wapify me',
+                'wapify.me/launch',
+                'wapify.me/demo',
+                'pedimosfacil',
+                'pedimos facil',
+                'asistente de venta por whatsapp',
+                'vender por whatsapp con wapify',
+                'crear tu negocio wapify',
+                'probar humano assistant',
+                '7 días de prueba',
+                'siete días de prueba',
+                'promoción de lanzamiento',
+                'promocion de lanzamiento',
+            ],
+            'words' => [
+                'wapify',
             ],
         ],
 

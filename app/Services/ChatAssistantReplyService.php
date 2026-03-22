@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Prompt;
 use App\Tools\AssistantTool;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -25,6 +26,7 @@ class ChatAssistantReplyService
      * Get assistant reply for the given message and history.
      * When stub mode is enabled (config or team), returns a canned response for testing.
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
+     * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -36,7 +38,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null): array
     {
         if ($this->useStub($teamId))
         {
@@ -58,8 +60,27 @@ class ChatAssistantReplyService
 
         if ($withTools && $teamId !== null && $contextUserId !== null)
         {
-            $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
-            $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
+            $forced = $forcedFlowRoutingKey !== null ? trim($forcedFlowRoutingKey) : '';
+            if ($forced !== '')
+            {
+                $forcedPrompt = Prompt::findByRoutingKey($forced, $teamId);
+                if ($forcedPrompt && $forcedPrompt->is_active && ! $forcedPrompt->isGeneralRouter())
+                {
+                    $resolution = [
+                        'prompt' => $forcedPrompt,
+                        'routing_key' => $forced,
+                        'persist_assistant_flow_key' => 'set',
+                    ];
+                } else
+                {
+                    $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
+                    $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
+                }
+            } else
+            {
+                $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
+                $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
+            }
             $flowPrompt = $resolution['prompt'];
             if ($flowPrompt)
             {
@@ -70,6 +91,10 @@ class ChatAssistantReplyService
                     $instructions .= "\n\n---\n\n## Team flow prompt: «{$flowPrompt->section_label}» (section_key: {$flowPrompt->section_key})\n\n";
                     $instructions .= "Stay in this flow for follow-up messages in the same conversation until the user clearly changes topic (e.g. reset phrases). You still have access to all tools above.\n\n";
                     $instructions .= $flowBody;
+                    if ($flowPrompt->section_key === 'wapify_me')
+                    {
+                        $instructions .= $this->wapifyFlowContextAppendix($history);
+                    }
                 }
             }
 
@@ -200,6 +225,45 @@ class ChatAssistantReplyService
         }
 
         return $out;
+    }
+
+    /**
+     * Inbound user messages in history plus the current turn (not yet in history).
+     *
+     * @param  array<int, array{direction: string, body: string}>  $history
+     */
+    private function countClientTurnsIncludingCurrent(array $history): int
+    {
+        $inbound = 0;
+        foreach ($history as $item)
+        {
+            if (($item['direction'] ?? '') === 'inbound')
+            {
+                $inbound++;
+            }
+        }
+
+        return $inbound + 1;
+    }
+
+    /**
+     * Objective turn count for staged Wapify disclosure (prompt defines how to use it).
+     *
+     * @param  array<int, array{direction: string, body: string}>  $history
+     */
+    private function wapifyFlowContextAppendix(array $history): string
+    {
+        $turns = $this->countClientTurnsIncludingCurrent($history);
+
+        return <<<EOT
+
+
+### Parámetro interno Wapify (no lo cites literalmente al usuario)
+
+- **Turnos de mensaje del cliente en este hilo** (incluye el mensaje actual): **{$turns}**.
+- Úsalo solo según las reglas de progresión y códigos del flujo Wapify.Me.
+
+EOT;
     }
 
     /**

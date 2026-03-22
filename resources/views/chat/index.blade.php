@@ -75,6 +75,12 @@
         const recipientInput = document.getElementById('recipient');
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
+        var assistantUrl = '{{ route("chat.assistant") }}';
+
+        function getChatAssistantFlowRoutingKey() {
+            var sel = document.getElementById('chatAssistantFlowRoutingKey');
+            return sel && sel.value ? String(sel.value).trim() : '';
+        }
 
         if (messageInput && formSendMessage) {
             messageInput.addEventListener('keydown', function(e) {
@@ -361,14 +367,22 @@
 
             document.getElementById('userMessagePreview').textContent = currentUserMessage;
             document.getElementById('aiPreviewLoader').classList.remove('d-none');
-            document.getElementById('aiPreviewContent').classList.add('d-none');
-            document.getElementById('aiResponsePreview').textContent = '';
+            document.getElementById('aiPreviewContent').classList.remove('d-none');
+            var taPreviewStart = document.getElementById('aiResponsePreview');
+            if (taPreviewStart) {
+                taPreviewStart.value = '';
+                taPreviewStart.disabled = true;
+            }
+            var errBoxStart = document.getElementById('aiAssistantPreviewError');
+            if (errBoxStart) {
+                errBoxStart.classList.add('d-none');
+                errBoxStart.innerHTML = '';
+            }
             var previewAudioEl = document.getElementById('aiResponsePreviewAudio');
             if (previewAudioEl) previewAudioEl.innerHTML = '';
             if (!isAssistantView) previewModal.show();
             if (isAssistantView) showAssistantTypingIndicator();
 
-            var assistantUrl = '{{ route("chat.assistant") }}';
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
 
             if (hasAudio) {
@@ -381,6 +395,8 @@
                 if (respondWithAudio) formData.append('respond_with_audio', '1');
                 if (toVal) formData.append('recipient', toVal);
                 if (contactId) formData.append('contact_id', contactId);
+                var flowKeyAudio = getChatAssistantFlowRoutingKey();
+                if (flowKeyAudio) formData.append('flow_routing_key', flowKeyAudio);
                 fetch(assistantUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } })
                     .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
                     .then(function(res) {
@@ -394,6 +410,12 @@
                         }
                         document.getElementById('aiPreviewLoader').classList.add('d-none');
                         document.getElementById('aiPreviewContent').classList.remove('d-none');
+                        var errAudio = document.getElementById('aiAssistantPreviewError');
+                        var taAudio = document.getElementById('aiResponsePreview');
+                        if (errAudio) {
+                            errAudio.classList.add('d-none');
+                            errAudio.innerHTML = '';
+                        }
                         if (data.success) {
                             if (data.transcript) {
                                 currentUserMessage = data.transcript;
@@ -401,7 +423,10 @@
                                 if (up) up.textContent = currentUserMessage;
                             }
                             currentAiResponse = data.response || '';
-                            document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                            if (taAudio) {
+                                taAudio.value = currentAiResponse;
+                                taAudio.disabled = false;
+                            }
                             if (data.audio_base64 && data.audio_mime) {
                                 currentAiAudioBase64 = data.audio_base64;
                                 currentAiAudioMime = data.audio_mime;
@@ -420,26 +445,46 @@
                                 if (window.refreshAssistantHistory) window.refreshAssistantHistory();
                             }
                         } else {
-                            document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (data.message || 'Error') + '</div>';
+                            currentAiResponse = '';
+                            if (taAudio) {
+                                taAudio.value = '';
+                                taAudio.disabled = false;
+                            }
+                            if (errAudio) {
+                                errAudio.classList.remove('d-none');
+                                errAudio.innerHTML = '<div class="alert alert-danger mb-0">' + (data.message || 'Error').replace(/</g, '&lt;') + '</div>';
+                            }
                         }
                     })
                     .catch(function(err) {
                         document.getElementById('aiPreviewLoader').classList.add('d-none');
                         document.getElementById('aiPreviewContent').classList.remove('d-none');
-                        document.getElementById('aiResponsePreview').innerHTML = '<div class="alert alert-danger">' + (err.message || '{{ __("Error de conexión") }}') + '</div>';
+                        var taE = document.getElementById('aiResponsePreview');
+                        if (taE) {
+                            taE.value = '';
+                            taE.disabled = false;
+                        }
+                        var errE = document.getElementById('aiAssistantPreviewError');
+                        if (errE) {
+                            errE.classList.remove('d-none');
+                            errE.innerHTML = '<div class="alert alert-danger mb-0">' + (err.message || '{{ __("Error de conexión") }}').replace(/</g, '&lt;') + '</div>';
+                        }
                         if (isAssistantView) removeAssistantTypingIndicator();
                     })
                     .finally(function() { if (isAssistantView) removeAssistantTypingIndicator(); reenableSend(); });
             } else {
+                var jsonPayload = {
+                    message: currentUserMessage,
+                    recipient: toVal || undefined,
+                    contact_id: contactId,
+                    respond_with_audio: respondWithAudio
+                };
+                var flowKeyJson = getChatAssistantFlowRoutingKey();
+                if (flowKeyJson) jsonPayload.flow_routing_key = flowKeyJson;
                 fetch(assistantUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
-                    body: JSON.stringify({
-                        message: currentUserMessage,
-                        recipient: toVal || undefined,
-                        contact_id: contactId,
-                        respond_with_audio: respondWithAudio
-                    })
+                    body: JSON.stringify(jsonPayload)
                 })
                 .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
                 .then(function(res) {
@@ -453,6 +498,12 @@
                     }
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
+                    var errJson = document.getElementById('aiAssistantPreviewError');
+                    var taJson = document.getElementById('aiResponsePreview');
+                    if (errJson) {
+                        errJson.classList.add('d-none');
+                        errJson.innerHTML = '';
+                    }
                     if (data.success) {
                         if (data.transcript) {
                             currentUserMessage = data.transcript;
@@ -460,13 +511,16 @@
                             if (upEl) upEl.textContent = currentUserMessage;
                         }
                         currentAiResponse = data.response || '';
-                        document.getElementById('aiResponsePreview').textContent = currentAiResponse;
+                        if (taJson) {
+                            taJson.value = currentAiResponse;
+                            taJson.disabled = false;
+                        }
                         if (data.audio_base64 && data.audio_mime) {
                             currentAiAudioBase64 = data.audio_base64;
                             currentAiAudioMime = data.audio_mime;
-                            var container = document.getElementById('aiResponsePreviewAudio');
-                            if (container) {
-                                container.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
+                            var containerJ = document.getElementById('aiResponsePreviewAudio');
+                            if (containerJ) {
+                                containerJ.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
                             }
                         }
                         if (isAssistantView) {
@@ -480,16 +534,30 @@
                         }
                     } else {
                         currentAiResponse = '';
-                        document.getElementById('aiResponsePreview').innerHTML =
-                            '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
+                        if (taJson) {
+                            taJson.value = '';
+                            taJson.disabled = false;
+                        }
+                        if (errJson) {
+                            errJson.classList.remove('d-none');
+                            errJson.innerHTML = '<div class="alert alert-danger mb-0">Error: ' + String(data.message || 'Failed to get response').replace(/</g, '&lt;') + '</div>';
+                        }
                     }
                 })
                 .catch(function(error) {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
                     currentAiResponse = '';
-                    document.getElementById('aiResponsePreview').innerHTML =
-                        '<div class="alert alert-danger">' + (error.message || '{{ __("Error de conexión") }}') + '</div>';
+                    var taErr = document.getElementById('aiResponsePreview');
+                    if (taErr) {
+                        taErr.value = '';
+                        taErr.disabled = false;
+                    }
+                    var errBoxJ = document.getElementById('aiAssistantPreviewError');
+                    if (errBoxJ) {
+                        errBoxJ.classList.remove('d-none');
+                        errBoxJ.innerHTML = '<div class="alert alert-danger mb-0">' + (error.message || '{{ __("Error de conexión") }}').replace(/</g, '&lt;') + '</div>';
+                    }
                     if (isAssistantView) removeAssistantTypingIndicator();
                 })
                 .finally(function() { if (isAssistantView) removeAssistantTypingIndicator(); reenableSend(); });
@@ -510,7 +578,10 @@
 
         // Send the previewed AI response when confirmed (capture so we run first)
         sendAiResponseBtn.addEventListener('click', function() {
-            if (currentUserMessage && currentAiResponse) {
+            var taSend = document.getElementById('aiResponsePreview');
+            var replyFromPreview = taSend && taSend.value ? taSend.value.trim() : (currentAiResponse || '').trim();
+            if (currentUserMessage && replyFromPreview) {
+                currentAiResponse = replyFromPreview;
                 previewModal.hide();
 
                 var form = document.getElementById('chat-form');
@@ -561,6 +632,107 @@
                 if (window.refreshAssistantHistory) window.refreshAssistantHistory();
             }
         });
+
+        var chatAssistantRegenerateBtn = document.getElementById('chatAssistantRegenerateBtn');
+        if (chatAssistantRegenerateBtn) {
+            chatAssistantRegenerateBtn.addEventListener('click', function() {
+                if (!currentUserMessage) return;
+                var regenToken = document.querySelector('meta[name="csrf-token"]');
+                regenToken = regenToken ? regenToken.getAttribute('content') : '';
+                var regenTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+                var regenCidEl = document.getElementById('contact-id');
+                var regenContactId = (regenCidEl && regenCidEl.value && parseInt(regenCidEl.value, 10)) ? parseInt(regenCidEl.value, 10) : undefined;
+                var regenAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
+                var regenForm = document.getElementById('chat-form');
+                var regenIsAssistant = regenForm && regenForm.getAttribute('data-view-assistant') === '1';
+                document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                var taR = document.getElementById('aiResponsePreview');
+                if (taR) taR.disabled = true;
+                var ebR = document.getElementById('aiAssistantPreviewError');
+                if (ebR) {
+                    ebR.classList.add('d-none');
+                    ebR.innerHTML = '';
+                }
+                var audioElR = document.getElementById('aiResponsePreviewAudio');
+                if (audioElR) audioElR.innerHTML = '';
+                currentAiAudioBase64 = '';
+                currentAiAudioMime = '';
+                var regenPayload = {
+                    message: currentUserMessage,
+                    recipient: regenTo || undefined,
+                    contact_id: regenContactId,
+                    respond_with_audio: regenAudio
+                };
+                var regenFk = getChatAssistantFlowRoutingKey();
+                if (regenFk) regenPayload.flow_routing_key = regenFk;
+                fetch(assistantUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': regenToken, 'Accept': 'application/json' },
+                    body: JSON.stringify(regenPayload)
+                })
+                .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
+                .then(function(res) {
+                    var data;
+                    try {
+                        data = JSON.parse(res.body);
+                    } catch (e) {
+                        if (res.status === 419) throw new Error('{{ __("Sesión caducada. Recarga la página.") }}');
+                        if (res.status >= 400) throw new Error('{{ __("Error del servidor. Intenta de nuevo o recarga la página.") }}');
+                        throw new Error('{{ __("Respuesta no válida del servidor.") }}');
+                    }
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    var errR = document.getElementById('aiAssistantPreviewError');
+                    var taRx = document.getElementById('aiResponsePreview');
+                    if (errR) {
+                        errR.classList.add('d-none');
+                        errR.innerHTML = '';
+                    }
+                    if (data.success) {
+                        currentAiResponse = data.response || '';
+                        if (taRx) {
+                            taRx.value = currentAiResponse;
+                            taRx.disabled = false;
+                        }
+                        if (data.audio_base64 && data.audio_mime) {
+                            currentAiAudioBase64 = data.audio_base64;
+                            currentAiAudioMime = data.audio_mime;
+                            var cR = document.getElementById('aiResponsePreviewAudio');
+                            if (cR) {
+                                cR.innerHTML = '<audio controls class="w-100 mt-2" style="max-height:40px;"><source src="data:' + data.audio_mime + ';base64,' + data.audio_base64 + '" type="' + data.audio_mime + '"></audio>';
+                            }
+                        }
+                    } else {
+                        currentAiResponse = '';
+                        if (taRx) {
+                            taRx.value = '';
+                            taRx.disabled = false;
+                        }
+                        if (errR) {
+                            errR.classList.remove('d-none');
+                            errR.innerHTML = '<div class="alert alert-danger mb-0">' + String(data.message || 'Error').replace(/</g, '&lt;') + '</div>';
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    var taE2 = document.getElementById('aiResponsePreview');
+                    if (taE2) {
+                        taE2.value = '';
+                        taE2.disabled = false;
+                    }
+                    var eb2 = document.getElementById('aiAssistantPreviewError');
+                    if (eb2) {
+                        eb2.classList.remove('d-none');
+                        eb2.innerHTML = '<div class="alert alert-danger mb-0">' + (err.message || '{{ __("Error de conexión") }}').replace(/</g, '&lt;') + '</div>';
+                    }
+                })
+                .finally(function() {
+                    if (regenIsAssistant) return;
+                    var sb = document.querySelector('#chat-form .send-msg-btn');
+                    if (sb) sb.disabled = false;
+                });
+            });
+        }
 
         @if($viewAssistant ?? false)
         // Poll assistant history so messages from terminal appear without full page reload
@@ -1806,11 +1978,24 @@
                     <div id="aiPreviewContent" class="d-none">
                         <div class="card">
                             <div class="card-body">
-                                <h6 class="mb-2">Your message:</h6>
+                                <h6 class="mb-2">{{ __('Your message') }}:</h6>
                                 <p id="userMessagePreview" class="mb-3"></p>
+                                <div class="mb-3">
+                                    <label class="form-label" for="chatAssistantFlowRoutingKey">{{ __('Assistant flow prompt') }}</label>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <select class="form-select flex-grow-1" id="chatAssistantFlowRoutingKey" style="min-width: 220px;">
+                                            <option value="">{{ __('Automatic (detect from message)') }}</option>
+                                            @foreach(($assistantFlowPrompts ?? collect()) as $flowPrompt)
+                                                <option value="{{ $flowPrompt['routing_key'] }}">{{ $flowPrompt['section_label'] }} ({{ $flowPrompt['routing_key'] }})</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="chatAssistantRegenerateBtn">{{ __('Regenerate with selected prompt') }}</button>
+                                    </div>
+                                </div>
                                 <hr>
-                                <h6 class="mb-2">{{ __('Respuesta de Humano Assistant:') }}</h6>
-                                <p id="aiResponsePreview"></p>
+                                <h6 class="mb-2">{{ __('Humano Assistant reply') }}</h6>
+                                <div id="aiAssistantPreviewError" class="d-none mb-2"></div>
+                                <textarea id="aiResponsePreview" class="form-control" rows="8" spellcheck="true" disabled></textarea>
                                 <div id="aiResponsePreviewAudio" class="mt-2"></div>
                             </div>
                         </div>

@@ -61,18 +61,14 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @endcan
-            @role('admin|collaborator|developer|technical')
-                <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
-                        class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
-            @endrole
-            @role('admin|collaborator')
-                <a href="{{ route('service.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
-                        class="ti ti-server me-1"></i>Crear servicio</a>
-            @endrole
-            @role('admin|collaborator')
-                @if ($data->getWhatsAppNumber())
-                    <a href="{{ route('chat.index') }}?phone={{ $data->getWhatsAppNumber() }}"
-                        class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
+            @if ($data->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical'])))
+                <a href="{{ $data->chatIndexUrl() }}"
+                    class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
+            @endif
+            @can('view', $data)
+                @if ($data->mailComposeListUrl())
+                    <a href="{{ $data->mailComposeListUrl() }}"
+                        class="btn btn-label-primary waves-effect waves-light"><i class="ti ti-mail me-1"></i>{{ __('Mail') }}</a>
                 @endif
             @endcan
             @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && $data->enterprises->first() && auth()->user()->hasRole('admin'))

@@ -63,4 +63,21 @@ class ChatAssistantTest extends TestCase
         ]);
         $response->assertSee('[Modo prueba]', false);
     }
+
+    public function test_assistant_accepts_optional_flow_routing_key(): void
+    {
+        $user = User::factory()->create();
+        AnonymousAgent::fake(['Test assistant response']);
+
+        $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => 'Hello',
+            'flow_routing_key' => 'contacts:nonexistent_section',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'response' => 'Test assistant response',
+        ]);
+    }
 }

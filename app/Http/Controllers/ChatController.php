@@ -6,6 +6,7 @@ use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AgentConversationContextService;
@@ -392,7 +393,24 @@ class ChatController extends Controller
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond'));
+        $assistantFlowPrompts = collect();
+        if (auth()->check() && auth()->user()->currentTeam)
+        {
+            $assistantFlowPrompts = Prompt::forTeam((int) auth()->user()->currentTeam->id)
+                ->active()
+                ->with('module')
+                ->where('section_key', '!=', 'general')
+                ->orderBy('order')
+                ->get()
+                ->map(fn (Prompt $p) => [
+                    'routing_key' => $p->module
+                        ? $p->module->key.':'.$p->section_key
+                        : $p->section_key,
+                    'section_label' => $p->section_label,
+                ]);
+        }
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
     }
 
     /**
@@ -765,6 +783,7 @@ class ChatController extends Controller
             'recipient' => 'nullable|string|max:50',
             'contact_id' => 'nullable|integer|exists:contacts,id',
             'template_hashed_id' => 'nullable|string|max:512',
+            'flow_routing_key' => 'nullable|string|max:512',
         ], [
             'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
             'audio.max' => __('El audio no puede superar 25 MB.'),
@@ -844,7 +863,16 @@ class ChatController extends Controller
             $fromUser = preg_replace('/[^0-9]/', '', $this->getWhatsAppPhoneForUser($contextUser));
             $customerPhone = $fromUser !== '' ? $fromUser : null;
         }
-        $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, $contextUser->id, $customerPhone !== '' ? $customerPhone : null);
+        $forcedFlowRoutingKey = $request->filled('flow_routing_key') ? trim((string) $request->input('flow_routing_key')) : '';
+        $replyResponse = $replyService->getReply(
+            $message,
+            $history,
+            $teamId,
+            $withTools,
+            $contextUser->id,
+            $customerPhone !== '' ? $customerPhone : null,
+            $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
+        );
 
         if (! $replyResponse['success'])
         {

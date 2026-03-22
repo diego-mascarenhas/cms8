@@ -1354,5 +1354,14 @@
   "The code has already been used in this team.": "Ese código ya está en uso en este equipo.",
   "Product created successfully.": "Producto creado correctamente.",
   "Product updated successfully.": "Producto actualizado correctamente.",
-  "Product deleted successfully.": "Producto eliminado correctamente."
+  "Product deleted successfully.": "Producto eliminado correctamente.",
+  "Your message": "Tu mensaje",
+  "Assistant flow prompt": "Prompt / flujo del asistente",
+  "Automatic (detect from message)": "Automático (detectar por el mensaje)",
+  "Regenerate with selected prompt": "Regenerar con el prompt seleccionado",
+  "Humano Assistant reply": "Respuesta de Humano Assistant",
+  "Invalid contact.": "Contacto no válido.",
+  "Brief instructions (optional)": "Instrucciones breves (opcional)",
+  "Suggest message": "Sugerir mensaje",
+  "Error de conexión": "Error de conexión"
 }

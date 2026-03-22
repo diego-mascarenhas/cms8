@@ -92,10 +92,12 @@ class ContactDataTable extends DataTable
             })
             ->addColumn('categories', function ($row)
             {
-                return $row->categories->map(function ($category)
+                $badges = $row->categories->map(function ($category)
                 {
                     return '<span class="badge bg-label-primary me-1">'.e($category->name).'</span>';
                 })->join(' ');
+
+                return $badges !== '' ? $badges : '&nbsp;';
             })
             ->filterColumn('categories', function ($query, $keyword)
             {

@@ -560,5 +560,14 @@
   "Colors": "Colors",
   "Comma separated values.": "Comma separated values.",
   "The code is required.": "The code is required.",
-  "The code has already been used in this team.": "The code has already been used in this team."
+  "The code has already been used in this team.": "The code has already been used in this team.",
+  "Your message": "Your message",
+  "Assistant flow prompt": "Assistant flow prompt",
+  "Automatic (detect from message)": "Automatic (detect from message)",
+  "Regenerate with selected prompt": "Regenerate with selected prompt",
+  "Humano Assistant reply": "Humano Assistant reply",
+  "Invalid contact.": "Invalid contact.",
+  "Brief instructions (optional)": "Brief instructions (optional)",
+  "Suggest message": "Suggest message",
+  "Error de conexión": "Connection error"
 }

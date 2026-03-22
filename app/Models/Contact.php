@@ -639,6 +639,37 @@ class Contact extends Model implements HasMedia
         return null;
     }
 
+    /**
+     * URL to open the team mail UI with compose sidebar prefilled for this contact.
+     */
+    public function mailComposeListUrl(): ?string
+    {
+        $email = $this->email;
+        if (! is_string($email) || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL))
+        {
+            return null;
+        }
+
+        $name = trim($this->name.' '.(string) ($this->surname ?? ''));
+
+        return route('mail-list', array_filter([
+            'compose' => '1',
+            'to' => $email,
+            'name' => $name !== '' ? $name : null,
+            'contact_id' => $this->id,
+        ]));
+    }
+
+    /**
+     * URL to open WhatsApp chat for this contact when a number is available.
+     */
+    public function chatIndexUrl(): ?string
+    {
+        $wa = $this->getWhatsAppNumber();
+
+        return $wa ? route('chat.index', ['phone' => $wa]) : null;
+    }
+
     public function setPhoneAttribute($value)
     {
         if ($value === null || $value === '')
