@@ -6,9 +6,9 @@ use App\Models\Team;
 use App\Services\DemoDataService;
 use Illuminate\Console\Command;
 
-class HumanoStartCommand extends Command
+class StartCommand extends Command
 {
-    protected $signature = 'humano:start
+    protected $signature = 'start
                             {--fresh : Fresh install (migrate:fresh + seed), then optionally demo (non-interactive: use with --demo)}
                             {--demo : After fresh, or alone: load demo data (non-interactive)}';
 
@@ -18,7 +18,7 @@ class HumanoStartCommand extends Command
 
     private const OPT_DEMO_ONLY = 'Load demo data only (requires DB already seeded)';
 
-    private const OPT_CHAT = 'Chat (conversar con el asistente en terminal)';
+    private const OPT_CHAT = 'Chat (conversar con el asistente en terminal; podés indicar teléfono de cliente)';
 
     private const OPT_EXIT = 'Exit';
 
@@ -81,13 +81,28 @@ class HumanoStartCommand extends Command
                 $this->runDemo();
             } elseif ($choice === self::OPT_CHAT)
             {
-                $this->call('chat:simulate');
+                $this->runChatSimulate();
             }
 
             $this->newLine();
         }
 
         return self::SUCCESS;
+    }
+
+    private function runChatSimulate(): void
+    {
+        $phoneInput = $this->ask('Teléfono del cliente a simular (solo dígitos; vacío = modo genérico sin número)');
+        $phoneInput = $phoneInput !== null ? trim((string) $phoneInput) : '';
+        $digits = preg_replace('/\D/', '', $phoneInput);
+
+        if ($digits !== '')
+        {
+            $this->call('chat:simulate', ['--phone' => $digits]);
+        } else
+        {
+            $this->call('chat:simulate');
+        }
     }
 
     private function runFreshInstall(): void
