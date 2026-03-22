@@ -54,37 +54,57 @@ class UserResolverWhatsAppContactTest extends TestCase
         $this->assertNotNull($contact->user_id);
     }
 
-    public function test_link_phone_applies_profile_name_for_new_user_and_contact(): void
+    public function test_resolve_user_matches_contacts_phone_and_links_user_when_user_id_null(): void
     {
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
 
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'name' => 'CRM Contact',
+            'phone' => 34600222004,
+            'status_id' => 1,
+        ]);
+
         $service = app(UserResolverService::class);
-        $service->linkPhoneToContactInTeam((int) $team->id, '+34 611 222 333', 'Cliente Demo');
+        $user = $service->resolveUserForConversation('34600222004', null);
 
-        $user = User::withoutGlobalScopes()->where('email', 'wa-34611222333@chat.placeholder')->first();
         $this->assertNotNull($user);
-        $this->assertSame('Cliente Demo', $user->name);
-
         $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
-            ->where('phone', '34611222333')
+            ->where('phone', 34600222004)
             ->first();
         $this->assertNotNull($contact);
-        $this->assertSame('Cliente Demo', $contact->name);
+        $this->assertSame($user->id, (int) $contact->user_id);
     }
 
-    public function test_link_phone_updates_placeholder_user_when_profile_name_arrives_later(): void
+    public function test_resolve_user_matches_contacts_phone_national_digits_against_international_input(): void
     {
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
 
-        $service = app(UserResolverService::class);
-        $service->linkPhoneToContactInTeam((int) $team->id, '+34 600 111 222');
-        $service->linkPhoneToContactInTeam((int) $team->id, '+34 600 111 222', 'Real Name');
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'name' => 'Local digits',
+            'phone' => 600222004,
+            'status_id' => 1,
+        ]);
 
-        $user = User::withoutGlobalScopes()->where('email', 'wa-34600111222@chat.placeholder')->first();
+        $service = app(UserResolverService::class);
+        $user = $service->resolveUserForConversation('+34 600 222 004', null);
+
         $this->assertNotNull($user);
-        $this->assertSame('Real Name', $user->name);
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('phone', 600222004)
+            ->first();
+        $this->assertNotNull($contact);
+        $this->assertSame($user->id, (int) $contact->user_id);
     }
 }

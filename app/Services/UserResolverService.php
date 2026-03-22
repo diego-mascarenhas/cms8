@@ -129,7 +129,7 @@ class UserResolverService
     }
 
     /**
-     * Find user by phone: direct User.phone or via Contact (sources or phone field).
+     * Find user by phone: direct User.phone or via Contact (WhatsApp source value or contacts.phone).
      */
     protected function findUserByPhone(string $phoneNumber): ?User
     {
@@ -157,29 +157,53 @@ class UserResolverService
             }
         }
 
-        $contact = Contact::with('user')
-            ->whereHas('sources', function ($query) use ($cleanNumber)
+        $contact = $this->findContactByNormalizedPhone($cleanNumber);
+        if ($contact === null)
+        {
+            return null;
+        }
+
+        return $this->userFromContact($contact);
+    }
+
+    /**
+     * Resolve contact by WhatsApp source or normalized contacts.phone (digits only, optional national suffix match).
+     */
+    protected function findContactByNormalizedPhone(string $cleanNumber): ?Contact
+    {
+        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS CHAR), ' ', ''), '+', ''), '-', '')";
+
+        return Contact::withoutGlobalScopes()
+            ->where(function ($query) use ($cleanNumber, $phoneNormalizedSql)
             {
-                $query->where('source_id', 2)->where('value', $cleanNumber);
-            })->first();
+                $query->whereHas('sources', function ($q) use ($cleanNumber)
+                {
+                    $q->where('source_id', 2)->where('value', $cleanNumber);
+                })
+                    ->orWhereRaw("{$phoneNormalizedSql} = ?", [$cleanNumber]);
 
-        if ($contact && $contact->user)
+                if (strlen($cleanNumber) > 9)
+                {
+                    $national = substr($cleanNumber, -9);
+                    $query->orWhereRaw("{$phoneNormalizedSql} = ?", [$national]);
+                }
+            })
+            ->first();
+    }
+
+    /**
+     * Return the user linked to the contact, creating and linking one when contacts.phone exists but user_id is empty.
+     */
+    protected function userFromContact(Contact $contact): ?User
+    {
+        if ($contact->user_id)
         {
-            return $contact->user;
+            $user = User::withoutGlobalScopes()->find($contact->user_id);
+
+            return $user ?? $this->createUserForContact($contact);
         }
 
-        $contact = Contact::where(function ($q) use ($cleanNumber)
-        {
-            $q->where('phone', 'like', '%'.$cleanNumber.'%')
-                ->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', '') = ?", [$cleanNumber]);
-        })->first();
-
-        if ($contact && $contact->user_id)
-        {
-            return User::withoutGlobalScopes()->find($contact->user_id);
-        }
-
-        return null;
+        return $this->createUserForContact($contact);
     }
 
     /**
