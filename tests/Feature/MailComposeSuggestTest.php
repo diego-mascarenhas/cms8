@@ -42,7 +42,7 @@ class MailComposeSuggestTest extends TestCase
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
 
-        AnonymousAgent::fake(['Suggested email body text.']);
+        AnonymousAgent::fake(['{"subject":"Follow-up","body":"Suggested email body text."}']);
 
         $response = $this->actingAs($user)->postJson(route('mail.compose-suggest'), [
             'hint' => 'Write a short thank-you note.',
@@ -52,7 +52,33 @@ class MailComposeSuggestTest extends TestCase
         $response->assertOk();
         $response->assertJson([
             'success' => true,
+            'subject' => 'Follow-up',
+            'body' => 'Suggested email body text.',
             'response' => 'Suggested email body text.',
+        ]);
+    }
+
+    public function test_compose_suggest_falls_back_when_model_returns_plain_text(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        AnonymousAgent::fake(['Plain body only.']);
+
+        $response = $this->actingAs($user)->postJson(route('mail.compose-suggest'), [
+            'hint' => 'Hello',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'subject' => '',
+            'body' => 'Plain body only.',
+            'response' => 'Plain body only.',
         ]);
     }
 }

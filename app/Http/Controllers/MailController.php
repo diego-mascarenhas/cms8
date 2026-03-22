@@ -173,18 +173,64 @@ class MailController extends Controller
             ], 500);
         }
 
+        $suggestion = $this->parseMailComposeSuggestion((string) ($replyResponse['text'] ?? ''));
+
         return response()->json([
             'success' => true,
-            'response' => $replyResponse['text'] ?? '',
+            'subject' => $suggestion['subject'],
+            'body' => $suggestion['body'],
+            'response' => $suggestion['body'],
         ]);
+    }
+
+    /**
+     * @return array{subject: string, body: string}
+     */
+    private function parseMailComposeSuggestion(string $text): array
+    {
+        $raw = trim($text);
+        if ($raw === '')
+        {
+            return ['subject' => '', 'body' => ''];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded))
+        {
+            $subject = isset($decoded['subject']) && is_string($decoded['subject']) ? trim($decoded['subject']) : '';
+            $body = isset($decoded['body']) && is_string($decoded['body']) ? trim($decoded['body']) : '';
+
+            if ($subject !== '' || $body !== '')
+            {
+                return ['subject' => $subject, 'body' => $body];
+            }
+        }
+
+        if (preg_match('/^```(?:json)?\s*([\s\S]*?)\s*```$/m', $raw, $matches))
+        {
+            $raw = trim($matches[1]);
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded))
+            {
+                $subject = isset($decoded['subject']) && is_string($decoded['subject']) ? trim($decoded['subject']) : '';
+                $body = isset($decoded['body']) && is_string($decoded['body']) ? trim($decoded['body']) : '';
+
+                if ($subject !== '' || $body !== '')
+                {
+                    return ['subject' => $subject, 'body' => $body];
+                }
+            }
+        }
+
+        return ['subject' => '', 'body' => $raw];
     }
 
     private function buildMailComposeAssistantInstruction(string $hint, string $recipientSummary): string
     {
         $parts = [
             'You are helping the operator draft an email in the CRM mail compose screen.',
-            'Write only the email body (greeting, paragraphs, closing/sign-off as appropriate). Do not output a subject line as the first line unless it belongs in the body.',
-            'Use a clear professional tone. If the team flow prompt implies a language, follow it; otherwise match the operator\'s extra instructions, or use Spanish.',
+            'Reply with a single JSON object only (no markdown fences, no commentary). Keys: "subject" (short email subject line) and "body" (plain text for the email: greeting, paragraphs, closing/sign-off).',
+            'Use a clear professional tone. If the team flow prompt implies a language, follow it; otherwise match the operator draft in the compose body, or use Spanish.',
         ];
 
         if ($recipientSummary !== '')
@@ -194,10 +240,10 @@ class MailController extends Controller
 
         if ($hint !== '')
         {
-            $parts[] = 'Extra instructions from the operator: '.$hint;
+            $parts[] = 'Operator draft / instructions from the message body (may be rough notes): '.$hint;
         } else
         {
-            $parts[] = 'The operator did not add extra instructions; infer appropriate content from the selected flow (if any) and conversation context.';
+            $parts[] = 'The message body is empty; infer subject and body from the selected flow (if any) and conversation context.';
         }
 
         return implode("\n\n", $parts);

@@ -58,12 +58,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize Quill Editor
     // ------------------------------
+    let emailEditorPlaceholder =
+      typeof window.emailEditorPlaceholder === 'string' && window.emailEditorPlaceholder.trim() !== ''
+        ? window.emailEditorPlaceholder
+        : 'Write your message... ';
     if (emailEditor) {
       new Quill('.email-editor', {
         modules: {
           toolbar: '.email-editor-toolbar'
         },
-        placeholder: 'Write your message... ',
+        placeholder: emailEditorPlaceholder,
         theme: 'snow'
       });
     }
@@ -73,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modules: {
           toolbar: '.email-reply-toolbar'
         },
-        placeholder: 'Write your message... ',
+        placeholder: emailEditorPlaceholder,
         theme: 'snow'
       });
     }
@@ -312,20 +316,21 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           let $avatar =
             "<div class='d-flex flex-wrap align-items-center'>" +
-            "<div class='avatar avatar-xs me-2 w-px-20 h-px-20'>" +
-            "<img src='" +
-            assetsPath +
-            'img/avatars/' +
-            $(option.element).data('avatar') +
-            "' alt='avatar' class='rounded-circle' />" +
+            "<div class='avatar avatar-xs me-2 w-px-20 h-px-20 d-flex align-items-center justify-content-center flex-shrink-0'>" +
+            "<span class='rounded-circle bg-label-secondary d-block' style='width:20px;height:20px' aria-hidden='true'></span>" +
             '</div>' +
             option.text +
             '</div>';
 
           return $avatar;
         }
+        let emailContactsPlaceholder =
+          typeof window.emailContactsSelectPlaceholder === 'string' &&
+          window.emailContactsSelectPlaceholder.trim() !== ''
+            ? window.emailContactsSelectPlaceholder
+            : 'Select value';
         emailContacts.wrap('<div class="position-relative"></div>').select2({
-          placeholder: 'Select value',
+          placeholder: emailContactsPlaceholder,
           dropdownParent: emailContacts.parent(),
           closeOnSelect: false,
           templateResult: renderContactsAvatar,

@@ -145,6 +145,16 @@ class PromptSeeder extends Seeder
                 'order' => 0,
                 'is_active' => true,
             ];
+
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'collections',
+                'section_label' => 'Cobranzas y pagos',
+                'prompt_instruction' => $this->getCollectionsPromptInstruction(),
+                'helper_text' => 'Recordatorios de pago, facturas o suscripciones: email/WhatsApp al cliente, segunda notificación, portal de facturación o enlace de pago. No inventes importes ni URLs.',
+                'order' => 1,
+                'is_active' => true,
+            ];
         }
 
         // Communications Module
@@ -337,6 +347,50 @@ PROMPT,
         }
 
         return $prompts;
+    }
+
+    /**
+     * Cobranzas: mensajes al cliente sobre facturas, suscripciones y pagos pendientes (pasarela / facturación online).
+     */
+    private function getCollectionsPromptInstruction(): string
+    {
+        return <<<'PROMPT'
+# Cobranzas y comunicación de pagos
+
+Ayudás al operador del CRM a redactar **mensajes claros y profesionales** sobre **cobro de facturas, suscripciones o saldos pendientes**, cuando el negocio usa **facturación online** (facturas con enlace de pago, **portal de facturación del cliente**, enlaces de cobro, **checkout**, suscripciones y cargos recurrentes).
+
+## Qué puede pedir el operador
+
+- Email o mensaje (WhatsApp, etc.) de **primer recordatorio**, **segundo aviso** o **último recordatorio** antes de cortar servicio (solo si el operador lo indica y es coherente con su política).
+- Texto para explicar **cómo pagar**: enlace en el **correo automático de facturación**, **página de factura con pago en línea**, **actualizar tarjeta** o método de pago.
+- Respuesta ante **pago rechazado**, **tarjeta vencida**, **autenticación reforzada (3DS)** o **renovación fallida** de suscripción (sin alarmismo; tono resolutivo).
+- Breve guion para **llamada** o nota interna después de un contacto de cobranzas.
+
+## Conceptos útiles (lenguaje claro, sin manual técnico)
+
+- **Factura** con **PDF** o **URL de pago** (no inventes URLs; usá «el enlace que recibió en el correo de facturación» si el operador no pegó el link).
+- **Portal del cliente** para **gestionar facturación, facturas y métodos de pago** cuando aplique.
+- **Suscripción** y **ciclo de facturación**; **cargo pendiente** o **reintento automático** si el operador lo menciona.
+- **Enlace de cobro** o **página de pago** solo si el contexto del operador indica que usan ese flujo.
+
+## Reglas obligatorias
+
+1. **No inventes** importes, moneda, número de factura, fecha de vencimiento, últimos dígitos de tarjeta, **identificadores internos** de factura o cliente ni enlaces. Si faltan datos, dejá **placeholders** explícitos (`[importe]`, `[fecha de vencimiento]`, `[número de factura]`) o pedí en una línea qué dato falta.
+2. **Tono**: firme y respetuoso; evitá amenazas legales vagas o lenguaje humillante. No prometas juicios, embargos ni consecuencias legales concretas salvo que el operador pegue texto revisado por un abogado.
+3. **Un solo canal por mensaje**: si piden email, entregá cuerpo + asunto sugerido; si piden WhatsApp, mensaje más corto.
+4. **Idioma**: el mismo que use el operador en su pedido; si mezcla, priorizá español.
+5. **Privacidad**: no pidas por chat datos sensibles innecesarios (CVV, PIN); el pago debe resolverse en **páginas seguras** de la pasarela, no por chat.
+
+## Estructura sugerida (email)
+
+- Referencia amable al servicio o factura.
+- **Qué está pendiente** (con placeholders si no hay cifras).
+- **Cómo pagar** (correo con enlace, portal, etc.).
+- **Plazo** o próximo paso.
+- Cierre con datos de contacto del operador si el usuario los proporciona.
+
+**Tu objetivo**: Reducir fricción para que el cliente **pague o regularice el método de pago**, con textos listos para enviar y sin datos falsos.
+PROMPT;
     }
 
     /**
