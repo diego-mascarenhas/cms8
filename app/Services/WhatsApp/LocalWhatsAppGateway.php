@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppOutboundText;
 use App\Models\Conversation;
 use App\Models\Team;
 use Illuminate\Support\Facades\Http;
@@ -43,6 +44,8 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         {
             throw new \RuntimeException('Local WhatsApp service is not configured (check WHATSAPP_LOCAL_BASE_URL).');
         }
+
+        $message = WhatsAppOutboundText::sanitize($message);
 
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
         $response = Http::timeout(15)

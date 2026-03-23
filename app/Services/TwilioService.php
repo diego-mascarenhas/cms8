@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
@@ -440,6 +441,8 @@ class TwilioService implements WhatsAppGateway
 
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
+        $message = WhatsAppOutboundText::sanitize((string) $message);
+
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
         {
             $sender = $this->getSender();
@@ -1776,6 +1779,7 @@ class TwilioService implements WhatsAppGateway
             // Body text: use caption when provided (e.g. voice message); for QR types use the legacy text
             $isQrType = in_array($type, ['generic_qr', 'personalized_qr'], true);
             $bodyText = $caption ?? ($isQrType ? '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.' : '🎤 Mensaje de voz');
+            $bodyText = WhatsAppOutboundText::sanitize($bodyText);
 
             // For local development, Twilio cannot fetch .test URLs; send text only (caption or fallback)
             if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false)
