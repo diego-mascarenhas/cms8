@@ -128,6 +128,22 @@
 <!-- Product List Table -->
 <div class="card">
 	<div class="card-body">
+		<div id="product-table-custom-filters" class="d-none flex-grow-1">
+			<div class="d-flex align-items-center gap-2 flex-nowrap w-100">
+				<select id="filter_store_id" class="form-select form-select-sm" style="width: 170px;">
+					<option value="">{{ __('Sucursales') }}</option>
+					@foreach(($stores ?? collect()) as $store)
+						<option value="{{ $store->id }}">{{ $store->name }}</option>
+					@endforeach
+				</select>
+				<select id="filter_category_id" class="form-select form-select-sm" style="width: 190px;">
+					<option value="">{{ __('Categorías') }}</option>
+					@foreach(($categories ?? collect()) as $category)
+						<option value="{{ $category->id }}">{{ $category->name }}</option>
+					@endforeach
+				</select>
+			</div>
+		</div>
 		{{ $dataTable->table() }}
 	</div>
 </div>
@@ -137,6 +153,33 @@
 @push('scripts')
 {{ $dataTable->scripts() }}
 <script>
+function reloadProductTable() {
+	const table = window.LaravelDataTables?.['product-table'];
+	if (table) {
+		table.ajax.reload();
+	}
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+	const customFilters = $('#product-table-custom-filters');
+	const attachFiltersToSearch = function () {
+		const searchContainer = $('#product-table_filter');
+		if (searchContainer.length && customFilters.length && !searchContainer.find('#filter_store_id').length) {
+			searchContainer.addClass('d-flex align-items-center gap-2 flex-nowrap justify-content-between w-100');
+			searchContainer.prepend(customFilters.removeClass('d-none'));
+			searchContainer.find('label').addClass('mb-0 d-flex align-items-center gap-2 ms-auto');
+			searchContainer.find('label input').addClass('form-control-sm').css('width', '160px');
+		}
+	};
+
+	attachFiltersToSearch();
+	setTimeout(attachFiltersToSearch, 250);
+
+	$('#filter_store_id, #filter_category_id').on('change', function () {
+		reloadProductTable();
+	});
+});
+
 function deleteProduct(productId) {
 	Swal.fire({
 		title: '{{ __('¿Estás seguro?') }}',

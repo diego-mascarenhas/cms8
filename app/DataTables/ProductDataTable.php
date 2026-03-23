@@ -88,7 +88,21 @@ class ProductDataTable extends DataTable
 
     public function query(Product $model): QueryBuilder
     {
-        return $model->newQuery()->with(['category', 'currency', 'store']);
+        $query = $model->newQuery()->with(['category', 'currency', 'store']);
+
+        $storeId = request()->get('store_id');
+        if (is_numeric($storeId) && (int) $storeId > 0)
+        {
+            $query->where('store_id', (int) $storeId);
+        }
+
+        $categoryId = request()->get('category_id');
+        if (is_numeric($categoryId) && (int) $categoryId > 0)
+        {
+            $query->where('category_id', (int) $categoryId);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
@@ -96,15 +110,18 @@ class ProductDataTable extends DataTable
         return $this->builder()
             ->setTableId('product-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.store_id = $('#filter_store_id').val(); data.category_id = $('#filter_category_id').val();",
+            )
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
-                'pageLength' => 60,
-                'paging' => false,
+                'pageLength' => 25,
+                'paging' => true,
             ]);
     }
 

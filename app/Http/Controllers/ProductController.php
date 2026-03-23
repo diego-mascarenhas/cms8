@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\DataTables\ProductDataTable;
 use App\Http\Requests\StoreLocalProductRequest;
 use App\Http\Requests\UpdateLocalProductRequest;
+use App\Models\Category;
 use App\Models\Currency;
+use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\WordPressService;
@@ -41,7 +43,25 @@ class ProductController extends Controller
         $wordpressConfigured = $wordpress->isConfigured();
         $lastSyncedAt = $wordpressConfigured ? $wordpress->getLastSyncedAt() : null;
 
-        return $dataTable->render('product.list', compact('wordpressConfigured', 'lastSyncedAt'));
+        Store::ensureMainStoreForTeam((int) $team->id);
+        $stores = Store::query()
+            ->where('status', true)
+            ->orderByDesc('is_main')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $productsModuleId = (int) (Module::query()->where('key', 'products')->value('id') ?? 0);
+        $categories = collect();
+        if ($productsModuleId > 0)
+        {
+            $categories = Category::query()
+                ->where('team_id', $team->id)
+                ->where('module_id', $productsModuleId)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        return $dataTable->render('product.list', compact('wordpressConfigured', 'lastSyncedAt', 'stores', 'categories'));
     }
 
     /**

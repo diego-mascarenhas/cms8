@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use App\Helpers\PhoneHelper;
 use App\Models\Category;
+use App\Models\Contact;
 use App\Models\Currency;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
@@ -905,6 +907,10 @@ class ImportDataCommand extends Command
             'branches_updated' => 0,
             'products_imported' => 0,
             'products_updated' => 0,
+            'order_contacts_imported' => 0,
+            'order_contacts_updated' => 0,
+            'orders_imported' => 0,
+            'orders_updated' => 0,
             'message' => null,
         ];
 
@@ -3278,6 +3284,14 @@ class ImportDataCommand extends Command
                     $productStats = $this->importStoreProductsForTeam($teamId);
                     $stats['products_imported'] += $productStats['imported'];
                     $stats['products_updated'] += $productStats['updated'];
+
+                    $orderContactsStats = $this->importStoreOrderContactsForTeam($teamId);
+                    $stats['order_contacts_imported'] += $orderContactsStats['imported'];
+                    $stats['order_contacts_updated'] += $orderContactsStats['updated'];
+
+                    $ordersStats = $this->importStoreOrdersForTeam($teamId);
+                    $stats['orders_imported'] += $ordersStats['imported'];
+                    $stats['orders_updated'] += $ordersStats['updated'];
                 }
             } else
             {
@@ -3476,7 +3490,9 @@ class ImportDataCommand extends Command
             return $stats;
         }
 
-        $currencyId = (int) (Currency::query()->where('code', 'USD')->value('id') ?? 840);
+        $currencyId = (int) (Currency::query()->where('code', 'ARS')->value('id')
+            ?? Currency::query()->where('code', 'USD')->value('id')
+            ?? 32);
         $mainStoreId = Store::withoutGlobalScope('team')
             ->where('team_id', $teamId)
             ->where('is_main', true)
@@ -3565,6 +3581,225 @@ class ImportDataCommand extends Command
         }
 
         return $stats;
+    }
+
+    private function importStoreOrderContactsForTeam(int $teamId): array
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $ordersTable = $this->resolveLegacyOrdersTable();
+        if (! $ordersTable)
+        {
+            return $stats;
+        }
+
+        $ordersColumns = Schema::connection('mysql_legacy')->getColumnListing($ordersTable);
+        $selectColumns = ['o.id', 'tc.id_empresa as team_id'];
+        foreach (['email', 'telefono', 'celular', 'nombre', 'apellido', 'id_contacto', 'fecha_alta', 'fecha_modificacion'] as $column)
+        {
+            if (in_array($column, $ordersColumns, true))
+            {
+                $selectColumns[] = 'o.'.$column;
+            }
+        }
+
+        $rows = DB::connection('mysql_legacy')
+            ->table($ordersTable.' as o')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'o.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->select($selectColumns)
+            ->get();
+
+        if ($rows->isEmpty())
+        {
+            return $stats;
+        }
+
+        $defaultResponsibleId = (int) (Team::withoutGlobalScopes()->where('id', $teamId)->value('user_id') ?? 1);
+
+        foreach ($rows as $row)
+        {
+            $email = isset($row->email) ? strtolower(trim((string) $row->email)) : null;
+            $phone = PhoneHelper::clean($row->celular ?? $row->telefono ?? null, '54', true);
+            if (($email === null || $email === '') && ($phone === null || $phone === ''))
+            {
+                continue;
+            }
+
+            $name = $this->normalizeLegacyText((string) ($row->nombre ?? 'Cliente'));
+            $surname = $this->normalizeLegacyText((string) ($row->apellido ?? ''));
+            if ($name === '')
+            {
+                $name = 'Cliente';
+            }
+
+            $contactQuery = Contact::withoutGlobalScopes()->where('team_id', $teamId);
+            if ($email)
+            {
+                $contactQuery->where('email', $email);
+            } else
+            {
+                $contactQuery->where('phone', $phone);
+            }
+
+            $existingContact = $contactQuery->first();
+
+            $payload = [
+                'team_id' => $teamId,
+                'name' => mb_substr($name, 0, 255),
+                'surname' => $surname !== '' ? mb_substr($surname, 0, 255) : null,
+                'email' => $email ?: null,
+                'phone' => $phone ?: null,
+                'source_id' => null,
+                'country' => 32,
+                'language' => 'es',
+                'creator_id' => $defaultResponsibleId,
+                'responsible_id' => $defaultResponsibleId,
+                'status_id' => 5,
+                'data' => json_encode([
+                    'imported_from_store_orders' => true,
+                    'legacy_order_table' => $ordersTable,
+                    'legacy_contact_id' => $row->id_contacto ?? null,
+                ]),
+                'created_at' => $row->fecha_alta ?? now(),
+                'updated_at' => $row->fecha_modificacion ?? now(),
+            ];
+
+            if (! $existingContact)
+            {
+                Contact::withoutGlobalScopes()->create($payload);
+                $stats['imported']++;
+            } else
+            {
+                $merged = $this->mergePreservingLocal($payload, $existingContact, ['name', 'surname', 'email', 'phone', 'responsible_id', 'status_id']);
+                $existingContact->update($merged);
+                $stats['updated']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function importStoreOrdersForTeam(int $teamId): array
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $ordersTable = $this->resolveLegacyOrdersTable();
+        if (! $ordersTable)
+        {
+            return $stats;
+        }
+
+        $ordersColumns = Schema::connection('mysql_legacy')->getColumnListing($ordersTable);
+        $selectColumns = ['o.id', 'tc.id_empresa as team_id'];
+        foreach (['id_contacto', 'email', 'telefono', 'celular', 'total', 'importe_total', 'monto_total', 'observaciones', 'estado', 'fecha_alta', 'fecha_modificacion'] as $column)
+        {
+            if (in_array($column, $ordersColumns, true))
+            {
+                $selectColumns[] = 'o.'.$column;
+            }
+        }
+
+        $rows = DB::connection('mysql_legacy')
+            ->table($ordersTable.' as o')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'o.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->select($selectColumns)
+            ->get();
+
+        if ($rows->isEmpty())
+        {
+            return $stats;
+        }
+
+        $currencyId = (int) (Currency::query()->where('code', 'ARS')->value('id')
+            ?? Currency::query()->where('code', 'USD')->value('id')
+            ?? 32);
+
+        foreach ($rows as $row)
+        {
+            $contactId = null;
+            if (! empty($row->id_contacto))
+            {
+                $contactId = Contact::withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->where('data->legacy_contact_id', (int) $row->id_contacto)
+                    ->value('id');
+            }
+
+            if (! $contactId)
+            {
+                $email = isset($row->email) ? strtolower(trim((string) $row->email)) : null;
+                $phone = PhoneHelper::clean($row->celular ?? $row->telefono ?? null, '54', true);
+                $contactLookup = Contact::withoutGlobalScopes()->where('team_id', $teamId);
+                if ($email)
+                {
+                    $contactLookup->where('email', $email);
+                } elseif ($phone)
+                {
+                    $contactLookup->where('phone', $phone);
+                }
+                $contactId = $contactLookup->value('id');
+            }
+
+            $orderNumber = "LEGACY-TEAM-{$teamId}-ORD-{$row->id}";
+            $total = $row->total ?? $row->importe_total ?? $row->monto_total ?? 0;
+            $totalAmount = is_numeric($total) ? (float) $total : 0.0;
+
+            $payload = [
+                'team_id' => $teamId,
+                'order_number' => $orderNumber,
+                'contact_id' => $contactId ?: null,
+                'total_amount' => $totalAmount,
+                'currency_id' => $currencyId,
+                'payment_status' => 'pending',
+                'delivery_status' => 'processing',
+                'notes' => $row->observaciones ?? null,
+                'metadata' => json_encode([
+                    'imported_from_store_orders' => true,
+                    'legacy_order_table' => $ordersTable,
+                    'legacy_order_id' => $row->id,
+                    'legacy_status' => $row->estado ?? null,
+                ]),
+                'created_at' => $row->fecha_alta ?? now(),
+                'updated_at' => $row->fecha_modificacion ?? now(),
+            ];
+
+            $existingOrder = Order::withoutGlobalScopes()->where('order_number', $orderNumber)->first();
+            if (! $existingOrder)
+            {
+                Order::withoutGlobalScopes()->create($payload);
+                $stats['imported']++;
+            } else
+            {
+                $merged = $this->mergePreservingLocal($payload, $existingOrder, ['contact_id', 'total_amount', 'payment_status', 'delivery_status', 'notes']);
+                $existingOrder->update($merged);
+                $stats['updated']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function resolveLegacyOrdersTable(): ?string
+    {
+        foreach (['tienda_pedidos', 'tienda_ordenes', 'pedidos_tienda'] as $candidate)
+        {
+            if (Schema::connection('mysql_legacy')->hasTable($candidate))
+            {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function normalizeLegacyText(string $value): string
