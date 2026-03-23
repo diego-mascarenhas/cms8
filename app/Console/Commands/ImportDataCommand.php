@@ -6,16 +6,22 @@ use App\Helpers\PhoneHelper;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class ImportDataCommand extends Command
 {
-    protected $signature = 'import:interactive {--auto : Run automatic import of ALL data (categories, payment types, enterprises, payment accounts, services, projects, invoices, payments, users)}';
+    protected $signature = 'import:interactive
+                            {--auto : Run automatic import of ALL data (categories, payment types, enterprises, payment accounts, services, projects, invoices, payments, users, stores)}
+                            {--stores : Import Pedimos Facil stores into teams only}
+                            {--store-id= : Import only one Pedimos Facil store by team ID (id_empresa)}
+                            {--first-store : Import only the first Pedimos Facil store for validation}';
 
     protected $description = 'Interactive menu for importing data from old database';
 
@@ -119,8 +125,9 @@ class ImportDataCommand extends Command
             12 => '12. Notification Types',
             13 => '13. Communications',
             14 => '14. Products (CMS7)',
-            15 => '15. Import All',
-            16 => '16. Exit',
+            15 => '15. Stores (Pedimos Facil -> Teams)',
+            16 => '16. Import All',
+            17 => '17. Exit',
         ]);
     }
 
@@ -307,6 +314,13 @@ class ImportDataCommand extends Command
                 ->where('estado', 1)
                 ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'estado', 'fecha_alta'),
 
+            '15. Stores (Pedimos Facil -> Teams)' => DB::connection('mysql_legacy')
+                ->table('tienda_configuracion as tc')
+                ->join('empresas as e', 'e.id', '=', 'tc.id_empresa')
+                ->where('tc.grupo', 513)
+                ->whereNotNull('tc.id_empresa')
+                ->select('tc.id', 'tc.id_empresa', 'e.empresa as team_name', 'tc.titulo', 'tc.estado'),
+
             default => throw new \Exception('Invalid type selected'),
         };
 
@@ -347,57 +361,146 @@ class ImportDataCommand extends Command
             return 1;
         }
 
+        if ($this->option('stores'))
+        {
+            $this->info('🏬 Running stores-only import mode...');
+            $this->newLine();
+
+            $storeIdOption = $this->option('store-id');
+            if ($storeIdOption !== null && $storeIdOption !== '')
+            {
+                if (! is_numeric($storeIdOption))
+                {
+                    $this->error('Invalid --store-id value. It must be a numeric team ID (id_empresa).');
+
+                    return 1;
+                }
+
+                $storeTeamId = (int) $storeIdOption;
+                $this->info("Importing only store team_id={$storeTeamId}...");
+                $this->processImport('15. Stores (Pedimos Facil -> Teams)', $storeTeamId);
+
+                return 0;
+            }
+
+            if (! $this->input->isInteractive())
+            {
+                $this->info('Non-interactive mode detected. Importing all stores.');
+                $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+
+                return 0;
+            }
+
+            $storeMode = $this->choice(
+                'How do you want to import stores?',
+                [
+                    'All stores',
+                    'One store by team ID (id_empresa)',
+                ],
+                'All stores',
+            );
+
+            if ($storeMode === 'One store by team ID (id_empresa)')
+            {
+                $storeTeamIdInput = $this->ask('Enter team ID (id_empresa)');
+                if (! is_numeric($storeTeamIdInput))
+                {
+                    $this->error('Invalid team ID. It must be numeric.');
+
+                    return 1;
+                }
+
+                $storeTeamId = (int) $storeTeamIdInput;
+                $this->info("Importing only store team_id={$storeTeamId}...");
+                $this->processImport('15. Stores (Pedimos Facil -> Teams)', $storeTeamId);
+            } else
+            {
+                $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+            }
+
+            return 0;
+        }
+
+        if ($this->option('first-store'))
+        {
+            $this->info('🧪 Running first-store validation import mode...');
+            $this->newLine();
+
+            $firstStoreTeamId = DB::connection('mysql_legacy')
+                ->table('tienda_configuracion')
+                ->where('grupo', 513)
+                ->whereNotNull('id_empresa')
+                ->orderBy('id_empresa')
+                ->value('id_empresa');
+
+            if (! $firstStoreTeamId)
+            {
+                $this->warn('No Pedimos Facil stores found for group 513.');
+
+                return 0;
+            }
+
+            $this->info("Importing only first store team_id={$firstStoreTeamId}...");
+            $this->processImport('15. Stores (Pedimos Facil -> Teams)', (int) $firstStoreTeamId);
+
+            return 0;
+        }
+
         if ($this->option('auto'))
         {
             $this->info('🚀 Running in automatic mode: importing ALL data...');
             $this->newLine();
 
             // Import in order to respect foreign key constraints
-            $this->info('📂 Step 1/12: Importing Categories & Service Types...');
+            $this->info('📂 Step 1/13: Importing Categories & Service Types...');
             $this->processImport('2. Categories');
             $this->newLine();
 
-            $this->info('🏢 Step 2/12: Importing Enterprises...');
+            $this->info('🏢 Step 2/13: Importing Enterprises...');
             $this->processImport('5. Enterprises');
             $this->newLine();
 
-            $this->info('📦 Step 3/12: Importing Services...');
+            $this->info('🏬 Step 3/13: Importing Stores (Pedimos Facil -> Teams)...');
+            $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+            $this->newLine();
+
+            $this->info('📦 Step 4/13: Importing Services...');
             $this->processImport('6. Services');
             $this->newLine();
 
-            $this->info('📁 Step 4/12: Importing Projects...');
+            $this->info('📁 Step 5/13: Importing Projects...');
             $this->processImport('7. Projects');
             $this->newLine();
 
-            $this->info('📋 Step 5/12: Importing Billing Addresses...');
+            $this->info('📋 Step 6/13: Importing Billing Addresses...');
             $this->processImport('9. Billing Addresses');
             $this->newLine();
 
-            $this->info('📄 Step 6/12: Importing Invoices...');
+            $this->info('📄 Step 7/13: Importing Invoices...');
             $this->processImport('8. Invoices');
             $this->newLine();
 
-            $this->info('📝 Step 7/12: Importing Invoice Items...');
+            $this->info('📝 Step 8/13: Importing Invoice Items...');
             $this->processImport('10. Invoice Items');
             $this->newLine();
 
-            $this->info('💳 Step 8/12: Importing Payment Accounts...');
+            $this->info('💳 Step 9/13: Importing Payment Accounts...');
             $this->processImport('4. Payment Accounts');
             $this->newLine();
 
-            $this->info('💰 Step 9/12: Importing Payments (linking enterprises & invoices)...');
+            $this->info('💰 Step 10/13: Importing Payments (linking enterprises & invoices)...');
             $this->processImport('11. Payments');
             $this->newLine();
 
-            $this->info('👥 Step 10/12: Importing Users/Contacts...');
+            $this->info('👥 Step 11/13: Importing Users/Contacts...');
             $this->processImport('1. Users');
             $this->newLine();
 
-            $this->info('🔔 Step 11/12: Importing Notification Types...');
+            $this->info('🔔 Step 12/13: Importing Notification Types...');
             $this->processImport('12. Notification Types');
             $this->newLine();
 
-            $this->info('📞 Step 12/12: Importing Notifications...');
+            $this->info('📞 Step 13/13: Importing Notifications...');
             $this->processImport('13. Communications');
             $this->newLine();
 
@@ -410,13 +513,13 @@ class ImportDataCommand extends Command
         {
             $choice = $this->showMainMenu();
 
-            if ($choice === '16. Exit')
+            if ($choice === '17. Exit')
             {
                 $this->info('Goodbye!');
                 break;
             }
 
-            if ($choice === '15. Import All')
+            if ($choice === '16. Import All')
             {
                 if ($this->confirm('Are you sure you want to import ALL data?'))
                 {
@@ -452,6 +555,7 @@ class ImportDataCommand extends Command
                 '12. Notification Types' => $this->importNotificationTypes($id),
                 '13. Communications' => $this->importCommunications($id),
                 '14. Products (CMS7)' => $this->importProductsWithTeam($id),
+                '15. Stores (Pedimos Facil -> Teams)' => $this->importStoresToTeams($id),
                 default => throw new \Exception('Invalid type selected'),
             };
 
@@ -529,7 +633,7 @@ class ImportDataCommand extends Command
             // Obtener o crear la categoría 'Legacy' para el módulo de contactos y el equipo
             $contactsModuleId = DB::table('modules')->where('key', 'contacts')->value('id');
             $teamId = env('CMS_TEAM_ID', 2);
-            
+
             // Buscar la categoría principal "Contactos" para usar como parent
             $mainContactCategory = DB::table('categories')
                 ->where('name', 'Contactos')
@@ -537,7 +641,7 @@ class ImportDataCommand extends Command
                 ->where('team_id', $teamId)
                 ->whereNull('parent_id')
                 ->first();
-            
+
             // Crear o obtener la categoría 'Legacy'
             $legacyCategory = Category::updateOrCreate(
                 [
@@ -549,7 +653,7 @@ class ImportDataCommand extends Command
                     'description' => 'Contactos importados del sistema legacy',
                     'parent_id' => $mainContactCategory?->id,
                     'status' => 1,
-                ]
+                ],
             );
             $importedCategoryId = $legacyCategory->id;
 
@@ -795,6 +899,12 @@ class ImportDataCommand extends Command
         $stats = [
             'imported' => 0,
             'updated' => 0,
+            'categories_imported' => 0,
+            'categories_updated' => 0,
+            'branches_imported' => 0,
+            'branches_updated' => 0,
+            'products_imported' => 0,
+            'products_updated' => 0,
             'message' => null,
         ];
 
@@ -908,6 +1018,10 @@ class ImportDataCommand extends Command
         $stats = [
             'imported' => 0,
             'updated' => 0,
+            'categories_imported' => 0,
+            'categories_updated' => 0,
+            'branches_imported' => 0,
+            'branches_updated' => 0,
             'message' => null,
         ];
 
@@ -1734,7 +1848,7 @@ class ImportDataCommand extends Command
             if ($skippedNoInvoice > 0)
             {
                 $this->warn("   ⚠️  Skipped {$skippedNoInvoice} invoice items because their invoices don't exist");
-                $this->info("   💡 Tip: Make sure invoices are imported before importing invoice items");
+                $this->info('   💡 Tip: Make sure invoices are imported before importing invoice items');
             }
 
             $stats['skipped'] = $skipped;
@@ -2897,56 +3011,559 @@ class ImportDataCommand extends Command
         $this->newLine();
 
         // Import in order to respect foreign key constraints
-        $this->info('📂 Step 1/12: Importing Categories & Service Types...');
+        $this->info('📂 Step 1/13: Importing Categories & Service Types...');
         $this->processImport('2. Categories');
         $this->newLine();
 
-        $this->info('🏢 Step 2/12: Importing Enterprises...');
+        $this->info('🏢 Step 2/13: Importing Enterprises...');
         $this->processImport('5. Enterprises');
         $this->newLine();
 
-        $this->info('📦 Step 3/12: Importing Services...');
+        $this->info('🏬 Step 3/13: Importing Stores (Pedimos Facil -> Teams)...');
+        $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+        $this->newLine();
+
+        $this->info('📦 Step 4/13: Importing Services...');
         $this->processImport('6. Services');
         $this->newLine();
 
-        $this->info('📁 Step 4/12: Importing Projects...');
+        $this->info('📁 Step 5/13: Importing Projects...');
         $this->processImport('7. Projects');
         $this->newLine();
 
-        $this->info('📋 Step 5/12: Importing Billing Addresses...');
+        $this->info('📋 Step 6/13: Importing Billing Addresses...');
         $this->processImport('9. Billing Addresses');
         $this->newLine();
 
-        $this->info('📄 Step 6/12: Importing Invoices...');
+        $this->info('📄 Step 7/13: Importing Invoices...');
         $this->processImport('8. Invoices');
         $this->newLine();
 
-        $this->info('📝 Step 7/12: Importing Invoice Items...');
+        $this->info('📝 Step 8/13: Importing Invoice Items...');
         $this->processImport('10. Invoice Items');
         $this->newLine();
 
-        $this->info('💳 Step 8/12: Importing Payment Accounts...');
+        $this->info('💳 Step 9/13: Importing Payment Accounts...');
         $this->processImport('4. Payment Accounts');
         $this->newLine();
 
-        $this->info('💰 Step 9/12: Importing Payments (linking enterprises & invoices)...');
+        $this->info('💰 Step 10/13: Importing Payments (linking enterprises & invoices)...');
         $this->processImport('11. Payments');
         $this->newLine();
 
-        $this->info('👥 Step 10/12: Importing Users/Contacts...');
+        $this->info('👥 Step 11/13: Importing Users/Contacts...');
         $this->processImport('1. Users');
         $this->newLine();
 
-        $this->info('🔔 Step 11/12: Importing Notification Types...');
+        $this->info('🔔 Step 12/13: Importing Notification Types...');
         $this->processImport('12. Notification Types');
         $this->newLine();
 
-        $this->info('📞 Step 12/12: Importing Notifications...');
+        $this->info('📞 Step 13/13: Importing Notifications...');
         $this->processImport('13. Communications');
         $this->newLine();
 
         $this->info('✅ Full import completed successfully!');
     }
 
-    // Add other import methods...
+    /**
+     * Import Pedimos Facil stores from legacy into teams.
+     * Mapping:
+     * - teams.id = tienda_configuracion.id_empresa
+     * - teams.name = empresas.empresa
+     */
+    protected function importStoresToTeams($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'categories_imported' => 0,
+            'categories_updated' => 0,
+            'branches_imported' => 0,
+            'branches_updated' => 0,
+            'products_imported' => 0,
+            'products_updated' => 0,
+            'message' => null,
+        ];
+
+        try
+        {
+            $query = DB::connection('mysql_legacy')
+                ->table('tienda_configuracion as tc')
+                ->join('empresas as e', 'e.id', '=', 'tc.id_empresa')
+                ->where('tc.grupo', 513)
+                ->whereNotNull('tc.id_empresa')
+                ->orderBy('tc.id_empresa')
+                ->select(
+                    'tc.id_empresa',
+                    DB::raw('CONVERT(CAST(CONVERT(e.empresa USING latin1) AS BINARY) USING utf8mb4) as empresa'),
+                );
+
+            if ($id)
+            {
+                $query->where('tc.id_empresa', $id);
+            }
+
+            $stores = $query->distinct()->get();
+
+            if ($stores->isEmpty())
+            {
+                $stats['message'] = 'No Pedimos Facil stores found to import.';
+
+                return $stats;
+            }
+
+            $this->info("Found {$stores->count()} stores to import into teams");
+            $bar = $this->output->createProgressBar($stores->count());
+            $bar->start();
+            $teamIds = [];
+
+            foreach ($stores as $store)
+            {
+                $normalizedTeamName = $this->normalizeLegacyText((string) $store->empresa);
+                $teamName = trim($normalizedTeamName) !== '' ? $normalizedTeamName : "Team {$store->id_empresa}";
+                $adminContact = DB::connection('mysql_legacy')
+                    ->table('contactos')
+                    ->where('grupo', 513)
+                    ->where('id_empresa', $store->id_empresa)
+                    ->whereIn('area_privada', [2, 3, 4])
+                    ->orderByRaw('FIELD(area_privada, 2, 3, 4)')
+                    ->orderByDesc('id')
+                    ->select('id', 'nombre', 'apellido', 'email', 'telefono', 'celular', 'fecha_alta', 'fecha_modificacion')
+                    ->first();
+
+                $teamOwnerId = null;
+                if ($adminContact)
+                {
+                    $fullName = trim(((string) $adminContact->nombre).' '.((string) ($adminContact->apellido ?? '')));
+                    $name = $fullName !== '' ? $this->normalizeLegacyText($fullName) : 'Legacy User '.$adminContact->id;
+                    $email = ! empty($adminContact->email)
+                        ? strtolower(trim((string) $adminContact->email))
+                        : "legacy-user-{$adminContact->id}@example.local";
+                    $cleanPhone = PhoneHelper::clean($adminContact->celular ?? $adminContact->telefono ?? null, '54', true);
+
+                    $userById = User::withTrashed()->find($adminContact->id);
+                    $userByEmail = User::withTrashed()->where('email', $email)->first();
+
+                    if ($userById)
+                    {
+                        $userById->forceFill([
+                            'name' => $name,
+                            'email' => $email,
+                            'phone' => $cleanPhone ?: null,
+                            'password' => $userById->password ?: Hash::make('Simplicity!'),
+                            'email_verified_at' => $userById->email_verified_at ?? now(),
+                            'created_at' => $userById->created_at ?? ($adminContact->fecha_alta ?? now()),
+                            'updated_at' => $adminContact->fecha_modificacion ?? now(),
+                            'deleted_at' => null,
+                        ])->save();
+
+                        $teamOwnerId = $userById->id;
+                    } elseif ($userByEmail)
+                    {
+                        $teamOwnerId = $userByEmail->id;
+                    } else
+                    {
+                        DB::table('users')->insert([
+                            'id' => $adminContact->id,
+                            'name' => $name,
+                            'email' => $email,
+                            'phone' => $cleanPhone ?: null,
+                            'password' => Hash::make('Simplicity!'),
+                            'email_verified_at' => now(),
+                            'remember_token' => null,
+                            'current_team_id' => null,
+                            'profile_photo_path' => null,
+                            'subscribed' => true,
+                            'created_at' => $adminContact->fecha_alta ?? now(),
+                            'updated_at' => $adminContact->fecha_modificacion ?? now(),
+                            'deleted_at' => null,
+                        ]);
+
+                        $teamOwnerId = (int) $adminContact->id;
+                    }
+                }
+
+                if (! $teamOwnerId)
+                {
+                    $teamOwnerId = (int) (User::query()->orderBy('id')->value('id') ?? 1);
+                }
+
+                $existingTeam = Team::withoutGlobalScopes()->find($store->id_empresa);
+
+                if ($existingTeam)
+                {
+                    DB::table('teams')
+                        ->where('id', $store->id_empresa)
+                        ->update([
+                            'user_id' => $teamOwnerId,
+                            'name' => $teamName,
+                            'updated_at' => now(),
+                        ]);
+                    $stats['updated']++;
+                } else
+                {
+                    DB::table('teams')->insert([
+                        'id' => $store->id_empresa,
+                        'user_id' => $teamOwnerId,
+                        'name' => $teamName,
+                        'personal_team' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $stats['imported']++;
+                }
+
+                DB::table('team_user')->updateOrInsert(
+                    [
+                        'team_id' => $store->id_empresa,
+                        'user_id' => $teamOwnerId,
+                    ],
+                    [
+                        'role' => 'admin',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                );
+
+                DB::table('users')
+                    ->where('id', $teamOwnerId)
+                    ->whereNull('current_team_id')
+                    ->update(['current_team_id' => $store->id_empresa]);
+
+                $teamIds[] = (int) $store->id_empresa;
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+
+            $productsModuleId = (int) DB::table('modules')->where('key', 'products')->value('id');
+            if ($productsModuleId > 0)
+            {
+                $teamIds = array_values(array_unique($teamIds));
+                foreach ($teamIds as $teamId)
+                {
+                    $categoryStats = $this->importStoreProductCategoriesForTeam($teamId, $productsModuleId);
+                    $stats['categories_imported'] += $categoryStats['imported'];
+                    $stats['categories_updated'] += $categoryStats['updated'];
+
+                    $branchStats = $this->importStoreBranchesForTeam($teamId);
+                    $stats['branches_imported'] += $branchStats['imported'];
+                    $stats['branches_updated'] += $branchStats['updated'];
+
+                    $productStats = $this->importStoreProductsForTeam($teamId);
+                    $stats['products_imported'] += $productStats['imported'];
+                    $stats['products_updated'] += $productStats['updated'];
+                }
+            } else
+            {
+                $this->warn('Products module not found. Store categories were not imported.');
+            }
+        } catch (\Exception $e)
+        {
+            throw new \Exception('Error importing Pedimos Facil stores to teams: '.$e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    private function importStoreProductCategoriesForTeam(int $teamId, int $productsModuleId): array
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $categories = DB::connection('mysql_legacy')
+            ->table('tienda_productos_categorias as tpc')
+            ->leftJoin('tienda_configuracion as tc_store', 'tc_store.id', '=', 'tpc.id_tienda')
+            ->leftJoin('tienda_configuracion as tc_team', 'tc_team.id_empresa', '=', 'tpc.id_tienda')
+            ->select(
+                'tpc.id',
+                'tpc.id_tienda',
+                'tpc.categoria',
+                'tpc.uri',
+                'tpc.observaciones',
+                'tpc.imagen',
+                'tpc.orden',
+                'tpc.estado',
+                DB::raw('COALESCE(tc_store.id_empresa, tc_team.id_empresa, tpc.id_tienda) as resolved_team_id'),
+            )
+            ->whereRaw('COALESCE(tc_store.id_empresa, tc_team.id_empresa, tpc.id_tienda) = ?', [$teamId])
+            ->get();
+
+        foreach ($categories as $legacyCategory)
+        {
+            $name = $this->normalizeLegacyText((string) ($legacyCategory->categoria ?? ''));
+            if ($name === '')
+            {
+                continue;
+            }
+
+            $existingCategory = Category::query()
+                ->where('team_id', $teamId)
+                ->where('module_id', $productsModuleId)
+                ->whereNull('parent_id')
+                ->where('name', $name)
+                ->first();
+
+            $categoryData = [
+                'name' => $name,
+                'module_id' => $productsModuleId,
+                'team_id' => $teamId,
+                'description' => $legacyCategory->observaciones ?: null,
+                'data' => [
+                    'legacy_store_category_id' => $legacyCategory->id,
+                    'legacy_store_id' => $legacyCategory->id_tienda,
+                    'uri' => $legacyCategory->uri,
+                    'image' => $legacyCategory->imagen,
+                    'imported_from_pedimos_facil' => true,
+                ],
+                'parent_id' => null,
+                'order' => (int) ($legacyCategory->orden ?? 0),
+                'status' => (int) ($legacyCategory->estado ?? 0) > 0,
+            ];
+
+            if (! $existingCategory)
+            {
+                Category::query()->create($categoryData);
+                $stats['imported']++;
+            } else
+            {
+                $mergedData = $this->mergePreservingLocal(
+                    $categoryData,
+                    $existingCategory,
+                    ['name', 'order', 'status'],
+                );
+                $existingCategory->update($mergedData);
+                $stats['updated']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function importStoreBranchesForTeam(int $teamId): array
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $branches = DB::connection('mysql_legacy')
+            ->table('tienda_sucursales as ts')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->select(
+                'ts.id',
+                'ts.titulo',
+                'ts.domicilio',
+                'ts.numero',
+                'ts.localidad',
+                'ts.provincia',
+                'ts.estado',
+                'ts.orden',
+            )
+            ->orderBy('ts.orden')
+            ->orderBy('ts.id')
+            ->get();
+
+        $mainLegacyBranchId = (int) ($branches->first()->id ?? 0);
+
+        foreach ($branches as $branch)
+        {
+            $storeCode = 'LEGACY-SUC-'.$branch->id;
+            $name = $this->normalizeLegacyText((string) ($branch->titulo ?? ''));
+            if ($name === '')
+            {
+                $name = 'Sucursal '.$branch->id;
+            }
+
+            $addressParts = [
+                $this->normalizeLegacyText((string) ($branch->domicilio ?? '')),
+                $this->normalizeLegacyText((string) ($branch->numero ?? '')),
+                $this->normalizeLegacyText((string) ($branch->localidad ?? '')),
+                $this->normalizeLegacyText((string) ($branch->provincia ?? '')),
+            ];
+            $address = trim(implode(', ', array_values(array_filter($addressParts, fn ($part) => $part !== ''))));
+            $address = $address !== '' ? mb_substr($address, 0, 255) : null;
+
+            $existingStore = Store::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('code', $storeCode)
+                ->first();
+
+            $storePayload = [
+                'team_id' => $teamId,
+                'name' => mb_substr($name, 0, 255),
+                'code' => $storeCode,
+                'address' => $address,
+                'status' => (int) ($branch->estado ?? 0) > 0,
+                'is_main' => $mainLegacyBranchId > 0 && (int) $branch->id === $mainLegacyBranchId,
+            ];
+
+            if (! $existingStore)
+            {
+                Store::withoutGlobalScope('team')->create($storePayload);
+                $stats['imported']++;
+            } else
+            {
+                $existingStore->update($storePayload);
+                $stats['updated']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function importStoreProductsForTeam(int $teamId): array
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        if (! Schema::connection('mysql_legacy')->hasTable('tienda_productos'))
+        {
+            return $stats;
+        }
+
+        $columns = Schema::connection('mysql_legacy')->getColumnListing('tienda_productos');
+        $selectColumns = ['tp.id', 'tp.id_tienda'];
+        foreach (['id_categoria', 'id_sucursal', 'titulo', 'nombre', 'producto', 'descripcion', 'contenido1', 'valor', 'precio', 'estado', 'orden', 'imagen', 'foto', 'fecha_alta', 'fecha_modificacion'] as $column)
+        {
+            if (in_array($column, $columns, true))
+            {
+                $selectColumns[] = 'tp.'.$column;
+            }
+        }
+
+        $products = DB::connection('mysql_legacy')
+            ->table('tienda_productos as tp')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'tp.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->select($selectColumns)
+            ->get();
+
+        if ($products->isEmpty())
+        {
+            return $stats;
+        }
+
+        $currencyId = (int) (Currency::query()->where('code', 'USD')->value('id') ?? 840);
+        $mainStoreId = Store::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('is_main', true)
+            ->value('id');
+
+        foreach ($products as $legacyProduct)
+        {
+            $legacyName = $legacyProduct->titulo ?? $legacyProduct->nombre ?? $legacyProduct->producto ?? null;
+            $name = $this->normalizeLegacyText((string) ($legacyName ?? ''));
+            if ($name === '')
+            {
+                $name = 'Producto '.$legacyProduct->id;
+            }
+
+            $categoryId = null;
+            if (isset($legacyProduct->id_categoria))
+            {
+                $categoryId = Category::query()
+                    ->where('team_id', $teamId)
+                    ->where('module_id', DB::table('modules')->where('key', 'products')->value('id'))
+                    ->where('data->legacy_store_category_id', (int) $legacyProduct->id_categoria)
+                    ->value('id');
+            }
+            if (! $categoryId)
+            {
+                $categoryId = Category::query()
+                    ->where('team_id', $teamId)
+                    ->where('module_id', DB::table('modules')->where('key', 'products')->value('id'))
+                    ->orderBy('id')
+                    ->value('id');
+            }
+            if (! $categoryId)
+            {
+                continue;
+            }
+
+            $storeId = $mainStoreId;
+            if (isset($legacyProduct->id_sucursal))
+            {
+                $storeId = Store::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('code', 'LEGACY-SUC-'.(int) $legacyProduct->id_sucursal)
+                    ->value('id') ?: $mainStoreId;
+            }
+
+            $priceValue = $legacyProduct->valor ?? $legacyProduct->precio ?? 0;
+            $price = is_numeric($priceValue) ? (float) $priceValue : 0.0;
+            $description = $this->normalizeLegacyText((string) ($legacyProduct->descripcion ?? $legacyProduct->contenido1 ?? ''));
+            if ($description === '')
+            {
+                $description = $name;
+            }
+
+            $payload = [
+                'team_id' => $teamId,
+                'name' => mb_substr($name, 0, 255),
+                'code' => 'LEGACY-PROD-'.$legacyProduct->id,
+                'description' => $description,
+                'short_description' => mb_substr($description, 0, 300),
+                'price' => $price,
+                'currency_id' => $currencyId,
+                'category_id' => $categoryId,
+                'store_id' => $storeId,
+                'status' => ((int) ($legacyProduct->estado ?? 0)) > 0,
+                'whatsapp_enabled' => true,
+                'image' => $legacyProduct->imagen ?? $legacyProduct->foto ?? null,
+                'created_at' => $legacyProduct->fecha_alta ?? now(),
+                'updated_at' => $legacyProduct->fecha_modificacion ?? now(),
+            ];
+
+            $existing = Product::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('code', 'LEGACY-PROD-'.$legacyProduct->id)
+                ->first();
+
+            if (! $existing)
+            {
+                Product::withoutGlobalScope('team')->create($payload);
+                $stats['imported']++;
+            } else
+            {
+                $merged = $this->mergePreservingLocal($payload, $existing, ['name', 'price', 'category_id', 'store_id', 'status', 'image']);
+                $existing->update($merged);
+                $stats['updated']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function normalizeLegacyText(string $value): string
+    {
+        $value = trim($value);
+
+        if ($value === '')
+        {
+            return $value;
+        }
+
+        if (! mb_check_encoding($value, 'UTF-8'))
+        {
+            return mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1');
+        }
+
+        // Fix common mojibake patterns like "TucumÃ¡n".
+        if (str_contains($value, 'Ã') || str_contains($value, 'Â'))
+        {
+            return mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1');
+        }
+
+        return $value;
+    }
 }
