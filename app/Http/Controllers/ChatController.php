@@ -725,11 +725,6 @@ class ChatController extends Controller
         $on = $request->boolean('on');
         $this->setChatAiToggleDefaultForUser($targetUserId, $on);
 
-        if (auth()->user()->currentTeam)
-        {
-            auth()->user()->currentTeam->setSetting('assistant_auto_respond', $on ? '1' : '0');
-        }
-
         return response()->json(['success' => true]);
     }
 
