@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Gate;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -36,9 +37,12 @@ class OrderDataTable extends DataTable
             {
                 if ($row->contact)
                 {
-                    $name = e($row->contact->name);
-                    $email = e($row->contact->email);
-                    $avatar = \App\Helpers\AvatarHelper::generate($name, 32);
+                    $contact = $row->contact;
+                    $name = e($contact->name);
+                    $avatar = \App\Helpers\AvatarHelper::generate($contact->name, 32);
+                    $nameHtml = Gate::allows('view', $contact)
+                        ? '<a href="'.route('contact.show', $contact->id).'" class="fw-medium text-primary">'.$name.'</a>'
+                        : '<span class="fw-medium">'.$name.'</span>';
 
                     return '<div class="d-flex justify-content-start align-items-center">
                                 <div class="avatar-wrapper">
@@ -46,9 +50,8 @@ class OrderDataTable extends DataTable
                                         <img src="'.$avatar.'" alt="'.$name.'" class="rounded-circle">
                                     </div>
                                 </div>
-                                <div class="d-flex flex-column">
-                                    <span class="fw-medium">'.$name.'</span>
-                                    <small class="text-muted">'.$email.'</small>
+                                <div class="d-flex flex-column justify-content-center">
+                                    '.$nameHtml.'
                                 </div>
                             </div>';
                 }

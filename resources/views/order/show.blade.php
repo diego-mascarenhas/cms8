@@ -100,6 +100,17 @@
 								{{ $order->delivery_status_label }}
 							</span>
 						</li>
+						@if($order->legacy_estado_label)
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Estado legacy (CMS)') }}:</span>
+							<span class="badge {{ $order->legacy_estado_badge }}">
+								{{ $order->legacy_estado_label }}
+								@if($order->legacy_estado_code !== null)
+									<span class="opacity-75">({{ $order->legacy_estado_code }})</span>
+								@endif
+							</span>
+						</li>
+						@endif
 						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Total') }}:</span>
 							<span>{{ $order->currency ? $order->currency->symbol : '$' }}{{ number_format($order->total_amount, 2) }}</span>

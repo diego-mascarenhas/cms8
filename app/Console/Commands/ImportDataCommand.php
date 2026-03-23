@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Helpers\LegacyOrderNumberHelper;
+use App\Helpers\LegacyTiendaPedidoEstadoHelper;
 use App\Helpers\PhoneHelper;
 use App\Models\Category;
 use App\Models\Contact;
@@ -3089,6 +3091,10 @@ class ImportDataCommand extends Command
             'branches_updated' => 0,
             'products_imported' => 0,
             'products_updated' => 0,
+            'order_contacts_imported' => 0,
+            'order_contacts_updated' => 0,
+            'orders_imported' => 0,
+            'orders_updated' => 0,
             'message' => null,
         ];
 
@@ -3493,6 +3499,12 @@ class ImportDataCommand extends Command
         $currencyId = (int) (Currency::query()->where('code', 'ARS')->value('id')
             ?? Currency::query()->where('code', 'USD')->value('id')
             ?? 32);
+
+        // Normalize previously imported legacy products to ARS for this team.
+        Product::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('code', 'like', 'LEGACY-PROD-%')
+            ->update(['currency_id' => $currencyId]);
         $mainStoreId = Store::withoutGlobalScope('team')
             ->where('team_id', $teamId)
             ->where('is_main', true)
@@ -3574,7 +3586,7 @@ class ImportDataCommand extends Command
                 $stats['imported']++;
             } else
             {
-                $merged = $this->mergePreservingLocal($payload, $existing, ['name', 'price', 'category_id', 'store_id', 'status', 'image']);
+                $merged = $this->mergePreservingLocal($payload, $existing, ['name', 'price', 'currency_id', 'category_id', 'store_id', 'status', 'image']);
                 $existing->update($merged);
                 $stats['updated']++;
             }
@@ -3750,9 +3762,23 @@ class ImportDataCommand extends Command
                 $contactId = $contactLookup->value('id');
             }
 
-            $orderNumber = "LEGACY-TEAM-{$teamId}-ORD-{$row->id}";
+            $legacyOrderId = (int) $row->id;
+            $orderNumber = LegacyOrderNumberHelper::fromLegacyPedidoId($teamId, $legacyOrderId);
+            $legacyStyleOrderNumber = "LEGACY-TEAM-{$teamId}-ORD-{$legacyOrderId}";
             $total = $row->total ?? $row->importe_total ?? $row->monto_total ?? 0;
             $totalAmount = is_numeric($total) ? (float) $total : 0.0;
+
+            $legacyEstado = $row->estado ?? null;
+            $statuses = LegacyTiendaPedidoEstadoHelper::toHumanoOrderStatuses($legacyEstado);
+
+            $metadata = [
+                'imported_from_store_orders' => true,
+                'legacy_order_table' => $ordersTable,
+                'legacy_order_id' => $legacyOrderId,
+                'legacy_estado' => $legacyEstado !== null && $legacyEstado !== '' ? (int) $legacyEstado : null,
+                'legacy_estado_label' => LegacyTiendaPedidoEstadoHelper::legacyLabel($legacyEstado),
+                'legacy_status' => $legacyEstado,
+            ];
 
             $payload = [
                 'team_id' => $teamId,
@@ -3760,27 +3786,30 @@ class ImportDataCommand extends Command
                 'contact_id' => $contactId ?: null,
                 'total_amount' => $totalAmount,
                 'currency_id' => $currencyId,
-                'payment_status' => 'pending',
-                'delivery_status' => 'processing',
+                'payment_status' => $statuses['payment_status'],
+                'delivery_status' => $statuses['delivery_status'],
                 'notes' => $row->observaciones ?? null,
-                'metadata' => json_encode([
-                    'imported_from_store_orders' => true,
-                    'legacy_order_table' => $ordersTable,
-                    'legacy_order_id' => $row->id,
-                    'legacy_status' => $row->estado ?? null,
-                ]),
+                'metadata' => $metadata,
                 'created_at' => $row->fecha_alta ?? now(),
                 'updated_at' => $row->fecha_modificacion ?? now(),
             ];
 
-            $existingOrder = Order::withoutGlobalScopes()->where('order_number', $orderNumber)->first();
+            $existingOrder = Order::withoutGlobalScopes()
+                ->where('team_id', $teamId)
+                ->where(function ($query) use ($legacyOrderId, $legacyStyleOrderNumber)
+                {
+                    $query->where('metadata->legacy_order_id', $legacyOrderId)
+                        ->orWhere('order_number', $legacyStyleOrderNumber);
+                })
+                ->first();
+
             if (! $existingOrder)
             {
                 Order::withoutGlobalScopes()->create($payload);
                 $stats['imported']++;
             } else
             {
-                $merged = $this->mergePreservingLocal($payload, $existingOrder, ['contact_id', 'total_amount', 'payment_status', 'delivery_status', 'notes']);
+                $merged = $this->mergePreservingLocal($payload, $existingOrder, ['contact_id', 'total_amount', 'payment_status', 'delivery_status', 'notes', 'order_number', 'metadata']);
                 $existingOrder->update($merged);
                 $stats['updated']++;
             }

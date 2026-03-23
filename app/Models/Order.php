@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\LegacyTiendaPedidoEstadoHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -124,6 +125,62 @@ class Order extends Model
             'out_for_delivery' => __('En camino'),
             'cancelled' => __('Cancelado'),
             default => __('Procesando'),
+        };
+    }
+
+    /**
+     * Legacy `tienda_pedidos.estado` code from import metadata (cms7), if present.
+     */
+    public function getLegacyEstadoCodeAttribute(): ?int
+    {
+        $meta = $this->metadata ?? [];
+        if (array_key_exists('legacy_estado', $meta) && $meta['legacy_estado'] !== null && $meta['legacy_estado'] !== '')
+        {
+            return (int) $meta['legacy_estado'];
+        }
+        if (array_key_exists('legacy_status', $meta) && $meta['legacy_status'] !== null && $meta['legacy_status'] !== '')
+        {
+            return (int) $meta['legacy_status'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Human-readable legacy status label (cms7 Tienda_model), for audit display.
+     */
+    public function getLegacyEstadoLabelAttribute(): ?string
+    {
+        $meta = $this->metadata ?? [];
+        if (! empty($meta['legacy_estado_label']))
+        {
+            return (string) $meta['legacy_estado_label'];
+        }
+
+        $code = $this->legacy_estado_code;
+
+        return $code !== null ? LegacyTiendaPedidoEstadoHelper::legacyLabel($code) : null;
+    }
+
+    /**
+     * Badge class for legacy estado (Vuexy / Tabler label style).
+     */
+    public function getLegacyEstadoBadgeAttribute(): string
+    {
+        $code = $this->legacy_estado_code;
+        if ($code === null)
+        {
+            return 'bg-label-secondary';
+        }
+
+        return match ($code)
+        {
+            4, 10 => 'bg-label-danger',
+            7 => 'bg-label-success',
+            6 => 'bg-label-primary',
+            5, 9, 11 => 'bg-label-success',
+            1, 2, 3, 8 => 'bg-label-warning',
+            default => 'bg-label-secondary',
         };
     }
 }

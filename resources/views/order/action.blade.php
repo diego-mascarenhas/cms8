@@ -5,6 +5,12 @@
 			<i class="ti ti-eye ti-sm me-2"></i>
 		</a>
 	@endcan
+
+	@if ($order->contact && $order->contact->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical'])))
+		<a href="{{ $order->contact->chatIndexUrl() }}" class="text-body" title="{{ __('Chat') }}">
+			<i class="ti ti-message-chatbot ti-sm me-2"></i>
+		</a>
+	@endif
 	
 	@can('order.edit')
 		<a href="{{ route('order.edit', $order->id) }}" class="text-body">
