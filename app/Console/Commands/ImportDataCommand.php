@@ -3151,7 +3151,7 @@ class ImportDataCommand extends Command
                             'name' => $name,
                             'email' => $email,
                             'phone' => $cleanPhone ?: null,
-                            'password' => $userById->password ?: Hash::make('Simplicity!'),
+                            'password' => Hash::make('Simplicity!'),
                             'email_verified_at' => $userById->email_verified_at ?? now(),
                             'created_at' => $userById->created_at ?? ($adminContact->fecha_alta ?? now()),
                             'updated_at' => $adminContact->fecha_modificacion ?? now(),
@@ -3161,6 +3161,13 @@ class ImportDataCommand extends Command
                         $teamOwnerId = $userById->id;
                     } elseif ($userByEmail)
                     {
+                        $userByEmail->forceFill([
+                            'name' => $name,
+                            'phone' => $cleanPhone ?: null,
+                            'password' => Hash::make('Simplicity!'),
+                            'updated_at' => $adminContact->fecha_modificacion ?? now(),
+                            'deleted_at' => null,
+                        ])->save();
                         $teamOwnerId = $userByEmail->id;
                     } else
                     {
@@ -3214,6 +3221,16 @@ class ImportDataCommand extends Command
                     $stats['imported']++;
                 }
 
+                $teamModel = Team::withoutGlobalScopes()->find($store->id_empresa);
+                if ($teamModel)
+                {
+                    foreach (['contacts', 'stores', 'products', 'orders', 'prompts', 'chat'] as $moduleKey)
+                    {
+                        $teamModel->enableModule($moduleKey);
+                    }
+                    $teamModel->disableModule('mailbox');
+                }
+
                 DB::table('team_user')->updateOrInsert(
                     [
                         'team_id' => $store->id_empresa,
@@ -3225,6 +3242,12 @@ class ImportDataCommand extends Command
                         'updated_at' => now(),
                     ],
                 );
+
+                $ownerUser = User::withTrashed()->find($teamOwnerId);
+                if ($ownerUser && DB::table('roles')->where('name', 'admin')->exists() && ! $ownerUser->hasRole('admin'))
+                {
+                    $ownerUser->assignRole('admin');
+                }
 
                 DB::table('users')
                     ->where('id', $teamOwnerId)

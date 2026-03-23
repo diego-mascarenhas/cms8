@@ -340,26 +340,10 @@
                             </div>
                             <div class="dropdown-shortcuts-item col">
                                 <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-files fs-4"></i>
-                                </span>
-                                <a href="{{ url('documentation/list') }}" class="stretched-link">{{ __('Documentación') }}</a>
-                                <small class="text-muted mb-0">{{ __('Documentos') }}</small>
-                            </div>
-                        </div>
-                        <div class="row row-bordered overflow-visible g-0">
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                                     <i class="ti ti-target fs-4"></i>
                                 </span>
                                 <a href="{{ route('prospect.search') }}" class="stretched-link">{{ __('Buscar clientes') }}</a>
                                 <small class="text-muted mb-0">{{ __('Prospección') }}</small>
-                            </div>
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-hourglass-low fs-4"></i>
-                                </span>
-                                <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Tiempos') }}</a>
-                                <small class="text-muted mb-0">{{ __('Registro de tiempos') }}</small>
                             </div>
                         </div>
 
@@ -437,11 +421,13 @@
         <!--/ Notification -->
 
         <!-- Mail -->
-        <li class="nav-item me-3 me-xl-1">
-            <a class="nav-link" href="{{ route('mail-list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mail') }}">
-                <i class="ti ti-mail ti-md"></i>
-            </a>
-        </li>
+        @if(auth()->user()->currentTeam?->hasModule('mailbox'))
+            <li class="nav-item me-3 me-xl-1">
+                <a class="nav-link" href="{{ route('mail-list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mail') }}">
+                    <i class="ti ti-mail ti-md"></i>
+                </a>
+            </li>
+        @endif
         <!--/ Mail -->
 
         {{-- Tickets (after Mailbox, before Chat) --}}
