@@ -280,7 +280,6 @@ async function makeSocket(teamId) {
   });
 
   socket.ev.on('messages.upsert', async ({ messages }) => {
-    if (session.connectionStatus !== 'connected') return;
     for (const msg of messages) {
       if (msg.key.fromMe) continue;
       const contentType = getContentType(msg.message);
@@ -585,8 +584,41 @@ if (!fs.existsSync(AUTH_BASE)) {
   fs.mkdirSync(AUTH_BASE, { recursive: true });
 }
 
+function restoreSessionsFromDisk() {
+  let dirs = [];
+  try {
+    dirs = fs.readdirSync(AUTH_BASE, { withFileTypes: true });
+  } catch (e) {
+    console.error('Could not read auth directory:', e.message);
+    return;
+  }
+
+  for (const entry of dirs) {
+    if (!entry.isDirectory()) continue;
+    const match = /^team_(.+)$/.exec(entry.name);
+    if (!match) continue;
+
+    const teamId = String(match[1] || '').trim();
+    if (!teamId) continue;
+
+    const teamAuthDir = path.join(AUTH_BASE, entry.name);
+    let hasCreds = false;
+    try {
+      hasCreds = fs.readdirSync(teamAuthDir).length > 0;
+    } catch (_) {
+      hasCreds = false;
+    }
+    if (!hasCreds) continue;
+
+    makeSocket(teamId)
+      .then(() => console.log(`Restored WhatsApp session for team ${teamId}`))
+      .catch((e) => console.error(`Failed to restore team ${teamId}:`, e.message));
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`WhatsApp service (multi-tenant) listening on http://localhost:${PORT}`);
   console.log(`Use ?team_id=<id> for /status, /qr, /qr.png, /refresh and body team_id for /send-message`);
   console.log(`Laravel webhook: ${LARAVEL_WEBHOOK_URL}`);
+  restoreSessionsFromDisk();
 });
