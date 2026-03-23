@@ -14,6 +14,8 @@ use App\Models\Country;
 use App\Models\MessageDelivery;
 use App\Models\Source;
 use App\Services\AstralChartService;
+use App\Support\CollectionMessagingGuide;
+use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -364,6 +366,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -379,6 +382,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,  // 'open' or 'uncollectible'
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -394,6 +398,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,  // 'void'
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -418,6 +423,14 @@ class ContactController extends Controller
 
                 // Metrics across all invoices
                 $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
+                $contactCountryCode = $data->country ? strtolower((string) $data->country->code) : null;
+                $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
+                    $paidInvoices->data,
+                    $openInvoices->data,
+                    $uncollectibleInvoices->data,
+                    'EUR',
+                    $contactCountryCode,
+                );
                 if (! empty($allInvoicesForMetrics))
                 {
                     foreach ($allInvoicesForMetrics as $invoice)
@@ -456,7 +469,17 @@ class ContactController extends Controller
                         'ltv' => number_format($ltv, 2),
                         'cac' => number_format($cac, 2),
                         'lifetime_months' => $lifetimeMonths,
+                        'currency' => $metricsCurrency,
                     ];
+                }
+
+                if (! empty($stripeData['unpaid_invoices']))
+                {
+                    $stripeData['collection_guide'] = CollectionMessagingGuide::build(
+                        $data,
+                        $stripeData,
+                        auth()->user()->currentTeam?->id,
+                    );
                 }
             } catch (\Exception $e)
             {

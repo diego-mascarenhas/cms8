@@ -71,7 +71,7 @@ class ChatSimulateCommand extends Command
             $simPhone = $phone !== null && $phone !== ''
                 ? preg_replace('/[^0-9]/', '', (string) $phone)
                 : null;
-            $reply = $replyService->getReply($message, $history, $teamId, $withTools, $user->id, $simPhone !== '' ? $simPhone : null);
+            $reply = $replyService->getReply($message, $history, $teamId, $withTools, $user->id, $simPhone !== '' ? $simPhone : null, null, null);
 
             if (! $reply['success'])
             {

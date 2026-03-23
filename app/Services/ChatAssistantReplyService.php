@@ -20,6 +20,7 @@ class ChatAssistantReplyService
         protected AssistantToolsService $assistantTools,
         protected AssistantToolIntentPromptService $toolIntentPrompts,
         protected AgentConversationContextService $agentConversationContext,
+        protected CollectionAssistantContextService $collectionAssistantContext,
     ) {}
 
     /**
@@ -27,6 +28,7 @@ class ChatAssistantReplyService
      * When stub mode is enabled (config or team), returns a canned response for testing.
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
+     * When $contactId is set and the flow is invoices:collections, CRM + Stripe invoice context is appended for that contact.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -38,7 +40,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null): array
     {
         if ($this->useStub($teamId))
         {
@@ -94,6 +96,21 @@ class ChatAssistantReplyService
                     if ($flowPrompt->section_key === 'wapify_me')
                     {
                         $instructions .= $this->wapifyFlowContextAppendix($history);
+                    }
+                }
+                if ($flowPrompt && $contactId !== null && $contactId > 0 && $teamId !== null)
+                {
+                    $flowPrompt->loadMissing('module');
+                    $routingKey = $flowPrompt->module
+                        ? $flowPrompt->module->key.':'.$flowPrompt->section_key
+                        : $flowPrompt->section_key;
+                    if ($routingKey === 'invoices:collections')
+                    {
+                        $collectionsContext = $this->collectionAssistantContext->buildMarkdownForContact($contactId, $teamId);
+                        if ($collectionsContext !== '')
+                        {
+                            $instructions .= "\n\n---\n\n".$collectionsContext;
+                        }
                     }
                 }
             }

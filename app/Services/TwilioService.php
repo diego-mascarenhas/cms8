@@ -822,7 +822,7 @@ class TwilioService implements WhatsAppGateway
                     $teamId = $this->team?->id;
                     $withTools = $teamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
-                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id, $cleanFrom);
+                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id, $cleanFrom, null, null);
 
                     if ($replyResponse['success'] ?? false)
                     {

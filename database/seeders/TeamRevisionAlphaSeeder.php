@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\DemoDataService;
+use App\Support\CollectionMessagingGuide;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -90,6 +91,9 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 6. Configure email settings
         $this->configureRevisionAlphaEmailSettings($team);
 
+        // 6.1. Cuenta bancaria para transferencias (Saldo / cobranzas)
+        $this->configureRevisionAlphaCollectionBankTransfer($team);
+
         // 7. Note: Data import is handled by import:interactive --auto command in deployment
         $this->getCommand()->info('');
         $this->getCommand()->info('ℹ️  Data import will be handled by: php artisan import:interactive --auto');
@@ -99,6 +103,12 @@ class TeamRevisionAlphaSeeder extends Seeder
 
         // 8.1. Ensure tickets module is active for Revision Alpha (support tickets)
         $team->enableModule('tickets');
+
+        // 8.2. Prompt de cobranzas hosting (Saldo) en module_prompts — invoices.collections (JSON)
+        if (CollectionMessagingGuide::syncHostingCollectionsPromptForTeam($team->id))
+        {
+            $this->getCommand()->info('✅ Prompt de cobranzas hosting (module_prompts) sincronizado para Revision Alpha');
+        }
 
         // 9. Create demo clients (REVISION ALPHA, IDONEO) and their projects
         $this->createDemoClientsAndProjects();
@@ -828,6 +838,27 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->getCommand()->info('   Notification Settings:');
         $this->getCommand()->info('   - From Name: REVISION ALPHA');
         $this->getCommand()->info('   - From Email: info@revisionalpha.com');
+    }
+
+    /**
+     * Bank transfer details for collection messaging (Saldo tab); stored as team JSON setting.
+     */
+    private function configureRevisionAlphaCollectionBankTransfer(Team $team): void
+    {
+        $this->getCommand()->info('🏦 Configuring collection bank transfer (Saldo / cobranzas)...');
+
+        $team->setSetting('collection_bank_transfer', [
+            'account_holder' => 'Diego Adrian Mascarenhas Goytia',
+            'cuit' => '20-25024200-0',
+            'cbu' => '0000003100042016955017',
+            'alias' => 'revision.alpha.arg',
+        ], [
+            'type' => 'json',
+            'group' => 'billing',
+            'is_encrypted' => false,
+        ]);
+
+        $this->getCommand()->info('✅ Cuenta de transferencia (collection_bank_transfer) guardada en el equipo');
     }
 
     /**

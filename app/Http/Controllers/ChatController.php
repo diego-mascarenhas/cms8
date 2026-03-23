@@ -867,6 +867,7 @@ class ChatController extends Controller
             $contextUser->id,
             $customerPhone !== '' ? $customerPhone : null,
             $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
+            $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
         );
 
         if (! $replyResponse['success'])
@@ -995,7 +996,16 @@ class ChatController extends Controller
                 $teamId = auth()->user()?->currentTeam?->id;
                 $withTools = $teamId !== null;
                 $toDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to'));
-                $replyResponse = $replyService->getReply($message, $history, $teamId, $withTools, auth()->id(), $toDigits !== '' ? $toDigits : null);
+                $replyResponse = $replyService->getReply(
+                    $message,
+                    $history,
+                    $teamId,
+                    $withTools,
+                    auth()->id(),
+                    $toDigits !== '' ? $toDigits : null,
+                    null,
+                    $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+                );
 
                 // If assistant responded successfully, use its response
                 if ($replyResponse['success'])
