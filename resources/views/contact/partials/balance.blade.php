@@ -33,7 +33,7 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['total_paid'] ?? '0.00' }} {{ data_get($stripeData, 'metrics.currency', 'EUR') }}</h4>
+                        <h4 class="mb-0">{{ $stripeData['metrics']['total_paid'] ?? '0.00' }}</h4>
                         <small class="text-muted">Pagado</small>
                     </div>
                 </div>
@@ -46,7 +46,7 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }} {{ data_get($stripeData, 'metrics.currency', 'EUR') }}</h4>
+                        <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }}</h4>
                         <small class="text-muted">Impago</small>
                     </div>
                 </div>
