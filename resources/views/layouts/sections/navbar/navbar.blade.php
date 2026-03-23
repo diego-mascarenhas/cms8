@@ -200,6 +200,7 @@
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
         @auth
+        @if(auth()->user()->currentTeam?->hasModule('attendance'))
         <li class="nav-item dropdown me-2" id="quick-timer"
             data-running-url="{{ route('attendance.running') }}"
             data-start-url="{{ route('attendance.start') }}"
@@ -226,6 +227,7 @@
                 <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
             </ul>
         </li>
+        @endif
         @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
@@ -325,11 +327,6 @@
                         </div>
                     </div>
                     <div class="dropdown-shortcuts-list scrollable-container">
-                        @php
-                            $teamShortcuts = auth()->user()->currentTeam ? auth()->user()->currentTeam->getSetting('team_shortcuts', []) : [];
-                        @endphp
-
-                        {{-- Fixed shortcuts (before custom team shortcuts) --}}
                         <div class="row row-bordered overflow-visible g-0">
                             <div class="dropdown-shortcuts-item col">
                                 <span class="dropdown-shortcuts-icon rounded-circle mb-2">
@@ -346,68 +343,6 @@
                                 <small class="text-muted mb-0">{{ __('Prospección') }}</small>
                             </div>
                         </div>
-
-                        @if(count($teamShortcuts) > 0)
-                            @foreach($teamShortcuts as $index => $shortcut)
-                                @if($index % 2 === 0)
-                                    <div class="row row-bordered overflow-visible g-0">
-                                @endif
-
-                                <div class="dropdown-shortcuts-item col">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                        <i class="{{ $shortcut['icon'] ?? 'ti ti-link' }} fs-4"></i>
-                                    </span>
-                                    <a href="{{ $shortcut['url'] ?? '#' }}"
-                                       class="stretched-link"
-                                       @if(isset($shortcut['open_in_new_tab']) && $shortcut['open_in_new_tab']) target="_blank" @endif>
-                                        {{ $shortcut['title'] ?? 'Shortcut' }}
-                                    </a>
-                                    <small class="text-muted mb-0">{{ $shortcut['subtitle'] ?? '' }}</small>
-                                </div>
-
-                                @if($index % 2 === 1 || $index === count($teamShortcuts) - 1)
-                                    </div>
-                                @endif
-                            @endforeach
-                        @else
-                            <!-- Default shortcuts when no team shortcuts are configured -->
-                            <div class="row row-bordered overflow-visible g-0">
-                                <div class="dropdown-shortcuts-item col">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                        <i class="ti ti-calendar fs-4"></i>
-                                    </span>
-                                    <a href="{{ url('app/calendar') }}"
-                                        class="stretched-link">{{ __('app.shortcuts.calendar') }}</a>
-                                    <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
-                                </div>
-                                <div class="dropdown-shortcuts-item col">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                        <i class="ti ti-file-invoice fs-4"></i>
-                                    </span>
-                                    <a href="{{ url('app/invoice/list') }}"
-                                        class="stretched-link">{{ __('app.shortcuts.invoice_app') }}</a>
-                                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_accounts') }}</small>
-                                </div>
-                            </div>
-                            <div class="row row-bordered overflow-visible g-0">
-                                <div class="dropdown-shortcuts-item col">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                        <i class="ti ti-users fs-4"></i>
-                                    </span>
-                                    <a href="{{ url('user-management') }}"
-                                        class="stretched-link">{{ __('app.shortcuts.user_app') }}</a>
-                                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_users') }}</small>
-                                </div>
-                                <div class="dropdown-shortcuts-item col">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                        <i class="ti ti-settings fs-4"></i>
-                                    </span>
-                                    <a href="{{ url('account-management') }}"
-                                        class="stretched-link">{{ __('app.shortcuts.accounts') }}</a>
-                                    <small class="text-muted mb-0">{{ __('app.shortcuts.accounts_settings') }}</small>
-                                </div>
-                            </div>
-                        @endif
                     </div>
                 </div>
             </li>

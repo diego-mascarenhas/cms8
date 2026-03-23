@@ -7,8 +7,8 @@ use App\Models\Contact;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
-use App\Models\TokenUsageLog;
 use App\Models\UserContactAction;
+use App\Services\TeamApiUsageStatsService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
@@ -339,15 +339,8 @@ class DashboardController extends Controller
         //     }
         // }
 
-        // Toon Statistics for API Usage Widget
-        $tokenStats = [
-            'totalCalls' => TokenUsageLog::getTotalCalls(),
-            'totalTokensSaved' => TokenUsageLog::getTotalTokensSaved(),
-            'averageSavings' => TokenUsageLog::getAverageSavingsPercentage(),
-            'totalTokensUsed' => TokenUsageLog::getTotalTokensUsed(),
-            'totalTokensWithoutToon' => TokenUsageLog::getTotalTokensWithoutToon(),
-            'byModule' => TokenUsageLog::getCallsByModule(),
-        ];
+        // API usage widget: token logs + assistant conversation usage for this team
+        $tokenStats = TeamApiUsageStatsService::forTeam((int) $activeTeam->id);
 
         // Google Analytics: fetch chart data only when team has GA4 configured
         $analyticsChartData = null;

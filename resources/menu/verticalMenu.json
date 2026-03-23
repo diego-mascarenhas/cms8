@@ -79,6 +79,13 @@
       "module_key": "products"
     },
     {
+      "url": "store/list",
+      "name": "Stores",
+      "icon": "menu-icon tf-icons ti ti-building-store",
+      "slug": "store.index",
+      "module_key": "stores"
+    },
+    {
       "url": "order/list",
       "name": "Orders",
       "icon": "menu-icon tf-icons ti ti-shopping-bag",

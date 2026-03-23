@@ -3241,6 +3241,7 @@ class ImportDataCommand extends Command
                         $teamModel->enableModule($moduleKey);
                     }
                     $teamModel->disableModule('mailbox');
+                    $teamModel->disableModule('attendance');
                 }
 
                 DB::table('team_user')->updateOrInsert(

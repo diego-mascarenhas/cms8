@@ -48,7 +48,7 @@
                                 <span class="text-break">{{ e($msg['content']) }}</span>
                             @else
                                 <div class="assistant-content text-break small">
-                                    {!! \Illuminate\Support\Str::markdown($msg['content']) !!}
+                                    {!! \Illuminate\Support\Str::markdown(\App\Helpers\WhatsAppOutboundText::sanitize((string) $msg['content'])) !!}
                                 </div>
                                 @if(!empty($msg['audio_base64']) && !empty($msg['audio_mime']))
                                     <div class="mt-2">
