@@ -145,8 +145,8 @@ document.querySelector('form').addEventListener('submit', function() {
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
-        <p class="text-muted">{{ __('Manage your messages with ease and keep your audience engaged!') }}</p>
+		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }} News</h4>
+        <p class="text-muted">{{ __('Create a newsletter/campaign: associate a category, contact status, channel (WhatsApp or email), template, alternative text, and confirm if active.') }}</p>
     </div>
     @if(isset($data->id))
     <div class="d-flex align-content-center flex-wrap gap-3">
@@ -190,7 +190,7 @@ document.querySelector('form').addEventListener('submit', function() {
 			<div class="col-md-2">
 				<x-input-select
 					id="contact_status_id"
-					label="{{ __('Contact Status') }}"
+					label="{{ __('Estado del contacto') }}"
 					:options="$data->contactStatuses ?? []"
 					value="{{ old('contact_status_id', $data->contact_status_id ?? '') }}"
 					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
@@ -202,16 +202,19 @@ document.querySelector('form').addEventListener('submit', function() {
 				@endif
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="type_id" label="{{ __('Type') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select id="type_id" label="{{ __('Canal (WhatsApp o Email)') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="template_id" label="{{ __('Template') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
+				<x-input-select id="template_id" label="{{ __('Plantilla') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
 				<div class="form-text mt-1">
 					¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
 				</div>
 			</div>
 			<div class="col-md-12">
-				<x-input-textarea id="text" label="{{ __('Text') }} (*)" value="{{ old('text', $data->text?? '') }}" />
+				<x-input-textarea id="text" label="{{ __('Texto alternativo') }} (*)" value="{{ old('text', $data->text?? '') }}" />
+				<div class="form-text mt-1">
+					{{ __('Para WhatsApp o para clientes de correo sin HTML. Si usas plantilla, este texto sirve como fallback o versión corta.') }}
+				</div>
 			</div>
 						<div class="col-md-6">
 				<label for="min_hours_between_emails" class="form-label">{{ __('Minimum Time Between Emails') }}</label>
@@ -250,14 +253,14 @@ document.querySelector('form').addEventListener('submit', function() {
 			<div class="col-md-6">
 				<div class="card">
 					<div class="card-header">
-						<h6 class="card-title mb-0">{{ __('General Options') }}</h6>
+						<h6 class="card-title mb-0">{{ __('Opciones generales / Activo') }}</h6>
 					</div>
 					<div class="card-body">
 						<div class="form-check form-switch mb-3">
 							<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
 							<label class="form-check-label" for="status_id">
-								<strong>{{ __('Active Campaign') }}</strong>
-								<div class="text-muted small">{{ __('Enable this message for sending') }}</div>
+								<strong>{{ __('¿Activo?') }}</strong>
+								<div class="text-muted small">{{ __('Confirmar si quiero activar esta campaña (enviar a los contactos). Si no lo marcas, la News quedará inactiva hasta que la actives.') }}</div>
 							</label>
 						</div>
 						<div class="form-check form-switch">

@@ -2,9 +2,16 @@
 
 namespace App\Providers;
 
+use App\Contracts\WhatsAppGateway;
 use App\Models\SubscriptionProduct;
+use App\Models\TicketResponse;
 use App\Observers\SubscriptionProductObserver;
+use App\Observers\TicketResponseObserver;
+use App\Services\AssistantToolsService;
 use App\Services\Stripe\StripeProductService;
+use App\Services\WhatsApp\CloudWhatsAppGateway;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 use Stripe\StripeClient;
@@ -17,12 +24,27 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(AssistantToolsService::class);
+
         // Register StripeProductService
         $this->app->singleton(StripeProductService::class, function ($app)
         {
             return new StripeProductService(
                 new StripeClient(config('cashier.secret')),
             );
+        });
+
+        $this->app->bind(WhatsAppGateway::class, function ($app)
+        {
+            if (config('whatsapp.driver') === 'local')
+            {
+                return new LocalWhatsAppGateway(
+                    config('whatsapp.local.base_url', ''),
+                    config('whatsapp.local.webhook_secret'),
+                );
+            }
+
+            return new CloudWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
         });
     }
 
@@ -36,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register SubscriptionProduct Observer
         SubscriptionProduct::observe(SubscriptionProductObserver::class);
+        TicketResponse::observe(TicketResponseObserver::class);
 
         // Only register CustomTranslator when not in console mode to prevent bootstrap issues
         if (! $this->app->runningInConsole())

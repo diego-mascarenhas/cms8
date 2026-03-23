@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Console\Command;
 
 class TestWhatsAppCart extends Command
@@ -21,12 +21,12 @@ class TestWhatsAppCart extends Command
      */
     protected $description = 'Test WhatsApp cart functionality locally without webhooks';
 
-    protected $twilioService;
+    protected $whatsAppMessageService;
 
-    public function __construct(TwilioService $twilioService)
+    public function __construct(WhatsAppMessageService $whatsAppMessageService)
     {
         parent::__construct();
-        $this->twilioService = $twilioService;
+        $this->whatsAppMessageService = $whatsAppMessageService;
     }
 
     /**
@@ -184,7 +184,7 @@ class TestWhatsAppCart extends Command
             {
                 $currency = $product->currency ? $product->currency->symbol : '$';
                 $response .= "• *{$product->name}*\n";
-                $response .= "  💰 {$currency}".number_format($product->price, 2)."\n";
+                $response .= "  💰 {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
                 $response .= '  📝 '.\Illuminate\Support\Str::limit($product->description, 80)."\n\n";
             }
         }
@@ -278,7 +278,7 @@ class TestWhatsAppCart extends Command
             \Darryldecode\Cart\Facades\CartFacade::add([
                 'id' => $product->id,
                 'name' => $product->name,
-                'price' => $product->price,
+                'price' => $product->currentSellingPrice(),
                 'quantity' => 1,
                 'attributes' => [
                     'team_id' => $teamId,
@@ -293,7 +293,7 @@ class TestWhatsAppCart extends Command
         $currency = $product->currency ? $product->currency->symbol : '$';
 
         $response = "✅ **{$product->name}** agregado al carrito!\n\n";
-        $response .= "💰 **Precio**: {$currency}".number_format($product->price, 2)."\n";
+        $response .= "💰 **Precio**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
         $response .= "📦 **Cantidad**: {$quantity}\n";
         $response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
         $response .= "🛒 **Total del carrito**: {$currency}".number_format(\Darryldecode\Cart\Facades\CartFacade::getTotal(), 2)."\n\n";

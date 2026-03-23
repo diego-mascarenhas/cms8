@@ -17,7 +17,7 @@ class PromptPolicy
 
     public function view(User $user, Prompt $prompt): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') && $prompt->team_id === $user->current_team_id;
     }
 
     public function create(User $user): bool
@@ -27,21 +27,21 @@ class PromptPolicy
 
     public function update(User $user, Prompt $prompt): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') && $prompt->team_id === $user->current_team_id;
     }
 
     public function delete(User $user, Prompt $prompt): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') && $prompt->team_id === $user->current_team_id;
     }
 
     public function restore(User $user, Prompt $prompt): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') && $prompt->team_id === $user->current_team_id;
     }
 
     public function forceDelete(User $user, Prompt $prompt): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') && $prompt->team_id === $user->current_team_id;
     }
 }

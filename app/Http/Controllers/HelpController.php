@@ -62,6 +62,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display chat and assistant documentation
+     */
+    public function chatAssistant()
+    {
+        return view('help.chat-assistant', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display contacts management documentation
      */
     public function contacts()

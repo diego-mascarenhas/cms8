@@ -12,11 +12,12 @@ class ContactPolicy
 
     /**
      * Perform pre-authorization checks.
-     * Admins have full access to everything in their team.
+     * Admins and root have full access to everything in their team.
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin') || $user->hasRole('root'))
+        {
             return true;
         }
 

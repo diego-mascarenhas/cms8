@@ -379,6 +379,19 @@ class BusinessCreationInsightsService
             $contextParts[] = $arquetipoContext;
         }
 
+        $problematica = trim((string) ($config['business_problematica'] ?? ''));
+        if ($problematica !== '')
+        {
+            $contextParts[] = "\n**Desafío / problemática actual del negocio:**";
+            $contextParts[] = $problematica;
+        }
+        $summary = trim((string) ($config['_summary'] ?? ''));
+        if ($summary !== '')
+        {
+            $contextParts[] = "\n**Resumen de lo que la empresa necesita para mejorar (generado previamente):**";
+            $contextParts[] = $summary;
+        }
+
         $fullContext = implode("\n", $contextParts);
         if (trim($description) === '' && $websiteContent === '' && $linksContext === '')
         {
@@ -388,9 +401,12 @@ class BusinessCreationInsightsService
         $arquetipoInstruction = $arquetipoContext !== ''
             ? ' Ten en cuenta el arquetipo humano indicado para que las recomendaciones sean acordes a su personalidad.'
             : '';
+        $desafioInstruction = ($problematica !== '' || $summary !== '')
+            ? ' Incluye el desafío o problemática del negocio y el resumen de lo que necesitan para mejorar cuando estén indicados; que el informe sea coherente con ellos.'
+            : '';
 
         $instruction = <<<PROMPT
-Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan.{$arquetipoInstruction}
+Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan.{$arquetipoInstruction}{$desafioInstruction}
 
 Las cifras "en su zona" dependen del filtro de ubicación; si son bajas o cero pero el sector tiene muchas empresas a nivel global (referencia global), no digas que el mercado está vacío ni que parten de cero: en muchos sectores (p. ej. desarrollo de software) hay gran actividad mundial. Usa la referencia global para matizar el posicionamiento.
 

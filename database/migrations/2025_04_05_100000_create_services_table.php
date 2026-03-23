@@ -16,6 +16,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('service_type_id');
             $table->unsignedBigInteger('enterprise_id');
+            $table->unsignedBigInteger('subscription_id')->nullable();
             $table->enum('operation', ['buy', 'sell'])->default('sell');
             $table->text('description')->nullable();
             $table->json('data')->nullable();

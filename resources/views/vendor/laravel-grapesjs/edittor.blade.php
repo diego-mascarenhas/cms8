@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="csrf-token" content="">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit {{ $model->editor_page_title }}</title>
 
@@ -78,14 +78,16 @@
 </head>
 
 <body>
-    <div class="d-flex align-items-center gap-2 mb-3" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px;">
-      <span style="font-size: 14px; color: #444; font-family: 'Public Sans', Arial, Helvetica, sans-serif; font-weight: 400; min-width: 260px; margin-right: 18px;">¿Tienes tu diseño publicado en la web?</span>
-      <input type="text" id="import-url-input" placeholder="Pega la URL para importar HTML"
-        style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; max-width: 600px; width: 100%; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
-      <button id="import-url-btn"
-        style="padding: 6px 16px; background: #7367f0; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif;">
-        Importar HTML
-      </button>
+    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+      <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
+        <img src="{{ asset('assets/logo-dark.svg') }}" alt="Humano" style="height: 36px; width: auto; min-width: 100px; object-fit: contain;" />
+        <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Cambiar el color del botón, renombrar la plantilla, o describir contenido para generar"
+          style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; flex: 1 1 75%; min-width: 840px; max-width: 1200px; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
+        <button type="button" id="generate-ai-btn"
+          style="padding: 0.5rem 1.25rem; background: #7367f0; color: #fff; border: none; border-radius: 0.375rem; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif; white-space: nowrap; box-shadow: 0 4px 8px rgba(115, 103, 240, 0.35);">
+          Crear con el Asistente Humano
+        </button>
+      </div>
     </div>
     <div id="{{ str_replace('#', '', $editorConfig->container ?? 'editor') }}"></div>
 
@@ -105,26 +107,58 @@
         return null;
     }
 
+    function getCsrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        var match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
-            document.getElementById('import-url-btn').addEventListener('click', async function() {
-                const url = document.getElementById('import-url-input').value;
-                if (!url) return alert('Ingresa una URL');
-                try {
-                    const response = await fetch('/api/fetch-html?url=' + encodeURIComponent(url));
-                    const data = await response.json();
-                    const editor = getGrapesEditorInstance();
-                    if (!editor) return alert('No se encontró la instancia de GrapesJS');
-                    if (data.html) {
-                        editor.setComponents(data.html);
-                        alert('HTML importado. Ahora puedes editar y guardar el template.');
-                    } else {
-                        alert('No se pudo importar el HTML: ' + (data.error || 'Error desconocido'));
+            var generateAiBtn = document.getElementById('generate-ai-btn');
+            if (generateAiBtn) {
+                generateAiBtn.addEventListener('click', async function() {
+                    var promptInput = document.getElementById('generate-ai-prompt');
+                    var prompt = promptInput && promptInput.value ? promptInput.value.trim() : '';
+                    if (!prompt) {
+                        alert('Escribe tu solicitud (cambios, renombrar, generar contenido, etc.).');
+                        return;
                     }
-                } catch (e) {
-                    alert('Error al importar: ' + e.message);
-                }
-            });
+                    var bar = document.getElementById('editor-assistant-bar');
+                    var templateHashedId = bar && bar.getAttribute ? bar.getAttribute('data-template-hashed-id') : '';
+                    var btn = this;
+                    var originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Enviando...';
+                    promptInput.value = '';
+                    try {
+                        var body = { message: prompt };
+                        if (templateHashedId) body.template_hashed_id = templateHashedId;
+                        var response = await fetch('{{ route("chat.assistant") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': getCsrfToken(),
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+                        var rawText = await response.text();
+                        var data = rawText ? (function(){ try { return JSON.parse(rawText); } catch(e) { return {}; } })() : {};
+                        if (data.success && data.response) {
+                            alert(data.response);
+                        } else {
+                            alert(data.message || data.error || 'No se pudo enviar. Intenta de nuevo.');
+                        }
+                    } catch (e) {
+                        alert('Error: ' + (e.message || 'Error de conexión'));
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }
+                });
+            }
         }, 1500); // Espera 1.5s para asegurar que el editor esté inicializado
     });
     </script>

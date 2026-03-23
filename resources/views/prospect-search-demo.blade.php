@@ -179,7 +179,7 @@ $configData = Helper::appClasses();
 <script>
 (function() {
     var csrf = '{{ csrf_token() }}';
-    var urlSearch = '{{ route("prospect-search.search") }}';
+    var urlSearch = '{{ route("prospecting.search") }}';
 
     function parseList(val) {
         if (!val || !String(val).trim()) return [];

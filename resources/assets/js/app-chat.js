@@ -170,20 +170,21 @@ document.addEventListener('DOMContentLoaded', function () {
         messageInput.value = '';
         scrollToBottom();
         
-        // Parte nueva: Enviar al servidor
+        // Parte nueva: Enviar al servidor (incluye contact_id para persistir en contexto asistente)
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const cleanTo = to.replace('whatsapp:', ''); // Quitar prefijo si existe
-        
+        const contactIdEl = document.getElementById('contact-id');
+        const contactId = contactIdEl && contactIdEl.value ? parseInt(contactIdEl.value, 10) : undefined;
+        const body = { to: cleanTo, message: message, use_ai: false };
+        if (contactId) body.contact_id = contactId;
+
         fetch('/chat/send', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': token
           },
-          body: JSON.stringify({
-            to: cleanTo,
-            message: message
-          })
+          body: JSON.stringify(body)
         })
         .then(response => {
           if (!response.ok) {
@@ -193,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(data => {
           console.log('Mensaje enviado correctamente:', data);
-          // No recargamos la página porque ya actualizamos la UI
+          if (window.refreshAssistantHistory) window.refreshAssistantHistory();
         })
         .catch(error => {
           console.error('Error enviando mensaje:', error);

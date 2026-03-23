@@ -11,7 +11,7 @@ use App\Models\TaskBoard;
 use App\Models\User;
 
 /**
- * Demo data service — used by the complementary Demo seed and humano:start --demo.
+ * Demo data service — used by the complementary Demo seed and php artisan start --demo.
  * Creates demo clients (REVISION ALPHA, IDONEO) and their projects for testing.
  * Not part of the main deploy seed; run separately: php artisan db:seed --class=DemoSeeder
  */

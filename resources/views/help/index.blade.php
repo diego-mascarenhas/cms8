@@ -23,6 +23,14 @@
                         <div class="col-12">
                             <p class="lead">{{ __('Welcome to the Humano application help center. Here you will find comprehensive documentation to help you make the most of our platform.') }}</p>
 
+                            <div class="alert alert-primary mb-4" role="alert">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="ti ti-book me-2"></i>
+                                    {{ __('User Manual') }}
+                                </h6>
+                                <p class="mb-0">{{ __('For a non-technical guide to what you can do in the platform (contacts, projects, tasks, billing, etc.), see the') }} <a href="{{ route('manual.index') }}" class="alert-link">{{ __('User Manual') }}</a>.</p>
+                            </div>
+
                             <div class="row mt-4">
                                 <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-primary">
@@ -42,6 +50,17 @@
                                             <h5 class="card-title">{{ __('API Integration') }}</h5>
                                             <p class="card-text">{{ __('Integrate Humano with your systems using our REST API. Complete documentation and examples.') }}</p>
                                             <a href="{{ route('help.api') }}" class="btn btn-info">{{ __('View API Docs') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-warning">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-message-chatbot display-4 text-warning mb-3"></i>
+                                            <h5 class="card-title">{{ __('Chat and Assistant') }}</h5>
+                                            <p class="card-text">{{ __('How the assistant chat works and its relation with the terminal command php artisan chat:simulate.') }}</p>
+                                            <a href="{{ route('help.chat-assistant') }}" class="btn btn-warning">{{ __('View documentation') }}</a>
                                         </div>
                                     </div>
                                 </div>

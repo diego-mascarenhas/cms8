@@ -14,6 +14,8 @@ use App\Models\Country;
 use App\Models\MessageDelivery;
 use App\Models\Source;
 use App\Services\AstralChartService;
+use App\Support\CollectionMessagingGuide;
+use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -90,7 +92,7 @@ class ContactController extends Controller
         $contactData['creator_id'] = auth()->user()->id;
         $contactData['responsible_id'] = $request->responsible_id;
         $contactData['email'] = $request->email;
-        $contactData['phone'] = $request->phone ? (int) $request->phone : null;
+        $contactData['phone'] = $request->phone ?: null;
 
         $contact = Contact::create($contactData);
 
@@ -364,6 +366,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -379,6 +382,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,  // 'open' or 'uncollectible'
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -394,6 +398,7 @@ class ContactController extends Controller
                         'status' => $invoice->status,  // 'void'
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
@@ -411,52 +416,59 @@ class ContactController extends Controller
                     ];
                 }
 
-                // Calculate metrics
-                $totalPaid = 0;
-                $totalUnpaid = 0;
-                $firstInvoiceDate = null;
-
-                // Metrics across all invoices
+                // Calculate metrics — sum the same amounts shown in the tables (avoids StripeObject field quirks vs UI)
                 $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
-                if (! empty($allInvoicesForMetrics))
+                $contactCountryCode = $data->country?->code ? strtolower((string) $data->country->code) : null;
+                $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
+                    $paidInvoices->data,
+                    $openInvoices->data,
+                    $uncollectibleInvoices->data,
+                    'EUR',
+                    $contactCountryCode,
+                );
+
+                $paidByCurrency = StripeInvoiceMetrics::sumAmountsByCurrency($stripeData['invoices']);
+                $unpaidByCurrency = StripeInvoiceMetrics::sumAmountsByCurrency($stripeData['unpaid_invoices']);
+                $totalPaid = array_sum($paidByCurrency);
+                $totalUnpaid = array_sum($unpaidByCurrency);
+
+                $firstInvoiceDate = null;
+                foreach ($allInvoicesForMetrics as $invoice)
                 {
-                    foreach ($allInvoicesForMetrics as $invoice)
+                    if (! $firstInvoiceDate || $invoice->created < $firstInvoiceDate)
                     {
-                        if ($invoice->status === 'paid')
-                        {
-                            $totalPaid += ($invoice->amount_paid ?? 0) / 100;
-                        } elseif (in_array($invoice->status, ['open', 'uncollectible']))
-                        {
-                            $totalUnpaid += ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100;
-                        }
-
-                        // Track first invoice date for customer age calculation
-                        if (! $firstInvoiceDate || $invoice->created < $firstInvoiceDate)
-                        {
-                            $firstInvoiceDate = $invoice->created;
-                        }
+                        $firstInvoiceDate = $invoice->created;
                     }
+                }
 
-                    // Calculate customer lifetime in months
-                    $lifetimeMonths = $firstInvoiceDate
-                        ? Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1
-                        : 0;
+                $lifetimeMonths = $firstInvoiceDate
+                    ? Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1
+                    : 0;
 
-                    // Calculate LTV (total revenue / number of months)
-                    $ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
+                $ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
 
-                    // Calculate CAC (assuming a base acquisition cost plus monthly marketing spend)
-                    $baseAcquisitionCost = 50;  // Coste de adquisición por cliente (50€)
-                    $monthlyMarketingSpend = 10;  // Gasto mensual en marketing por cliente (10€)
-                    $cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
+                $baseAcquisitionCost = 50;
+                $monthlyMarketingSpend = 10;
+                $cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
 
-                    $stripeData['metrics'] = [
-                        'total_paid' => number_format($totalPaid, 2),
-                        'unpaid' => number_format($totalUnpaid, 2),
-                        'ltv' => number_format($ltv, 2),
-                        'cac' => number_format($cac, 2),
-                        'lifetime_months' => $lifetimeMonths,
-                    ];
+                $primaryDisplayCurrency = strtoupper((string) config('cashier.currency', 'usd'));
+
+                $stripeData['metrics'] = [
+                    'total_paid' => StripeInvoiceMetrics::formatMetricTotalsWithPrimaryEquivalent($paidByCurrency, $primaryDisplayCurrency),
+                    'unpaid' => StripeInvoiceMetrics::formatMetricTotalsWithPrimaryEquivalent($unpaidByCurrency, $primaryDisplayCurrency),
+                    'ltv' => number_format($ltv, 2),
+                    'cac' => number_format($cac, 2),
+                    'lifetime_months' => $lifetimeMonths,
+                    'currency' => $metricsCurrency,
+                ];
+
+                if (! empty($stripeData['unpaid_invoices']))
+                {
+                    $stripeData['collection_guide'] = CollectionMessagingGuide::build(
+                        $data,
+                        $stripeData,
+                        auth()->user()->currentTeam?->id,
+                    );
                 }
             } catch (\Exception $e)
             {
@@ -545,7 +557,7 @@ class ContactController extends Controller
         // Add responsible_id to the update data
         $contactData['responsible_id'] = $request->responsible_id;
         $contactData['email'] = $request->email;
-        $contactData['phone'] = $request->phone ? (int) $request->phone : null;
+        $contactData['phone'] = $request->phone ?: null;
 
         $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $contact->update($contactData);

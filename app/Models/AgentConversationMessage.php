@@ -28,6 +28,10 @@ class AgentConversationMessage extends Model
     ];
 
     protected $casts = [
+        'attachments' => 'array',
+        'tool_calls' => 'array',
+        'tool_results' => 'array',
+        'usage' => 'array',
         'meta' => 'array',
     ];
 

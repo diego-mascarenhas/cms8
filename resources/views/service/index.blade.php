@@ -46,6 +46,11 @@
         <h4 class="mb-1 mt-3">{{ __('Services') }}</h4>
         <p class="text-muted">{{ __('Track your clients\' services') }}</p>
     </div>
+    @can('create', \App\Models\Service::class)
+    <div class="mt-3 mt-md-0">
+        <a href="{{ route('service.create') }}" class="btn btn-primary"><i class="ti ti-plus me-1"></i>{{ __('Create service') }}</a>
+    </div>
+    @endcan
 </div>
 
 @if(session('success'))
@@ -139,7 +144,7 @@
                             <h3 class="mb-0 me-2">{{ $pending_services }}</h3>
                             <small class="text-warning">({{ number_format($percentage_pending, 2) }}%)</small>
                         </div>
-                        <small>{{ __('Pending activation or suspension') }}</small>
+                        <small>{{ __('Activación y suspensión') }}</small>
                     </div>
                     <span class="badge bg-label-warning rounded p-2">
                         <i class="ti ti-clock ti-sm"></i>

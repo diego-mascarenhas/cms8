@@ -52,6 +52,7 @@ class PromptController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['order'] = (int) ($validated['order'] ?? 0);
+        $validated['team_id'] = auth()->user()->currentTeam->id;
 
         Prompt::create($validated);
 

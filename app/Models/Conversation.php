@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Conversation extends Model
 {
     use HasFactory;
+
+    /** Cache key for inbound unread count used by navbar badge; invalidate when inbound/received or when marked read. */
+    public const CACHE_KEY_INBOUND_UNREAD = 'inbound_received_count';
 
     protected $fillable = [
         'message_sid',
@@ -49,6 +53,25 @@ class Conversation extends Model
     public function hasFailed()
     {
         return in_array($this->status, ['failed', 'undelivered']);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Conversation $conversation)
+        {
+            if ($conversation->direction === 'inbound' && $conversation->status === 'received')
+            {
+                Cache::forget(self::CACHE_KEY_INBOUND_UNREAD);
+            }
+        });
+
+        static::updated(function (Conversation $conversation)
+        {
+            if ($conversation->isDirty('status') && $conversation->status === 'read')
+            {
+                Cache::forget(self::CACHE_KEY_INBOUND_UNREAD);
+            }
+        });
     }
 
     /**

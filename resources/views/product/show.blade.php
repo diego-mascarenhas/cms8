@@ -17,12 +17,12 @@
 		<p class="text-muted">{{ __('Detalles del Producto') }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		@can('product.edit')
+		@can('update', $product)
 		<a href="{{ route('product.edit', $product->id) }}" class="btn btn-primary waves-effect waves-light">
 			<i class="ti ti-edit me-1"></i>{{ __('Editar Producto') }}
 		</a>
 		@endcan
-		@can('product.destroy')
+		@can('delete', $product)
 		<button type="button" class="btn btn-danger" onclick="deleteProduct({{ $product->id }})">
 			<i class="ti ti-trash me-1"></i>{{ __('Eliminar Producto') }}
 		</button>
@@ -45,7 +45,11 @@
 							alt="{{ $product->name }}" />
 						<div class="user-info text-center">
 							<h4 class="mb-2">{{ $product->name }}</h4>
-							@if($product->category)
+							<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Store') }}:</span>
+							<span>{{ $product->store?->name ?? '—' }}</span>
+						</li>
+						@if($product->category)
 								<span class="badge bg-label-info mt-1">{{ $product->category->name }}</span>
 							@endif
 						</div>
@@ -59,7 +63,12 @@
 						</span>
 						<div>
 							<p class="mb-0 fw-medium" style="line-height: 1.2;">
-								{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format($product->price, 2) }}
+								@if($product->isOnSale())
+									<span class="text-muted text-decoration-line-through">{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format((float) $product->price, 2) }}</span>
+									<span class="ms-1">{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format($product->currentSellingPrice(), 2) }}</span>
+								@else
+									{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format($product->currentSellingPrice(), 2) }}
+								@endif
 							</p>
 							<small style="line-height: 1.2;">{{ __('Precio') }}</small>
 						</div>
@@ -70,7 +79,7 @@
 						</span>
 						<div>
 							<p class="mb-0 fw-medium" style="line-height: 1.2;">
-								{{ $product->status ? __('Activo') : __('Inactivo') }}
+								{{ $product->catalog_status?->label() ?? ($product->status ? __('Published') : __('Draft')) }}
 							</p>
 							<small style="line-height: 1.2;">{{ __('Estado') }}</small>
 						</div>
@@ -80,10 +89,40 @@
 				<div class="mt-4 info-container">
 					<ul class="list-unstyled">
 						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Code') }}:</span>
+							<span>{{ $product->code ?? '—' }}</span>
+						</li>
+						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Estado') }}:</span>
 							<span class="badge bg-label-{{ $product->status ? 'success' : 'secondary' }}">
-								{{ $product->status ? __('Activo') : __('Inactivo') }}
+								{{ $product->catalog_status?->label() ?? ($product->status ? __('Published') : __('Draft')) }}
 							</span>
+						</li>
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Stock status') }}:</span>
+							<span>{{ $product->stock_status?->label() ?? '—' }}</span>
+						</li>
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Manage stock') }}:</span>
+							<span>{{ $product->manage_stock ? __('Yes') : __('No') }}</span>
+						</li>
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Sizes') }}:</span>
+							<span>{{ !empty($product->size_options) ? implode(', ', $product->size_options) : '—' }}</span>
+						</li>
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Colors') }}:</span>
+							<span>{{ !empty($product->color_options) ? implode(', ', $product->color_options) : '—' }}</span>
+						</li>
+						@if($product->manage_stock)
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Stock quantity') }}:</span>
+							<span>{{ $product->stock_quantity ?? '—' }}</span>
+						</li>
+						@endif
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Store') }}:</span>
+							<span>{{ $product->store?->name ?? '—' }}</span>
 						</li>
 						@if($product->category)
 							<li class="mb-2 pt-1">
@@ -92,9 +131,15 @@
 							</li>
 						@endif
 						<li class="mb-2 pt-1">
-							<span class="fw-medium me-1">{{ __('Precio') }}:</span>
-							<span>{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format($product->price, 2) }}</span>
+							<span class="fw-medium me-1">{{ __('Regular price') }}:</span>
+							<span>{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format((float) $product->price, 2) }}</span>
 						</li>
+						@if($product->sale_price)
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Sale price') }}:</span>
+							<span>{{ $product->currency ? $product->currency->symbol : '$' }}{{ number_format((float) $product->sale_price, 2) }}</span>
+						</li>
+						@endif
 						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('WhatsApp Habilitado') }}:</span>
 							<span class="badge bg-label-{{ $product->whatsapp_enabled ? 'success' : 'secondary' }}">
@@ -118,12 +163,26 @@
 	<!-- Product Details -->
 	<div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
 		<!-- Product Description Card -->
+		@if($product->short_description)
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="card-title mb-0">{{ __('Short description') }}</h5>
+			</div>
+			<div class="card-body">
+				<div class="mb-0">{!! $product->short_description !!}</div>
+			</div>
+		</div>
+		@endif
 		<div class="card mb-4">
 			<div class="card-header">
 				<h5 class="card-title mb-0">{{ __('Descripción') }}</h5>
 			</div>
 			<div class="card-body">
-				<p class="mb-0">{{ $product->description ?? __('Sin descripción disponible') }}</p>
+				@if($product->description)
+					<div class="mb-0">{!! $product->description !!}</div>
+				@else
+					<p class="mb-0">{{ __('Sin descripción disponible') }}</p>
+				@endif
 			</div>
 		</div>
 

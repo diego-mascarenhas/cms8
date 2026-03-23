@@ -16,14 +16,16 @@ return [
     'defaults' => [
         // Core modules
         'dashboard' => true,
-        'users' => true,
+        'users' => false,
         'settings' => true,
         'contacts' => true,
         'clients' => true,
         'list60' => true,
+        'prospecting' => true,
         'services' => false,
         'projects' => false,
         'tasks' => true,
+        'calendar' => true,
         'notifications' => false,
         'templates' => false,
         // Additional modules (billing)
@@ -35,8 +37,8 @@ return [
         'accounting' => false,
         // Additional modules (ecommerce)
         'products' => true,
-        'orders' => false,
-        'stores' => false,
+        'orders' => true,
+        'stores' => true,
         // Additional modules (infrastructure)
         'servers' => false,
         'hosting' => false,
@@ -57,11 +59,11 @@ return [
         'funnel' => false,
         'integrations' => false,
         // Additional modules (content)
-        'multimedia' => false,
+        'multimedia' => true,
         'content-sections' => false,
-        'contents' => false,
+        'contents' => true,
         'website' => true,
-        'academy' => false,
+        'academy' => true,
         'landings' => false,
         // Additional modules (support)
         'tickets' => false,

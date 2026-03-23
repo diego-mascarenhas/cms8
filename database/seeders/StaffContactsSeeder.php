@@ -49,17 +49,11 @@ class StaffContactsSeeder extends Seeder
         {
             $this->command->warn('⚠️  Staff category not found, creating it...');
 
-            // Get main contact category
-            $mainContactCategory = Category::where('name', 'Contactos')
-                ->where('module_id', $contactsModule->id)
-                ->where('team_id', $team->id)
-                ->first();
-
             $staffCategory = Category::create([
                 'name' => 'Staff',
                 'module_id' => $contactsModule->id,
                 'team_id' => $team->id,
-                'parent_id' => $mainContactCategory?->id,
+                'parent_id' => null,
                 'description' => 'Contactos internos del equipo',
                 'status' => 1,
             ]);

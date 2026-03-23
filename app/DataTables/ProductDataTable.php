@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -21,15 +22,36 @@ class ProductDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->editColumn('status', function ($product)
             {
-                return $product->status
-                    ? '<span class="badge bg-success">Activo</span>'
-                    : '<span class="badge bg-secondary">Inactivo</span>';
+                $catalog = $product->catalog_status;
+                if (! $catalog instanceof ProductCatalogStatus)
+                {
+                    $catalog = $product->status
+                        ? ProductCatalogStatus::Publish
+                        : ProductCatalogStatus::Draft;
+                }
+                $class = match ($catalog)
+                {
+                    ProductCatalogStatus::Publish => 'bg-success',
+                    ProductCatalogStatus::Draft => 'bg-secondary',
+                    ProductCatalogStatus::Pending => 'bg-warning',
+                    ProductCatalogStatus::Private => 'bg-info',
+                };
+
+                return '<span class="badge '.$class.'">'.e($catalog->label()).'</span>';
             })
             ->editColumn('price', function ($product)
             {
-                $currency = $product->currency ? $product->currency->code : 'USD';
+                $currency = $product->currency ? $product->currency->code : 'ARS';
+                $regular = number_format((float) $product->price, 2, ',', '.');
+                $current = number_format($product->currentSellingPrice(), 2, ',', '.');
 
-                return number_format($product->price, 2, ',', '.').' '.$currency;
+                if ($product->isOnSale())
+                {
+                    return '<span class="text-muted text-decoration-line-through">'.$regular.'</span> '
+                        .$current.' '.e($currency);
+                }
+
+                return $current.' '.e($currency);
             })
             ->editColumn('category.name', function ($product)
             {
@@ -37,24 +59,50 @@ class ProductDataTable extends DataTable
             })
             ->addColumn('action', function ($product)
             {
+                $user = auth()->user();
                 $html = '<div class="d-flex justify-content-center align-items-center">';
-                if (auth()->user()->can('product.show'))
+
+                if ($user && $user->can('view', $product))
                 {
-                    $html .= '<a href="'.route('product.show', $product->id).'" class="text-body">
-                        <i class="ti ti-edit ti-sm me-2"></i>
-                    </a>';
+                    $html .= '<a href="'.e(route('product.show', $product->id)).'" class="text-body" title="'.e(__('View')).'">'
+                        .'<i class="ti ti-eye ti-sm me-2"></i></a>';
                 }
+                if ($user && $user->can('update', $product))
+                {
+                    $html .= '<a href="'.e(route('product.edit', $product->id)).'" class="text-body" title="'.e(__('Edit')).'">'
+                        .'<i class="ti ti-edit ti-sm me-2"></i></a>';
+                }
+                if ($user && $user->can('delete', $product))
+                {
+                    $html .= '<a href="#" class="text-danger" title="'.e(__('Delete')).'" onclick="deleteProduct('.$product->id.'); return false;">'
+                        .'<i class="ti ti-trash ti-sm"></i></a>';
+                }
+
                 $html .= '</div>';
 
                 return $html;
             })
             ->setRowId('id')
-            ->rawColumns(['status', 'action']);
+            ->rawColumns(['status', 'price', 'action']);
     }
 
     public function query(Product $model): QueryBuilder
     {
-        return $model->newQuery()->with(['category', 'currency']);
+        $query = $model->newQuery()->with(['category', 'currency', 'store']);
+
+        $storeId = request()->get('store_id');
+        if (is_numeric($storeId) && (int) $storeId > 0)
+        {
+            $query->where('store_id', (int) $storeId);
+        }
+
+        $categoryId = request()->get('category_id');
+        if (is_numeric($categoryId) && (int) $categoryId > 0)
+        {
+            $query->where('category_id', (int) $categoryId);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
@@ -62,15 +110,18 @@ class ProductDataTable extends DataTable
         return $this->builder()
             ->setTableId('product-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.store_id = $('#filter_store_id').val(); data.category_id = $('#filter_category_id').val();",
+            )
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
-                'pageLength' => 60,
-                'paging' => false,
+                'pageLength' => 25,
+                'paging' => true,
             ]);
     }
 
@@ -81,6 +132,18 @@ class ProductDataTable extends DataTable
             Column::make('name')
                 ->title(__('Name'))
                 ->addClass('all')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('code')
+                ->title(__('Code'))
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true)
+                ->searchable(true),
+            Column::make('store.name')
+                ->title(__('Store'))
+                ->className('text-center')
+                ->addClass('min-phone')
                 ->orderable(true)
                 ->searchable(true),
             Column::make('category.name')

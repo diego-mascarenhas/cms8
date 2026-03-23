@@ -165,14 +165,28 @@ class TeamSettingController extends Controller
 
             foreach ($settings as $key => $value)
             {
-                if (! empty($value) || $value === '0')
+                $type = $this->getSettingType($key);
+                $isBoolean = $type === 'boolean';
+                $shouldSet = $isBoolean ? true : (! empty($value) || $value === '0');
+                if ($shouldSet)
                 {
-                    $team->setSetting($key, $value, [
+                    $storedValue = $isBoolean ? (bool) ($value ?? false) : $value;
+                    $team->setSetting($key, $storedValue, [
                         'group' => $group,
-                        'type' => $this->getSettingType($key),
+                        'type' => $type,
                         'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
                     ]);
                 }
+            }
+
+            // When group is chat, ensure assistant_chat_stub is persisted (unchecked = false)
+            if ($group === 'chat' && ! array_key_exists('assistant_chat_stub', $settings))
+            {
+                $team->setSetting('assistant_chat_stub', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
             }
         }
 
@@ -197,6 +211,7 @@ class TeamSettingController extends Controller
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
+            'assistant_chat_stub',
         ];
 
         if (in_array($key, $integerFields))
@@ -398,6 +413,19 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
                         'readonly' => true,
+                    ],
+                ],
+            ],
+            'chat' => [
+                'title' => __('Chat / Asistente'),
+                'icon' => 'ti ti-lifebuoy',
+                'settings' => [
+                    'assistant_chat_stub' => [
+                        'label' => __('Modo prueba del asistente'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_chat_stub', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('Si está activo, el chat y WhatsApp no llaman a la IA real; devuelven una respuesta de prueba para poder probar el flujo sin consumir créditos.'),
                     ],
                 ],
             ],

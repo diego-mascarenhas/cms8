@@ -15,7 +15,10 @@ class SyncStripeSubscriptions
         private readonly StripeSubscriptionService $stripe,
     ) {}
 
-    public function handle(): int
+    /**
+     * @param  \App\Models\Team|null  $forTeam  When provided, assign this team_id to subscriptions that don't match a team by customer_id (e.g. client subscriptions in this Stripe account).
+     */
+    public function handle(?Team $forTeam = null): int
     {
         $processed = 0;
 
@@ -24,11 +27,14 @@ class SyncStripeSubscriptions
             $payload = $stripeSubscription->toArray();
             $mapped = $this->mapSubscription($payload);
 
-            // Find team by customer_id (stripe_id in teams table)
+            // Find team by customer_id (stripe_id in teams table), or use the team that triggered the sync (e.g. "my clients' subscriptions")
             $team = Team::where('stripe_id', $mapped['customer_id'])->first();
             if ($team)
             {
                 $mapped['team_id'] = $team->id;
+            } elseif ($forTeam)
+            {
+                $mapped['team_id'] = $forTeam->id;
             }
 
             $note = $mapped['amount_for_note'] !== null

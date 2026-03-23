@@ -12,27 +12,29 @@
 @endsection
 
 @section('content')
+    {{-- Commerce hero banner (product.commerce-hero): hidden for now; enable when needed --}}
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ __('Products') }}</h4>
-            <p class="text-muted">{{ __('Products from your WooCommerce store') }}</p>
+            <p class="text-muted mb-0">{{ __('Synced from your WooCommerce store') }}</p>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
-            @if (!empty($wordpressConfigured))
-            <form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
-                @csrf
-                <button type="submit" class="btn btn-primary">
-                    <i class="ti ti-refresh me-1"></i>{{ __('Sincronizar contenido con el asistente') }}
-                </button>
-            </form>
-            @endif
-            @can('product.create')
+            @can('create', \App\Models\Product::class)
                 <a href="{{ route('product.create') }}" class="btn btn-primary">
-                    <i class="ti ti-plus me-1"></i> {{ __('Create product') }}
+                    <i class="ti ti-plus me-1"></i>{{ __('Add product') }}
                 </a>
             @endcan
-            @if (!empty($lastSyncedAt))
-            <span class="text-muted small">{{ __('Última sincronización') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
+            @if (! empty($wordpressConfigured))
+                <form action="{{ route('wordpress.sync') }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-refresh me-1"></i>{{ __('Sync content with assistant') }}
+                    </button>
+                </form>
+            @endif
+            @if (! empty($lastSyncedAt))
+                <span class="text-muted small">{{ __('Last sync') }}: {{ $lastSyncedAt->diffForHumans() }}</span>
             @endif
         </div>
     </div>

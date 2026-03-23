@@ -18,7 +18,7 @@ class PromptPreviewTest extends TestCase
     public function test_preview_requires_at_least_one_of_text_image_or_audio(): void
     {
         $user = $this->createUserWithTeamAndRole('admin');
-        $prompt = $this->createPrompt();
+        $prompt = $this->createPrompt($user->current_team_id);
 
         $this->actingAs($user);
 
@@ -35,7 +35,7 @@ class PromptPreviewTest extends TestCase
         AnonymousAgent::fake(['Faked AI response text.']);
 
         $user = $this->createUserWithTeamAndRole('admin');
-        $prompt = $this->createPrompt();
+        $prompt = $this->createPrompt($user->current_team_id);
 
         $this->actingAs($user);
 
@@ -52,7 +52,8 @@ class PromptPreviewTest extends TestCase
 
     public function test_preview_denied_for_guest(): void
     {
-        $prompt = $this->createPrompt();
+        $team = Team::factory()->create();
+        $prompt = $this->createPrompt($team->id);
 
         $response = $this->postJson(route('prompt.preview', $prompt), [
             'test_message' => 'Some text',
@@ -64,7 +65,7 @@ class PromptPreviewTest extends TestCase
     public function test_preview_denied_for_non_admin(): void
     {
         $user = $this->createUserWithTeamAndRole('user');
-        $prompt = $this->createPrompt();
+        $prompt = $this->createPrompt($user->current_team_id);
 
         $this->actingAs($user);
 
@@ -75,14 +76,17 @@ class PromptPreviewTest extends TestCase
         $response->assertStatus(403);
     }
 
-    private function createPrompt(): Prompt
+    private function createPrompt(?int $teamId = null): Prompt
     {
         $module = Module::firstOrCreate(
             ['key' => 'test-module'],
             ['name' => 'Test Module', 'description' => 'Test', 'is_core' => 0, 'status' => 1, 'order' => 0],
         );
 
-        return Prompt::create([
+        $teamId = $teamId ?? Team::factory()->create()->id;
+
+        return Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $teamId,
             'module_id' => $module->id,
             'section_key' => 'test_section',
             'section_label' => 'Test Section',

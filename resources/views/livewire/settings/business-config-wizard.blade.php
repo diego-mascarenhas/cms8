@@ -439,13 +439,6 @@
                         @php
                             $canLoadSummary = filled($config['business_problematica'] ?? null);
                         @endphp
-                        @if (!$summaryLoading && !$summary && $canLoadSummary)
-                            <div class="mt-3">
-                                <button type="button" class="btn btn-outline-primary" wire:click="triggerSummaryIfChanged">
-                                    <i class="ti ti-report-analytics ti-sm me-1"></i> Generar resumen
-                                </button>
-                            </div>
-                        @endif
                     </div>
                     @if ($summaryLoading)
                         <div class="d-flex justify-content-center">
@@ -498,7 +491,7 @@
             @endif
 
             @if ($step === 6)
-                <div class="content active" wire:key="step-6" @if(method_exists($this, 'checkInsightsReady')) wire:poll.3s="checkInsightsReady" @endif>
+                <div class="content active" wire:key="step-6" @if(method_exists($this, 'checkProcessingReady')) wire:poll.3s="checkProcessingReady" @elseif(method_exists($this, 'checkInsightsReady')) wire:poll.3s="checkInsightsReady" @endif>
                     <div class="content-header mb-3">
                         <h6 class="mb-0">Revisar y enviar</h6>
                         <small>Revisa los datos de mercado y envía tu configuración.</small>
@@ -511,10 +504,28 @@
                                 'market_data' => 'Consultando datos de mercado y sector...',
                                 'web' => 'Analizando tu web...',
                                 'recommendations' => 'Generando recomendaciones con el asistente Humano.App...',
-                                default => 'Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar',
+                                default => (($summaryLoading ?? false) || (($finalFlowPhase ?? null) === 'summary'))
+                                    ? 'Procesando el desafío de tu negocio...'
+                                    : 'Procesando datos de mercado, web y recomendaciones · Se actualizará al terminar',
                             };
                         @endphp
-                        @if (!$insightsLoading && empty($insights))
+                        @if ($summaryLoading || (($finalFlowPhase ?? null) === 'summary'))
+                            <div class="d-flex justify-content-center">
+                                <div class="ai-loader-overlay p-4 p-md-5 text-center">
+                                    <div class="ai-loader-grid" aria-hidden="true"></div>
+                                    <div class="ai-loader-scan-line" aria-hidden="true"></div>
+                                    <div class="ai-loader-core">
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <span class="ai-loader-ring" aria-hidden="true"></span>
+                                        <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                                    </div>
+                                    <h6 class="mb-1 fw-semibold text-body">El asistente Humano.App está generando tu informe</h6>
+                                    <p class="mb-0 small text-muted">{{ $insightsLoaderSubtitle }}</p>
+                                    <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                                </div>
+                            </div>
+                        @elseif (!$insightsLoading && empty($insights))
                             @php
                                 $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
                             @endphp
@@ -531,11 +542,12 @@
                                     </div>
                                 </div>
                             @else
-                            <div wire:loading.remove wire:target="loadInsights">
-                                <button type="button" class="btn btn-outline-primary" wire:click="loadInsights">
-                                    <i class="ti ti-chart-bar ti-sm me-1"></i> Generar informe
-                                </button>
-                            </div>
+                                <div class="alert alert-info mb-0">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ti ti-info-circle ti-lg"></i>
+                                        <span class="fw-medium">Al pulsar el botón final se generará primero el informe de mercado y luego podrás enviarlo por email.</span>
+                                    </div>
+                                </div>
                             @endif
                             @if ($canLoadInsights ?? true)
                             <div class="d-flex justify-content-center">
@@ -662,7 +674,8 @@
                         $hasContactEmail = filled($config['contact_email'] ?? null);
                         $hasBusinessEmail = filled($config['business_email'] ?? null);
                         $hasEmail = $hasContactEmail || $hasBusinessEmail;
-                        $canSubmit = $hasReport && $hasEmail && !$insightsLoading;
+                        $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
+                        $canSubmit = !$insightsLoading && $hasEmail && (($hasReport) || (!$hasReport && $canLoadInsights));
                     @endphp
                     @if (!$hasEmail)
                         <div class="col-12 mb-3">
@@ -698,18 +711,40 @@
                             </div>
                         </div>
                     @endif
+                    @if ($reportSent ?? false)
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-success mb-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="ti ti-circle-check ti-lg"></i>
+                                    <span class="fw-medium">Informe enviado por email correctamente.</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
-                        <button type="button" class="btn btn-success" wire:click="submit" @disabled(!$canSubmit)>
-                            <i class="ti ti-send ti-sm me-1"></i>
-                            @if ($canSubmit)
-                                Enviar informe completo por email
-                            @elseif (!$hasReport)
-                                Primero genera el informe de mercado
-                            @else
-                                Completa tu email para enviar
-                            @endif
-                        </button>
+                        @if (!($finalFlowRequested ?? false) && !($reportSent ?? false))
+                            <button
+                                type="button"
+                                class="btn btn-success"
+                                wire:click="submit"
+                                @disabled(!$canSubmit)
+                            >
+                                <i class="ti ti-send ti-sm me-1"></i>
+                                <span wire:loading.remove wire:target="submit,loadInsights">
+                                @if ($hasReport && $hasEmail)
+                                    Enviar informe completo por email
+                                @elseif (!$hasReport)
+                                    Generar reporte y enviarlo por email
+                                @else
+                                    Completa tu email para enviar
+                                @endif
+                                </span>
+                                <span wire:loading wire:target="submit,loadInsights">
+                                    Procesando...
+                                </span>
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endif

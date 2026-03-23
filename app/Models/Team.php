@@ -317,6 +317,116 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the WhatsApp Assistant number for this team (driver-agnostic).
+     * Uses whatsapp_from first, then falls back to twilio_whatsapp_from.
+     */
+    public function getWhatsAppFrom(): ?string
+    {
+        return $this->getSetting('whatsapp_from') ?: $this->getSetting('twilio_whatsapp_from');
+    }
+
+    /**
+     * Base URL of the Node WhatsApp service for this team (one instance per team = one number per team, no disconnects).
+     * If set (whatsapp_service_url), use it; otherwise use the global config.
+     */
+    public function getWhatsAppServiceBaseUrl(): string
+    {
+        $url = $this->getSetting('whatsapp_service_url');
+        if ($url !== null && $url !== '')
+        {
+            return rtrim((string) $url, '/');
+        }
+
+        return rtrim(config('whatsapp.local.base_url', ''), '/');
+    }
+
+    /**
+     * Ensure this WhatsApp number is only linked to the given team.
+     * Removes whatsapp_from/twilio_whatsapp_from with this value from any other team.
+     */
+    public static function ensureOnlyTeamHasWhatsAppNumber(int $teamId, string $normalizedNumber): void
+    {
+        $normalizedNumber = preg_replace('/[^0-9]/', '', $normalizedNumber);
+        if ($normalizedNumber === '')
+        {
+            return;
+        }
+
+        TeamSetting::whereIn('key', ['whatsapp_from', 'twilio_whatsapp_from'])
+            ->where('value', $normalizedNumber)
+            ->where('team_id', '!=', $teamId)
+            ->delete();
+    }
+
+    /**
+     * Find a team by its WhatsApp Assistant number (normalized digits only).
+     */
+    public static function findByWhatsAppNumber(string $normalizedNumber): ?self
+    {
+        $normalizedNumber = preg_replace('/[^0-9]/', '', $normalizedNumber);
+        if ($normalizedNumber === '')
+        {
+            return null;
+        }
+
+        $settings = TeamSetting::whereIn('key', ['whatsapp_from', 'twilio_whatsapp_from'])
+            ->whereNotNull('value')
+            ->get();
+
+        foreach ($settings as $setting)
+        {
+            $value = $setting->value;
+            if (is_string($value) && preg_replace('/[^0-9]/', '', $value) === $normalizedNumber)
+            {
+                return $setting->team;
+            }
+        }
+
+        return null;
+    }
+
+    /** Token expiry minutes for WhatsApp link. */
+    public static function whatsAppLinkTokenExpiryMinutes(): int
+    {
+        return 15;
+    }
+
+    /**
+     * Generate a signed token for linking a WhatsApp number to this team (expires in 15 minutes).
+     */
+    public function generateWhatsAppLinkToken(): string
+    {
+        return encrypt([
+            'team_id' => $this->id,
+            'exp' => now()->addMinutes(static::whatsAppLinkTokenExpiryMinutes())->timestamp,
+        ]);
+    }
+
+    /**
+     * Parse and validate a WhatsApp link token; returns the team or null if invalid/expired.
+     */
+    public static function fromWhatsAppLinkToken(string $token): ?self
+    {
+        try
+        {
+            $payload = decrypt($token);
+            if (! is_array($payload) || empty($payload['team_id']) || empty($payload['exp']))
+            {
+                return null;
+            }
+            if ((int) $payload['exp'] < time())
+            {
+                return null;
+            }
+
+            return static::find($payload['team_id']);
+        } catch (\Throwable)
+        {
+            return null;
+        }
+    }
+
+    /**
      * Find a team by webhook hash.
      */
     public static function findByWebhookHash($hash)

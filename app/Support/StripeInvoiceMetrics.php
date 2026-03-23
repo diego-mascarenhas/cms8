@@ -1,0 +1,193 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\ExchangeRate;
+
+class StripeInvoiceMetrics
+{
+    /**
+     * Display currency code for aggregated invoice amounts (Stripe uses lowercase ISO codes).
+     *
+     * @param  array<int, object>  $invoices
+     */
+    public static function displayCurrencyForInvoices(array $invoices, string $default = 'EUR'): string
+    {
+        if ($invoices === [])
+        {
+            return $default;
+        }
+
+        $currency = $invoices[0]->currency ?? $default;
+
+        return strtoupper((string) $currency);
+    }
+
+    /**
+     * Prefer currency from unpaid invoices (open + uncollectible) so dashboard labels match pending balances.
+     * If the contact is in Argentina and any invoice is in ARS, prefer ARS for the label when still ambiguous.
+     *
+     * @param  array<int, object>  $paidInvoices
+     * @param  array<int, object>  $openInvoices
+     * @param  array<int, object>  $uncollectibleInvoices
+     */
+    public static function displayCurrencyForStripeInvoiceGroups(
+        array $paidInvoices,
+        array $openInvoices,
+        array $uncollectibleInvoices,
+        string $default = 'EUR',
+        ?string $contactCountryCode = null,
+    ): string {
+        foreach (array_merge($openInvoices, $uncollectibleInvoices) as $invoice)
+        {
+            if (isset($invoice->currency) && $invoice->currency !== '')
+            {
+                return strtoupper((string) $invoice->currency);
+            }
+        }
+
+        $merged = array_merge($paidInvoices, $openInvoices, $uncollectibleInvoices);
+        if ($merged === [])
+        {
+            return $default;
+        }
+
+        $fromFirst = strtoupper((string) ($merged[0]->currency ?? $default));
+
+        if ($contactCountryCode === 'ar')
+        {
+            foreach ($merged as $invoice)
+            {
+                if (isset($invoice->currency) && strtoupper((string) $invoice->currency) === 'ARS')
+                {
+                    return 'ARS';
+                }
+            }
+        }
+
+        return $fromFirst;
+    }
+
+    /**
+     * Sum invoice row amounts grouped by ISO currency (same rows as shown in balance tables).
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<string, float> Uppercase currency code => total amount
+     */
+    public static function sumAmountsByCurrency(array $rows): array
+    {
+        $sums = [];
+        foreach ($rows as $row)
+        {
+            $code = strtoupper(trim((string) ($row['currency'] ?? '')));
+            if ($code === '')
+            {
+                $code = 'XXX';
+            }
+            $sums[$code] = ($sums[$code] ?? 0.0) + (float) ($row['amount'] ?? 0);
+        }
+        ksort($sums);
+
+        return $sums;
+    }
+
+    /**
+     * Display string for one or more currency buckets (e.g. "62,727.27 ARS" or "10.00 EUR · 100.00 ARS").
+     *
+     * @param  array<string, float>  $sumsByCurrency
+     */
+    public static function formatMetricTotalsForDisplay(array $sumsByCurrency): string
+    {
+        if ($sumsByCurrency === [])
+        {
+            return '0.00';
+        }
+
+        $parts = [];
+        foreach ($sumsByCurrency as $currency => $amount)
+        {
+            if ($currency === 'XXX')
+            {
+                $parts[] = number_format($amount, 2);
+            } else
+            {
+                $parts[] = number_format($amount, 2).' '.$currency;
+            }
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * Sum amounts from multiple currencies into one target currency using {@see ExchangeRate} (latest rates).
+     * Returns null if any bucket has unknown currency (XXX) or a rate pair is missing.
+     *
+     * @param  array<string, float>  $sumsByCurrency
+     */
+    public static function sumAmountsConvertedToCurrency(array $sumsByCurrency, string $targetCurrency): ?float
+    {
+        $targetCurrency = strtoupper(trim($targetCurrency));
+        if ($targetCurrency === '' || $sumsByCurrency === [])
+        {
+            return null;
+        }
+
+        $total = 0.0;
+        foreach ($sumsByCurrency as $currency => $amount)
+        {
+            $from = strtoupper((string) $currency);
+            if ($from === 'XXX')
+            {
+                return null;
+            }
+
+            $amount = (float) $amount;
+            if ($from === $targetCurrency)
+            {
+                $total += $amount;
+
+                continue;
+            }
+
+            $converted = ExchangeRate::convert($amount, $from, $targetCurrency);
+            if ($converted === null)
+            {
+                return null;
+            }
+
+            $total += $converted;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Same as {@see formatMetricTotalsForDisplay} plus an approximate total in the app's principal currency
+     * (config `cashier.currency`, e.g. CASHIER_CURRENCY) when conversion is available and useful.
+     *
+     * @param  array<string, float>  $sumsByCurrency
+     */
+    public static function formatMetricTotalsWithPrimaryEquivalent(array $sumsByCurrency, string $primaryCurrency): string
+    {
+        $line = self::formatMetricTotalsForDisplay($sumsByCurrency);
+        $primaryCurrency = strtoupper(trim($primaryCurrency));
+        if ($primaryCurrency === '' || $sumsByCurrency === [])
+        {
+            return $line;
+        }
+
+        $onlyPrimary = count($sumsByCurrency) === 1 && array_key_exists($primaryCurrency, $sumsByCurrency);
+        if ($onlyPrimary)
+        {
+            return $line;
+        }
+
+        $equiv = self::sumAmountsConvertedToCurrency($sumsByCurrency, $primaryCurrency);
+        if ($equiv === null)
+        {
+            return $line;
+        }
+
+        return $line.' (≈ '.number_format($equiv, 2).' '.$primaryCurrency.')';
+    }
+}

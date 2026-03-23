@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TwilioService;
+use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Console\Command;
 
 class TestProductSystem extends Command
@@ -41,7 +41,7 @@ class TestProductSystem extends Command
             'desarrollo web',
         ];
 
-        $twilioService = new TwilioService;
+        $whatsAppMessageService = new WhatsAppMessageService;
 
         foreach ($testMessages as $message)
         {
@@ -49,7 +49,7 @@ class TestProductSystem extends Command
 
             try
             {
-                $response = $twilioService->processProductCommands($phone, $message);
+                $response = $whatsAppMessageService->processProductCommands($phone, $message);
 
                 if ($response)
                 {

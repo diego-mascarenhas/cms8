@@ -8,21 +8,36 @@ use Livewire\Component;
 
 class HelpCenterIcon extends Component
 {
-    public $inboundCount = 0;
-
-    public function mount()
-    {
-        $teamKey = auth()->user()->currentTeam->id ?? 'global';
-        $this->inboundCount = Cache::remember("inbound_received_count_{$teamKey}", 60, function ()
-        {
-            return Conversation::where('direction', 'inbound')
-                ->where('status', 'received')
-                ->count();
-        });
-    }
-
     public function render()
     {
-        return view('livewire.help-center-icon');
+        $team = auth()->user()->currentTeam ?? null;
+        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
+        $cacheKey = 'inbound_received_count_team_'.($team ? $team->id : 0);
+
+        $inboundCount = Cache::remember(
+            $cacheKey,
+            15,
+            function () use ($teamNumber)
+            {
+                if ($teamNumber === '')
+                {
+                    return 0;
+                }
+
+                return Conversation::where('channel', 'whatsapp')
+                    ->where('direction', 'inbound')
+                    ->where('status', 'received')
+                    ->where(function ($q) use ($teamNumber)
+                    {
+                        $q->where('from', $teamNumber)
+                            ->orWhere('to', $teamNumber)
+                            ->orWhere('from', 'like', $teamNumber.':%')
+                            ->orWhere('to', 'like', $teamNumber.':%');
+                    })
+                    ->count();
+            },
+        );
+
+        return view('livewire.help-center-icon', ['inboundCount' => $inboundCount]);
     }
 }

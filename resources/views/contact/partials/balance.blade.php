@@ -33,7 +33,7 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['total_paid'] ?? '0.00' }}€</h4>
+                        <h4 class="mb-0">{{ $stripeData['metrics']['total_paid'] ?? '0.00' }}</h4>
                         <small class="text-muted">Pagado</small>
                     </div>
                 </div>
@@ -46,12 +46,46 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }}€</h4>
+                        <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }}</h4>
                         <small class="text-muted">Impago</small>
                     </div>
                 </div>
             </div>
         </div>
+
+        @if (!empty($stripeData['collection_guide']))
+            <div class="card border border-primary mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">
+                        <i class="ti ti-message-chatbot me-1"></i>
+                        Prompt de cobranza (paso a paso)
+                    </h6>
+                    <p class="text-muted small mb-3">{{ $stripeData['collection_guide']['advisor_notes'] }}</p>
+                    @foreach ($stripeData['collection_guide']['steps'] as $idx => $step)
+                        <div class="mb-3 pb-3 @if (! $loop->last) border-bottom @endif">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+                                <h6 class="mb-0 text-primary">{{ $step['title'] }}</h6>
+                                <button type="button"
+                                    class="btn btn-sm btn-label-primary copy-collection-step"
+                                    data-copy-target="collection-step-{{ $idx }}">
+                                    <i class="ti ti-copy me-1"></i>Copiar
+                                </button>
+                            </div>
+                            <textarea id="collection-step-{{ $idx }}" class="d-none" readonly>{{ $step['body'] }}</textarea>
+                            <p class="mb-0 small" style="white-space: pre-wrap;">{{ $step['body'] }}</p>
+                        </div>
+                    @endforeach
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button"
+                            class="btn btn-sm btn-primary copy-collection-step"
+                            data-copy-target="collection-full-copy">
+                            <i class="ti ti-copy me-1"></i>Copiar guía completa
+                        </button>
+                    </div>
+                    <textarea id="collection-full-copy" class="d-none" readonly>{{ $stripeData['collection_guide']['full_copy'] }}</textarea>
+                </div>
+            </div>
+        @endif
 
         <!-- Invoices Table (Paid) -->
         <div class="table-responsive">
@@ -129,6 +163,11 @@
                                     @if(!empty($invoice['dashboard_url']))
                                         <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="text-body" title="Ver en Stripe">
                                             <i class="ti ti-external-link"></i>
+                                        </a>
+                                    @endif
+                                    @if(!empty($invoice['hosted_invoice_url']))
+                                        <a href="{{ $invoice['hosted_invoice_url'] }}" target="_blank" class="text-body text-success ms-1" title="Pagar">
+                                            <i class="ti ti-credit-card"></i>
                                         </a>
                                     @endif
                                 </td>
@@ -224,3 +263,27 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.copy-collection-step').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-copy-target');
+                var el = document.getElementById(id);
+                if (!el) {
+                    return;
+                }
+                var text = el.value || el.textContent || '';
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success('Copiado al portapapeles');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+@endpush

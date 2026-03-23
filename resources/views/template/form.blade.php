@@ -48,6 +48,16 @@
 				</div>
 			</div>
 		</div>
+
+		@if(!isset($data->id))
+		<div class="row g-3 mt-2">
+			<div class="col-12">
+				<label for="ai_prompt" class="form-label">{{ __('Generate with AI (optional)') }}</label>
+				<textarea class="form-control" id="ai_prompt" name="ai_prompt" rows="3" maxlength="2000" placeholder="{{ __('E.g.: Welcome newsletter with logo, headline and CTA button') }}">{{ old('ai_prompt', '') }}</textarea>
+				<div class="form-text">{{ __('Describe the template you want. On save, AI will generate the HTML and open the visual editor.') }}</div>
+			</div>
+		</div>
+		@endif
 		
 		@if(isset($data->id))
 		<div class="row g-3 mt-3">

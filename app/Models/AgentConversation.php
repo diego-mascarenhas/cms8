@@ -17,12 +17,19 @@ class AgentConversation extends Model
     protected $fillable = [
         'id',
         'user_id',
+        'team_id',
         'title',
+        'assistant_tool_flow_routing_key',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function messages(): HasMany

@@ -1,0 +1,58 @@
+---
+description: Product option groups — exclusive vs additive, required, price adjustments (future variants/modifiers)
+globs: app/Models/Product*.php,database/migrations/*product*,app/Http/**/*Product*
+alwaysApply: false
+---
+
+# Product option groups (design target)
+
+When implementing modifiers, flavors, or variants beyond simple `products`, model **option groups** separately from individual **options**.
+
+## Core concepts
+
+- **Option group**: a named set of choices shown together (e.g. “Perfil de sabor”, “Salsas”).
+- **Option**: one selectable value; may have **price delta** (0 = no extra charge).
+- **Selection rules** on the group (not on each option alone):
+  - `min_selections` — how many options the customer must pick from this group (0 = optional group).
+  - `max_selections` — cap on how many options from this group (1 = at most one).
+
+## Pattern A — Mutually exclusive and required (radio)
+
+Example: *Dulce* vs *Picante* — exactly one must be chosen; choosing one **excludes** the other.
+
+- Set **`min_selections = 1`** and **`max_selections = 1`** on the group.
+- UI: single-select (radio). Validation: exactly one option id from this group.
+
+## Pattern B — Mutually exclusive but optional
+
+Example: optional single choice when “no default” is allowed.
+
+- Set **`min_selections = 0`** and **`max_selections = 1`**.
+
+## Pattern C — Additive / independent (checkboxes)
+
+Example: *Mayonesa* and also *Ketchup* — both allowed; neither may be required.
+
+- Set **`min_selections = 0`** and **`max_selections > 1`** (or `null` / high limit for “unlimited” within that group).
+- UI: multi-select. Validation: count between min and max.
+
+## Pattern D — Additive with required minimum
+
+Example: “choose at least 2 sides”.
+
+- Set **`min_selections = 2`** and **`max_selections`** accordingly.
+
+## Price
+
+- Each **option** may define `price_adjustment` (decimal, default 0). Sums apply to line item when that option is selected.
+- Groups do not add a price by themselves; only options do.
+
+## Naming
+
+- Prefer English in code: `OptionGroup`, `min_selections`, `max_selections`, `price_adjustment`.
+- Do not encode “exclusive” as a separate boolean if min/max already imply it (`max_selections === 1` ⇒ mutually exclusive within the group).
+
+## Cart / WhatsApp
+
+- Persist chosen **option ids per group** on the line item (structured payload), not only free text.
+- Validate server-side using the product’s group definitions (min/max, allowed option ids).

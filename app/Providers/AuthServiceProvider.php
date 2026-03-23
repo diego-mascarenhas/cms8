@@ -12,11 +12,13 @@ use App\Models\Invoice;
 use App\Models\LanguageVariant;
 use App\Models\Mailbox;
 use App\Models\Multimedia;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\Prompt;
 use App\Models\Service;
 use App\Models\Software;
 use App\Models\Stylebook;
+use App\Models\Ticket;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
@@ -27,11 +29,13 @@ use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
 use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
+use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\PromptPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
 use App\Policies\StyleBookPolicy;
+use App\Policies\TicketPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -43,6 +47,7 @@ class AuthServiceProvider extends ServiceProvider
         Enterprise::class => ClientPolicy::class,
         Contact::class => ContactPolicy::class,
         Fare::class => FarePolicy::class,
+        Product::class => ProductPolicy::class,
         Project::class => ProjectPolicy::class,
         Service::class => ServicePolicy::class,
         Invoice::class => InvoicePolicy::class,
@@ -53,6 +58,7 @@ class AuthServiceProvider extends ServiceProvider
         Stylebook::class => StyleBookPolicy::class,
         Content::class => ContentPolicy::class,
         Mailbox::class => MailboxPolicy::class,
+        Ticket::class => TicketPolicy::class,
     ];
 
     public function boot()

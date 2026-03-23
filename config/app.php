@@ -84,6 +84,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Assistant chat stub (testing)
+    |--------------------------------------------------------------------------
+    |
+    | When true, the chat assistant returns a stub response instead of calling
+    | Claude. Use for testing the flow without API usage. Can be overridden
+    | per team via Team Settings > Chat / Asistente > Modo prueba.
+    |
+    */
+    'assistant_chat_stub' => env('ASSISTANT_CHAT_STUB', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
@@ -237,5 +249,30 @@ return [
     |
     */
     'google_analytics_id' => env('GOOGLE_ANALYTICS_ID', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Public home for guests (URL "/")
+    |--------------------------------------------------------------------------
+    |
+    | If PUBLIC_HOME_ROUTE (named route) or PUBLIC_HOME_PATH (internal path like
+    | /landing) is set, guests visiting "/" are sent there instead of login.
+    | Leave both empty so guests go to login. Authenticated users always go to
+    | the dashboard from "/".
+    |
+    */
+    'public_home_route' => env('PUBLIC_HOME_ROUTE'),
+    'public_home_path' => env('PUBLIC_HOME_PATH'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Wapify: WhatsApp link for QR (chillerlan/php-qrcode) and buttons
+    |--------------------------------------------------------------------------
+    | Optional full URL for QR payload. If empty, built from phone + text.
+    | Default phone 34613194131 when WAPIFY_WHATSAPP_PHONE is not set.
+    */
+    'wapify_whatsapp_link' => env('WAPIFY_WHATSAPP_LINK', ''),
+    'wapify_whatsapp_phone' => env('WAPIFY_WHATSAPP_PHONE', '34613194131'),
+    'wapify_whatsapp_text' => env('WAPIFY_WHATSAPP_TEXT', 'Hola!'),
 
 ];

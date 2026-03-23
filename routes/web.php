@@ -1,6 +1,5 @@
 <?php
 
-use App\Helpers\Helpers as Helper;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
@@ -40,6 +39,7 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\ManualController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\MultimediaController;
@@ -50,6 +50,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentSubscriptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
@@ -66,10 +67,12 @@ use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // auth
@@ -97,21 +100,23 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
-Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
-Route::get('/launch/{token?}', function (?string $token = null)
+Route::get('/wapify', function ()
 {
-    \App\Helpers\Helpers::updatePageConfig(['myStyle' => 'light', 'force_style_light' => true]);
+    \Illuminate\Support\Facades\App::setLocale('es_AR');
 
-    return view('landing-business-creation', ['token' => $token]);
-})->name('landing.business-creation');
+    return view('homes.wapify');
+})->name('wapify');
+Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
+Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))
+    ->name('landing.business-creation');
 
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
 Route::redirect('/propspect/search', '/prospect/search', 301);
-Route::get('/prospect-search', [ProspectSearchController::class, 'index'])->name('prospect-search');
-Route::post('/prospect-search/search', [ProspectSearchController::class, 'searchPeople'])->name('prospect-search.search');
-Route::post('/prospect-search/lead', [ProspectSearchController::class, 'storeLead'])->name('prospect-search.lead');
+Route::get('/prospecting', [ProspectSearchController::class, 'index'])->name('prospecting');
+Route::post('/prospecting/search', [ProspectSearchController::class, 'searchPeople'])->name('prospecting.search');
+Route::post('/prospecting/lead', [ProspectSearchController::class, 'storeLead'])->name('prospecting.lead');
 
 Route::get('/register-for-prospects', function ()
 {
@@ -123,6 +128,9 @@ Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route
 Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+
+// Demo: auto-login as admin of the demo team
+Route::get('/demo', [AuthController::class, 'demoLogin'])->name('demo.login');
 
 // SLA Acceptance Routes (public - no auth required, autologin handled in controller)
 Route::get('/sla/accept/{token}', [SLAController::class, 'showAcceptance'])->name('sla.accept');
@@ -173,6 +181,9 @@ Route::get('misc-comingsoon', function ()
     return view('content.pages.pages-misc-comingsoon');
 })->name('comingsoon');
 
+// Public template view (no auth) – for sharing view links from assistant/WhatsApp
+Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPublic'])->name('template.show-public');
+
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
@@ -180,6 +191,32 @@ Route::middleware(['auth'])->group(function ()
     {
         return redirect()->route('dashboard');
     });
+
+    Route::get('/profile/data', function (\Illuminate\Http\Request $request)
+    {
+        $user = $request->user();
+        $team = $user->currentTeam;
+        $roleInTeam = null;
+        if ($team)
+        {
+            $membership = $user->teams()->where('team_id', $team->id)->first();
+            $roleInTeam = $membership?->pivot?->role ?? null;
+        }
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone !== null ? (string) $user->phone : null,
+            'profile_photo_url' => $user->profile_photo_url ?? null,
+            'current_team' => $team ? [
+                'id' => $team->id,
+                'name' => $team->name,
+            ] : null,
+            'role_in_team' => $roleInTeam,
+            'roles' => $user->roles->pluck('name')->values()->all(),
+        ]);
+    })->name('profile.data');
 
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
@@ -191,7 +228,17 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
 
-    // Team Mailboxes
+    // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
+    Route::get('/mailboxes', function ()
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        return redirect()->route('team.mailboxes.index', $team);
+    })->name('mailboxes.index');
     Route::get('/team/{team}/mailboxes', [TeamMailboxController::class, 'index'])->name('team.mailboxes.index');
     Route::get('/team/{team}/mailboxes/create', [TeamMailboxController::class, 'create'])->name('team.mailboxes.create');
     Route::post('/team/{team}/mailboxes', [TeamMailboxController::class, 'store'])->name('team.mailboxes.store');
@@ -395,8 +442,18 @@ Route::middleware(['auth'])->group(function ()
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('chat.whatsapp-status');
+    Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
+    Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
+    Route::post('/chat/link-current-number', [ChatController::class, 'linkCurrentNumberFromService'])->name('chat.link-current-number');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::get('/chat/list', [ChatController::class, 'getChatList'])->name('chat.list');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::get('/chat/assistant-history', [ChatController::class, 'assistantHistory'])->name('chat.assistant-history');
+    Route::patch('/chat/ai-toggle-preference', [ChatController::class, 'updateAiTogglePreference'])->name('chat.ai-toggle-preference');
+    Route::patch('/chat/assistant-auto-respond', [ChatController::class, 'updateAssistantAutoRespond'])->name('chat.assistant-auto-respond');
+    Route::patch('/chat/notification-preference', [ChatController::class, 'updateNotificationPreference'])->name('chat.notification-preference');
+    Route::post('/chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
     Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
     // Chatbot (Livewire assistant with general router + flows)
@@ -413,6 +470,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+    Route::post('/mail/compose/suggest', [MailController::class, 'suggestComposeBody'])->name('mail.compose-suggest');
     Route::get('/mail/sync', [MailController::class, 'sync'])->name('mail-sync');
 
     // Services
@@ -525,6 +583,20 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
     Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
     Route::get('/task/{id}/total-time', [TaskController::class, 'getTotalTime'])->name('task.total-time');
+
+    // Ticket Routes
+    Route::get('/ticket/list', [TicketController::class, 'index'])->name('ticket.index');
+    Route::get('/ticket/create', [TicketController::class, 'create'])->name('ticket.create');
+    Route::post('/ticket', [TicketController::class, 'store'])->name('ticket.store');
+    Route::get('/ticket/{id}', [TicketController::class, 'show'])->name('ticket.show');
+    Route::post('/ticket/{id}/response', [TicketController::class, 'addResponse'])->name('ticket.response');
+    Route::post('/ticket/{id}/status', [TicketController::class, 'updateStatus'])->name('ticket.status');
+    Route::post('/ticket/{id}/assign', [TicketController::class, 'assign'])->name('ticket.assign');
+    Route::post('/ticket/{id}/priority', [TicketController::class, 'updatePriority'])->name('ticket.priority');
+    Route::post('/ticket/{id}/close', [TicketController::class, 'close'])->name('ticket.close');
+    Route::post('/ticket/{id}/rate', [TicketController::class, 'rate'])->name('ticket.rate');
+    Route::get('/ticket/{id}/attachment/{media}', [TicketController::class, 'downloadAttachment'])->name('ticket.attachment');
+    Route::delete('/ticket/{id}', [TicketController::class, 'destroy'])->name('ticket.destroy');
 
     // Multimedia Routes
     Route::get('/multimedia/list', [MultimediaController::class, 'index'])->name('multimedia.index');
@@ -683,6 +755,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
+    Route::post('/template/generate-html', [TemplateController::class, 'generateHtml'])->name('template.generate-html')->middleware('throttle:10,1');
+    Route::get('/template/generate-html/result/{token}', [TemplateController::class, 'generateHtmlResult'])->name('template.generate-html.result');
     Route::get('/template/list', [TemplateController::class, 'index'])->name('template.index');
     Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
     Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
@@ -767,6 +841,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Subscription Management
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');
     Route::post('/subscription/validate-coupon', [SubscriptionController::class, 'validateCoupon'])->name('subscription.validate-coupon');
@@ -777,6 +852,14 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
     Route::post('/subscription/swap', [SubscriptionController::class, 'swap'])->name('subscription.swap');
 
+    // Payment subscriptions (forms of payment for services)
+    Route::get('/payment-subscription', [PaymentSubscriptionController::class, 'index'])->name('payment-subscription.index');
+    Route::get('/payment-subscription/create', [PaymentSubscriptionController::class, 'create'])->name('payment-subscription.create');
+    Route::post('/payment-subscription', [PaymentSubscriptionController::class, 'store'])->name('payment-subscription.store');
+    Route::get('/payment-subscription/{id}/edit', [PaymentSubscriptionController::class, 'edit'])->name('payment-subscription.edit');
+    Route::put('/payment-subscription/{id}', [PaymentSubscriptionController::class, 'update'])->name('payment-subscription.update');
+    Route::delete('/payment-subscription/{id}', [PaymentSubscriptionController::class, 'destroy'])->name('payment-subscription.destroy');
+
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
@@ -785,17 +868,20 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
-// Public routes
-Route::get('/app/calendar', [Calendar::class, 'index'])->name('app-calendar');
+// Today: open calendar in list view
+Route::get('/today', function ()
+{
+    return redirect()->to(route('app-calendar').'?view=listMonth');
+})->name('today')->middleware('auth');
 
-// Google Calendar Integration
+// Calendar (local DB)
 Route::middleware(['auth'])->prefix('app')->group(function ()
 {
-    Route::get('/calendar/google/events', [\App\Http\Controllers\CalendarController::class, 'getEvents'])->name('calendar.google.events');
-    Route::post('/calendar/google/events', [\App\Http\Controllers\CalendarController::class, 'store'])->name('calendar.google.store');
-    Route::put('/calendar/google/events/{eventId}', [\App\Http\Controllers\CalendarController::class, 'update'])->name('calendar.google.update');
-    Route::delete('/calendar/google/events/{eventId}', [\App\Http\Controllers\CalendarController::class, 'destroy'])->name('calendar.google.destroy');
-    Route::post('/calendar/google/quick-add', [\App\Http\Controllers\CalendarController::class, 'quickAdd'])->name('calendar.google.quick-add');
+    Route::get('/calendar', [Calendar::class, 'index'])->name('app-calendar');
+    Route::get('/calendar/events', [Calendar::class, 'events'])->name('app-calendar-events');
+    Route::post('/calendar/events', [Calendar::class, 'store'])->name('app-calendar-events-store');
+    Route::put('/calendar/events/{event}', [Calendar::class, 'update'])->name('app-calendar-events-update');
+    Route::delete('/calendar/events/{event}', [Calendar::class, 'destroy'])->name('app-calendar-events-destroy');
 });
 
 Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
@@ -816,7 +902,7 @@ Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->
 Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
-Route::view('/strategy', 'strategy.index')->name('strategy.index');
+Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
 Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
@@ -842,15 +928,29 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
-// Twilio Webhook Routes (legacy - without hash)
+// WhatsApp webhook routes (canonical - without hash)
+Route::post('/whatsapp/webhook', [WhatsAppWebhookController::class, 'handleIncomingMessage'])
+    ->name('whatsapp.webhook');
+Route::post('/whatsapp/status', [WhatsAppWebhookController::class, 'handleMessageStatus'])
+    ->name('whatsapp.status');
+Route::post('/whatsapp/fallback', [WhatsAppWebhookController::class, 'handleFallback'])
+    ->name('whatsapp.fallback');
+
+// WhatsApp webhook routes (canonical - team-specific with hash)
+Route::post('/whatsapp/webhook/{hash}', [WhatsAppWebhookController::class, 'handleIncomingMessage'])
+    ->name('whatsapp.webhook.team');
+Route::post('/whatsapp/status/{hash}', [WhatsAppWebhookController::class, 'handleMessageStatus'])
+    ->name('whatsapp.status.team');
+Route::post('/whatsapp/fallback/{hash}', [WhatsAppWebhookController::class, 'handleFallback'])
+    ->name('whatsapp.fallback.team');
+
+// Twilio webhook routes (legacy aliases)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
     ->name('twilio.webhook');
 Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
     ->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
     ->name('twilio.fallback');
-
-// Twilio Webhook Routes (team-specific with hash)
 Route::post('/twilio/webhook/{hash}', [TwilioWebhookController::class, 'handleIncomingMessage'])
     ->name('twilio.webhook.team');
 Route::post('/twilio/status/{hash}', [TwilioWebhookController::class, 'handleMessageStatus'])
@@ -994,11 +1094,32 @@ Route::middleware(['web', 'auth'])->group(function ()
     Route::get('/accounting/download-quarter-csv', [App\Http\Controllers\AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
 });
 
+// User Manual Routes (Public - No Authentication Required)
+Route::prefix('manual')->name('manual.')->group(function ()
+{
+    Route::get('/', [ManualController::class, 'index'])->name('index');
+    Route::get('/getting-started', [ManualController::class, 'gettingStarted'])->name('getting-started');
+    Route::get('/dashboard', [ManualController::class, 'dashboard'])->name('dashboard');
+    Route::get('/contacts', [ManualController::class, 'contacts'])->name('contacts');
+    Route::get('/clients', [ManualController::class, 'clients'])->name('clients');
+    Route::get('/collaborators', [ManualController::class, 'collaborators'])->name('collaborators');
+    Route::get('/services', [ManualController::class, 'services'])->name('services');
+    Route::get('/projects', [ManualController::class, 'projects'])->name('projects');
+    Route::get('/tasks', [ManualController::class, 'tasks'])->name('tasks');
+    Route::get('/chat', [ManualController::class, 'chat'])->name('chat');
+    Route::get('/products-and-orders', [ManualController::class, 'productsAndOrders'])->name('products-and-orders');
+    Route::get('/billing', [ManualController::class, 'billing'])->name('billing');
+    Route::get('/campaigns', [ManualController::class, 'campaigns'])->name('campaigns');
+    Route::get('/team', [ManualController::class, 'team'])->name('team');
+    Route::get('/more-features', [ManualController::class, 'moreFeatures'])->name('more-features');
+});
+
 // Help Documentation Routes (Public - No Authentication Required)
 Route::prefix('help')->name('help.')->group(function ()
 {
     Route::get('/', [HelpController::class, 'index'])->name('index');
     Route::get('/usage', [HelpController::class, 'usage'])->name('usage');
+    Route::get('/chat-assistant', [HelpController::class, 'chatAssistant'])->name('chat-assistant');
     Route::get('/contacts', [HelpController::class, 'contacts'])->name('contacts');
     Route::get('/api', [HelpController::class, 'api'])->name('api');
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\TokenHelper;
+use App\Models\Team;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -233,5 +235,44 @@ class AuthController extends Controller
 
             return null;
         }
+    }
+
+    /**
+     * Auto-login as the admin (owner) of the demo team. Public route for demo access.
+     */
+    public function demoLogin(): RedirectResponse
+    {
+        $team = Team::whereRaw('LOWER(name) LIKE ?', ['%demo%'])->first();
+
+        if (! $team)
+        {
+            return redirect()->route('login')->withErrors(['error' => __('Demo team not found.')]);
+        }
+
+        $user = User::withoutGlobalScopes()->find($team->user_id);
+
+        if (! $user)
+        {
+            return redirect()->route('login')->withErrors(['error' => __('Demo team has no owner.')]);
+        }
+
+        auth()->login($user, true);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        request()->session()->regenerate();
+
+        if ($user->hasRole('admin'))
+        {
+            return redirect()->route('dashboard');
+        }
+        if ($user->hasRole('collaborator'))
+        {
+            return redirect()->route('dashboard.collaborator');
+        }
+        if ($user->hasRole('client'))
+        {
+            return redirect()->route('dashboard.client');
+        }
+
+        return redirect()->route('dashboard');
     }
 }

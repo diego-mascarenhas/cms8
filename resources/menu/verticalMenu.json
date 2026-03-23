@@ -20,13 +20,6 @@
       "module_key": "today"
     },
     {
-      "url": "prospect/search",
-      "name": "Buscar clientes",
-      "icon": "menu-icon tf-icons ti ti-target",
-      "slug": "prospect.search",
-      "module_key": "prospecting"
-    },
-    {
       "url": "contact/list",
       "name": "Contacts",
       "icon": "menu-icon tf-icons ti ti-users",
@@ -76,20 +69,6 @@
       "module_key": "tasks"
     },
     {
-      "url": "time/list",
-      "name": "Times",
-      "icon": "menu-icon tf-icons ti ti-hourglass-low",
-      "slug": "time",
-      "module_key": "times"
-    },
-    {
-      "url": "documentation/list",
-      "name": "Documentación",
-      "icon": "menu-icon tf-icons ti ti-files",
-      "slug": "documentation-list",
-      "module_key": "documentation"
-    },
-    {
       "menuHeader": "E-commerce"
     },
     {
@@ -100,6 +79,13 @@
       "module_key": "products"
     },
     {
+      "url": "store/list",
+      "name": "Stores",
+      "icon": "menu-icon tf-icons ti ti-building-store",
+      "slug": "store.index",
+      "module_key": "stores"
+    },
+    {
       "url": "order/list",
       "name": "Orders",
       "icon": "menu-icon tf-icons ti ti-shopping-bag",
@@ -108,6 +94,13 @@
     },
     {
       "menuHeader": "Billing"
+    },
+    {
+      "url": "subscription",
+      "name": "Subscriptions",
+      "icon": "menu-icon tf-icons ti ti-repeat",
+      "slug": "subscription.index",
+      "module_key": "subscriptions"
     },
     {
       "url": "invoice/list",

@@ -744,9 +744,11 @@ class TeamLizamaSeeder extends Seeder
             ['email' => $email],
             [
                 'name' => 'Diego Mascarenhas',
+                'phone' => 34722372858,
                 'password' => bcrypt('password'),  // Contraseña por defecto si se crea
             ],
         );
+        $user->update(['phone' => 34722372858]);
 
         // Asignar role global de admin (Spatie)
         if (! $user->hasRole('admin'))

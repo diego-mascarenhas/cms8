@@ -32,6 +32,20 @@
                 {{ isset($data->id) ? 'Editar' : 'Crear' }}</h4>
             <p class="text-muted">Gestiona y personaliza a tus clientes</p>
         </div>
+        @if(isset($data->id))
+            @can('delete', $data)
+                <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
+                    <form action="{{ route('contact.destroy', $data->id) }}" method="POST"
+                          onsubmit="return confirm('¿Seguro que deseas eliminar este contacto? Esta acción no se puede deshacer.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="ti ti-trash me-1"></i> Eliminar contacto
+                        </button>
+                    </form>
+                </div>
+            @endcan
+        @endif
     </div>
 
 
@@ -138,8 +152,8 @@
                                         value="{{ old('surname', $data->surname ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <label for="email" class="form-label">Email (*)</label>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}" required>
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}">
                                     @error('email')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

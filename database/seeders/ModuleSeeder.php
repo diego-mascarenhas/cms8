@@ -62,6 +62,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Task management module',
             'is_enabled' => true,  // On by default
         ],
+        'calendar' => [
+            'name' => 'Calendar',
+            'icon' => 'calendar',
+            'description' => 'Calendar and appointments module',
+            'is_enabled' => true,  // On by default
+        ],
         'notifications' => [
             'name' => 'Notifications',
             'icon' => 'speakerphone',
@@ -78,6 +84,14 @@ class ModuleSeeder extends Seeder
 
     protected $additionalModules = [
         // BILLING GROUP
+        'subscriptions' => [
+            'name' => 'Subscriptions',
+            'icon' => 'repeat',
+            'description' => 'Subscriptions and billing plans module',
+            'group' => 'billing',
+            'order' => 0,
+            'is_enabled' => true,  // On by default
+        ],
         'invoices' => [
             'name' => 'Invoices',
             'icon' => 'file-invoice',

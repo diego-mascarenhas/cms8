@@ -2,22 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\ClaudeService;
+use App\Services\AssistantSystemPrompt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Laravel\Ai\Enums\Lab;
+
+use function Laravel\Ai\agent;
 
 class ClaudePromptController extends Controller
 {
     protected $promptsDir;
 
-    protected $claudeService;
-
-    public function __construct(ClaudeService $claudeService)
+    public function __construct()
     {
-        $this->claudeService = $claudeService;
         $this->promptsDir = storage_path('app/claude_prompts');
 
-        // Create the prompts directory if it doesn't exist
         if (! File::exists($this->promptsDir))
         {
             File::makeDirectory($this->promptsDir, 0755, true);
@@ -145,8 +144,7 @@ class ClaudePromptController extends Controller
 
         if ($promptName === 'default')
         {
-            // Reset to default prompt
-            $this->claudeService->resetSystemPrompt();
+            AssistantSystemPrompt::reset();
 
             return redirect()->route('claude.prompts.index')
                 ->with('success', 'Default prompt activated.');
@@ -161,9 +159,8 @@ class ClaudePromptController extends Controller
                 ->with('error', 'Prompt not found.');
         }
 
-        // Load and set the prompt
         $promptContent = File::get($filePath);
-        $this->claudeService->setSystemPrompt($promptContent);
+        AssistantSystemPrompt::set($promptContent);
 
         return redirect()->route('claude.prompts.index')
             ->with('success', "Prompt '{$promptName}' activated for current session.");
@@ -202,27 +199,18 @@ class ClaudePromptController extends Controller
             $promptContent = File::get($filePath);
         }
 
-        // Get response using the selected prompt
         try
         {
-            $response = $this->claudeService->chat($testMessage, [], $promptContent);
-
-            if (! $response['success'])
-            {
-                \Log::error('Claude API Error in preview: '.json_encode($response));
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Error from Claude API',
-                    'details' => $response['error'] ?? 'No additional details',
-                ]);
-            }
+            $instructions = $promptContent ?? AssistantSystemPrompt::get();
+            $agent = agent(instructions: $instructions, messages: [], tools: []);
+            $response = $agent->prompt($testMessage, [], Lab::Anthropic);
+            $text = $response->text ?? '';
 
             return response()->json([
-                'success' => $response['success'],
-                'response' => $response['text'],
+                'success' => true,
+                'response' => $text,
             ]);
-        } catch (\Exception $e)
+        } catch (\Throwable $e)
         {
             \Log::error('Exception in Claude preview: '.$e->getMessage());
 

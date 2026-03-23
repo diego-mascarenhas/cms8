@@ -7,10 +7,12 @@ use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Module;
+use App\Models\ServiceType;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\DemoDataService;
+use App\Support\CollectionMessagingGuide;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -77,6 +79,9 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 3.2. Create Revision Alpha content categories
         $this->createRevisionAlphaContentCategories();
 
+        // 3.3. Create Revision Alpha service categories and service types
+        $this->createRevisionAlphaServiceCategoriesAndTypes();
+
         // 4. Create professional email template
         $this->createProfessionalEmailTemplate();
 
@@ -86,12 +91,24 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 6. Configure email settings
         $this->configureRevisionAlphaEmailSettings($team);
 
+        // 6.1. Cuenta bancaria para transferencias (Saldo / cobranzas)
+        $this->configureRevisionAlphaCollectionBankTransfer($team);
+
         // 7. Note: Data import is handled by import:interactive --auto command in deployment
         $this->getCommand()->info('');
         $this->getCommand()->info('ℹ️  Data import will be handled by: php artisan import:interactive --auto');
 
         // 8. Assign core modules to team
         $this->assignCoreModules($team);
+
+        // 8.1. Ensure tickets module is active for Revision Alpha (support tickets)
+        $team->enableModule('tickets');
+
+        // 8.2. Prompt de cobranzas hosting (Saldo) en module_prompts — invoices.collections (JSON)
+        if (CollectionMessagingGuide::syncHostingCollectionsPromptForTeam($team->id))
+        {
+            $this->getCommand()->info('✅ Prompt de cobranzas hosting (module_prompts) sincronizado para Revision Alpha');
+        }
 
         // 9. Create demo clients (REVISION ALPHA, IDONEO) and their projects
         $this->createDemoClientsAndProjects();
@@ -117,6 +134,7 @@ class TeamRevisionAlphaSeeder extends Seeder
             $revisionUser = User::create([
                 'name' => 'Diego Mascarenhas',
                 'email' => 'diego.mascarenhas@icloud.com',
+                'phone' => 34722372858,
                 'password' => Hash::make('Simplicity!'),
                 'email_verified_at' => now(),
             ]);
@@ -126,6 +144,8 @@ class TeamRevisionAlphaSeeder extends Seeder
 
             $this->getCommand()->info("✅ Created Revision user: {$revisionUser->email}");
         }
+
+        $revisionUser->update(['phone' => 34722372858]);
 
         // Use Jetstream's proper method to create team
         $team = $revisionUser->ownedTeams()->firstOrCreate(
@@ -222,55 +242,26 @@ class TeamRevisionAlphaSeeder extends Seeder
         $contactsModuleId = Module::where('key', 'contacts')->first()?->id;
         $enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
 
-        // Categories for contacts module
-        // 1. Create main category
-        $mainContactCategory = Category::updateOrCreate([
-            'name' => 'Contactos',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-            'parent_id' => null,
-        ], [
-            'description' => 'Categoría principal para contactos',
-            'status' => 1,
-        ]);
-
-        // 2. Create subcategories with parent_id pointing to main
-        Category::updateOrCreate([
-            'name' => 'Staff',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos internos del equipo',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'CMS+',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos importados de CMS+',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'Contacto Potencial',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos interesados en nuestros servicios',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
-        Category::updateOrCreate([
-            'name' => 'Referido',
-            'module_id' => $contactsModuleId,
-            'team_id' => $this->teamId,
-        ], [
-            'description' => 'Contactos referidos por clientes',
-            'parent_id' => $mainContactCategory->id,
-            'status' => 1,
-        ]);
+        // Contact categories (all at root, no parent)
+        $contactCategories = [
+            ['name' => 'Staff', 'description' => 'Contactos internos del equipo'],
+            ['name' => 'Tester', 'description' => 'Contactos de prueba o testing'],
+            ['name' => 'CMS+', 'description' => 'Contactos importados de CMS+'],
+            ['name' => 'Referido', 'description' => 'Contactos referidos por clientes'],
+            ['name' => 'Developer', 'description' => 'Desarrolladores o equipo técnico'],
+        ];
+        foreach ($contactCategories as $cat)
+        {
+            Category::updateOrCreate([
+                'name' => $cat['name'],
+                'module_id' => $contactsModuleId,
+                'team_id' => $this->teamId,
+            ], [
+                'description' => $cat['description'],
+                'parent_id' => null,
+                'status' => 1,
+            ]);
+        }
 
         // Categories for enterprises module
         Category::updateOrCreate([
@@ -512,6 +503,72 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->getCommand()->info('✅ Created Revision Alpha content categories');
         $this->getCommand()->info("   - Categories created: {$created}");
         $this->getCommand()->info("   - Categories updated: {$updated}");
+    }
+
+    /**
+     * Create Revision Alpha service categories and service types (Hosting, Web Cloud, VPS, etc.)
+     */
+    private function createRevisionAlphaServiceCategoriesAndTypes(): void
+    {
+        $this->getCommand()->info('📦 Creating Revision Alpha service categories and service types...');
+
+        $servicesModule = Module::where('key', 'services')->first();
+        if (! $servicesModule)
+        {
+            $this->getCommand()->warn('⚠️  Services module not found. Skipping service categories and types.');
+
+            return;
+        }
+
+        $parentCategory = Category::updateOrCreate([
+            'name' => 'Categoría de servicio',
+            'module_id' => $servicesModule->id,
+            'team_id' => $this->teamId,
+            'parent_id' => null,
+        ], [
+            'description' => 'Tipos de servicio para Revision Alpha',
+            'status' => 1,
+            'order' => 0,
+        ]);
+
+        $serviceItems = [
+            'Hosting',
+            'Web Cloud',
+            'VPS',
+            'Domain',
+            'Backups',
+            'Mailer',
+            'WhatsApp',
+        ];
+
+        $order = 0;
+        foreach ($serviceItems as $name)
+        {
+            $subCategory = Category::updateOrCreate([
+                'name' => $name,
+                'module_id' => $servicesModule->id,
+                'team_id' => $this->teamId,
+                'parent_id' => $parentCategory->id,
+            ], [
+                'description' => "Servicio: {$name}",
+                'status' => 1,
+                'order' => $order++,
+            ]);
+
+            ServiceType::updateOrCreate(
+                [
+                    'name' => $name,
+                    'category_id' => $subCategory->id,
+                ],
+                [
+                    'description' => "Tipo de plan: {$name}",
+                    'status' => true,
+                    'order' => $subCategory->order,
+                ],
+            );
+        }
+
+        $this->getCommand()->info('✅ Created Revision Alpha service categories and service types ('.count($serviceItems).' items)');
     }
 
     /**
@@ -781,6 +838,27 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->getCommand()->info('   Notification Settings:');
         $this->getCommand()->info('   - From Name: REVISION ALPHA');
         $this->getCommand()->info('   - From Email: info@revisionalpha.com');
+    }
+
+    /**
+     * Bank transfer details for collection messaging (Saldo tab); stored as team JSON setting.
+     */
+    private function configureRevisionAlphaCollectionBankTransfer(Team $team): void
+    {
+        $this->getCommand()->info('🏦 Configuring collection bank transfer (Saldo / cobranzas)...');
+
+        $team->setSetting('collection_bank_transfer', [
+            'account_holder' => 'Diego Adrian Mascarenhas Goytia',
+            'cuit' => '20-25024200-0',
+            'cbu' => '0000003100042016955017',
+            'alias' => 'revision.alpha.arg',
+        ], [
+            'type' => 'json',
+            'group' => 'billing',
+            'is_encrypted' => false,
+        ]);
+
+        $this->getCommand()->info('✅ Cuenta de transferencia (collection_bank_transfer) guardada en el equipo');
     }
 
     /**

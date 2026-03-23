@@ -42,10 +42,18 @@ class AssistantChat extends Component
             return;
         }
 
-        $conversation = AgentConversation::where('user_id', auth()->id())
+        $teamId = auth()->user()->currentTeam?->id;
+        $query = AgentConversation::where('user_id', auth()->id())
             ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderByDesc('updated_at');
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+        $conversation = $query->first();
 
         if ($conversation)
         {
@@ -133,7 +141,14 @@ class AssistantChat extends Component
 
         if (auth()->check())
         {
-            $this->persistMessages($userContent, $result['response'], $result['routed_to']);
+            $this->persistMessages(
+                $userContent,
+                $result['response'],
+                $result['routed_to'],
+                $result['usage'] ?? [],
+                $result['tool_calls'] ?? [],
+                $result['tool_results'] ?? [],
+            );
         }
 
         $this->dispatch('scroll-to-bottom');
@@ -145,8 +160,19 @@ class AssistantChat extends Component
         $this->conversationId = null;
     }
 
-    protected function persistMessages(string $userContent, string $assistantContent, ?string $routedTo): void
-    {
+    /**
+     * @param  array<string, int>  $usage
+     * @param  array<int, mixed>  $toolCalls
+     * @param  array<int, mixed>  $toolResults
+     */
+    protected function persistMessages(
+        string $userContent,
+        string $assistantContent,
+        ?string $routedTo,
+        array $usage = [],
+        array $toolCalls = [],
+        array $toolResults = [],
+    ): void {
         $userId = auth()->id();
         if (! $userId)
         {
@@ -155,11 +181,17 @@ class AssistantChat extends Component
 
         if ($this->conversationId === null)
         {
-            $conversation = AgentConversation::create([
+            $teamId = auth()->user()->currentTeam?->id;
+            $payload = [
                 'id' => (string) Str::uuid(),
                 'user_id' => $userId,
                 'title' => Str::limit($userContent, 50),
-            ]);
+            ];
+            if ($teamId !== null)
+            {
+                $payload['team_id'] = $teamId;
+            }
+            $conversation = AgentConversation::create($payload);
             $this->conversationId = $conversation->id;
         }
 
@@ -178,11 +210,11 @@ class AssistantChat extends Component
             'agent' => self::AGENT_NAME,
             'role' => 'user',
             'content' => $userContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => '[]',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => [],
+            'meta' => [],
         ]);
 
         AgentConversationMessage::create([
@@ -192,11 +224,11 @@ class AssistantChat extends Component
             'agent' => self::AGENT_NAME,
             'role' => 'assistant',
             'content' => $assistantContent,
-            'attachments' => '[]',
-            'tool_calls' => '[]',
-            'tool_results' => '[]',
-            'usage' => '[]',
-            'meta' => ['routed_to' => $routedTo],
+            'attachments' => [],
+            'tool_calls' => $toolCalls,
+            'tool_results' => $toolResults,
+            'usage' => $usage,
+            'meta' => array_filter(['routed_to' => $routedTo]),
         ]);
     }
 

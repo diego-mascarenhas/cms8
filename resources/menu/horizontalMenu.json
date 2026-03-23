@@ -107,7 +107,8 @@
           "url": "app/calendar",
           "name": "Calendar",
           "icon": "menu-icon tf-icons ti ti-calendar",
-          "slug": "app-calendar"
+          "slug": "app-calendar",
+          "module_key": "calendar"
         },
         {
           "url": "app/kanban",

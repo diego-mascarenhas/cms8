@@ -39,6 +39,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item">
+          <a href="{{ route('manual.index') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-book"></i>
+            <div>{{ __('User Manual') }}</div>
+          </a>
+        </li>
+
         <li class="menu-item {{ request()->routeIs('help.usage') ? 'active' : '' }}">
           <a href="{{ route('help.usage') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-book"></i>

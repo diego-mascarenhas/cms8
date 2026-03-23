@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
 use App\Models\Service;
+use App\Models\StripeSubscription;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class ServiceController extends Controller
     public function index(ServiceDataTable $dataTable)
     {
         $this->authorize('viewAny', Service::class);
-        
+
         $teamId = auth()->user()->currentTeam->id;
 
         // Relevant dates
@@ -111,10 +112,14 @@ class ServiceController extends Controller
     public function create(Request $request)
     {
         $this->authorize('create', Service::class);
-        
-        $enterprise_id = $request->input('enterprise_id');
 
-        return view('service.form', compact('enterprise_id'));
+        $enterprise_id = $request->input('enterprise_id');
+        $teamId = auth()->user()->currentTeam?->id;
+        $stripeSubscriptions = $teamId
+            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
+            : collect();
+
+        return view('service.form', compact('enterprise_id', 'stripeSubscriptions'));
     }
 
     /**
@@ -123,12 +128,13 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', Service::class);
-        
+
         try
         {
             $validator = \Validator::make($request->all(), [
                 'enterprise_id' => 'required|exists:enterprises,id',
-                'category_id' => 'required|exists:categories,id',
+                'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+                'category_id' => ['nullable', 'exists:categories,id'],
                 'operation' => 'required|in:buy,sell',
                 'description' => 'nullable|string',
                 'currency_id' => 'nullable|exists:currencies,id',
@@ -157,6 +163,14 @@ class ServiceController extends Controller
             }
 
             $input = $request->all();
+            $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
+            $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
+                ?? \App\Models\ServiceType::orderBy('id')->value('id');
+            if (empty($input['service_type_id']))
+            {
+                $input['service_type_id'] = null;
+            }
+            unset($input['category_id']);
 
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
@@ -228,7 +242,7 @@ class ServiceController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Service::findOrFail($id);
+        $data = Service::with('serviceType')->findOrFail($id);
         $this->authorize('update', $data);
 
         if (! $data)
@@ -237,8 +251,12 @@ class ServiceController extends Controller
         }
 
         $enterprise_id = $data->enterprise_id;
+        $teamId = auth()->user()->currentTeam?->id;
+        $stripeSubscriptions = $teamId
+            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
+            : collect();
 
-        return view('service.form', compact('data', 'enterprise_id'));
+        return view('service.form', compact('data', 'enterprise_id', 'stripeSubscriptions'));
     }
 
     /**
@@ -249,9 +267,10 @@ class ServiceController extends Controller
         $service = Service::findOrFail($id);
         $this->authorize('update', $service);
 
-        $request->validate([
+        $rules = [
             'enterprise_id' => 'required|exists:enterprises,id',
-            'category_id' => 'required|exists:categories,id',
+            'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+            'category_id' => ['nullable', 'exists:categories,id'],
             'operation' => 'required|in:buy,sell',
             'description' => 'nullable|string',
             'currency_id' => 'nullable|exists:currencies,id',
@@ -263,9 +282,18 @@ class ServiceController extends Controller
             'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
             'data' => 'nullable|array',
             'responsible_id' => 'nullable|exists:users,id',
-        ]);
+        ];
+        $request->validate($rules);
 
         $input = $request->all();
+        $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
+        $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
+            ?? \App\Models\ServiceType::orderBy('id')->value('id');
+        if (empty($input['service_type_id']))
+        {
+            $input['service_type_id'] = null;
+        }
+        unset($input['category_id']);
 
         // Format dates
         if (! empty($input['next_billing']))
