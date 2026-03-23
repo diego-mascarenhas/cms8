@@ -21,6 +21,7 @@ class ChatAssistantReplyService
         protected AssistantToolIntentPromptService $toolIntentPrompts,
         protected AgentConversationContextService $agentConversationContext,
         protected CollectionAssistantContextService $collectionAssistantContext,
+        protected ContactAssistantContextService $contactAssistantContext,
     ) {}
 
     /**
@@ -28,7 +29,7 @@ class ChatAssistantReplyService
      * When stub mode is enabled (config or team), returns a canned response for testing.
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
-     * When $contactId is set and the flow is invoices:collections, CRM + Stripe invoice context is appended for that contact.
+     * When $contactId is set, a single CRM summary block is appended. When the active flow is invoices:collections, a Stripe invoices appendix is added (no duplicate CRM).
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -84,6 +85,7 @@ class ChatAssistantReplyService
                 $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
             }
             $flowPrompt = $resolution['prompt'];
+            $flowRoutingKey = null;
             if ($flowPrompt)
             {
                 $flowRoutedTo = $flowPrompt->section_label;
@@ -98,19 +100,25 @@ class ChatAssistantReplyService
                         $instructions .= $this->wapifyFlowContextAppendix($history);
                     }
                 }
-                if ($flowPrompt && $contactId !== null && $contactId > 0 && $teamId !== null)
+                $flowPrompt->loadMissing('module');
+                $flowRoutingKey = $flowPrompt->module
+                    ? $flowPrompt->module->key.':'.$flowPrompt->section_key
+                    : $flowPrompt->section_key;
+            }
+
+            if ($contactId !== null && $contactId > 0)
+            {
+                $contactSummary = $this->contactAssistantContext->buildMarkdownSummary($contactId, $teamId);
+                if ($contactSummary !== '')
                 {
-                    $flowPrompt->loadMissing('module');
-                    $routingKey = $flowPrompt->module
-                        ? $flowPrompt->module->key.':'.$flowPrompt->section_key
-                        : $flowPrompt->section_key;
-                    if ($routingKey === 'invoices:collections')
+                    $instructions .= "\n\n---\n\n".$contactSummary;
+                }
+                if ($flowRoutingKey === 'invoices:collections')
+                {
+                    $stripeAppendix = $this->collectionAssistantContext->buildStripeAppendixForContact($contactId, $teamId);
+                    if ($stripeAppendix !== '')
                     {
-                        $collectionsContext = $this->collectionAssistantContext->buildMarkdownForContact($contactId, $teamId);
-                        if ($collectionsContext !== '')
-                        {
-                            $instructions .= "\n\n---\n\n".$collectionsContext;
-                        }
+                        $instructions .= "\n\n---\n\n".$stripeAppendix;
                     }
                 }
             }

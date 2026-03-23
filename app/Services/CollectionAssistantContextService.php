@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Contact;
-use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\Team;
 use App\Support\CollectionMessagingGuide;
@@ -13,11 +12,41 @@ use Stripe\Stripe;
 
 class CollectionAssistantContextService
 {
+    public function __construct(
+        protected ContactAssistantContextService $contactAssistantContext,
+    ) {}
+
     /**
-     * Markdown block appended to the assistant system prompt for invoices:collections when a contact is linked.
-     * Includes CRM fields and, when possible, Stripe open/uncollectible invoices and payment links.
+     * Full collections context: CRM summary (shared) plus Stripe invoices appendix.
+     * Prefer using {@see ContactAssistantContextService::buildMarkdownSummary} + {@see buildStripeAppendixForContact} from the chat layer to avoid duplicating the CRM block.
      */
     public function buildMarkdownForContact(int $contactId, int $teamId): string
+    {
+        $summary = $this->contactAssistantContext->buildMarkdownSummary($contactId, $teamId);
+        $stripe = $this->buildStripeAppendixForContact($contactId, $teamId);
+
+        if ($summary === '' && $stripe === '')
+        {
+            return '';
+        }
+
+        if ($summary === '')
+        {
+            return $stripe;
+        }
+
+        if ($stripe === '')
+        {
+            return $summary;
+        }
+
+        return $summary."\n\n---\n\n".$stripe;
+    }
+
+    /**
+     * Stripe open/uncollectible invoices + links only (for invoices:collections flow).
+     */
+    public function buildStripeAppendixForContact(int $contactId, int $teamId): string
     {
         $team = Team::query()->find($teamId);
         if (! $team)
@@ -25,7 +54,7 @@ class CollectionAssistantContextService
             return '';
         }
 
-        $contact = Contact::query()
+        $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $teamId)
             ->with(['currentEnterprise', 'enterprises'])
             ->find($contactId);
@@ -35,40 +64,9 @@ class CollectionAssistantContextService
             return '';
         }
 
-        $lines = [];
-        $lines[] = '### Contexto del cliente (CRM — datos ya cargados)';
-        $lines[] = 'Usá esta información para redactar mensajes de cobranza. **No pidas** al operador que pegue ID de contacto, nombre del cliente ni Stripe Customer ID si ya figuran aquí.';
-        $lines[] = '';
-        $lines[] = '- **ID contacto:** '.(string) $contact->id;
-        $lines[] = '- **Nombre:** '.($contact->name ?: '—');
-        $lines[] = '- **Email:** '.($contact->email ?: '—');
-        $lines[] = '- **Teléfono:** '.($contact->phone ?: '—');
-
         $enterprise = $contact->currentEnterprise ?: $contact->enterprises->first();
-        if ($enterprise)
-        {
-            $lines[] = '- **Empresa:** '.($enterprise->name ?: '—');
-            $lines[] = '- **Stripe Customer ID:** '.($enterprise->code ?: '—');
-        }
 
-        $countryId = $contact->getAttribute('country');
-        if ($countryId)
-        {
-            $countryName = Country::query()->find((int) $countryId)?->name;
-            if ($countryName)
-            {
-                $lines[] = '- **País:** '.$countryName;
-            }
-        }
-
-        $stripeAppend = $this->buildStripeSection($enterprise, $team);
-        if ($stripeAppend !== '')
-        {
-            $lines[] = '';
-            $lines[] = $stripeAppend;
-        }
-
-        return implode("\n", $lines);
+        return $this->buildStripeSection($enterprise, $team);
     }
 
     private function buildStripeSection(?Enterprise $enterprise, Team $team): string

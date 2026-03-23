@@ -321,6 +321,13 @@ class ChatController extends Controller
             $hasContact = $selectedContact !== null;
         }
 
+        if (! $selectedContact && $selectedPhone && auth()->check() && auth()->user()->currentTeam)
+        {
+            $digits = preg_replace('/[^0-9]/', '', (string) $selectedPhone);
+            $selectedContact = $this->findContactForTeamByChatPhone((int) auth()->user()->currentTeam->id, $digits);
+            $hasContact = $selectedContact !== null;
+        }
+
         $userIds = $messages->pluck('user_id')->filter()->unique();
         $users = User::whereIn('id', $userIds)->get()->keyBy('id');
 
@@ -605,6 +612,37 @@ class ChatController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Resolve CRM contact by team + phone digits when there is no User linked to the number.
+     * Enables contact_id for the assistant (balance/collections context) for WhatsApp-only clients.
+     *
+     * @param  string  $digits  Normalized digits only (e.g. 722372858 or 34722372858).
+     */
+    private function findContactForTeamByChatPhone(int $teamId, string $digits): ?Contact
+    {
+        if ($digits === '')
+        {
+            return null;
+        }
+
+        return Contact::query()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($digits)
+            {
+                $query->where('phone', $digits);
+                if (strlen($digits) === 11 && str_starts_with($digits, '34'))
+                {
+                    $query->orWhere('phone', substr($digits, -9));
+                }
+                if (strlen($digits) === 9)
+                {
+                    $query->orWhere('phone', '34'.$digits);
+                }
+            })
+            ->orderBy('id')
+            ->first();
     }
 
     public function getMessages(Request $request, $phone)
