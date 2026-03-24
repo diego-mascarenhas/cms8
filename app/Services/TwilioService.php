@@ -822,7 +822,29 @@ class TwilioService implements WhatsAppGateway
                     $teamId = $this->team?->id;
                     $withTools = $teamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
-                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id, $cleanFrom, null, null);
+                    $contextContactId = null;
+                    if ($contextUser !== null)
+                    {
+                        $contactQuery = Contact::withoutGlobalScopes()
+                            ->where('user_id', $contextUser->id);
+                        if ($teamId !== null)
+                        {
+                            $contactQuery->where('team_id', $teamId);
+                        }
+                        $contextContactId = $contactQuery->value('id');
+                    }
+
+                    $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
+                    $replyResponse = $replyService->getReply(
+                        $body,
+                        $history,
+                        $teamId,
+                        $withTools,
+                        $contextUser?->id,
+                        $cleanFrom,
+                        $forcedFlowRoutingKey,
+                        $contextContactId !== null ? (int) $contextContactId : null,
+                    );
 
                     if ($replyResponse['success'] ?? false)
                     {
@@ -834,6 +856,14 @@ class TwilioService implements WhatsAppGateway
                             $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
 
                             Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                            $this->maybeSendCollectionPaymentLinksFollowUp(
+                                $cleanFrom,
+                                $teamId,
+                                $contextContactId !== null ? (int) $contextContactId : null,
+                                $forcedFlowRoutingKey,
+                                (string) $body,
+                                (string) $aiMessage,
+                            );
                         } else
                         {
                             $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero no pude generar respuesta en este intento. Enviamelo de nuevo por favor.');
@@ -2537,6 +2567,106 @@ class TwilioService implements WhatsAppGateway
             $this->sendWhatsApp($phoneNumber, '❌ Error al procesar solicitud. Inténtalo nuevamente.');
 
             return ['success' => false, 'message' => 'Error processing continue shopping'];
+        }
+    }
+
+    /**
+     * Keep collections context on follow-up turns so payment links are preserved.
+     *
+     * @param  array<int, array<string, mixed>>  $history
+     */
+    private function resolveForcedFlowRoutingKeyForWhatsApp(array $history, string $incomingBody): ?string
+    {
+        $incoming = mb_strtolower(trim($incomingBody));
+        if ($incoming === '')
+        {
+            return null;
+        }
+
+        $isCollectionsQuestion = (bool) preg_match(
+            '/\b(saldo|factura|facturas|deuda|deudor|impaga|impagas|pago|pagos|abonar|abono|link|links|stripe)\b/u',
+            $incoming,
+        );
+        if (! $isCollectionsQuestion)
+        {
+            return null;
+        }
+
+        $recent = array_slice($history, -8);
+        foreach ($recent as $item)
+        {
+            if (($item['direction'] ?? null) !== 'outbound')
+            {
+                continue;
+            }
+            $body = mb_strtolower((string) ($item['body'] ?? ''));
+            $looksLikeCollectionsMessage = str_contains($body, 'factura')
+                || str_contains($body, 'saldo')
+                || str_contains($body, 'impag')
+                || str_contains($body, 'stripe')
+                || str_contains($body, 'link de pago')
+                || str_contains($body, 'hosted_invoice_url')
+                || (bool) preg_match('/\b\d{4}-\d{4}\b/u', $body);
+
+            if ($looksLikeCollectionsMessage)
+            {
+                return 'invoices:collections';
+            }
+        }
+
+        return null;
+    }
+
+    private function maybeSendCollectionPaymentLinksFollowUp(
+        string $phone,
+        ?int $teamId,
+        ?int $contactId,
+        ?string $forcedFlowRoutingKey,
+        string $incomingBody,
+        string $assistantMessage,
+    ): void {
+        if ($teamId === null || $contactId === null || $forcedFlowRoutingKey !== 'invoices:collections')
+        {
+            return;
+        }
+
+        $incoming = mb_strtolower(trim($incomingBody));
+        $assistant = mb_strtolower($assistantMessage);
+
+        $asksForDetails = (bool) preg_match('/\b(saldo|factura|facturas|deuda|monto|importe|pago|pagar|link|links|abonar)\b/u', $incoming);
+        if (! $asksForDetails)
+        {
+            return;
+        }
+
+        // Avoid duplicate links if model already included them.
+        if (str_contains($assistant, 'http://') || str_contains($assistant, 'https://') || str_contains($assistant, 'link de pago'))
+        {
+            return;
+        }
+
+        $linksMessage = app(CollectionAssistantContextService::class)->paymentLinksMessageForContact($contactId, $teamId);
+        if (! is_string($linksMessage) || trim($linksMessage) === '')
+        {
+            return;
+        }
+
+        try
+        {
+            $this->sendWhatsApp($phone, $linksMessage);
+            Log::info('Collection follow-up links sent', [
+                'phone' => $phone,
+                'team_id' => $teamId,
+                'contact_id' => $contactId,
+            ]);
+        } catch (\Throwable $e)
+        {
+            Log::warning('Collection follow-up links send failed', [
+                'phone' => $phone,
+                'team_id' => $teamId,
+                'contact_id' => $contactId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

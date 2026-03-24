@@ -76,7 +76,7 @@ class CollectionMessagingGuideTest extends TestCase
         $this->assertStringContainsString('0005-0563', $guide['full_copy']);
         $this->assertStringContainsString('https://invoice.stripe.com/test', $guide['full_copy']);
         $this->assertStringContainsString('suspendido', $guide['full_copy']);
-        $this->assertStringContainsString('Diego Adrian Mascarenhas Goytia', $guide['full_copy']);
+        $this->assertStringContainsString('Diego Adrián Mascarenhas Goytía', $guide['full_copy']);
         $this->assertStringContainsString('revision.alpha.arg', $guide['full_copy']);
     }
 }
