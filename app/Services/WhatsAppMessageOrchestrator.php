@@ -12,6 +12,8 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
@@ -693,12 +695,15 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom, $waProfileName);
 
                 $sheetUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
-                $sheetReply = app(WhatsAppTaskSheetImportService::class)->tryHandle((string) $body, $sheetUser, (int) $this->team->id);
+                $teamId = (int) $this->team->id;
+                $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
+                    ?? app(WhatsAppContactSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
+                    ?? app(WhatsAppTaskSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId);
                 if ($sheetReply !== null)
                 {
                     $this->sendWhatsApp($cleanFrom, $sheetReply);
 
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'task_sheet_import' => true]);
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'sheet_import' => true]);
                 }
             }
 

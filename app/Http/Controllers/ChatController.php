@@ -14,6 +14,8 @@ use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Illuminate\Http\Request;
@@ -892,7 +894,10 @@ class ChatController extends Controller
 
         if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
         {
-            $sheetReply = app(WhatsAppTaskSheetImportService::class)->tryHandle($message, auth()->user(), (int) $teamId);
+            $uid = (int) $teamId;
+            $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
+                ?? app(WhatsAppContactSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
+                ?? app(WhatsAppTaskSheetImportService::class)->tryHandle($message, auth()->user(), $uid);
             if ($sheetReply !== null)
             {
                 $contextService->persistMessages(
@@ -912,7 +917,7 @@ class ChatController extends Controller
                 $payload = [
                     'success' => true,
                     'response' => $sheetReply,
-                    'action_performed' => 'task_sheet_import',
+                    'action_performed' => 'sheet_import',
                 ];
                 if ($hasAudio)
                 {
