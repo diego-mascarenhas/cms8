@@ -15,6 +15,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
+use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -888,6 +889,40 @@ class ChatController extends Controller
 
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
+
+        if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
+        {
+            $sheetReply = app(WhatsAppTaskSheetImportService::class)->tryHandle($message, auth()->user(), (int) $teamId);
+            if ($sheetReply !== null)
+            {
+                $contextService->persistMessages(
+                    $contextUser->id,
+                    $message,
+                    $sheetReply,
+                    null,
+                    [],
+                    [],
+                    [],
+                    [],
+                    $teamId,
+                    false,
+                    null,
+                );
+
+                $payload = [
+                    'success' => true,
+                    'response' => $sheetReply,
+                    'action_performed' => 'task_sheet_import',
+                ];
+                if ($hasAudio)
+                {
+                    $payload['transcript'] = $message;
+                }
+
+                return response()->json($payload);
+            }
+        }
+
         // Enable tools whenever the user has a team so the assistant can access contacts, tasks, etc. (even from a contact chat)
         $withTools = $teamId !== null;
         $customerPhone = $request->filled('recipient')
