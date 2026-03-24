@@ -52,6 +52,17 @@ class TicketPolicy
 
     public function create(User $user): bool
     {
+        if (! $user->currentTeam)
+        {
+            return false;
+        }
+
+        // End customers (e.g. WhatsApp contact with client team role) can open a ticket for this team.
+        if ($user->hasRole('client'))
+        {
+            return true;
+        }
+
         return $this->viewAny($user);
     }
 

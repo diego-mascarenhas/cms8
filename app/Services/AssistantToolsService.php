@@ -40,9 +40,22 @@ class AssistantToolsService
     /** Digits-only WhatsApp number of the customer (inbound thread), for cart session. */
     protected ?string $contextCustomerPhone = null;
 
+    /**
+     * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
+     */
+    protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
+
     public function __construct(
-        protected ?WhatsAppGateway $whatsAppGateway = null,
+        protected AssistantToolAuthorizationService $toolAuthorization,
     ) {}
+
+    /**
+     * @internal Testing: force a specific gateway for send_whatsapp_message (e.g. mock).
+     */
+    public function setWhatsAppGatewayOverride(?WhatsAppGateway $gateway): void
+    {
+        $this->whatsAppGatewayOverride = $gateway;
+    }
 
     /**
      * Reset tool execution context (avoid leaking phone/team between requests; service may be singleton).
@@ -52,6 +65,7 @@ class AssistantToolsService
         $this->contextUserId = null;
         $this->contextTeamId = null;
         $this->contextCustomerPhone = null;
+        $this->whatsAppGatewayOverride = null;
     }
 
     /**
@@ -73,9 +87,9 @@ class AssistantToolsService
      */
     private function resolveWhatsAppGatewayForToolSend(): WhatsAppGateway
     {
-        if ($this->whatsAppGateway !== null)
+        if ($this->whatsAppGatewayOverride !== null)
         {
-            return $this->whatsAppGateway;
+            return $this->whatsAppGatewayOverride;
         }
 
         if (config('whatsapp.driver') === 'local' && $this->contextTeamId !== null)
@@ -504,15 +518,21 @@ class AssistantToolsService
             return 'Error: Not authenticated or no team selected.';
         }
 
+        $denied = $this->toolAuthorization->denyReasonForTool($name, $user, $teamId);
+        if ($denied !== null)
+        {
+            return $denied;
+        }
+
         try
         {
             return match ($name)
             {
                 'list_contact_categories' => $this->listContactCategories($teamId),
-                'get_contact_categories' => $this->getContactCategories($teamId, $input),
+                'get_contact_categories' => $this->getContactCategories($teamId, $user, $input),
                 'create_contact' => $this->createContact($teamId, $user, $input),
-                'assign_contact_to_category' => $this->assignContactToCategory($teamId, $input),
-                'update_contact' => $this->updateContact($teamId, $input),
+                'assign_contact_to_category' => $this->assignContactToCategory($teamId, $user, $input),
+                'update_contact' => $this->updateContact($teamId, $user, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
@@ -523,8 +543,8 @@ class AssistantToolsService
                 'create_calendar_event' => $this->createCalendarEvent($teamId, $input),
                 'list_calendar_events' => $this->listCalendarEvents($teamId, $input),
                 'update_calendar_event' => $this->updateCalendarEvent($teamId, $input),
-                'create_ticket' => $this->createTicket($teamId, $user->id, $input),
-                'add_ticket_response' => $this->addTicketResponse($teamId, $user->id, $input),
+                'create_ticket' => $this->createTicket($teamId, $user, $input),
+                'add_ticket_response' => $this->addTicketResponse($teamId, $user, $input),
                 'list_templates' => $this->listTemplates($teamId),
                 'create_template' => $this->createTemplate($teamId, $user->id, $input),
                 'update_template_status' => $this->updateTemplateStatus($teamId, $user, $input),
@@ -621,7 +641,7 @@ class AssistantToolsService
         return $this->truncate($out);
     }
 
-    private function assignContactToCategory(int $teamId, array $input): string
+    private function assignContactToCategory(int $teamId, User $user, array $input): string
     {
         $contactId = (int) ($input['contact_id'] ?? 0);
         $categoryName = trim((string) ($input['category_name'] ?? ''));
@@ -640,7 +660,7 @@ class AssistantToolsService
             return "Contact with id {$contactId} not found.";
         }
 
-        if (! Gate::allows('update', $contact))
+        if (! Gate::forUser($user)->allows('update', $contact))
         {
             return 'You do not have permission to update this contact.';
         }
@@ -656,7 +676,7 @@ class AssistantToolsService
         return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}.");
     }
 
-    private function getContactCategories(int $teamId, array $input): string
+    private function getContactCategories(int $teamId, User $user, array $input): string
     {
         $contactId = (int) ($input['contact_id'] ?? 0);
         if ($contactId < 1)
@@ -673,7 +693,7 @@ class AssistantToolsService
             return "Contact with id {$contactId} not found.";
         }
 
-        if (! Gate::allows('view', $contact))
+        if (! Gate::forUser($user)->allows('view', $contact))
         {
             return 'You do not have permission to view this contact.';
         }
@@ -689,7 +709,7 @@ class AssistantToolsService
         return $this->truncate("Categories for {$contact->name} (id: {$contact->id}):\n".$lines);
     }
 
-    private function updateContact(int $teamId, array $input): string
+    private function updateContact(int $teamId, User $user, array $input): string
     {
         $contactId = (int) ($input['contact_id'] ?? 0);
         if ($contactId < 1)
@@ -706,7 +726,7 @@ class AssistantToolsService
             return "Contact with id {$contactId} not found.";
         }
 
-        if (! Gate::allows('update', $contact))
+        if (! Gate::forUser($user)->allows('update', $contact))
         {
             return 'You do not have permission to update this contact.';
         }
@@ -1202,7 +1222,7 @@ class AssistantToolsService
         );
     }
 
-    private function createTicket(int $teamId, int $userId, array $input): string
+    private function createTicket(int $teamId, User $user, array $input): string
     {
         $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
         if (! $team || ! $team->hasModule('tickets'))
@@ -1210,7 +1230,7 @@ class AssistantToolsService
             return 'Tickets module is not enabled for this team.';
         }
 
-        if (! Gate::allows('create', Ticket::class))
+        if (! Gate::forUser($user)->allows('create', Ticket::class))
         {
             return 'You do not have permission to create tickets.';
         }
@@ -1228,7 +1248,7 @@ class AssistantToolsService
 
         $ticket = Ticket::withoutGlobalScopes()->create([
             'team_id' => $teamId,
-            'user_id' => $userId,
+            'user_id' => $user->id,
             'subject' => $subject,
             'description' => $description,
             'priority' => $priority,
@@ -1238,7 +1258,7 @@ class AssistantToolsService
         return $this->truncate("Ticket created: {$ticket->subject} (id: {$ticket->id}). Priority: {$priority}. The user can view it and add replies from the Tickets section.");
     }
 
-    private function addTicketResponse(int $teamId, int $userId, array $input): string
+    private function addTicketResponse(int $teamId, User $user, array $input): string
     {
         $team = \App\Models\Team::withoutGlobalScopes()->find($teamId);
         if (! $team || ! $team->hasModule('tickets'))
@@ -1261,7 +1281,7 @@ class AssistantToolsService
             return "Ticket with id {$ticketId} not found.";
         }
 
-        if (! Gate::allows('update', $ticket))
+        if (! Gate::forUser($user)->allows('update', $ticket))
         {
             return 'You do not have permission to reply to this ticket.';
         }
@@ -1273,15 +1293,14 @@ class AssistantToolsService
         }
 
         $isInternalNote = (bool) ($input['is_internal_note'] ?? false);
-        $user = User::withoutGlobalScopes()->find($userId);
-        if ($isInternalNote && (! $user || ! $user->hasRole('admin')))
+        if ($isInternalNote && ! $user->hasRole('admin'))
         {
             return 'Only admins can add internal notes. Use is_internal_note false for a normal reply visible to the client.';
         }
 
         TicketResponse::withoutGlobalScopes()->create([
             'ticket_id' => $ticket->id,
-            'user_id' => $userId,
+            'user_id' => $user->id,
             'message' => $message,
             'is_internal_note' => $isInternalNote,
         ]);

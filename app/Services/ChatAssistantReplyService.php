@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Prompt;
+use App\Models\User;
 use App\Tools\AssistantTool;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -22,6 +23,7 @@ class ChatAssistantReplyService
         protected AgentConversationContextService $agentConversationContext,
         protected CollectionAssistantContextService $collectionAssistantContext,
         protected ContactAssistantContextService $contactAssistantContext,
+        protected AssistantToolAuthorizationService $assistantToolAuthorization,
     ) {}
 
     /**
@@ -62,6 +64,15 @@ class ChatAssistantReplyService
         $instructions = $withTools
             ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
+
+        if ($withTools && $teamId !== null && $contextUserId !== null)
+        {
+            $ctxUser = User::withoutGlobalScopes()->find($contextUserId);
+            if ($ctxUser !== null && $this->assistantToolAuthorization->isRestrictedTeamMember($ctxUser, $teamId))
+            {
+                $instructions .= $this->customerTeamRoleInstructionsAppendix();
+            }
+        }
 
         if ($withTools && $teamId !== null && $contextUserId !== null)
         {
@@ -445,6 +456,20 @@ Campaign messages (News / Campañas):
 Topic locking: When a team flow is active for this thread, stay on that topic until it is resolved (e.g. payment sent, order placed) or the user clearly wants to switch topic. Do not jump to the product catalog or shopping tools during billing or support unless the user clearly asks about buying. When the instructions include "Conversation flow (discovery mode)", ask at most one short clarifying question if needed, then call commit_assistant_flow with the exact routing_key once intent is clear.
 
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
+EOT;
+    }
+
+    /**
+     * Extra system instructions when the acting user is a Jetstream client (or guest/user) on this team.
+     */
+    private function customerTeamRoleInstructionsAppendix(): string
+    {
+        return <<<'EOT'
+
+
+### User role on this team (limited customer)
+
+This user is a **customer** (Jetstream role: client / guest / user) on this team. Do not use internal CRM bulk tools, campaigns, templates, team-wide calendar, or account reports. Prefer conversational help, catalog/cart, support tickets, and WhatsApp replies in this thread only. If they ask for internal staff actions, say the business team must do it from the app.
 EOT;
     }
 
