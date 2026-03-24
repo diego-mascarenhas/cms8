@@ -48,6 +48,22 @@
         .assistant-markdown p:last-child { margin-bottom: 0; }
         .assistant-markdown strong { font-weight: 600; }
         .assistant-markdown ul, .assistant-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5em; }
+        /* Long URLs / unbroken strings: wrap inside bubbles (flex children default to min-width:auto) */
+        #chat-history-body .chat-message .d-flex.overflow-hidden {
+            min-width: 0;
+        }
+        #chat-history-body .chat-message .chat-message-wrapper {
+            min-width: 0;
+            max-width: 100%;
+        }
+        #chat-history-body .chat-message .chat-message-text {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        #chat-history-body .chat-message .chat-message-text a {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
     </style>
 @endsection
 
