@@ -133,6 +133,17 @@ class ChatAssistantReplyService
                 $flowPersistSpecified = true;
                 $flowPersistKey = null;
             }
+
+            if ($flowPrompt === null
+                && ! $previewOnly
+                && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled())
+            {
+                $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
+                if ($discovery !== '')
+                {
+                    $instructions .= $discovery;
+                }
+            }
         }
 
         if ($previewOnly)
@@ -147,11 +158,18 @@ class ChatAssistantReplyService
 
         $tools = $withTools ? $this->buildLaravelAiTools($previewOnly) : [];
 
-        return $this->mergeFlowPersistMeta(
-            $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo),
-            $flowPersistSpecified,
-            $flowPersistKey,
-        );
+        $reply = $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo);
+        if ($withTools && ($reply['success'] ?? false))
+        {
+            $committedKey = $this->routingKeyCommittedViaTools($reply['tool_results'] ?? []);
+            if ($committedKey !== null)
+            {
+                $flowPersistSpecified = true;
+                $flowPersistKey = $committedKey;
+            }
+        }
+
+        return $this->mergeFlowPersistMeta($reply, $flowPersistSpecified, $flowPersistKey);
     }
 
     /**
@@ -424,8 +442,107 @@ Campaign messages (News / Campañas):
 - To list campaign messages: "lista de campañas", "mensajes", "campañas" → list_messages.
 - To only stop or activate (no category change): update_message_status (message_id, status: "paused" or "active"). For change category and/or activate in one go: update_message (message_id, category_name?, contact_status_name?, status?).
 
+Topic locking: When a team flow is active for this thread, stay on that topic until it is resolved (e.g. payment sent, order placed) or the user clearly wants to switch topic. Do not jump to the product catalog or shopping tools during billing or support unless the user clearly asks about buying. When the instructions include "Conversation flow (discovery mode)", ask at most one short clarifying question if needed, then call commit_assistant_flow with the exact routing_key once intent is clear.
+
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 EOT;
+    }
+
+    /**
+     * When keyword auto-routing is off: guide intent via one question + commit_assistant_flow tool.
+     */
+    private function flowDiscoveryModeAppendix(int $teamId): string
+    {
+        $keys = trim(Prompt::buildRoutableKeysList($teamId));
+        if ($keys === '')
+        {
+            return '';
+        }
+
+        return <<<EOT
+
+
+### Conversation flow (discovery mode)
+
+No team flow is locked to this thread yet (or the thread was reset).
+
+- Ask **one** short question in Spanish to confirm what the user needs, with options grounded in the list below (adapt labels to sound natural).
+- If they already stated intent clearly (e.g. pagar facturas, catálogo, agendar), **skip** the question: call **commit_assistant_flow** with the matching routing_key, then answer in that lane.
+- After you commit, keep helping in that same topic until they finish or explicitly want to change topic (use commit again or team reset phrases).
+- Never invent routing_keys — only use keys from this list:
+
+{$keys}
+EOT;
+    }
+
+    /**
+     * @param  array<int, mixed>  $toolResults
+     */
+    private function routingKeyCommittedViaTools(array $toolResults): ?string
+    {
+        foreach ($toolResults as $item)
+        {
+            $text = trim($this->toolResultToString($item));
+            if (! str_starts_with($text, 'FLOW_COMMITTED:'))
+            {
+                continue;
+            }
+
+            $json = substr($text, strlen('FLOW_COMMITTED:'));
+            $payload = json_decode($json, true);
+            if (is_array($payload) && isset($payload['routing_key']))
+            {
+                $key = trim((string) $payload['routing_key']);
+                if ($key !== '')
+                {
+                    return $key;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function toolResultToString(mixed $item): string
+    {
+        if (is_string($item))
+        {
+            return $item;
+        }
+
+        if (is_array($item))
+        {
+            if (isset($item['content']) && is_string($item['content']))
+            {
+                return $item['content'];
+            }
+            if (isset($item['result']) && is_string($item['result']))
+            {
+                return $item['result'];
+            }
+
+            return json_encode($item) ?: '';
+        }
+
+        if (is_object($item))
+        {
+            if (method_exists($item, 'content'))
+            {
+                $c = $item->content();
+
+                return is_string($c) ? $c : (string) $c;
+            }
+            if (isset($item->content))
+            {
+                return (string) $item->content;
+            }
+            if (isset($item->result))
+            {
+                return (string) $item->result;
+            }
+        }
+
+        return '';
     }
 
     /**

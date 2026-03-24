@@ -10,6 +10,39 @@ use App\Models\Prompt;
  */
 class AssistantToolIntentPromptService
 {
+    public function keywordIntentRoutingEnabled(): bool
+    {
+        if (! config('assistant_tool_intent_prompts.enabled', true))
+        {
+            return false;
+        }
+
+        return (bool) config('assistant_tool_intent_prompts.keyword_intent_routing', false);
+    }
+
+    /**
+     * @return array{prompt: Prompt, routing_key: string, persist_assistant_flow_key: 'set'}|null
+     */
+    protected function tryKeywordResolution(int $teamId, string $message): ?array
+    {
+        if (! $this->keywordIntentRoutingEnabled())
+        {
+            return null;
+        }
+
+        $found = $this->findPromptAndRoutingKeyForMessage($teamId, $message);
+        if ($found === null)
+        {
+            return null;
+        }
+
+        return [
+            'prompt' => $found['prompt'],
+            'routing_key' => $found['routing_key'],
+            'persist_assistant_flow_key' => 'set',
+        ];
+    }
+
     public function findPromptForMessage(int $teamId, string $message): ?Prompt
     {
         $pair = $this->findPromptAndRoutingKeyForMessage($teamId, $message);
@@ -115,7 +148,9 @@ class AssistantToolIntentPromptService
 
         if ($this->matchesFlowReset($message))
         {
-            $found = $this->findPromptAndRoutingKeyForMessage($teamId, $message);
+            $found = $this->keywordIntentRoutingEnabled()
+                ? $this->findPromptAndRoutingKeyForMessage($teamId, $message)
+                : null;
 
             return [
                 'prompt' => $found['prompt'] ?? null,
@@ -137,14 +172,10 @@ class AssistantToolIntentPromptService
                 ];
             }
 
-            $found = $this->findPromptAndRoutingKeyForMessage($teamId, $message);
-            if ($found !== null)
+            $resolved = $this->tryKeywordResolution($teamId, $message);
+            if ($resolved !== null)
             {
-                return [
-                    'prompt' => $found['prompt'],
-                    'routing_key' => $found['routing_key'],
-                    'persist_assistant_flow_key' => 'set',
-                ];
+                return $resolved;
             }
 
             return [
@@ -154,14 +185,10 @@ class AssistantToolIntentPromptService
             ];
         }
 
-        $found = $this->findPromptAndRoutingKeyForMessage($teamId, $message);
-        if ($found !== null)
+        $resolved = $this->tryKeywordResolution($teamId, $message);
+        if ($resolved !== null)
         {
-            return [
-                'prompt' => $found['prompt'],
-                'routing_key' => $found['routing_key'],
-                'persist_assistant_flow_key' => 'set',
-            ];
+            return $resolved;
         }
 
         return [

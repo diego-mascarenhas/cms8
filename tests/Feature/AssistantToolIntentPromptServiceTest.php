@@ -8,6 +8,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolIntentPromptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class AssistantToolIntentPromptServiceTest extends TestCase
@@ -87,5 +88,29 @@ class AssistantToolIntentPromptServiceTest extends TestCase
 
         $this->assertNotNull($found);
         $this->assertSame('chat_commerce', $found->section_key);
+    }
+
+    public function test_resolve_flow_skips_keyword_attach_when_keyword_routing_disabled(): void
+    {
+        Config::set('assistant_tool_intent_prompts.keyword_intent_routing', false);
+        [$team] = $this->createTeamWithCapabilitiesPrompt();
+
+        $service = app(AssistantToolIntentPromptService::class);
+        $resolution = $service->resolveFlowForToolAssistant((int) $team->id, 'Quiero probar el asistente', null);
+
+        $this->assertNull($resolution['prompt']);
+        $this->assertSame('omit', $resolution['persist_assistant_flow_key']);
+    }
+
+    public function test_resolve_flow_keyword_attach_when_keyword_routing_enabled(): void
+    {
+        Config::set('assistant_tool_intent_prompts.keyword_intent_routing', true);
+        [$team] = $this->createTeamWithCapabilitiesPrompt();
+
+        $service = app(AssistantToolIntentPromptService::class);
+        $resolution = $service->resolveFlowForToolAssistant((int) $team->id, 'Quiero probar el asistente', null);
+
+        $this->assertNotNull($resolution['prompt']);
+        $this->assertSame('set', $resolution['persist_assistant_flow_key']);
     }
 }

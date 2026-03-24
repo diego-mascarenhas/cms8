@@ -11,6 +11,7 @@ use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\Product;
+use App\Models\Prompt;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
@@ -219,6 +220,20 @@ class AssistantToolsService
                     'type' => 'object',
                     'properties' => [],
                     'required' => [],
+                ],
+            ],
+            [
+                'name' => 'commit_assistant_flow',
+                'description' => 'After the user clearly chose what they need, lock this conversation to one team flow by routing_key (same format as module_prompts, e.g. invoices:collections). Call once their intent is explicit; do not guess from vague greetings.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'routing_key' => [
+                            'type' => 'string',
+                            'description' => 'Exact routing key from the team flow list in system instructions (e.g. invoices:collections, products:chat_commerce).',
+                        ],
+                    ],
+                    'required' => ['routing_key'],
                 ],
             ],
             [
@@ -503,6 +518,7 @@ class AssistantToolsService
                 'create_task' => $this->createTask($teamId, $user->id, $input),
                 'list_team_users' => $this->listTeamUsers($teamId),
                 'get_my_profile' => $this->getMyProfile($user, $teamId),
+                'commit_assistant_flow' => $this->commitAssistantFlow($teamId, $input),
                 'check_calendar_availability' => $this->checkCalendarAvailability($teamId, $input),
                 'create_calendar_event' => $this->createCalendarEvent($teamId, $input),
                 'list_calendar_events' => $this->listCalendarEvents($teamId, $input),
@@ -907,6 +923,33 @@ class AssistantToolsService
         ];
 
         return $this->truncate("Profile:\n".implode("\n", $parts));
+    }
+
+    private function commitAssistantFlow(int $teamId, array $input): string
+    {
+        $raw = trim((string) ($input['routing_key'] ?? ''));
+        if ($raw === '')
+        {
+            return 'Error: routing_key is required.';
+        }
+
+        $prompt = Prompt::findByRoutingKey($raw, $teamId);
+        if (! $prompt || ! $prompt->is_active || $prompt->isGeneralRouter())
+        {
+            return 'Error: Unknown, inactive, or invalid routing_key for this team. Use the flow list from instructions or ask the user which topic they need.';
+        }
+
+        $prompt->loadMissing('module');
+        $canonicalKey = $prompt->module
+            ? $prompt->module->key.':'.$prompt->section_key
+            : $prompt->section_key;
+
+        $payload = [
+            'routing_key' => $canonicalKey,
+            'label' => $prompt->section_label,
+        ];
+
+        return 'FLOW_COMMITTED:'.json_encode($payload, JSON_UNESCAPED_UNICODE);
     }
 
     private function checkCalendarAvailability(int $teamId, array $input): string

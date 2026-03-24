@@ -4,7 +4,9 @@
  * When enabled, the tool-enabled assistant (WhatsApp + API chat_assistant) merges an extra
  * instruction block from module_prompts when the *latest user message* matches an intent.
  *
- * Cost: no extra LLM call — keyword / phrase scoring only. Create one active prompt per team
+ * Cost: no extra LLM call for keyword routing (when enabled) — phrase / word scoring only.
+ * With keyword routing off (default), the model picks a flow using commit_assistant_flow (still one main LLM call).
+ * Create one active prompt per team
  * using one of the routing_keys listed under each intent (same keys as Prompt::findByRoutingKey).
  *
  * @see \App\Services\AssistantToolIntentPromptService
@@ -12,6 +14,13 @@
 return [
 
     'enabled' => (bool) env('ASSISTANT_TOOL_INTENT_PROMPTS', true),
+
+    /**
+     * When false (default), incoming messages do NOT auto-pick a module flow from keywords.
+     * The assistant should clarify the user's intent, then call commit_assistant_flow with a routing key.
+     * Set ASSISTANT_KEYWORD_INTENT_ROUTING=true to restore the legacy keyword-based auto-routing.
+     */
+    'keyword_intent_routing' => (bool) env('ASSISTANT_KEYWORD_INTENT_ROUTING', false),
 
     /** Minimum score to attach a flow prompt (phrase = +2, word = +1). */
     'minimum_score' => (int) env('ASSISTANT_TOOL_INTENT_PROMPTS_MIN_SCORE', 1),
@@ -26,6 +35,9 @@ return [
         'cambiar de flujo',
         'volver al inicio',
         'empezar de nuevo',
+        'no me hables de productos',
+        'no es sobre productos',
+        'hablame de otra cosa',
     ],
 
     /**
