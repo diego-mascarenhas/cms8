@@ -11,7 +11,7 @@ class WapifyWhatsAppHelper
     private const DEFAULT_PHONE = '34613194131';
 
     /**
-     * PNG data URI for the given payload (same stack as TwilioService QR generation).
+     * PNG data URI for the given payload (same stack as WhatsApp orchestrator QR generation).
      */
     public static function qrDataUri(string $data): string
     {

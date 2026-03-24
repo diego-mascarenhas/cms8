@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
 
-class TwilioService implements WhatsAppGateway
+class WhatsAppMessageOrchestrator implements WhatsAppGateway
 {
     protected $client;
 

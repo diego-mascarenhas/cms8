@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Team;
 use App\Models\User;
-use App\Services\TwilioService;
+use App\Services\WhatsAppMessageOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
@@ -35,7 +35,7 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
 
-        $twilio = Mockery::mock(TwilioService::class, [$team])->makePartial();
+        $twilio = Mockery::mock(WhatsAppMessageOrchestrator::class, [$team])->makePartial();
         $twilio->shouldNotReceive('sendWhatsApp');
 
         $result = $twilio->processCartCommands('+573001112223', 'SÍ!');
@@ -52,7 +52,7 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $digits = '573001112223';
         Cache::put('whatsapp_checkout_pending:'.$digits, true, now()->addMinutes(45));
 
-        $twilio = Mockery::mock(TwilioService::class, [$team])->makePartial();
+        $twilio = Mockery::mock(WhatsAppMessageOrchestrator::class, [$team])->makePartial();
         $twilio->shouldReceive('sendWhatsApp')
             ->once()
             ->withArgs(function (string $to, string $message): bool
@@ -72,7 +72,7 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
 
-        $service = new TwilioService($team);
+        $service = new WhatsAppMessageOrchestrator($team);
 
         $method = (new ReflectionClass($service))->getMethod('resolveCartTeamId');
         $method->setAccessible(true);

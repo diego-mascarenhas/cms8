@@ -17,7 +17,7 @@ class WhatsAppLocalWebhookController extends Controller
 {
     /**
      * Handle incoming message webhook from the local Node.js WhatsApp service (Baileys).
-     * Normalizes the payload to Twilio-like format and reuses TwilioService::processIncomingMessage.
+     * Normalizes the payload to Twilio-like format and reuses the WhatsApp orchestrator pipeline.
      */
     public function handleIncomingMessage(Request $request)
     {
