@@ -1210,39 +1210,32 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             // Clean and normalize the message (ASCII so "catálogo" matches "catalogo")
             $normalizedMessage = strtolower(trim(\Illuminate\Support\Str::ascii($message)));
 
-            // Check if message contains product-related keywords
+            // Only trigger catalog flow on explicit commerce intents.
+            // Avoid generic "servicio/soporte/app" matches that can hijack other flows (e.g. billing follow-ups).
             $productKeywords = [
+                'producto',
                 'productos',
-                'servicios',
                 'catalogo',
+                'precio',
                 'precios',
-                'hosting',
-                'dominio',
-                'ssl',
-                'backup',
-                'desarrollo',
-                'app',
-                'consultoria',
-                'soporte',
+                'comprar',
+                'carrito',
+                'checkout',
+                'pedido',
+                'pedidos',
             ];
 
             $containsProductKeyword = false;
             foreach ($productKeywords as $keyword)
             {
-                if (strpos($normalizedMessage, $keyword) !== false)
+                if (preg_match('/\b'.preg_quote($keyword, '/').'\b/u', $normalizedMessage) === 1)
                 {
                     $containsProductKeyword = true;
                     break;
                 }
             }
 
-            // Check for specific product commands
-            $isProductCommand = (
-                preg_match('/productos?/i', $message) ||
-                preg_match('/servicios?/i', $message) ||
-                preg_match('/catalogo/i', $message) ||
-                preg_match('/precios?/i', $message)
-            );
+            $isProductCommand = $containsProductKeyword;
 
             if (! $containsProductKeyword && ! $isProductCommand)
             {
