@@ -18,6 +18,7 @@ class WhatsAppOutboundText
             return $text;
         }
 
+        $text = self::convertMarkdownTablesToList($text);
         $text = self::normalizeBrokenEmphasis($text);
 
         $patterns = [
@@ -38,7 +39,123 @@ class WhatsAppOutboundText
             }
         }
 
+        $text = self::normalizeEmphasisForWhatsApp($text);
+
         return self::normalizeBrokenEmphasis($text);
+    }
+
+    private static function convertMarkdownTablesToList(string $text): string
+    {
+        $lines = preg_split('/\R/u', $text) ?: [];
+        $out = [];
+        $count = count($lines);
+        $i = 0;
+
+        while ($i < $count)
+        {
+            $line = trim((string) $lines[$i]);
+            if (! self::looksLikeMarkdownTableRow($line))
+            {
+                $out[] = (string) $lines[$i];
+                $i++;
+
+                continue;
+            }
+
+            $tableLines = [];
+            while ($i < $count && self::looksLikeMarkdownTableRow(trim((string) $lines[$i])))
+            {
+                $tableLines[] = trim((string) $lines[$i]);
+                $i++;
+            }
+
+            $out = array_merge($out, self::markdownTableLinesToBulletLines($tableLines));
+        }
+
+        return implode("\n", $out);
+    }
+
+    private static function looksLikeMarkdownTableRow(string $line): bool
+    {
+        if ($line === '')
+        {
+            return false;
+        }
+
+        return str_starts_with($line, '|') && str_ends_with($line, '|');
+    }
+
+    /**
+     * @param  array<int, string>  $tableLines
+     * @return array<int, string>
+     */
+    private static function markdownTableLinesToBulletLines(array $tableLines): array
+    {
+        if ($tableLines === [])
+        {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($tableLines as $line)
+        {
+            $parts = array_map('trim', explode('|', trim($line, '|')));
+            if ($parts === [])
+            {
+                continue;
+            }
+
+            $isSeparator = true;
+            foreach ($parts as $part)
+            {
+                if (! preg_match('/^:?-{3,}:?$/', $part))
+                {
+                    $isSeparator = false;
+                    break;
+                }
+            }
+            if ($isSeparator)
+            {
+                continue;
+            }
+
+            $rows[] = $parts;
+        }
+
+        if ($rows === [])
+        {
+            return [];
+        }
+
+        $headers = $rows[0];
+        $dataRows = array_slice($rows, 1);
+        if ($dataRows === [])
+        {
+            return [$rows[0][0] ?? ''];
+        }
+
+        $out = [];
+        foreach ($dataRows as $row)
+        {
+            $pairs = [];
+            foreach ($row as $idx => $value)
+            {
+                $value = trim((string) $value);
+                if ($value === '')
+                {
+                    continue;
+                }
+                $header = trim((string) ($headers[$idx] ?? ''));
+                $pairs[] = $header !== '' ? $header.': '.$value : $value;
+            }
+
+            if ($pairs !== [])
+            {
+                $out[] = '• '.implode(' | ', $pairs);
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -67,6 +184,27 @@ class WhatsAppOutboundText
             if ($lastUnderscore !== false)
             {
                 $text = substr($text, 0, $lastUnderscore).substr($text, $lastUnderscore + 1);
+            }
+        }
+
+        return $text;
+    }
+
+    private static function normalizeEmphasisForWhatsApp(string $text): string
+    {
+        $patterns = [
+            '/\*\*([^*\n]+)\*\*/u',
+            '/__([^_\n]+)__/u',
+        ];
+
+        $previous = null;
+        $maxPasses = 5;
+        while ($maxPasses-- > 0 && $text !== $previous)
+        {
+            $previous = $text;
+            foreach ($patterns as $pattern)
+            {
+                $text = preg_replace($pattern, '*$1*', $text) ?? $text;
             }
         }
 

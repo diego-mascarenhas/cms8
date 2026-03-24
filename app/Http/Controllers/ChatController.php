@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
+use App\Helpers\WhatsAppOutboundText;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Prompt;
@@ -1068,7 +1069,9 @@ class ChatController extends Controller
         $sanitized = trim(implode("\n", $clean));
 
         // Safety: never return empty preview when model actually replied.
-        return $sanitized !== '' ? $sanitized : trim($text);
+        $final = $sanitized !== '' ? $sanitized : trim($text);
+
+        return WhatsAppOutboundText::sanitize($final);
     }
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)

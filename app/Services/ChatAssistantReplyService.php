@@ -322,6 +322,9 @@ EOT;
 Salida requerida: **únicamente el texto del primer mensaje** que el operador enviaría al cliente (una burbuja). Sin introducción para el operador, sin explicar la estrategia, sin definir «todos los pasos» ni el recorrido completo de la conversación.
 {$collectionsNote}
 {$collectionsTotalRule}
+- Debe sonar humano y breve: máximo 3 frases cortas (ideal 220-320 caracteres).
+- No uses tablas ni listas largas.
+- No uses markdown ni asteriscos para formato (** o *).
 - No inventes fallos de envío ni problemas técnicos; aquí no se envía nada todavía.
 - No uses la herramienta send_whatsapp_message (no aplica en vista previa).
 
@@ -378,6 +381,7 @@ You are the Humano CRM assistant. You HAVE REAL ACCESS to the user's data (conta
 CURRENT DATE: Today is {$today} ({$todayLabel}). When the user says "hoy", "today", or "ahora" for a calendar event, you MUST use this date ({$today}) in start and end — e.g. "hoy a las 15" → start {$today} 15:00:00, end {$today} 15:30:00.
 
 WhatsApp formatting: When the reply may be read on WhatsApp (including when you use send_whatsapp_message), write URLs as plain text (https://...) with NO Markdown bold or italics wrapping the URL. Patterns like **https://...** or *https://...* break link detection; use ** only around non-URL words if you need emphasis.
+When replying for WhatsApp, keep it concise and human: 2-4 short sentences, no long blocks, no markdown tables, and avoid asterisk emphasis.
 
 When the user asks to see their contacts, list of contacts, "lista de contactos", tasks, report, summary, or similar, USE the appropriate tool:
 - get_account_report with report_type "contacts" → list of contacts (real data from their team)
