@@ -80,4 +80,47 @@ class ChatAssistantTest extends TestCase
             'response' => 'Test assistant response',
         ]);
     }
+
+    public function test_assistant_accepts_preview_only_for_modal_draft(): void
+    {
+        $user = User::factory()->create();
+        AnonymousAgent::fake(['Draft response']);
+
+        $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => 'Hello',
+            'preview_only' => true,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'response' => 'Draft response',
+        ]);
+    }
+
+    public function test_preview_only_strips_meta_wrappers_and_step_instructions(): void
+    {
+        $user = User::factory()->create();
+        AnonymousAgent::fake([<<<'TEXT'
+Aquí está el **primer mensaje** para enviar al cliente **Test** al número **722372858**:
+
+Hola, este es el mensaje real para enviar.
+
+---
+
+Enviá ese mensaje y cuando el cliente responda, continuamos con el **Paso 2**.
+Copiá ese texto y enviáselo por WhatsApp.
+TEXT
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => 'Hello',
+            'preview_only' => true,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment([
+            'response' => 'Hola, este es el mensaje real para enviar.',
+        ]);
+    }
 }

@@ -361,6 +361,8 @@
             }
 
             var isAssistantView = isAssistantViewForm;
+            /** Vista previa modal: no envío real; el backend desactiva send_whatsapp_message y evita relatos de fallo de envío */
+            var previewOnlyAi = !isAssistantView;
             currentUserMessage = msg || (hasAudio ? '{{ __("[Mensaje de voz]") }}' : '');
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
@@ -397,6 +399,7 @@
                 if (contactId) formData.append('contact_id', contactId);
                 var flowKeyAudio = getChatAssistantFlowRoutingKey();
                 if (flowKeyAudio) formData.append('flow_routing_key', flowKeyAudio);
+                if (previewOnlyAi) formData.append('preview_only', '1');
                 fetch(assistantUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } })
                     .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
                     .then(function(res) {
@@ -477,7 +480,8 @@
                     message: currentUserMessage,
                     recipient: toVal || undefined,
                     contact_id: contactId,
-                    respond_with_audio: respondWithAudio
+                    respond_with_audio: respondWithAudio,
+                    preview_only: previewOnlyAi
                 };
                 var flowKeyJson = getChatAssistantFlowRoutingKey();
                 if (flowKeyJson) jsonPayload.flow_routing_key = flowKeyJson;
@@ -661,7 +665,8 @@
                     message: currentUserMessage,
                     recipient: regenTo || undefined,
                     contact_id: regenContactId,
-                    respond_with_audio: regenAudio
+                    respond_with_audio: regenAudio,
+                    preview_only: !regenIsAssistant
                 };
                 var regenFk = getChatAssistantFlowRoutingKey();
                 if (regenFk) regenPayload.flow_routing_key = regenFk;

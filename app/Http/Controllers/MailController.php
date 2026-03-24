@@ -164,6 +164,7 @@ class MailController extends Controller
             $customerPhone,
             $flowKey,
             $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+            false,
         );
 
         if (! $replyResponse['success'])

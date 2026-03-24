@@ -30,6 +30,7 @@ class ChatAssistantReplyService
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
      * When $contactId is set, a single CRM summary block is appended. When the active flow is invoices:collections, a Stripe invoices appendix is added (no duplicate CRM).
+     * When $previewOnly is true (Humano Assistant modal preview), the model must not claim WhatsApp was sent/failed; send_whatsapp_message is disabled.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -41,7 +42,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false): array
     {
         if ($this->useStub($teamId))
         {
@@ -55,6 +56,7 @@ class ChatAssistantReplyService
         }
 
         $flowRoutedTo = null;
+        $flowRoutingKey = null;
         $flowPersistSpecified = false;
         $flowPersistKey = null;
         $instructions = $withTools
@@ -85,7 +87,6 @@ class ChatAssistantReplyService
                 $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
             }
             $flowPrompt = $resolution['prompt'];
-            $flowRoutingKey = null;
             if ($flowPrompt)
             {
                 $flowRoutedTo = $flowPrompt->section_label;
@@ -134,7 +135,17 @@ class ChatAssistantReplyService
             }
         }
 
-        $tools = $withTools ? $this->buildLaravelAiTools() : [];
+        if ($previewOnly)
+        {
+            $collectionsTotalLabel = null;
+            if ($flowRoutingKey === 'invoices:collections' && $contactId !== null && $contactId > 0 && $teamId !== null)
+            {
+                $collectionsTotalLabel = $this->collectionAssistantContext->unpaidTotalLabelForContact($contactId, $teamId);
+            }
+            $instructions .= $this->previewModeInstructionsAppendix($flowRoutingKey, $collectionsTotalLabel);
+        }
+
+        $tools = $withTools ? $this->buildLaravelAiTools($previewOnly) : [];
 
         return $this->mergeFlowPersistMeta(
             $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo),
@@ -292,15 +303,45 @@ EOT;
     }
 
     /**
+     * Modal "Vista previa": single first message draft only; no multi-step playbook in the textarea.
+     */
+    private function previewModeInstructionsAppendix(?string $flowRoutingKey = null, ?string $collectionsTotalLabel = null): string
+    {
+        $collectionsNote = $flowRoutingKey === 'invoices:collections'
+            ? "\nEl prompt del equipo puede describir una cobranza en **varios pasos**: para esta vista previa **ignorá esa estructura**. No escribas «Paso 1», «Paso 2», listas numeradas de toda la guía ni el guion completo: solo el **primer mensaje** que iría al cliente.\n"
+            : '';
+        $collectionsTotalRule = ($flowRoutingKey === 'invoices:collections' && $collectionsTotalLabel !== null)
+            ? "\n- En ese primer mensaje, incluí explícitamente el total pendiente: **{$collectionsTotalLabel}**.\n"
+            : '';
+
+        return <<<EOT
+
+
+### Vista previa — un solo mensaje
+
+Salida requerida: **únicamente el texto del primer mensaje** que el operador enviaría al cliente (una burbuja). Sin introducción para el operador, sin explicar la estrategia, sin definir «todos los pasos» ni el recorrido completo de la conversación.
+{$collectionsNote}
+{$collectionsTotalRule}
+- No inventes fallos de envío ni problemas técnicos; aquí no se envía nada todavía.
+- No uses la herramienta send_whatsapp_message (no aplica en vista previa).
+
+EOT;
+    }
+
+    /**
      * Build laravel/ai Tool instances from AssistantToolsService definitions.
      *
      * @return array<int, \Laravel\Ai\Contracts\Tool>
      */
-    protected function buildLaravelAiTools(): array
+    protected function buildLaravelAiTools(bool $excludeWhatsAppSend = false): array
     {
         $tools = [];
         foreach ($this->assistantTools->getDefinitions() as $def)
         {
+            if ($excludeWhatsAppSend && ($def['name'] ?? '') === 'send_whatsapp_message')
+            {
+                continue;
+            }
             $tools[] = new AssistantTool(
                 $this->assistantTools,
                 $def['name'],

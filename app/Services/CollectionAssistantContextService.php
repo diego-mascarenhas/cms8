@@ -69,6 +69,89 @@ class CollectionAssistantContextService
         return $this->buildStripeSection($enterprise, $team);
     }
 
+    /**
+     * Exact unpaid total label for preview messages (e.g. "62727.27 ARS").
+     * Returns null when Stripe/customer data is unavailable.
+     */
+    public function unpaidTotalLabelForContact(int $contactId, int $teamId): ?string
+    {
+        $team = Team::query()->find($teamId);
+        if (! $team)
+        {
+            return null;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->with(['currentEnterprise', 'enterprises'])
+            ->find($contactId);
+
+        if (! $contact)
+        {
+            return null;
+        }
+
+        $enterprise = $contact->currentEnterprise ?: $contact->enterprises->first();
+        if (! $enterprise || ! $enterprise->code)
+        {
+            return null;
+        }
+
+        $secret = $team->getSetting('stripe_secret');
+        if (! $secret)
+        {
+            return null;
+        }
+
+        try
+        {
+            Stripe::setApiKey($secret);
+            $openInvoices = Invoice::all([
+                'customer' => $enterprise->code,
+                'limit' => 20,
+                'status' => 'open',
+            ]);
+            $uncollectibleInvoices = Invoice::all([
+                'customer' => $enterprise->code,
+                'limit' => 20,
+                'status' => 'uncollectible',
+            ]);
+
+            $all = array_merge($openInvoices->data, $uncollectibleInvoices->data);
+            if ($all === [])
+            {
+                return null;
+            }
+
+            $total = 0.0;
+            $currency = null;
+            foreach ($all as $invoice)
+            {
+                $total += (float) (($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100);
+                if ($currency === null && isset($invoice->currency) && $invoice->currency !== '')
+                {
+                    $currency = strtoupper((string) $invoice->currency);
+                }
+            }
+
+            $label = number_format($total, 2);
+            if ($currency !== null)
+            {
+                $label .= ' '.$currency;
+            }
+
+            return $label;
+        } catch (\Throwable $e)
+        {
+            \Illuminate\Support\Facades\Log::warning('CollectionAssistantContextService unpaid total failed', [
+                'contact_enterprise' => $enterprise->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private function buildStripeSection(?Enterprise $enterprise, Team $team): string
     {
         if (! $enterprise || ! $enterprise->code)
