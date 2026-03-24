@@ -828,19 +828,36 @@ class TwilioService implements WhatsAppGateway
                     {
                         $aiMessage = $replyResponse['text'] ?? '';
 
-                        $this->sendWhatsApp($cleanFrom, $aiMessage);
-                        $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
+                        if (trim((string) $aiMessage) !== '')
+                        {
+                            $this->sendWhatsApp($cleanFrom, $aiMessage);
+                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
 
-                        Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                            Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                        } else
+                        {
+                            $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero no pude generar respuesta en este intento. Enviamelo de nuevo por favor.');
+                            Log::warning('Auto AI response was empty', ['from' => $cleanFrom, 'team_id' => $teamId]);
+                        }
                     } else
                     {
                         Log::warning('Failed to get AI response: '.($replyResponse['message'] ?? 'Unknown error'));
+                        $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero tuve un problema temporal para responder. Enviamelo de nuevo por favor.');
                     }
                 } catch (\Throwable $e)
                 {
                     Log::error('Error in auto AI response: '.$e->getMessage(), [
                         'exception' => $e,
                     ]);
+                    try
+                    {
+                        $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero tuve un problema temporal para responder. Enviamelo de nuevo por favor.');
+                    } catch (\Throwable $sendError)
+                    {
+                        Log::error('Fallback WhatsApp send after AI error failed: '.$sendError->getMessage(), [
+                            'from' => $cleanFrom,
+                        ]);
+                    }
                 }
             }
 

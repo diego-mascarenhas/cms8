@@ -1065,7 +1065,10 @@ class ChatController extends Controller
             $clean = array_slice($clean, $greetingStart);
         }
 
-        return trim(implode("\n", $clean));
+        $sanitized = trim(implode("\n", $clean));
+
+        // Safety: never return empty preview when model actually replied.
+        return $sanitized !== '' ? $sanitized : trim($text);
     }
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
