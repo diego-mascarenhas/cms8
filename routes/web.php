@@ -63,6 +63,7 @@ use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TeamFileController;
 use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamSettingController;
@@ -608,6 +609,15 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/multimedia/gallery/{tag}', [MultimediaController::class, 'gallery'])->name('multimedia.gallery');
     Route::post('/multimedia/gallery/order', [MultimediaController::class, 'updateGalleryOrder'])->name('multimedia.gallery.order');
     Route::get('/tags/search', [MultimediaController::class, 'searchTags'])->name('tags.search');
+
+    // Team files (company documents & brand assets)
+    Route::get('/team-file/list', [TeamFileController::class, 'index'])->name('team-file.index');
+    Route::get('/team-file/create', [TeamFileController::class, 'create'])->name('team-file.create');
+    Route::post('/team-file', [TeamFileController::class, 'store'])->name('team-file.store');
+    Route::get('/team-file/{team_file}/edit', [TeamFileController::class, 'edit'])->name('team-file.edit');
+    Route::put('/team-file/{team_file}', [TeamFileController::class, 'update'])->name('team-file.update');
+    Route::delete('/team-file/{team_file}', [TeamFileController::class, 'destroy'])->name('team-file.destroy');
+    Route::get('/team-file/{team_file}/download', [TeamFileController::class, 'download'])->name('team-file.download');
 
     // Contents Routes
     Route::get('/contents', [ContentController::class, 'index'])->name('contents.index');

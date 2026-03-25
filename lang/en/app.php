@@ -36,6 +36,7 @@ return [
     ],
     'shortcuts' => [
         'title' => 'Shortcuts',
+        'team_files' => 'Company & brand',
         'calendar' => 'Calendar',
         'appointments' => 'Appointments',
         'invoice_app' => 'Invoice App',
