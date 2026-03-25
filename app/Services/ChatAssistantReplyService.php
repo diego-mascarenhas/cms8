@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Tools\AssistantTool;
-use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 
@@ -220,6 +220,12 @@ class ChatAssistantReplyService
         try
         {
             $historyMessages = $this->historyToMessages($history);
+            $provider = (string) config('ai.assistant_provider', 'anthropic');
+            $failover = config('ai.assistant_failover');
+            $providerParam = is_array($failover) && $failover !== [] ? array_merge([$provider], $failover) : $provider;
+            $configuredModel = config('ai.assistant_model', 'cheapest');
+            $modelParam = $this->resolveAssistantModel($provider, $configuredModel);
+            $timeout = (int) config('ai.assistant_timeout', 60);
 
             $agent = agent(
                 instructions: $instructions,
@@ -227,7 +233,7 @@ class ChatAssistantReplyService
                 tools: $tools,
             );
 
-            $response = $agent->prompt($message, [], Lab::Anthropic);
+            $response = $agent->prompt($message, [], $providerParam, $modelParam, $timeout);
             $text = $response->text ?? '';
 
             $usage = [];
@@ -277,6 +283,35 @@ class ChatAssistantReplyService
                 'tool_results' => [],
                 'meta' => [],
             ];
+        }
+    }
+
+    /**
+     * Resolve assistant model from config. "cheapest" maps to provider cheapest text model.
+     */
+    private function resolveAssistantModel(string $provider, mixed $configuredModel): ?string
+    {
+        $model = is_string($configuredModel) ? trim($configuredModel) : null;
+        if ($model === null || $model === '')
+        {
+            return null;
+        }
+
+        if (strtolower($model) !== 'cheapest')
+        {
+            return $model;
+        }
+
+        try
+        {
+            $ai = app(AiManager::class);
+            $textProvider = $ai->textProvider($provider);
+            $cheapest = $textProvider->cheapestTextModel();
+
+            return is_string($cheapest) && trim($cheapest) !== '' ? trim($cheapest) : null;
+        } catch (\Throwable)
+        {
+            return null;
         }
     }
 

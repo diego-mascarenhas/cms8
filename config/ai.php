@@ -22,6 +22,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Assistant Model Selection
+    |--------------------------------------------------------------------------
+    |
+    | The chat assistant can use either a fixed model ID or "cheapest" to
+    | automatically resolve the provider's cheapest text model at runtime.
+    |
+    */
+    'assistant_provider' => env('AI_ASSISTANT_PROVIDER', 'anthropic'),
+    'assistant_model' => env('AI_ASSISTANT_MODEL', 'cheapest'),
+    'assistant_failover' => env('AI_ASSISTANT_FAILOVER') ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_ASSISTANT_FAILOVER'))))) : null,
+    'assistant_timeout' => (int) env('AI_ASSISTANT_TIMEOUT', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Caching
     |--------------------------------------------------------------------------
     |
