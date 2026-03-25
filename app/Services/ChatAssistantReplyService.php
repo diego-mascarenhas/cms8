@@ -204,6 +204,19 @@ class ChatAssistantReplyService
      */
     protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
     {
+        $message = trim($message);
+        if ($message === '')
+        {
+            return [
+                'success' => false,
+                'message' => 'Empty user message',
+                'usage' => [],
+                'tool_calls' => [],
+                'tool_results' => [],
+                'meta' => [],
+            ];
+        }
+
         try
         {
             $historyMessages = $this->historyToMessages($history);
@@ -279,7 +292,11 @@ class ChatAssistantReplyService
         foreach ($history as $item)
         {
             $direction = $item['direction'] ?? '';
-            $body = $item['body'] ?? '';
+            $body = trim((string) ($item['body'] ?? ''));
+            if ($body === '')
+            {
+                continue;
+            }
             if ($direction === 'inbound')
             {
                 $out[] = new UserMessage($body);

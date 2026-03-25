@@ -803,6 +803,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 try
                 {
+                    if (trim((string) $body) === '')
+                    {
+                        // Empty inbound messages (common for some Baileys event types) should not trigger AI.
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'auto_ai_skipped' => 'empty_body']);
+                    }
+
                     $teamNumber = $this->team ? preg_replace('/[^0-9]/', '', (string) $this->team->getWhatsAppFrom()) : null;
 
                     $historyQuery = Conversation::where('channel', 'whatsapp')
