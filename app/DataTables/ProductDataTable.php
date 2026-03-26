@@ -53,6 +53,10 @@ class ProductDataTable extends DataTable
 
                 return $current.' '.e($currency);
             })
+            ->editColumn('store.name', function ($product)
+            {
+                return $product->store ? $product->store->name : '—';
+            })
             ->editColumn('category.name', function ($product)
             {
                 return $product->category ? $product->category->name : '—';

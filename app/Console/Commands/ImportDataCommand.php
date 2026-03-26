@@ -30,6 +30,11 @@ class ImportDataCommand extends Command
     protected $description = 'Interactive menu for importing data from old database';
 
     /**
+     * Plain-text password for users created or reset during legacy import (tiendas, contactos CMS, etc.).
+     */
+    private const IMPORT_DEFAULT_USER_PASSWORD = 'Simplicity!';
+
+    /**
      * Merge new data with existing data, preserving local values when legacy is empty
      *
      * @param  array  $newData  Data from legacy system
@@ -706,7 +711,7 @@ class ImportDataCommand extends Command
                                 'name' => trim($data->nombre.' '.($data->apellido ?? '')),
                                 'email' => $data->email,
                                 'phone' => $cleaned_phone,
-                                'password' => Hash::make('Simplicity!'),  // Password temporal
+                                'password' => Hash::make(self::IMPORT_DEFAULT_USER_PASSWORD),
                                 'email_verified_at' => now(),
                                 'created_at' => $data->fecha_alta,
                                 'updated_at' => $data->fecha_modificacion,
@@ -2836,6 +2841,15 @@ class ImportDataCommand extends Command
         // Get category based on parent (padre) from CMS7
         $category = $this->getCategoryForProduct($teamId, $cms7Product);
 
+        $mainStore = Store::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('is_main', true)
+            ->first();
+        if (! $mainStore)
+        {
+            $mainStore = Store::ensureMainStoreForTeam($teamId);
+        }
+
         // Create the product data
         $productData = [
             'team_id' => $teamId,
@@ -2849,6 +2863,11 @@ class ImportDataCommand extends Command
             'created_at' => $cms7Product->fecha_alta ?? now(),
             'updated_at' => $cms7Product->fecha_modificacion ?? now(),
         ];
+
+        if (! $existingProduct || ! $existingProduct->store_id)
+        {
+            $productData['store_id'] = $mainStore->id;
+        }
 
         if (! $existingProduct)
         {
@@ -3163,7 +3182,7 @@ class ImportDataCommand extends Command
                             'name' => $name,
                             'email' => $email,
                             'phone' => $cleanPhone ?: null,
-                            'password' => Hash::make('Simplicity!'),
+                            'password' => Hash::make(self::IMPORT_DEFAULT_USER_PASSWORD),
                             'email_verified_at' => $userById->email_verified_at ?? now(),
                             'created_at' => $userById->created_at ?? ($adminContact->fecha_alta ?? now()),
                             'updated_at' => $adminContact->fecha_modificacion ?? now(),
@@ -3176,7 +3195,7 @@ class ImportDataCommand extends Command
                         $userByEmail->forceFill([
                             'name' => $name,
                             'phone' => $cleanPhone ?: null,
-                            'password' => Hash::make('Simplicity!'),
+                            'password' => Hash::make(self::IMPORT_DEFAULT_USER_PASSWORD),
                             'updated_at' => $adminContact->fecha_modificacion ?? now(),
                             'deleted_at' => null,
                         ])->save();
@@ -3188,7 +3207,7 @@ class ImportDataCommand extends Command
                             'name' => $name,
                             'email' => $email,
                             'phone' => $cleanPhone ?: null,
-                            'password' => Hash::make('Simplicity!'),
+                            'password' => Hash::make(self::IMPORT_DEFAULT_USER_PASSWORD),
                             'email_verified_at' => now(),
                             'remember_token' => null,
                             'current_team_id' => null,
@@ -3414,71 +3433,154 @@ class ImportDataCommand extends Command
             ->orderBy('ts.id')
             ->get();
 
+        if ($branches->isEmpty())
+        {
+            Store::ensureMainStoreForTeam($teamId);
+
+            return $stats;
+        }
+
         $mainLegacyBranchId = (int) ($branches->first()->id ?? 0);
 
         foreach ($branches as $branch)
         {
-            $storeCode = 'LEGACY-SUC-'.$branch->id;
-            $name = $this->normalizeLegacyText((string) ($branch->titulo ?? ''));
-            if ($name === '')
+            $result = $this->upsertStoreFromLegacyBranchRow($teamId, $branch, $mainLegacyBranchId);
+            if ($result['created'])
             {
-                $name = 'Sucursal '.$branch->id;
-            }
-
-            $addressParts = [
-                $this->normalizeLegacyText((string) ($branch->domicilio ?? '')),
-                $this->normalizeLegacyText((string) ($branch->numero ?? '')),
-                $this->normalizeLegacyText((string) ($branch->localidad ?? '')),
-                $this->normalizeLegacyText((string) ($branch->provincia ?? '')),
-            ];
-            $address = trim(implode(', ', array_values(array_filter($addressParts, fn ($part) => $part !== ''))));
-            $address = $address !== '' ? mb_substr($address, 0, 255) : null;
-
-            $existingStore = Store::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('code', $storeCode)
-                ->first();
-            if (! $existingStore)
-            {
-                $existingStore = Store::withoutGlobalScope('team')
-                    ->where('team_id', $teamId)
-                    ->where('name', mb_substr($name, 0, 255))
-                    ->first();
-            }
-
-            $storePayload = [
-                'team_id' => $teamId,
-                'name' => mb_substr($name, 0, 255),
-                'code' => $storeCode,
-                'address' => $address,
-                'status' => (int) ($branch->estado ?? 0) > 0,
-                'is_main' => $mainLegacyBranchId > 0 && (int) $branch->id === $mainLegacyBranchId,
-            ];
-            if ($existingStore && $existingStore->code !== $storeCode)
-            {
-                $codeTakenByAnotherStore = Store::withoutGlobalScope('team')
-                    ->where('team_id', $teamId)
-                    ->where('code', $storeCode)
-                    ->where('id', '!=', $existingStore->id)
-                    ->exists();
-                if ($codeTakenByAnotherStore)
-                {
-                    unset($storePayload['code']);
-                }
-            }
-
-            if (! $existingStore)
-            {
-                Store::withoutGlobalScope('team')->create($storePayload);
                 $stats['imported']++;
             } else
             {
-                $existingStore->update($storePayload);
                 $stats['updated']++;
             }
         }
 
         return $stats;
+    }
+
+    /**
+     * Create or update a Store from a legacy tienda_sucursales row.
+     *
+     * @param  object  $branch  Row with id, titulo, domicilio, numero, localidad, provincia, estado
+     * @return array{created: bool, store: \App\Models\Store}
+     */
+    private function upsertStoreFromLegacyBranchRow(int $teamId, object $branch, int $mainLegacyBranchId): array
+    {
+        $storeCode = 'LEGACY-SUC-'.$branch->id;
+        $name = $this->normalizeLegacyText((string) ($branch->titulo ?? ''));
+        if ($name === '')
+        {
+            $name = 'Sucursal '.$branch->id;
+        }
+
+        $addressParts = [
+            $this->normalizeLegacyText((string) ($branch->domicilio ?? '')),
+            $this->normalizeLegacyText((string) ($branch->numero ?? '')),
+            $this->normalizeLegacyText((string) ($branch->localidad ?? '')),
+            $this->normalizeLegacyText((string) ($branch->provincia ?? '')),
+        ];
+        $address = trim(implode(', ', array_values(array_filter($addressParts, fn ($part) => $part !== ''))));
+        $address = $address !== '' ? mb_substr($address, 0, 255) : null;
+
+        $existingStore = Store::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('code', $storeCode)
+            ->first();
+        if (! $existingStore)
+        {
+            $existingStore = Store::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('name', mb_substr($name, 0, 255))
+                ->first();
+        }
+
+        $storePayload = [
+            'team_id' => $teamId,
+            'name' => mb_substr($name, 0, 255),
+            'code' => $storeCode,
+            'address' => $address,
+            'status' => (int) ($branch->estado ?? 0) > 0,
+            'is_main' => $mainLegacyBranchId > 0 && (int) $branch->id === $mainLegacyBranchId,
+        ];
+        if ($existingStore && $existingStore->code !== $storeCode)
+        {
+            $codeTakenByAnotherStore = Store::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('code', $storeCode)
+                ->where('id', '!=', $existingStore->id)
+                ->exists();
+            if ($codeTakenByAnotherStore)
+            {
+                unset($storePayload['code']);
+            }
+        }
+
+        if (! $existingStore)
+        {
+            $store = Store::withoutGlobalScope('team')->create($storePayload);
+
+            return ['created' => true, 'store' => $store];
+        }
+
+        $existingStore->update($storePayload);
+
+        return ['created' => false, 'store' => $existingStore->fresh()];
+    }
+
+    /**
+     * Resolve store id for a legacy product id_sucursal: use local row, or create from legacy DB, or main store.
+     */
+    private function resolveStoreIdForLegacyProductSucursal(int $teamId, int $legacySucursalId, int $mainStoreId): int
+    {
+        $code = 'LEGACY-SUC-'.$legacySucursalId;
+        $existingId = Store::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('code', $code)
+            ->value('id');
+        if ($existingId)
+        {
+            return (int) $existingId;
+        }
+
+        if (! Schema::connection('mysql_legacy')->hasTable('tienda_sucursales'))
+        {
+            return $mainStoreId;
+        }
+
+        $branch = DB::connection('mysql_legacy')
+            ->table('tienda_sucursales as ts')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->where('ts.id', $legacySucursalId)
+            ->select(
+                'ts.id',
+                'ts.titulo',
+                'ts.domicilio',
+                'ts.numero',
+                'ts.localidad',
+                'ts.provincia',
+                'ts.estado',
+                'ts.orden',
+            )
+            ->first();
+
+        if (! $branch)
+        {
+            return $mainStoreId;
+        }
+
+        $mainLegacyBranchId = (int) (DB::connection('mysql_legacy')
+            ->table('tienda_sucursales as ts')
+            ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
+            ->where('tc.grupo', 513)
+            ->where('tc.id_empresa', $teamId)
+            ->orderBy('ts.orden')
+            ->orderBy('ts.id')
+            ->value('ts.id') ?? 0);
+
+        $result = $this->upsertStoreFromLegacyBranchRow($teamId, $branch, $mainLegacyBranchId);
+
+        return (int) $result['store']->id;
     }
 
     private function importStoreProductsForTeam(int $teamId): array
@@ -3529,6 +3631,10 @@ class ImportDataCommand extends Command
             ->where('team_id', $teamId)
             ->where('is_main', true)
             ->value('id');
+        if (! $mainStoreId)
+        {
+            $mainStoreId = Store::ensureMainStoreForTeam($teamId)->id;
+        }
 
         foreach ($products as $legacyProduct)
         {
@@ -3565,10 +3671,11 @@ class ImportDataCommand extends Command
             $storeId = $mainStoreId;
             if (isset($legacyProduct->id_sucursal))
             {
-                $storeId = Store::withoutGlobalScope('team')
-                    ->where('team_id', $teamId)
-                    ->where('code', 'LEGACY-SUC-'.(int) $legacyProduct->id_sucursal)
-                    ->value('id') ?: $mainStoreId;
+                $storeId = $this->resolveStoreIdForLegacyProductSucursal(
+                    $teamId,
+                    (int) $legacyProduct->id_sucursal,
+                    $mainStoreId,
+                );
             }
 
             $priceValue = $legacyProduct->valor ?? $legacyProduct->precio ?? 0;
