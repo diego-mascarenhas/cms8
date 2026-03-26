@@ -18,14 +18,15 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Settings\UserPreferencesSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Transcription;
+use Spatie\LaravelSettings\Factories\SettingsRepositoryFactory;
 
 class ChatController extends Controller
 {
@@ -374,12 +375,9 @@ class ChatController extends Controller
         $assistantContactId = $selectedAssistantUser
             ? (Contact::withoutGlobalScopes()->where('user_id', $selectedAssistantUser->id)->first()?->id ?? '')
             : '';
-        // Preference owner = client user when viewing a client's conversation, else the operator (auth user)
-        $preferenceUserId = $viewAssistant && auth()->check()
-            ? ($selectedAssistantUser ? $selectedAssistantUser->id : auth()->id())
-            : null;
-        $userChatAiToggleDefault = $preferenceUserId !== null
-            ? $this->getChatAiToggleDefaultForUser($preferenceUserId)
+        // Opt-out only: no row / chat_ai_assistance_blocked false => AI may respond.
+        $userChatAiToggleDefault = auth()->check()
+            ? ! app(UserPreferencesSettings::class)->chat_ai_assistance_blocked
             : true;
 
         $whatsappDriver = config('whatsapp.driver');
@@ -448,7 +446,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'preferenceUserId', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
     }
 
     /**
@@ -506,47 +504,6 @@ class ChatController extends Controller
         }
 
         return false;
-    }
-
-    /**
-     * Get chat_ai_toggle_default for a user (client or operator) from the settings table.
-     */
-    private function getChatAiToggleDefaultForUser(int $userId): bool
-    {
-        $row = DB::table('settings')
-            ->where('group', 'user_'.$userId)
-            ->where('name', 'chat_ai_toggle_default')
-            ->value('payload');
-
-        if ($row === null)
-        {
-            return true;
-        }
-
-        $decoded = json_decode($row, true);
-
-        return (bool) $decoded;
-    }
-
-    /**
-     * Set chat_ai_toggle_default for a user (client or operator) in the settings table.
-     */
-    private function setChatAiToggleDefaultForUser(int $userId, bool $value): void
-    {
-        $group = 'user_'.$userId;
-        $name = 'chat_ai_toggle_default';
-        $payload = json_encode($value);
-        $now = now();
-
-        DB::table('settings')->updateOrInsert(
-            ['group' => $group, 'name' => $name],
-            [
-                'locked' => false,
-                'payload' => $payload,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-        );
     }
 
     /**
@@ -769,14 +726,12 @@ class ChatController extends Controller
     }
 
     /**
-     * Save default AI toggle preference for the conversation's user (client or operator).
-     * Optional user_id = client user id; when omitted, saves for the authenticated operator.
+     * Save AI assistance opt-out for the authenticated user. Only persists when blocking replies ({@see UserPreferencesSettings}).
      */
     public function updateAiTogglePreference(Request $request)
     {
         $request->validate([
             'on' => 'required|boolean',
-            'user_id' => 'nullable|integer|exists:users,id',
         ]);
 
         if (! auth()->check())
@@ -784,15 +739,19 @@ class ChatController extends Controller
             return response()->json(['success' => false], 401);
         }
 
-        $userId = $request->integer('user_id', 0) ?: null;
-        if ($userId !== null && $userId !== auth()->id() && ! $this->canViewAssistantConversation($userId))
-        {
-            return response()->json(['success' => false], 403);
-        }
+        $group = 'user_'.auth()->id();
+        $repository = SettingsRepositoryFactory::create();
 
-        $targetUserId = $userId ?? auth()->id();
-        $on = $request->boolean('on');
-        $this->setChatAiToggleDefaultForUser($targetUserId, $on);
+        if ($request->boolean('on'))
+        {
+            if ($repository->checkIfPropertyExists($group, 'chat_ai_assistance_blocked'))
+            {
+                $repository->deleteProperty($group, 'chat_ai_assistance_blocked');
+            }
+        } else
+        {
+            $repository->updatePropertiesPayload($group, ['chat_ai_assistance_blocked' => true]);
+        }
 
         return response()->json(['success' => true]);
     }

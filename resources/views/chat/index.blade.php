@@ -127,39 +127,20 @@
         }
 
         (function persistAiTogglePreference() {
-            var keyEl = document.getElementById('chat-conversation-key');
-            var key = keyEl ? keyEl.value : '';
-            var storageKey = 'chat-ai-toggle-';
             var userDefault = {{ json_encode($userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
-            var initializing = true;
-            if (key) {
-                var stored = localStorage.getItem(storageKey + key);
-                if (stored !== null) {
-                    useAiToggle.checked = stored === 'on';
-                } else {
-                    useAiToggle.checked = userDefault;
+            useAiToggle.checked = userDefault;
+            useAiToggle.addEventListener('change', function() {
+                var aiOn = useAiToggle.checked;
+                var token = document.querySelector('meta[name="csrf-token"]');
+                if (token) {
+                    fetch('{{ route("chat.ai-toggle-preference") }}', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token.getAttribute('content') },
+                        body: JSON.stringify({ on: aiOn })
+                    }).catch(function() {});
                 }
-                setTimeout(function() { initializing = false; }, 0);
-                useAiToggle.addEventListener('change', function() {
-                    if (initializing) return;
-                    var aiOn = useAiToggle.checked;
-                    localStorage.setItem(storageKey + key, aiOn ? 'on' : 'off');
-                    var token = document.querySelector('meta[name="csrf-token"]');
-                    if (token) {
-                        var body = { on: aiOn };
-                        var prefUserIdEl = document.getElementById('preference-user-id');
-                        if (prefUserIdEl && prefUserIdEl.value) body.user_id = parseInt(prefUserIdEl.value, 10);
-                        fetch('{{ route("chat.ai-toggle-preference") }}', {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token.getAttribute('content') },
-                            body: JSON.stringify(body)
-                        }).catch(function() {});
-                    }
-                });
-            } else {
-                useAiToggle.checked = userDefault;
-            }
+            });
         })();
 
         (function persistSidebarAssistantAutoRespond() {
@@ -1896,7 +1877,6 @@
                                 }
                             @endphp
                             <input type="hidden" id="chat-conversation-key" value="{{ $chatConversationKey }}">
-                            <input type="hidden" id="preference-user-id" value="{{ $preferenceUserId ?? '' }}">
                             @if(isset($selectedContact) && $selectedContact)
                                 <input type="hidden" id="contact-id" value="{{ $selectedContact->id }}">
                             @elseif($selectedAssistantUser ?? null)

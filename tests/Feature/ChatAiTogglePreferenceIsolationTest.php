@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Spatie\LaravelSettings\Factories\SettingsRepositoryFactory;
 use Tests\TestCase;
 
 class ChatAiTogglePreferenceIsolationTest extends TestCase
@@ -31,12 +31,9 @@ class ChatAiTogglePreferenceIsolationTest extends TestCase
         $team->refresh();
         $this->assertSame('0', (string) $team->getSetting('assistant_auto_respond', '0'));
 
-        $storedPreference = DB::table('settings')
-            ->where('group', 'user_'.$user->id)
-            ->where('name', 'chat_ai_toggle_default')
-            ->value('payload');
+        $blockedExists = SettingsRepositoryFactory::create()
+            ->checkIfPropertyExists('user_'.$user->id, 'chat_ai_assistance_blocked');
 
-        $this->assertNotNull($storedPreference);
-        $this->assertSame(true, json_decode((string) $storedPreference, true));
+        $this->assertFalse($blockedExists, 'Allowing AI should not persist an opt-out row');
     }
 }

@@ -6,9 +6,12 @@ use Spatie\LaravelSettings\Settings;
 
 class UserPreferencesSettings extends Settings
 {
-    public bool $chat_ai_toggle_default = true;
+    /**
+     * When true, AI must not reply (opt-out). Default false: no row needed; chat responds.
+     */
+    public bool $chat_ai_assistance_blocked = false;
 
-    /** @var array<string, mixed> Datatables state per table (e.g. columns_order, sort, visible_columns). */
+    /** Datatables state per table (e.g. columns_order, sort, visible_columns). */
     public array $datatables = [];
 
     public static function group(): string
