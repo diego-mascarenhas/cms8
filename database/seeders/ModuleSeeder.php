@@ -244,6 +244,13 @@ class ModuleSeeder extends Seeder
             'group' => 'content',
             'order' => 5,
         ],
+        'team_files' => [
+            'name' => 'Team files',
+            'icon' => 'folders',
+            'description' => 'Team company files and brand assets',
+            'group' => 'content',
+            'order' => 6,
+        ],
         // SUPPORT & TICKETS
         'tickets' => [
             'name' => 'Tickets',
@@ -374,7 +381,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()

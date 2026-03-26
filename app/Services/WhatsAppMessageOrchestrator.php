@@ -12,6 +12,9 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
+use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
@@ -22,7 +25,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
 
-class TwilioService implements WhatsAppGateway
+class WhatsAppMessageOrchestrator implements WhatsAppGateway
 {
     protected $client;
 
@@ -690,6 +693,18 @@ class TwilioService implements WhatsAppGateway
                     $waProfileName = is_string($fallbackProfile) && $fallbackProfile !== '' ? $fallbackProfile : null;
                 }
                 app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom, $waProfileName);
+
+                $sheetUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                $teamId = (int) $this->team->id;
+                $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
+                    ?? app(WhatsAppContactSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
+                    ?? app(WhatsAppTaskSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId);
+                if ($sheetReply !== null)
+                {
+                    $this->sendWhatsApp($cleanFrom, $sheetReply);
+
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'sheet_import' => true]);
+                }
             }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
@@ -788,6 +803,12 @@ class TwilioService implements WhatsAppGateway
             {
                 try
                 {
+                    if (trim((string) $body) === '')
+                    {
+                        // Empty inbound messages (common for some Baileys event types) should not trigger AI.
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'auto_ai_skipped' => 'empty_body']);
+                    }
+
                     $teamNumber = $this->team ? preg_replace('/[^0-9]/', '', (string) $this->team->getWhatsAppFrom()) : null;
 
                     $historyQuery = Conversation::where('channel', 'whatsapp')
@@ -822,25 +843,72 @@ class TwilioService implements WhatsAppGateway
                     $teamId = $this->team?->id;
                     $withTools = $teamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
-                    $replyResponse = $replyService->getReply($body, $history, $teamId, $withTools, $contextUser?->id, $cleanFrom, null, null);
+                    $contextContactId = null;
+                    if ($contextUser !== null)
+                    {
+                        $contactQuery = Contact::withoutGlobalScopes()
+                            ->where('user_id', $contextUser->id);
+                        if ($teamId !== null)
+                        {
+                            $contactQuery->where('team_id', $teamId);
+                        }
+                        $contextContactId = $contactQuery->value('id');
+                    }
+
+                    $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
+                    $replyResponse = $replyService->getReply(
+                        $body,
+                        $history,
+                        $teamId,
+                        $withTools,
+                        $contextUser?->id,
+                        $cleanFrom,
+                        $forcedFlowRoutingKey,
+                        $contextContactId !== null ? (int) $contextContactId : null,
+                    );
 
                     if ($replyResponse['success'] ?? false)
                     {
                         $aiMessage = $replyResponse['text'] ?? '';
 
-                        $this->sendWhatsApp($cleanFrom, $aiMessage);
-                        $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
+                        if (trim((string) $aiMessage) !== '')
+                        {
+                            $this->sendWhatsApp($cleanFrom, $aiMessage);
+                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
 
-                        Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                            Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                            $this->maybeSendCollectionPaymentLinksFollowUp(
+                                $cleanFrom,
+                                $teamId,
+                                $contextContactId !== null ? (int) $contextContactId : null,
+                                $forcedFlowRoutingKey,
+                                (string) $body,
+                                (string) $aiMessage,
+                            );
+                        } else
+                        {
+                            $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero no pude generar respuesta en este intento. Enviamelo de nuevo por favor.');
+                            Log::warning('Auto AI response was empty', ['from' => $cleanFrom, 'team_id' => $teamId]);
+                        }
                     } else
                     {
                         Log::warning('Failed to get AI response: '.($replyResponse['message'] ?? 'Unknown error'));
+                        $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero tuve un problema temporal para responder. Enviamelo de nuevo por favor.');
                     }
                 } catch (\Throwable $e)
                 {
                     Log::error('Error in auto AI response: '.$e->getMessage(), [
                         'exception' => $e,
                     ]);
+                    try
+                    {
+                        $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero tuve un problema temporal para responder. Enviamelo de nuevo por favor.');
+                    } catch (\Throwable $sendError)
+                    {
+                        Log::error('Fallback WhatsApp send after AI error failed: '.$sendError->getMessage(), [
+                            'from' => $cleanFrom,
+                        ]);
+                    }
                 }
             }
 
@@ -1163,39 +1231,32 @@ class TwilioService implements WhatsAppGateway
             // Clean and normalize the message (ASCII so "catálogo" matches "catalogo")
             $normalizedMessage = strtolower(trim(\Illuminate\Support\Str::ascii($message)));
 
-            // Check if message contains product-related keywords
+            // Only trigger catalog flow on explicit commerce intents.
+            // Avoid generic "servicio/soporte/app" matches that can hijack other flows (e.g. billing follow-ups).
             $productKeywords = [
+                'producto',
                 'productos',
-                'servicios',
                 'catalogo',
+                'precio',
                 'precios',
-                'hosting',
-                'dominio',
-                'ssl',
-                'backup',
-                'desarrollo',
-                'app',
-                'consultoria',
-                'soporte',
+                'comprar',
+                'carrito',
+                'checkout',
+                'pedido',
+                'pedidos',
             ];
 
             $containsProductKeyword = false;
             foreach ($productKeywords as $keyword)
             {
-                if (strpos($normalizedMessage, $keyword) !== false)
+                if (preg_match('/\b'.preg_quote($keyword, '/').'\b/u', $normalizedMessage) === 1)
                 {
                     $containsProductKeyword = true;
                     break;
                 }
             }
 
-            // Check for specific product commands
-            $isProductCommand = (
-                preg_match('/productos?/i', $message) ||
-                preg_match('/servicios?/i', $message) ||
-                preg_match('/catalogo/i', $message) ||
-                preg_match('/precios?/i', $message)
-            );
+            $isProductCommand = $containsProductKeyword;
 
             if (! $containsProductKeyword && ! $isProductCommand)
             {
@@ -2520,6 +2581,106 @@ class TwilioService implements WhatsAppGateway
             $this->sendWhatsApp($phoneNumber, '❌ Error al procesar solicitud. Inténtalo nuevamente.');
 
             return ['success' => false, 'message' => 'Error processing continue shopping'];
+        }
+    }
+
+    /**
+     * Keep collections context on follow-up turns so payment links are preserved.
+     *
+     * @param  array<int, array<string, mixed>>  $history
+     */
+    private function resolveForcedFlowRoutingKeyForWhatsApp(array $history, string $incomingBody): ?string
+    {
+        $incoming = mb_strtolower(trim($incomingBody));
+        if ($incoming === '')
+        {
+            return null;
+        }
+
+        $isCollectionsQuestion = (bool) preg_match(
+            '/\b(saldo|factura|facturas|deuda|deudor|impaga|impagas|pago|pagos|abonar|abono|link|links|stripe)\b/u',
+            $incoming,
+        );
+        if (! $isCollectionsQuestion)
+        {
+            return null;
+        }
+
+        $recent = array_slice($history, -8);
+        foreach ($recent as $item)
+        {
+            if (($item['direction'] ?? null) !== 'outbound')
+            {
+                continue;
+            }
+            $body = mb_strtolower((string) ($item['body'] ?? ''));
+            $looksLikeCollectionsMessage = str_contains($body, 'factura')
+                || str_contains($body, 'saldo')
+                || str_contains($body, 'impag')
+                || str_contains($body, 'stripe')
+                || str_contains($body, 'link de pago')
+                || str_contains($body, 'hosted_invoice_url')
+                || (bool) preg_match('/\b\d{4}-\d{4}\b/u', $body);
+
+            if ($looksLikeCollectionsMessage)
+            {
+                return 'invoices:collections';
+            }
+        }
+
+        return null;
+    }
+
+    private function maybeSendCollectionPaymentLinksFollowUp(
+        string $phone,
+        ?int $teamId,
+        ?int $contactId,
+        ?string $forcedFlowRoutingKey,
+        string $incomingBody,
+        string $assistantMessage,
+    ): void {
+        if ($teamId === null || $contactId === null || $forcedFlowRoutingKey !== 'invoices:collections')
+        {
+            return;
+        }
+
+        $incoming = mb_strtolower(trim($incomingBody));
+        $assistant = mb_strtolower($assistantMessage);
+
+        $asksForDetails = (bool) preg_match('/\b(saldo|factura|facturas|deuda|monto|importe|pago|pagar|link|links|abonar)\b/u', $incoming);
+        if (! $asksForDetails)
+        {
+            return;
+        }
+
+        // Avoid duplicate links if model already included them.
+        if (str_contains($assistant, 'http://') || str_contains($assistant, 'https://') || str_contains($assistant, 'link de pago'))
+        {
+            return;
+        }
+
+        $linksMessage = app(CollectionAssistantContextService::class)->paymentLinksMessageForContact($contactId, $teamId);
+        if (! is_string($linksMessage) || trim($linksMessage) === '')
+        {
+            return;
+        }
+
+        try
+        {
+            $this->sendWhatsApp($phone, $linksMessage);
+            Log::info('Collection follow-up links sent', [
+                'phone' => $phone,
+                'team_id' => $teamId,
+                'contact_id' => $contactId,
+            ]);
+        } catch (\Throwable $e)
+        {
+            Log::warning('Collection follow-up links send failed', [
+                'phone' => $phone,
+                'team_id' => $teamId,
+                'contact_id' => $contactId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

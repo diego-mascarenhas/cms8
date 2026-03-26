@@ -100,6 +100,14 @@ class Category extends Model
     }
 
     /**
+     * Team file records using this category.
+     */
+    public function teamFiles()
+    {
+        return $this->hasMany(TeamFile::class, 'category_id');
+    }
+
+    /**
      * Get the module this category belongs to.
      */
     public function module()
@@ -121,10 +129,10 @@ class Category extends Model
     public function contents()
     {
         $query = $this->hasMany(\App\Models\Content::class, 'section_category_id');
-        
+
         // Get ordering configuration from category data
         $ordering = $this->getContentOrdering();
-        
+
         // Apply ordering based on configuration
         foreach ($ordering as $orderBy)
         {
@@ -133,10 +141,10 @@ class Category extends Model
                 $query->orderBy($orderBy['column'], $orderBy['direction']);
             }
         }
-        
+
         return $query;
     }
-    
+
     /**
      * Get content ordering configuration for this category.
      * Returns array of ordering rules from category data or default.
@@ -148,14 +156,14 @@ class Category extends Model
         {
             return $this->data['content_ordering'];
         }
-        
+
         // Default ordering: order field first, then created_at desc
         return [
             ['column' => 'order', 'direction' => 'asc'],
             ['column' => 'created_at', 'direction' => 'desc'],
         ];
     }
-    
+
     /**
      * Set content ordering configuration for this category.
      */

@@ -48,6 +48,22 @@
         .assistant-markdown p:last-child { margin-bottom: 0; }
         .assistant-markdown strong { font-weight: 600; }
         .assistant-markdown ul, .assistant-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5em; }
+        /* Long URLs / unbroken strings: wrap inside bubbles (flex children default to min-width:auto) */
+        #chat-history-body .chat-message .d-flex.overflow-hidden {
+            min-width: 0;
+        }
+        #chat-history-body .chat-message .chat-message-wrapper {
+            min-width: 0;
+            max-width: 100%;
+        }
+        #chat-history-body .chat-message .chat-message-text {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        #chat-history-body .chat-message .chat-message-text a {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
     </style>
 @endsection
 
@@ -169,6 +185,42 @@
             }
             return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
         }
+        /** Pixels from bottom of scroll area; user is "following" new messages when below this threshold. */
+        function chatHistoryPinThresholdPx() {
+            return 120;
+        }
+        function chatHistoryIsPinnedToBottom(el) {
+            if (!el) return true;
+            var threshold = chatHistoryPinThresholdPx();
+            var distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+            return distance <= threshold;
+        }
+        function chatHistoryDistanceFromBottom(el) {
+            if (!el) return 0;
+            return Math.max(0, el.scrollHeight - el.scrollTop - el.clientHeight);
+        }
+        /** After innerHTML / bulk replace: stay at bottom if user was following; else keep same offset from bottom. */
+        function chatHistoryRestoreScrollAfterReplace(el, wasPinnedToBottom, distanceFromBottomBefore) {
+            if (!el) return;
+            var pinned = wasPinnedToBottom;
+            var dist = distanceFromBottomBefore;
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    if (pinned) {
+                        el.scrollTop = el.scrollHeight;
+                    } else {
+                        el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight - dist);
+                    }
+                });
+            });
+        }
+        function chatHistoryScrollToBottomIfPinned(el) {
+            if (el && chatHistoryIsPinnedToBottom(el)) {
+                requestAnimationFrame(function () {
+                    el.scrollTop = el.scrollHeight;
+                });
+            }
+        }
         function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime) {
             var list = document.getElementById('assistant-messages-list');
             if (!list) return;
@@ -186,7 +238,7 @@
             list.appendChild(aiLi);
             removeAssistantTypingIndicator();
             var body = document.querySelector('.chat-history-body');
-            if (body) body.scrollTop = body.scrollHeight;
+            chatHistoryScrollToBottomIfPinned(body);
         }
         function showAssistantTypingIndicator() {
             var list = document.getElementById('assistant-messages-list');
@@ -199,7 +251,7 @@
             li.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text text-muted"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div></div></div>';
             list.appendChild(li);
             var body = document.querySelector('.chat-history-body');
-            if (body) body.scrollTop = body.scrollHeight;
+            chatHistoryScrollToBottomIfPinned(body);
         }
         function removeAssistantTypingIndicator() {
             var el = document.getElementById('assistant-typing-indicator');
@@ -361,6 +413,8 @@
             }
 
             var isAssistantView = isAssistantViewForm;
+            /** Vista previa modal: no envío real; el backend desactiva send_whatsapp_message y evita relatos de fallo de envío */
+            var previewOnlyAi = !isAssistantView;
             currentUserMessage = msg || (hasAudio ? '{{ __("[Mensaje de voz]") }}' : '');
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
@@ -397,6 +451,7 @@
                 if (contactId) formData.append('contact_id', contactId);
                 var flowKeyAudio = getChatAssistantFlowRoutingKey();
                 if (flowKeyAudio) formData.append('flow_routing_key', flowKeyAudio);
+                if (previewOnlyAi) formData.append('preview_only', '1');
                 fetch(assistantUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } })
                     .then(function(r) { return r.text().then(function(t) { return { status: r.status, body: t }; }); })
                     .then(function(res) {
@@ -477,7 +532,8 @@
                     message: currentUserMessage,
                     recipient: toVal || undefined,
                     contact_id: contactId,
-                    respond_with_audio: respondWithAudio
+                    respond_with_audio: respondWithAudio,
+                    preview_only: previewOnlyAi
                 };
                 var flowKeyJson = getChatAssistantFlowRoutingKey();
                 if (flowKeyJson) jsonPayload.flow_routing_key = flowKeyJson;
@@ -661,7 +717,8 @@
                     message: currentUserMessage,
                     recipient: regenTo || undefined,
                     contact_id: regenContactId,
-                    respond_with_audio: regenAudio
+                    respond_with_audio: regenAudio,
+                    preview_only: !regenIsAssistant
                 };
                 var regenFk = getChatAssistantFlowRoutingKey();
                 if (regenFk) regenPayload.flow_routing_key = regenFk;
@@ -742,6 +799,7 @@
             var assistantUserId = {!! json_encode(optional($selectedAssistantUser)->id) !!};
             var historyUrl = '{{ route("chat.assistant-history") }}' + (assistantUserId ? '?user_id=' + assistantUserId : '');
             var refreshBtn = document.getElementById('assistant-refresh-btn');
+            var assistantHistoryInitialSyncDone = false;
 
             function escapeHtml(text) {
                 var div = document.createElement('div');
@@ -775,9 +833,24 @@
                         '<div class="text-muted mt-1 ' + timeClass + '"><small>' + time + '</small></div>' +
                         '</div></div></li>';
                 }).join('');
-                list.innerHTML = html;
                 var body = document.querySelector('.chat-history-body');
-                if (body) body.scrollTop = body.scrollHeight;
+                var wasPinned = chatHistoryIsPinnedToBottom(body);
+                var distBottom = chatHistoryDistanceFromBottom(body);
+                var msgs = messages || [];
+                var forceFirstBottom = !assistantHistoryInitialSyncDone && msgs.length > 0;
+                if (forceFirstBottom) {
+                    assistantHistoryInitialSyncDone = true;
+                }
+                list.innerHTML = html;
+                if (forceFirstBottom) {
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(function () {
+                            if (body) body.scrollTop = body.scrollHeight;
+                        });
+                    });
+                } else {
+                    chatHistoryRestoreScrollAfterReplace(body, wasPinned, distBottom);
+                }
             }
             function fetchHistory() {
                 fetch(historyUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -802,6 +875,7 @@
 
             var list = document.getElementById('assistant-messages-list');
             var messagesUrl = '{{ url("chat/messages") }}/' + encodeURIComponent(pollPhone);
+            var contactChatInitialSyncDone = false;
 
             function escapeHtml(s) {
                 var div = document.createElement('div');
@@ -849,9 +923,24 @@
                     }
                     return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status) + '<small>' + time + '</small></div></div><div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-primary">' + escapeHtml(fromSuffix) + '</span></div></div></div></li>';
                 }).join('');
-                list.innerHTML = html;
                 var scrollEl = document.querySelector('.chat-history-body');
-                if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+                var wasPinnedWa = chatHistoryIsPinnedToBottom(scrollEl);
+                var distBottomWa = chatHistoryDistanceFromBottom(scrollEl);
+                var mlist = messages || [];
+                var forceWaFirst = !contactChatInitialSyncDone && mlist.length > 0;
+                if (forceWaFirst) {
+                    contactChatInitialSyncDone = true;
+                }
+                list.innerHTML = html;
+                if (forceWaFirst) {
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(function () {
+                            if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+                        });
+                    });
+                } else {
+                    chatHistoryRestoreScrollAfterReplace(scrollEl, wasPinnedWa, distBottomWa);
+                }
             }
 
             function fetchContactMessages() {

@@ -65,9 +65,9 @@ class WhatsAppLocalTeamScopedSendTest extends TestCase
         $user->assignRole($role);
         $team->setSetting('whatsapp_service_url', 'http://baileys.test');
 
-        $service = new AssistantToolsService;
+        $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
-        $service->setRequestContext($user->id, $team->id, '5491199988877');
+        $service->setRequestContext($user->id, (int) $team->id, '5491199988877');
 
         $result = $service->execute('send_whatsapp_message', [
             'phone' => '5491199988877',

@@ -75,6 +75,7 @@ class Invoice extends Model
             6 => 'Bonificada (Nota de Crédito)',
             7 => 'Error',
             8 => 'Emitiendo',
+            9 => 'Borrador',
             default => 'Desconocido',
         };
     }
@@ -92,6 +93,7 @@ class Invoice extends Model
             6 => 'success',
             7 => 'danger',
             8 => 'warning',
+            9 => 'secondary',
             default => 'secondary',
         };
 

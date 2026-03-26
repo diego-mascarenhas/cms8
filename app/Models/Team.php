@@ -69,6 +69,14 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Team-scoped files (documents, brand assets) stored in team_files with Spatie media.
+     */
+    public function teamFiles()
+    {
+        return $this->hasMany(TeamFile::class);
+    }
+
+    /**
      * Find a team by any of its Stripe customer IDs (main stripe_id or per-category settings).
      */
     public static function findByStripeCustomerId(string $stripeCustomerId): ?self

@@ -3,8 +3,9 @@
 namespace App\Services;
 
 use App\Models\Prompt;
+use App\Models\User;
 use App\Tools\AssistantTool;
-use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 
@@ -22,6 +23,7 @@ class ChatAssistantReplyService
         protected AgentConversationContextService $agentConversationContext,
         protected CollectionAssistantContextService $collectionAssistantContext,
         protected ContactAssistantContextService $contactAssistantContext,
+        protected AssistantToolAuthorizationService $assistantToolAuthorization,
     ) {}
 
     /**
@@ -30,6 +32,7 @@ class ChatAssistantReplyService
      * When writing via WhatsApp, pass contextUserId so tools (e.g. get_my_profile) run as that user.
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
      * When $contactId is set, a single CRM summary block is appended. When the active flow is invoices:collections, a Stripe invoices appendix is added (no duplicate CRM).
+     * When $previewOnly is true (Humano Assistant modal preview), the model must not claim WhatsApp was sent/failed; send_whatsapp_message is disabled.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -41,7 +44,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false): array
     {
         if ($this->useStub($teamId))
         {
@@ -55,11 +58,21 @@ class ChatAssistantReplyService
         }
 
         $flowRoutedTo = null;
+        $flowRoutingKey = null;
         $flowPersistSpecified = false;
         $flowPersistKey = null;
         $instructions = $withTools
             ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
+
+        if ($withTools && $teamId !== null && $contextUserId !== null)
+        {
+            $ctxUser = User::withoutGlobalScopes()->find($contextUserId);
+            if ($ctxUser !== null && $this->assistantToolAuthorization->isRestrictedTeamMember($ctxUser, $teamId))
+            {
+                $instructions .= $this->customerTeamRoleInstructionsAppendix();
+            }
+        }
 
         if ($withTools && $teamId !== null && $contextUserId !== null)
         {
@@ -85,7 +98,6 @@ class ChatAssistantReplyService
                 $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
             }
             $flowPrompt = $resolution['prompt'];
-            $flowRoutingKey = null;
             if ($flowPrompt)
             {
                 $flowRoutedTo = $flowPrompt->section_label;
@@ -132,15 +144,43 @@ class ChatAssistantReplyService
                 $flowPersistSpecified = true;
                 $flowPersistKey = null;
             }
+
+            if ($flowPrompt === null
+                && ! $previewOnly
+                && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled())
+            {
+                $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
+                if ($discovery !== '')
+                {
+                    $instructions .= $discovery;
+                }
+            }
         }
 
-        $tools = $withTools ? $this->buildLaravelAiTools() : [];
+        if ($previewOnly)
+        {
+            $collectionsTotalLabel = null;
+            if ($flowRoutingKey === 'invoices:collections' && $contactId !== null && $contactId > 0 && $teamId !== null)
+            {
+                $collectionsTotalLabel = $this->collectionAssistantContext->unpaidTotalLabelForContact($contactId, $teamId);
+            }
+            $instructions .= $this->previewModeInstructionsAppendix($flowRoutingKey, $collectionsTotalLabel);
+        }
 
-        return $this->mergeFlowPersistMeta(
-            $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo),
-            $flowPersistSpecified,
-            $flowPersistKey,
-        );
+        $tools = $withTools ? $this->buildLaravelAiTools($previewOnly) : [];
+
+        $reply = $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo);
+        if ($withTools && ($reply['success'] ?? false))
+        {
+            $committedKey = $this->routingKeyCommittedViaTools($reply['tool_results'] ?? []);
+            if ($committedKey !== null)
+            {
+                $flowPersistSpecified = true;
+                $flowPersistKey = $committedKey;
+            }
+        }
+
+        return $this->mergeFlowPersistMeta($reply, $flowPersistSpecified, $flowPersistKey);
     }
 
     /**
@@ -164,9 +204,28 @@ class ChatAssistantReplyService
      */
     protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
     {
+        $message = trim($message);
+        if ($message === '')
+        {
+            return [
+                'success' => false,
+                'message' => 'Empty user message',
+                'usage' => [],
+                'tool_calls' => [],
+                'tool_results' => [],
+                'meta' => [],
+            ];
+        }
+
         try
         {
             $historyMessages = $this->historyToMessages($history);
+            $provider = (string) config('ai.assistant_provider', 'anthropic');
+            $failover = config('ai.assistant_failover');
+            $providerParam = is_array($failover) && $failover !== [] ? array_merge([$provider], $failover) : $provider;
+            $configuredModel = config('ai.assistant_model', 'cheapest');
+            $modelParam = $this->resolveAssistantModel($provider, $configuredModel);
+            $timeout = (int) config('ai.assistant_timeout', 60);
 
             $agent = agent(
                 instructions: $instructions,
@@ -174,7 +233,7 @@ class ChatAssistantReplyService
                 tools: $tools,
             );
 
-            $response = $agent->prompt($message, [], Lab::Anthropic);
+            $response = $agent->prompt($message, [], $providerParam, $modelParam, $timeout);
             $text = $response->text ?? '';
 
             $usage = [];
@@ -228,6 +287,35 @@ class ChatAssistantReplyService
     }
 
     /**
+     * Resolve assistant model from config. "cheapest" maps to provider cheapest text model.
+     */
+    private function resolveAssistantModel(string $provider, mixed $configuredModel): ?string
+    {
+        $model = is_string($configuredModel) ? trim($configuredModel) : null;
+        if ($model === null || $model === '')
+        {
+            return null;
+        }
+
+        if (strtolower($model) !== 'cheapest')
+        {
+            return $model;
+        }
+
+        try
+        {
+            $ai = app(AiManager::class);
+            $textProvider = $ai->textProvider($provider);
+            $cheapest = $textProvider->cheapestTextModel();
+
+            return is_string($cheapest) && trim($cheapest) !== '' ? trim($cheapest) : null;
+        } catch (\Throwable)
+        {
+            return null;
+        }
+    }
+
+    /**
      * Convert chat history (direction/body) to laravel/ai Message instances.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
@@ -239,7 +327,11 @@ class ChatAssistantReplyService
         foreach ($history as $item)
         {
             $direction = $item['direction'] ?? '';
-            $body = $item['body'] ?? '';
+            $body = trim((string) ($item['body'] ?? ''));
+            if ($body === '')
+            {
+                continue;
+            }
             if ($direction === 'inbound')
             {
                 $out[] = new UserMessage($body);
@@ -292,15 +384,48 @@ EOT;
     }
 
     /**
+     * Modal "Vista previa": single first message draft only; no multi-step playbook in the textarea.
+     */
+    private function previewModeInstructionsAppendix(?string $flowRoutingKey = null, ?string $collectionsTotalLabel = null): string
+    {
+        $collectionsNote = $flowRoutingKey === 'invoices:collections'
+            ? "\nEl prompt del equipo puede describir una cobranza en **varios pasos**: para esta vista previa **ignorá esa estructura**. No escribas «Paso 1», «Paso 2», listas numeradas de toda la guía ni el guion completo: solo el **primer mensaje** que iría al cliente.\n"
+            : '';
+        $collectionsTotalRule = ($flowRoutingKey === 'invoices:collections' && $collectionsTotalLabel !== null)
+            ? "\n- En ese primer mensaje, incluí explícitamente el total pendiente: **{$collectionsTotalLabel}**.\n"
+            : '';
+
+        return <<<EOT
+
+
+### Vista previa — un solo mensaje
+
+Salida requerida: **únicamente el texto del primer mensaje** que el operador enviaría al cliente (una burbuja). Sin introducción para el operador, sin explicar la estrategia, sin definir «todos los pasos» ni el recorrido completo de la conversación.
+{$collectionsNote}
+{$collectionsTotalRule}
+- Debe sonar humano y breve: máximo 3 frases cortas (ideal 220-320 caracteres).
+- No uses tablas ni listas largas.
+- No uses markdown ni asteriscos para formato (** o *).
+- No inventes fallos de envío ni problemas técnicos; aquí no se envía nada todavía.
+- No uses la herramienta send_whatsapp_message (no aplica en vista previa).
+
+EOT;
+    }
+
+    /**
      * Build laravel/ai Tool instances from AssistantToolsService definitions.
      *
      * @return array<int, \Laravel\Ai\Contracts\Tool>
      */
-    protected function buildLaravelAiTools(): array
+    protected function buildLaravelAiTools(bool $excludeWhatsAppSend = false): array
     {
         $tools = [];
         foreach ($this->assistantTools->getDefinitions() as $def)
         {
+            if ($excludeWhatsAppSend && ($def['name'] ?? '') === 'send_whatsapp_message')
+            {
+                continue;
+            }
             $tools[] = new AssistantTool(
                 $this->assistantTools,
                 $def['name'],
@@ -337,6 +462,13 @@ You are the Humano CRM assistant. You HAVE REAL ACCESS to the user's data (conta
 CURRENT DATE: Today is {$today} ({$todayLabel}). When the user says "hoy", "today", or "ahora" for a calendar event, you MUST use this date ({$today}) in start and end — e.g. "hoy a las 15" → start {$today} 15:00:00, end {$today} 15:30:00.
 
 WhatsApp formatting: When the reply may be read on WhatsApp (including when you use send_whatsapp_message), write URLs as plain text (https://...) with NO Markdown bold or italics wrapping the URL. Patterns like **https://...** or *https://...* break link detection; use ** only around non-URL words if you need emphasis.
+When replying for WhatsApp, keep it concise and human: 2-4 short sentences, no long blocks, no markdown tables, and avoid asterisk emphasis.
+
+Bulk sheet import on WhatsApp (and Humano Assistant chat):
+- Tasks: header line Concepto, Propuesta, Cliente, Importe (optional IVA, IRPF, Fecha envío, Estado, Nota), commas or semicolons. Optional prefix task.store is stripped. Creates tasks from one message.
+- Invoices: same columns, but they MUST start the message with invoice.store (line before the header or same line). Cliente is matched to an enterprise by name or code; if there is no match, the invoice is saved as Borrador (draft) on a placeholder client for the team.
+- Contacts: prefix contact.store, then a header with at least one of Nombre, Email, Teléfono/Móvil; optional Apellido, Empresa, Nota. Unknown extra columns are ignored.
+If they ask how to import, explain the matching prefix and headers (no tool call needed for the bulk paste).
 
 When the user asks to see their contacts, list of contacts, "lista de contactos", tasks, report, summary, or similar, USE the appropriate tool:
 - get_account_report with report_type "contacts" → list of contacts (real data from their team)
@@ -379,8 +511,121 @@ Campaign messages (News / Campañas):
 - To list campaign messages: "lista de campañas", "mensajes", "campañas" → list_messages.
 - To only stop or activate (no category change): update_message_status (message_id, status: "paused" or "active"). For change category and/or activate in one go: update_message (message_id, category_name?, contact_status_name?, status?).
 
+Topic locking: When a team flow is active for this thread, stay on that topic until it is resolved (e.g. payment sent, order placed) or the user clearly wants to switch topic. Do not jump to the product catalog or shopping tools during billing or support unless the user clearly asks about buying. When the instructions include "Conversation flow (discovery mode)", ask at most one short clarifying question if needed, then call commit_assistant_flow with the exact routing_key once intent is clear.
+
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 EOT;
+    }
+
+    /**
+     * Extra system instructions when the acting user is a Jetstream client (or guest/user) on this team.
+     */
+    private function customerTeamRoleInstructionsAppendix(): string
+    {
+        return <<<'EOT'
+
+
+### User role on this team (limited customer)
+
+This user is a **customer** (Jetstream role: client / guest / user) on this team. Do not use internal CRM bulk tools, campaigns, templates, team-wide calendar, or account reports. Prefer conversational help, catalog/cart, support tickets, and WhatsApp replies in this thread only. If they ask for internal staff actions, say the business team must do it from the app.
+EOT;
+    }
+
+    /**
+     * When keyword auto-routing is off: guide intent via one question + commit_assistant_flow tool.
+     */
+    private function flowDiscoveryModeAppendix(int $teamId): string
+    {
+        $keys = trim(Prompt::buildRoutableKeysList($teamId));
+        if ($keys === '')
+        {
+            return '';
+        }
+
+        return <<<EOT
+
+
+### Conversation flow (discovery mode)
+
+No team flow is locked to this thread yet (or the thread was reset).
+
+- Ask **one** short question in Spanish to confirm what the user needs, with options grounded in the list below (adapt labels to sound natural).
+- If they already stated intent clearly (e.g. pagar facturas, catálogo, agendar), **skip** the question: call **commit_assistant_flow** with the matching routing_key, then answer in that lane.
+- After you commit, keep helping in that same topic until they finish or explicitly want to change topic (use commit again or team reset phrases).
+- Never invent routing_keys — only use keys from this list:
+
+{$keys}
+EOT;
+    }
+
+    /**
+     * @param  array<int, mixed>  $toolResults
+     */
+    private function routingKeyCommittedViaTools(array $toolResults): ?string
+    {
+        foreach ($toolResults as $item)
+        {
+            $text = trim($this->toolResultToString($item));
+            if (! str_starts_with($text, 'FLOW_COMMITTED:'))
+            {
+                continue;
+            }
+
+            $json = substr($text, strlen('FLOW_COMMITTED:'));
+            $payload = json_decode($json, true);
+            if (is_array($payload) && isset($payload['routing_key']))
+            {
+                $key = trim((string) $payload['routing_key']);
+                if ($key !== '')
+                {
+                    return $key;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function toolResultToString(mixed $item): string
+    {
+        if (is_string($item))
+        {
+            return $item;
+        }
+
+        if (is_array($item))
+        {
+            if (isset($item['content']) && is_string($item['content']))
+            {
+                return $item['content'];
+            }
+            if (isset($item['result']) && is_string($item['result']))
+            {
+                return $item['result'];
+            }
+
+            return json_encode($item) ?: '';
+        }
+
+        if (is_object($item))
+        {
+            if (method_exists($item, 'content'))
+            {
+                $c = $item->content();
+
+                return is_string($c) ? $c : (string) $c;
+            }
+            if (isset($item->content))
+            {
+                return (string) $item->content;
+            }
+            if (isset($item->result))
+            {
+                return (string) $item->result;
+            }
+        }
+
+        return '';
     }
 
     /**

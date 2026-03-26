@@ -69,6 +69,150 @@ class CollectionAssistantContextService
         return $this->buildStripeSection($enterprise, $team);
     }
 
+    /**
+     * Exact unpaid total label for preview messages (e.g. "62727.27 ARS").
+     * Returns null when Stripe/customer data is unavailable.
+     */
+    public function unpaidTotalLabelForContact(int $contactId, int $teamId): ?string
+    {
+        $team = Team::query()->find($teamId);
+        if (! $team)
+        {
+            return null;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->with(['currentEnterprise', 'enterprises'])
+            ->find($contactId);
+
+        if (! $contact)
+        {
+            return null;
+        }
+
+        $enterprise = $contact->currentEnterprise ?: $contact->enterprises->first();
+        if (! $enterprise || ! $enterprise->code)
+        {
+            return null;
+        }
+
+        try
+        {
+            $all = $this->fetchStripeUnpaidInvoices($enterprise, $team);
+            if ($all === [])
+            {
+                return null;
+            }
+
+            $total = 0.0;
+            $currency = null;
+            foreach ($all as $invoice)
+            {
+                $total += (float) ($invoice['amount'] ?? 0);
+                if ($currency === null && isset($invoice['currency']) && $invoice['currency'] !== '')
+                {
+                    $currency = strtoupper((string) $invoice['currency']);
+                }
+            }
+
+            $label = number_format($total, 2);
+            if ($currency !== null)
+            {
+                $label .= ' '.$currency;
+            }
+
+            return $label;
+        } catch (\Throwable $e)
+        {
+            \Illuminate\Support\Facades\Log::warning('CollectionAssistantContextService unpaid total failed', [
+                'contact_enterprise' => $enterprise->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Short follow-up block with direct payment links (for mid-conversation turns in collections flow).
+     */
+    public function paymentLinksMessageForContact(int $contactId, int $teamId): ?string
+    {
+        $team = Team::query()->find($teamId);
+        if (! $team)
+        {
+            return null;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->with(['currentEnterprise', 'enterprises'])
+            ->find($contactId);
+        if (! $contact)
+        {
+            return null;
+        }
+
+        $enterprise = $contact->currentEnterprise ?: $contact->enterprises->first();
+        if (! $enterprise || ! $enterprise->code)
+        {
+            return null;
+        }
+
+        try
+        {
+            $invoices = $this->fetchStripeUnpaidInvoices($enterprise, $team);
+            if ($invoices === [])
+            {
+                return null;
+            }
+
+            $lines = [];
+            $total = 0.0;
+            $currency = null;
+            foreach ($invoices as $invoice)
+            {
+                $amount = (float) ($invoice['amount'] ?? 0);
+                $total += $amount;
+                if ($currency === null && ! empty($invoice['currency']))
+                {
+                    $currency = (string) $invoice['currency'];
+                }
+
+                $num = (string) ($invoice['number'] ?? $invoice['id'] ?? '—');
+                $url = (string) ($invoice['hosted_invoice_url'] ?? $invoice['pdf'] ?? '');
+                if ($url !== '')
+                {
+                    $lines[] = '• Factura '.$num.': '.$url;
+                }
+            }
+
+            if ($lines === [])
+            {
+                return null;
+            }
+
+            $totalLabel = number_format($total, 2, ',', '.').($currency ? ' '.$currency : '');
+
+            return implode("\n", [
+                'Claro. Te paso los links para pagar ahora:',
+                ...$lines,
+                '',
+                'Total pendiente: '.$totalLabel.'.',
+            ]);
+        } catch (\Throwable $e)
+        {
+            \Illuminate\Support\Facades\Log::warning('CollectionAssistantContextService paymentLinksMessageForContact failed', [
+                'contact_id' => $contactId,
+                'team_id' => $teamId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private function buildStripeSection(?Enterprise $enterprise, Team $team): string
     {
         if (! $enterprise || ! $enterprise->code)
@@ -76,41 +220,17 @@ class CollectionAssistantContextService
             return '*(No hay Stripe Customer ID en la empresa vinculada al contacto; no se puede cargar el saldo desde Stripe automáticamente.)*';
         }
 
-        $secret = $team->getSetting('stripe_secret');
-        if (! $secret)
+        if (! $team->getSetting('stripe_secret'))
         {
             return '*(El equipo no tiene configurada la clave secreta de Stripe; no se puede cargar el saldo automáticamente.)*';
         }
 
         try
         {
-            Stripe::setApiKey($secret);
-
-            $openInvoices = Invoice::all([
-                'customer' => $enterprise->code,
-                'limit' => 20,
-                'status' => 'open',
-            ]);
-            $uncollectibleInvoices = Invoice::all([
-                'customer' => $enterprise->code,
-                'limit' => 20,
-                'status' => 'uncollectible',
-            ]);
-
             $unpaid = [];
-            foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice)
+            foreach ($this->fetchStripeUnpaidInvoices($enterprise, $team) as $invoice)
             {
-                $unpaid[] = [
-                    'id' => $invoice->id,
-                    'number' => $invoice->number,
-                    'amount' => ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100,
-                    'currency' => strtoupper((string) $invoice->currency),
-                    'status' => $invoice->status,
-                    'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
-                    'pdf' => $invoice->invoice_pdf,
-                    'hosted_invoice_url' => $invoice->hosted_invoice_url,
-                    'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
-                ];
+                $unpaid[] = $invoice;
             }
 
             if ($unpaid === [])
@@ -136,5 +256,47 @@ class CollectionAssistantContextService
 
             return '*(No se pudo leer Stripe automáticamente: '.$e->getMessage().')*';
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchStripeUnpaidInvoices(Enterprise $enterprise, Team $team): array
+    {
+        $secret = $team->getSetting('stripe_secret');
+        if (! $secret)
+        {
+            return [];
+        }
+
+        Stripe::setApiKey($secret);
+        $openInvoices = Invoice::all([
+            'customer' => $enterprise->code,
+            'limit' => 20,
+            'status' => 'open',
+        ]);
+        $uncollectibleInvoices = Invoice::all([
+            'customer' => $enterprise->code,
+            'limit' => 20,
+            'status' => 'uncollectible',
+        ]);
+
+        $out = [];
+        foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice)
+        {
+            $out[] = [
+                'id' => $invoice->id,
+                'number' => $invoice->number,
+                'amount' => ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100,
+                'currency' => strtoupper((string) $invoice->currency),
+                'status' => $invoice->status,
+                'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                'pdf' => $invoice->invoice_pdf,
+                'hosted_invoice_url' => $invoice->hosted_invoice_url,
+                'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+            ];
+        }
+
+        return $out;
     }
 }

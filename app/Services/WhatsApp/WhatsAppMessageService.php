@@ -2,6 +2,6 @@
 
 namespace App\Services\WhatsApp;
 
-use App\Services\TwilioService;
+use App\Services\WhatsAppMessageOrchestrator;
 
-class WhatsAppMessageService extends TwilioService {}
+class WhatsAppMessageService extends WhatsAppMessageOrchestrator {}

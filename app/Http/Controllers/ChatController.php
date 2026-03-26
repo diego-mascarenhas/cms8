@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
+use App\Helpers\WhatsAppOutboundText;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Prompt;
@@ -13,7 +14,10 @@ use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
+use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -817,6 +821,7 @@ class ChatController extends Controller
             'contact_id' => 'nullable|integer|exists:contacts,id',
             'template_hashed_id' => 'nullable|string|max:512',
             'flow_routing_key' => 'nullable|string|max:512',
+            'preview_only' => 'nullable|boolean',
         ], [
             'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
             'audio.max' => __('El audio no puede superar 25 MB.'),
@@ -886,6 +891,43 @@ class ChatController extends Controller
 
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
+
+        if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
+        {
+            $uid = (int) $teamId;
+            $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
+                ?? app(WhatsAppContactSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
+                ?? app(WhatsAppTaskSheetImportService::class)->tryHandle($message, auth()->user(), $uid);
+            if ($sheetReply !== null)
+            {
+                $contextService->persistMessages(
+                    $contextUser->id,
+                    $message,
+                    $sheetReply,
+                    null,
+                    [],
+                    [],
+                    [],
+                    [],
+                    $teamId,
+                    false,
+                    null,
+                );
+
+                $payload = [
+                    'success' => true,
+                    'response' => $sheetReply,
+                    'action_performed' => 'sheet_import',
+                ];
+                if ($hasAudio)
+                {
+                    $payload['transcript'] = $message;
+                }
+
+                return response()->json($payload);
+            }
+        }
+
         // Enable tools whenever the user has a team so the assistant can access contacts, tasks, etc. (even from a contact chat)
         $withTools = $teamId !== null;
         $customerPhone = $request->filled('recipient')
@@ -906,6 +948,7 @@ class ChatController extends Controller
             $customerPhone !== '' ? $customerPhone : null,
             $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
             $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+            $request->boolean('preview_only'),
         );
 
         if (! $replyResponse['success'])
@@ -916,20 +959,29 @@ class ChatController extends Controller
             ], 500);
         }
 
+        $previewOnly = $request->boolean('preview_only');
         $assistantText = $replyResponse['text'] ?? '';
-        $contextService->persistMessages(
-            $contextUser->id,
-            $message,
-            $assistantText,
-            $replyResponse['routed_to'] ?? null,
-            $replyResponse['usage'] ?? [],
-            $replyResponse['meta'] ?? [],
-            $replyResponse['tool_calls'] ?? [],
-            $replyResponse['tool_results'] ?? [],
-            $teamId,
-            (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
-            $replyResponse['assistant_flow_routing_key'] ?? null,
-        );
+        if ($previewOnly)
+        {
+            $assistantText = $this->sanitizePreviewAssistantText($assistantText);
+        }
+
+        if (! $previewOnly)
+        {
+            $contextService->persistMessages(
+                $contextUser->id,
+                $message,
+                $assistantText,
+                $replyResponse['routed_to'] ?? null,
+                $replyResponse['usage'] ?? [],
+                $replyResponse['meta'] ?? [],
+                $replyResponse['tool_calls'] ?? [],
+                $replyResponse['tool_results'] ?? [],
+                $teamId,
+                (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
+                $replyResponse['assistant_flow_routing_key'] ?? null,
+            );
+        }
 
         $payload = [
             'success' => true,
@@ -956,6 +1008,110 @@ class ChatController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    /**
+     * Keep preview modal focused on the exact text to send.
+     * Remove assistant meta wrappers/instructions that should never be shown to operators.
+     */
+    private function sanitizePreviewAssistantText(string $text): string
+    {
+        $lines = preg_split('/\R/u', $text) ?: [];
+        $clean = [];
+        $normalize = static function (string $value): string
+        {
+            $value = mb_strtolower(trim($value));
+            $value = str_replace(['*', '`', '_', '"', "'"], '', $value);
+            $value = strtr($value, [
+                'á' => 'a',
+                'à' => 'a',
+                'ä' => 'a',
+                'â' => 'a',
+                'é' => 'e',
+                'è' => 'e',
+                'ë' => 'e',
+                'ê' => 'e',
+                'í' => 'i',
+                'ì' => 'i',
+                'ï' => 'i',
+                'î' => 'i',
+                'ó' => 'o',
+                'ò' => 'o',
+                'ö' => 'o',
+                'ô' => 'o',
+                'ú' => 'u',
+                'ù' => 'u',
+                'ü' => 'u',
+                'û' => 'u',
+                'ñ' => 'n',
+            ]);
+            $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+            return $value;
+        };
+
+        foreach ($lines as $line)
+        {
+            $trimmed = trim($line);
+            if ($trimmed === '' && $clean === [])
+            {
+                continue;
+            }
+
+            if ($trimmed === '---' || strcasecmp($trimmed, 'y esto ---') === 0)
+            {
+                continue;
+            }
+
+            $lower = $normalize($trimmed);
+            if (
+                str_contains($lower, 'aquí está el **primer mensaje** para enviar al cliente') ||
+                str_contains($lower, 'aqui esta el **primer mensaje** para enviar al cliente') ||
+                str_contains($lower, 'aqui esta el primer mensaje para enviar al cliente') ||
+                str_contains($lower, 'aqui esta el primer mensaje para enviar a') ||
+                str_contains($lower, 'primer mensaje** para enviarle a') ||
+                str_contains($lower, 'primer mensaje para enviarle a') ||
+                str_contains($lower, 'enviá ese mensaje y cuando el cliente responda') ||
+                str_contains($lower, 'envia ese mensaje y cuando el cliente responda') ||
+                str_contains($lower, 'copiá ese texto y enviáselo') ||
+                str_contains($lower, 'copia ese texto y enviaselo') ||
+                str_contains($lower, 'cuando responda, continuamos con el **paso') ||
+                str_contains($lower, 'cuando responda, continuamos con el paso')
+            ) {
+                continue;
+            }
+
+            $clean[] = $line;
+        }
+
+        $greetingStart = null;
+        foreach ($clean as $idx => $line)
+        {
+            $normalizedLine = $normalize($line);
+            if (
+                str_starts_with($normalizedLine, 'hola ') ||
+                str_starts_with($normalizedLine, 'hola,') ||
+                str_starts_with($normalizedLine, 'buen dia') ||
+                str_starts_with($normalizedLine, 'buenas') ||
+                str_starts_with($normalizedLine, 'estimado') ||
+                str_starts_with($normalizedLine, 'estimada')
+            ) {
+                $greetingStart = $idx;
+                break;
+            }
+        }
+
+        if ($greetingStart !== null)
+        {
+            $clean = array_slice($clean, $greetingStart);
+        }
+
+        $sanitized = trim(implode("\n", $clean));
+
+        // Safety: never return empty preview when model actually replied.
+        $final = $sanitized !== '' ? $sanitized : trim($text);
+
+        return WhatsAppOutboundText::sanitize($final);
     }
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
@@ -1043,6 +1199,7 @@ class ChatController extends Controller
                     $toDigits !== '' ? $toDigits : null,
                     null,
                     $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+                    false,
                 );
 
                 // If assistant responded successfully, use its response

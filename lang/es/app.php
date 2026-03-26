@@ -23,6 +23,9 @@ return [
     'Error' => 'Error',
     'An error occurred while deleting the record' => 'Ha ocurrido un error al eliminar el registro',
     'Edit' => 'Editar',
+    'Create' => 'Crear',
+    'Delete' => 'Eliminar',
+    'File' => 'Archivo',
 
     'languages' => [
         'english' => 'Inglés',
@@ -39,6 +42,8 @@ return [
     ],
     'shortcuts' => [
         'title' => 'Accesos directos',
+        'team_files' => 'Empresa y marca',
+        'times' => 'Seguimiento de tiempo',
         'calendar' => 'Calendario',
         'appointments' => 'Citas',
         'invoice_app' => 'App de Facturas',

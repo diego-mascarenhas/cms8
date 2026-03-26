@@ -144,6 +144,7 @@ return [
     'ulid' => 'El campo :attribute debe ser un ULID válido.',
     'unique' => 'El campo :attribute ya ha sido registrado.',
     'uploaded' => 'Subir :attribute ha fallado.',
+    'team_file_unsafe' => 'Este tipo de archivo no está permitido por seguridad (se bloquean ejecutables, scripts, instaladores y similares).',
     'uppercase' => 'El campo :attribute debe estar en mayúscula.',
     'url' => 'El campo :attribute debe ser una URL válida.',
     'uuid' => 'El campo :attribute debe ser un UUID válido.',

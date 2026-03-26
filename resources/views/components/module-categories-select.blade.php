@@ -26,6 +26,7 @@
                     'mail' => 'mail',
                     'chat' => 'chat',
                     'multimedia' => 'multimedia',
+                    'team-file' => 'team_files',
                 ];
 
                 // Comprobar la ruta por prefijo

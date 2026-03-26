@@ -200,7 +200,7 @@
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
         @auth
-        @if(auth()->user()->currentTeam?->hasModule('attendance'))
+        @if(auth()->user()->currentTeam?->hasModule('attendances'))
         <li class="nav-item dropdown me-2" id="quick-timer"
             data-running-url="{{ route('attendance.running') }}"
             data-start-url="{{ route('attendance.start') }}"
@@ -343,6 +343,34 @@
                                 <small class="text-muted mb-0">{{ __('Prospección') }}</small>
                             </div>
                         </div>
+                        @can('viewAny', \App\Models\TeamFile::class)
+                        <div class="row row-bordered overflow-visible g-0 border-top">
+                            <div class="dropdown-shortcuts-item col">
+                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                    <i class="ti ti-folders fs-4"></i>
+                                </span>
+                                <a href="{{ route('team-file.index') }}" class="stretched-link">{{ __('Team files') }}</a>
+                                <small class="text-muted mb-0">{{ __('app.shortcuts.team_files') }}</small>
+                            </div>
+                            @if(auth()->user()->currentTeam?->hasModule('times'))
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-hourglass fs-4"></i>
+                                    </span>
+                                    <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
+                                </div>
+                            @else
+                                <div class="dropdown-shortcuts-item col" aria-hidden="true">
+                                    <div class="opacity-0 user-select-none" style="min-height: 5rem;">
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2 d-block">&nbsp;</span>
+                                        <span class="d-block">&nbsp;</span>
+                                        <small class="text-muted mb-0 d-block">&nbsp;</small>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                        @endcan
                     </div>
                 </div>
             </li>

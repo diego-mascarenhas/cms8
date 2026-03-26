@@ -594,5 +594,16 @@
   "Trash": "Trash",
   "Networks": "Networks",
   "Select recipients": "Select recipients",
-  "Close": "Close"
+  "Select visibility": "Select visibility",
+  "Restore previous version?": "Restore previous version?",
+  "The current file will be archived and replaced by the selected version.": "The current file will be archived and replaced by the selected version.",
+  "Restore": "Restore",
+  "History": "History",
+  "No records found": "No records found",
+  "Team file version restored successfully.": "Team file version restored successfully.",
+  "Close": "Close",
+  "Uploaded": "Uploaded",
+  "Replaced": "Replaced",
+  "Restored": "Restored",
+  "Share link": "Share link"
 }

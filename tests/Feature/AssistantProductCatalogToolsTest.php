@@ -187,8 +187,9 @@ class AssistantProductCatalogToolsTest extends TestCase
             }
         };
 
-        $service = new AssistantToolsService($gateway);
+        $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
+        $service->setWhatsAppGatewayOverride($gateway);
         $service->setRequestContext($user->id, $team->id, '5491111223344');
 
         $blocked = $service->execute('send_whatsapp_message', [

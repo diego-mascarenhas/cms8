@@ -18,6 +18,7 @@ use App\Models\Prompt;
 use App\Models\Service;
 use App\Models\Software;
 use App\Models\Stylebook;
+use App\Models\TeamFile;
 use App\Models\Ticket;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
@@ -35,6 +36,7 @@ use App\Policies\PromptPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
 use App\Policies\StyleBookPolicy;
+use App\Policies\TeamFilePolicy;
 use App\Policies\TicketPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
@@ -59,6 +61,7 @@ class AuthServiceProvider extends ServiceProvider
         Content::class => ContentPolicy::class,
         Mailbox::class => MailboxPolicy::class,
         Ticket::class => TicketPolicy::class,
+        TeamFile::class => TeamFilePolicy::class,
     ];
 
     public function boot()

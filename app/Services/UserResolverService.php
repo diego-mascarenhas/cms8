@@ -41,6 +41,9 @@ class UserResolverService
         if ($user->hasRole('admin') && ! $user->teams()->where('team_id', $teamId)->exists())
         {
             $user->teams()->attach($teamId, ['role' => 'admin']);
+        } elseif (! $user->teams()->where('team_id', $teamId)->exists())
+        {
+            $user->teams()->attach($teamId, ['role' => 'client']);
         }
 
         $contact = Contact::withoutGlobalScopes()
