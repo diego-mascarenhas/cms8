@@ -618,6 +618,7 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/team-file/{team_file}', [TeamFileController::class, 'update'])->name('team-file.update');
     Route::delete('/team-file/{team_file}', [TeamFileController::class, 'destroy'])->name('team-file.destroy');
     Route::get('/team-file/{team_file}/download', [TeamFileController::class, 'download'])->name('team-file.download');
+    Route::post('/team-file/{team_file}/restore-version/{history}', [TeamFileController::class, 'restoreVersion'])->name('team-file.restore-version');
 
     // Contents Routes
     Route::get('/contents', [ContentController::class, 'index'])->name('contents.index');

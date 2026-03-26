@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\MultimediaVisibility;
 use App\Models\Team;
 use App\Models\TeamFile;
+use App\Models\TeamFileHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -37,6 +38,12 @@ class TeamFileTest extends TestCase
             'title' => 'Brand guide',
             'team_id' => $user->currentTeam->id,
             'visibility' => MultimediaVisibility::PRIVATE->value,
+        ]);
+        $this->assertDatabaseHas('team_file_histories', [
+            'team_id' => $user->currentTeam->id,
+            'user_id' => $user->id,
+            'action' => 'uploaded',
+            'file_name' => 'brand-logo.png',
         ]);
 
         $teamFile = TeamFile::first();
@@ -119,6 +126,54 @@ class TeamFileTest extends TestCase
 
         $response->assertRedirect(route('team-file.index'));
         $this->assertSoftDeleted($teamFile);
+        $this->assertDatabaseHas('team_file_histories', [
+            'team_file_id' => $teamFile->id,
+            'team_id' => $user->currentTeam->id,
+            'user_id' => $user->id,
+            'action' => 'deleted',
+        ]);
+    }
+
+    public function test_collaborator_can_restore_previous_uploaded_version(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+        $teamFile = TeamFile::factory()->forTeamAndUser($user->currentTeam, $user)->create([
+            'title' => 'Versioned file',
+            'visibility' => MultimediaVisibility::PRIVATE,
+        ]);
+
+        $teamFile->addMedia(UploadedFile::fake()->create('v1.pdf', 20, 'application/pdf'))->toMediaCollection('file');
+
+        $this->actingAs($user)->put(route('team-file.update', $teamFile), [
+            'title' => 'Versioned file',
+            'description' => null,
+            'category_id' => null,
+            'visibility' => MultimediaVisibility::PRIVATE->value,
+            'file' => UploadedFile::fake()->create('v2.pdf', 20, 'application/pdf'),
+        ])->assertRedirect(route('team-file.index'));
+
+        $replaceHistory = TeamFileHistory::query()
+            ->where('team_file_id', $teamFile->id)
+            ->where('action', 'replaced')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($replaceHistory);
+        $this->assertNotNull($replaceHistory->archived_media_id);
+
+        $this->actingAs($user)->post(route('team-file.restore-version', [$teamFile, $replaceHistory]))
+            ->assertRedirect(route('team-file.edit', $teamFile));
+
+        $teamFile->refresh();
+        $this->assertSame('v1.pdf', $teamFile->getFirstMedia('file')?->file_name);
+        $this->assertDatabaseHas('team_file_histories', [
+            'team_file_id' => $teamFile->id,
+            'team_id' => $user->currentTeam->id,
+            'user_id' => $user->id,
+            'action' => 'restored',
+        ]);
     }
 
     private function createUserWithRole(string $roleName): User

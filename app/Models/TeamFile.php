@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -83,11 +84,20 @@ class TeamFile extends Model implements HasMedia
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function histories(): HasMany
+    {
+        return $this->hasMany(TeamFileHistory::class)->latest('id');
+    }
+
     public function registerMediaCollections(): void
     {
         $this
             ->addMediaCollection('file')
             ->singleFile()
+            ->useDisk('public');
+
+        $this
+            ->addMediaCollection('file_versions')
             ->useDisk('public');
     }
 }

@@ -7,8 +7,10 @@ use App\Enums\MultimediaVisibility;
 use App\Http\Requests\TeamFile\StoreTeamFileRequest;
 use App\Http\Requests\TeamFile\UpdateTeamFileRequest;
 use App\Models\TeamFile;
+use App\Models\TeamFileHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TeamFileController extends Controller
@@ -41,6 +43,7 @@ class TeamFileController extends Controller
         $teamFile->save();
 
         $teamFile->addMediaFromRequest('file')->toMediaCollection('file');
+        $this->recordHistory($teamFile, 'uploaded', $teamFile->getFirstMedia('file')?->file_name);
 
         return redirect()->route('team-file.index')->with('success', __('Team file saved successfully.'));
     }
@@ -50,22 +53,31 @@ class TeamFileController extends Controller
         $this->authorize('update', $team_file);
 
         $visibilityOptions = MultimediaVisibility::cases();
+        $histories = $team_file->histories()->with('user')->get();
 
         return view('team-file.form', [
             'data' => $team_file,
             'visibilityOptions' => $visibilityOptions,
+            'histories' => $histories,
         ]);
     }
 
     public function update(UpdateTeamFileRequest $request, TeamFile $team_file)
     {
+        $existingFileName = $team_file->getFirstMedia('file')?->file_name;
+
         $team_file->fill(Arr::except($request->validated(), ['file']));
         $team_file->save();
 
         if ($request->hasFile('file'))
         {
+            $archivedMediaId = $this->archiveCurrentFile($team_file);
             $team_file->clearMediaCollection('file');
             $team_file->addMediaFromRequest('file')->toMediaCollection('file');
+            $this->recordHistory($team_file, 'replaced', $team_file->getFirstMedia('file')?->file_name, $archivedMediaId);
+        } else
+        {
+            $this->recordHistory($team_file, 'updated', $existingFileName);
         }
 
         return redirect()->route('team-file.index')->with('success', __('Team file updated successfully.'));
@@ -74,10 +86,34 @@ class TeamFileController extends Controller
     public function destroy(TeamFile $team_file)
     {
         $this->authorize('delete', $team_file);
+        $existingFileName = $team_file->getFirstMedia('file')?->file_name;
+        $archivedMediaId = $this->archiveCurrentFile($team_file);
 
         $team_file->delete();
+        $this->recordHistory($team_file, 'deleted', $existingFileName, $archivedMediaId);
 
         return redirect()->route('team-file.index')->with('success', __('Team file deleted successfully.'));
+    }
+
+    public function restoreVersion(TeamFile $team_file, TeamFileHistory $history)
+    {
+        $this->authorize('update', $team_file);
+        abort_if($history->team_file_id !== $team_file->id || ! $history->archived_media_id, 404);
+
+        /** @var Media|null $archived */
+        $archived = $team_file->media()
+            ->whereKey($history->archived_media_id)
+            ->where('collection_name', 'file_versions')
+            ->first();
+        abort_if(! $archived, 404);
+
+        $currentArchivedMediaId = $this->archiveCurrentFile($team_file);
+        $team_file->clearMediaCollection('file');
+        $restored = $archived->copy($team_file, 'file');
+
+        $this->recordHistory($team_file, 'restored', $restored?->file_name, $currentArchivedMediaId);
+
+        return redirect()->route('team-file.edit', $team_file)->with('success', __('Team file version restored successfully.'));
     }
 
     public function download(Request $request, TeamFile $team_file): BinaryFileResponse
@@ -88,5 +124,31 @@ class TeamFileController extends Controller
         abort_if(! $media, 404);
 
         return response()->download($media->getPath(), $media->file_name);
+    }
+
+    private function archiveCurrentFile(TeamFile $teamFile): ?int
+    {
+        /** @var Media|null $currentMedia */
+        $currentMedia = $teamFile->getFirstMedia('file');
+        if (! $currentMedia)
+        {
+            return null;
+        }
+
+        $archivedMedia = $currentMedia->copy($teamFile, 'file_versions');
+
+        return $archivedMedia?->id;
+    }
+
+    private function recordHistory(TeamFile $teamFile, string $action, ?string $fileName, ?int $archivedMediaId = null): void
+    {
+        TeamFileHistory::query()->create([
+            'team_file_id' => $teamFile->id,
+            'team_id' => $teamFile->team_id,
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'file_name' => $fileName,
+            'archived_media_id' => $archivedMediaId,
+        ]);
     }
 }

@@ -54,6 +54,42 @@
 </script>
 @endcan
 @endif
+
+@if(isset($data->id))
+@can('update', $data)
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.team-file-restore-version-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var form = document.getElementById(btn.getAttribute('data-form-id'));
+                if (!form) {
+                    return;
+                }
+                Swal.fire({
+                    title: @json(__('Restore previous version?')),
+                    text: @json(__('The current file will be archived and replaced by the selected version.')),
+                    icon: 'question',
+                    showCancelButton: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'btn btn-primary me-2',
+                        cancelButton: 'btn btn-label-secondary'
+                    },
+                    confirmButtonText: @json(__('Restore')),
+                    cancelButtonText: @json(__('Cancel')),
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endcan
+@endif
 @endsection
 
 @section('content')
@@ -134,4 +170,53 @@
         </div>
     </form>
 </div>
+
+@if(isset($data->id))
+<div class="card mb-4">
+    <h5 class="card-header">{{ __('History') }}</h5>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>{{ __('Date') }}</th>
+                        <th>{{ __('Action') }}</th>
+                        <th>{{ __('File') }}</th>
+                        <th>{{ __('User') }}</th>
+                        <th class="text-center">{{ __('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse(($histories ?? collect()) as $history)
+                        <tr>
+                            <td>{{ optional($history->created_at)->format('d-m-Y H:i') }}</td>
+                            <td>{{ ucfirst($history->action) }}</td>
+                            <td>{{ $history->file_name ?: '—' }}</td>
+                            <td>{{ $history->user?->name ?? '—' }}</td>
+                            <td class="text-center">
+                                @if($history->archived_media_id)
+                                    @can('update', $data)
+                                        <form id="team-file-restore-history-{{ $history->id }}" method="POST" action="{{ route('team-file.restore-version', [$data, $history]) }}" class="d-inline">
+                                            @csrf
+                                            <button type="button" class="btn btn-sm btn-label-primary team-file-restore-version-btn" data-form-id="team-file-restore-history-{{ $history->id }}">
+                                                <i class="ti ti-history-toggle me-1"></i>{{ __('Restore') }}
+                                            </button>
+                                        </form>
+                                    @endcan
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">{{ __('No records found') }}</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
 @endsection

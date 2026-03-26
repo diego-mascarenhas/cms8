@@ -1397,5 +1397,11 @@
   "Trash": "Papelera",
   "Networks": "Redes",
   "Select recipients": "Seleccionar destinatarios",
-  "Select visibility": "Seleccionar visibilidad"
+  "Select visibility": "Seleccionar visibilidad",
+  "Restore previous version?": "¿Restaurar versión anterior?",
+  "The current file will be archived and replaced by the selected version.": "El archivo actual se archivará y será reemplazado por la versión seleccionada.",
+  "Restore": "Restaurar",
+  "History": "Historial",
+  "No records found": "No se encontraron registros",
+  "Team file version restored successfully.": "La versión anterior del archivo se restauró correctamente."
 }
