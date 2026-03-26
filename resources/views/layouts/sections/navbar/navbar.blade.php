@@ -352,13 +352,23 @@
                                 <a href="{{ route('team-file.index') }}" class="stretched-link">{{ __('Team files') }}</a>
                                 <small class="text-muted mb-0">{{ __('app.shortcuts.team_files') }}</small>
                             </div>
-                            <div class="dropdown-shortcuts-item col" aria-hidden="true">
-                                <div class="opacity-0 user-select-none" style="min-height: 5rem;">
-                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2 d-block">&nbsp;</span>
-                                    <span class="d-block">&nbsp;</span>
-                                    <small class="text-muted mb-0 d-block">&nbsp;</small>
+                            @if(auth()->user()->currentTeam?->hasModule('times'))
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-hourglass fs-4"></i>
+                                    </span>
+                                    <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
                                 </div>
-                            </div>
+                            @else
+                                <div class="dropdown-shortcuts-item col" aria-hidden="true">
+                                    <div class="opacity-0 user-select-none" style="min-height: 5rem;">
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2 d-block">&nbsp;</span>
+                                        <span class="d-block">&nbsp;</span>
+                                        <small class="text-muted mb-0 d-block">&nbsp;</small>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                         @endcan
                     </div>
