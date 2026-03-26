@@ -200,7 +200,7 @@
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
         @auth
-        @if(auth()->user()->currentTeam?->hasModule('attendance'))
+        @if(auth()->user()->currentTeam?->hasModule('attendances'))
         <li class="nav-item dropdown me-2" id="quick-timer"
             data-running-url="{{ route('attendance.running') }}"
             data-start-url="{{ route('attendance.start') }}"
