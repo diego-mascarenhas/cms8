@@ -601,5 +601,8 @@
   "History": "History",
   "No records found": "No records found",
   "Team file version restored successfully.": "Team file version restored successfully.",
-  "Close": "Close"
+  "Close": "Close",
+  "Uploaded": "Uploaded",
+  "Replaced": "Replaced",
+  "Restored": "Restored"
 }

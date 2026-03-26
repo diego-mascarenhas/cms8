@@ -53,11 +53,21 @@ class TeamFileController extends Controller
         $this->authorize('update', $team_file);
 
         $visibilityOptions = MultimediaVisibility::cases();
-        $histories = $team_file->histories()->with('user')->get();
 
         return view('team-file.form', [
             'data' => $team_file,
             'visibilityOptions' => $visibilityOptions,
+        ]);
+    }
+
+    public function show(TeamFile $team_file)
+    {
+        $this->authorize('view', $team_file);
+
+        $histories = $team_file->histories()->with('user')->get();
+
+        return view('team-file.show', [
+            'data' => $team_file,
             'histories' => $histories,
         ]);
     }
@@ -113,7 +123,7 @@ class TeamFileController extends Controller
 
         $this->recordHistory($team_file, 'restored', $restored?->file_name, $currentArchivedMediaId);
 
-        return redirect()->route('team-file.edit', $team_file)->with('success', __('Team file version restored successfully.'));
+        return redirect()->route('team-file.show', $team_file)->with('success', __('Team file version restored successfully.'));
     }
 
     public function download(Request $request, TeamFile $team_file): BinaryFileResponse

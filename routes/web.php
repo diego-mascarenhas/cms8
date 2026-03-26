@@ -614,6 +614,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team-file/list', [TeamFileController::class, 'index'])->name('team-file.index');
     Route::get('/team-file/create', [TeamFileController::class, 'create'])->name('team-file.create');
     Route::post('/team-file', [TeamFileController::class, 'store'])->name('team-file.store');
+    Route::get('/team-file/{team_file}', [TeamFileController::class, 'show'])->name('team-file.show');
     Route::get('/team-file/{team_file}/edit', [TeamFileController::class, 'edit'])->name('team-file.edit');
     Route::put('/team-file/{team_file}', [TeamFileController::class, 'update'])->name('team-file.update');
     Route::delete('/team-file/{team_file}', [TeamFileController::class, 'destroy'])->name('team-file.destroy');

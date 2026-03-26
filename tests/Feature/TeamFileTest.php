@@ -164,7 +164,7 @@ class TeamFileTest extends TestCase
         $this->assertNotNull($replaceHistory->archived_media_id);
 
         $this->actingAs($user)->post(route('team-file.restore-version', [$teamFile, $replaceHistory]))
-            ->assertRedirect(route('team-file.edit', $teamFile));
+            ->assertRedirect(route('team-file.show', $teamFile));
 
         $teamFile->refresh();
         $this->assertSame('v1.pdf', $teamFile->getFirstMedia('file')?->file_name);

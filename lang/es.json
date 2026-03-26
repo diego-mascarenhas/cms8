@@ -1403,5 +1403,8 @@
   "Restore": "Restaurar",
   "History": "Historial",
   "No records found": "No se encontraron registros",
-  "Team file version restored successfully.": "La versión anterior del archivo se restauró correctamente."
+  "Team file version restored successfully.": "La versión anterior del archivo se restauró correctamente.",
+  "Uploaded": "Subido",
+  "Replaced": "Reemplazado",
+  "Restored": "Restaurado"
 }
