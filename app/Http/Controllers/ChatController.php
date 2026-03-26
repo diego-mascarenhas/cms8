@@ -40,6 +40,33 @@ class ChatController extends Controller
     }
 
     /**
+     * Compare phone numbers allowing common WhatsApp prefix variants by suffix.
+     */
+    private function phonesBelongToSameLine(string $left, string $right): bool
+    {
+        $leftDigits = preg_replace('/[^0-9]/', '', $left);
+        $rightDigits = preg_replace('/[^0-9]/', '', $right);
+        if ($leftDigits === '' || $rightDigits === '')
+        {
+            return false;
+        }
+        if ($leftDigits === $rightDigits)
+        {
+            return true;
+        }
+
+        $minLen = min(strlen($leftDigits), strlen($rightDigits));
+        if ($minLen < 8)
+        {
+            return false;
+        }
+
+        $suffixLen = min(10, $minLen);
+
+        return substr($leftDigits, -$suffixLen) === substr($rightDigits, -$suffixLen);
+    }
+
+    /**
      * Apply conversation filter by phone (normalized + JID suffix variant).
      *
      * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
@@ -1473,9 +1500,12 @@ class ChatController extends Controller
                 $teamNumberFormatted = $teamNumber
                     ? \App\Helpers\PhoneHelper::formatForDisplayReadable($teamNumber)
                     : null;
-                $teamNumNorm = $teamNumber ? preg_replace('/[^0-9]/', '', (string) $teamNumber) : '';
-                $gatewayNumNorm = $number ? preg_replace('/[^0-9]/', '', (string) $number) : '';
-                $isTeamConnected = $statusStr === 'connected' && $teamNumNorm !== '' && $gatewayNumNorm !== '' && $teamNumNorm === $gatewayNumNorm;
+                $isTeamConnected = $statusStr === 'connected'
+                    && $teamNumber !== null
+                    && $teamNumber !== ''
+                    && $number !== null
+                    && $number !== ''
+                    && $this->phonesBelongToSameLine((string) $teamNumber, (string) $number);
             }
         }
 

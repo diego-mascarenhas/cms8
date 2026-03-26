@@ -3438,6 +3438,13 @@ class ImportDataCommand extends Command
                 ->where('team_id', $teamId)
                 ->where('code', $storeCode)
                 ->first();
+            if (! $existingStore)
+            {
+                $existingStore = Store::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('name', mb_substr($name, 0, 255))
+                    ->first();
+            }
 
             $storePayload = [
                 'team_id' => $teamId,
@@ -3447,6 +3454,18 @@ class ImportDataCommand extends Command
                 'status' => (int) ($branch->estado ?? 0) > 0,
                 'is_main' => $mainLegacyBranchId > 0 && (int) $branch->id === $mainLegacyBranchId,
             ];
+            if ($existingStore && $existingStore->code !== $storeCode)
+            {
+                $codeTakenByAnotherStore = Store::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('code', $storeCode)
+                    ->where('id', '!=', $existingStore->id)
+                    ->exists();
+                if ($codeTakenByAnotherStore)
+                {
+                    unset($storePayload['code']);
+                }
+            }
 
             if (! $existingStore)
             {
@@ -3513,11 +3532,12 @@ class ImportDataCommand extends Command
 
         foreach ($products as $legacyProduct)
         {
+            $legacyProductId = (int) $legacyProduct->id;
             $legacyName = $legacyProduct->titulo ?? $legacyProduct->nombre ?? $legacyProduct->producto ?? null;
             $name = $this->normalizeLegacyText((string) ($legacyName ?? ''));
             if ($name === '')
             {
-                $name = 'Producto '.$legacyProduct->id;
+                $name = 'Producto '.$legacyProductId;
             }
 
             $categoryId = null;
@@ -3562,7 +3582,7 @@ class ImportDataCommand extends Command
             $payload = [
                 'team_id' => $teamId,
                 'name' => mb_substr($name, 0, 255),
-                'code' => 'LEGACY-PROD-'.$legacyProduct->id,
+                'code' => 'LEGACY-PROD-'.$legacyProductId,
                 'description' => $description,
                 'short_description' => mb_substr($description, 0, 300),
                 'price' => $price,
@@ -3577,13 +3597,29 @@ class ImportDataCommand extends Command
             ];
 
             $existing = Product::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('code', 'LEGACY-PROD-'.$legacyProduct->id)
+                ->where('id', $legacyProductId)
                 ->first();
+            if ($existing && (int) $existing->team_id !== $teamId)
+            {
+                throw new \RuntimeException("Legacy product ID {$legacyProductId} is already used by team_id={$existing->team_id}. Cannot preserve ID for team_id={$teamId}.");
+            }
+            if (! $existing)
+            {
+                $existing = Product::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('code', 'LEGACY-PROD-'.$legacyProductId)
+                    ->first();
+            }
+            if ($existing && (int) $existing->id !== $legacyProductId)
+            {
+                throw new \RuntimeException("Legacy product code LEGACY-PROD-{$legacyProductId} exists with local product ID {$existing->id}. Cannot preserve ID {$legacyProductId}.");
+            }
 
             if (! $existing)
             {
-                Product::withoutGlobalScope('team')->create($payload);
+                $payloadWithId = $payload;
+                $payloadWithId['id'] = $legacyProductId;
+                Product::withoutGlobalScope('team')->forceCreate($payloadWithId);
                 $stats['imported']++;
             } else
             {
