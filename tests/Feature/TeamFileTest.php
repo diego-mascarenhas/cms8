@@ -176,6 +176,55 @@ class TeamFileTest extends TestCase
         ]);
     }
 
+    public function test_public_visibility_generates_share_hash_on_store(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+
+        $response = $this->actingAs($user)->post(route('team-file.store'), [
+            'title' => 'Public brochure',
+            'visibility' => MultimediaVisibility::PUBLIC->value,
+            'file' => UploadedFile::fake()->create('brochure.pdf', 30, 'application/pdf'),
+        ]);
+
+        $response->assertRedirect(route('team-file.index'));
+
+        $teamFile = TeamFile::query()->latest('id')->first();
+        $this->assertNotNull($teamFile);
+        $this->assertNotNull($teamFile->share_hash);
+    }
+
+    public function test_public_file_can_be_downloaded_by_share_hash(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+        $teamFile = TeamFile::factory()->forTeamAndUser($user->currentTeam, $user)->create([
+            'visibility' => MultimediaVisibility::PUBLIC,
+            'share_hash' => 'public-share-hash-001',
+        ]);
+        $teamFile->addMedia(UploadedFile::fake()->create('shared.pdf', 30, 'application/pdf'))
+            ->toMediaCollection('file');
+
+        $this->get(route('team-file.shared', $teamFile->share_hash))->assertOk();
+    }
+
+    public function test_private_file_cannot_be_downloaded_by_share_hash(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+        $teamFile = TeamFile::factory()->forTeamAndUser($user->currentTeam, $user)->create([
+            'visibility' => MultimediaVisibility::PRIVATE,
+            'share_hash' => 'private-share-hash-001',
+        ]);
+        $teamFile->addMedia(UploadedFile::fake()->create('private.pdf', 30, 'application/pdf'))
+            ->toMediaCollection('file');
+
+        $this->get(route('team-file.shared', $teamFile->share_hash))->assertNotFound();
+    }
+
     private function createUserWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(['name' => $roleName]);

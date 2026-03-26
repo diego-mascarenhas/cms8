@@ -100,6 +100,14 @@
                 <div class="text-muted small">{{ __('Description') }}</div>
                 <div>{{ $data->description ?: '—' }}</div>
             </div>
+            @if($data->visibility?->value === \App\Enums\MultimediaVisibility::PUBLIC->value && !empty($publicShareUrl))
+            <div class="col-md-12">
+                <div class="text-muted small">{{ __('Share link') }}</div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <a href="{{ $publicShareUrl }}" target="_blank" rel="noopener noreferrer">{{ $publicShareUrl }}</a>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>

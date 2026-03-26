@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->unsignedTinyInteger('visibility')->default(1);
+            $table->string('share_hash', 64)->nullable()->unique();
             $table->unsignedInteger('sort_order')->default(0);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

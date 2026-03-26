@@ -10,6 +10,7 @@ use App\Models\TeamFile;
 use App\Models\TeamFileHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -40,6 +41,7 @@ class TeamFileController extends Controller
     {
         $teamFile = new TeamFile;
         $teamFile->fill(Arr::except($request->validated(), ['file']));
+        $this->syncShareHash($teamFile);
         $teamFile->save();
 
         $teamFile->addMediaFromRequest('file')->toMediaCollection('file');
@@ -69,6 +71,7 @@ class TeamFileController extends Controller
         return view('team-file.show', [
             'data' => $team_file,
             'histories' => $histories,
+            'publicShareUrl' => $team_file->share_hash ? route('team-file.shared', $team_file->share_hash) : null,
         ]);
     }
 
@@ -77,6 +80,7 @@ class TeamFileController extends Controller
         $existingFileName = $team_file->getFirstMedia('file')?->file_name;
 
         $team_file->fill(Arr::except($request->validated(), ['file']));
+        $this->syncShareHash($team_file);
         $team_file->save();
 
         if ($request->hasFile('file'))
@@ -136,6 +140,20 @@ class TeamFileController extends Controller
         return response()->download($media->getPath(), $media->file_name);
     }
 
+    public function shared(string $hash): BinaryFileResponse
+    {
+        $teamFile = TeamFile::query()
+            ->withoutGlobalScopes()
+            ->where('share_hash', $hash)
+            ->where('visibility', MultimediaVisibility::PUBLIC->value)
+            ->firstOrFail();
+
+        $media = $teamFile->getFirstMedia('file');
+        abort_if(! $media, 404);
+
+        return response()->download($media->getPath(), $media->file_name);
+    }
+
     private function archiveCurrentFile(TeamFile $teamFile): ?int
     {
         /** @var Media|null $currentMedia */
@@ -160,5 +178,37 @@ class TeamFileController extends Controller
             'file_name' => $fileName,
             'archived_media_id' => $archivedMediaId,
         ]);
+    }
+
+    private function syncShareHash(TeamFile $teamFile): void
+    {
+        $visibilityValue = $teamFile->visibility instanceof MultimediaVisibility
+            ? $teamFile->visibility->value
+            : (int) $teamFile->visibility;
+
+        if ($visibilityValue !== MultimediaVisibility::PUBLIC->value)
+        {
+            $teamFile->share_hash = null;
+
+            return;
+        }
+
+        if ($teamFile->share_hash)
+        {
+            return;
+        }
+
+        do
+        {
+            $hash = Str::random(40);
+        } while (
+            TeamFile::query()
+                ->withoutGlobalScopes()
+                ->withTrashed()
+                ->where('share_hash', $hash)
+                ->exists()
+        );
+
+        $teamFile->share_hash = $hash;
     }
 }
