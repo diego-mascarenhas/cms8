@@ -46,6 +46,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('wapify.ayuda') ? 'active' : '' }}">
+          <a href="{{ route('wapify.ayuda') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-help"></i>
+            <div>{{ __('Guía rápida: venta por WhatsApp') }}</div>
+          </a>
+        </li>
+
         <li class="menu-header small text-uppercase">
           <span class="menu-header-text">Operaciones</span>
         </li>

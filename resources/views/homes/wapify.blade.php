@@ -51,6 +51,11 @@
             <a href="#qr" id="logo" class="brand-logo">
                 <img src="{{ asset('homes/wapify/img/logo.png') }}" alt="{{ __('wapify.brand_alt') }}">
             </a>
+            <ul class="right">
+                <li>
+                    <a href="{{ route('wapify.ayuda') }}" class="black-text" title="{{ __('wapify.help_link_title') }}">{{ __('wapify.help_link') }}</a>
+                </li>
+            </ul>
         </div>
     </nav>
     <header class="valign-wrapper">

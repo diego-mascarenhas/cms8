@@ -108,6 +108,10 @@ Route::get('/wapify', function ()
 
     return view('homes.wapify');
 })->name('wapify');
+
+Route::get('/wapify/ayuda', [ManualController::class, 'ayuda'])->name('wapify.ayuda');
+Route::redirect('/ayuda', '/wapify/ayuda', 301)->name('ayuda');
+
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
 Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))
     ->name('landing.business-creation');

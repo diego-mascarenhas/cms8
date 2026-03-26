@@ -17,4 +17,7 @@ return [
 
     'og_title' => 'Wapify — tu negocio en WhatsApp',
     'og_site_name' => 'Wapify',
+
+    'help_link' => 'Guía rápida',
+    'help_link_title' => 'Cómo empezar: sesión, QR de WhatsApp, productos, pedidos y asistente',
 ];

@@ -5,6 +5,14 @@ namespace App\Http\Controllers;
 class ManualController extends Controller
 {
     /**
+     * Short guide: login, WhatsApp QR, products, orders, assistant.
+     */
+    public function ayuda()
+    {
+        return view('manual.ayuda');
+    }
+
+    /**
      * Display the user manual index
      */
     public function index()

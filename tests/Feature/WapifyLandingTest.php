@@ -19,5 +19,6 @@ class WapifyLandingTest extends TestCase
         $response->assertSee('property="og:image"', false);
         $response->assertSee('homes/wapify/img/og-wapify.png', false);
         $response->assertSee('property="og:title"', false);
+        $response->assertSee(route('wapify.ayuda'), false);
     }
 }
