@@ -23,6 +23,9 @@ return [
     'Error' => 'Error',
     'An error occurred while deleting the record' => 'Ha ocurrido un error al eliminar el registro',
     'Edit' => 'Editar',
+    'Create' => 'Crear',
+    'Delete' => 'Eliminar',
+    'File' => 'Archivo',
 
     'languages' => [
         'english' => 'Inglés',

@@ -5,12 +5,10 @@
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -30,19 +28,36 @@
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+@php
+    $visibilitySelectOptions = [];
+    foreach ($visibilityOptions as $v) {
+        $visibilitySelectOptions[$v->value] = $v->label();
+    }
+@endphp
+
 <div class="card mb-4">
-    <div class="card-body">
-        <div class="row g-3 align-items-end mb-3">
-            <div class="col-md-4">
-                <label class="form-label" for="filter_team_file_visibility">{{ __('Visibility') }}</label>
-                <select id="filter_team_file_visibility" class="form-select select2" data-placeholder="{{ __('All') }}">
-                    <option value="">{{ __('All') }}</option>
-                    @foreach($visibilityOptions as $visibility)
-                        <option value="{{ $visibility->value }}">{{ $visibility->label() }}</option>
-                    @endforeach
-                </select>
+    <div class="card-header border-bottom">
+        <div class="d-flex flex-column flex-md-row gap-3">
+            <div class="flex-grow-1">
+                <x-module-categories-select
+                    id="filter_team_file_category"
+                    label=""
+                    moduleKey="team_files"
+                    :selected="''"
+                    :allowEmpty="true"
+                />
+            </div>
+            <div class="flex-grow-1">
+                <x-input-select
+                    id="filter_team_file_visibility"
+                    :options="$visibilitySelectOptions"
+                    :value="''"
+                    :placeholder="__('Select visibility')"
+                />
             </div>
         </div>
+    </div>
+    <div class="card-body">
         {!! $dataTable->table(['class' => 'table table-hover']) !!}
     </div>
 </div>
@@ -52,10 +67,7 @@
 {!! $dataTable->scripts() !!}
 <script>
 $(function () {
-    if ($.fn.select2) {
-        $('#filter_team_file_visibility').select2({ width: '100%', allowClear: true });
-    }
-    $('#filter_team_file_visibility').on('change', function () {
+    $(document).on('change', '#filter_team_file_visibility, #filter_team_file_category', function () {
         var table = window.LaravelDataTables?.['team-files-table'];
         if (table) {
             table.ajax.reload();

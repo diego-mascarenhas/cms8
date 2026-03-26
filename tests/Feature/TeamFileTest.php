@@ -71,6 +71,56 @@ class TeamFileTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_store_rejects_executable_extension(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+
+        $file = UploadedFile::fake()->create('setup.exe', 50, 'application/octet-stream');
+
+        $response = $this->actingAs($user)->post(route('team-file.store'), [
+            'title' => 'Bad',
+            'visibility' => MultimediaVisibility::PRIVATE->value,
+            'file' => $file,
+        ]);
+
+        $response->assertSessionHasErrors('file');
+        $this->assertDatabaseMissing('team_files', ['title' => 'Bad']);
+    }
+
+    public function test_store_accepts_zip_archive(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->createUserWithRole('collaborator');
+
+        $file = UploadedFile::fake()->create('assets.zip', 100, 'application/zip');
+
+        $response = $this->actingAs($user)->post(route('team-file.store'), [
+            'title' => 'Zip pack',
+            'visibility' => MultimediaVisibility::PRIVATE->value,
+            'file' => $file,
+        ]);
+
+        $response->assertRedirect(route('team-file.index'));
+        $this->assertDatabaseHas('team_files', ['title' => 'Zip pack']);
+    }
+
+    public function test_developer_destroy_soft_deletes_team_file(): void
+    {
+        $user = $this->createUserWithRole('developer');
+
+        $teamFile = TeamFile::factory()->forTeamAndUser($user->currentTeam, $user)->create([
+            'title' => 'To remove',
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('team-file.destroy', $teamFile));
+
+        $response->assertRedirect(route('team-file.index'));
+        $this->assertSoftDeleted($teamFile);
+    }
+
     private function createUserWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(['name' => $roleName]);

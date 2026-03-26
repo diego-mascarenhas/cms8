@@ -62,6 +62,11 @@ class TeamFilePolicy
 
     public function restore(User $user, TeamFile $teamFile): bool
     {
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return $teamFile->team_id === $user->currentTeam->id;
+        }
+
         return false;
     }
 

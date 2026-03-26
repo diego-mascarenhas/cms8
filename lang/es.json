@@ -603,6 +603,15 @@
   "Team Owner": "Propietario del equipo",
   "Team Settings": "Ajustes del equipo",
   "Teams": "Equipos",
+  "Add file": "Añadir archivo",
+  "Company documents, brand assets, and files shared per visibility.": "Documentos de empresa, activos de marca y archivos según su visibilidad.",
+  "Current file": "Archivo actual",
+  "Team file deleted successfully.": "Archivo del equipo eliminado correctamente.",
+  "Team file saved successfully.": "Archivo del equipo guardado correctamente.",
+  "Team file updated successfully.": "Archivo del equipo actualizado correctamente.",
+  "Team files": "Archivos del equipo",
+  "Upload a file and set visibility for your team.": "Sube un archivo y define la visibilidad para tu equipo.",
+  "optional — leave empty to keep current": "opcional: déjalo vacío para conservar el actual",
   "Temporary Redirect": "Redirección temporal",
   "Terms of Service": "Términos del servicio",
   "Text Divider": "Divisor de texto",
@@ -1387,5 +1396,6 @@
   "Spam": "Spam",
   "Trash": "Papelera",
   "Networks": "Redes",
-  "Select recipients": "Seleccionar destinatarios"
+  "Select recipients": "Seleccionar destinatarios",
+  "Select visibility": "Seleccionar visibilidad"
 }

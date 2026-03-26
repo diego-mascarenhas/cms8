@@ -22,6 +22,7 @@ class TeamFileFactory extends Factory
     {
         return [
             'team_id' => Team::factory(),
+            'category_id' => null,
             'title' => $this->faker->sentence(3),
             'description' => $this->faker->optional()->paragraph(),
             'visibility' => MultimediaVisibility::PRIVATE,

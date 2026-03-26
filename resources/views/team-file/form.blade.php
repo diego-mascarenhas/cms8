@@ -4,20 +4,56 @@
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
 <script>
     $(function() {
         if ($.fn.select2) {
-            $('#visibility').select2();
+            $('#visibility, #category_id').select2();
         }
     });
 </script>
+@if(isset($data->id))
+@can('delete', $data)
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('team-file-delete-btn');
+        var form = document.getElementById('team-file-delete-form');
+        if (!btn || !form) {
+            return;
+        }
+        btn.addEventListener('click', function () {
+            Swal.fire({
+                title: @json(__('Are you sure?')),
+                text: @json(__('This action cannot be undone')),
+                icon: 'warning',
+                showCancelButton: true,
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-danger me-2',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                confirmButtonText: @json(__('Yes, delete')),
+                cancelButtonText: @json(__('Cancel')),
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endcan
+@endif
 @endsection
 
 @section('content')
@@ -32,7 +68,7 @@
         <form id="team-file-delete-form" method="POST" action="{{ route('team-file.destroy', $data) }}" class="d-inline">
             @csrf
             @method('DELETE')
-            <button type="button" class="btn btn-label-danger" onclick="if(confirm(@json(__('Are you sure you want to delete this record?')))) document.getElementById('team-file-delete-form').submit();">
+            <button type="button" class="btn btn-label-danger waves-effect" id="team-file-delete-btn">
                 <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
             </button>
         </form>
@@ -65,6 +101,15 @@
                 @error('visibility')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
+            </div>
+            <div class="col-md-12">
+                <x-module-categories-select
+                    id="category_id"
+                    label="{{ __('Category') }}"
+                    moduleKey="team_files"
+                    :allowEmpty="true"
+                    :selected="old('category_id', $data->category_id ?? '')"
+                />
             </div>
             <div class="col-md-12">
                 <x-input-textarea id="description" label="{{ __('Description') }}" value="{{ old('description', $data->description ?? '') }}" />
