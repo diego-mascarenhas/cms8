@@ -64,6 +64,10 @@
             overflow-wrap: anywhere;
             word-break: break-word;
         }
+        .assistant-empty-suggestions {
+            max-height: min(420px, 58vh);
+            overflow-y: auto;
+        }
     </style>
 @endsection
 
@@ -92,6 +96,21 @@
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
         var assistantUrl = '{{ route("chat.assistant") }}';
+
+        var assistantMessagesListEl = document.getElementById('assistant-messages-list');
+        if (assistantMessagesListEl) {
+            assistantMessagesListEl.addEventListener('click', function (e) {
+                var btn = e.target.closest('.assistant-suggestion-example');
+                if (!btn || !messageInput) {
+                    return;
+                }
+                var prompt = btn.getAttribute('data-prompt');
+                if (prompt) {
+                    messageInput.value = prompt;
+                    messageInput.focus();
+                }
+            });
+        }
 
         function getChatAssistantFlowRoutingKey() {
             var sel = document.getElementById('chatAssistantFlowRoutingKey');
@@ -812,9 +831,11 @@
             }
             function renderMessages(messages) {
                 if (!messages || messages.length === 0) {
+                    var src = document.getElementById('assistant-suggestions-source');
+                    var inner = src ? src.innerHTML : '';
                     var extra = assistantUserId ? '' : '<p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? "" }}) para ver la misma conversación.</p>';
                     list.innerHTML = '<li class="text-center p-4 assistant-empty-state">' +
-                        '<p class="text-muted mb-0">Aún no hay mensajes. Escribe abajo o usa <code>php artisan chat:simulate</code>.</p>' + extra + '</li>';
+                        '<div class="text-start">' + inner + '</div>' + extra + '</li>';
                     return;
                 }
                 var html = messages.map(function(m) {
@@ -1733,6 +1754,11 @@
                         @endif
                     </div>
                     <div class="chat-history-body bg-body" id="chat-history-body" data-poll-phone="{{ $selectedPhone ?? '' }}" data-view-assistant="{{ ($viewAssistant ?? false) ? '1' : '0' }}">
+                        @if ($viewAssistant ?? false)
+                            <div id="assistant-suggestions-source" class="d-none" aria-hidden="true">
+                                @include('chat.partials.assistant-empty-suggestions-inner', ['selectedPhone' => $selectedPhone ?? null])
+                            </div>
+                        @endif
                         <ul class="list-unstyled chat-history" id="assistant-messages-list">
                             @if ($viewAssistant ?? false)
                                 @forelse(($assistantMessages ?? []) as $msg)
@@ -1750,9 +1776,11 @@
                                     </li>
                                 @empty
                                     <li class="text-center p-4 assistant-empty-state">
-                                        <p class="text-muted mb-0">Aún no hay mensajes. Escribe abajo o usa <code>php artisan chat:simulate --phone=...</code> para simular a este cliente.</p>
-                                        @if(!($selectedAssistantUser ?? null))
-                                        <p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? '' }}) para ver tu conversación.</p>
+                                        <div class="text-start">
+                                            @include('chat.partials.assistant-empty-suggestions-inner', ['selectedPhone' => $selectedPhone ?? null])
+                                        </div>
+                                        @if (! ($selectedAssistantUser ?? null))
+                                            <p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? '' }}) para ver la misma conversación.</p>
                                         @endif
                                     </li>
                                 @endforelse
