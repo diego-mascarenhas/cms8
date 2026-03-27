@@ -605,5 +605,8 @@
   "Uploaded": "Uploaded",
   "Replaced": "Replaced",
   "Restored": "Restored",
-  "Share link": "Share link"
+  "Share link": "Share link",
+  "Creating...": "Creating...",
+  "Please enter at least 2 characters to create a category.": "Please enter at least 2 characters to create a category.",
+  "Could not create the category.": "Could not create the category."
 }

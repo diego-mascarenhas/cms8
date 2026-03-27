@@ -1,4 +1,4 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría'])
+@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true])
 
 <div class="form-group">
     @if($label !== null && $label !== '')
@@ -22,6 +22,7 @@
                     'invoice' => 'invoices',
                     'ticket' => 'tickets',
                     'service' => 'services',
+                    'product' => 'products',
                     'communications' => 'communications',
                     'mail' => 'mail',
                     'chat' => 'chat',
@@ -138,11 +139,18 @@
     document.addEventListener('DOMContentLoaded', function() {
         if ($.fn.select2 && $('#{{ $id }}').length) {
             $('#{{ $id }}').select2({
-                placeholder: '{{ $emptyText }}',
+                placeholder: @json($emptyText),
                 allowClear: {{ $allowEmpty ? 'true' : 'false' }},
                 width: '100%',
             });
         }
     });
 </script>
+@if ($allowQuickCreate && ! $disabled)
+    @include('components.partials.select2-module-category-quick-create', [
+        'selectId' => $id,
+        'moduleKey' => $moduleKey,
+        'multiple' => false,
+    ])
+@endif
 @endpush

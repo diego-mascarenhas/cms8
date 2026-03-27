@@ -1407,5 +1407,8 @@
   "Uploaded": "Subido",
   "Replaced": "Reemplazado",
   "Restored": "Restaurado",
-  "Share link": "Enlace para compartir"
+  "Share link": "Enlace para compartir",
+  "Creating...": "Creando...",
+  "Please enter at least 2 characters to create a category.": "Ingresa al menos 2 caracteres para crear una categoría.",
+  "Could not create the category.": "No se pudo crear la categoría."
 }
