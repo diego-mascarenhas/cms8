@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
+use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
@@ -117,6 +118,7 @@ Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.
 Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))
     ->name('landing.business-creation');
 
+Route::get('/assistant/activity', [AssistantActivityController::class, 'index'])->name('assistant.activity')->middleware('auth');
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 

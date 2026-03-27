@@ -299,6 +299,11 @@
                         <h5 class="mb-0">Uso de API & Ahorro</h5>
                         <small class="text-muted">Optimización de costos</small>
                     </div>
+                    <div>
+                        <a href="{{ route('assistant.activity') }}" class="btn btn-sm btn-label-primary waves-effect">
+                            <i class="ti ti-activity me-1"></i>Ver actividad AI
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body pt-0">
                     <div class="row g-3">
