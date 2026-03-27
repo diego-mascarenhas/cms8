@@ -15,10 +15,42 @@
 @section('page-script')
     <script>
         $(function () {
-            $('.flatpickr-date-range').flatpickr({
-                dateFormat: 'Y-m-d',
-                allowInput: true
-            });
+            function initDatePickers() {
+                $('.flatpickr-date-range').flatpickr({
+                    dateFormat: 'Y-m-d',
+                    allowInput: true,
+                    altInput: true,
+                    altFormat: 'd-m-Y',
+                    locale: 'es',
+                    monthSelectorType: 'static'
+                });
+            }
+
+            function loadFlatpickrLocale(locale, callback) {
+                if (locale === 'en') {
+                    callback();
+                    return;
+                }
+
+                if (flatpickr.l10ns && flatpickr.l10ns[locale]) {
+                    flatpickr.localize(flatpickr.l10ns[locale]);
+                    callback();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/' + locale + '.js';
+                script.onload = function () {
+                    if (flatpickr.l10ns && flatpickr.l10ns[locale]) {
+                        flatpickr.localize(flatpickr.l10ns[locale]);
+                    }
+                    callback();
+                };
+                script.onerror = callback;
+                document.head.appendChild(script);
+            }
+
+            loadFlatpickrLocale('es', initDatePickers);
 
             const activityTable = $('#assistant-activity-table').DataTable({
                 processing: true,
@@ -95,6 +127,7 @@
                 order: [[0, 'desc']],
                 pageLength: 25,
                 language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
                     emptyTable: 'No se encontró actividad del asistente para este rango.'
                 }
             });
@@ -152,12 +185,16 @@
     <div class="card-body">
         <form id="assistant-activity-filters" method="GET" action="{{ route('assistant.activity') }}" class="row g-3 align-items-end">
             <div class="col-sm-4 col-md-3">
-                <label for="start_date" class="form-label mb-1">Desde</label>
-                <input type="text" id="start_date" name="start_date" class="form-control form-control input flatpickr-date-range" value="{{ $startDate }}" placeholder="YYYY-MM-DD">
+                <div class="form-group">
+                    <label for="start_date" class="form-label mb-1">Desde</label>
+                    <input type="text" id="start_date" name="start_date" class="form-control input flatpickr-date-range" value="{{ $startDate }}" autocomplete="off">
+                </div>
             </div>
             <div class="col-sm-4 col-md-3">
-                <label for="end_date" class="form-label mb-1">Hasta</label>
-                <input type="text" id="end_date" name="end_date" class="form-control form-control input flatpickr-date-range" value="{{ $endDate }}" placeholder="YYYY-MM-DD">
+                <div class="form-group">
+                    <label for="end_date" class="form-label mb-1">Hasta</label>
+                    <input type="text" id="end_date" name="end_date" class="form-control input flatpickr-date-range" value="{{ $endDate }}" autocomplete="off">
+                </div>
             </div>
             <div class="col-sm-4 col-md-2">
                 <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Aplicar</button>
