@@ -8,11 +8,6 @@
         <h4 class="mb-1 mt-3">AI Activity</h4>
         <p class="text-muted">Team assistant conversations, token usage, model and estimated costs</p>
     </div>
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('assistant') }}" class="btn btn-primary waves-effect waves-light">
-            <i class="ti ti-message-circle me-1"></i>Open Assistant
-        </a>
-    </div>
 </div>
 
 <div class="row g-4 mb-4">
