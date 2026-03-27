@@ -119,6 +119,7 @@ Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-busin
     ->name('landing.business-creation');
 
 Route::get('/assistant/activity', [AssistantActivityController::class, 'index'])->name('assistant.activity')->middleware('auth');
+Route::get('/assistant/activity/data', [AssistantActivityController::class, 'data'])->name('assistant.activity.data')->middleware('auth');
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 

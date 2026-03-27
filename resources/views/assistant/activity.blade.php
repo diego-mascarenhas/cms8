@@ -4,21 +4,104 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endsection
 
 @section('page-script')
     <script>
         $(function () {
-            $('#assistant-activity-table').DataTable({
+            $('.flatpickr-date-range').flatpickr({
+                dateFormat: 'Y-m-d',
+                allowInput: true
+            });
+
+            const activityTable = $('#assistant-activity-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '{{ route('assistant.activity.data') }}',
+                    data: function (d) {
+                        d.start_date = $('#start_date').val();
+                        d.end_date = $('#end_date').val();
+                    }
+                },
+                columns: [
+                    {
+                        data: null,
+                        name: 'created_at',
+                        render: function (row) {
+                            const human = row.date_human ? '<small class="text-muted">' + row.date_human + '</small>' : '';
+
+                            return '<div class="d-flex flex-column"><span>' + (row.date_display || '') + '</span>' + human + '</div>';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (row) {
+                            const email = row.user_email ? '<small class="text-muted">' + row.user_email + '</small>' : '';
+
+                            return '<div class="d-flex flex-column"><span>' + (row.user_name || 'Desconocido') + '</span>' + email + '</div>';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (row) {
+                            return '<div class="d-flex flex-column"><span>' + (row.conversation_title || 'Sin título') + '</span><small class="text-muted">' + (row.conversation_id || '') + '</small></div>';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (row) {
+                            return '<div class="d-flex flex-column"><span>' + (row.model_name || '') + '</span><small class="text-muted">' + (row.provider_name || '') + '</small></div>';
+                        }
+                    },
+                    {
+                        data: 'prompt_tokens_value',
+                        className: 'text-end',
+                        render: function (value) {
+                            return Number(value || 0).toLocaleString();
+                        }
+                    },
+                    {
+                        data: 'completion_tokens_value',
+                        className: 'text-end',
+                        render: function (value) {
+                            return Number(value || 0).toLocaleString();
+                        }
+                    },
+                    {
+                        data: 'total_tokens_value',
+                        className: 'text-end',
+                        render: function (value) {
+                            return Number(value || 0).toLocaleString();
+                        }
+                    },
+                    {
+                        data: 'estimated_cost_usd',
+                        className: 'text-end',
+                        render: function (value) {
+                            return '$' + Number(value || 0).toFixed(6);
+                        }
+                    }
+                ],
                 order: [[0, 'desc']],
                 pageLength: 25,
                 language: {
                     emptyTable: 'No se encontró actividad del asistente para este rango.'
                 }
+            });
+
+            $('#assistant-activity-filters').on('submit', function (event) {
+                event.preventDefault();
+                activityTable.ajax.reload();
             });
         });
     </script>
@@ -60,27 +143,28 @@
 </div>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header">
         <div>
             <h5 class="mb-0">Mensajes de conversaciones</h5>
             <small class="text-muted">Proveedor/modelo por defecto: {{ $defaultProvider }} / {{ $defaultModel }}</small>
         </div>
-        <form method="GET" action="{{ route('assistant.activity') }}" class="d-flex align-items-end gap-2">
-            <div>
+    </div>
+    <div class="card-body">
+        <form id="assistant-activity-filters" method="GET" action="{{ route('assistant.activity') }}" class="row g-3 align-items-end">
+            <div class="col-sm-4 col-md-3">
                 <label for="start_date" class="form-label mb-1">Desde</label>
-                <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate }}">
+                <input type="text" id="start_date" name="start_date" class="form-control form-control input flatpickr-date-range" value="{{ $startDate }}" placeholder="YYYY-MM-DD">
             </div>
-            <div>
+            <div class="col-sm-4 col-md-3">
                 <label for="end_date" class="form-label mb-1">Hasta</label>
-                <input type="date" id="end_date" name="end_date" class="form-control form-control-sm" value="{{ $endDate }}">
+                <input type="text" id="end_date" name="end_date" class="form-control form-control input flatpickr-date-range" value="{{ $endDate }}" placeholder="YYYY-MM-DD">
             </div>
-            <div>
+            <div class="col-sm-4 col-md-2">
                 <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Aplicar</button>
             </div>
         </form>
-    </div>
-    <div class="table-responsive">
-        <table id="assistant-activity-table" class="table table-hover">
+        <div class="table-responsive mt-3">
+            <table id="assistant-activity-table" class="table table-hover border-top">
             <thead>
                 <tr>
                     <th>Fecha</th>
@@ -93,45 +177,9 @@
                     <th class="text-end">USD estimado</th>
                 </tr>
             </thead>
-            <tbody>
-                @forelse($messages as $message)
-                    <tr>
-                        <td>
-                            <div class="d-flex flex-column">
-                                <span>{{ $message->created_at?->format('Y-m-d H:i') }}</span>
-                                <small class="text-muted">{{ $message->created_at?->diffForHumans() }}</small>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column">
-                                <span>{{ $message->conversation?->user?->name ?? $message->user?->name ?? 'Desconocido' }}</span>
-                                <small class="text-muted">{{ $message->conversation?->user?->email ?? $message->user?->email }}</small>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column">
-                                <span>{{ $message->conversation?->title ?? 'Sin título' }}</span>
-                                <small class="text-muted">{{ $message->conversation_id }}</small>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-column">
-                                <span>{{ $message->model_name }}</span>
-                                <small class="text-muted">{{ $message->provider_name }}</small>
-                            </div>
-                        </td>
-                        <td class="text-end">{{ number_format((int) $message->prompt_tokens_value) }}</td>
-                        <td class="text-end">{{ number_format((int) $message->completion_tokens_value) }}</td>
-                        <td class="text-end">{{ number_format((int) $message->total_tokens_value) }}</td>
-                        <td class="text-end">${{ number_format((float) $message->estimated_cost_usd, 6) }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No se encontró actividad del asistente para este equipo.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+            <tbody></tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

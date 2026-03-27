@@ -51,8 +51,17 @@ class AssistantActivityPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Actividad de IA');
-        $response->assertSee('Billing follow-up');
-        $response->assertSee('1,500');
+
+        $dataResponse = $this->actingAs($admin)->getJson(route('assistant.activity.data', [
+            'start_date' => now()->subDays(30)->toDateString(),
+            'end_date' => now()->toDateString(),
+        ]));
+
+        $dataResponse->assertOk();
+        $dataResponse->assertJsonFragment([
+            'conversation_title' => 'Billing follow-up',
+            'total_tokens_value' => 1500,
+        ]);
     }
 
     public function test_non_admin_cannot_view_team_assistant_activity_page(): void
