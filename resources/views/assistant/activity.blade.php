@@ -2,6 +2,28 @@
 
 @section('title', 'AI Activity')
 
+@section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
+@endsection
+
+@section('vendor-script')
+    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+@endsection
+
+@section('page-script')
+    <script>
+        $(function () {
+            $('#assistant-activity-table').DataTable({
+                order: [[0, 'desc']],
+                pageLength: 25,
+                language: {
+                    emptyTable: 'No assistant activity found for this range.'
+                }
+            });
+        });
+    </script>
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -43,9 +65,22 @@
             <h5 class="mb-0">Conversation messages</h5>
             <small class="text-muted">Default provider/model: {{ $defaultProvider }} / {{ $defaultModel }}</small>
         </div>
+        <form method="GET" action="{{ route('assistant.activity') }}" class="d-flex align-items-end gap-2">
+            <div>
+                <label for="start_date" class="form-label mb-1">From</label>
+                <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate }}">
+            </div>
+            <div>
+                <label for="end_date" class="form-label mb-1">To</label>
+                <input type="date" id="end_date" name="end_date" class="form-control form-control-sm" value="{{ $endDate }}">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Apply</button>
+            </div>
+        </form>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover">
+        <table id="assistant-activity-table" class="table table-hover">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -98,10 +133,5 @@
             </tbody>
         </table>
     </div>
-    @if($messages->hasPages())
-        <div class="card-body border-top">
-            {{ $messages->links() }}
-        </div>
-    @endif
 </div>
 @endsection

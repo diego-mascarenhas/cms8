@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AgentConversationMessage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 
 class AssistantActivityController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $user = auth()->user();
         $team = $user?->currentTeam ?? $user?->teams()->first();
@@ -18,6 +19,8 @@ class AssistantActivityController extends Controller
         $defaultProvider = strtoupper((string) config('ai.assistant_provider', 'anthropic'));
         $defaultModel = (string) config('ai.assistant_model', 'cheapest');
         $estimatedCostPerMillion = (float) config('services.anthropic.estimated_cost_per_million', 6.0);
+        $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
+        $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
 
         $messages = AgentConversationMessage::query()
             ->where('agent', 'chat_assistant')
@@ -26,15 +29,17 @@ class AssistantActivityController extends Controller
             {
                 $query->where('team_id', $team->id);
             })
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
             ->with([
                 'conversation:id,title,user_id,team_id',
                 'conversation.user:id,name,email',
                 'user:id,name,email',
             ])
             ->latest()
-            ->paginate(25);
+            ->get();
 
-        $messages->getCollection()->transform(function (AgentConversationMessage $message) use ($defaultProvider, $defaultModel, $estimatedCostPerMillion)
+        $messages->transform(function (AgentConversationMessage $message) use ($defaultProvider, $defaultModel, $estimatedCostPerMillion)
         {
             $usage = is_array($message->usage) ? $message->usage : [];
             $meta = is_array($message->meta) ? $message->meta : [];
@@ -56,9 +61,9 @@ class AssistantActivityController extends Controller
             return $message;
         });
 
-        $totalMessages = (int) $messages->total();
-        $totalTokens = (int) $messages->getCollection()->sum('total_tokens_value');
-        $totalEstimatedCostUsd = round((float) $messages->getCollection()->sum('estimated_cost_usd'), 6);
+        $totalMessages = (int) $messages->count();
+        $totalTokens = (int) $messages->sum('total_tokens_value');
+        $totalEstimatedCostUsd = round((float) $messages->sum('estimated_cost_usd'), 6);
 
         return view('assistant.activity', compact(
             'messages',
@@ -67,6 +72,8 @@ class AssistantActivityController extends Controller
             'totalEstimatedCostUsd',
             'defaultProvider',
             'defaultModel',
+            'startDate',
+            'endDate',
         ));
     }
 }
