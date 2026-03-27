@@ -18,11 +18,10 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
 
       <!-- Logo/Brand at top of sidebar -->
       <div class="navbar-brand app-brand demo d-flex py-3 px-4 border-bottom">
-        <a href="{{ url('/') }}" class="app-brand-link gap-2">
-          <span class="app-brand-logo demo">
-            @include('_partials.macros', ['height' => 20])
+        <a href="{{ url('/') }}" class="app-brand-link">
+          <span class="app-brand-logo demo app-brand-img">
+            <img src="{{ Helper::logoAsset('dark') }}" alt="Wapify" style="height: 44px; width: auto;">
           </span>
-          <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
         </a>
       </div>
 
@@ -32,131 +31,38 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           <span class="menu-header-text">Manual de usuario</span>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('manual.index') ? 'active' : '' }}">
-          <a href="{{ route('manual.index') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-home"></i>
-            <div>Introducción</div>
+        <li class="menu-item manual-menu-item">
+          <a href="{{ route('wapify.ayuda') }}#configuracion-negocio" class="menu-link manual-menu-link" data-section="configuracion-negocio">
+            <i class="menu-icon tf-icons ti ti-settings"></i>
+            <div>1. Configuración del negocio</div>
           </a>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('manual.getting-started') ? 'active' : '' }}">
-          <a href="{{ route('manual.getting-started') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-rocket"></i>
-            <div>Primeros pasos</div>
-          </a>
-        </li>
-
-        <li class="menu-header small text-uppercase">
-          <span class="menu-header-text">Operaciones</span>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.dashboard') ? 'active' : '' }}">
-          <a href="{{ route('manual.dashboard') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-layout-grid"></i>
-            <div>Dashboard y Hoy</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.contacts') ? 'active' : '' }}">
-          <a href="{{ route('manual.contacts') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-users"></i>
-            <div>Contactos</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.clients') ? 'active' : '' }}">
-          <a href="{{ route('manual.clients') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-user-heart"></i>
-            <div>Clientes</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.collaborators') ? 'active' : '' }}">
-          <a href="{{ route('manual.collaborators') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-users-group"></i>
-            <div>Colaboradores</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.services') ? 'active' : '' }}">
-          <a href="{{ route('manual.services') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-rocket"></i>
-            <div>Servicios</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.projects') ? 'active' : '' }}">
-          <a href="{{ route('manual.projects') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-folder"></i>
-            <div>Proyectos</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.tasks') ? 'active' : '' }}">
-          <a href="{{ route('manual.tasks') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-layout-kanban"></i>
-            <div>Tareas y tiempo</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.chat') ? 'active' : '' }}">
-          <a href="{{ route('manual.chat') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-message-chatbot"></i>
-            <div>Chat y WhatsApp</div>
-          </a>
-        </li>
-
-        <li class="menu-header small text-uppercase">
-          <span class="menu-header-text">Comercio y facturación</span>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.products-and-orders') ? 'active' : '' }}">
-          <a href="{{ route('manual.products-and-orders') }}" class="menu-link">
+        <li class="menu-item manual-menu-item">
+          <a href="{{ route('wapify.ayuda') }}#carga-productos" class="menu-link manual-menu-link" data-section="carga-productos">
             <i class="menu-icon tf-icons ti ti-package"></i>
-            <div>Productos y pedidos</div>
+            <div>2. Carga de productos</div>
           </a>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('manual.billing') ? 'active' : '' }}">
-          <a href="{{ route('manual.billing') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-file-invoice"></i>
-            <div>Facturas y pagos</div>
+        <li class="menu-item manual-menu-item">
+          <a href="{{ route('wapify.ayuda') }}#escaneo-qr" class="menu-link manual-menu-link" data-section="escaneo-qr">
+            <i class="menu-icon tf-icons ti ti-qrcode"></i>
+            <div>3. Escaneo de QR</div>
           </a>
         </li>
 
-        <li class="menu-header small text-uppercase">
-          <span class="menu-header-text">Campañas y equipo</span>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.campaigns') ? 'active' : '' }}">
-          <a href="{{ route('manual.campaigns') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-send"></i>
-            <div>Mensajes y plantillas</div>
+        <li class="menu-item manual-menu-item">
+          <a href="{{ route('wapify.ayuda') }}#pedidos" class="menu-link manual-menu-link" data-section="pedidos">
+            <i class="menu-icon tf-icons ti ti-shopping-cart"></i>
+            <div>4. Pedidos</div>
           </a>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('manual.team') ? 'active' : '' }}">
-          <a href="{{ route('manual.team') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-users"></i>
-            <div>Equipo</div>
-          </a>
-        </li>
-
-        <li class="menu-item {{ request()->routeIs('manual.more-features') ? 'active' : '' }}">
-          <a href="{{ route('manual.more-features') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-apps"></i>
-            <div>Más funciones</div>
-          </a>
-        </li>
-
-        <li class="menu-header small text-uppercase mt-2">
-          <span class="menu-header-text">Técnico</span>
-        </li>
-
-        <li class="menu-item">
-          <a href="{{ route('help.index') }}" class="menu-link">
-            <i class="menu-icon tf-icons ti ti-help-circle"></i>
-            <div>Ayuda y API</div>
+        <li class="menu-item manual-menu-item">
+          <a href="{{ route('wapify.ayuda') }}#ordenes" class="menu-link manual-menu-link" data-section="ordenes">
+            <i class="menu-icon tf-icons ti ti-list-check"></i>
+            <div>5. Ordenes</div>
           </a>
         </li>
       </ul>
@@ -195,5 +101,52 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
   <div class="drag-target"></div>
 </div>
 <!-- / Layout wrapper -->
+
+@push('page-script')
+<script>
+  document.addEventListener('DOMContentLoaded', function ()
+  {
+    var links = document.querySelectorAll('.manual-menu-link');
+    if (!links.length)
+    {
+      return;
+    }
+
+    var setActiveSection = function ()
+    {
+      var hash = window.location.hash ? window.location.hash.replace('#', '') : 'configuracion-negocio';
+
+      links.forEach(function (link)
+      {
+        var listItem = link.closest('.manual-menu-item');
+        if (!listItem)
+        {
+          return;
+        }
+
+        if (link.dataset.section === hash)
+        {
+          listItem.classList.add('active');
+        }
+        else
+        {
+          listItem.classList.remove('active');
+        }
+      });
+    };
+
+    links.forEach(function (link)
+    {
+      link.addEventListener('click', function ()
+      {
+        window.requestAnimationFrame(setActiveSection);
+      });
+    });
+
+    window.addEventListener('hashchange', setActiveSection);
+    setActiveSection();
+  });
+</script>
+@endpush
 
 @endsection

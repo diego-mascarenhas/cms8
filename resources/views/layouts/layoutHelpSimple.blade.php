@@ -18,11 +18,10 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
 
       <!-- Logo/Brand at top of sidebar -->
       <div class="navbar-brand app-brand demo d-flex py-3 px-4 border-bottom">
-        <a href="{{ url('/') }}" class="app-brand-link gap-2">
-          <span class="app-brand-logo demo">
-            @include('_partials.macros', ['height' => 20])
+        <a href="{{ url('/') }}" class="app-brand-link">
+          <span class="app-brand-logo demo app-brand-img">
+            <img src="{{ Helper::logoAsset('dark') }}" alt="Wapify" style="height: 44px; width: auto;">
           </span>
-          <span class="app-brand-text demo menu-text fw-bold">{{ config('variables.templateName') }}</span>
         </a>
       </div>
 

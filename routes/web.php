@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
+use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
@@ -60,6 +61,7 @@ use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
 use App\Http\Controllers\SoftwareController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
@@ -108,10 +110,16 @@ Route::get('/wapify', function ()
 
     return view('homes.wapify');
 })->name('wapify');
+
+Route::get('/wapify/ayuda', [ManualController::class, 'ayuda'])->name('wapify.ayuda');
+Route::redirect('/ayuda', '/wapify/ayuda', 301)->name('ayuda');
+
 Route::get('/landing/gracias', fn () => view('landing-gracias'))->name('landing.gracias');
 Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-business-creation', ['token' => $token]))
     ->name('landing.business-creation');
 
+Route::get('/assistant/activity', [AssistantActivityController::class, 'index'])->name('assistant.activity')->middleware('auth');
+Route::get('/assistant/activity/data', [AssistantActivityController::class, 'data'])->name('assistant.activity.data')->middleware('auth');
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
@@ -665,6 +673,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/product', [ProductController::class, 'store'])->name('product.store');
     Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+    // Store Routes
+    Route::get('/store/list', [StoreController::class, 'index'])->name('store.index');
+    Route::get('/store/create', [StoreController::class, 'create'])->name('store.create');
+    Route::post('/store', [StoreController::class, 'store'])->name('store.store');
+    Route::get('/store/{id}', [StoreController::class, 'show'])->name('store.show');
+    Route::get('/store/{id}/edit', [StoreController::class, 'edit'])->name('store.edit');
+    Route::put('/store/{id}', [StoreController::class, 'update'])->name('store.update');
+    Route::delete('/store/{id}', [StoreController::class, 'destroy'])->name('store.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
     Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');

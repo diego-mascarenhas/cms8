@@ -18,9 +18,11 @@ return new class extends Migration
             $table->string('name');
             $table->string('code', 64)->nullable();
             $table->string('address')->nullable();
+            $table->json('data')->nullable();
             $table->boolean('status')->default(true);
             $table->boolean('is_main')->default(false);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['team_id', 'name']);
             $table->unique(['team_id', 'code']);
