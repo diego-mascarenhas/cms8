@@ -50,7 +50,7 @@ class AssistantActivityPageTest extends TestCase
         $response = $this->actingAs($admin)->get(route('assistant.activity'));
 
         $response->assertOk();
-        $response->assertSee('AI Activity');
+        $response->assertSee('Actividad de IA');
         $response->assertSee('Billing follow-up');
         $response->assertSee('1,500');
     }

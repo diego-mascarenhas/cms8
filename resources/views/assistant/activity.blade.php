@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'AI Activity')
+@section('title', 'Actividad de IA')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
@@ -17,7 +17,7 @@
                 order: [[0, 'desc']],
                 pageLength: 25,
                 language: {
-                    emptyTable: 'No assistant activity found for this range.'
+                    emptyTable: 'No se encontró actividad del asistente para este rango.'
                 }
             });
         });
@@ -27,8 +27,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">AI Activity</h4>
-        <p class="text-muted">Team assistant conversations, token usage, model and estimated costs</p>
+        <h4 class="mb-1 mt-3">Actividad de IA</h4>
+        <p class="text-muted">Conversaciones del asistente del equipo, uso de tokens, modelo y costos estimados</p>
     </div>
 </div>
 
@@ -36,7 +36,7 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
-                <small class="text-muted d-block mb-1">Assistant messages</small>
+                <small class="text-muted d-block mb-1">Mensajes del asistente</small>
                 <h4 class="mb-0">{{ \App\Helpers\Helpers::formatCompactNumber($totalMessages) }}</h4>
             </div>
         </div>
@@ -44,7 +44,7 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
-                <small class="text-muted d-block mb-1">Total tokens</small>
+                <small class="text-muted d-block mb-1">Tokens totales</small>
                 <h4 class="mb-0">{{ \App\Helpers\Helpers::formatCompactNumber($totalTokens) }}</h4>
             </div>
         </div>
@@ -52,7 +52,7 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
-                <small class="text-muted d-block mb-1">Estimated cost (USD)</small>
+                <small class="text-muted d-block mb-1">Costo estimado (USD)</small>
                 <h4 class="mb-0">${{ number_format($totalEstimatedCostUsd, 6) }}</h4>
             </div>
         </div>
@@ -62,20 +62,20 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0">Conversation messages</h5>
-            <small class="text-muted">Default provider/model: {{ $defaultProvider }} / {{ $defaultModel }}</small>
+            <h5 class="mb-0">Mensajes de conversaciones</h5>
+            <small class="text-muted">Proveedor/modelo por defecto: {{ $defaultProvider }} / {{ $defaultModel }}</small>
         </div>
         <form method="GET" action="{{ route('assistant.activity') }}" class="d-flex align-items-end gap-2">
             <div>
-                <label for="start_date" class="form-label mb-1">From</label>
+                <label for="start_date" class="form-label mb-1">Desde</label>
                 <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate }}">
             </div>
             <div>
-                <label for="end_date" class="form-label mb-1">To</label>
+                <label for="end_date" class="form-label mb-1">Hasta</label>
                 <input type="date" id="end_date" name="end_date" class="form-control form-control-sm" value="{{ $endDate }}">
             </div>
             <div>
-                <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Apply</button>
+                <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Aplicar</button>
             </div>
         </form>
     </div>
@@ -83,14 +83,14 @@
         <table id="assistant-activity-table" class="table table-hover">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>User</th>
-                    <th>Conversation</th>
-                    <th>Model</th>
-                    <th class="text-end">Prompt</th>
-                    <th class="text-end">Completion</th>
-                    <th class="text-end">Total tokens</th>
-                    <th class="text-end">Estimated USD</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Conversación</th>
+                    <th>Modelo</th>
+                    <th class="text-end">Entrada</th>
+                    <th class="text-end">Salida</th>
+                    <th class="text-end">Tokens totales</th>
+                    <th class="text-end">USD estimado</th>
                 </tr>
             </thead>
             <tbody>
@@ -104,13 +104,13 @@
                         </td>
                         <td>
                             <div class="d-flex flex-column">
-                                <span>{{ $message->conversation?->user?->name ?? $message->user?->name ?? 'Unknown' }}</span>
+                                <span>{{ $message->conversation?->user?->name ?? $message->user?->name ?? 'Desconocido' }}</span>
                                 <small class="text-muted">{{ $message->conversation?->user?->email ?? $message->user?->email }}</small>
                             </div>
                         </td>
                         <td>
                             <div class="d-flex flex-column">
-                                <span>{{ $message->conversation?->title ?? 'Untitled' }}</span>
+                                <span>{{ $message->conversation?->title ?? 'Sin título' }}</span>
                                 <small class="text-muted">{{ $message->conversation_id }}</small>
                             </div>
                         </td>
@@ -127,7 +127,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No assistant activity found for this team.</td>
+                        <td colspan="8" class="text-center text-muted py-4">No se encontró actividad del asistente para este equipo.</td>
                     </tr>
                 @endforelse
             </tbody>
