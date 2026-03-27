@@ -60,6 +60,7 @@ use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
 use App\Http\Controllers\SoftwareController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
@@ -669,6 +670,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/product', [ProductController::class, 'store'])->name('product.store');
     Route::put('/product/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+    // Store Routes
+    Route::get('/store/list', [StoreController::class, 'index'])->name('store.index');
+    Route::get('/store/create', [StoreController::class, 'create'])->name('store.create');
+    Route::post('/store', [StoreController::class, 'store'])->name('store.store');
+    Route::get('/store/{id}', [StoreController::class, 'show'])->name('store.show');
+    Route::get('/store/{id}/edit', [StoreController::class, 'edit'])->name('store.edit');
+    Route::put('/store/{id}', [StoreController::class, 'update'])->name('store.update');
+    Route::delete('/store/{id}', [StoreController::class, 'destroy'])->name('store.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
     Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');
