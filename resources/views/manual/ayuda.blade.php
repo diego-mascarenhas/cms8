@@ -7,14 +7,14 @@
     <div class="col-12 col-lg-10 col-xl-8">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Guía rápida: venta por WhatsApp') }}</h4>
-                <p class="text-muted small mb-0 mt-1">{{ __('Del inicio de sesión a cobrar pedidos y coordinar entregas con el asistente.') }}</p>
+                <h4 class="card-title mb-0">{{ __('Guía rápida de Wapify') }}</h4>
+                <p class="text-muted small mb-0 mt-1">{{ __('Paso a paso para configurar tu negocio, vender por WhatsApp y gestionar pedidos en Wapify.') }}</p>
             </div>
             <div class="card-body">
                 <ol class="ps-3 mb-0">
-                    <li class="mb-4">
-                        <h6 class="mb-2">{{ __('1. Iniciá sesión y elegí tu equipo') }}</h6>
-                        <p class="mb-2">{{ __('Entrá con tu usuario y contraseña. Si tenés varios equipos, seleccioná el correcto en el selector de equipo (arriba o en tu perfil), porque productos, pedidos y WhatsApp son por equipo.') }}</p>
+                    <li id="configuracion-negocio" class="mb-4">
+                        <h6 class="mb-2">{{ __('1. Configuración del negocio') }}</h6>
+                        <p class="mb-2">{{ __('Ingresá a Wapify y completá los datos de tu negocio: nombre comercial, horarios de atención, zona de entrega y medios de pago. Esta base permite que el asistente responda con información correcta a cada cliente.') }}</p>
                         @auth
                             <p class="mb-0"><a href="{{ url('/dashboard') }}" class="fw-medium">{{ __('Ir al panel') }}</a></p>
                         @else
@@ -22,19 +22,9 @@
                         @endauth
                     </li>
 
-                    <li class="mb-4">
-                        <h6 class="mb-2">{{ __('2. Conectá WhatsApp y escaneá el QR') }}</h6>
-                        <p class="mb-2">{!! __('Abrí <strong>Chat</strong> en el menú. Ahí vinculás el número de WhatsApp del negocio: mostramos un código QR; escanealo con WhatsApp en el teléfono (Dispositivos vinculados / Emparejar). Cuando quede conectado, ya podés recibir y enviar mensajes desde Humano.') !!}</p>
-                        @auth
-                            <p class="mb-0"><a href="{{ route('chat.index') }}" class="fw-medium">{{ __('Abrir Chat y WhatsApp') }}</a></p>
-                        @else
-                            <p class="mb-0 text-muted small">{{ __('Ruta:') }} <code class="user-select-all">/chat</code></p>
-                        @endauth
-                    </li>
-
-                    <li class="mb-4">
-                        <h6 class="mb-2">{{ __('3. Cargá o editá tus productos para vender') }}</h6>
-                        <p class="mb-2">{!! __('En <strong>Productos</strong> revisá el catálogo: nombre, precio, descripción, sucursal si aplica, y activá los que quieras ofrecer por WhatsApp. Los clientes usan ese catálogo cuando compran con el asistente o el flujo de carrito.') !!}</p>
+                    <li id="carga-productos" class="mb-4">
+                        <h6 class="mb-2">{{ __('2. Carga de productos') }}</h6>
+                        <p class="mb-2">{!! __('Entrá a <strong>Productos</strong> y cargá tu catálogo con nombre, precio, descripción y disponibilidad. Usá fotos claras y categorías para que el cliente encuentre rápido lo que busca cuando consulta por WhatsApp.') !!}</p>
                         @auth
                             @can('viewAny', \App\Models\Product::class)
                                 <p class="mb-0"><a href="{{ route('product.index') }}" class="fw-medium">{{ __('Ir a Productos') }}</a></p>
@@ -46,9 +36,19 @@
                         @endauth
                     </li>
 
-                    <li class="mb-4">
-                        <h6 class="mb-2">{{ __('4. Recibí pedidos y gestioná el estado') }}</h6>
-                        <p class="mb-2">{!! __('Los pedidos que entran por WhatsApp o los que cargás a mano aparecen en <strong>Pedidos</strong>. Revisá cada uno: líneas, cliente, total y estado (pendiente, en preparación, enviado, etc.). Actualizá el estado para que tu equipo y el cliente vean el avance.') !!}</p>
+                    <li id="escaneo-qr" class="mb-4">
+                        <h6 class="mb-2">{{ __('3. Escaneo de QR') }}</h6>
+                        <p class="mb-2">{!! __('Abrí <strong>Chat</strong> y vinculá tu número de WhatsApp escaneando el código QR desde el celular (Dispositivos vinculados / Emparejar dispositivo). Una vez conectado, Wapify puede recibir y responder mensajes en tiempo real.') !!}</p>
+                        @auth
+                            <p class="mb-0"><a href="{{ route('chat.index') }}" class="fw-medium">{{ __('Abrir Chat y WhatsApp') }}</a></p>
+                        @else
+                            <p class="mb-0 text-muted small">{{ __('Ruta:') }} <code class="user-select-all">/chat</code></p>
+                        @endauth
+                    </li>
+
+                    <li id="pedidos" class="mb-4">
+                        <h6 class="mb-2">{{ __('4. Pedidos') }}</h6>
+                        <p class="mb-2">{!! __('Cada compra que llega por WhatsApp aparece en <strong>Pedidos</strong> con detalle de productos, cliente, dirección y total. Confirmá disponibilidad, tiempos de entrega y forma de pago para avanzar con claridad.') !!}</p>
                         @auth
                             @can('viewAny', \App\Models\Order::class)
                                 <p class="mb-0"><a href="{{ route('order.index') }}" class="fw-medium">{{ __('Ir a Pedidos') }}</a></p>
@@ -60,13 +60,17 @@
                         @endauth
                     </li>
 
-                    <li class="mb-0">
-                        <h6 class="mb-2">{{ __('5. Usá el asistente para responder y coordinar entregas') }}</h6>
-                        <p class="mb-2">{!! __('En la misma pantalla de <strong>Chat</strong> tenés el asistente: puede ayudarte a contestar consultas, seguir pedidos y dar información de envío o retiro según cómo lo tengas configurado. Revisá las respuestas antes de enviar si tu equipo trabaja con revisión manual.') !!}</p>
+                    <li id="ordenes" class="mb-0">
+                        <h6 class="mb-2">{{ __('5. Ordenes') }}</h6>
+                        <p class="mb-2">{!! __('Gestioná las ordenes por estado: nueva, en preparación, en camino y entregada. Mantener cada orden actualizada ayuda al equipo a trabajar coordinado y al cliente a saber exactamente en qué etapa está su compra.') !!}</p>
                         @auth
-                            <p class="mb-0"><a href="{{ route('chat.index') }}" class="fw-medium">{{ __('Abrir Chat / asistente') }}</a></p>
+                            @can('viewAny', \App\Models\Order::class)
+                                <p class="mb-0"><a href="{{ route('order.index') }}" class="fw-medium">{{ __('Ver ordenes') }}</a></p>
+                            @else
+                                <p class="mb-0 text-muted small">{{ __('Ruta:') }} <code class="user-select-all">/order/list</code></p>
+                            @endcan
                         @else
-                            <p class="mb-0 text-muted small">{{ __('Ruta:') }} <code class="user-select-all">/chat</code></p>
+                            <p class="mb-0 text-muted small">{{ __('Ruta:') }} <code class="user-select-all">/order/list</code></p>
                         @endauth
                     </li>
                 </ol>
@@ -74,9 +78,8 @@
                 <hr class="my-4">
 
                 <p class="text-muted small mb-0">
-                    {{ __('Más detalle en el manual:') }}
-                    <a href="{{ route('manual.chat') }}">{{ __('Chat y WhatsApp') }}</a>,
-                    <a href="{{ route('manual.products-and-orders') }}">{{ __('Productos y pedidos') }}</a>.
+                    {{ __('Tip: seguí este orden para empezar rápido en Wapify:') }}
+                    {{ __('configuración del negocio -> productos -> QR -> pedidos -> ordenes.') }}
                 </p>
             </div>
         </div>
