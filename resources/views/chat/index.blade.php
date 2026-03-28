@@ -1152,9 +1152,6 @@
         var waQrRefreshInFlight = false;
 
         function runWhatsappQrServerRefreshAndPoll() {
-            // #region agent log
-            fetch('http://127.0.0.1:7569/ingest/19ad33fb-3997-4f77-843b-4dd8adb3963b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '395dd5' }, body: JSON.stringify({ sessionId: '395dd5', runId: 'post-fix', hypothesisId: 'FIX', location: 'chat/index:auto-refresh-start', message: 'Automatic WhatsApp QR refresh (POST refresh-qr + poll image)', data: {}, timestamp: Date.now() }) }).catch(function () {});
-            // #endregion
             if (waQrRefreshInFlight) {
                 return;
             }
@@ -1280,9 +1277,6 @@
                                 }
                                 qrImg.onload = null;
                                 qrImg.onerror = null;
-                                // #region agent log
-                                fetch('http://127.0.0.1:7569/ingest/19ad33fb-3997-4f77-843b-4dd8adb3963b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '395dd5' }, body: JSON.stringify({ sessionId: '395dd5', runId: 'post-fix', hypothesisId: 'FIX', location: 'chat/index:auto-refresh-qr-visible', message: 'QR image visible after auto refresh', data: { naturalWidth: nw }, timestamp: Date.now() }) }).catch(function () {});
-                                // #endregion
                                 releaseRefresh();
                             } else if (qrRetries < maxRetries) {
                                 qrRetries += 1;
