@@ -10,12 +10,45 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-chat.css') }}" />
     <style>
         #chat-qr-container {
+            position: relative;
             min-width: 200px;
             min-height: 200px;
         }
         #chat-qr-container.chat-qr-loading {
-            background-color: #f0f0f0;
-            border-radius: 0.375rem;
+            background-color: transparent;
+            border-radius: 0;
+        }
+        #chat-qr-container.chat-qr-loading .chat-qr-fallback-frame {
+            opacity: 0.65;
+        }
+        .chat-qr-fallback-frame {
+            width: 200px;
+            height: 200px;
+            background-color: var(--bs-gray-75, #eceef2);
+            box-shadow: none;
+        }
+        .chat-qr-fallback-pattern {
+            position: absolute;
+            inset: -10px;
+            z-index: 0;
+            pointer-events: none;
+            background-color: #dfe3ea;
+            background-image:
+                linear-gradient(90deg, rgba(67, 89, 113, 0.22) 50%, transparent 50%),
+                linear-gradient(rgba(67, 89, 113, 0.22) 50%, transparent 50%);
+            background-size: 7px 7px;
+            filter: blur(3px);
+            opacity: 0.55;
+        }
+        .chat-qr-fallback-vignette {
+            z-index: 1;
+            background: radial-gradient(
+                ellipse 70% 70% at 50% 50%,
+                rgba(255, 255, 255, 0.88) 0%,
+                rgba(255, 255, 255, 0.35) 55%,
+                rgba(255, 255, 255, 0.12) 100%
+            );
+            pointer-events: none;
         }
         .chat-history-header {
             min-height: 4.5rem;
@@ -127,17 +160,23 @@
         }
 
         (function persistAiTogglePreference() {
-            var userDefault = {{ json_encode($userChatAiToggleDefault ?? true) }};
+            var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
-            useAiToggle.checked = userDefault;
+            useAiToggle.checked = toggleDefault;
             useAiToggle.addEventListener('change', function() {
                 var aiOn = useAiToggle.checked;
                 var token = document.querySelector('meta[name="csrf-token"]');
+                var cidEl = document.getElementById('contact-id');
+                var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
                 if (token) {
+                    var body = { on: aiOn };
+                    if (contactId > 0) {
+                        body.contact_id = contactId;
+                    }
                     fetch('{{ route("chat.ai-toggle-preference") }}', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token.getAttribute('content') },
-                        body: JSON.stringify({ on: aiOn })
+                        body: JSON.stringify(body)
                     }).catch(function() {});
                 }
             });
@@ -1041,7 +1080,10 @@
                     },
                     body: '_token=' + encodeURIComponent(token ? token.value : '')
                 })
-                .then(function (r) { return r.json(); })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('refresh failed');
+                    return r.json();
+                })
                 .then(function (data) {
                     if (msgEl && data.message) {
                         msgEl.textContent = data.message;
@@ -1061,20 +1103,29 @@
                                     qrImg.onerror = null;
                                 } else if (qrRetries < maxRetries) {
                                     qrRetries += 1;
+                                    var fbRetry = document.getElementById('chat-qr-fallback');
+                                    if (fbRetry) fbRetry.classList.remove('d-none');
+                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     setTimeout(setQrSrc, 2500);
                                 } else {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                    qrImg.classList.add('d-none');
+                                    var fbEnd = document.getElementById('chat-qr-fallback');
+                                    if (fbEnd) fbEnd.classList.remove('d-none');
                                     qrImg.onload = null;
                                     qrImg.onerror = null;
                                 }
                             };
                             qrImg.onerror = function () {
                                 if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                                qrImg.classList.remove('d-none');
+                                qrImg.classList.add('d-none');
+                                var fbErr = document.getElementById('chat-qr-fallback');
+                                if (fbErr) fbErr.classList.remove('d-none');
                                 qrImg.onload = null;
                                 qrImg.onerror = null;
                             };
-                            qrImg.src = src;
+                            qrImg.removeAttribute('src');
+                            setTimeout(function () { qrImg.src = src; }, 0);
                         }
                         setTimeout(setQrSrc, 4000);
                     } else {
@@ -1096,49 +1147,186 @@
             });
         }
 
-        // When disconnected, try to show QR image only (do NOT call refresh — that wipes auth and forces re-scan).
-        // If Node restarted, /status will trigger socket restore from auth; polling will then show connected.
         var waConnectionBlock = document.getElementById('chat-sidebar-whatsapp-connection-block');
-        if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') !== 'connected') {
-            var qrContainer = document.getElementById('chat-qr-container');
+        var waTeamWasConnected = {{ ($teamWhatsAppIsConnected ?? false) ? 'true' : 'false' }};
+        var waQrRefreshInFlight = false;
+
+        function runWhatsappQrServerRefreshAndPoll() {
+            // #region agent log
+            fetch('http://127.0.0.1:7569/ingest/19ad33fb-3997-4f77-843b-4dd8adb3963b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '395dd5' }, body: JSON.stringify({ sessionId: '395dd5', runId: 'post-fix', hypothesisId: 'FIX', location: 'chat/index:auto-refresh-start', message: 'Automatic WhatsApp QR refresh (POST refresh-qr + poll image)', data: {}, timestamp: Date.now() }) }).catch(function () {});
+            // #endregion
+            if (waQrRefreshInFlight) {
+                return;
+            }
+            waQrRefreshInFlight = true;
             var qrImg = document.getElementById('chat-whatsapp-qr-img');
-            if (qrContainer && qrImg && qrImg.dataset.qrBase) {
-                var qrRetries = 0;
-                var maxRetries = 24;
-                function setQrSrc() {
-                    var src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                    var fallbackEl = document.getElementById('chat-qr-fallback');
-                    qrImg.onload = function () {
-                        if (qrImg.naturalWidth > 20) {
-                            if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                            qrImg.classList.remove('d-none');
-                            if (fallbackEl) fallbackEl.classList.add('d-none');
-                            qrImg.onload = null;
-                            qrImg.onerror = null;
-                        } else if (qrRetries < maxRetries) {
-                            qrRetries += 1;
-                            if (fallbackEl) fallbackEl.classList.remove('d-none');
-                            setTimeout(setQrSrc, 2500);
-                        } else {
-                            if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                            qrImg.classList.add('d-none');
-                            if (fallbackEl) fallbackEl.classList.remove('d-none');
-                            qrImg.onload = null;
-                            qrImg.onerror = null;
+            var qrContainer = document.getElementById('chat-qr-container');
+            var fallbackEl = document.getElementById('chat-qr-fallback');
+            var qrServiceErrEl = document.getElementById('chat-qr-service-error');
+            var token = document.querySelector('meta[name="csrf-token"]');
+            var t = token ? token.getAttribute('content') : '';
+
+            function releaseRefresh() {
+                waQrRefreshInFlight = false;
+            }
+
+            if (!t) {
+                releaseRefresh();
+
+                return;
+            }
+            if (qrServiceErrEl) {
+                qrServiceErrEl.classList.add('d-none');
+                qrServiceErrEl.textContent = '';
+            }
+            if (qrContainer) {
+                qrContainer.classList.add('chat-qr-loading');
+            }
+            if (qrImg) {
+                qrImg.classList.add('d-none');
+            }
+            if (fallbackEl) {
+                fallbackEl.classList.remove('d-none');
+            }
+
+            fetch('{{ route("chat.whatsapp-refresh-qr") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': t,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: '_token=' + encodeURIComponent(t)
+            })
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        return { r: r, data: data && typeof data === 'object' ? data : {} };
+                    }).catch(function () {
+                        return { r: r, data: {} };
+                    });
+                })
+                .then(function (payload) {
+                    var r = payload.r;
+                    var data = payload.data;
+                    if (!r.ok || data.ok === false) {
+                        var failMsg = (data && data.message) ? data.message : '{{ __("Could not refresh the QR code.") }}';
+                        if (qrServiceErrEl) {
+                            qrServiceErrEl.textContent = failMsg;
+                            qrServiceErrEl.classList.remove('d-none');
                         }
-                    };
-                    qrImg.onerror = function () {
-                        if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                        if (qrContainer) {
+                            qrContainer.classList.remove('chat-qr-loading');
+                        }
+                        if (fallbackEl) {
+                            fallbackEl.classList.remove('d-none');
+                        }
+                        releaseRefresh();
+
+                        return;
+                    }
+                    if (qrServiceErrEl) {
+                        qrServiceErrEl.classList.add('d-none');
+                        qrServiceErrEl.textContent = '';
+                    }
+                    if (!qrImg || !qrImg.dataset.qrBase) {
+                        if (qrContainer) {
+                            qrContainer.classList.remove('chat-qr-loading');
+                        }
+                        if (fallbackEl) {
+                            fallbackEl.classList.remove('d-none');
+                        }
+                        releaseRefresh();
+
+                        return;
+                    }
+                    var qrRetries = 0;
+                    var maxRetries = 40;
+
+                    function finishFailure() {
+                        if (qrContainer) {
+                            qrContainer.classList.remove('chat-qr-loading');
+                        }
                         qrImg.classList.add('d-none');
-                        if (fallbackEl) fallbackEl.classList.remove('d-none');
+                        if (fallbackEl) {
+                            fallbackEl.classList.remove('d-none');
+                        }
+                        var errPoll = document.getElementById('chat-qr-service-error');
+                        if (errPoll) {
+                            errPoll.textContent = '{{ __("The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.") }}';
+                            errPoll.classList.remove('d-none');
+                        }
                         qrImg.onload = null;
                         qrImg.onerror = null;
-                    };
-                    qrContainer.classList.add('chat-qr-loading');
-                    qrImg.classList.add('d-none');
-                    qrImg.src = src;
-                }
-                setQrSrc();
+                        releaseRefresh();
+                    }
+
+                    function setQrSrcAfterRefresh() {
+                        var src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                        qrImg.onload = function () {
+                            var nw = qrImg.naturalWidth;
+                            if (nw > 20) {
+                                if (qrContainer) {
+                                    qrContainer.classList.remove('chat-qr-loading');
+                                }
+                                qrImg.classList.remove('d-none');
+                                if (fallbackEl) {
+                                    fallbackEl.classList.add('d-none');
+                                }
+                                var errOk = document.getElementById('chat-qr-service-error');
+                                if (errOk) {
+                                    errOk.classList.add('d-none');
+                                    errOk.textContent = '';
+                                }
+                                qrImg.onload = null;
+                                qrImg.onerror = null;
+                                // #region agent log
+                                fetch('http://127.0.0.1:7569/ingest/19ad33fb-3997-4f77-843b-4dd8adb3963b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '395dd5' }, body: JSON.stringify({ sessionId: '395dd5', runId: 'post-fix', hypothesisId: 'FIX', location: 'chat/index:auto-refresh-qr-visible', message: 'QR image visible after auto refresh', data: { naturalWidth: nw }, timestamp: Date.now() }) }).catch(function () {});
+                                // #endregion
+                                releaseRefresh();
+                            } else if (qrRetries < maxRetries) {
+                                qrRetries += 1;
+                                setTimeout(setQrSrcAfterRefresh, 2500);
+                            } else {
+                                finishFailure();
+                            }
+                        };
+                        qrImg.onerror = function () {
+                            if (qrRetries < maxRetries) {
+                                qrRetries += 1;
+                                setTimeout(setQrSrcAfterRefresh, 2500);
+                            } else {
+                                finishFailure();
+                            }
+                        };
+                        qrImg.removeAttribute('src');
+                        setTimeout(function () {
+                            qrImg.src = src;
+                        }, 0);
+                    }
+                    setTimeout(setQrSrcAfterRefresh, 3500);
+                })
+                .catch(function () {
+                    if (qrContainer) {
+                        qrContainer.classList.remove('chat-qr-loading');
+                    }
+                    if (fallbackEl) {
+                        fallbackEl.classList.remove('d-none');
+                    }
+                    var errNet = document.getElementById('chat-qr-service-error');
+                    if (errNet) {
+                        errNet.textContent = '{{ __("Could not refresh the QR code.") }}';
+                        errNet.classList.remove('d-none');
+                    }
+                    releaseRefresh();
+                });
+        }
+
+        if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') !== 'connected') {
+            var qrContainerInit = document.getElementById('chat-qr-container');
+            var qrImgInit = document.getElementById('chat-whatsapp-qr-img');
+            if (qrContainerInit && qrImgInit && qrImgInit.dataset.qrBase) {
+                runWhatsappQrServerRefreshAndPoll();
             }
         }
 
@@ -1176,17 +1364,20 @@
             var displayNumber = data.teamNumberFormatted || null;
             if (titleEl) titleEl.textContent = displayNumber || '{{ __("Not linked") }}';
             if (data.isTeamConnected) {
+                waTeamWasConnected = true;
                 if (waConnectionBlock) { waConnectionBlock.classList.add('d-none'); }
                 if (linkExistingBlock) { linkExistingBlock.classList.add('d-none'); }
                 if (badgeEl) { badgeEl.textContent = connectedLabel; badgeEl.className = 'badge bg-success mt-1'; }
                 if (avatarEl) { avatarEl.classList.remove('avatar-offline'); avatarEl.classList.add('avatar-online'); }
                 if (contactsWaAvatar) { contactsWaAvatar.classList.remove('avatar-offline'); contactsWaAvatar.classList.add('avatar-online'); }
             } else {
+                var prevTeamConnected = waTeamWasConnected;
+                waTeamWasConnected = false;
                 if (waConnectionBlock) {
                     waConnectionBlock.classList.remove('d-none');
                     var qrImgReload = document.getElementById('chat-whatsapp-qr-img');
-                    if (qrImgReload && qrImgReload.dataset.qrBase) {
-                        qrImgReload.src = qrImgReload.dataset.qrBase + '?t=' + Date.now();
+                    if (prevTeamConnected && qrImgReload && qrImgReload.dataset.qrBase) {
+                        runWhatsappQrServerRefreshAndPoll();
                     }
                 }
                 if (linkExistingBlock && data.status === 'connected' && data.number) {
@@ -1215,41 +1406,6 @@
                     })
                     .catch(function () {});
             }, 3000);
-        }
-
-        var btnGenerateNewQr = document.getElementById('chat-btn-generate-new-qr');
-        if (btnGenerateNewQr) {
-            btnGenerateNewQr.addEventListener('click', function () {
-                var qrImg = document.getElementById('chat-whatsapp-qr-img');
-                var qrContainer = document.getElementById('chat-qr-container');
-                var fallbackEl = document.getElementById('chat-qr-fallback');
-                var token = document.querySelector('meta[name="csrf-token"]');
-                var t = token ? token.getAttribute('content') : '';
-                if (!t) return;
-                btnGenerateNewQr.disabled = true;
-                fetch('{{ route("chat.whatsapp-refresh-qr") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': t,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: '_token=' + encodeURIComponent(t)
-                })
-                .then(function () {
-                    if (fallbackEl) fallbackEl.classList.add('d-none');
-                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
-                    if (qrImg) qrImg.classList.remove('d-none');
-                    setTimeout(function () {
-                        if (qrImg && qrImg.dataset.qrBase) {
-                            qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                        }
-                        btnGenerateNewQr.disabled = false;
-                    }, 4000);
-                })
-                .catch(function () { btnGenerateNewQr.disabled = false; });
-            });
         }
 
         var btnLinkExisting = document.getElementById('chat-btn-link-existing-number');
@@ -1326,16 +1482,15 @@
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
                                     <div class="d-inline-block text-center" id="chat-qr-container">
-                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}"
-                                            onload="var el=this; var fb=document.getElementById('chat-qr-fallback'); if(el.naturalWidth>20){el.classList.remove('d-none'); if(fb)fb.classList.add('d-none');} else {if(fb)fb.classList.remove('d-none');}"
-                                            onerror="this.classList.add('d-none'); document.getElementById('chat-qr-fallback').classList.remove('d-none');">
+                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
                                         <div id="chat-qr-fallback" class="mb-2 d-none">
-                                            <p class="small text-muted mb-2">{{ __('If this team is already linked, reload the page to refresh. Otherwise wait a few seconds for the QR code to appear.') }}</p>
-                                            <button type="button" id="chat-btn-generate-new-qr" class="btn btn-sm btn-outline-warning w-100">
-                                                <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
-                                            </button>
+                                            <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
+                                                <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
+                                                <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
+                                            </div>
                                         </div>
                                     </div>
+                                    <p id="chat-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
                                 @endif
                                 <div id="chat-link-existing-number-block" class="d-none mt-2" data-number="">
                                     <p class="small text-muted mb-2">{{ __('A number is connected in the service but not linked to this team.') }}</p>
@@ -1862,7 +2017,7 @@
                         </ul>
                     </div>
                     <!-- Chat message form -->
-                    <div class="chat-history-footer shadow-sm">
+                    <div class="chat-history-footer">
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center" @if($viewAssistant ?? false) data-view-assistant="1" @endif>
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">

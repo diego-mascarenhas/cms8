@@ -919,6 +919,11 @@
   "If you don't see the QR code, generate a new one below.": "Si no ves el código QR, genera uno nuevo abajo.",
   "Generate new QR code": "Generar nuevo código QR",
   "Request sent. Wait a few seconds for the QR code to appear.": "Solicitud enviada. Espera unos segundos a que aparezca el código QR.",
+  "The WhatsApp service URL is not configured for this team.": "La URL del servicio de WhatsApp no está configurada para este equipo.",
+  "Could not reach the WhatsApp service. Check that it is running and the URL is correct.": "No se pudo conectar al servicio de WhatsApp. Comprueba que esté en ejecución y que la URL sea correcta.",
+  "The WhatsApp service returned an error (:status).": "El servicio de WhatsApp devolvió un error (:status).",
+  "Could not refresh the QR code.": "No se pudo actualizar el código QR.",
+  "The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.": "El código QR no se cargó. Asegúrate de que el servicio de WhatsApp esté en ejecución y sea accesible desde este servidor.",
   "The box below updates every few seconds until the QR code appears.": "El recuadro inferior se actualiza cada pocos segundos hasta que aparezca el código QR.",
   "WhatsApp connected": "WhatsApp conectado",
   "Open sidebar to scan QR and link WhatsApp": "Abre el panel lateral para escanear el QR y vincular WhatsApp",
@@ -1407,5 +1412,15 @@
   "Uploaded": "Subido",
   "Replaced": "Reemplazado",
   "Restored": "Restaurado",
-  "Share link": "Enlace para compartir"
+  "Share link": "Enlace para compartir",
+  "Creating...": "Creando...",
+  "Please enter at least 2 characters to create a category.": "Ingresa al menos 2 caracteres para crear una categoría.",
+  "Could not create the category.": "No se pudo crear la categoría.",
+  "Manage categories": "Gestionar categorías",
+  "Global": "Global",
+  "Category updated.": "Categoría actualizada.",
+  "Category deleted.": "Categoría eliminada.",
+  "Remove or reassign subcategories first.": "Quita o reasigna las subcategorías primero.",
+  "This category is in use and cannot be deleted.": "Esta categoría está en uso y no se puede eliminar.",
+  "Delete": "Eliminar"
 }

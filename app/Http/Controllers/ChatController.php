@@ -380,6 +380,16 @@ class ChatController extends Controller
             ? ! app(UserPreferencesSettings::class)->chat_ai_assistance_blocked
             : true;
 
+        $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        if ($selectedContact)
+        {
+            $contactData = $selectedContact->data;
+            if (is_object($contactData) && property_exists($contactData, 'chat_assistant_ai_enabled'))
+            {
+                $contactChatAiToggleDefault = filter_var($contactData->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
         $whatsappDriver = config('whatsapp.driver');
         $whatsappStatus = null;
         $teamWhatsAppNumber = null;
@@ -446,7 +456,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
     }
 
     /**
@@ -726,17 +736,43 @@ class ChatController extends Controller
     }
 
     /**
-     * Save AI assistance opt-out for the authenticated user. Only persists when blocking replies ({@see UserPreferencesSettings}).
+     * Save per-contact AI assistance preference in {@see Contact::$data} when contact_id is sent;
+     * otherwise fall back to user-level opt-out ({@see UserPreferencesSettings}).
      */
     public function updateAiTogglePreference(Request $request)
     {
         $request->validate([
             'on' => 'required|boolean',
+            'contact_id' => 'sometimes|nullable|integer',
         ]);
 
         if (! auth()->check())
         {
             return response()->json(['success' => false], 401);
+        }
+
+        $contactId = $request->integer('contact_id') ?: null;
+        if ($contactId)
+        {
+            $contact = Contact::query()->whereKey($contactId)->first();
+            if (! $contact)
+            {
+                return response()->json(['success' => false], 404);
+            }
+
+            $this->authorize('update', $contact);
+
+            $payload = json_encode($contact->data ?? new \stdClass);
+            $data = json_decode($payload ?: '{}', true);
+            if (! is_array($data))
+            {
+                $data = [];
+            }
+            $data['chat_assistant_ai_enabled'] = $request->boolean('on');
+            $contact->data = $data;
+            $contact->save();
+
+            return response()->json(['success' => true]);
         }
 
         $group = 'user_'.auth()->id();
@@ -1515,7 +1551,6 @@ class ChatController extends Controller
         try
         {
             $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->withHeaders($headers)->get($url);
-            $status = $response->status();
         } catch (\Throwable $e)
         {
             report($e);
@@ -1524,7 +1559,6 @@ class ChatController extends Controller
         }
         $body = $response->body();
         $bodyLen = strlen($body);
-        $isPng = ($bodyLen >= 8 && substr($body, 0, 8) === "\x89PNG\r\n\x1a\n");
 
         if (! $response->successful())
         {
@@ -1566,14 +1600,48 @@ class ChatController extends Controller
         }
         $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         $team = auth()->user()?->currentTeam;
-        if ($baseUrl !== '')
+
+        if ($baseUrl === '')
         {
-            $refreshUrl = $baseUrl.'/refresh';
-            if ($team)
-            {
-                $refreshUrl .= (str_contains($refreshUrl, '?') ? '&' : '?').'team_id='.$team->id;
-            }
-            \Illuminate\Support\Facades\Http::timeout(10)->get($refreshUrl);
+            $err = __('The WhatsApp service URL is not configured for this team.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 422)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        $refreshUrl = $baseUrl.'/refresh';
+        if ($team)
+        {
+            $refreshUrl .= (str_contains($refreshUrl, '?') ? '&' : '?').'team_id='.$team->id;
+        }
+        $refreshHttpStatus = null;
+        $refreshException = false;
+        try
+        {
+            $refreshResp = \Illuminate\Support\Facades\Http::timeout(10)->get($refreshUrl);
+            $refreshHttpStatus = $refreshResp->status();
+        } catch (\Throwable $e)
+        {
+            $refreshException = true;
+        }
+
+        if ($refreshException)
+        {
+            $err = __('Could not reach the WhatsApp service. Check that it is running and the URL is correct.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 503)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        if ($refreshHttpStatus !== null && $refreshHttpStatus >= 400)
+        {
+            $err = __('The WhatsApp service returned an error (:status).', ['status' => (string) $refreshHttpStatus]);
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 502)
+                : redirect()->route('chat.index')->with('error', $err);
         }
 
         $message = __('Request sent. Wait a few seconds for the QR code to appear.');

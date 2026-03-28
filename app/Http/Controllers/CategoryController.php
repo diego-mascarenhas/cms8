@@ -138,7 +138,7 @@ class CategoryController extends Controller
 
         $categoryData = $category->data ?? [];
         $module = $request->module_id ? Module::find($request->module_id) : null;
-        
+
         if ($module && $module->key === 'multimedia')
         {
             $categoryData = array_merge($categoryData, array_filter([
@@ -154,7 +154,7 @@ class CategoryController extends Controller
                 return ! is_null($value);
             }));
         }
-        
+
         if ($module && $module->key === 'contents')
         {
             // Handle content ordering configuration
@@ -172,7 +172,7 @@ class CategoryController extends Controller
                     }
                 }
             }
-            
+
             // If no custom ordering, use default
             if (empty($contentOrdering))
             {
@@ -181,7 +181,7 @@ class CategoryController extends Controller
                     ['column' => 'created_at', 'direction' => 'desc'],
                 ];
             }
-            
+
             $categoryData['content_ordering'] = $contentOrdering;
         }
 
@@ -447,9 +447,42 @@ class CategoryController extends Controller
             $module = Module::where('key', $request->module_key)->first();
         }
 
+        $moduleId = $module ? $module->id : null;
+        $normalizedName = mb_strtolower(trim($request->name));
+
+        $existingQuery = Category::query()
+            ->where('team_id', $team->id)
+            ->whereNull('parent_id')
+            ->where('status', 1);
+
+        if ($moduleId !== null)
+        {
+            $existingQuery->where('module_id', $moduleId);
+        } else
+        {
+            $existingQuery->whereNull('module_id');
+        }
+
+        $existing = $existingQuery->get()->first(function (Category $category) use ($normalizedName)
+        {
+            return mb_strtolower(trim($category->name)) === $normalizedName;
+        });
+
+        if ($existing)
+        {
+            return response()->json([
+                'success' => true,
+                'existing' => true,
+                'category' => [
+                    'id' => $existing->id,
+                    'name' => $existing->name,
+                ],
+            ]);
+        }
+
         $category = Category::create([
             'name' => $request->name,
-            'module_id' => $module ? $module->id : null,
+            'module_id' => $moduleId,
             'parent_id' => null, // Quick create as parent category
             'order' => 0,
             'status' => 1,
@@ -458,6 +491,7 @@ class CategoryController extends Controller
 
         return response()->json([
             'success' => true,
+            'existing' => false,
             'category' => [
                 'id' => $category->id,
                 'name' => $category->name,
@@ -470,6 +504,73 @@ class CategoryController extends Controller
      */
     private function getCategoryUsageCount($category)
     {
-        return $category->invoiceItems()->count() + $category->services()->count();
+        return $category->blockingDeleteUsageCount();
+    }
+
+    /**
+     * JSON structure for rebuilding module category &lt;select&gt; (parents, optgroups, children).
+     */
+    public function moduleOptions(Request $request)
+    {
+        $this->authorize('viewAny', Category::class);
+
+        $team = Auth::user()->currentTeam;
+
+        $validated = $request->validate([
+            'module_key' => 'required|string',
+        ]);
+
+        $module = Module::where('key', $validated['module_key'])->firstOrFail();
+
+        $baseQuery = Category::query()
+            ->where('module_id', $module->id)
+            ->where('status', 1)
+            ->where(function ($query) use ($team)
+            {
+                $query->whereNull('team_id')
+                    ->orWhere('team_id', $team->id);
+            });
+
+        $parentCategories = (clone $baseQuery)
+            ->whereNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
+
+        $allSubcategories = (clone $baseQuery)
+            ->whereNotNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('parent_id');
+
+        $groups = [];
+        foreach ($parentCategories as $parentCategory)
+        {
+            $subs = $allSubcategories[$parentCategory->id] ?? null;
+            if (! $subs || $subs->isEmpty())
+            {
+                $groups[] = [
+                    'type' => 'option',
+                    'id' => $parentCategory->id,
+                    'label' => $parentCategory->name,
+                ];
+            } else
+            {
+                $groups[] = [
+                    'type' => 'group',
+                    'label' => $parentCategory->name,
+                    'options' => $subs->map(function (Category $c)
+                    {
+                        return [
+                            'id' => $c->id,
+                            'label' => $c->name,
+                        ];
+                    })->values()->all(),
+                ];
+            }
+        }
+
+        return response()->json(['groups' => $groups]);
     }
 }

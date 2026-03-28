@@ -1,10 +1,28 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría'])
+@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true])
 
 <div class="form-group">
-    @if($label !== null && $label !== '')
-        <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    @endif
-    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" data-placeholder="{{ $emptyText }}" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }} @if($disabled) disabled @endif>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        @if($label !== null && $label !== '')
+            <label for="{{ $id }}" class="form-label mb-0">{{ $label }}</label>
+        @else
+            <span class="d-none d-md-block"></span>
+        @endif
+        @if($moduleKey && $allowManageModal && ! $disabled)
+            @can('viewAny', \App\Models\Category::class)
+                @livewire(\App\Livewire\ModuleCategoriesManagerModal::class, ['moduleKey' => $moduleKey, 'linkedSelectId' => $id], key('module-cat-mgr-'.$id.'-'.$moduleKey))
+            @endcan
+        @endif
+    </div>
+    <select
+        id="{{ $id }}"
+        name="{{ $id }}"
+        class="form-control select2 @error($id) is-invalid @enderror"
+        data-placeholder="{{ $emptyText }}"
+        data-allow-clear="true"
+        @if($moduleKey) data-module-key="{{ $moduleKey }}" data-empty-text="{{ $emptyText }}" data-show-empty-option="{{ ($showNull || $allowEmpty) ? '1' : '0' }}" data-allow-empty-select="{{ $allowEmpty ? '1' : '0' }}" @endif
+        {{ $allowEmpty ? '' : 'required' }}
+        @if($disabled) disabled @endif
+    >
         @if($showNull || $allowEmpty)
             <option value="">{{ $emptyText }}</option>
         @endif
@@ -22,6 +40,7 @@
                     'invoice' => 'invoices',
                     'ticket' => 'tickets',
                     'service' => 'services',
+                    'product' => 'products',
                     'communications' => 'communications',
                     'mail' => 'mail',
                     'chat' => 'chat',
@@ -138,11 +157,94 @@
     document.addEventListener('DOMContentLoaded', function() {
         if ($.fn.select2 && $('#{{ $id }}').length) {
             $('#{{ $id }}').select2({
-                placeholder: '{{ $emptyText }}',
+                placeholder: @json($emptyText),
                 allowClear: {{ $allowEmpty ? 'true' : 'false' }},
                 width: '100%',
             });
         }
     });
 </script>
+@if ($allowQuickCreate && ! $disabled)
+    @include('components.partials.select2-module-category-quick-create', [
+        'selectId' => $id,
+        'moduleKey' => $moduleKey,
+        'multiple' => false,
+    ])
+@endif
 @endpush
+
+@once
+@push('scripts')
+<script>
+    (function () {
+        var moduleOptionsUrl = @json(route('categories.module-options'));
+
+        function humaRebuildModuleCategorySelect(selectId, moduleKey) {
+            var $s = typeof jQuery !== 'undefined' ? jQuery('#' + selectId) : null;
+            if (!$s || !$s.length || !moduleKey || typeof jQuery.fn.select2 === 'undefined') {
+                return;
+            }
+
+            var emptyText = $s.data('empty-text') || '';
+            var showEmpty = String($s.data('show-empty-option')) === '1';
+            var allowClear = String($s.data('allow-empty-select')) === '1';
+            var prevVal = $s.val();
+
+            jQuery.getJSON(moduleOptionsUrl, { module_key: moduleKey })
+                .done(function (data) {
+                    if ($s.hasClass('select2-hidden-accessible')) {
+                        $s.select2('destroy');
+                    }
+
+                    $s.empty();
+                    if (showEmpty) {
+                        $s.append(new Option(emptyText, '', false, false));
+                    }
+
+                    (data.groups || []).forEach(function (g) {
+                        if (g.type === 'option') {
+                            $s.append(new Option(g.label, String(g.id), false, false));
+                        } else if (g.type === 'group') {
+                            var og = jQuery('<optgroup>').attr('label', g.label);
+                            (g.options || []).forEach(function (o) {
+                                og.append(new Option(o.label, String(o.id), false, false));
+                            });
+                            $s.append(og);
+                        }
+                    });
+
+                    var prevValExists = prevVal && $s.find('option[value="' + String(prevVal).replace(/"/g, '\\"') + '"]').length;
+
+                    $s.select2({
+                        placeholder: emptyText,
+                        allowClear: allowClear,
+                        width: '100%',
+                    });
+
+                    if (prevValExists) {
+                        $s.val(String(prevVal)).trigger('change');
+                    } else {
+                        $s.val(null).trigger('change');
+                    }
+                });
+        }
+
+        function registerModuleCategoryListener() {
+            Livewire.on('module-categories-refreshed', function (event) {
+                var selectId  = event && event.selectId  ? event.selectId  : null;
+                var moduleKey = event && event.moduleKey ? event.moduleKey : null;
+                if (selectId && moduleKey) {
+                    humaRebuildModuleCategorySelect(selectId, moduleKey);
+                }
+            });
+        }
+
+        if (typeof Livewire !== 'undefined') {
+            registerModuleCategoryListener();
+        } else {
+            document.addEventListener('livewire:init', registerModuleCategoryListener);
+        }
+    })();
+</script>
+@endpush
+@endonce
