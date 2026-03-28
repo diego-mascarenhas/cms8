@@ -232,6 +232,6 @@ class ModuleCategoriesManagerModal extends Component
 
     private function dispatchCategoriesRefreshed(): void
     {
-        $this->dispatch('module-categories-refreshed', $this->linkedSelectId, $this->moduleKey);
+        $this->dispatch('module-categories-refreshed', selectId: $this->linkedSelectId, moduleKey: $this->moduleKey);
     }
 }

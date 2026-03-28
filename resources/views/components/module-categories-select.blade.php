@@ -176,7 +176,7 @@
 @once
 @push('scripts')
 <script>
-    document.addEventListener('livewire:init', function () {
+    (function () {
         var moduleOptionsUrl = @json(route('categories.module-options'));
 
         function humaRebuildModuleCategorySelect(selectId, moduleKey) {
@@ -203,43 +203,48 @@
 
                     (data.groups || []).forEach(function (g) {
                         if (g.type === 'option') {
-                            $s.append(new Option(g.label, String(g.id), false, String(g.id) === String(prevVal)));
+                            $s.append(new Option(g.label, String(g.id), false, false));
                         } else if (g.type === 'group') {
                             var og = jQuery('<optgroup>').attr('label', g.label);
                             (g.options || []).forEach(function (o) {
-                                og.append(new Option(o.label, String(o.id), false, String(o.id) === String(prevVal)));
+                                og.append(new Option(o.label, String(o.id), false, false));
                             });
                             $s.append(og);
                         }
                     });
 
-                    if (prevVal && $s.find('option[value="' + String(prevVal).replace(/"/g, '\\"') + '"]').length) {
-                        $s.val(String(prevVal));
-                    } else {
-                        $s.val('');
-                    }
+                    var prevValExists = prevVal && $s.find('option[value="' + String(prevVal).replace(/"/g, '\\"') + '"]').length;
 
                     $s.select2({
                         placeholder: emptyText,
                         allowClear: allowClear,
                         width: '100%',
                     });
-                    $s.trigger('change');
+
+                    if (prevValExists) {
+                        $s.val(String(prevVal)).trigger('change');
+                    } else {
+                        $s.val(null).trigger('change');
+                    }
                 });
         }
 
-        Livewire.on('module-categories-refreshed', function (a, b) {
-            var selectId = a;
-            var moduleKey = b;
-            if (a && typeof a === 'object' && a.selectId !== undefined) {
-                selectId = a.selectId;
-                moduleKey = a.moduleKey;
-            }
-            if (selectId && moduleKey) {
-                humaRebuildModuleCategorySelect(selectId, moduleKey);
-            }
-        });
-    });
+        function registerModuleCategoryListener() {
+            Livewire.on('module-categories-refreshed', function (event) {
+                var selectId  = event && event.selectId  ? event.selectId  : null;
+                var moduleKey = event && event.moduleKey ? event.moduleKey : null;
+                if (selectId && moduleKey) {
+                    humaRebuildModuleCategorySelect(selectId, moduleKey);
+                }
+            });
+        }
+
+        if (typeof Livewire !== 'undefined') {
+            registerModuleCategoryListener();
+        } else {
+            document.addEventListener('livewire:init', registerModuleCategoryListener);
+        }
+    })();
 </script>
 @endpush
 @endonce
