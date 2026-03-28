@@ -1551,7 +1551,6 @@ class ChatController extends Controller
         try
         {
             $response = \Illuminate\Support\Facades\Http::timeout(8)->connectTimeout(3)->withHeaders($headers)->get($url);
-            $status = $response->status();
         } catch (\Throwable $e)
         {
             report($e);
@@ -1560,7 +1559,6 @@ class ChatController extends Controller
         }
         $body = $response->body();
         $bodyLen = strlen($body);
-        $isPng = ($bodyLen >= 8 && substr($body, 0, 8) === "\x89PNG\r\n\x1a\n");
 
         if (! $response->successful())
         {
@@ -1602,14 +1600,48 @@ class ChatController extends Controller
         }
         $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         $team = auth()->user()?->currentTeam;
-        if ($baseUrl !== '')
+
+        if ($baseUrl === '')
         {
-            $refreshUrl = $baseUrl.'/refresh';
-            if ($team)
-            {
-                $refreshUrl .= (str_contains($refreshUrl, '?') ? '&' : '?').'team_id='.$team->id;
-            }
-            \Illuminate\Support\Facades\Http::timeout(10)->get($refreshUrl);
+            $err = __('The WhatsApp service URL is not configured for this team.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 422)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        $refreshUrl = $baseUrl.'/refresh';
+        if ($team)
+        {
+            $refreshUrl .= (str_contains($refreshUrl, '?') ? '&' : '?').'team_id='.$team->id;
+        }
+        $refreshHttpStatus = null;
+        $refreshException = false;
+        try
+        {
+            $refreshResp = \Illuminate\Support\Facades\Http::timeout(10)->get($refreshUrl);
+            $refreshHttpStatus = $refreshResp->status();
+        } catch (\Throwable $e)
+        {
+            $refreshException = true;
+        }
+
+        if ($refreshException)
+        {
+            $err = __('Could not reach the WhatsApp service. Check that it is running and the URL is correct.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 503)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        if ($refreshHttpStatus !== null && $refreshHttpStatus >= 400)
+        {
+            $err = __('The WhatsApp service returned an error (:status).', ['status' => (string) $refreshHttpStatus]);
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 502)
+                : redirect()->route('chat.index')->with('error', $err);
         }
 
         $message = __('Request sent. Wait a few seconds for the QR code to appear.');
