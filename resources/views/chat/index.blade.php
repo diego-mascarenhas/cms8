@@ -1260,6 +1260,9 @@
                 var t = token ? token.getAttribute('content') : '';
                 if (!t) return;
                 btnGenerateNewQr.disabled = true;
+                if (qrContainer) qrContainer.classList.add('chat-qr-loading');
+                if (qrImg) qrImg.classList.add('d-none');
+                if (fallbackEl) fallbackEl.classList.add('d-none');
                 fetch('{{ route("chat.whatsapp-refresh-qr") }}', {
                     method: 'POST',
                     headers: {
@@ -1270,18 +1273,62 @@
                     },
                     body: '_token=' + encodeURIComponent(t)
                 })
-                .then(function () {
-                    if (fallbackEl) fallbackEl.classList.add('d-none');
-                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
-                    if (qrImg) qrImg.classList.remove('d-none');
-                    setTimeout(function () {
-                        if (qrImg && qrImg.dataset.qrBase) {
-                            qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                        }
-                        btnGenerateNewQr.disabled = false;
-                    }, 4000);
+                .then(function (r) {
+                    if (!r.ok) throw new Error('refresh failed');
+                    return r.json();
                 })
-                .catch(function () { btnGenerateNewQr.disabled = false; });
+                .then(function (data) {
+                    if (data && data.ok === false) throw new Error('refresh not ok');
+                    if (!qrImg || !qrImg.dataset.qrBase) {
+                        if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                        if (fallbackEl) fallbackEl.classList.remove('d-none');
+                        btnGenerateNewQr.disabled = false;
+                        return;
+                    }
+                    var qrRetries = 0;
+                    var maxRetries = 30;
+                    function finishFailure() {
+                        if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                        qrImg.classList.add('d-none');
+                        if (fallbackEl) fallbackEl.classList.remove('d-none');
+                        qrImg.onload = null;
+                        qrImg.onerror = null;
+                        btnGenerateNewQr.disabled = false;
+                    }
+                    function setQrSrcAfterRefresh() {
+                        var src = qrImg.dataset.qrBase + '?t=' + Date.now();
+                        qrImg.onload = function () {
+                            if (qrImg.naturalWidth > 20) {
+                                if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                qrImg.classList.remove('d-none');
+                                if (fallbackEl) fallbackEl.classList.add('d-none');
+                                qrImg.onload = null;
+                                qrImg.onerror = null;
+                                btnGenerateNewQr.disabled = false;
+                            } else if (qrRetries < maxRetries) {
+                                qrRetries += 1;
+                                setTimeout(setQrSrcAfterRefresh, 2500);
+                            } else {
+                                finishFailure();
+                            }
+                        };
+                        qrImg.onerror = function () {
+                            if (qrRetries < maxRetries) {
+                                qrRetries += 1;
+                                setTimeout(setQrSrcAfterRefresh, 2500);
+                            } else {
+                                finishFailure();
+                            }
+                        };
+                        qrImg.src = src;
+                    }
+                    setTimeout(setQrSrcAfterRefresh, 4000);
+                })
+                .catch(function () {
+                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                    if (fallbackEl) fallbackEl.classList.remove('d-none');
+                    btnGenerateNewQr.disabled = false;
+                });
             });
         }
 
