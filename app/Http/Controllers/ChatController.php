@@ -380,6 +380,16 @@ class ChatController extends Controller
             ? ! app(UserPreferencesSettings::class)->chat_ai_assistance_blocked
             : true;
 
+        $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        if ($selectedContact)
+        {
+            $contactData = $selectedContact->data;
+            if (is_object($contactData) && property_exists($contactData, 'chat_assistant_ai_enabled'))
+            {
+                $contactChatAiToggleDefault = filter_var($contactData->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
         $whatsappDriver = config('whatsapp.driver');
         $whatsappStatus = null;
         $teamWhatsAppNumber = null;
@@ -446,7 +456,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
     }
 
     /**
@@ -726,17 +736,43 @@ class ChatController extends Controller
     }
 
     /**
-     * Save AI assistance opt-out for the authenticated user. Only persists when blocking replies ({@see UserPreferencesSettings}).
+     * Save per-contact AI assistance preference in {@see Contact::$data} when contact_id is sent;
+     * otherwise fall back to user-level opt-out ({@see UserPreferencesSettings}).
      */
     public function updateAiTogglePreference(Request $request)
     {
         $request->validate([
             'on' => 'required|boolean',
+            'contact_id' => 'sometimes|nullable|integer',
         ]);
 
         if (! auth()->check())
         {
             return response()->json(['success' => false], 401);
+        }
+
+        $contactId = $request->integer('contact_id') ?: null;
+        if ($contactId)
+        {
+            $contact = Contact::query()->whereKey($contactId)->first();
+            if (! $contact)
+            {
+                return response()->json(['success' => false], 404);
+            }
+
+            $this->authorize('update', $contact);
+
+            $payload = json_encode($contact->data ?? new \stdClass);
+            $data = json_decode($payload ?: '{}', true);
+            if (! is_array($data))
+            {
+                $data = [];
+            }
+            $data['chat_assistant_ai_enabled'] = $request->boolean('on');
+            $contact->data = $data;
+            $contact->save();
+
+            return response()->json(['success' => true]);
         }
 
         $group = 'user_'.auth()->id();

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
 use App\Models\Certification;
 use App\Models\Contact;
 use App\Models\Content;
@@ -20,6 +21,7 @@ use App\Models\Software;
 use App\Models\Stylebook;
 use App\Models\TeamFile;
 use App\Models\Ticket;
+use App\Policies\CategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
@@ -44,6 +46,7 @@ use Illuminate\Support\Facades\Gate;
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
+        Category::class => CategoryPolicy::class,
         Certification::class => CertificationPolicy::class,
         EnterpriseDepartment::class => EnterpriseDepartmentPolicy::class,
         Enterprise::class => ClientPolicy::class,

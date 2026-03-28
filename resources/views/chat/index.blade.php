@@ -10,12 +10,39 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-chat.css') }}" />
     <style>
         #chat-qr-container {
+            position: relative;
             min-width: 200px;
             min-height: 200px;
         }
         #chat-qr-container.chat-qr-loading {
-            background-color: #f0f0f0;
-            border-radius: 0.375rem;
+            background-color: transparent;
+            border-radius: 0;
+        }
+        .chat-qr-fallback-frame {
+            width: 200px;
+            height: 200px;
+            background-color: var(--bs-gray-75, #eceef2);
+            box-shadow: none;
+        }
+        .chat-qr-fallback-pattern {
+            position: absolute;
+            inset: -10px;
+            background-color: #dfe3ea;
+            background-image:
+                linear-gradient(90deg, rgba(67, 89, 113, 0.22) 50%, transparent 50%),
+                linear-gradient(rgba(67, 89, 113, 0.22) 50%, transparent 50%);
+            background-size: 7px 7px;
+            filter: blur(3px);
+            opacity: 0.55;
+        }
+        .chat-qr-fallback-vignette {
+            background: radial-gradient(
+                ellipse 70% 70% at 50% 50%,
+                rgba(255, 255, 255, 0.88) 0%,
+                rgba(255, 255, 255, 0.35) 55%,
+                rgba(255, 255, 255, 0.12) 100%
+            );
+            pointer-events: none;
         }
         .chat-history-header {
             min-height: 4.5rem;
@@ -127,17 +154,23 @@
         }
 
         (function persistAiTogglePreference() {
-            var userDefault = {{ json_encode($userChatAiToggleDefault ?? true) }};
+            var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
-            useAiToggle.checked = userDefault;
+            useAiToggle.checked = toggleDefault;
             useAiToggle.addEventListener('change', function() {
                 var aiOn = useAiToggle.checked;
                 var token = document.querySelector('meta[name="csrf-token"]');
+                var cidEl = document.getElementById('contact-id');
+                var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
                 if (token) {
+                    var body = { on: aiOn };
+                    if (contactId > 0) {
+                        body.contact_id = contactId;
+                    }
                     fetch('{{ route("chat.ai-toggle-preference") }}', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token.getAttribute('content') },
-                        body: JSON.stringify({ on: aiOn })
+                        body: JSON.stringify(body)
                     }).catch(function() {});
                 }
             });
@@ -1330,10 +1363,15 @@
                                             onload="var el=this; var fb=document.getElementById('chat-qr-fallback'); if(el.naturalWidth>20){el.classList.remove('d-none'); if(fb)fb.classList.add('d-none');} else {if(fb)fb.classList.remove('d-none');}"
                                             onerror="this.classList.add('d-none'); document.getElementById('chat-qr-fallback').classList.remove('d-none');">
                                         <div id="chat-qr-fallback" class="mb-2 d-none">
-                                            <p class="small text-muted mb-2">{{ __('If this team is already linked, reload the page to refresh. Otherwise wait a few seconds for the QR code to appear.') }}</p>
-                                            <button type="button" id="chat-btn-generate-new-qr" class="btn btn-sm btn-outline-warning w-100">
-                                                <i class="ti ti-refresh me-1"></i>{{ __('Generate new QR code') }}
-                                            </button>
+                                            <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
+                                                <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
+                                                <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
+                                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                                                    <button type="button" id="chat-btn-generate-new-qr" class="btn btn-icon btn-lg btn-label-warning rounded-circle" title="{{ __('Generate new QR code') }}" aria-label="{{ __('Generate new QR code') }}">
+                                                        <i class="ti ti-refresh ti-md"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 @endif
@@ -1862,7 +1900,7 @@
                         </ul>
                     </div>
                     <!-- Chat message form -->
-                    <div class="chat-history-footer shadow-sm">
+                    <div class="chat-history-footer">
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center" @if($viewAssistant ?? false) data-view-assistant="1" @endif>
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">

@@ -504,6 +504,73 @@ class CategoryController extends Controller
      */
     private function getCategoryUsageCount($category)
     {
-        return $category->invoiceItems()->count() + $category->services()->count();
+        return $category->blockingDeleteUsageCount();
+    }
+
+    /**
+     * JSON structure for rebuilding module category &lt;select&gt; (parents, optgroups, children).
+     */
+    public function moduleOptions(Request $request)
+    {
+        $this->authorize('viewAny', Category::class);
+
+        $team = Auth::user()->currentTeam;
+
+        $validated = $request->validate([
+            'module_key' => 'required|string',
+        ]);
+
+        $module = Module::where('key', $validated['module_key'])->firstOrFail();
+
+        $baseQuery = Category::query()
+            ->where('module_id', $module->id)
+            ->where('status', 1)
+            ->where(function ($query) use ($team)
+            {
+                $query->whereNull('team_id')
+                    ->orWhere('team_id', $team->id);
+            });
+
+        $parentCategories = (clone $baseQuery)
+            ->whereNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
+
+        $allSubcategories = (clone $baseQuery)
+            ->whereNotNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('parent_id');
+
+        $groups = [];
+        foreach ($parentCategories as $parentCategory)
+        {
+            $subs = $allSubcategories[$parentCategory->id] ?? null;
+            if (! $subs || $subs->isEmpty())
+            {
+                $groups[] = [
+                    'type' => 'option',
+                    'id' => $parentCategory->id,
+                    'label' => $parentCategory->name,
+                ];
+            } else
+            {
+                $groups[] = [
+                    'type' => 'group',
+                    'label' => $parentCategory->name,
+                    'options' => $subs->map(function (Category $c)
+                    {
+                        return [
+                            'id' => $c->id,
+                            'label' => $c->name,
+                        ];
+                    })->values()->all(),
+                ];
+            }
+        }
+
+        return response()->json(['groups' => $groups]);
     }
 }

@@ -100,6 +100,30 @@ class Category extends Model
     }
 
     /**
+     * Products using this category (team-scoped products table).
+     */
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+
+    /**
+     * Tasks using this category.
+     */
+    public function tasks()
+    {
+        return $this->hasMany(Task::class, 'category_id');
+    }
+
+    /**
+     * Projects using this category.
+     */
+    public function projects()
+    {
+        return $this->hasMany(Project::class, 'category_id');
+    }
+
+    /**
      * Team file records using this category.
      */
     public function teamFiles()
@@ -121,6 +145,14 @@ class Category extends Model
     public function contacts()
     {
         return $this->belongsToMany(\App\Models\Contact::class, 'contact_category', 'category_id', 'contact_id');
+    }
+
+    /**
+     * Contents using this category as primary category_id (not section).
+     */
+    public function contentByPrimaryCategory()
+    {
+        return $this->hasMany(Content::class, 'category_id');
     }
 
     /**
@@ -306,6 +338,24 @@ class Category extends Model
     public function scopeTeam($query, $teamId)
     {
         return $query->where('team_id', $teamId);
+    }
+
+    /**
+     * Count of records that block deleting this category (same scope as destroy checks).
+     */
+    public function blockingDeleteUsageCount(): int
+    {
+        return $this->invoiceItems()->count()
+            + $this->teamFiles()->count()
+            + $this->messages()->count()
+            + $this->products()->count()
+            + $this->tasks()->count()
+            + $this->projects()->count()
+            + $this->contents()->count()
+            + $this->contentByPrimaryCategory()->count()
+            + Multimedia::where('category_id', $this->id)->count()
+            + Software::where('category_id', $this->id)->count()
+            + ServiceType::where('category_id', $this->id)->count();
     }
 
     /**

@@ -608,5 +608,13 @@
   "Share link": "Share link",
   "Creating...": "Creating...",
   "Please enter at least 2 characters to create a category.": "Please enter at least 2 characters to create a category.",
-  "Could not create the category.": "Could not create the category."
+  "Could not create the category.": "Could not create the category.",
+  "Manage categories": "Manage categories",
+  "Global": "Global",
+  "Category updated.": "Category updated.",
+  "Category deleted.": "Category deleted.",
+  "Remove or reassign subcategories first.": "Remove or reassign subcategories first.",
+  "This category is in use and cannot be deleted.": "This category is in use and cannot be deleted.",
+  "Delete": "Delete",
+  "Are you sure?": "Are you sure?"
 }
