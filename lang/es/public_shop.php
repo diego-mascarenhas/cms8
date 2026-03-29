@@ -3,7 +3,8 @@
 return [
     'welcome' => '¡Hola! Soy el asistente de :shop. Te ayudo a armar tu pedido.',
     'ask_profile' => 'Para recomendarte mejor: ¿qué edad tenés o para qué edad comprás? ¿Algún gusto, restricción o estilo que debamos tener en cuenta?',
-    'assistant_title' => 'Asistente de compra',
+    'assistant_title' => 'Asistente',
+    'flow_label' => 'Tienda',
     'cart_title' => 'Tu carrito',
     'cart_empty' => 'Todavía no agregaste productos. Pedile sugerencias al asistente o tocá los botones cuando aparezcan.',
     'input_placeholder' => 'Escribí lo que buscás o respondé al asistente…',

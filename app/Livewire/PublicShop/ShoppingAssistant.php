@@ -99,6 +99,27 @@ class ShoppingAssistant extends Component
         $this->messages[] = ['role' => 'assistant', 'content' => $reply['text']];
         $this->suggestedProductIds = $reply['suggest_ids'];
         $this->loading = false;
+        $this->dispatch('scroll-to-bottom');
+    }
+
+    public function resetConversation(): void
+    {
+        $team = $this->team();
+        if (! $team)
+        {
+            return;
+        }
+        $config = $team->getDecodedBusinessConfig();
+        $shopName = trim((string) ($config['business_name'] ?? $team->name));
+        $this->messages = [
+            ['role' => 'assistant', 'content' => __('public_shop.welcome', ['shop' => $shopName])],
+            ['role' => 'assistant', 'content' => __('public_shop.ask_profile')],
+        ];
+        $this->suggestedProductIds = [];
+        $this->input = '';
+        $this->shopperAge = '';
+        $this->shopperNotes = '';
+        $this->dispatch('scroll-to-bottom');
     }
 
     protected function ingestShopperHints(string $text): void

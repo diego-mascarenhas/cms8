@@ -3,7 +3,8 @@
 return [
     'welcome' => 'Hi! I am the :shop shopping assistant. I can help you build your order.',
     'ask_profile' => 'To recommend better: what age are you, or what age are you buying for? Any tastes, restrictions, or style we should keep in mind?',
-    'assistant_title' => 'Shopping assistant',
+    'assistant_title' => 'Assistant',
+    'flow_label' => 'Shop',
     'cart_title' => 'Your cart',
     'cart_empty' => 'No items yet. Ask the assistant for ideas or tap the suggestion buttons when they appear.',
     'input_placeholder' => 'Type what you need or reply to the assistant…',
