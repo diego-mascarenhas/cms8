@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BusinessCreationAiLog;
 use App\Models\BusinessCreationSession;
+use App\Models\Team;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,46 @@ class BusinessCreationInsightsService
     public function run(BusinessCreationSession $session): array
     {
         @set_time_limit(120);
-        $config = $session->config ?? [];
+        $insights = $this->buildInsightsArray(
+            $session->config ?? [],
+            $session,
+            fn (string $phase) => $this->setInsightsPhase($session, $phase),
+        );
+
+        $existing = $session->fresh()->config ?? [];
+        $existing['_insights'] = $insights;
+        unset($existing['_insights_phase']);
+        $session->update(['config' => $existing]);
+
+        return $insights;
+    }
+
+    /**
+     * Same pipeline as {@see run()} but reads/writes team {@see Team::getSetting('business_config')}.
+     *
+     * @return array<string, mixed>
+     */
+    public function runForTeam(Team $team): array
+    {
+        @set_time_limit(120);
+        $team->refresh();
+        $config = $this->decodeTeamBusinessConfig($team);
+        $insights = $this->buildInsightsArray(
+            $config,
+            null,
+            fn (string $phase) => $this->setTeamInsightsPhase($team, $phase),
+        );
+        $this->finalizeTeamInsights($team, $insights);
+
+        return $insights;
+    }
+
+    /**
+     * @param  callable(string): void  $setPhase
+     * @return array<string, mixed>
+     */
+    private function buildInsightsArray(array $config, ?BusinessCreationSession $sessionForLog, callable $setPhase): array
+    {
         $location = $this->normalizeLocationForSearch($config);
         $industry = trim((string) ($config['business_industry'] ?? ''));
         $description = trim((string) ($config['business_description'] ?? ''));
@@ -37,7 +77,7 @@ class BusinessCreationInsightsService
 
         $aiPhaseTimeline = [];
         $aiPhaseTimeline[] = ['phase' => 'market_data', 'started_at' => now()->toIso8601String()];
-        $this->setInsightsPhase($session, 'market_data');
+        $setPhase('market_data');
 
         $apolloStartedAt = null;
         $apolloFinishedAt = null;
@@ -110,15 +150,15 @@ class BusinessCreationInsightsService
 
             $aiPhaseTimeline[array_key_last($aiPhaseTimeline)]['completed_at'] = now()->toIso8601String();
             $aiPhaseTimeline[] = ['phase' => 'web', 'started_at' => now()->toIso8601String()];
-            $this->setInsightsPhase($session, 'web');
+            $setPhase('web');
             $websiteContent = $this->fetchWebsiteContent($website);
             $linksContext = $this->buildLinksContext($config);
 
             $aiPhaseTimeline[array_key_last($aiPhaseTimeline)]['completed_at'] = now()->toIso8601String();
             $aiPhaseTimeline[] = ['phase' => 'recommendations', 'started_at' => now()->toIso8601String()];
-            $this->setInsightsPhase($session, 'recommendations');
+            $setPhase('recommendations');
             $potentialClientsSummary = $this->generateMarketReport(
-                $session,
+                $sessionForLog,
                 $config,
                 $description,
                 $website,
@@ -135,7 +175,7 @@ class BusinessCreationInsightsService
                 $apolloFinishedAt,
             );
 
-            $insights = array_filter([
+            return array_filter([
                 'businesses_nearby' => $businessesNearby > 0 ? $businessesNearby : null,
                 'prospects' => $prospects > 0 ? $prospects : null,
                 'seniority_c_suite' => $seniorityCSuite > 0 ? $seniorityCSuite : null,
@@ -147,25 +187,62 @@ class BusinessCreationInsightsService
             ]);
         } catch (\Throwable $e)
         {
-            Log::warning('Business creation insights failed', ['error' => $e->getMessage(), 'session_id' => $session->id]);
+            Log::warning('Business creation insights failed', [
+                'error' => $e->getMessage(),
+                'session_id' => $sessionForLog?->id,
+            ]);
             try
             {
                 $websiteContent = $this->fetchWebsiteContent($website);
                 $linksContext = $this->buildLinksContext($config);
-                $fallbackReport = $this->generateMarketReport($session, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0, [], null, null);
-                $insights = ['potential_clients_summary' => $fallbackReport];
+                $fallbackReport = $this->generateMarketReport($sessionForLog, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0, [], null, null);
+
+                return ['potential_clients_summary' => $fallbackReport];
             } catch (\Throwable $inner)
             {
-                $insights = ['potential_clients_summary' => 'No se pudo generar el informe. Comprueba Rubro, Ubicación o País y vuelve a intentarlo.'];
+                return ['potential_clients_summary' => 'No se pudo generar el informe. Comprueba Rubro, Ubicación o País y vuelve a intentarlo.'];
             }
         }
+    }
 
-        $existing = $session->fresh()->config ?? [];
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeTeamBusinessConfig(Team $team): array
+    {
+        $existing = $team->getSetting('business_config', []);
+        if (is_string($existing))
+        {
+            return json_decode($existing, true) ?: [];
+        }
+
+        return is_array($existing) ? $existing : [];
+    }
+
+    private function setTeamInsightsPhase(Team $team, string $phase): void
+    {
+        $team->refresh();
+        $existing = $this->decodeTeamBusinessConfig($team);
+        $existing['_insights_phase'] = $phase;
+        $team->setSetting('business_config', $existing, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $insights
+     */
+    private function finalizeTeamInsights(Team $team, array $insights): void
+    {
+        $team->refresh();
+        $existing = $this->decodeTeamBusinessConfig($team);
         $existing['_insights'] = $insights;
-        unset($existing['_insights_phase']);
-        $session->update(['config' => $existing]);
-
-        return $insights;
+        unset($existing['_insights_phase'], $existing['_insights_requested_at']);
+        $team->setSetting('business_config', $existing, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
     }
 
     private function setInsightsPhase(BusinessCreationSession $session, string $phase): void
@@ -314,7 +391,7 @@ class BusinessCreationInsightsService
      * @param  array<int, array{phase: string, started_at: string, completed_at?: string}>  $aiPhaseTimeline
      */
     private function generateMarketReport(
-        BusinessCreationSession $session,
+        ?BusinessCreationSession $session,
         array $config,
         string $description,
         string $website,
@@ -428,7 +505,7 @@ PROMPT;
             $aiFinishedAt = now();
             $text = $response->text ? trim($response->text) : null;
 
-            if ($text !== null)
+            if ($text !== null && $session !== null)
             {
                 $session->refresh();
                 $metadata = $session->getStepMetadata();

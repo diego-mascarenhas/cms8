@@ -1437,5 +1437,9 @@
   "Category deleted.": "Categoría eliminada.",
   "Remove or reassign subcategories first.": "Quita o reasigna las subcategorías primero.",
   "This category is in use and cannot be deleted.": "Esta categoría está en uso y no se puede eliminar.",
-  "Delete": "Eliminar"
+  "Delete": "Eliminar",
+  "Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.": "Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.",
+  "Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.": "Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.",
+  "Regenerar informe": "Regenerar informe",
+  "Encolando…": "Encolando…"
 }

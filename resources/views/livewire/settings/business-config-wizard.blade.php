@@ -545,7 +545,13 @@
                                 <div class="alert alert-info mb-0">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="ti ti-info-circle ti-lg"></i>
-                                        <span class="fw-medium">Al pulsar el botón final se generará primero el informe de mercado y luego podrás enviarlo por email.</span>
+                                        <span class="fw-medium">
+                                            @if ($isLandingWizard)
+                                                Al pulsar el botón final se generará primero el informe de mercado y luego podrás enviarlo por email.
+                                            @else
+                                                Al pulsar el botón se generará el informe de mercado y se guardará junto a la configuración de tu equipo.
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
                             @endif
@@ -675,9 +681,13 @@
                         $hasBusinessEmail = filled($config['business_email'] ?? null);
                         $hasEmail = $hasContactEmail || $hasBusinessEmail;
                         $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
-                        $canSubmit = !$insightsLoading && $hasEmail && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        if ($isLandingWizard) {
+                            $canSubmit = !$insightsLoading && $hasEmail && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        } else {
+                            $canSubmit = !$insightsLoading && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        }
                     @endphp
-                    @if (!$hasEmail)
+                    @if (!$hasEmail && $isLandingWizard)
                         <div class="col-12 mb-3">
                             <div class="alert alert-warning mb-0">
                                 <div class="d-flex align-items-center flex-wrap gap-2">
@@ -711,7 +721,7 @@
                             </div>
                         </div>
                     @endif
-                    @if ($reportSent ?? false)
+                    @if ($isLandingWizard && ($reportSent ?? false))
                         <div class="col-12 mb-3">
                             <div class="alert alert-success mb-0">
                                 <div class="d-flex align-items-center gap-2">
@@ -721,29 +731,63 @@
                             </div>
                         </div>
                     @endif
-                    <div class="col-12 d-flex justify-content-between mt-3">
+                    @if (!$isLandingWizard && $hasReport && !($insightsLoading ?? false) && method_exists($this, 'regenerateMarketInsightsReport'))
+                        <div class="col-12 mt-2">
+                            <p class="small text-muted mb-0">
+                                {{ __('Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.') }}
+                            </p>
+                        </div>
+                    @endif
+                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
                         @if (!($finalFlowRequested ?? false) && !($reportSent ?? false))
-                            <button
-                                type="button"
-                                class="btn btn-success"
-                                wire:click="submit"
-                                @disabled(!$canSubmit)
-                            >
-                                <i class="ti ti-send ti-sm me-1"></i>
-                                <span wire:loading.remove wire:target="submit,loadInsights">
-                                @if ($hasReport && $hasEmail)
-                                    Enviar informe completo por email
-                                @elseif (!$hasReport)
-                                    Generar reporte y enviarlo por email
-                                @else
-                                    Completa tu email para enviar
+                            <div class="d-flex gap-2 flex-wrap justify-content-end ms-auto">
+                                @if (!$isLandingWizard && $hasReport && method_exists($this, 'regenerateMarketInsightsReport'))
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary"
+                                        wire:click="regenerateMarketInsightsReport"
+                                        wire:loading.attr="disabled"
+                                        @disabled(!$canLoadInsights || ($insightsLoading ?? false))
+                                        title="{{ $canLoadInsights ? '' : __('Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.') }}"
+                                    >
+                                        <span wire:loading.remove wire:target="regenerateMarketInsightsReport">
+                                            <i class="ti ti-refresh ti-sm me-1"></i>{{ __('Regenerar informe') }}
+                                        </span>
+                                        <span wire:loading wire:target="regenerateMarketInsightsReport">
+                                            {{ __('Encolando…') }}
+                                        </span>
+                                    </button>
                                 @endif
-                                </span>
-                                <span wire:loading wire:target="submit,loadInsights">
-                                    Procesando...
-                                </span>
-                            </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-success"
+                                    wire:click="submit"
+                                    @disabled(!$canSubmit)
+                                >
+                                    <i class="ti ti-send ti-sm me-1"></i>
+                                    <span wire:loading.remove wire:target="submit,loadInsights,regenerateMarketInsightsReport">
+                                    @if ($isLandingWizard)
+                                        @if ($hasReport && $hasEmail)
+                                            Enviar informe completo por email
+                                        @elseif (!$hasReport)
+                                            Generar reporte y enviarlo por email
+                                        @else
+                                            Completa tu email para enviar
+                                        @endif
+                                    @else
+                                        @if ($hasReport)
+                                            Guardar configuración
+                                        @else
+                                            Generar informe de mercado
+                                        @endif
+                                    @endif
+                                    </span>
+                                    <span wire:loading wire:target="submit,loadInsights,regenerateMarketInsightsReport">
+                                        Procesando...
+                                    </span>
+                                </button>
+                            </div>
                         @endif
                     </div>
                 </div>

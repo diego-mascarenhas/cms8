@@ -2,16 +2,15 @@
 
 namespace App\Livewire\Settings;
 
+use App\Jobs\LoadTeamBusinessInsightsJob;
 use App\Models\Prompt;
 use App\Models\Team;
-use App\Services\ApolloService;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
+use App\Services\BusinessCreationInsightsService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -93,6 +92,14 @@ class BusinessConfigWizard extends Component
         {
             $this->config['language'] = $this->config['language'][0] ?? '';
         }
+        if (! empty($saved['_insights']) && is_array($saved['_insights']))
+        {
+            $this->insights = $saved['_insights'];
+        }
+        if (isset($saved['_summary']) && is_string($saved['_summary']) && $saved['_summary'] !== '')
+        {
+            $this->summary = $saved['_summary'];
+        }
     }
 
     public function nextStep(): void
@@ -124,15 +131,40 @@ class BusinessConfigWizard extends Component
 
     protected function persistConfig(): void
     {
-        $payload = [];
+        $existing = $this->team->getSetting('business_config', []);
+        if (is_string($existing))
+        {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (! is_array($existing))
+        {
+            $existing = [];
+        }
+
+        $payload = $existing;
+
         foreach (self::$configKeys as $key)
         {
             $value = $this->config[$key] ?? null;
             if ($value !== null && $value !== '' && $value !== [])
             {
                 $payload[$key] = is_array($value) ? $value : (string) $value;
+            } else
+            {
+                unset($payload[$key]);
             }
         }
+
+        if ($this->insights !== [])
+        {
+            $payload['_insights'] = $this->insights;
+        }
+
+        if ($this->summary !== null && $this->summary !== '')
+        {
+            $payload['_summary'] = $this->summary;
+        }
+
         $this->team->setSetting('business_config', $payload, [
             'type' => 'json',
             'group' => 'business-config',
@@ -151,8 +183,158 @@ class BusinessConfigWizard extends Component
 
     public function submit(): void
     {
-        $this->persistConfig();
+        $industry = trim((string) ($this->config['business_industry'] ?? ''));
+        $description = trim((string) ($this->config['business_description'] ?? ''));
+        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
+        $canLoadInsights = $industry !== '' && $description !== '' && $tagline !== '';
+        $hasReport = ! empty($this->insights['potential_clients_summary'] ?? null);
+
+        if (! $hasReport && $canLoadInsights)
+        {
+            $this->queueTeamInsightsJob();
+        } else
+        {
+            $this->persistConfig();
+        }
+
         $this->dispatch('saved');
+    }
+
+    /**
+     * Queue a new market report using the current wizard data (team settings only). Use after changing business fields.
+     */
+    public function regenerateMarketInsightsReport(): void
+    {
+        if ($this->insightsLoading)
+        {
+            return;
+        }
+        $industry = trim((string) ($this->config['business_industry'] ?? ''));
+        $description = trim((string) ($this->config['business_description'] ?? ''));
+        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
+        if ($industry === '' || $description === '' || $tagline === '')
+        {
+            return;
+        }
+        $this->queueTeamInsightsJob();
+    }
+
+    /**
+     * Persist form fields, mark request time, clear cached report and dispatch the same insights pipeline as landing (queue worker).
+     */
+    private function queueTeamInsightsJob(): void
+    {
+        $this->persistConfig();
+        $this->team->refresh();
+        $existing = $this->decodeTeamBusinessConfig();
+        $existing['_insights_requested_at'] = now()->toIso8601String();
+        unset($existing['_insights']);
+        $this->team->setSetting('business_config', $existing, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        LoadTeamBusinessInsightsJob::dispatch($this->team->id);
+        $this->insightsLoading = true;
+        $this->insights = [];
+        $this->insightsPhase = 'market_data';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeTeamBusinessConfig(): array
+    {
+        $existing = $this->team->getSetting('business_config', []);
+        if (is_string($existing))
+        {
+            return json_decode($existing, true) ?: [];
+        }
+
+        return is_array($existing) ? $existing : [];
+    }
+
+    /**
+     * Step 6: sync _insights written by {@see LoadTeamBusinessInsightsJob} (or synchronous fallback after timeout).
+     */
+    public function checkInsightsReady(?BusinessCreationInsightsService $insightsService = null): void
+    {
+        if ($this->step !== 6)
+        {
+            return;
+        }
+        $insightsService ??= app(BusinessCreationInsightsService::class);
+        $this->team->refresh();
+        $config = $this->decodeTeamBusinessConfig();
+        $this->insightsPhase = $config['_insights_phase'] ?? null;
+        $insights = $config['_insights'] ?? null;
+        if (! empty($insights) && is_array($insights))
+        {
+            $this->insights = $insights;
+            $this->insightsLoading = false;
+            $this->insightsPhase = null;
+            unset($config['_insights_requested_at']);
+            $this->team->setSetting('business_config', $config, [
+                'type' => 'json',
+                'group' => 'business-config',
+            ]);
+            $this->persistConfig();
+
+            return;
+        }
+
+        $requestedAt = $config['_insights_requested_at'] ?? null;
+        if (! is_string($requestedAt) || $requestedAt === '')
+        {
+            return;
+        }
+
+        try
+        {
+            $queuedForSeconds = Carbon::parse($requestedAt)->diffInSeconds(now());
+        } catch (\Throwable)
+        {
+            return;
+        }
+
+        if ($queuedForSeconds < 45)
+        {
+            return;
+        }
+
+        try
+        {
+            $this->insights = $insightsService->runForTeam($this->team);
+        } catch (\Throwable $e)
+        {
+            Log::warning('Team insights synchronous fallback failed', [
+                'team_id' => $this->team->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->insights = [
+                'potential_clients_summary' => 'No se pudo generar el informe ahora. Intenta de nuevo en unos minutos.',
+            ];
+        }
+
+        $this->insightsLoading = false;
+        $this->insightsPhase = null;
+
+        $this->team->refresh();
+        $existing = $this->decodeTeamBusinessConfig();
+        $existing['_insights'] = $this->insights;
+        unset($existing['_insights_phase'], $existing['_insights_requested_at']);
+        $this->team->setSetting('business_config', $existing, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $this->persistConfig();
+    }
+
+    public function hydrate(): void
+    {
+        if ($this->step === 6 && $this->insightsLoading)
+        {
+            $this->checkInsightsReady();
+        }
     }
 
     public function triggerSummaryIfChanged(AssistantChatService $assistant): void
@@ -245,347 +427,6 @@ class BusinessConfigWizard extends Component
 
         $this->lastProcessedChallenge = $challenge;
         $this->summaryLoading = false;
-    }
-
-    /**
-     * Load market insights: businesses nearby, prospects, by industry, and AI suggestion for potential clients.
-     * Uses external data sources (no provider names shown to the user).
-     */
-    public function loadInsights(ApolloService $apolloService): void
-    {
-        $industry = trim((string) ($this->config['business_industry'] ?? ''));
-        $description = trim((string) ($this->config['business_description'] ?? ''));
-        $tagline = trim((string) ($this->config['business_tagline'] ?? ''));
-        if ($industry === '' || $description === '' || $tagline === '')
-        {
-            return;
-        }
-        @set_time_limit(120);
-        $this->insightsLoading = true;
-        $this->insights = [];
-
-        $location = $this->normalizeLocationForSearch();
-        $industry = trim((string) ($this->config['business_industry'] ?? ''));
-        $description = trim((string) ($this->config['business_description'] ?? ''));
-        $website = trim((string) ($this->config['business_website'] ?? ''));
-
-        $filtersSectorAndZone = $this->buildSectorAndLocationFilters($location, $industry);
-
-        try
-        {
-            $businessesNearby = 0;
-            $prospects = 0;
-            $byIndustry = [];
-
-            $seniorityCSuite = 0;
-            $seniorityDirector = 0;
-            $seniorityManager = 0;
-
-            if ($filtersSectorAndZone !== [])
-            {
-                $orgResult = $apolloService->searchOrganizations($filtersSectorAndZone, 1, 1);
-                $businessesNearby = $orgResult['total_entries'] ?? 0;
-
-                $peopleResult = $apolloService->searchPeople($filtersSectorAndZone, 1, 1);
-                $prospects = $peopleResult['total_entries'] ?? 0;
-
-                try
-                {
-                    $baseFilters = $filtersSectorAndZone;
-                    $cSuiteResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['c_suite']]), 1, 1);
-                    $seniorityCSuite = $cSuiteResult['total_entries'] ?? 0;
-                    $dirResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['director']]), 1, 1);
-                    $seniorityDirector = $dirResult['total_entries'] ?? 0;
-                    $mgrResult = $apolloService->searchPeople(array_merge($baseFilters, ['person_seniorities' => ['manager']]), 1, 1);
-                    $seniorityManager = $mgrResult['total_entries'] ?? 0;
-                } catch (\Throwable $e)
-                {
-                    Log::debug('Apollo seniority counts skipped', ['error' => $e->getMessage()]);
-                }
-            }
-
-            if ($industry !== '')
-            {
-                $industryOnlyFilters = ['q_keywords' => $industry];
-                $industryResult = $apolloService->searchOrganizations(
-                    array_merge($location, $industryOnlyFilters),
-                    1,
-                    1,
-                );
-                $byIndustry = [$industry => $industryResult['total_entries'] ?? 0];
-            }
-
-            $chartSeries = [
-                'categories' => array_keys($byIndustry) ?: ['Tu sector'],
-                'series' => array_values($byIndustry) ?: [0],
-            ];
-            if ($businessesNearby > 0 && count($chartSeries['categories']) === 1 && $chartSeries['series'][0] === 0)
-            {
-                $chartSeries['categories'] = ['En tu zona', 'Prospectos'];
-                $chartSeries['series'] = [$businessesNearby, $prospects];
-            } elseif ($businessesNearby > 0 || $prospects > 0)
-            {
-                $chartSeries['categories'] = array_merge(['Negocios en tu zona', 'Prospectos'], $chartSeries['categories']);
-                $chartSeries['series'] = array_merge([$businessesNearby, $prospects], $chartSeries['series']);
-            }
-            $nonZeroCount = $chartSeries['series'] ? count(array_filter($chartSeries['series'], fn ($v) => (int) $v > 0)) : 0;
-            if ($nonZeroCount < 1)
-            {
-                $chartSeries = null;
-            }
-
-            $websiteContent = $this->fetchWebsiteContent($website);
-            $linksContext = $this->buildLinksContext();
-            $potentialClientsSummary = $this->generateMarketReport(
-                $description,
-                $website,
-                $websiteContent,
-                $linksContext,
-                $industry,
-                $location,
-                $businessesNearby,
-                $prospects,
-                $byIndustry,
-            );
-
-            $this->insights = array_filter([
-                'businesses_nearby' => $businessesNearby > 0 ? $businessesNearby : null,
-                'prospects' => $prospects > 0 ? $prospects : null,
-                'seniority_c_suite' => $seniorityCSuite > 0 ? $seniorityCSuite : null,
-                'seniority_director' => $seniorityDirector > 0 ? $seniorityDirector : null,
-                'seniority_manager' => $seniorityManager > 0 ? $seniorityManager : null,
-                'by_industry' => $byIndustry ?: null,
-                'chart_series' => $chartSeries,
-                'potential_clients_summary' => $potentialClientsSummary,
-            ]);
-        } catch (\Throwable $e)
-        {
-            Log::warning('Business insights load failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            try
-            {
-                $websiteContent = $this->fetchWebsiteContent($website);
-                $linksContext = $this->buildLinksContext();
-                $fallbackReport = $this->generateMarketReport(
-                    $description,
-                    $website,
-                    $websiteContent,
-                    $linksContext,
-                    $industry,
-                    $location,
-                    0,
-                    0,
-                    [],
-                );
-                $this->insights = ['potential_clients_summary' => $fallbackReport];
-            } catch (\Throwable $inner)
-            {
-                Log::warning('Business insights fallback failed', ['error' => $inner->getMessage()]);
-                $this->insights = [
-                    'potential_clients_summary' => 'No se pudo generar el informe. Comprueba que Rubro, Ubicación o País estén rellenados y vuelve a intentarlo.',
-                ];
-            }
-        }
-
-        $this->insightsLoading = false;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function normalizeLocationForSearch(): array
-    {
-        $city = trim((string) ($this->config['city'] ?? ''));
-        $addressLocation = trim((string) ($this->config['business_location'] ?? ''));
-        $country = trim((string) ($this->config['country'] ?? ''));
-
-        $locations = array_filter([$city, $addressLocation, $country]);
-        if ($locations === [])
-        {
-            return [];
-        }
-
-        return ['organization_locations' => array_values($locations)];
-    }
-
-    /**
-     * Build filters that combine sector (rubro) and location so counts are "in this industry in this zone".
-     * E.g. "Tecnología" + "Asturias, España" → organizations/people in Technology in Asturias, Spain.
-     *
-     * @param  array<string, mixed>  $location
-     * @return array<string, mixed>
-     */
-    private function buildSectorAndLocationFilters(array $location, string $industry): array
-    {
-        $industry = trim($industry);
-        $hasLocation = $location !== [] && ! empty($location['organization_locations'] ?? []);
-        $hasSector = $industry !== '';
-
-        if ($hasLocation && $hasSector)
-        {
-            return array_merge($location, ['q_keywords' => $industry]);
-        }
-        if ($hasLocation)
-        {
-            return $location;
-        }
-        if ($hasSector)
-        {
-            return ['q_keywords' => $industry];
-        }
-
-        return [];
-    }
-
-    private function fetchWebsiteContent(string $url): string
-    {
-        $url = trim($url);
-        if ($url === '' || ! Str::isUrl($url))
-        {
-            return '';
-        }
-        try
-        {
-            $response = Http::timeout(12)->withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (compatible; HumanoBot/1.0)',
-            ])->get($url);
-            if (! $response->successful())
-            {
-                return '';
-            }
-            $html = $response->body();
-            $text = strip_tags(preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html));
-            $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $text = preg_replace('/\s+/u', ' ', $text);
-            $text = trim($text);
-
-            return Str::limit($text, 4000);
-        } catch (\Throwable $e)
-        {
-            Log::debug('Website content fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
-
-            return '';
-        }
-    }
-
-    /**
-     * Build a text list of links the user provided (website + social) for context.
-     */
-    private function buildLinksContext(): string
-    {
-        $links = [];
-        $urlKeys = [
-            'business_website' => 'Sitio web',
-            'twitter' => 'X / Twitter',
-            'facebook' => 'Facebook',
-            'instagram' => 'Instagram',
-            'linkedin' => 'LinkedIn',
-            'youtube' => 'YouTube',
-            'tiktok' => 'TikTok',
-            'whatsapp_url' => 'WhatsApp',
-            'telegram' => 'Telegram',
-            'pinterest' => 'Pinterest',
-            'threads' => 'Threads',
-        ];
-        foreach ($urlKeys as $key => $label)
-        {
-            $val = trim((string) ($this->config[$key] ?? ''));
-            if ($val !== '' && (Str::startsWith($val, 'http') || Str::startsWith($val, 'https')))
-            {
-                $links[] = $label.': '.$val;
-            }
-        }
-
-        return implode("\n", $links);
-    }
-
-    /**
-     * Generate a full market report using extracted web content, links, and market data.
-     * Includes product definition, competitor positioning, ideal client, and opportunities.
-     *
-     * @param  array<string, mixed>  $location
-     * @param  array<string, int>  $byIndustry
-     */
-    private function generateMarketReport(
-        string $description,
-        string $website,
-        string $websiteContent,
-        string $linksContext,
-        string $industry,
-        array $location,
-        int $businessesNearby,
-        int $prospects,
-        array $byIndustry,
-    ): ?string {
-        $locationStr = implode(', ', array_filter($location['organization_locations'] ?? []));
-        $industryCount = array_sum($byIndustry);
-
-        $contextParts = [];
-        $contextParts[] = '**Datos del negocio**';
-        $contextParts[] = '- Nombre / descripción que dio el usuario: '.($description !== '' ? $description : '(no indicada)');
-        $contextParts[] = '- Sector / rubro: '.($industry !== '' ? $industry : '(no indicado)');
-        $contextParts[] = '- Ubicación: '.($locationStr !== '' ? $locationStr : '(no indicada)');
-        if ($website !== '')
-        {
-            $contextParts[] = '- URL del sitio web: '.$website;
-        }
-        if ($websiteContent !== '')
-        {
-            $contextParts[] = "\n**Contenido extraído del sitio web (usa esto para definir el producto y el posicionamiento):**\n".$websiteContent;
-        }
-        if ($linksContext !== '')
-        {
-            $contextParts[] = "\n**Enlaces que el usuario ha compartido (redes, etc.):**\n".$linksContext;
-        }
-        $contextParts[] = "\n**Datos de mercado (para contexto):**";
-        $contextParts[] = '- Negocios en su zona: '.$businessesNearby;
-        $contextParts[] = '- Prospectos (contactos) en la zona: '.$prospects;
-        if ($byIndustry !== [])
-        {
-            $contextParts[] = '- Empresas en el sector indicado: '.$industryCount;
-        }
-
-        $fullContext = implode("\n", $contextParts);
-        if (trim($description) === '' && $websiteContent === '' && $linksContext === '')
-        {
-            return null;
-        }
-
-        $instruction = <<<'PROMPT'
-Eres un consultor de negocio y estrategia de mercado. Genera un **informe de mercado** útil y detallado en español, usando TODA la información que te pasan: descripción del negocio, contenido extraído de la web del usuario y los enlaces que ha compartido.
-
-Responde en Markdown, con estas secciones (usa **negrita** para los títulos de sección):
-
-1. **Definición del producto/servicio**  
-   A partir del contenido extraído del sitio web y de la descripción, define de forma clara qué ofrece este negocio, a quién y con qué valor. Si hay contenido de la web, úsalo como base.
-
-2. **Posicionamiento frente a competidores**  
-   Cómo está situado este negocio respecto a su competencia: ventajas diferenciales, nicho, fortalezas y posibles debilidades. Usa el contenido de la web y los canales (enlaces) para inferir su presencia y posicionamiento.
-
-3. **Cliente ideal**  
-   A quién le vendría bien este producto o servicio: perfil, tipo de empresa o persona, necesidades que cubre.
-
-4. **Oportunidades y recomendaciones**  
-   En función de los datos de mercado (negocios en la zona, prospectos, sector), sugiere 2-4 acciones concretas o oportunidades (ej. segmentos a atacar, canales a potenciar, mensaje a reforzar).
-
-Sé específico y práctico. No menciones fuentes de datos, APIs ni herramientas. Escribe como si el informe saliera de tu análisis como consultor.
-PROMPT;
-
-        try
-        {
-            $agent = agent(
-                instructions: $instruction,
-                messages: [],
-                tools: [],
-            );
-            $response = $agent->prompt($fullContext, [], Lab::Anthropic);
-
-            return $response->text ? trim($response->text) : null;
-        } catch (\Throwable $e)
-        {
-            Log::warning('Market report generation failed', ['error' => $e->getMessage()]);
-
-            return null;
-        }
     }
 
     public function render()
