@@ -67,10 +67,10 @@ class TestWhatsAppCart extends Command
 
         $this->info('Available commands:');
         $this->line('📋 productos - View catalog');
-        $this->line('🛒 comprar [product] / agregar [n] [product] - Add to cart');
+        $this->line('🛒 comprar + nombre / agregar cantidad + producto - Add to cart');
         $this->line('👁️ carrito - View cart');
         $this->line('🗑️ vaciar carrito - Clear cart');
-        $this->line('➖ quitar [n] [producto] / quitar todo [producto] - Sacar del carrito');
+        $this->line('➖ quitar cantidad + producto / quitar todo + producto - Sacar del carrito');
         $this->line('💳 finalizar - Cerrar pedido');
         $this->line('❌ exit - Exit testing');
         $this->newLine();
@@ -191,9 +191,9 @@ class TestWhatsAppCart extends Command
         }
 
         $response .= "💡 *Para contratar:*\n";
-        $response .= "• Escribe: *comprar [nombre del producto]*\n";
+        $response .= "• Escribí *comprar* más el nombre del producto\n";
         $response .= "• O contacta soporte: https://revisionalpha.com/contactenos\n\n";
-        $response .= '🛒 *Tu carrito:* Escribe *carrito* para ver tus productos seleccionados';
+        $response .= '🛒 *Tu carrito:* Escribí *carrito* para ver tus productos seleccionados';
 
         return $response;
     }
@@ -225,7 +225,7 @@ class TestWhatsAppCart extends Command
         {
             \Darryldecode\Cart\Facades\CartFacade::clear();
 
-            return "🗑️ **Carrito vaciado exitosamente**\n\n📋 Escribe 'productos' para ver nuestro catálogo\n💡 Usa 'comprar [producto]' para agregar nuevos items";
+            return "🗑️ **Carrito vaciado exitosamente**\n\n📋 Escribí *productos* para ver nuestro catálogo\n💡 Usá *comprar* más el nombre del producto para sumar ítems";
         }
 
         // Handle checkout
@@ -299,9 +299,9 @@ class TestWhatsAppCart extends Command
         $response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
         $response .= "🛒 **Total del carrito**: {$currency}".number_format(\Darryldecode\Cart\Facades\CartFacade::getTotal(), 2)."\n\n";
         $response .= "**Opciones:**\n";
-        $response .= "• Escribe 'carrito' para ver todos tus productos\n";
-        $response .= "• Escribe 'comprar [producto]' para agregar más\n";
-        $response .= "• Escribe 'checkout' para finalizar tu compra";
+        $response .= "• Escribí *carrito* para ver todos tus productos\n";
+        $response .= "• *Comprar* más el producto o *agregar* cantidad y producto para sumar más\n";
+        $response .= '• *Finalizar* o *checkout* para cerrar el pedido (luego te pediré *SÍ*)';
 
         return $response;
     }
@@ -312,7 +312,7 @@ class TestWhatsAppCart extends Command
 
         if ($cartItems->isEmpty())
         {
-            return "🛒 **Tu carrito está vacío**\n\n📋 Escribe 'productos' para ver nuestro catálogo\n💡 **Tip**: Usa 'comprar [producto]' para agregar items";
+            return "🛒 **Tu carrito está vacío**\n\n📋 Escribí *productos* para ver nuestro catálogo\n💡 **Tip**: *comprar* más el nombre del producto";
         }
 
         $response = "🛒 **Tu Carrito de Compras**\n\n";
@@ -334,9 +334,9 @@ class TestWhatsAppCart extends Command
         $response .= '📦 **Items**: '.\Darryldecode\Cart\Facades\CartFacade::getTotalQuantity()."\n\n";
 
         $response .= "**Opciones:**\n";
-        $response .= "• Escribe 'checkout' para finalizar tu compra\n";
-        $response .= "• Escribe 'comprar [producto]' para agregar más\n";
-        $response .= "• Escribe 'vaciar carrito' para empezar de nuevo";
+        $response .= "• *Finalizar* o *checkout* — cerrar el pedido\n";
+        $response .= "• *Comprar* más el producto o *agregar* cantidad y producto — sumar más\n";
+        $response .= '• *vaciar carrito* — empezar de nuevo';
 
         return $response;
     }
@@ -417,10 +417,10 @@ class TestWhatsAppCart extends Command
         $response = "🛍️ **¡Perfecto!**\n\n";
         $response .= "Puedes seguir agregando productos a tu carrito.\n\n";
         $response .= "📋 **Opciones disponibles:**\n";
-        $response .= "• Escribe '*productos*' para ver el catálogo completo\n";
-        $response .= "• Usa '*comprar [producto]*' para agregar items\n";
-        $response .= "• Escribe '*carrito*' para ver tu carrito actual\n";
-        $response .= "• Usa '*checkout*' cuando estés listo para finalizar\n\n";
+        $response .= "• Escribí *productos* para ver el catálogo completo\n";
+        $response .= "• *Comprar* más el producto o *agregar* cantidad y nombre\n";
+        $response .= "• *carrito* para ver tu carrito actual\n";
+        $response .= "• *checkout* o *finalizar* cuando estés listo\n\n";
         $response .= '💡 **Tip:** Tu carrito actual se mantiene guardado';
 
         return $response;

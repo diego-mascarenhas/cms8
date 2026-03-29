@@ -1404,9 +1404,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $message .= "🛒 *Cómo comprar por aquí:*\n";
-            $message .= "• *comprar [nombre]* / *comprar [código]* o *agregar [n] [nombre]* (ej. varias unidades iguales)\n";
-            $message .= "• *carrito* → ver qué llevas | *quitar [n] [producto]* o *quitar todo [producto]* → sacar ítems\n";
-            $message .= "• *finalizar* → cerrar el pedido\n";
+            $message .= "• Escribí *carrito* para ver todos tus productos\n";
+            $message .= "• *Comprar* más el nombre o código del producto, o *agregar* la cantidad y el producto (ej. agregar 2 yerbas)\n";
+            $message .= "• *Quitar* cantidad y producto, o *quitar todo* el producto — sacar del carrito\n";
+            $message .= "• *Finalizar* — cerrar el pedido (luego te pediré *SÍ*)\n";
             $message .= "• También podés preguntarme por un producto y te guío paso a paso.\n\n";
             $message .= '📞 Soporte: https://revisionalpha.com/contactenos';
 
@@ -2259,7 +2260,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return null;
             }
 
-            // Remove from cart: quitar todo [producto] | quitar [n] [producto] | quitar [producto]
+            // Remove from cart: quitar todo X | quitar N X | quitar X
             if (preg_match('/^(quitar|eliminar|sacar|borrar)\s+(todo|todos)\s+(.+)$/iu', $normalizedMessage, $removeAllMatch))
             {
                 $needle = $this->sanitizeRemoveProductNeedle($removeAllMatch[3]);
@@ -2283,7 +2284,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            // agregar|añadir [n] nombre… (ej. "agregar 3 vestidos iguales al carrito")
+            // agregar|añadir + cantidad + nombre… (ej. "agregar 3 vestidos iguales al carrito")
             if (preg_match('/^(agregar|añadir)\s+(\d+)\s+(.+)$/iu', $normalizedMessage, $agregarQtyMatch))
             {
                 $name = $this->sanitizeAgregarProductName($agregarQtyMatch[3]);
@@ -2483,7 +2484,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $response = "❌ **No encontré *{$productNeedle}* en tu carrito.**\n\n";
                 $response .= "📋 Escribí *carrito* para ver lo que tenés o *productos* para el catálogo.\n";
-                $response .= '💡 *quitar [n] [nombre]* — sacar unidades | *quitar todo [nombre]* — sacar todo ese ítem';
+                $response .= '💡 *Quitar* cantidad y nombre, o *quitar todo* el nombre — sacás unidades o el ítem entero';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2509,7 +2510,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             if ($toRemove <= 0)
             {
-                $response = '❌ Cantidad inválida. Probá de nuevo con *quitar [n] [producto]*.';
+                $response = '❌ Cantidad inválida. Probá de nuevo, por ejemplo *quitar 2 yerba* o *quitar todo pan*.';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2548,9 +2549,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= '🛒 **Total del carrito**: '.$currency.number_format(Cart::getTotal(), 2)."\n";
             $response .= '📦 **Ítems**: '.Cart::getTotalQuantity()."\n\n";
             $response .= "**Opciones:**\n";
-            $response .= "• *carrito* — ver detalle\n";
-            $response .= "• *quitar [n] [producto]* / *quitar todo [producto]*\n";
-            $response .= '• *finalizar* — cerrar el pedido';
+            $response .= "• Escribí *carrito* para ver todos tus productos\n";
+            $response .= "• *Comprar* más el producto, o *agregar* cantidad y producto para sumar más\n";
+            $response .= "• *Quitar* cantidad y producto o *quitar todo* el producto — sacar del carrito\n";
+            $response .= '• *Finalizar* — cerrar el pedido (luego te pediré *SÍ*)';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2586,7 +2588,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $response = "❌ **Producto no encontrado**: '{$productName}'\n\n";
                 $response .= "📋 Escribe 'productos' para ver nuestro catálogo completo\n";
-                $response .= '💡 **Tip**: *comprar [nombre]*, *agregar [n] [nombre]* o *agregar [nombre] al carrito*';
+                $response .= '💡 **Tip**: *comprar* más el nombre, *agregar* cantidad y nombre (ej. agregar 3 panes), o *agregar yerba al carrito*';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2634,10 +2636,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
             $response .= "🛒 **Total del carrito**: {$currency}".number_format(Cart::getTotal(), 2)."\n\n";
             $response .= "**Opciones:**\n";
-            $response .= "• Escribe 'carrito' para ver todos tus productos\n";
-            $response .= "• *comprar [producto]* o *agregar [n] [producto]* para sumar más\n";
-            $response .= "• *quitar [n] [producto]* o *quitar todo [producto]* — sacar del carrito\n";
-            $response .= '• *finalizar* — cerrar el pedido (luego te pediré *SÍ*)';
+            $response .= "• Escribí *carrito* para ver todos tus productos\n";
+            $response .= "• *Comprar* más el producto, o *agregar* la cantidad y el producto para sumar más\n";
+            $response .= "• *Quitar* cantidad y producto o *quitar todo* el producto — sacar del carrito\n";
+            $response .= '• *Finalizar* — cerrar el pedido (luego te pediré *SÍ*)';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2672,7 +2674,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             if ($cartItems->isEmpty())
             {
                 $response = "🛒 **Tu carrito está vacío**\n\n";
-                $response .= "📋 *comprar* / *agregar [n] [nombre]* para sumar | *productos* catálogo | preguntame por un producto.\n";
+                $response .= "📋 *comprar* o *agregar* cantidad y nombre para sumar | *productos* catálogo | preguntame por un producto.\n";
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2699,8 +2701,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $response .= "**Siguiente paso:**\n";
             $response .= "• *finalizar* — total y confirmación con *SÍ*\n";
-            $response .= "• *comprar [producto]* o *agregar [n] [producto]* — sumar ítems\n";
-            $response .= "• *quitar [n] [producto]* / *quitar todo [producto]* — sacar unidades o el ítem\n";
+            $response .= "• *Comprar* más el producto o *agregar* cantidad y producto — sumar ítems\n";
+            $response .= "• *Quitar* cantidad y producto o *quitar todo* el nombre — sacar unidades o el ítem\n";
             $response .= '• *vaciar carrito* — empezar de cero';
 
             $this->sendWhatsApp($phoneNumber, $response);
@@ -2732,7 +2734,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $response = "🗑️ **Carrito vaciado exitosamente**\n\n";
             $response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
-            $response .= "💡 Usa 'comprar [producto]' para agregar nuevos items";
+            $response .= '💡 Usá *comprar* más el nombre del producto para sumar ítems';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2761,7 +2763,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $this->forgetCheckoutPending($phoneNumber);
                 $response = "❌ **Tu carrito está vacío**\n\n";
-                $response .= '📋 *comprar [producto]* para agregar | *productos* para el catálogo';
+                $response .= '📋 *comprar* más un producto | *productos* para el catálogo';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2818,7 +2820,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $this->forgetCheckoutPending($phoneNumber);
                 $response = "❌ **Tu carrito está vacío**\n\n";
-                $response .= '📋 Escribe *productos* o preguntá por un producto; para sumar: *comprar [nombre o código]*.';
+                $response .= '📋 Escribí *productos* o preguntá por un producto; para sumar: *comprar* más el nombre o código del producto.';
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2904,9 +2906,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response = "🛍️ **Seguimos con tu compra**\n\n";
             $response .= "Tu carrito sigue igual. Podés sumar más productos o revisar el total.\n\n";
             $response .= "📋 **Pasos:**\n";
-            $response .= "• *comprar [nombre o código]* o *agregar [n] [nombre]* — agregar al carrito\n";
+            $response .= "• *Comprar* el nombre o código, o *agregar* cantidad y nombre — agregar al carrito\n";
             $response .= "• *carrito* — ver ítems y subtotales\n";
-            $response .= "• *quitar [n] [producto]* / *quitar todo [producto]* — sacar del carrito\n";
+            $response .= "• *Quitar* cantidad y producto o *quitar todo* el nombre — sacar del carrito\n";
             $response .= "• *finalizar* — pedir confirmación del pedido\n";
             $response .= "• *productos* — catálogo completo\n\n";
             $response .= '💡 Decime qué producto querés y te ayudo a agregarlo.';
