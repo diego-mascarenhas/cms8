@@ -309,16 +309,9 @@
                             <label class="form-label"><i class="ti ti-world ti-sm me-1 text-body"></i> País</label>
                             <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
                                 <option value="">Seleccionar país</option>
-                                <option value="Argentina">Argentina</option>
-                                <option value="Chile">Chile</option>
-                                <option value="Colombia">Colombia</option>
-                                <option value="España">España</option>
-                                <option value="Estados Unidos">Estados Unidos</option>
-                                <option value="Francia">Francia</option>
-                                <option value="Italia">Italia</option>
-                                <option value="México">México</option>
-                                <option value="Perú">Perú</option>
-                                <option value="Reino Unido">Reino Unido</option>
+                                @foreach (\App\Models\Country::query()->orderBy('name')->get() as $country)
+                                    <option value="{{ $country->name }}">{{ $country->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-sm-6">
