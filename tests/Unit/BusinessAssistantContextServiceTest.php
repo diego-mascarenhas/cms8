@@ -52,6 +52,32 @@ class BusinessAssistantContextServiceTest extends TestCase
         $this->assertStringContainsString('Nombre del negocio', $markdown);
     }
 
+    public function test_excludes_first_name_and_birth_date_from_assistant_context(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $team->setSetting('business_config', [
+            'business_name' => 'Tienda SA',
+            'first_name' => 'NombreSecretoTitular',
+            'last_name' => 'ApellidoVisible',
+            'birth_date' => '1990-01-01',
+            'city' => 'Rosario',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        $markdown = app(BusinessAssistantContextService::class)->buildMarkdownAppendix($team->id);
+
+        $this->assertStringContainsString('Tienda SA', $markdown);
+        $this->assertStringContainsString('ApellidoVisible', $markdown);
+        $this->assertStringContainsString('Rosario', $markdown);
+        $this->assertStringNotContainsString('NombreSecretoTitular', $markdown);
+        $this->assertStringNotContainsString('1990-01-01', $markdown);
+        $this->assertStringNotContainsString('Nombre (titular)', $markdown);
+        $this->assertStringNotContainsString('Fecha de nacimiento', $markdown);
+    }
+
     public function test_excludes_business_challenge_from_assistant_context(): void
     {
         $owner = User::factory()->create();

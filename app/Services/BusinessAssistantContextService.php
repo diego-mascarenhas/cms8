@@ -7,6 +7,7 @@ use App\Models\Team;
 /**
  * Builds a markdown block from team {@see Team::getSetting('business_config')} for LLM system instructions.
  * Omits `business_challenge` (internal/strategic text): kept for wizard and AI summary flows, not sent to the chat assistant.
+ * Omits `first_name` and `birth_date` (titular): not sent to any assistant context.
  */
 class BusinessAssistantContextService
 {
@@ -25,9 +26,7 @@ class BusinessAssistantContextService
         'contact_email' => 'Email de contacto',
         'business_tagline' => 'Eslogan',
         'business_description' => 'Descripción',
-        'first_name' => 'Nombre (titular)',
         'last_name' => 'Apellido (titular)',
-        'birth_date' => 'Fecha de nacimiento (titular)',
         'birth_time' => 'Hora de nacimiento (titular)',
         'country' => 'País',
         'language' => 'Idioma',
@@ -80,7 +79,7 @@ class BusinessAssistantContextService
             'contact_email', 'business_tagline', 'business_description',
         ];
         $ownerKeys = [
-            'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
+            'last_name', 'birth_time', 'country', 'language',
             'address', 'landmark', 'pincode', 'city',
         ];
         $socialKeys = [

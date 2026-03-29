@@ -5,6 +5,7 @@ namespace App\Livewire\PublicShop;
 use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use App\Models\Team;
+use App\Services\BusinessAssistantContextService;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -204,8 +205,16 @@ class ShoppingAssistant extends Component
         $profile = 'Edad aproximada: '.($this->shopperAge !== '' ? $this->shopperAge : 'no indicada')
             .'. Gustos/notas: '.($this->shopperNotes !== '' ? $this->shopperNotes : 'no indicados');
 
+        $businessAppendix = trim(app(BusinessAssistantContextService::class)->buildMarkdownAppendix($team->id));
+        $contextPrefix = "Eres el asistente de compra de \"{$businessName}\" (rubro: {$industry}).";
+        if ($businessAppendix !== '')
+        {
+            $contextPrefix .= "\n\n---\n\n".$businessAppendix;
+        }
+
         $instructions = <<<TXT
-Eres el asistente de compra de "{$businessName}" (rubro: {$industry}).
+{$contextPrefix}
+
 Catálogo (id|nombre|precio|moneda), solo estos existen:
 {$catalogLines}
 
