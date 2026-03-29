@@ -14,6 +14,11 @@ class UpdateTeamFileRequest extends FormRequest
 
     public function authorize(): bool
     {
+        if (! $this->user()?->currentTeam?->hasModule('team_files'))
+        {
+            return false;
+        }
+
         return $this->user()->can('update', $this->route('team_file'));
     }
 

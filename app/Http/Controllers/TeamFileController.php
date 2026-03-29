@@ -18,6 +18,7 @@ class TeamFileController extends Controller
 {
     public function index(TeamFileDataTable $dataTable)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('viewAny', TeamFile::class);
 
         $visibilityOptions = MultimediaVisibility::cases();
@@ -27,6 +28,7 @@ class TeamFileController extends Controller
 
     public function create()
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('create', TeamFile::class);
 
         $visibilityOptions = MultimediaVisibility::cases();
@@ -52,6 +54,7 @@ class TeamFileController extends Controller
 
     public function edit(TeamFile $team_file)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('update', $team_file);
 
         $visibilityOptions = MultimediaVisibility::cases();
@@ -64,6 +67,7 @@ class TeamFileController extends Controller
 
     public function show(TeamFile $team_file)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('view', $team_file);
 
         $histories = $team_file->histories()->with('user')->get();
@@ -77,6 +81,7 @@ class TeamFileController extends Controller
 
     public function update(UpdateTeamFileRequest $request, TeamFile $team_file)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $existingFileName = $team_file->getFirstMedia('file')?->file_name;
 
         $team_file->fill(Arr::except($request->validated(), ['file']));
@@ -99,6 +104,7 @@ class TeamFileController extends Controller
 
     public function destroy(TeamFile $team_file)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('delete', $team_file);
         $existingFileName = $team_file->getFirstMedia('file')?->file_name;
         $archivedMediaId = $this->archiveCurrentFile($team_file);
@@ -111,6 +117,7 @@ class TeamFileController extends Controller
 
     public function restoreVersion(TeamFile $team_file, TeamFileHistory $history)
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('update', $team_file);
         abort_if($history->team_file_id !== $team_file->id || ! $history->archived_media_id, 404);
 
@@ -132,6 +139,7 @@ class TeamFileController extends Controller
 
     public function download(Request $request, TeamFile $team_file): BinaryFileResponse
     {
+        $this->assertCurrentTeamHasTeamFilesModule();
         $this->authorize('view', $team_file);
 
         $media = $team_file->getFirstMedia('file');
@@ -152,6 +160,11 @@ class TeamFileController extends Controller
         abort_if(! $media, 404);
 
         return response()->download($media->getPath(), $media->file_name);
+    }
+
+    private function assertCurrentTeamHasTeamFilesModule(): void
+    {
+        abort_unless(auth()->user()?->currentTeam?->hasModule('team_files'), 403);
     }
 
     private function archiveCurrentFile(TeamFile $teamFile): ?int

@@ -28,7 +28,7 @@ class ModuleSeeder extends Seeder
         ],
         'contacts' => [
             'name' => 'Contacts',
-            'icon' => 'address-book',
+            'icon' => 'users',
             'description' => 'Contact management module',
             'is_enabled' => true,  // On by default
         ],
@@ -46,7 +46,7 @@ class ModuleSeeder extends Seeder
         ],
         'services' => [
             'name' => 'Services',
-            'icon' => 'server',
+            'icon' => 'rocket',
             'description' => 'Service management module',
             'is_enabled' => true,  // On by default
         ],
@@ -208,6 +208,13 @@ class ModuleSeeder extends Seeder
             'group' => 'automation',
             'order' => 3,
         ],
+        'prompts' => [
+            'name' => 'Prompts',
+            'icon' => 'cpu',
+            'description' => 'AI instruction prompts for assistants and automation',
+            'group' => 'automation',
+            'order' => 1,
+        ],
         // CONTENT GROUP
         'multimedia' => [
             'name' => 'Multimedia',
@@ -322,12 +329,6 @@ class ModuleSeeder extends Seeder
             'icon' => 'users-group',
             'description' => 'Department management module',
             'order' => 7,
-        ],
-        'prompts' => [
-            'name' => 'Prompts',
-            'icon' => 'cpu',
-            'description' => 'Module prompts for AI instructions (linked by module_id)',
-            'order' => 9,
         ],
         'collaborators' => [
             'name' => 'Collaborators',

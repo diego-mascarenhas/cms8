@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\MultimediaVisibility;
+use App\Models\Module;
 use App\Models\Team;
 use App\Models\TeamFile;
 use App\Models\TeamFileHistory;
@@ -235,6 +236,18 @@ class TeamFileTest extends TestCase
         $user->current_team_id = $team->id;
         $user->save();
         $user->assignRole($role);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'team_files'],
+            [
+                'name' => 'Team files',
+                'icon' => 'folders',
+                'description' => 'Team company files',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('team_files');
 
         return $user->refresh();
     }
