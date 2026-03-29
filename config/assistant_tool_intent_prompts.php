@@ -166,6 +166,7 @@ return [
                 'finalizar',
                 'pedido',
                 'pagar',
+                'agregar',
             ],
         ],
 

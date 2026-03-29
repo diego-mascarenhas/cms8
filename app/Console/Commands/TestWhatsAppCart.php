@@ -67,7 +67,7 @@ class TestWhatsAppCart extends Command
 
         $this->info('Available commands:');
         $this->line('📋 productos - View catalog');
-        $this->line('🛒 comprar [product] - Add to cart');
+        $this->line('🛒 comprar [product] / agregar [n] [product] - Add to cart');
         $this->line('👁️ carrito - View cart');
         $this->line('🗑️ vaciar carrito - Clear cart');
         $this->line('➖ quitar [n] [producto] / quitar todo [producto] - Sacar del carrito');

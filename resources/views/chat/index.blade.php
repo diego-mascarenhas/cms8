@@ -282,6 +282,11 @@
             var body = document.querySelector('.chat-history-body');
             chatHistoryScrollToBottomIfPinned(body);
         }
+        function syncSidebarAssistantAutoRespondFromResponse(data) {
+            if (!data || typeof data.assistant_auto_respond !== 'boolean') return;
+            var sidebar = document.getElementById('sidebar-ai-replies-toggle');
+            if (sidebar) sidebar.checked = data.assistant_auto_respond;
+        }
         function showAssistantTypingIndicator() {
             var list = document.getElementById('assistant-messages-list');
             if (!list || document.getElementById('assistant-typing-indicator')) return;
@@ -534,6 +539,7 @@
                             }
                             if (isAssistantView) {
                                 appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                                syncSidebarAssistantAutoRespondFromResponse(data);
                                 messageInput.value = '';
                                 currentUserMessage = '';
                                 currentAiResponse = '';
@@ -623,6 +629,7 @@
                         }
                         if (isAssistantView) {
                             appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                            syncSidebarAssistantAutoRespondFromResponse(data);
                             messageInput.value = '';
                             currentUserMessage = '';
                             currentAiResponse = '';

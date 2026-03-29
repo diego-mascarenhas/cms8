@@ -916,6 +916,28 @@ class ChatController extends Controller
 
         if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
         {
+            $adminAutoRespondCommand = $this->tryHandleAdminTeamAssistantAutoRespondChatCommand(
+                $message,
+                auth()->user(),
+                (int) $teamId,
+                $contextUser,
+                $contextService,
+                $hasAudio,
+            );
+            if ($adminAutoRespondCommand !== null)
+            {
+                if (($adminAutoRespondCommand['success'] ?? false) === false && ($adminAutoRespondCommand['_http_status'] ?? 200) === 403)
+                {
+                    $status = 403;
+                    unset($adminAutoRespondCommand['_http_status']);
+
+                    return response()->json($adminAutoRespondCommand, $status);
+                }
+                unset($adminAutoRespondCommand['_http_status']);
+
+                return response()->json($adminAutoRespondCommand);
+            }
+
             $uid = (int) $teamId;
             $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
                 ?? app(WhatsAppContactSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
@@ -1738,5 +1760,87 @@ class ChatController extends Controller
         Log::info('WhatsApp number re-linked to team from service', ['team_id' => $team->id, 'number' => $normalized]);
 
         return response()->json(['ok' => true, 'team_id' => $team->id]);
+    }
+
+    /**
+     * When the message is an exact admin-only slash command, toggle team {@see Team::setSetting()} assistant_auto_respond (same as sidebar "Humano Assistant replies").
+     *
+     * @return array<string, mixed>|null Null if the message is not a recognized command.
+     */
+    private function tryHandleAdminTeamAssistantAutoRespondChatCommand(
+        string $message,
+        User $actor,
+        int $teamId,
+        User $contextUser,
+        AgentConversationContextService $contextService,
+        bool $hasAudio,
+    ): ?array {
+        $normalized = strtolower(preg_replace('/\s+/u', ' ', trim($message)));
+        $commands = [
+            '/asistente on' => true,
+            '/asistente off' => false,
+            '/asistente activar' => true,
+            '/asistente desactivar' => false,
+            '/assistant on' => true,
+            '/assistant off' => false,
+        ];
+        if (! array_key_exists($normalized, $commands))
+        {
+            return null;
+        }
+
+        $turnOn = $commands[$normalized];
+        $isPrivileged = $actor->hasRole('admin') || $actor->hasRole('root');
+        if (! $isPrivileged)
+        {
+            return [
+                'success' => false,
+                'message' => __('Only administrators can use the /asistente command.'),
+                '_http_status' => 403,
+            ];
+        }
+
+        $team = $actor->currentTeam;
+        if (! $team || (int) $team->id !== $teamId)
+        {
+            return [
+                'success' => false,
+                'message' => __('No team context.'),
+                '_http_status' => 403,
+            ];
+        }
+
+        $team->setSetting('assistant_auto_respond', $turnOn ? '1' : '0');
+        $replyText = $turnOn
+            ? __('Humano Assistant auto-replies for WhatsApp are now **on** for this team.')
+            : __('Humano Assistant auto-replies for WhatsApp are now **off** for this team.');
+
+        $contextService->persistMessages(
+            $contextUser->id,
+            $message,
+            $replyText,
+            null,
+            [],
+            [],
+            [],
+            [],
+            $teamId,
+            false,
+            null,
+        );
+
+        $payload = [
+            'success' => true,
+            'response' => $replyText,
+            'action_performed' => 'assistant_auto_respond_toggle',
+            'assistant_auto_respond' => $turnOn,
+            '_http_status' => 200,
+        ];
+        if ($hasAudio)
+        {
+            $payload['transcript'] = $message;
+        }
+
+        return $payload;
     }
 }
