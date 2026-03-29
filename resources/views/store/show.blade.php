@@ -39,40 +39,75 @@
                     <h5 class="card-title mb-0">{{ __('Datos de la tienda') }}</h5>
                 </div>
                 <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Nombre') }}:</span>
-                            <span>{{ $store->name }}</span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Código') }}:</span>
-                            <span>{{ $store->code ?? '-' }}</span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Dirección') }}:</span>
-                            <span>{{ $store->address ?? '-' }}</span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Estado') }}:</span>
-                            <span class="badge {{ $store->status ? 'bg-label-success' : 'bg-label-secondary' }}">
-                                {{ $store->status ? __('Activa') : __('Inactiva') }}
-                            </span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Principal') }}:</span>
-                            <span class="badge {{ $store->is_main ? 'bg-label-primary' : 'bg-label-secondary' }}">
-                                {{ $store->is_main ? __('Sí') : __('No') }}
-                            </span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="fw-medium me-1">{{ __('Creada') }}:</span>
-                            <span>{{ optional($store->created_at)->format('d/m/Y H:i') }}</span>
-                        </li>
-                        <li class="mb-0">
-                            <span class="fw-medium me-1">{{ __('Actualizada') }}:</span>
-                            <span>{{ optional($store->updated_at)->format('d/m/Y H:i') }}</span>
-                        </li>
-                    </ul>
+                    <div class="row g-3">
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Nombre') }}</h6>
+                            <p class="mb-0">{{ $store->name }}</p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Código') }}</h6>
+                            <p class="mb-0">{{ $store->code ?? '-' }}</p>
+                        </div>
+                        <div class="col-sm-12 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Dirección') }}</h6>
+                            <p class="mb-0">{{ $store->address ?? '-' }}</p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Estado') }}</h6>
+                            <p class="mb-0">
+                                <span class="badge {{ $store->status ? 'bg-label-success' : 'bg-label-secondary' }}">
+                                    {{ $store->status ? __('Activa') : __('Inactiva') }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Principal') }}</h6>
+                            <p class="mb-0">
+                                <span class="badge {{ $store->is_main ? 'bg-label-primary' : 'bg-label-secondary' }}">
+                                    {{ $store->is_main ? __('Sí') : __('No') }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Creada') }}</h6>
+                            <p class="mb-0">{{ optional($store->created_at)->format('d/m/Y H:i') }}</p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Actualizada') }}</h6>
+                            <p class="mb-0">{{ optional($store->updated_at)->format('d/m/Y H:i') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @php
+                $paymentKeys = $store->enabledCheckoutPaymentMethods();
+                $fulfillmentKeys = $store->enabledCheckoutFulfillmentTypes();
+                $paymentLabels = \App\Models\Store::checkoutPaymentMethodLabels();
+                $fulfillmentLabels = \App\Models\Store::checkoutFulfillmentLabels();
+            @endphp
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">{{ __('Ventas por WhatsApp / tienda') }}</h5>
+                    <p class="card-subtitle text-muted small mb-0 mt-1">{{ __('Medios de pago y formas de entrega que ofrece esta sucursal a los clientes.') }}</p>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">{{ __('Medios de pago') }}</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        @forelse ($paymentKeys as $key)
+                            <span class="badge bg-label-primary">{{ $paymentLabels[$key] ?? $key }}</span>
+                        @empty
+                            <span class="text-muted">—</span>
+                        @endforelse
+                    </div>
+                    <h6 class="text-muted mb-2">{{ __('Formas de entrega') }}</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        @forelse ($fulfillmentKeys as $key)
+                            <span class="badge bg-label-info">{{ $fulfillmentLabels[$key] ?? $key }}</span>
+                        @empty
+                            <span class="text-muted">—</span>
+                        @endforelse
+                    </div>
                 </div>
             </div>
         </div>

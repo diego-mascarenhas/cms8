@@ -40,7 +40,7 @@ class StoreController extends Controller
             return redirect()->route('store.index')->with('error', __('No active team found.'));
         }
 
-        $payload = $request->validated();
+        $payload = $this->payloadWithCheckoutData($request->validated(), null);
         $payload['team_id'] = $teamId;
         $payload['is_main'] = $request->boolean('is_main');
         $payload['status'] = $request->boolean('status');
@@ -69,7 +69,7 @@ class StoreController extends Controller
         $store = Store::query()->findOrFail($id);
         $teamId = auth()->user()->currentTeam?->id;
 
-        $payload = $request->validated();
+        $payload = $this->payloadWithCheckoutData($request->validated(), $store);
         $payload['is_main'] = $request->boolean('is_main');
         $payload['status'] = $request->boolean('status');
 
@@ -83,7 +83,7 @@ class StoreController extends Controller
 
         $store->update($payload);
 
-        return redirect()->route('store.index')->with('success', __('Store updated successfully.'));
+        return redirect()->route('store.show', $store->id)->with('success', __('Store updated successfully.'));
     }
 
     public function destroy(string $id)
@@ -98,5 +98,31 @@ class StoreController extends Controller
         $store->delete();
 
         return redirect()->route('store.index')->with('success', __('Store deleted successfully.'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function payloadWithCheckoutData(array $validated, ?Store $existing): array
+    {
+        $payment = array_values(array_intersect(
+            Store::checkoutPaymentMethodKeys(),
+            $validated['checkout_payment_methods'] ?? [],
+        ));
+        $fulfillment = array_values(array_intersect(
+            Store::checkoutFulfillmentKeys(),
+            $validated['checkout_fulfillment_types'] ?? [],
+        ));
+        unset($validated['checkout_payment_methods'], $validated['checkout_fulfillment_types']);
+
+        $data = is_array($existing?->data) ? $existing->data : [];
+        $data['checkout'] = [
+            'payment_methods' => $payment,
+            'fulfillment_types' => $fulfillment,
+        ];
+        $validated['data'] = $data;
+
+        return $validated;
     }
 }

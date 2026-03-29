@@ -78,7 +78,7 @@
                                             <i class="ti ti-eye ti-sm me-2"></i>
                                         </a>
                                         <a href="{{ route('store.edit', $store->id) }}" class="text-body" title="{{ __('Edit') }}">
-                                            <i class="ti ti-pencil ti-sm me-2"></i>
+                                            <i class="ti ti-edit ti-sm me-2"></i>
                                         </a>
                                     </div>
                                 </td>

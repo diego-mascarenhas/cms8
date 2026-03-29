@@ -8,7 +8,9 @@ use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Product;
 use App\Models\Service;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -2616,6 +2618,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     'quantity' => $addQuantity,
                     'attributes' => [
                         'team_id' => $teamId,
+                        'store_id' => $product->store_id,
                         'currency_id' => $product->currency_id,
                         'description' => $product->description,
                         'category_name' => $product->category->name ?? '',
@@ -2781,6 +2784,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
+
+            $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
+            $response .= $this->formatStoreCheckoutOptionsForWhatsApp($checkoutStore);
+
             $response .= "❓ **¿Confirmamos el pedido?**\n\n";
             $response .= "Responde *SÍ* solo ahora para confirmar este pedido, o *NO* para seguir agregando productos.\n";
             $response .= '(Si no ves este mensaje como último paso, escribe *carrito* o *finalizar* de nuevo.)';
@@ -2830,6 +2837,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $total = Cart::getTotal();
             $cleanDigits = preg_replace('/[^0-9]/', '', (string) $phoneNumber);
 
+            $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
+            $checkoutSnapshot = $this->buildCheckoutSnapshotForOrder($checkoutStore);
+
             try
             {
                 $order = app(WhatsAppCheckoutOrderService::class)->createFromWhatsAppCart(
@@ -2837,6 +2847,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $cleanDigits,
                     $cartItems,
                     (float) $total,
+                    $checkoutStore?->id,
+                    $checkoutSnapshot,
                 );
             } catch (\Throwable $e)
             {
@@ -2864,6 +2876,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $response .= "🧾 **Tu pedido quedó registrado**\n";
             $response .= '• **Nº de orden:** #'.$order->order_number."\n";
+            if ($checkoutStore)
+            {
+                $response .= '• **Sucursal:** '.$checkoutStore->name."\n";
+            }
             $response .= "• Guardá ese número por si necesitás seguimiento por acá.\n\n";
 
             $response .= "📞 **¿Dudas?**\n";
@@ -2928,6 +2944,126 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             return ['success' => false, 'message' => 'Error processing continue shopping'];
         }
+    }
+
+    /**
+     * Branch used for checkout copy and {@see Order::store_id} (single store or main when ambiguous / empty).
+     *
+     * @param  \Illuminate\Support\Collection|\Darryldecode\Cart\CartCollection  $cartItems
+     */
+    private function resolveStoreForWhatsAppCart(int $teamId, $cartItems): ?Store
+    {
+        $storeIds = [];
+        foreach ($cartItems as $item)
+        {
+            $attrs = $this->normalizeCartItemAttributesForCheckout($item->attributes ?? null);
+            $sid = isset($attrs['store_id']) && $attrs['store_id'] !== null && $attrs['store_id'] !== ''
+                ? (int) $attrs['store_id']
+                : null;
+            if ($sid <= 0 && (int) $item->id > 0)
+            {
+                $pid = (int) $item->id;
+                $sid = (int) (Product::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('id', $pid)
+                    ->value('store_id') ?? 0);
+            }
+            if ($sid > 0)
+            {
+                $storeIds[] = $sid;
+            }
+        }
+        $storeIds = array_values(array_unique($storeIds));
+
+        if ($storeIds === [])
+        {
+            return Store::ensureMainStoreForTeam($teamId);
+        }
+
+        if (count($storeIds) === 1)
+        {
+            $store = Store::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('id', $storeIds[0])
+                ->first();
+
+            return $store ?? Store::ensureMainStoreForTeam($teamId);
+        }
+
+        return Store::ensureMainStoreForTeam($teamId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function normalizeCartItemAttributesForCheckout(mixed $attributes): array
+    {
+        if ($attributes === null)
+        {
+            return [];
+        }
+        if (is_array($attributes))
+        {
+            return $attributes;
+        }
+        if (is_object($attributes))
+        {
+            $decoded = json_decode(json_encode($attributes), true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    private function formatStoreCheckoutOptionsForWhatsApp(?Store $store): string
+    {
+        if (! $store)
+        {
+            return '';
+        }
+        $block = "\n🏪 **{$store->name}**\n";
+        $block .= '**'.__('Medios de pago aceptados').":**\n";
+        foreach ($store->enabledCheckoutPaymentMethods() as $key)
+        {
+            $labels = Store::checkoutPaymentMethodLabels();
+            $block .= '• '.($labels[$key] ?? $key)."\n";
+        }
+        $block .= '**'.__('Formas de entrega').":**\n";
+        foreach ($store->enabledCheckoutFulfillmentTypes() as $key)
+        {
+            $labels = Store::checkoutFulfillmentLabels();
+            $block .= '• '.($labels[$key] ?? $key)."\n";
+        }
+        $block .= "\n";
+
+        return $block;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCheckoutSnapshotForOrder(?Store $store): array
+    {
+        if (! $store)
+        {
+            return [];
+        }
+
+        return [
+            'store_id' => $store->id,
+            'store_name' => $store->name,
+            'payment_methods' => $store->enabledCheckoutPaymentMethods(),
+            'payment_method_labels' => array_map(
+                static fn (string $k): string => (string) (Store::checkoutPaymentMethodLabels()[$k] ?? $k),
+                $store->enabledCheckoutPaymentMethods(),
+            ),
+            'fulfillment_types' => $store->enabledCheckoutFulfillmentTypes(),
+            'fulfillment_labels' => array_map(
+                static fn (string $k): string => (string) (Store::checkoutFulfillmentLabels()[$k] ?? $k),
+                $store->enabledCheckoutFulfillmentTypes(),
+            ),
+        ];
     }
 
     /**

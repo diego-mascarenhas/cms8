@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Store;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,6 +38,10 @@ class StoreRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
             'is_main' => ['nullable', 'boolean'],
+            'checkout_payment_methods' => ['required', 'array', 'min:1'],
+            'checkout_payment_methods.*' => ['string', Rule::in(Store::checkoutPaymentMethodKeys())],
+            'checkout_fulfillment_types' => ['required', 'array', 'min:1'],
+            'checkout_fulfillment_types.*' => ['string', Rule::in(Store::checkoutFulfillmentKeys())],
         ];
     }
 }

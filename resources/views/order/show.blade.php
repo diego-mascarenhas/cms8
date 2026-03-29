@@ -150,6 +150,12 @@
 						<h6 class="text-muted">{{ __('Equipo') }}</h6>
 						<p class="mb-0">{{ $order->team->name ?? '-' }}</p>
 					</div>
+					@if ($order->store)
+					<div class="col-md-6 mb-3">
+						<h6 class="text-muted">{{ __('Sucursal') }}</h6>
+						<p class="mb-0">{{ $order->store->name }}</p>
+					</div>
+					@endif
 					<div class="col-md-6 mb-3">
 						<h6 class="text-muted">{{ __('Moneda') }}</h6>
 						<p class="mb-0">{{ $order->currency ? $order->currency->name . ' (' . $order->currency->symbol . ')' : '-' }}</p>
@@ -161,6 +167,36 @@
 				</div>
 			</div>
 		</div>
+
+		@php
+			$paymentLabels = $order->checkoutPaymentMethodDisplayLabels();
+			$fulfillmentLabels = $order->checkoutFulfillmentDisplayLabels();
+		@endphp
+		@if (count($paymentLabels) > 0 || count($fulfillmentLabels) > 0)
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="card-title mb-0">{{ __('Medios de pago y entrega') }}</h5>
+			</div>
+			<div class="card-body">
+				@if (count($paymentLabels) > 0)
+					<h6 class="text-muted mb-2">{{ __('Medios de pago') }}</h6>
+					<div class="d-flex flex-wrap gap-2 mb-4">
+						@foreach ($paymentLabels as $label)
+							<span class="badge bg-label-primary">{{ $label }}</span>
+						@endforeach
+					</div>
+				@endif
+				@if (count($fulfillmentLabels) > 0)
+					<h6 class="text-muted mb-2">{{ __('Formas de entrega') }}</h6>
+					<div class="d-flex flex-wrap gap-2">
+						@foreach ($fulfillmentLabels as $label)
+							<span class="badge bg-label-info">{{ $label }}</span>
+						@endforeach
+					</div>
+				@endif
+			</div>
+		</div>
+		@endif
 
 		@if(!empty($order->metadata['items']) && is_array($order->metadata['items']))
 		<div class="card mb-4">

@@ -15,6 +15,7 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('team_id')->constrained('teams')->onDelete('cascade');
+            $table->foreignId('store_id')->nullable()->constrained('stores')->nullOnDelete();
             $table->string('order_number')->unique();
             $table->unsignedBigInteger('contact_id')->nullable();
             $table->decimal('total_amount', 10, 2)->unsigned()->default(0);
@@ -33,6 +34,7 @@ return new class extends Migration
             // Indexes for better performance
             $table->index(['team_id', 'payment_status']);
             $table->index(['team_id', 'delivery_status']);
+            $table->index(['team_id', 'store_id']);
             $table->index('order_number');
         });
     }

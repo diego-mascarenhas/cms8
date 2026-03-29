@@ -15,8 +15,9 @@ class WhatsAppCheckoutOrderService
      * Persist WhatsApp cart lines as a row in {@see Order} (line snapshot in metadata).
      *
      * @param  iterable<object>  $cartItems  Cart rows with id, name, price, quantity, attributes
+     * @param  array<string, mixed>|null  $checkoutSnapshot  Branch checkout options shown to the customer (labels, store name)
      */
-    public function createFromWhatsAppCart(int $teamId, string $cleanPhoneDigits, iterable $cartItems, float $cartTotal): Order
+    public function createFromWhatsAppCart(int $teamId, string $cleanPhoneDigits, iterable $cartItems, float $cartTotal, ?int $storeId = null, ?array $checkoutSnapshot = null): Order
     {
         $lines = [];
         foreach ($cartItems as $item)
@@ -31,12 +32,23 @@ class WhatsAppCheckoutOrderService
 
         $currencyId = $this->resolveCurrencyId($lines);
 
-        return DB::transaction(function () use ($teamId, $cleanPhoneDigits, $lines, $cartTotal, $currencyId)
+        return DB::transaction(function () use ($teamId, $cleanPhoneDigits, $lines, $cartTotal, $currencyId, $storeId, $checkoutSnapshot)
         {
             $orderNumber = $this->generateUniqueOrderNumber();
 
+            $metadata = [
+                'source' => 'whatsapp',
+                'phone' => $cleanPhoneDigits,
+                'items' => $lines,
+            ];
+            if ($checkoutSnapshot !== null && $checkoutSnapshot !== [])
+            {
+                $metadata['checkout_offered'] = $checkoutSnapshot;
+            }
+
             return Order::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
+                'store_id' => $storeId,
                 'order_number' => $orderNumber,
                 'contact_id' => $this->findContactIdForTeamPhone($teamId, $cleanPhoneDigits),
                 'total_amount' => round($cartTotal, 2),
@@ -44,11 +56,7 @@ class WhatsAppCheckoutOrderService
                 'payment_status' => 'pending',
                 'delivery_status' => 'processing',
                 'notes' => 'Order placed via WhatsApp',
-                'metadata' => [
-                    'source' => 'whatsapp',
-                    'phone' => $cleanPhoneDigits,
-                    'items' => $lines,
-                ],
+                'metadata' => $metadata,
             ]);
         });
     }

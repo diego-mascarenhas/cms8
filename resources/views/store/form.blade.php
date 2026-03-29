@@ -36,6 +36,22 @@
 @endsection
 
 @section('content')
+    @php
+        $checkoutPaymentSelected = old(
+            'checkout_payment_methods',
+            data_get($store->data, 'checkout.payment_methods', \App\Models\Store::checkoutPaymentMethodKeys()),
+        );
+        $checkoutFulfillmentSelected = old(
+            'checkout_fulfillment_types',
+            data_get($store->data, 'checkout.fulfillment_types', \App\Models\Store::checkoutFulfillmentKeys()),
+        );
+        if (! is_array($checkoutPaymentSelected)) {
+            $checkoutPaymentSelected = \App\Models\Store::checkoutPaymentMethodKeys();
+        }
+        if (! is_array($checkoutFulfillmentSelected)) {
+            $checkoutFulfillmentSelected = \App\Models\Store::checkoutFulfillmentKeys();
+        }
+    @endphp
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ $store->id ? __('Editar tienda') : __('Crear tienda') }}</h4>
@@ -103,6 +119,38 @@
                             <input class="form-check-input" type="checkbox" id="is_main" name="is_main" value="1" {{ old('is_main', $store->is_main) ? 'checked' : '' }}>
                             <label class="form-check-label" for="is_main">{{ __('Marcar como tienda principal') }}</label>
                         </div>
+                    </div>
+
+                    <div class="col-12">
+                        <hr class="my-2">
+                        <h6 class="mb-2">{{ __('Ventas por WhatsApp / tienda') }}</h6>
+                        <p class="text-muted small mb-3">{{ __('Elegí qué medios de pago y modalidades de entrega ofrece esta sucursal a los clientes.') }}</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="form-label d-block mb-2">{{ __('Medios de pago') }} (*)</span>
+                        @foreach (\App\Models\Store::checkoutPaymentMethodKeys() as $pmKey)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="checkout_payment_methods[]" id="pm_{{ $pmKey }}" value="{{ $pmKey }}" {{ in_array($pmKey, $checkoutPaymentSelected, true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="pm_{{ $pmKey }}">{{ \App\Models\Store::checkoutPaymentMethodLabels()[$pmKey] ?? $pmKey }}</label>
+                            </div>
+                        @endforeach
+                        @error('checkout_payment_methods')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <span class="form-label d-block mb-2">{{ __('Entrega') }} (*)</span>
+                        @foreach (\App\Models\Store::checkoutFulfillmentKeys() as $ffKey)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="checkout_fulfillment_types[]" id="ff_{{ $ffKey }}" value="{{ $ffKey }}" {{ in_array($ffKey, $checkoutFulfillmentSelected, true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="ff_{{ $ffKey }}">{{ \App\Models\Store::checkoutFulfillmentLabels()[$ffKey] ?? $ffKey }}</label>
+                            </div>
+                        @endforeach
+                        @error('checkout_fulfillment_types')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     <div class="col-12 d-flex gap-2">
