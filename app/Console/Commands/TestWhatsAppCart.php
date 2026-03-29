@@ -70,7 +70,8 @@ class TestWhatsAppCart extends Command
         $this->line('🛒 comprar [product] - Add to cart');
         $this->line('👁️ carrito - View cart');
         $this->line('🗑️ vaciar carrito - Clear cart');
-        $this->line('💳 finalizar (o checkout) - Cerrar pedido');
+        $this->line('➖ quitar [n] [producto] / quitar todo [producto] - Sacar del carrito');
+        $this->line('💳 finalizar - Cerrar pedido');
         $this->line('❌ exit - Exit testing');
         $this->newLine();
 

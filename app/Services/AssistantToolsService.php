@@ -1847,7 +1847,7 @@ class AssistantToolsService
             $lines[] = '';
         }
 
-        $lines[] = 'To buy from WhatsApp: use add_to_whatsapp_cart with product_id or product_code, or tell the customer they can write: comprar [name or code]. Then: carrito, finalizar (Spanish for close order; English checkout also works).';
+        $lines[] = 'To buy from WhatsApp: use add_to_whatsapp_cart with product_id or product_code, or tell the customer they can write: comprar [name or code]. Then: carrito, quitar [n] [name] or quitar todo [name], finalizar to close the order (pagar/cerrar pedido/checkout also work in the bot; suggest only finalizar to the customer).';
 
         return $this->truncate(implode("\n", $lines));
     }
@@ -1911,7 +1911,7 @@ class AssistantToolsService
 
         if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
         {
-            return 'Cannot attach to a WhatsApp cart: no customer phone in this session. Tell the customer to write from WhatsApp, or use the commands: comprar [name or code], carrito, finalizar. If you are in the web assistant with a recipient phone, open the assistant with that recipient selected.';
+            return 'Cannot attach to a WhatsApp cart: no customer phone in this session. Tell the customer to write from WhatsApp, or use the commands: comprar [name or code], carrito, quitar [n] [name], finalizar. If you are in the web assistant with a recipient phone, open the assistant with that recipient selected.';
         }
 
         $product = $this->resolveWhatsAppProduct($teamId, $input);
@@ -1957,7 +1957,7 @@ class AssistantToolsService
 
         $msg = "Added to WhatsApp cart for this customer: {$product->name} (id {$product->id}) x{$newQty} at {$symbol}".number_format($product->currentSellingPrice(), 2).'. ';
         $msg .= 'Cart total: '.$symbol.number_format($total, 2).'. ';
-        $msg .= 'Tell them they can write *carrito* to review or *finalizar* to finish the order.';
+        $msg .= 'Tell them they can write *carrito* to review, *quitar [n] [product]* to remove units, or *finalizar* to finish the order.';
 
         return $this->truncate($msg);
     }

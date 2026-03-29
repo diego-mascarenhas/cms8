@@ -155,6 +155,7 @@ return [
                 'agregar al carrito',
                 'finalizar compra',
                 'cerrar pedido',
+                'quitar del carrito',
             ],
             'words' => [
                 'catálogo',
