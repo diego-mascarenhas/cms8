@@ -140,6 +140,15 @@
                                     <span>{{ $data->phone }}</span>
                                 </li>
                             @endif
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">{{ __('WhatsApp assistant:') }}</span>
+                                @php
+                                    $contactWaAssistantActive = $data->allowsInboundChatAssistant();
+                                @endphp
+                                <span class="badge {{ $contactWaAssistantActive ? 'bg-label-success' : 'bg-label-secondary' }}">
+                                    {{ $contactWaAssistantActive ? __('Automatic replies on') : __('Automatic replies off') }}
+                                </span>
+                            </li>
                             @if ($data->enterprises->count())
                                 <li class="mb-2 pt-1">
                                     <span class="fw-medium me-1">Empresa:</span>
