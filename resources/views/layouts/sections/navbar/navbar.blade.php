@@ -327,68 +327,64 @@
                         </div>
                     </div>
                     <div class="dropdown-shortcuts-list scrollable-container">
-                        <div class="row row-bordered overflow-visible g-0">
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-calendar fs-4"></i>
-                                </span>
-                                <a href="{{ route('app-calendar') }}" class="stretched-link">{{ __('Calendario') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
+                        @php
+                            $shortcutTeam = auth()->user()?->currentTeam;
+                            $showCalendarShortcut = ! auth()->check()
+                                || $shortcutTeam === null
+                                || $shortcutTeam->hasModule('calendar');
+                            $showProspectShortcut = ! auth()->check()
+                                || $shortcutTeam === null
+                                || $shortcutTeam->hasModule('prospecting');
+                            $showTeamFilesShortcut = auth()->check()
+                                && $shortcutTeam?->hasModule('team_files')
+                                && auth()->user()->can('viewAny', \App\Models\TeamFile::class);
+                            $showTimesShortcut = auth()->check() && $shortcutTeam?->hasModule('times');
+                            $shortcutVisibleCount = ($showCalendarShortcut ? 1 : 0)
+                                + ($showProspectShortcut ? 1 : 0)
+                                + ($showTeamFilesShortcut ? 1 : 0)
+                                + ($showTimesShortcut ? 1 : 0);
+                            $shortcutColClass = $shortcutVisibleCount === 1 ? 'col-12' : 'col-6';
+                        @endphp
+                        @if ($shortcutVisibleCount > 0)
+                            <div class="row row-bordered overflow-visible g-0">
+                                @if ($showCalendarShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-calendar fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('app-calendar') }}" class="stretched-link">{{ __('Calendario') }}</a>
+                                        <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
+                                    </div>
+                                @endif
+                                @if ($showProspectShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-target fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('prospect.search') }}" class="stretched-link">{{ __('Buscar clientes') }}</a>
+                                        <small class="text-muted mb-0">{{ __('Prospección') }}</small>
+                                    </div>
+                                @endif
+                                @if ($showTeamFilesShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-folders fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('team-file.index') }}" class="stretched-link">{{ __('Team files') }}</a>
+                                        <small class="text-muted mb-0">{{ __('app.shortcuts.team_files') }}</small>
+                                    </div>
+                                @endif
+                                @if ($showTimesShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-hourglass fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
+                                        <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
+                                    </div>
+                                @endif
                             </div>
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-target fs-4"></i>
-                                </span>
-                                <a href="{{ route('prospect.search') }}" class="stretched-link">{{ __('Buscar clientes') }}</a>
-                                <small class="text-muted mb-0">{{ __('Prospección') }}</small>
-                            </div>
-                        </div>
-                        @auth
-                            @php
-                                $shortcutTeam = auth()->user()->currentTeam;
-                                $showTeamFilesShortcut = $shortcutTeam?->hasModule('team_files')
-                                    && auth()->user()->can('viewAny', \App\Models\TeamFile::class);
-                                $showTimesShortcut = $shortcutTeam?->hasModule('times');
-                            @endphp
-                            @if ($showTeamFilesShortcut || $showTimesShortcut)
-                                <div class="row row-bordered overflow-visible g-0 border-top">
-                                    @if ($showTeamFilesShortcut)
-                                        <div class="dropdown-shortcuts-item col">
-                                            <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                                <i class="ti ti-folders fs-4"></i>
-                                            </span>
-                                            <a href="{{ route('team-file.index') }}" class="stretched-link">{{ __('Team files') }}</a>
-                                            <small class="text-muted mb-0">{{ __('app.shortcuts.team_files') }}</small>
-                                        </div>
-                                    @elseif ($showTimesShortcut)
-                                        <div class="dropdown-shortcuts-item col" aria-hidden="true">
-                                            <div class="opacity-0 user-select-none" style="min-height: 5rem;">
-                                                <span class="dropdown-shortcuts-icon rounded-circle mb-2 d-block">&nbsp;</span>
-                                                <span class="d-block">&nbsp;</span>
-                                                <small class="text-muted mb-0 d-block">&nbsp;</small>
-                                            </div>
-                                        </div>
-                                    @endif
-                                    @if ($showTimesShortcut)
-                                        <div class="dropdown-shortcuts-item col">
-                                            <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                                <i class="ti ti-hourglass fs-4"></i>
-                                            </span>
-                                            <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
-                                            <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
-                                        </div>
-                                    @elseif ($showTeamFilesShortcut)
-                                        <div class="dropdown-shortcuts-item col" aria-hidden="true">
-                                            <div class="opacity-0 user-select-none" style="min-height: 5rem;">
-                                                <span class="dropdown-shortcuts-icon rounded-circle mb-2 d-block">&nbsp;</span>
-                                                <span class="d-block">&nbsp;</span>
-                                                <small class="text-muted mb-0 d-block">&nbsp;</small>
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
-                        @endauth
+                        @endif
                     </div>
                 </div>
             </li>
