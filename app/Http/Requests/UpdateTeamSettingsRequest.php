@@ -70,6 +70,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             'analytics.analytics_property_id' => 'nullable|string|max:255',
             'analytics.analytics_credentials_json' => 'nullable|string',
             'analytics.google_calendar_id' => 'nullable|string|max:255',
+
+            // Public assistant shop
+            'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
         ];
     }
 }

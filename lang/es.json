@@ -1441,5 +1441,10 @@
   "Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.": "Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.",
   "Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.": "Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.",
   "Regenerar informe": "Regenerar informe",
-  "Encolando…": "Encolando…"
+  "Encolando…": "Encolando…",
+  "Public assistant shop": "Tienda asistente pública",
+  "Enable assistant shop": "Activar tienda con asistente",
+  "The address uses your business website domain from the business configuration wizard (no https:// or trailing slash). Published products only.": "La dirección usa el dominio del sitio web del negocio del asistente de configuración (sin https:// ni barra final). Solo productos publicados.",
+  "Shop URL": "URL de la tienda",
+  "Save your business website in the business wizard to generate the link.": "Guardá el sitio web del negocio en el asistente de configuración para generar el enlace."
 }

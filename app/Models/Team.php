@@ -334,6 +334,140 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function getDecodedBusinessConfig(): array
+    {
+        $saved = $this->getSetting('business_config', []);
+        if (is_string($saved))
+        {
+            $saved = json_decode($saved, true) ?: [];
+        }
+
+        return is_array($saved) ? $saved : [];
+    }
+
+    public function isPublicCatalogEnabled(): bool
+    {
+        return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Normalize wizard "business_website" (or route segment) to hostname only: lowercase, no scheme, path, or trailing slash.
+     */
+    public static function normalizePublicShopDomain(?string $website): ?string
+    {
+        if ($website === null)
+        {
+            return null;
+        }
+
+        $website = trim($website);
+        if ($website === '')
+        {
+            return null;
+        }
+
+        $toParse = $website;
+        if (! preg_match('#^[a-z][a-z0-9+.-]*://#i', $toParse))
+        {
+            $toParse = 'https://'.ltrim($toParse, '/');
+        }
+
+        $parts = parse_url($toParse);
+        $host = isset($parts['host']) ? strtolower((string) $parts['host']) : '';
+
+        if ($host !== '')
+        {
+            return $host;
+        }
+
+        if (isset($parts['path']))
+        {
+            $segment = strtolower(trim((string) $parts['path'], '/'));
+            $segment = explode('/', $segment)[0] ?? '';
+
+            if ($segment !== '' && preg_match('/^[a-z0-9.-]+$/i', $segment) === 1)
+            {
+                return $segment;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Host used in /shop/{host} from business_config.business_website.
+     */
+    public function getPublicCatalogShopDomain(): ?string
+    {
+        $website = trim((string) ($this->getDecodedBusinessConfig()['business_website'] ?? ''));
+
+        return static::normalizePublicShopDomain($website);
+    }
+
+    public function publicCatalogShopUrl(): ?string
+    {
+        $domain = $this->getPublicCatalogShopDomain();
+
+        return $domain !== null ? url('/shop/'.$domain) : null;
+    }
+
+    /**
+     * Public assistant shop at /shop/{domain} when enabled and business website yields a host.
+     */
+    public static function findForPublicCatalog(string $slug): ?self
+    {
+        $requested = static::normalizePublicShopDomain($slug);
+        if ($requested === null || $requested === '')
+        {
+            return null;
+        }
+
+        $rows = TeamSetting::query()
+            ->where('key', 'public_catalog_enabled')
+            ->get();
+
+        foreach ($rows as $row)
+        {
+            if (! filter_var($row->value, FILTER_VALIDATE_BOOLEAN))
+            {
+                continue;
+            }
+
+            $team = $row->team;
+            if (! $team)
+            {
+                continue;
+            }
+
+            $domain = $team->getPublicCatalogShopDomain();
+            if ($domain !== null && hash_equals($domain, $requested))
+            {
+                return $team;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Digits-only WhatsApp for checkout links.
+     */
+    public function catalogCheckoutWhatsAppDigits(): ?string
+    {
+        $raw = $this->getWhatsAppFrom();
+        if ($raw === null || $raw === '')
+        {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $raw);
+
+        return $digits !== '' ? $digits : null;
+    }
+
+    /**
      * Base URL of the Node WhatsApp service for this team (one instance per team = one number per team, no disconnects).
      * If set (whatsapp_service_url), use it; otherwise use the global config.
      */

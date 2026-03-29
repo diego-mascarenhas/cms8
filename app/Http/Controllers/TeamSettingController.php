@@ -153,8 +153,10 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
-        foreach ($request->validated() as $group => $settings)
+        foreach ($request->validated() as $group => $groupPayload)
         {
+            $settings = is_array($groupPayload) ? $groupPayload : [];
+
             // Restrict email plan settings to admin users only
             if ($group === 'email-plans' && ! auth()->user()->hasRole('admin'))
             {
@@ -188,6 +190,15 @@ class TeamSettingController extends Controller
                     'is_encrypted' => false,
                 ]);
             }
+
+            if ($group === 'public_shop' && ! array_key_exists('public_catalog_enabled', $settings))
+            {
+                $team->setSetting('public_catalog_enabled', false, [
+                    'group' => 'public_shop',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -212,6 +223,7 @@ class TeamSettingController extends Controller
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
             'assistant_chat_stub',
+            'public_catalog_enabled',
         ];
 
         if (in_array($key, $integerFields))
@@ -426,6 +438,27 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('assistant_chat_stub', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('Si está activo, el chat y WhatsApp no llaman a la IA real; devuelven una respuesta de prueba para poder probar el flujo sin consumir créditos.'),
+                    ],
+                ],
+            ],
+            'public_shop' => [
+                'title' => __('Public assistant shop'),
+                'icon' => 'ti ti-shopping-bag',
+                'settings' => [
+                    'public_catalog_enabled' => [
+                        'label' => __('Enable assistant shop'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('public_catalog_enabled') ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('The address uses your business website domain from the business configuration wizard (no https:// or trailing slash). Published products only.'),
+                    ],
+                    'public_catalog_url_hint' => [
+                        'label' => __('Shop URL'),
+                        'type' => 'readonly',
+                        'value' => $team->publicCatalogShopUrl()
+                            ?? __('Save your business website in the business wizard to generate the link.'),
+                        'is_encrypted' => false,
+                        'readonly' => true,
                     ],
                 ],
             ],

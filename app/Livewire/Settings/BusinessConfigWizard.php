@@ -169,6 +169,8 @@ class BusinessConfigWizard extends Component
             'type' => 'json',
             'group' => 'business-config',
         ]);
+
+        $this->team->refresh();
     }
 
     public function setWantsToDeepen(string $value): void
@@ -434,4 +436,3 @@ class BusinessConfigWizard extends Component
         return view('livewire.settings.business-config-wizard');
     }
 }
-
