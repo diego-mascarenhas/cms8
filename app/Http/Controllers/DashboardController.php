@@ -32,9 +32,6 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'No team assigned');
         }
 
-        $showBusinessConfigPrompt = auth()->user()->can('update', $activeTeam)
-            && ! $activeTeam->hasCompletedBusinessConfiguration();
-
         // Calculate total team minutes (only positive values)
         $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
         {
@@ -393,7 +390,6 @@ class DashboardController extends Controller
             'hasProjects',
             'tokenStats',
             'analyticsChartData',
-            'showBusinessConfigPrompt',
         ));
     }
 }

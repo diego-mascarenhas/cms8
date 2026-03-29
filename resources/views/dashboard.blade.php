@@ -174,18 +174,7 @@
         <div class="card-body row p-0 pb-2">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
                 <h3>{{ __('app.welcome') }}</h3>
-                @if(! empty($showBusinessConfigPrompt ?? false) && isset($activeTeam))
-                    <div class="alert alert-primary d-flex align-items-start mb-3" role="alert">
-                        <i class="ti ti-building-store ti-md me-2 mt-1 flex-shrink-0"></i>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold mb-1">{{ __('Complete your business configuration') }}</div>
-                            <p class="small mb-2">{{ __('Add your business details in a few steps to get more out of Humano.') }}</p>
-                            <a href="{{ route('team-settings.business-config', $activeTeam) }}" class="btn btn-sm btn-primary">
-                                {{ __('Configure business') }}
-                            </a>
-                        </div>
-                    </div>
-                @endif
+                @include('partials.business-configuration-prompt', ['team' => $activeTeam ?? null])
                 <div class="col-12 col-lg-12">
                     @php
                         $weeklyGoals = [
