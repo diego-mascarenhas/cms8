@@ -5,6 +5,7 @@ namespace App\Livewire\PublicShop;
 use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use App\Models\Team;
+use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
@@ -57,11 +58,53 @@ class ShoppingAssistant extends Component
             'role' => 'assistant',
             'content' => __('public_shop.ask_profile'),
         ];
+        $this->bindPublicShopCart();
+        $this->syncCartArrayFromCart();
+    }
+
+    /**
+     * cart_storage row id: team + Laravel session (WhatsApp cart uses phone as session key).
+     */
+    protected function publicShopCartStorageId(): string
+    {
+        $team = $this->team();
+
+        return 'pubshop_'.($team?->id ?? '0').'_'.session()->getId();
+    }
+
+    protected function bindPublicShopCart(): void
+    {
+        Cart::session($this->publicShopCartStorageId());
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    protected function syncCartArrayFromCart(): array
+    {
+        $this->bindPublicShopCart();
+        $next = [];
+        foreach (Cart::getContent() as $item)
+        {
+            $next[(string) $item->id] = (int) $item->quantity;
+        }
+        $this->cart = $next;
+
+        return $this->cart;
     }
 
     protected function team(): ?Team
     {
-        return $this->teamId ? Team::query()->find($this->teamId) : null;
+        if ($this->teamId)
+        {
+            $byId = Team::query()->find($this->teamId);
+            if ($byId)
+            {
+                return $byId;
+            }
+        }
+
+        return $this->slug !== '' ? Team::findForPublicCatalog($this->slug) : null;
     }
 
     /**
@@ -78,7 +121,7 @@ class ShoppingAssistant extends Component
         return Product::withoutGlobalScope('team')
             ->where('team_id', $team->id)
             ->where('catalog_status', ProductCatalogStatus::Publish)
-            ->with('currency')
+            ->with(['currency', 'category'])
             ->orderBy('name')
             ->get();
     }
@@ -252,27 +295,73 @@ TXT;
 
     public function addToCart(int $productId): void
     {
+        $team = $this->team();
         $products = $this->publishedProducts();
-        if ($products->firstWhere('id', $productId) === null)
+        $product = $products->firstWhere('id', $productId);
+        if (! $team || $product === null)
         {
             return;
         }
-        $key = (string) $productId;
-        $this->cart[$key] = ($this->cart[$key] ?? 0) + 1;
+
+        $this->bindPublicShopCart();
+        $existingItem = Cart::getContent()->firstWhere('id', $productId);
+
+        if ($existingItem)
+        {
+            Cart::update($productId, [
+                'quantity' => [
+                    'relative' => false,
+                    'value' => $existingItem->quantity + 1,
+                ],
+            ]);
+        } else
+        {
+            Cart::add([
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->currentSellingPrice(),
+                'quantity' => 1,
+                'attributes' => [
+                    'team_id' => $team->id,
+                    'store_id' => $product->store_id,
+                    'currency_id' => $product->currency_id,
+                    'description' => $product->description,
+                    'category_name' => $product->category->name ?? '',
+                ],
+            ]);
+        }
+
+        $this->syncCartArrayFromCart();
     }
 
     public function decrementCart(int $productId): void
     {
-        $key = (string) $productId;
-        if (! isset($this->cart[$key]))
+        $this->bindPublicShopCart();
+        $item = Cart::getContent()->firstWhere('id', $productId);
+        if (! $item)
         {
+            $this->syncCartArrayFromCart();
+
             return;
         }
-        $this->cart[$key]--;
-        if ($this->cart[$key] <= 0)
+
+        $currentQty = (int) $item->quantity;
+        $newQty = $currentQty - 1;
+
+        if ($newQty <= 0)
         {
-            unset($this->cart[$key]);
+            Cart::remove($productId);
+        } else
+        {
+            Cart::update($productId, [
+                'quantity' => [
+                    'relative' => false,
+                    'value' => $newQty,
+                ],
+            ]);
         }
+
+        $this->syncCartArrayFromCart();
     }
 
     public function checkoutWhatsApp()
@@ -289,7 +378,10 @@ TXT;
 
             return null;
         }
-        if ($this->cart === [])
+        $this->bindPublicShopCart();
+        $cartItems = Cart::getContent();
+
+        if ($cartItems->isEmpty())
         {
             $this->messages[] = ['role' => 'assistant', 'content' => __('public_shop.empty_cart')];
 
@@ -298,13 +390,14 @@ TXT;
 
         $lines = [];
         $products = $this->publishedProducts()->keyBy('id');
-        foreach ($this->cart as $pid => $qty)
+        foreach ($cartItems as $row)
         {
-            $p = $products->get((int) $pid);
+            $p = $products->get((int) $row->id);
             if (! $p)
             {
                 continue;
             }
+            $qty = (int) $row->quantity;
             $price = $p->currentSellingPrice();
             $code = $p->currency?->code ?? 'ARS';
             $lines[] = $qty.' × '.$p->name.' — '.$price.' '.$code;
@@ -312,6 +405,9 @@ TXT;
         $profile = 'Cliente: edad ~'.($this->shopperAge ?: '?').'. Notas: '.($this->shopperNotes ?: '—');
         $body = __('public_shop.wa_order_intro')."\n\n".implode("\n", $lines)."\n\n".$profile;
         $url = 'https://wa.me/'.$digits.'?text='.rawurlencode($body);
+
+        Cart::clear();
+        $this->cart = [];
 
         return redirect()->away($url);
     }

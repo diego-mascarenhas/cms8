@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\PublicShop\ShoppingAssistant;
 use App\Models\Category;
 use App\Models\Currency;
+use App\Models\DatabaseStorageModel;
 use App\Models\Module;
 use App\Models\Product;
 use App\Models\Team;
@@ -136,5 +137,24 @@ class PublicShopTest extends TestCase
             ->assertSet('cart.'.((string) $product->id), 1)
             ->call('checkoutWhatsApp')
             ->assertRedirect();
+    }
+
+    public function test_cart_persists_to_cart_storage_table(): void
+    {
+        $team = $this->makeShopTeam();
+        $slug = $this->publicShopDomainForTeam($team);
+        $product = Product::withoutGlobalScope('team')->where('team_id', $team->id)->firstOrFail();
+
+        Livewire::test(ShoppingAssistant::class, ['slug' => $slug])
+            ->call('addToCart', (int) $product->id)
+            ->assertSet('cart.'.((string) $product->id), 1);
+
+        $ids = DatabaseStorageModel::query()->pluck('id')->all();
+        $this->assertNotEmpty($ids, 'Expected cart_storage to persist the public shop cart.');
+
+        $prefix = 'pubshop_'.$team->id.'_';
+        $this->assertTrue(
+            collect($ids)->contains(fn (string $id) => str_starts_with($id, $prefix)),
+        );
     }
 }

@@ -8,6 +8,10 @@ class DatabaseStorageModel extends Model
 {
     protected $table = 'cart_storage';
 
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     /**
      * The attributes that are mass assignable.
      *
