@@ -60,6 +60,48 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertFalse($team->fresh()->hasModule('team_files'));
     }
 
+    public function test_new_team_does_not_enable_times_when_default_false(): void
+    {
+        Module::query()->create([
+            'name' => 'Times',
+            'key' => 'times',
+            'icon' => 'clock',
+            'description' => 'Test',
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'personal_team' => true,
+        ]);
+
+        $this->assertFalse($team->fresh()->hasModule('times'));
+    }
+
+    public function test_new_team_does_not_enable_templates_when_default_false(): void
+    {
+        Module::query()->create([
+            'name' => 'Templates',
+            'key' => 'templates',
+            'icon' => 'template',
+            'description' => 'Test',
+            'is_core' => false,
+            'group' => 'campaigns',
+            'order' => 0,
+            'status' => 1,
+        ]);
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'personal_team' => true,
+        ]);
+
+        $this->assertFalse($team->fresh()->hasModule('templates'));
+    }
+
     public function test_new_team_enables_team_files_when_default_true(): void
     {
         config(['team-modules.defaults.team_files' => true]);

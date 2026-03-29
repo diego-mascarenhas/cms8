@@ -74,12 +74,6 @@ class ModuleSeeder extends Seeder
             'description' => 'Notifications and alerts module',
             'is_enabled' => true,  // On by default
         ],
-        'templates' => [
-            'name' => 'Templates',
-            'icon' => 'template',
-            'description' => 'Templates management module',
-            'is_enabled' => true,  // On by default
-        ],
     ];
 
     protected $additionalModules = [
@@ -186,6 +180,13 @@ class ModuleSeeder extends Seeder
             'order' => 8,
         ],
         // CAMPAIGNS GROUP
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
+            'group' => 'campaigns',
+            'order' => 0,
+        ],
         'mailer' => [
             'name' => 'Mailer',
             'icon' => 'send',
@@ -211,7 +212,7 @@ class ModuleSeeder extends Seeder
         'prompts' => [
             'name' => 'Prompts',
             'icon' => 'cpu',
-            'description' => 'AI instruction prompts for assistants and automation',
+            'description' => 'Instructions for the assistant.',
             'group' => 'automation',
             'order' => 1,
         ],

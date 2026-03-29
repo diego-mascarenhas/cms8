@@ -15,6 +15,8 @@ class Module extends Model
         'icon',
         'description',
         'is_core',
+        'group',
+        'order',
         'status',
     ];
 

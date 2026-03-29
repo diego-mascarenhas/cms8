@@ -18,6 +18,12 @@ class PromptController extends Controller
 {
     public function __construct()
     {
+        $this->middleware(function ($request, $next)
+        {
+            abort_unless(auth()->user()?->currentTeam?->hasModule('prompts'), 403);
+
+            return $next($request);
+        });
         $this->authorizeResource(Prompt::class, 'prompt');
     }
 

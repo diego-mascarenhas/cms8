@@ -49,7 +49,7 @@
                                                 <i class="ti ti-{{ $module->icon }} me-2"></i>
                                                 {{ $module->name }}
                                                 @if($module->description)
-                                                    <small class="text-muted d-block">{{ $module->description }}</small>
+                                                    <small class="text-muted d-block">{{ __($module->description) }}</small>
                                                 @endif
                                             </label>
                                         </div>
@@ -68,9 +68,9 @@
                                     <div class="mb-4">
                                         <h6 class="text-primary mb-3">
                                             <i class="ti ti-{{ $groupLabels[$groupKey]['icon'] }} me-2"></i>
-                                            {{ $groupLabels[$groupKey]['name'] }}
+                                            {{ __($groupLabels[$groupKey]['name']) }}
                                         </h6>
-                                        <p class="text-muted small mb-3">{{ $groupLabels[$groupKey]['description'] }}</p>
+                                        <p class="text-muted small mb-3">{{ __($groupLabels[$groupKey]['description']) }}</p>
                                         <div class="row">
                                             @foreach($modules as $module)
                                                 <div class="col-md-4 mb-3">
@@ -84,7 +84,7 @@
                                                             <i class="ti ti-{{ $module->icon }} me-2"></i>
                                                             {{ $module->name }}
                                                             @if($module->description)
-                                                                <small class="text-muted d-block">{{ $module->description }}</small>
+                                                                <small class="text-muted d-block">{{ __($module->description) }}</small>
                                                             @endif
                                                         </label>
                                                     </div>

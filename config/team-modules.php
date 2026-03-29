@@ -49,7 +49,7 @@ return [
         'enterprises' => false,
         'events' => false,
         'today' => false,
-        'times' => true,
+        'times' => false,
         'attendances' => false,
         'documentation' => false,
         'departments' => false,

@@ -807,7 +807,7 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
 
-    // Prompts (linked by module_id, table module_prompts)
+    // Prompts (module_prompts; gated by team module "prompts")
     Route::get('/prompt/list', [PromptController::class, 'index'])->name('prompt-list');
     Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
