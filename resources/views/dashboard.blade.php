@@ -486,8 +486,8 @@
 
         <!-- Main Content Column -->
         <div class="col-lg-8 order-lg-1">
-            <!-- Ongoing Projects -->
-            @if(isset($ongoingProjects))
+            <!-- Ongoing Projects (only when team has projects module) -->
+            @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
             <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
