@@ -6,6 +6,7 @@ use App\Models\Team;
 
 /**
  * Builds a markdown block from team {@see Team::getSetting('business_config')} for LLM system instructions.
+ * Omits `business_challenge` (internal/strategic text): kept for wizard and AI summary flows, not sent to the chat assistant.
  */
 class BusinessAssistantContextService
 {
@@ -24,7 +25,6 @@ class BusinessAssistantContextService
         'contact_email' => 'Email de contacto',
         'business_tagline' => 'Eslogan',
         'business_description' => 'Descripción',
-        'business_problematica' => 'Problemática / desafío',
         'first_name' => 'Nombre (titular)',
         'last_name' => 'Apellido (titular)',
         'birth_date' => 'Fecha de nacimiento (titular)',
@@ -45,7 +45,7 @@ class BusinessAssistantContextService
         'telegram' => 'Telegram',
         'pinterest' => 'Pinterest',
         'threads' => 'Threads',
-        'wants_profundizar' => 'Interés en profundizar (sí/no)',
+        'wants_to_deepen' => 'Interés en profundizar (sí/no)',
     ];
 
     /**
@@ -77,7 +77,7 @@ class BusinessAssistantContextService
         $businessKeys = [
             'business_name', 'business_industry', 'business_location', 'business_postal_code',
             'business_phone', 'business_whatsapp', 'business_website', 'business_email',
-            'contact_email', 'business_tagline', 'business_description', 'business_problematica',
+            'contact_email', 'business_tagline', 'business_description',
         ];
         $ownerKeys = [
             'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
@@ -87,7 +87,7 @@ class BusinessAssistantContextService
             'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
             'whatsapp_url', 'telegram', 'pinterest', 'threads',
         ];
-        $otherKeys = ['wants_profundizar'];
+        $otherKeys = ['wants_to_deepen'];
 
         $sections = [];
 

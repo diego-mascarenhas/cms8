@@ -51,4 +51,22 @@ class BusinessAssistantContextServiceTest extends TestCase
         $this->assertStringContainsString('hola@example.com', $markdown);
         $this->assertStringContainsString('Nombre del negocio', $markdown);
     }
+
+    public function test_excludes_business_challenge_from_assistant_context(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $team->setSetting('business_config', [
+            'business_name' => 'Visible SA',
+            'business_challenge' => 'Secreto interno que no debe ir al asistente general',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        $markdown = app(BusinessAssistantContextService::class)->buildMarkdownAppendix($team->id);
+
+        $this->assertStringContainsString('Visible SA', $markdown);
+        $this->assertStringNotContainsString('Secreto interno', $markdown);
+    }
 }

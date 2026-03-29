@@ -379,11 +379,11 @@ class BusinessCreationInsightsService
             $contextParts[] = $arquetipoContext;
         }
 
-        $problematica = trim((string) ($config['business_problematica'] ?? ''));
-        if ($problematica !== '')
+        $challenge = trim((string) ($config['business_challenge'] ?? ''));
+        if ($challenge !== '')
         {
             $contextParts[] = "\n**Desafío / problemática actual del negocio:**";
-            $contextParts[] = $problematica;
+            $contextParts[] = $challenge;
         }
         $summary = trim((string) ($config['_summary'] ?? ''));
         if ($summary !== '')
@@ -401,7 +401,7 @@ class BusinessCreationInsightsService
         $arquetipoInstruction = $arquetipoContext !== ''
             ? ' Ten en cuenta el arquetipo humano indicado para que las recomendaciones sean acordes a su personalidad.'
             : '';
-        $desafioInstruction = ($problematica !== '' || $summary !== '')
+        $desafioInstruction = ($challenge !== '' || $summary !== '')
             ? ' Incluye el desafío o problemática del negocio y el resumen de lo que necesitan para mejorar cuando estén indicados; que el informe sea coherente con ellos.'
             : '';
 

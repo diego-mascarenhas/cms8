@@ -33,8 +33,8 @@ class BusinessConfigWizard extends Component
 
     public bool $summaryLoading = false;
 
-    /** Last problemática text we sent to AI; skip reprocessing if unchanged. */
-    public ?string $lastProcessedProblematica = null;
+    /** Last challenge text we sent to AI; skip reprocessing if unchanged. */
+    public ?string $lastProcessedChallenge = null;
 
     /** @var array<string, mixed> */
     public array $insights = [];
@@ -67,12 +67,12 @@ class BusinessConfigWizard extends Component
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
         'business_phone', 'business_whatsapp', 'business_website', 'business_email',
         'contact_email',
-        'business_tagline', 'business_description', 'business_problematica',
+        'business_tagline', 'business_description', 'business_challenge',
         'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
         'address', 'landmark', 'pincode', 'city',
         'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
         'whatsapp_url', 'telegram', 'pinterest', 'threads',
-        'wants_profundizar',
+        'wants_to_deepen',
     ];
 
     public function mount(Team $team): void
@@ -139,13 +139,13 @@ class BusinessConfigWizard extends Component
         ]);
     }
 
-    public function setWantsProfundizar(string $value): void
+    public function setWantsToDeepen(string $value): void
     {
         if ($value !== 'si' && $value !== 'no')
         {
             return;
         }
-        $this->config['wants_profundizar'] = $value;
+        $this->config['wants_to_deepen'] = $value;
         $this->persistConfig();
     }
 
@@ -157,7 +157,7 @@ class BusinessConfigWizard extends Component
 
     public function triggerSummaryIfChanged(AssistantChatService $assistant): void
     {
-        if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
+        if (trim((string) ($this->config['business_challenge'] ?? '')) === '')
         {
             return;
         }
@@ -166,8 +166,8 @@ class BusinessConfigWizard extends Component
 
     public function generateSummary(AssistantChatService $assistant): void
     {
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
-        if ($problematica !== '' && $problematica === $this->lastProcessedProblematica && $this->summary !== null)
+        $challenge = trim((string) ($this->config['business_challenge'] ?? ''));
+        if ($challenge !== '' && $challenge === $this->lastProcessedChallenge && $this->summary !== null)
         {
             $this->summaryLoading = false;
 
@@ -213,8 +213,8 @@ class BusinessConfigWizard extends Component
         }
 
         $context = implode("\n", $contextParts);
-        $userMessage = $problematica !== ''
-            ? "Problemática actual del negocio:\n\n".$problematica."\n\n---\n\n".$context
+        $userMessage = $challenge !== ''
+            ? "Problemática actual del negocio:\n\n".$challenge."\n\n---\n\n".$context
             : $context;
 
         $prompt = Prompt::findByRoutingKey('landing');
@@ -243,7 +243,7 @@ class BusinessConfigWizard extends Component
             $this->summary = 'Error al generar el resumen. Intenta de nuevo.';
         }
 
-        $this->lastProcessedProblematica = $problematica;
+        $this->lastProcessedChallenge = $challenge;
         $this->summaryLoading = false;
     }
 

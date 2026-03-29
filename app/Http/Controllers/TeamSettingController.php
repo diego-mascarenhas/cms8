@@ -47,7 +47,7 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
-        $problematica = trim((string) $request->input('business_problematica', ''));
+        $challenge = trim((string) $request->input('business_challenge', ''));
         $birthDate = $request->input('birth_date');
         $birthTime = $request->input('birth_time');
 
@@ -89,8 +89,8 @@ class TeamSettingController extends Controller
         }
 
         $context = implode("\n", $contextParts);
-        $userMessage = $problematica !== ''
-            ? "Problemática actual del negocio:\n\n".$problematica."\n\n---\n\n".$context
+        $userMessage = $challenge !== ''
+            ? "Problemática actual del negocio:\n\n".$challenge."\n\n---\n\n".$context
             : $context;
 
         $prompt = Prompt::findByRoutingKey('landing');

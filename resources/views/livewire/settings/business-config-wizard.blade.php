@@ -435,9 +435,9 @@
                     </div>
                     <div class="mb-4">
                         <label class="form-label"><i class="ti ti-puzzle ti-sm me-1 text-body"></i> Desafío</label>
-                        <textarea class="form-control" wire:model.blur="config.business_problematica" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. Luego pulsa «Generar resumen» para que el Asistente AI genere un resumen conciso."></textarea>
+                        <textarea class="form-control" wire:model.blur="config.business_challenge" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. Luego pulsa «Generar resumen» para que el Asistente AI genere un resumen conciso."></textarea>
                         @php
-                            $canLoadSummary = filled($config['business_problematica'] ?? null);
+                            $canLoadSummary = filled($config['business_challenge'] ?? null);
                         @endphp
                     </div>
                     @if ($summaryLoading)
@@ -477,8 +477,8 @@
                                 <p class="mb-1 mt-3 fw-medium">¿Te gustaría profundizar en alguno de estos puntos?</p>
                                 <p class="small text-muted mb-2">De ser así, un consultor de nuestro equipo podría contactarte para profundizar sobre estos puntos.</p>
                                 <div class="d-flex gap-2 flex-wrap">
-                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
-                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
+                                    <button type="button" class="btn {{ ($config['wants_to_deepen'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsToDeepen('si')">Sí</button>
+                                    <button type="button" class="btn {{ ($config['wants_to_deepen'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsToDeepen('no')">No</button>
                                 </div>
                             </div>
                         </div>

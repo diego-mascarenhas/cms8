@@ -76,12 +76,12 @@ class BusinessWizard extends Component
         'business_name', 'business_industry', 'business_location', 'business_postal_code',
         'business_phone', 'business_whatsapp', 'business_website', 'business_email',
         'contact_email',
-        'business_tagline', 'business_description', 'business_problematica',
+        'business_tagline', 'business_description', 'business_challenge',
         'first_name', 'last_name', 'birth_date', 'birth_time', 'country', 'language',
         'address', 'landmark', 'pincode', 'city',
         'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
         'whatsapp_url', 'telegram', 'pinterest', 'threads',
-        'wants_profundizar',
+        'wants_to_deepen',
     ];
 
     public function mount(?string $token = null): void
@@ -116,9 +116,9 @@ class BusinessWizard extends Component
         {
             $this->config['language'] = $this->config['language'][0] ?? '';
         }
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
-        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
-        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        $challenge = trim((string) ($this->config['business_challenge'] ?? ''));
+        $hash = $challenge !== '' ? hash('sha256', $challenge) : '';
+        if ($hash !== '' && ($saved['_summary_challenge_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
         {
             $this->summary = $saved['_summary'];
         }
@@ -171,13 +171,13 @@ class BusinessWizard extends Component
         }
     }
 
-    public function setWantsProfundizar(string $value): void
+    public function setWantsToDeepen(string $value): void
     {
         if ($value !== 'si' && $value !== 'no')
         {
             return;
         }
-        $this->config['wants_profundizar'] = $value;
+        $this->config['wants_to_deepen'] = $value;
         $this->persistConfig();
     }
 
@@ -197,7 +197,7 @@ class BusinessWizard extends Component
             }
         }
         $existing = $this->session->fresh()->config ?? [];
-        foreach (['_summary', '_summary_problematica_hash', '_insights', '_insights_phase', '_insights_requested_at', '_step_history'] as $internal)
+        foreach (['_summary', '_summary_challenge_hash', '_insights', '_insights_phase', '_insights_requested_at', '_step_history'] as $internal)
         {
             if (array_key_exists($internal, $existing))
             {
@@ -236,9 +236,9 @@ class BusinessWizard extends Component
     protected function syncSummaryFromSession(): void
     {
         $saved = $this->session->fresh()->config ?? [];
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
-        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
-        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        $challenge = trim((string) ($this->config['business_challenge'] ?? ''));
+        $hash = $challenge !== '' ? hash('sha256', $challenge) : '';
+        if ($hash !== '' && ($saved['_summary_challenge_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
         {
             $this->summary = $saved['_summary'];
             $this->summaryLoading = false;
@@ -247,7 +247,7 @@ class BusinessWizard extends Component
 
     public function triggerSummaryIfChanged(): void
     {
-        if (trim((string) ($this->config['business_problematica'] ?? '')) === '')
+        if (trim((string) ($this->config['business_challenge'] ?? '')) === '')
         {
             return;
         }
@@ -267,10 +267,10 @@ class BusinessWizard extends Component
         {
             return;
         }
-        $problematica = trim((string) ($this->config['business_problematica'] ?? ''));
-        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
+        $challenge = trim((string) ($this->config['business_challenge'] ?? ''));
+        $hash = $challenge !== '' ? hash('sha256', $challenge) : '';
         $saved = $this->session->fresh()->config ?? [];
-        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        if ($hash !== '' && ($saved['_summary_challenge_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
         {
             $this->summary = $saved['_summary'];
             $this->summaryLoading = false;
@@ -301,8 +301,8 @@ class BusinessWizard extends Component
         }
 
         $context = implode("\n", $contextParts);
-        $userMessage = $problematica !== ''
-            ? "Problemática actual del negocio:\n\n".$problematica."\n\n---\n\n".$context
+        $userMessage = $challenge !== ''
+            ? "Problemática actual del negocio:\n\n".$challenge."\n\n---\n\n".$context
             : $context;
 
         try
@@ -327,7 +327,7 @@ class BusinessWizard extends Component
             $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
             $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
             $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
-            $metadata['desafio_prompt'] = $problematica;
+            $metadata['desafio_prompt'] = $challenge;
             BusinessCreationAiLog::create([
                 'business_creation_session_id' => $this->session->id,
                 'type' => 'summary',
@@ -337,7 +337,7 @@ class BusinessWizard extends Component
             ]);
             $current = $this->session->fresh()->config ?? [];
             $current['_summary'] = $this->summary;
-            $current['_summary_problematica_hash'] = $hash;
+            $current['_summary_challenge_hash'] = $hash;
             $this->session->update(['config' => $current]);
         } catch (\Throwable $e)
         {
@@ -401,7 +401,7 @@ class BusinessWizard extends Component
             return;
         }
         $existing = $this->session->fresh()->config ?? [];
-        unset($existing['_summary'], $existing['_summary_problematica_hash']);
+        unset($existing['_summary'], $existing['_summary_challenge_hash']);
         $this->session->update(['config' => $existing]);
 
         $this->summary = '';
@@ -545,7 +545,7 @@ class BusinessWizard extends Component
             return;
         }
 
-        $needsSummary = filled($this->config['business_problematica'] ?? null) && empty($this->summary ?? null);
+        $needsSummary = filled($this->config['business_challenge'] ?? null) && empty($this->summary ?? null);
         if ($needsSummary)
         {
             $this->finalFlowPhase = 'summary';
