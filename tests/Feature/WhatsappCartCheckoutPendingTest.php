@@ -139,4 +139,30 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $this->assertNull($result);
         $this->assertFalse($service->sendCalled);
     }
+
+    public function test_process_product_commands_does_not_hijack_final_price_or_vat_question(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+
+        $service = new class($team) extends WhatsAppMessageOrchestrator
+        {
+            public bool $sendCalled = false;
+
+            public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
+            {
+                $this->sendCalled = true;
+
+                return ['success' => true];
+            }
+        };
+
+        $result = $service->processProductCommands(
+            '+573001112224',
+            'Es precio final o falta el iva?',
+        );
+
+        $this->assertNull($result);
+        $this->assertFalse($service->sendCalled);
+    }
 }

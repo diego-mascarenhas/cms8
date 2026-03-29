@@ -1305,12 +1305,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             // Only trigger catalog flow on explicit commerce intents.
             // Avoid generic "servicio/soporte/app" matches that can hijack other flows (e.g. billing follow-ups).
+            // Do NOT use "precio"/"precios" alone: phrases like "¿es precio final?", "¿incluye IVA?" match \bprecio\b
+            // and would dump the full catalog instead of letting the assistant answer.
             $productKeywords = [
                 'producto',
                 'productos',
                 'catalogo',
-                'precio',
-                'precios',
                 'comprar',
                 'carrito',
                 'checkout',
