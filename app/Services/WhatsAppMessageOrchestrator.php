@@ -1113,7 +1113,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $normalizedMessage = strtolower(trim($message));
 
             // Skip if this is a cart command (comprar, contratar, etc.)
-            if (preg_match('/^(comprar|contratar|compra|contrata|carrito|checkout|finalizar|vaciar)/i', $normalizedMessage))
+            if (preg_match('/^(comprar|contratar|compra|contrata|carrito|checkout|finalizar|pagar|cerrar|vaciar)/i', $normalizedMessage))
             {
                 return null;
             }
@@ -1393,7 +1393,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $message .= "🛒 *Cómo comprar por aquí:*\n";
             $message .= "• Escribe *comprar [nombre]* o *comprar [código]*\n";
-            $message .= "• *carrito* → ver qué llevas | *checkout* → cerrar pedido\n";
+            $message .= "• *carrito* → ver qué llevas | *finalizar*, *pagar* o *cerrar pedido* → cerrar el pedido\n";
             $message .= "• También podés preguntarme por un producto y te guío paso a paso.\n\n";
             $message .= '📞 Soporte: https://revisionalpha.com/contactenos';
 
@@ -2268,8 +2268,19 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return $this->clearCart($phoneNumber);
             }
 
-            // Check for checkout commands
-            if (in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']))
+            // Check for checkout commands ("checkout" English kept for compatibility; user-facing copy uses "finalizar")
+            $checkoutTriggers = [
+                'checkout',
+                'finalizar',
+                'finalizar compra',
+                'pagar',
+                'comprar todo',
+                'cerrar pedido',
+                'cerrar el pedido',
+                'terminar compra',
+                'confirmar pedido',
+            ];
+            if (in_array($normalizedMessage, $checkoutTriggers, true))
             {
                 return $this->initiateCheckout($phoneNumber, $teamId);
             }
@@ -2356,7 +2367,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= "**Opciones:**\n";
             $response .= "• Escribe 'carrito' para ver todos tus productos\n";
             $response .= "• Escribe 'comprar [producto]' para agregar más\n";
-            $response .= '• *checkout* — cuando quieras cerrar el pedido (te pediré confirmación con *SÍ*)';
+            $response .= '• *finalizar*, *pagar* o *cerrar pedido* — cerrar el pedido (luego te pediré *SÍ*)';
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -2416,7 +2427,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 
             $response .= "**Siguiente paso:**\n";
-            $response .= "• *checkout* — te mostraré el total y pediré *SÍ* para confirmar el pedido\n";
+            $response .= "• *finalizar* / *pagar* / *cerrar pedido* — total y confirmación con *SÍ*\n";
             $response .= "• *comprar [producto]* — sumar otro ítem\n";
             $response .= '• *vaciar carrito* — empezar de cero';
 
@@ -2498,7 +2509,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
             $response .= "❓ **¿Confirmamos el pedido?**\n\n";
             $response .= "Responde *SÍ* solo ahora para confirmar este pedido, o *NO* para seguir agregando productos.\n";
-            $response .= '(Si no ves este mensaje como último paso, escribe *carrito* o *checkout* de nuevo.)';
+            $response .= '(Si no ves este mensaje como último paso, escribe *carrito* o *finalizar* de nuevo.)';
 
             $this->sendWhatsApp($phoneNumber, $response);
             $this->rememberCheckoutPending($phoneNumber);
@@ -2516,7 +2527,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             Log::error('Error initiating checkout: '.$e->getMessage());
             $this->forgetCheckoutPending($phoneNumber);
-            $this->sendWhatsApp($phoneNumber, '❌ Error al procesar checkout. Contacta soporte.');
+            $this->sendWhatsApp($phoneNumber, '❌ Error al finalizar la compra. Contactá soporte.');
 
             return ['success' => false, 'message' => 'Error in checkout'];
         }
@@ -2561,7 +2572,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     'phone' => $cleanDigits,
                 ]);
                 $this->forgetCheckoutPending($phoneNumber);
-                $this->sendWhatsApp($phoneNumber, '❌ No pudimos registrar tu pedido. Probá *checkout* de nuevo o escribinos.');
+                $this->sendWhatsApp($phoneNumber, '❌ No pudimos registrar tu pedido. Probá *finalizar* o *pagar* de nuevo o escribinos.');
 
                 return ['success' => false, 'message' => 'Order create failed'];
             }
@@ -2623,7 +2634,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= "📋 **Pasos:**\n";
             $response .= "• *comprar [nombre o código]* — agregar al carrito\n";
             $response .= "• *carrito* — ver ítems y subtotales\n";
-            $response .= "• *checkout* — pedir confirmación del pedido\n";
+            $response .= "• *finalizar* / *pagar* / *cerrar pedido* — pedir confirmación del pedido\n";
             $response .= "• *productos* — catálogo completo\n\n";
             $response .= '💡 Decime qué producto querés y te ayudo a agregarlo.';
 
