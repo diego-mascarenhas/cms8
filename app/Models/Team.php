@@ -536,6 +536,20 @@ class Team extends JetstreamTeam
         return ! empty($this->getSetting('imap_host')) && ! empty($this->getSetting('imap_username'));
     }
 
+    /**
+     * Whether the team has saved a minimal business profile (wizard at team business config).
+     */
+    public function hasCompletedBusinessConfiguration(): bool
+    {
+        $config = $this->getSetting('business_config', []);
+        if (! is_array($config))
+        {
+            return false;
+        }
+
+        return trim((string) ($config['business_name'] ?? '')) !== '';
+    }
+
     // Backwards compatibility methods (deprecated)
 
     /**
