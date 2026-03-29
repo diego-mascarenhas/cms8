@@ -100,7 +100,7 @@ class TeamSettingController extends Controller
         {
             try
             {
-                $service = new AssistantChatService;
+                $service = app(AssistantChatService::class);
                 $result = $service->run($userMessage, $teamId, null, null, false, 'landing');
                 $summary = $result['response'] ?? '';
             } catch (\Throwable $e)

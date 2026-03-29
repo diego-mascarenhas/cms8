@@ -24,6 +24,7 @@ class ChatAssistantReplyService
         protected CollectionAssistantContextService $collectionAssistantContext,
         protected ContactAssistantContextService $contactAssistantContext,
         protected AssistantToolAuthorizationService $assistantToolAuthorization,
+        protected BusinessAssistantContextService $businessAssistantContext,
     ) {}
 
     /**
@@ -33,6 +34,7 @@ class ChatAssistantReplyService
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
      * When $contactId is set, a single CRM summary block is appended. When the active flow is invoices:collections, a Stripe invoices appendix is added (no duplicate CRM).
      * When $previewOnly is true (Humano Assistant modal preview), the model must not claim WhatsApp was sent/failed; send_whatsapp_message is disabled.
+     * When $teamId is set, a markdown block from team business_config (wizard) is appended to instructions when non-empty.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -72,6 +74,12 @@ class ChatAssistantReplyService
             {
                 $instructions .= $this->customerTeamRoleInstructionsAppendix();
             }
+        }
+
+        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId);
+        if ($businessAppendix !== '')
+        {
+            $instructions .= "\n\n---\n\n".$businessAppendix;
         }
 
         if ($withTools && $teamId !== null && $contextUserId !== null)
