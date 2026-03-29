@@ -265,6 +265,8 @@
   "Latitude": "Latitude",
   "Longitude": "Longitude",
   "Contact person": "Contact person",
+  "Contact assistant auto-reply (WhatsApp)": "Contact assistant auto-reply (WhatsApp)",
+  "When off, inbound WhatsApp messages from this number will not receive automatic assistant replies. The team assistant-replies setting must still be on.": "When off, inbound WhatsApp messages from this number will not receive automatic assistant replies. The team assistant-replies setting must still be on.",
   "Billing Addresses": "Billing Addresses",
   "Manage enterprises and billing addresses": "Manage enterprises and billing addresses",
   "List of 60": "List of 60",

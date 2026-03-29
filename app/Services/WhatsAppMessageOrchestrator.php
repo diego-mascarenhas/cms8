@@ -219,6 +219,48 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     }
 
     /**
+     * Contact row for this team's WhatsApp number (phone digits or phone source), for per-contact preferences.
+     */
+    private function findTeamContactIdByPhoneDigits(string $cleanDigits): ?int
+    {
+        if ($cleanDigits === '' || $this->team === null)
+        {
+            return null;
+        }
+
+        $id = Contact::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->where(function ($q) use ($cleanDigits)
+            {
+                $q->whereHas('sources', function ($q2) use ($cleanDigits)
+                {
+                    $q2->where('source_id', 2)->where('value', $cleanDigits);
+                })->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', '') = ?", [$cleanDigits]);
+            })
+            ->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    /**
+     * Whether automatic assistant replies are allowed for this contact (team + contact JSON data).
+     */
+    private function inboundContactAllowsAssistantAutoReply(?int $contactId): bool
+    {
+        if ($contactId === null || $this->team === null)
+        {
+            return true;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->whereKey($contactId)
+            ->where('team_id', $this->team->id)
+            ->first();
+
+        return $contact ? $contact->allowsInboundChatAssistant() : true;
+    }
+
+    /**
      * Check if this is the first message of the day from this contact
      */
     private function isFirstMessageToday($phoneNumber)
@@ -853,6 +895,24 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             $contactQuery->where('team_id', $teamId);
                         }
                         $contextContactId = $contactQuery->value('id');
+                    }
+
+                    $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom)
+                        ?? ($contextContactId !== null ? (int) $contextContactId : null);
+
+                    if (! $this->inboundContactAllowsAssistantAutoReply($contactIdForAssistantPreference))
+                    {
+                        Log::info('Auto AI skipped: contact has assistant disabled in data', [
+                            'from' => $cleanFrom,
+                            'contact_id' => $contactIdForAssistantPreference,
+                            'team_id' => $teamId,
+                        ]);
+
+                        return response()->json([
+                            'status' => 'success',
+                            'conversation_id' => $conversation->id,
+                            'auto_ai_skipped' => 'contact_assistant_disabled',
+                        ]);
                     }
 
                     $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);

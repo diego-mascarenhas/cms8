@@ -41,6 +41,7 @@ class UpdateContactRequest extends FormRequest
             'categories.*' => 'exists:categories,id',
             'software_ids' => 'array',
             'software_ids.*' => 'exists:software,id',
+            'chat_assistant_ai_enabled' => 'nullable|boolean',
         ];
     }
 
@@ -180,6 +181,14 @@ class UpdateContactRequest extends FormRequest
                 $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
             }
         }
+
+        $existingJson = json_decode(json_encode($contact->exists ? ($contact->data ?? new \stdClass) : new \stdClass), true);
+        if (! is_array($existingJson))
+        {
+            $existingJson = [];
+        }
+        $existingJson['chat_assistant_ai_enabled'] = $this->boolean('chat_assistant_ai_enabled');
+        $contactData['data'] = (object) $existingJson;
 
         return [
             'contact' => $contactData,

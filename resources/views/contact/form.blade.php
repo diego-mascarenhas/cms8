@@ -214,6 +214,23 @@
                                     <x-input-textarea id="profile" label="{{ __('Perfil') }}" rows="3"
                                         value="{{ old('profile', $data->profile ?? '') }}" />
                                 </div>
+                                @php
+                                    $waAssistantEnabled = true;
+                                    $oldAssistant = old('chat_assistant_ai_enabled');
+                                    if ($oldAssistant !== null) {
+                                        $waAssistantEnabled = filter_var($oldAssistant, FILTER_VALIDATE_BOOLEAN);
+                                    } elseif (isset($data->id) && is_object($data->data ?? null) && property_exists($data->data, 'chat_assistant_ai_enabled')) {
+                                        $waAssistantEnabled = filter_var($data->data->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
+                                    }
+                                @endphp
+                                <div class="col-sm-12">
+                                    <input type="hidden" name="chat_assistant_ai_enabled" value="0">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox" class="form-check-input" id="chat_assistant_ai_enabled" name="chat_assistant_ai_enabled" value="1" @checked($waAssistantEnabled)>
+                                        <label class="form-check-label" for="chat_assistant_ai_enabled">{{ __('Contact assistant auto-reply (WhatsApp)') }}</label>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">{{ __('When off, inbound WhatsApp messages from this number will not receive automatic assistant replies. The team assistant-replies setting must still be on.') }}</small>
+                                </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                                     <button type="reset" class="btn btn-label-secondary"
