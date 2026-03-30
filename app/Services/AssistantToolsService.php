@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Jobs\GenerateTemplateHtmlJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
@@ -77,7 +78,7 @@ class AssistantToolsService
         $this->contextUserId = $userId;
         $this->contextTeamId = $teamId;
         $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
-            ? preg_replace('/[^0-9]/', '', $customerPhoneDigits)
+            ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
     }
 
@@ -832,7 +833,7 @@ class AssistantToolsService
 
         if ($this->contextCustomerPhone !== null && $this->contextCustomerPhone !== '')
         {
-            if ($phone !== $this->contextCustomerPhone)
+            if (WhatsAppCartSessionKey::fromPhone((string) $phone) !== $this->contextCustomerPhone)
             {
                 Log::warning('AssistantToolsService blocked cross-thread WhatsApp send', [
                     'tool' => 'send_whatsapp_message',
@@ -1920,6 +1921,8 @@ class AssistantToolsService
             return 'Product not found or not available on WhatsApp. Use search_products or pass product_id / product_code / product_name (one required).';
         }
 
+        $product->loadMissing(['category', 'currency']);
+
         $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 1;
 
         Cart::session($this->contextCustomerPhone);
@@ -1944,6 +1947,7 @@ class AssistantToolsService
                 'quantity' => $quantity,
                 'attributes' => [
                     'team_id' => $teamId,
+                    'store_id' => $product->store_id,
                     'currency_id' => $product->currency_id,
                     'description' => $product->description,
                     'category_name' => $product->category->name ?? '',

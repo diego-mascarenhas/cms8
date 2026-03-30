@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
@@ -63,7 +64,7 @@ class WhatsappCartAgregarTest extends TestCase
     {
         $team = $this->createTeamWithOwner();
         $product = $this->createMidiDressProduct($team);
-        $phone = '+5491199900021';
+        $phone = '5491199900021';
 
         Cart::session($phone)->clear();
         Cart::session($phone)->add([
@@ -96,6 +97,32 @@ class WhatsappCartAgregarTest extends TestCase
         $item = Cart::getContent()->first();
         $this->assertNotNull($item);
         $this->assertSame(4, (int) $item->quantity);
+    }
+
+    public function test_spanish_nine_and_eleven_digit_phones_share_same_cart_storage(): void
+    {
+        $team = $this->createTeamWithOwner();
+        $product = $this->createMidiDressProduct($team);
+
+        $intl = '34600000000';
+        $national = '600000000';
+
+        Cart::session(WhatsAppCartSessionKey::fromPhone($intl))->clear();
+        Cart::session(WhatsAppCartSessionKey::fromPhone($intl))->add([
+            'id' => $product->id,
+            'name' => $product->name,
+            'price' => $product->currentSellingPrice(),
+            'quantity' => 1,
+            'attributes' => [
+                'team_id' => $team->id,
+                'currency_id' => $product->currency_id,
+                'description' => $product->description,
+                'category_name' => $product->category->name ?? '',
+            ],
+        ]);
+
+        Cart::session(WhatsAppCartSessionKey::fromPhone($national));
+        $this->assertSame(1, Cart::getContent()->count());
     }
 
     public function test_agregar_message_does_not_trigger_product_catalog(): void
