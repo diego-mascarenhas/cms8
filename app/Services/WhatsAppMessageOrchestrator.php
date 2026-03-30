@@ -222,6 +222,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
     /**
      * Contact row for this team's WhatsApp number (phone digits or phone source), for per-contact preferences.
+     * Must match {@see UserResolverService::findContactByNormalizedPhone} rules so we resolve the same contact
+     * the user sees in CRM (e.g. DB phone stored as 9 digits, WhatsApp inbound as 34 + 9 digits).
      */
     private function findTeamContactIdByPhoneDigits(string $cleanDigits): ?int
     {
@@ -230,16 +232,40 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return null;
         }
 
-        $id = Contact::withoutGlobalScopes()
+        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS CHAR), ' ', ''), '+', ''), '-', '')";
+
+        $query = Contact::withoutGlobalScopes()
             ->where('team_id', $this->team->id)
-            ->where(function ($q) use ($cleanDigits)
+            ->where(function ($q) use ($cleanDigits, $phoneNormalizedSql)
             {
                 $q->whereHas('sources', function ($q2) use ($cleanDigits)
                 {
                     $q2->where('source_id', 2)->where('value', $cleanDigits);
-                })->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '+', ''), '-', '') = ?", [$cleanDigits]);
-            })
-            ->value('id');
+                })
+                    ->orWhereRaw("{$phoneNormalizedSql} = ?", [$cleanDigits]);
+
+                if (strlen($cleanDigits) > 9)
+                {
+                    $national = substr($cleanDigits, -9);
+                    $q->orWhereHas('sources', function ($q2) use ($national)
+                    {
+                        $q2->where('source_id', 2)->where('value', $national);
+                    })
+                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$national]);
+                }
+
+                if (strlen($cleanDigits) === 9)
+                {
+                    $with34 = '34'.$cleanDigits;
+                    $q->orWhereHas('sources', function ($q2) use ($with34)
+                    {
+                        $q2->where('source_id', 2)->where('value', $with34);
+                    })
+                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$with34]);
+                }
+            });
+
+        $id = $query->value('id');
 
         return $id !== null ? (int) $id : null;
     }
