@@ -176,6 +176,7 @@
                         label=""
                         moduleKey="contacts"
                         :selected="''"
+                        :listingFilter="true"
                     />
                 </div>
                 <div class="flex-grow-1" style="visibility: hidden;">

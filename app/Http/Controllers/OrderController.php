@@ -106,7 +106,7 @@ class OrderController extends Controller
      */
     public function show(string $id)
     {
-        $order = Order::with(['contact', 'currency', 'team'])->findOrFail($id);
+        $order = Order::with(['contact', 'currency', 'team', 'store'])->findOrFail($id);
 
         $this->authorize('view', $order);
 

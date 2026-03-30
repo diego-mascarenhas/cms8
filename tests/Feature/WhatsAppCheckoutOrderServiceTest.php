@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Contact;
 use App\Models\Order;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsAppCheckoutOrderService;
@@ -117,5 +118,50 @@ class WhatsAppCheckoutOrderServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         app(WhatsAppCheckoutOrderService::class)->createFromWhatsAppCart((int) $team->id, '600111222', $items, 1.0);
+    }
+
+    public function test_creates_order_with_store_id_and_checkout_snapshot(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+
+        $store = Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Sucursal Norte',
+            'code' => 'NORTE',
+            'status' => true,
+            'is_main' => false,
+        ]);
+
+        $items = new Collection([
+            (object) [
+                'id' => 12,
+                'name' => 'Item',
+                'price' => 10.0,
+                'quantity' => 1,
+                'attributes' => (object) [
+                    'team_id' => $team->id,
+                    'currency_id' => 1,
+                ],
+            ],
+        ]);
+
+        $snapshot = [
+            'store_id' => $store->id,
+            'store_name' => $store->name,
+            'payment_method_labels' => [__('Efectivo')],
+        ];
+
+        $order = app(WhatsAppCheckoutOrderService::class)->createFromWhatsAppCart(
+            (int) $team->id,
+            '600999888',
+            $items,
+            10.0,
+            $store->id,
+            $snapshot,
+        );
+
+        $this->assertSame($store->id, $order->store_id);
+        $this->assertSame($snapshot, $order->metadata['checkout_offered'] ?? null);
     }
 }

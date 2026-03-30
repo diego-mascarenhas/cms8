@@ -14,6 +14,11 @@ class StoreTeamFileRequest extends FormRequest
 
     public function authorize(): bool
     {
+        if (! $this->user()?->currentTeam?->hasModule('team_files'))
+        {
+            return false;
+        }
+
         return $this->user()->can('create', \App\Models\TeamFile::class);
     }
 

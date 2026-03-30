@@ -154,6 +154,8 @@ return [
                 'quiero comprar',
                 'agregar al carrito',
                 'finalizar compra',
+                'cerrar pedido',
+                'quitar del carrito',
             ],
             'words' => [
                 'catálogo',
@@ -161,7 +163,10 @@ return [
                 'productos',
                 'carrito',
                 'checkout',
+                'finalizar',
                 'pedido',
+                'pagar',
+                'agregar',
             ],
         ],
 

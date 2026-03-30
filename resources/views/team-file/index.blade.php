@@ -45,6 +45,7 @@
                     moduleKey="team_files"
                     :selected="''"
                     :allowEmpty="true"
+                    :listingFilter="true"
                 />
             </div>
             <div class="flex-grow-1">

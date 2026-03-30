@@ -174,6 +174,7 @@
         <div class="card-body row p-0 pb-2">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
                 <h3>{{ __('app.welcome') }}</h3>
+                @include('partials.business-configuration-prompt', ['team' => $activeTeam ?? null])
                 <div class="col-12 col-lg-12">
                     @php
                         $weeklyGoals = [
@@ -474,8 +475,8 @@
 
         <!-- Main Content Column -->
         <div class="col-lg-8 order-lg-1">
-            <!-- Ongoing Projects -->
-            @if(isset($ongoingProjects))
+            <!-- Ongoing Projects (only when team has projects module) -->
+            @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
             <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">

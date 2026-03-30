@@ -21,11 +21,11 @@ class BusinessCreationSummaryService
     public function run(BusinessCreationSession $session): void
     {
         $config = $session->config ?? [];
-        $problematica = trim((string) ($config['business_problematica'] ?? ''));
-        $hash = $problematica !== '' ? hash('sha256', $problematica) : '';
+        $challenge = trim((string) ($config['business_challenge'] ?? ''));
+        $hash = $challenge !== '' ? hash('sha256', $challenge) : '';
 
         $saved = $session->fresh()->config ?? [];
-        if ($hash !== '' && ($saved['_summary_problematica_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
+        if ($hash !== '' && ($saved['_summary_challenge_hash'] ?? '') === $hash && isset($saved['_summary']) && $saved['_summary'] !== '')
         {
             return;
         }
@@ -52,8 +52,8 @@ class BusinessCreationSummaryService
         }
 
         $context = implode("\n", $contextParts);
-        $userMessage = $problematica !== ''
-            ? "Problemática actual del negocio:\n\n".$problematica."\n\n---\n\n".$context
+        $userMessage = $challenge !== ''
+            ? "Problemática actual del negocio:\n\n".$challenge."\n\n---\n\n".$context
             : $context;
 
         try
@@ -78,7 +78,7 @@ class BusinessCreationSummaryService
             $metadata['ai_started_at'] = $aiStartedAt->toIso8601String();
             $metadata['ai_finished_at'] = $aiFinishedAt->toIso8601String();
             $metadata['ai_duration_seconds'] = (int) $aiStartedAt->diffInSeconds($aiFinishedAt);
-            $metadata['desafio_prompt'] = $problematica;
+            $metadata['desafio_prompt'] = $challenge;
             BusinessCreationAiLog::create([
                 'business_creation_session_id' => $session->id,
                 'type' => 'summary',
@@ -88,14 +88,14 @@ class BusinessCreationSummaryService
             ]);
             $current = $session->fresh()->config ?? [];
             $current['_summary'] = $summary;
-            $current['_summary_problematica_hash'] = $hash;
+            $current['_summary_challenge_hash'] = $hash;
             $session->update(['config' => $current]);
         } catch (\Throwable $e)
         {
             Log::error('Business creation summary job failed', ['error' => $e->getMessage(), 'session_id' => $session->id]);
             $current = $session->fresh()->config ?? [];
             $current['_summary'] = 'Error al generar el resumen. Intenta de nuevo.';
-            $current['_summary_problematica_hash'] = $hash;
+            $current['_summary_challenge_hash'] = $hash;
             $session->update(['config' => $current]);
         }
     }

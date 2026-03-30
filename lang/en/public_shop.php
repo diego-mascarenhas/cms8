@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'welcome' => 'Hi! I am the :shop shopping assistant. I can help you build your order.',
+    'ask_profile' => 'To recommend better: what age are you, or what age are you buying for? Any tastes, restrictions, or style we should keep in mind?',
+    'assistant_title' => 'Assistant',
+    'flow_label' => 'Shop',
+    'cart_title' => 'Your cart',
+    'cart_empty' => 'No items yet. Ask the assistant for ideas or tap the suggestion buttons when they appear.',
+    'input_placeholder' => 'Type what you need or reply to the assistant…',
+    'send' => 'Send',
+    'add' => 'Add',
+    'suggested_label' => 'Quick suggestions',
+    'checkout_whatsapp' => 'Send order via WhatsApp',
+    'lines' => 'items',
+    'back_home' => 'Back to home',
+    'thinking' => 'Thinking…',
+    'error' => 'We could not load this shop.',
+    'fallback_no_match' => 'I could not find a clear match in the catalogue. Tell me a bit more (product type, occasion, or rough budget).',
+    'fallback_matches' => 'These options might fit: :names.',
+    'empty_reply' => 'Can you share a bit more so I can recommend something?',
+    'no_whatsapp' => 'This business does not have WhatsApp set up to receive orders yet.',
+    'empty_cart' => 'Add at least one product to the cart before sending the order.',
+    'wa_order_intro' => 'Hello, I would like to place this order:',
+    'profile_snapshot' => 'What you shared',
+    'age_label' => 'Age:',
+];

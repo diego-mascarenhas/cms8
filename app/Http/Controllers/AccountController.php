@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 class AccountController extends Controller
 {
     use ConfiguresTeamMail;
+
     public function index(AccountDataTable $dataTable)
     {
         return $dataTable->render('account.index');
@@ -66,8 +67,8 @@ class AccountController extends Controller
             'billing' => ['name' => 'Billing', 'icon' => 'credit-card', 'description' => 'Invoices, payments, earnings and expenses'],
             'ecommerce' => ['name' => 'E-commerce', 'icon' => 'shopping-cart', 'description' => 'E-commerce module (stores, products, orders)'],
             'infrastructure' => ['name' => 'Infrastructure', 'icon' => 'server', 'description' => 'Infrastructure management (servers, hosting)'],
-            'campaigns' => ['name' => 'Campaigns', 'icon' => 'mail-forward', 'description' => 'Email campaigns and marketing automation'],
-            'automation' => ['name' => 'Automation', 'icon' => 'robot', 'description' => 'Sales funnel and API integrations'],
+            'campaigns' => ['name' => 'Campaigns', 'icon' => 'mail-forward', 'description' => 'Templates, email campaigns and marketing automation'],
+            'automation' => ['name' => 'Automation', 'icon' => 'robot', 'description' => 'Assistant instructions, funnel and API.'],
             'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, academy and landing pages'],
             'support' => ['name' => 'Support', 'icon' => 'headset', 'description' => 'Customer support (tickets, mailbox, chat)'],
             'learning' => ['name' => 'Learning & Development', 'icon' => 'book', 'description' => 'Languages, certifications and training'],
@@ -141,11 +142,11 @@ class AccountController extends Controller
         $team = Team::with(['subscriptions.team.owner'])->findOrFail($id);
 
         // Get products for each subscription to display names
-        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription) use ($team)
+        $subscriptionsWithProducts = $team->subscriptions->map(function ($subscription)
         {
             $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
             $subscription->product = $product;
-            
+
             // Ensure team relationship is loaded
             if (! $subscription->relationLoaded('team'))
             {
@@ -275,7 +276,7 @@ class AccountController extends Controller
             ->map(function ($subscription)
             {
                 $product = \App\Models\SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
-                
+
                 // Ensure team relationship is loaded
                 if (! $subscription->relationLoaded('team'))
                 {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Module;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +23,27 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
+    }
+
+    public function test_dashboard_hides_ongoing_projects_card_when_projects_module_disabled(): void
+    {
+        Module::query()->create([
+            'name' => 'Projects',
+            'key' => 'projects',
+            'icon' => 'folder',
+            'description' => 'Test',
+            'is_core' => true,
+            'status' => 1,
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $this->actingAs($user);
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertDontSee(__('Ongoing Projects'), false);
     }
 
     public function test_dashboard_shows_analytics_chart_when_team_has_analytics_configured(): void

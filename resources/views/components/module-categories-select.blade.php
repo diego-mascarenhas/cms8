@@ -1,4 +1,12 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true])
+@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true, 'listingFilter' => false])
+
+@php
+    if ($listingFilter)
+    {
+        $allowManageModal = false;
+        $allowQuickCreate = false;
+    }
+@endphp
 
 <div class="form-group">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">

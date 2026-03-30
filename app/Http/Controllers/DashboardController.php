@@ -372,6 +372,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
+            'activeTeam',
             'totalTeamMinutes',
             'dangerousContacts',
             'clientsToContactToday',

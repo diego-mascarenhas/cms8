@@ -24,6 +24,7 @@ class ChatAssistantReplyService
         protected CollectionAssistantContextService $collectionAssistantContext,
         protected ContactAssistantContextService $contactAssistantContext,
         protected AssistantToolAuthorizationService $assistantToolAuthorization,
+        protected BusinessAssistantContextService $businessAssistantContext,
     ) {}
 
     /**
@@ -33,6 +34,7 @@ class ChatAssistantReplyService
      * When $forcedFlowRoutingKey is set (module_prompts routing key), that team flow prompt is merged instead of intent detection.
      * When $contactId is set, a single CRM summary block is appended. When the active flow is invoices:collections, a Stripe invoices appendix is added (no duplicate CRM).
      * When $previewOnly is true (Humano Assistant modal preview), the model must not claim WhatsApp was sent/failed; send_whatsapp_message is disabled.
+     * When $teamId is set, a markdown block from team business_config (wizard) is appended to instructions when non-empty.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @return array{
@@ -72,6 +74,12 @@ class ChatAssistantReplyService
             {
                 $instructions .= $this->customerTeamRoleInstructionsAppendix();
             }
+        }
+
+        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId);
+        if ($businessAppendix !== '')
+        {
+            $instructions .= "\n\n---\n\n".$businessAppendix;
         }
 
         if ($withTools && $teamId !== null && $contextUserId !== null)
@@ -485,8 +493,8 @@ Product catalog and WhatsApp PURCHASE flow (priority when the user wants to buy 
 - list_product_catalog (optional category_name) → full catalog with id, code, name, price. Use for "catálogo", "productos", "qué venden".
 - search_products (query) → find by name or code. Use before offering to add to cart.
 - add_to_whatsapp_cart (product_id OR product_code OR product_name; optional quantity) → YOU MUST call this tool as soon as the user confirms they want the product (e.g. "sí", "si", "dale", "ok", "agregalo", "quiero", "sí por favor", "añadilo", "mandale") after you showed them a specific product in the same conversation. Do NOT only reply with text — actually add to cart with the same id/code/name you found. If they confirm without naming again, use the product from your previous search_products / list result.
-- After a successful add_to_whatsapp_cart, reply in Spanish with: what was added, cart reminder (*carrito*), and next step (*checkout* to close the order). Say clearly that *SÍ* alone only confirms checkout AFTER they run *checkout*, not before.
-- If the tool says there is no phone context, tell them to write *comprar [nombre o código]* from WhatsApp.
+- After a successful add_to_whatsapp_cart, reply in Spanish with: what was added, cart reminder (*carrito*), that they can *quitar* cantidad y producto (or *quitar todo* el producto) to remove items, and next step: suggest only the word *finalizar* to close the order (the bot also accepts pagar/cerrar pedido/checkout, but do not list those to the customer). Say clearly that *SÍ* alone only confirms AFTER they run *finalizar*, not before.
+- If the tool says there is no phone context, tell them to write *comprar* plus the product name or code from WhatsApp.
 
 When they ask to schedule an event, appointment, or meeting ("agendar", "cita", "reunión", "evento", "reservar", "poner en el calendario"), use the calendar tools:
 - check_calendar_availability (start, end) → to see if the slot is free before confirming

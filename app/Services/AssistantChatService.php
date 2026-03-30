@@ -14,6 +14,10 @@ use function Laravel\Ai\agent;
 
 class AssistantChatService
 {
+    public function __construct(
+        protected BusinessAssistantContextService $businessAssistantContext,
+    ) {}
+
     /**
      * Run the assistant chat: route the user message through the general router, then run the target prompt.
      * If $promptKey is provided, skip the router and use that prompt directly.
@@ -93,6 +97,11 @@ class AssistantChatService
         }
 
         $instruction = $this->resolveInstruction($prompt, $teamId);
+        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId);
+        if ($businessAppendix !== '')
+        {
+            $instruction .= "\n\n---\n\n".$businessAppendix;
+        }
         $userContent = $instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
         $attachments = $image ? [$image] : [];
 

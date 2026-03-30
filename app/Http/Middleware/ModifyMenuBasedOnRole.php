@@ -86,7 +86,7 @@ class ModifyMenuBasedOnRole
                 $coreModules = Module::where('is_core', true)->pluck('key')->toArray();
 
                 // Modules that should always be visible regardless of team settings
-                $alwaysVisibleModules = ['dashboard', 'settings', 'prompts'];
+                $alwaysVisibleModules = ['dashboard', 'settings'];
 
                 // Filter the menu based on the user's permissions and team's modules
                 $filteredMenu = [];

@@ -1,6 +1,6 @@
 <div>
-    <button type="button" class="btn btn-sm btn-icon btn-label-secondary" wire:click="openModal" title="{{ __('Manage categories') }}" data-bs-toggle="tooltip">
-        <i class="ti ti-settings"></i>
+    <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none" wire:click="openModal" title="{{ __('Manage categories') }}" aria-label="{{ __('Manage categories') }}" data-bs-toggle="tooltip">
+        <i class="ti ti-settings ti-sm"></i>
     </button>
 
     @if ($show)

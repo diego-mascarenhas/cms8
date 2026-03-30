@@ -6,7 +6,16 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ __('Tiendas') }}</h4>
-            <p class="text-muted">{{ __('Gestiona las sucursales de tu negocio') }}</p>
+            <p class="text-muted mb-0">{{ __('Gestiona las sucursales de tu negocio') }}</p>
+            @php
+                $storesBusinessTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
+                $storesShowBusinessHint = $storesBusinessTeam
+                    && auth()->user()->can('update', $storesBusinessTeam)
+                    && ! $storesBusinessTeam->hasCompletedBusinessConfiguration();
+            @endphp
+            @if($storesShowBusinessHint)
+                <p class="text-muted small mb-0 mt-1">{{ __('For best results, configure your business details before creating stores.') }}</p>
+            @endif
         </div>
         <div class="mt-3 mt-md-0">
             <a href="{{ route('store.create') }}" class="btn btn-primary waves-effect waves-light">
@@ -14,6 +23,8 @@
             </a>
         </div>
     </div>
+
+    @include('partials.business-configuration-prompt')
 
     @if (session('success'))
         <div class="alert alert-success alert-dismissible" role="alert">
@@ -67,7 +78,7 @@
                                             <i class="ti ti-eye ti-sm me-2"></i>
                                         </a>
                                         <a href="{{ route('store.edit', $store->id) }}" class="text-body" title="{{ __('Edit') }}">
-                                            <i class="ti ti-pencil ti-sm me-2"></i>
+                                            <i class="ti ti-edit ti-sm me-2"></i>
                                         </a>
                                     </div>
                                 </td>

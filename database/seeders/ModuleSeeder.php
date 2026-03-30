@@ -28,7 +28,7 @@ class ModuleSeeder extends Seeder
         ],
         'contacts' => [
             'name' => 'Contacts',
-            'icon' => 'address-book',
+            'icon' => 'users',
             'description' => 'Contact management module',
             'is_enabled' => true,  // On by default
         ],
@@ -46,7 +46,7 @@ class ModuleSeeder extends Seeder
         ],
         'services' => [
             'name' => 'Services',
-            'icon' => 'server',
+            'icon' => 'rocket',
             'description' => 'Service management module',
             'is_enabled' => true,  // On by default
         ],
@@ -72,12 +72,6 @@ class ModuleSeeder extends Seeder
             'name' => 'Notifications',
             'icon' => 'speakerphone',
             'description' => 'Notifications and alerts module',
-            'is_enabled' => true,  // On by default
-        ],
-        'templates' => [
-            'name' => 'Templates',
-            'icon' => 'template',
-            'description' => 'Templates management module',
             'is_enabled' => true,  // On by default
         ],
     ];
@@ -186,6 +180,13 @@ class ModuleSeeder extends Seeder
             'order' => 8,
         ],
         // CAMPAIGNS GROUP
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
+            'group' => 'campaigns',
+            'order' => 0,
+        ],
         'mailer' => [
             'name' => 'Mailer',
             'icon' => 'send',
@@ -207,6 +208,13 @@ class ModuleSeeder extends Seeder
             'description' => 'API integrations management module',
             'group' => 'automation',
             'order' => 3,
+        ],
+        'prompts' => [
+            'name' => 'Prompts',
+            'icon' => 'cpu',
+            'description' => 'Instructions for the assistant.',
+            'group' => 'automation',
+            'order' => 1,
         ],
         // CONTENT GROUP
         'multimedia' => [
@@ -322,12 +330,6 @@ class ModuleSeeder extends Seeder
             'icon' => 'users-group',
             'description' => 'Department management module',
             'order' => 7,
-        ],
-        'prompts' => [
-            'name' => 'Prompts',
-            'icon' => 'cpu',
-            'description' => 'Module prompts for AI instructions (linked by module_id)',
-            'order' => 9,
         ],
         'collaborators' => [
             'name' => 'Collaborators',

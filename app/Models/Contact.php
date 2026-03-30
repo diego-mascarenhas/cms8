@@ -71,6 +71,21 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Whether inbound WhatsApp auto-replies from the assistant are allowed for this contact.
+     * When {@see Contact::$data} has no chat_assistant_ai_enabled key, defaults to true (same as chat UI).
+     */
+    public function allowsInboundChatAssistant(): bool
+    {
+        $d = $this->data;
+        if ($d === null || ! is_object($d) || ! property_exists($d, 'chat_assistant_ai_enabled'))
+        {
+            return true;
+        }
+
+        return filter_var($d->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
      * Scope to exclude collaborators removed from a specific project
      */
     public function scopeExcludeRemovedFromProject($query, $projectId)

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Laravel\Ai\AnonymousAgent;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ChatAssistantTest extends TestCase
@@ -122,5 +124,55 @@ TEXT
         $response->assertJsonFragment([
             'response' => 'Hola, este es el mensaje real para enviar.',
         ]);
+    }
+
+    public function test_admin_assistant_command_toggles_team_auto_respond(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => '/asistente off',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'action_performed' => 'assistant_auto_respond_toggle',
+            'assistant_auto_respond' => false,
+        ]);
+        $team->refresh();
+        $this->assertSame('0', (string) $team->getSetting('assistant_auto_respond', '1'));
+
+        $responseOn = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => '/assistant on',
+        ]);
+        $responseOn->assertStatus(200);
+        $responseOn->assertJson(['assistant_auto_respond' => true]);
+        $team->refresh();
+        $this->assertSame('1', (string) $team->getSetting('assistant_auto_respond', '0'));
+    }
+
+    public function test_non_admin_cannot_use_assistant_auto_respond_command(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $response = $this->actingAs($user)->postJson(route('chat.assistant'), [
+            'message' => '/asistente off',
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJson(['success' => false]);
+        $team->refresh();
+        $this->assertSame('1', (string) $team->getSetting('assistant_auto_respond', '1'));
     }
 }

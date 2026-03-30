@@ -57,6 +57,7 @@ use App\Http\Controllers\ProductManagementController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PromptController;
 use App\Http\Controllers\ProspectSearchController;
+use App\Http\Controllers\PublicShopController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
@@ -98,6 +99,9 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
     ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
+
+Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::class, 'show'])
+    ->name('public-shop.show');
 
 // main
 Route::get('/', [HomeController::class, 'index']);
@@ -807,7 +811,7 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
 
-    // Prompts (linked by module_id, table module_prompts)
+    // Prompts (module_prompts; gated by team module "prompts")
     Route::get('/prompt/list', [PromptController::class, 'index'])->name('prompt-list');
     Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');

@@ -309,16 +309,9 @@
                             <label class="form-label"><i class="ti ti-world ti-sm me-1 text-body"></i> País</label>
                             <select id="business-wizard-country" class="form-select select2-select" wire:model.live="config.country" data-placeholder="Seleccionar país">
                                 <option value="">Seleccionar país</option>
-                                <option value="Argentina">Argentina</option>
-                                <option value="Chile">Chile</option>
-                                <option value="Colombia">Colombia</option>
-                                <option value="España">España</option>
-                                <option value="Estados Unidos">Estados Unidos</option>
-                                <option value="Francia">Francia</option>
-                                <option value="Italia">Italia</option>
-                                <option value="México">México</option>
-                                <option value="Perú">Perú</option>
-                                <option value="Reino Unido">Reino Unido</option>
+                                @foreach (\App\Models\Country::query()->orderBy('name')->get() as $country)
+                                    <option value="{{ $country->name }}">{{ $country->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-sm-6">
@@ -435,9 +428,9 @@
                     </div>
                     <div class="mb-4">
                         <label class="form-label"><i class="ti ti-puzzle ti-sm me-1 text-body"></i> Desafío</label>
-                        <textarea class="form-control" wire:model.blur="config.business_problematica" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. Luego pulsa «Generar resumen» para que el Asistente AI genere un resumen conciso."></textarea>
+                        <textarea class="form-control" wire:model.blur="config.business_challenge" rows="4" placeholder="Describe brevemente el reto o la situación actual de tu empresa. Luego pulsa «Generar resumen» para que el Asistente AI genere un resumen conciso."></textarea>
                         @php
-                            $canLoadSummary = filled($config['business_problematica'] ?? null);
+                            $canLoadSummary = filled($config['business_challenge'] ?? null);
                         @endphp
                     </div>
                     @if ($summaryLoading)
@@ -477,8 +470,8 @@
                                 <p class="mb-1 mt-3 fw-medium">¿Te gustaría profundizar en alguno de estos puntos?</p>
                                 <p class="small text-muted mb-2">De ser así, un consultor de nuestro equipo podría contactarte para profundizar sobre estos puntos.</p>
                                 <div class="d-flex gap-2 flex-wrap">
-                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsProfundizar('si')">Sí</button>
-                                    <button type="button" class="btn {{ ($config['wants_profundizar'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsProfundizar('no')">No</button>
+                                    <button type="button" class="btn {{ ($config['wants_to_deepen'] ?? '') === 'si' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setWantsToDeepen('si')">Sí</button>
+                                    <button type="button" class="btn {{ ($config['wants_to_deepen'] ?? '') === 'no' ? 'btn-secondary' : 'btn-outline-secondary' }}" wire:click="setWantsToDeepen('no')">No</button>
                                 </div>
                             </div>
                         </div>
@@ -545,7 +538,13 @@
                                 <div class="alert alert-info mb-0">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="ti ti-info-circle ti-lg"></i>
-                                        <span class="fw-medium">Al pulsar el botón final se generará primero el informe de mercado y luego podrás enviarlo por email.</span>
+                                        <span class="fw-medium">
+                                            @if ($isLandingWizard)
+                                                Al pulsar el botón final se generará primero el informe de mercado y luego podrás enviarlo por email.
+                                            @else
+                                                Al pulsar el botón se generará el informe de mercado y se guardará junto a la configuración de tu equipo.
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
                             @endif
@@ -675,9 +674,13 @@
                         $hasBusinessEmail = filled($config['business_email'] ?? null);
                         $hasEmail = $hasContactEmail || $hasBusinessEmail;
                         $canLoadInsights = filled($config['business_industry'] ?? null) && filled($config['business_description'] ?? null) && filled($config['business_tagline'] ?? null);
-                        $canSubmit = !$insightsLoading && $hasEmail && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        if ($isLandingWizard) {
+                            $canSubmit = !$insightsLoading && $hasEmail && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        } else {
+                            $canSubmit = !$insightsLoading && (($hasReport) || (!$hasReport && $canLoadInsights));
+                        }
                     @endphp
-                    @if (!$hasEmail)
+                    @if (!$hasEmail && $isLandingWizard)
                         <div class="col-12 mb-3">
                             <div class="alert alert-warning mb-0">
                                 <div class="d-flex align-items-center flex-wrap gap-2">
@@ -711,7 +714,7 @@
                             </div>
                         </div>
                     @endif
-                    @if ($reportSent ?? false)
+                    @if ($isLandingWizard && ($reportSent ?? false))
                         <div class="col-12 mb-3">
                             <div class="alert alert-success mb-0">
                                 <div class="d-flex align-items-center gap-2">
@@ -721,29 +724,63 @@
                             </div>
                         </div>
                     @endif
-                    <div class="col-12 d-flex justify-content-between mt-3">
+                    @if (!$isLandingWizard && $hasReport && !($insightsLoading ?? false) && method_exists($this, 'regenerateMarketInsightsReport'))
+                        <div class="col-12 mt-2">
+                            <p class="small text-muted mb-0">
+                                {{ __('Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.') }}
+                            </p>
+                        </div>
+                    @endif
+                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
                         <button type="button" class="btn btn-label-secondary" wire:click="previousStep"><i class="ti ti-arrow-left me-sm-1"></i><span class="align-middle d-sm-inline-block d-none">Anterior</span></button>
                         @if (!($finalFlowRequested ?? false) && !($reportSent ?? false))
-                            <button
-                                type="button"
-                                class="btn btn-success"
-                                wire:click="submit"
-                                @disabled(!$canSubmit)
-                            >
-                                <i class="ti ti-send ti-sm me-1"></i>
-                                <span wire:loading.remove wire:target="submit,loadInsights">
-                                @if ($hasReport && $hasEmail)
-                                    Enviar informe completo por email
-                                @elseif (!$hasReport)
-                                    Generar reporte y enviarlo por email
-                                @else
-                                    Completa tu email para enviar
+                            <div class="d-flex gap-2 flex-wrap justify-content-end ms-auto">
+                                @if (!$isLandingWizard && $hasReport && method_exists($this, 'regenerateMarketInsightsReport'))
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary"
+                                        wire:click="regenerateMarketInsightsReport"
+                                        wire:loading.attr="disabled"
+                                        @disabled(!$canLoadInsights || ($insightsLoading ?? false))
+                                        title="{{ $canLoadInsights ? '' : __('Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.') }}"
+                                    >
+                                        <span wire:loading.remove wire:target="regenerateMarketInsightsReport">
+                                            <i class="ti ti-refresh ti-sm me-1"></i>{{ __('Regenerar informe') }}
+                                        </span>
+                                        <span wire:loading wire:target="regenerateMarketInsightsReport">
+                                            {{ __('Encolando…') }}
+                                        </span>
+                                    </button>
                                 @endif
-                                </span>
-                                <span wire:loading wire:target="submit,loadInsights">
-                                    Procesando...
-                                </span>
-                            </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-success"
+                                    wire:click="submit"
+                                    @disabled(!$canSubmit)
+                                >
+                                    <i class="ti ti-send ti-sm me-1"></i>
+                                    <span wire:loading.remove wire:target="submit,loadInsights,regenerateMarketInsightsReport">
+                                    @if ($isLandingWizard)
+                                        @if ($hasReport && $hasEmail)
+                                            Enviar informe completo por email
+                                        @elseif (!$hasReport)
+                                            Generar reporte y enviarlo por email
+                                        @else
+                                            Completa tu email para enviar
+                                        @endif
+                                    @else
+                                        @if ($hasReport)
+                                            Guardar configuración
+                                        @else
+                                            Generar informe de mercado
+                                        @endif
+                                    @endif
+                                    </span>
+                                    <span wire:loading wire:target="submit,loadInsights,regenerateMarketInsightsReport">
+                                        Procesando...
+                                    </span>
+                                </button>
+                            </div>
                         @endif
                     </div>
                 </div>

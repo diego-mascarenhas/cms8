@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\MenuHelper;
 use App\Http\Controllers\Controller;
-use App\Models\Module;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -40,7 +39,7 @@ class MenuController extends Controller
         $menu = Cache::remember($cacheKey, 3600, function () use ($user, $team)
         {
             $menuConfig = MenuHelper::getMenuConfig();
-            $alwaysVisibleModules = ['dashboard', 'settings', 'prompts'];
+            $alwaysVisibleModules = ['dashboard', 'settings'];
             $filteredMenu = [];
             $currentSection = null;
             $sectionItems = [];
@@ -56,8 +55,7 @@ class MenuController extends Controller
                     }
                     $currentSection = $menuItem;
                     $sectionItems = [];
-                }
-                else
+                } else
                 {
                     $moduleKey = $menuItem['module_key'] ?? null;
 
@@ -114,6 +112,7 @@ class MenuController extends Controller
                     'type' => 'header',
                     'menu_header' => $item['menuHeader'],
                 ];
+
                 continue;
             }
 

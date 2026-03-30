@@ -17,6 +17,7 @@ class Order extends Model
         'order_number',
         'contact_id',
         'team_id',
+        'store_id',
         'total_amount',
         'currency_id',
         'payment_status',
@@ -66,6 +67,102 @@ class Order extends Model
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Branch / store this order was placed for (WhatsApp tienda), when known.
+     */
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Payment method labels for order detail (WhatsApp checkout snapshot or branch defaults).
+     *
+     * @return list<string>
+     */
+    public function checkoutPaymentMethodDisplayLabels(): array
+    {
+        $offered = $this->metadata['checkout_offered'] ?? null;
+        if (is_array($offered))
+        {
+            if (! empty($offered['payment_method_labels']) && is_array($offered['payment_method_labels']))
+            {
+                return array_values(array_map('strval', $offered['payment_method_labels']));
+            }
+            if (! empty($offered['payment_methods']) && is_array($offered['payment_methods']))
+            {
+                $map = Store::checkoutPaymentMethodLabels();
+                $out = [];
+                foreach ($offered['payment_methods'] as $k)
+                {
+                    $key = (string) $k;
+                    $out[] = (string) ($map[$key] ?? $key);
+                }
+
+                return $out;
+            }
+        }
+
+        $store = $this->store;
+        if ($store)
+        {
+            $map = Store::checkoutPaymentMethodLabels();
+            $out = [];
+            foreach ($store->enabledCheckoutPaymentMethods() as $k)
+            {
+                $out[] = (string) ($map[$k] ?? $k);
+            }
+
+            return $out;
+        }
+
+        return [];
+    }
+
+    /**
+     * Fulfillment option labels for order detail (snapshot or branch defaults).
+     *
+     * @return list<string>
+     */
+    public function checkoutFulfillmentDisplayLabels(): array
+    {
+        $offered = $this->metadata['checkout_offered'] ?? null;
+        if (is_array($offered))
+        {
+            if (! empty($offered['fulfillment_labels']) && is_array($offered['fulfillment_labels']))
+            {
+                return array_values(array_map('strval', $offered['fulfillment_labels']));
+            }
+            if (! empty($offered['fulfillment_types']) && is_array($offered['fulfillment_types']))
+            {
+                $map = Store::checkoutFulfillmentLabels();
+                $out = [];
+                foreach ($offered['fulfillment_types'] as $k)
+                {
+                    $key = (string) $k;
+                    $out[] = (string) ($map[$key] ?? $key);
+                }
+
+                return $out;
+            }
+        }
+
+        $store = $this->store;
+        if ($store)
+        {
+            $map = Store::checkoutFulfillmentLabels();
+            $out = [];
+            foreach ($store->enabledCheckoutFulfillmentTypes() as $k)
+            {
+                $out[] = (string) ($map[$k] ?? $k);
+            }
+
+            return $out;
+        }
+
+        return [];
     }
 
     /**
