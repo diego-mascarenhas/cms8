@@ -324,6 +324,12 @@
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="activity-tab" data-bs-toggle="tab" href="#activity" role="tab"
+                        aria-controls="activity" aria-selected="false">
+                        <i class="ti ti-history ti-xs me-1"></i>{{ __('Activity') }}
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
                     <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance"
                         role="tab" aria-controls="emotional-balance" aria-selected="false">
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
@@ -363,6 +369,10 @@
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
                     @include('contact.partials.general')
+                </div>
+
+                <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                    @include('contact.partials.activity')
                 </div>
                 <div class="tab-pane fade" id="emotional-balance" role="tabpanel"
                     aria-labelledby="emotional-balance-tab">

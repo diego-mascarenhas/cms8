@@ -87,6 +87,7 @@ class DatabaseSeeder extends Seeder
             ContactValorationSeeder::class,  // Valuations
             List60StatusesSeeder::class,  // List60 statuses
             ProjectStatusSeeder::class,  // Project statuses
+            OpportunityStageSeeder::class,  // CRM opportunity pipeline stages
             UnitsSeeder::class,  // Units (words, minutes, etc)
             FareTypesSeeder::class,  // Fare types
             CategorySeeder::class,  // Base categories

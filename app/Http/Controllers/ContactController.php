@@ -12,6 +12,7 @@ use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\MessageDelivery;
+use App\Models\Opportunity;
 use App\Models\Source;
 use App\Services\AstralChartService;
 use App\Support\CollectionMessagingGuide;
@@ -154,6 +155,10 @@ class ContactController extends Controller
             'currentEnterprise',
             'user.roles',
             'user.currentTeam.settings',
+            'contactInteractions' => function ($q)
+            {
+                $q->with('user:id,name')->orderByDesc('occurred_at')->limit(100);
+            },
         ])->findOrFail($id);
 
         $this->authorize('view', $data);
@@ -498,9 +503,15 @@ class ContactController extends Controller
             $astralProfile = $astralService->generateAstralProfile($data->id, $data->birthday, $countryName);
         }
 
+        $contactOpportunities = collect();
+        if (auth()->user()->currentTeam?->hasModule('opportunities'))
+        {
+            $contactOpportunities = Opportunity::query()->where('contact_id', $data->id)->orderBy('name')->get();
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities'),
         );
     }
 

@@ -148,6 +148,34 @@ class ContactPolicy
     }
 
     /**
+     * Log CRM interactions (calls, notes) on this contact.
+     */
+    public function logInteraction(User $user, Contact $contact): bool
+    {
+        if ($contact->team_id !== $user->currentTeam->id)
+        {
+            return false;
+        }
+
+        if ($user->hasRole('admin'))
+        {
+            return true;
+        }
+
+        if ($user->hasRole('collaborator') && $contact->responsible_id === $user->id)
+        {
+            return true;
+        }
+
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Get the query filter for the user's role.
      */
     public static function getQueryFilter(User $user)

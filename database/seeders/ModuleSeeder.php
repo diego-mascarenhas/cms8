@@ -56,6 +56,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Project management module',
             'is_enabled' => true,  // On by default
         ],
+        'opportunities' => [
+            'name' => 'Opportunities',
+            'icon' => 'chart-line',
+            'description' => 'CRM opportunities and pipeline',
+            'is_enabled' => true,
+        ],
         'tasks' => [
             'name' => 'Tasks',
             'icon' => 'layout-kanban',

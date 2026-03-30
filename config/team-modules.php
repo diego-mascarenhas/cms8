@@ -24,6 +24,7 @@ return [
         'prospecting' => true,
         'services' => false,
         'projects' => false,
+        'opportunities' => true,
         'tasks' => false,
         'calendar' => true,
         'notifications' => false,

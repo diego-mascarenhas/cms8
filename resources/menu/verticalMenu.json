@@ -62,6 +62,13 @@
       "module_key": "projects"
     },
     {
+      "url": "opportunity/list",
+      "name": "Opportunities",
+      "icon": "menu-icon tf-icons ti ti-chart-line",
+      "slug": "opportunity-list",
+      "module_key": "opportunities"
+    },
+    {
       "url": "kanban",
       "name": "Tasks",
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
