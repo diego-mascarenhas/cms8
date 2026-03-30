@@ -507,6 +507,8 @@ When they ask for their profile, "mis datos", "mi perfil", "quién soy", or "qu�
 
 Support tickets (if the team has the tickets module): When the user asks to create a ticket, "crear ticket", "abrir un ticket", or report an issue, use create_ticket (subject, description; optional priority: low, medium, high, urgent). When an admin asks to respond to a ticket, "responder al ticket X", "contestá el ticket #N", or "añade una respuesta al ticket", use add_ticket_response (ticket_id, message; optional is_internal_note true for internal notes not visible to the client).
 
+CRM opportunities (if the team has the opportunities module): When the user asks to create or register an opportunity, "crear oportunidad", "nueva oportunidad", "registrar oportunidad", use create_opportunity with contact_id (numeric CRM contact id) and name (title). If you need valid stage slugs, call list_opportunity_stages first. Optional: stage_slug (qualification, proposal, negotiation, won, lost), opened_at (Y-m-d), description, estimated_amount, offering_summary. Optional responsible_email only for admins to assign another team member.
+
 Email templates:
 - List: "plantillas", "lista de plantillas" → list_templates.
 - Create NEW only: Use create_template ONLY when the user explicitly asks to CREATE a new template ("crear plantilla", "nueva plantilla"). Always return the view and editor links. Do NOT use create_template when the user wants to change or modify an existing template — that would create a duplicate and lose the original.
