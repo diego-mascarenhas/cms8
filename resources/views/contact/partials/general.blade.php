@@ -1,5 +1,19 @@
 <div class="row g-4">
     <div class="col-lg-8">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="ti ti-history ti-xs me-1"></i>{{ __('Activity') }}
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-label-primary"
+                        onclick="(function(){var el=document.getElementById('activity-tab');if(el&&window.bootstrap){bootstrap.Tab.getOrCreateInstance(el).show();}})()">{{ __('Log interaction') }}</button>
+                </div>
+                <div class="card-body">
+                    @include('contact.partials.activity-history', ['interactionLimit' => 30])
+                </div>
+            </div>
+        </div>
         <div class="row g-4">
             @can('invoice.list')
             <!-- CAC Card -->

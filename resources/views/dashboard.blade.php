@@ -269,6 +269,12 @@
     </div>
     <!-- Hour chart End  -->
 
+    <div class="row mb-4">
+        <div class="col-12">
+            @include('partials.dashboard-recent-activities', ['recentContactActivities' => $recentContactActivities ?? collect()])
+        </div>
+    </div>
+
     @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
     <!-- Google Analytics -->
     <div class="row mb-4">

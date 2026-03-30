@@ -674,5 +674,13 @@
   "opportunity_stage.won": "Won",
   "opportunity_stage.lost": "Lost",
   "CRM opportunities and pipeline": "CRM opportunities and pipeline",
-  "Contact activity": "Contact activity"
+  "Contact activity": "Contact activity",
+  "Activity and emotions": "Activity and emotions",
+  "Log interaction": "Log interaction",
+  "Add emotional state": "Add emotional state",
+  "Interaction": "Interaction",
+  "Emotional": "Emotional",
+  "No activity or emotional entries yet.": "No activity or emotional entries yet.",
+  "Recent contact activity": "Recent contact activity",
+  "No recent contact activity.": "No recent contact activity."
 }

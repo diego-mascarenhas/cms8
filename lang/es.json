@@ -1449,5 +1449,13 @@
   "opportunity_stage.won": "Ganada",
   "opportunity_stage.lost": "Perdida",
   "CRM opportunities and pipeline": "Oportunidades CRM y embudo",
-  "Contact activity": "Actividad del contacto"
+  "Contact activity": "Actividad del contacto",
+  "Activity and emotions": "Actividad y emociones",
+  "Log interaction": "Registrar interacción",
+  "Add emotional state": "Añadir estado emocional",
+  "Interaction": "Interacción",
+  "Emotional": "Emocional",
+  "No activity or emotional entries yet.": "Aún no hay actividad ni entradas emocionales.",
+  "Recent contact activity": "Actividad reciente en contactos",
+  "No recent contact activity.": "No hay actividad reciente en contactos."
 }

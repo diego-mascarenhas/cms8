@@ -23,6 +23,7 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
+        $response->assertSee(__('Recent contact activity'), false);
     }
 
     public function test_dashboard_hides_ongoing_projects_card_when_projects_module_disabled(): void
