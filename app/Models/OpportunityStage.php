@@ -21,4 +21,11 @@ class OpportunityStage extends Model
     {
         return $this->hasMany(Opportunity::class, 'opportunity_stage_id');
     }
+
+    public function localizedName(): string
+    {
+        $key = 'opportunity_stage.'.$this->slug;
+
+        return __($key) !== $key ? __($key) : $this->name;
+    }
 }

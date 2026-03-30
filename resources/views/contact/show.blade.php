@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('page-style')
@@ -35,6 +36,7 @@
     <!-- <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script> -->
     <!-- <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script> -->
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -335,14 +337,6 @@
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
-                @role('admin|collaborator|developer|editor|technical')
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab"
-                        aria-controls="evolution" aria-selected="false">
-                        <i class="ti ti-chart-line ti-xs me-1"></i>Evolución
-                    </a>
-                </li>
-                @endrole
                 @role('admin|collaborator')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
@@ -356,13 +350,7 @@
                         <i class="ti ti-map-pin ti-xs me-1"></i>Facturación
                     </a>
                 </li>
-                @endcan
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="scheduled-tab" data-bs-toggle="tab" href="#scheduled" role="tab"
-                        aria-controls="scheduled" aria-selected="false">
-                        <i class="ti ti-bell ti-xs me-1"></i>Programado
-                    </a>
-                </li>
+                @endrole
             </ul>
             <!--/ User Pills -->
 
@@ -378,17 +366,11 @@
                     aria-labelledby="emotional-balance-tab">
                     @include('contact.partials.emotional')
                 </div>
-                <div class="tab-pane fade" id="evolution" role="tabpanel" aria-labelledby="evolution-tab">
-                    @include('contact.partials.evolution')
-                </div>
                 <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
                     @include('contact.partials.balance')
                 </div>
                 <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
                     @include('contact.partials.billing')
-                </div>
-                <div class="tab-pane fade" id="scheduled" role="tabpanel" aria-labelledby="scheduled-tab">
-                    @include('contact.partials.scheduled')
                 </div>
             </div>
 
@@ -454,6 +436,16 @@
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
 
     <script>
+        (function () {
+            if (window.location.hash === '#activity') {
+                var trigger = document.querySelector('a[href="#activity"][data-bs-toggle="tab"]');
+                if (trigger && typeof bootstrap !== 'undefined') {
+                    var tab = bootstrap.Tab.getOrCreateInstance(trigger);
+                    tab.show();
+                }
+            }
+        })();
+
         function toggleNotesEdit() {
             const notes = document.getElementById('contact-notes').value;
             const contactId = window.location.pathname.split('/')[2];

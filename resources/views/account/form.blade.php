@@ -47,7 +47,7 @@
                                                 {{ $team->hasModule($module->key) ? 'checked' : '' }}>
                                             <label class="form-check-label" for="module_{{ $module->key }}">
                                                 <i class="ti ti-{{ $module->icon }} me-2"></i>
-                                                {{ $module->name }}
+                                                {{ __($module->name) }}
                                                 @if($module->description)
                                                     <small class="text-muted d-block">{{ __($module->description) }}</small>
                                                 @endif
@@ -82,7 +82,7 @@
                                                             {{ $team->hasModule($module->key) ? 'checked' : '' }}>
                                                         <label class="form-check-label" for="module_{{ $module->key }}">
                                                             <i class="ti ti-{{ $module->icon }} me-2"></i>
-                                                            {{ $module->name }}
+                                                            {{ __($module->name) }}
                                                             @if($module->description)
                                                                 <small class="text-muted d-block">{{ __($module->description) }}</small>
                                                             @endif

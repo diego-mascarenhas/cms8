@@ -6,7 +6,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Opportunities') }}/</span> {{ $opportunity->name }}</h4>
-        <p class="text-muted">{{ $opportunity->stage?->name ?? '' }}</p>
+        <p class="text-muted">{{ $opportunity->stage?->localizedName() ?? '' }}</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         @can('update', $opportunity)
@@ -38,7 +38,14 @@
                     <dt class="col-sm-4">{{ __('Offering') }}</dt>
                     <dd class="col-sm-8">
                         @if ($opportunity->offering_type && $opportunity->offering)
-                            {{ class_basename($opportunity->offering_type) }}: {{ $opportunity->offering->name ?? ('#'.$opportunity->offering_id) }}
+                            @php
+                                $offeringKindLabel = match (true) {
+                                    $opportunity->offering_type === \App\Models\Product::class => __('Product'),
+                                    $opportunity->offering_type === \App\Models\Service::class => __('Service'),
+                                    default => class_basename($opportunity->offering_type),
+                                };
+                            @endphp
+                            {{ $offeringKindLabel }}: {{ $opportunity->offering->name ?? $opportunity->offering->description ?? ('#'.$opportunity->offering_id) }}
                         @else
                             {{ $opportunity->offering_summary ?: '—' }}
                         @endif
@@ -64,7 +71,7 @@
                         <li class="timeline-item timeline-item-transparent pb-3">
                             <span class="timeline-point timeline-point-primary"></span>
                             <div class="timeline-event">
-                                <h6 class="mb-0">{{ $interaction->type->name }} @if($interaction->subject) — {{ $interaction->subject }} @endif</h6>
+                                <h6 class="mb-0">{{ $interaction->type->label() }} @if($interaction->subject) — {{ $interaction->subject }} @endif</h6>
                                 <small class="text-muted">{{ $interaction->occurred_at->isoFormat('D MMM YYYY, HH:mm') }}</small>
                                 @if ($interaction->body)
                                     <p class="mb-0 small">{{ $interaction->body }}</p>

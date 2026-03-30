@@ -16,7 +16,13 @@ class OpportunityDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'opportunity.action')
+            ->addColumn('action', function (Opportunity $row)
+            {
+                return view('opportunity.action', [
+                    'id' => $row->id,
+                    'contact' => $row->contact,
+                ])->render();
+            })
             ->setRowId('id')
             ->editColumn('contact_id', function (Opportunity $row)
             {
@@ -36,7 +42,7 @@ class OpportunityDataTable extends DataTable
             })
             ->editColumn('opportunity_stage_id', function (Opportunity $row)
             {
-                return e($row->stage?->name ?? '—');
+                return e($row->stage ? $row->stage->localizedName() : '—');
             })
             ->editColumn('estimated_amount', function (Opportunity $row)
             {

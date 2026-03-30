@@ -53,15 +53,15 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="opened_at">{{ __('Opened') }} (*)</label>
-                <input type="date" name="opened_at" id="opened_at" class="form-control @error('opened_at') is-invalid @enderror"
-                    value="{{ old('opened_at', $data->opened_at instanceof \Carbon\Carbon ? $data->opened_at->format('Y-m-d') : ($data->opened_at ?? '')) }}" required>
+                <input type="text" name="opened_at" id="opened_at" class="form-control flatpickr-opportunity-date @error('opened_at') is-invalid @enderror"
+                    value="{{ old('opened_at', $data->opened_at instanceof \Carbon\Carbon ? $data->opened_at->format('Y-m-d') : ($data->opened_at ?? '')) }}" autocomplete="off" required>
                 @error('opened_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-md-4">
                 <label class="form-label" for="opportunity_stage_id">{{ __('Stage') }} (*)</label>
                 <select name="opportunity_stage_id" id="opportunity_stage_id" class="form-select @error('opportunity_stage_id') is-invalid @enderror" required>
                     @foreach ($stages as $stage)
-                        <option value="{{ $stage->id }}" @selected(old('opportunity_stage_id', $data->opportunity_stage_id) == $stage->id)>{{ $stage->name }}</option>
+                        <option value="{{ $stage->id }}" @selected(old('opportunity_stage_id', $data->opportunity_stage_id) == $stage->id)>{{ $stage->localizedName() }}</option>
                     @endforeach
                 </select>
                 @error('opportunity_stage_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -96,8 +96,8 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="expected_close_at">{{ __('Expected close') }}</label>
-                <input type="date" name="expected_close_at" id="expected_close_at" class="form-control"
-                    value="{{ old('expected_close_at', $data->expected_close_at instanceof \Carbon\Carbon ? $data->expected_close_at->format('Y-m-d') : ($data->expected_close_at ?? '')) }}">
+                <input type="text" name="expected_close_at" id="expected_close_at" class="form-control flatpickr-opportunity-date"
+                    value="{{ old('expected_close_at', $data->expected_close_at instanceof \Carbon\Carbon ? $data->expected_close_at->format('Y-m-d') : ($data->expected_close_at ?? '')) }}" autocomplete="off">
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="offering_kind">{{ __('Offering') }}</label>
@@ -161,6 +161,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     document.getElementById('offering_kind').addEventListener('change', toggleOffering);
     toggleOffering();
+
+    if (typeof flatpickr !== 'undefined') {
+        var locale = @json(app()->getLocale());
+        var altFmt = locale === 'en' ? 'Y-m-d' : 'd/m/Y';
+        document.querySelectorAll('.flatpickr-opportunity-date').forEach(function (input) {
+            flatpickr(input, {
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                altInput: true,
+                altFormat: altFmt,
+                monthSelectorType: 'static'
+            });
+        });
+    }
 });
 </script>
 @endpush
