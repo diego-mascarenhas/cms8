@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
@@ -342,6 +343,24 @@ class DashboardController extends Controller
         // API usage widget: token logs + assistant conversation usage for this team
         $tokenStats = TeamApiUsageStatsService::forTeam((int) $activeTeam->id);
 
+        $authUser = auth()->user();
+        $recentContactActivities = ContactInteraction::query()
+            ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
+            {
+                $query->where('team_id', $activeTeam->id);
+                if ($authUser->hasRole('collaborator'))
+                {
+                    $query->where('responsible_id', $authUser->id);
+                }
+            })
+            ->with([
+                'contact:id,name,surname,team_id,responsible_id',
+                'user:id,name',
+            ])
+            ->orderByDesc('occurred_at')
+            ->limit(15)
+            ->get();
+
         // Google Analytics: fetch chart data only when team has GA4 configured
         $analyticsChartData = null;
         if ($activeTeam
@@ -390,6 +409,7 @@ class DashboardController extends Controller
             'hasProjects',
             'tokenStats',
             'analyticsChartData',
+            'recentContactActivities',
         ));
     }
 }

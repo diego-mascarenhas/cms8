@@ -1,5 +1,5 @@
 <!-- Emotional History -->
-<div class="card mb-4">
+<div class="card mb-4 h-100">
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Histórico emocional
         <button type="button" class="btn btn-primary btn-sm add-sentiment-btn">

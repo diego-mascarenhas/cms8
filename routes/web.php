@@ -14,6 +14,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ContactInteractionController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\ContentFieldConfigController;
 use App\Http\Controllers\DashboardController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
+use App\Http\Controllers\OpportunityController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
@@ -370,6 +372,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::post('/contact/{id}/update-astral-data', [contactController::class, 'updateAstralData'])->name('contact.update-astral-data');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+    Route::post('/contact/{id}/interactions', [ContactInteractionController::class, 'store'])->name('contact.interactions.store');
+
     Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
     Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
     Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
@@ -515,6 +519,14 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::get('/opportunity/list', [OpportunityController::class, 'index'])->name('opportunity.index');
+    Route::get('/opportunity/create', [OpportunityController::class, 'create'])->name('opportunity.create');
+    Route::post('/opportunity', [OpportunityController::class, 'store'])->name('opportunity.store');
+    Route::get('/opportunity/{id}', [OpportunityController::class, 'show'])->name('opportunity.show');
+    Route::get('/opportunity/{id}/edit', [OpportunityController::class, 'edit'])->name('opportunity.edit');
+    Route::put('/opportunity/{id}', [OpportunityController::class, 'update'])->name('opportunity.update');
+    Route::delete('/opportunity/{id}', [OpportunityController::class, 'destroy'])->name('opportunity.destroy');
+
     Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
     Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
     Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');

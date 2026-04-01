@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Jobs\GenerateTemplateHtmlJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
@@ -10,6 +11,8 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\Module;
+use App\Models\Opportunity;
+use App\Models\OpportunityStage;
 use App\Models\Product;
 use App\Models\Prompt;
 use App\Models\Task;
@@ -22,6 +25,7 @@ use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -77,7 +81,7 @@ class AssistantToolsService
         $this->contextUserId = $userId;
         $this->contextTeamId = $teamId;
         $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
-            ? preg_replace('/[^0-9]/', '', $customerPhoneDigits)
+            ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
     }
 
@@ -328,6 +332,33 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'list_opportunity_stages',
+                'description' => 'List CRM opportunity pipeline stages (slug and label). Use before create_opportunity if the user asks about stages or you need valid stage_slug values.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'create_opportunity',
+                'description' => 'Create a CRM sales opportunity linked to an existing contact. Requires the opportunities module for the team. Required: contact_id (numeric id from contacts), name (short title). Optional: stage_slug (qualification, proposal, negotiation, won, lost — default qualification), opened_at (Y-m-d, default today), description, estimated_amount (number), offering_summary (text). Optional responsible_email only for team admins — otherwise the current user is set as responsible.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID in the CRM (same team)'],
+                        'name' => ['type' => 'string', 'description' => 'Opportunity title'],
+                        'stage_slug' => ['type' => 'string', 'description' => 'Pipeline stage slug from list_opportunity_stages (optional)'],
+                        'opened_at' => ['type' => 'string', 'description' => 'Open date Y-m-d (optional, default today)'],
+                        'description' => ['type' => 'string', 'description' => 'Longer description (optional)'],
+                        'estimated_amount' => ['type' => 'number', 'description' => 'Estimated value (optional)'],
+                        'offering_summary' => ['type' => 'string', 'description' => 'Free-text offering summary when no catalog product is linked (optional)'],
+                        'responsible_email' => ['type' => 'string', 'description' => 'Assign to this team member by email (optional; admins only)'],
+                    ],
+                    'required' => ['contact_id', 'name'],
+                ],
+            ],
+            [
                 'name' => 'add_ticket_response',
                 'description' => 'Add a reply to an existing support ticket (as admin/support). Use when the user asks to respond to a ticket, "responder al ticket X", or "contestá el ticket". Pass ticket_id and message. Optionally set is_internal_note to true for internal notes (admin only, not visible to client).',
                 'input_schema' => [
@@ -544,6 +575,8 @@ class AssistantToolsService
                 'list_calendar_events' => $this->listCalendarEvents($teamId, $input),
                 'update_calendar_event' => $this->updateCalendarEvent($teamId, $input),
                 'create_ticket' => $this->createTicket($teamId, $user, $input),
+                'list_opportunity_stages' => $this->listOpportunityStages(),
+                'create_opportunity' => $this->createOpportunity($teamId, $user, $input),
                 'add_ticket_response' => $this->addTicketResponse($teamId, $user, $input),
                 'list_templates' => $this->listTemplates($teamId),
                 'create_template' => $this->createTemplate($teamId, $user->id, $input),
@@ -832,7 +865,7 @@ class AssistantToolsService
 
         if ($this->contextCustomerPhone !== null && $this->contextCustomerPhone !== '')
         {
-            if ($phone !== $this->contextCustomerPhone)
+            if (WhatsAppCartSessionKey::fromPhone((string) $phone) !== $this->contextCustomerPhone)
             {
                 Log::warning('AssistantToolsService blocked cross-thread WhatsApp send', [
                     'tool' => 'send_whatsapp_message',
@@ -1256,6 +1289,111 @@ class AssistantToolsService
         ]);
 
         return $this->truncate("Ticket created: {$ticket->subject} (id: {$ticket->id}). Priority: {$priority}. The user can view it and add replies from the Tickets section.");
+    }
+
+    private function listOpportunityStages(): string
+    {
+        $stages = OpportunityStage::query()->orderBy('sort_order')->get(['slug', 'name']);
+        if ($stages->isEmpty())
+        {
+            return 'No opportunity pipeline stages are configured. Run OpportunityStageSeeder or add stages in administration.';
+        }
+
+        $lines = $stages->map(fn (OpportunityStage $s) => "  - {$s->slug}: {$s->name}")->implode("\n");
+
+        return $this->truncate("Pipeline stages (use stage_slug in create_opportunity):\n".$lines);
+    }
+
+    private function createOpportunity(int $teamId, User $user, array $input): string
+    {
+        if (! Gate::forUser($user)->allows('create', Opportunity::class))
+        {
+            return 'You do not have permission to create opportunities.';
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if (! $team || ! $team->hasModule('opportunities'))
+        {
+            return 'The opportunities module is not enabled for this team.';
+        }
+
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        $name = trim((string) ($input['name'] ?? ''));
+        if ($contactId < 1 || $name === '')
+        {
+            return 'contact_id and name are required to create an opportunity.';
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($contactId);
+        if (! $contact)
+        {
+            return "Contact id {$contactId} was not found in this team.";
+        }
+
+        if (! Gate::forUser($user)->allows('view', $contact))
+        {
+            return 'You do not have permission to use that contact.';
+        }
+
+        $slug = trim((string) ($input['stage_slug'] ?? 'qualification'));
+        $stage = OpportunityStage::query()->where('slug', $slug)->first()
+            ?? OpportunityStage::query()->orderBy('sort_order')->first();
+        if (! $stage)
+        {
+            return 'No pipeline stages are configured. Run the OpportunityStage seeder or add stages in administration.';
+        }
+
+        $openedAt = isset($input['opened_at'])
+            ? Carbon::parse((string) $input['opened_at'])->startOfDay()
+            : now()->startOfDay();
+
+        $responsibleId = $user->id;
+        if ($user->hasRole('admin') && ! empty($input['responsible_email']))
+        {
+            $email = trim((string) $input['responsible_email']);
+            $assignee = User::query()
+                ->whereHas('teams', fn ($q) => $q->where('teams.id', $teamId))
+                ->where('email', $email)
+                ->first();
+            if ($assignee)
+            {
+                $responsibleId = $assignee->id;
+            }
+        }
+
+        $description = isset($input['description']) ? trim((string) $input['description']) : null;
+        if ($description === '')
+        {
+            $description = null;
+        }
+
+        $offeringSummary = isset($input['offering_summary']) ? trim((string) $input['offering_summary']) : null;
+        if ($offeringSummary === '')
+        {
+            $offeringSummary = null;
+        }
+
+        $estimatedAmount = isset($input['estimated_amount']) ? (float) $input['estimated_amount'] : null;
+
+        $opportunity = Opportunity::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'contact_id' => $contact->id,
+            'responsible_id' => $responsibleId,
+            'opportunity_stage_id' => $stage->id,
+            'name' => $name,
+            'opened_at' => $openedAt,
+            'description' => $description,
+            'estimated_amount' => $estimatedAmount,
+            'offering_type' => null,
+            'offering_id' => null,
+            'offering_summary' => $offeringSummary,
+        ]);
+
+        $url = route('opportunity.show', $opportunity->id);
+
+        return $this->truncate("Opportunity created: «{$opportunity->name}» (id: {$opportunity->id}). Stage: {$stage->name}. Contact: {$contact->name} (id: {$contact->id}). View: {$url}");
     }
 
     private function addTicketResponse(int $teamId, User $user, array $input): string
@@ -1920,6 +2058,8 @@ class AssistantToolsService
             return 'Product not found or not available on WhatsApp. Use search_products or pass product_id / product_code / product_name (one required).';
         }
 
+        $product->loadMissing(['category', 'currency']);
+
         $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 1;
 
         Cart::session($this->contextCustomerPhone);
@@ -1944,6 +2084,7 @@ class AssistantToolsService
                 'quantity' => $quantity,
                 'attributes' => [
                     'team_id' => $teamId,
+                    'store_id' => $product->store_id,
                     'currency_id' => $product->currency_id,
                     'description' => $product->description,
                     'category_name' => $product->category->name ?? '',

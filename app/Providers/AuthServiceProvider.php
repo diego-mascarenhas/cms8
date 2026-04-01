@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\LanguageVariant;
 use App\Models\Mailbox;
 use App\Models\Multimedia;
+use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\Prompt;
@@ -32,6 +33,7 @@ use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
 use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
+use App\Policies\OpportunityPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\PromptPolicy;
@@ -59,6 +61,7 @@ class AuthServiceProvider extends ServiceProvider
         LanguageVariant::class => LanguageVariantPolicy::class,
         Prompt::class => PromptPolicy::class,
         Multimedia::class => MultimediaPolicy::class,
+        Opportunity::class => OpportunityPolicy::class,
         Software::class => SoftwarePolicy::class,
         Stylebook::class => StyleBookPolicy::class,
         Content::class => ContentPolicy::class,

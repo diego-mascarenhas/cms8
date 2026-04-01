@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
@@ -440,7 +441,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      */
     private function checkoutPendingCacheKey(string $phoneNumber): string
     {
-        $digits = preg_replace('/[^0-9]/', '', $phoneNumber);
+        $digits = WhatsAppCartSessionKey::fromPhone($phoneNumber);
 
         return 'whatsapp_checkout_pending:'.$digits;
     }
@@ -2248,16 +2249,23 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $normalizedMessage = $this->normalizeWhatsAppCommandText($message);
             $teamId = $this->resolveCartTeamId($phoneNumber);
 
-            // Set cart session for this phone number
-            Cart::session($phoneNumber);
+            $cartSessionKey = WhatsAppCartSessionKey::fromPhone($phoneNumber);
+            if ($cartSessionKey === '')
+            {
+                return null;
+            }
+
+            // Same key as assistant tool add_to_whatsapp_cart (Spanish 9 vs 34+9 digits).
+            Cart::session($cartSessionKey);
 
             // DEBUG: Log cart session and current contents
             $currentCartItems = Cart::getContent();
             Log::info('Cart session set', [
                 'phone_number' => $phoneNumber,
+                'cart_session_key' => $cartSessionKey,
                 'cart_items_count' => $currentCartItems->count(),
                 'cart_total' => Cart::getTotal(),
-                'storage_key' => 'cart_'.$phoneNumber,
+                'storage_key' => $cartSessionKey.'_cart_items',
             ]);
 
             $affirmativeCheckout = ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'];
@@ -2759,6 +2767,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
+            $cartSessionKey = WhatsAppCartSessionKey::fromPhone($phoneNumber);
+            if ($cartSessionKey !== '')
+            {
+                Cart::session($cartSessionKey);
+            }
             Cart::clear();
 
             $response = "🗑️ **Carrito vaciado exitosamente**\n\n";

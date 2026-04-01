@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
@@ -595,6 +596,16 @@ class Contact extends Model implements HasMedia
     public function isInList60(): bool
     {
         return $this->list60()->exists();
+    }
+
+    public function opportunities(): HasMany
+    {
+        return $this->hasMany(Opportunity::class);
+    }
+
+    public function contactInteractions(): HasMany
+    {
+        return $this->hasMany(ContactInteraction::class)->orderByDesc('occurred_at');
     }
 
     public function portfolios()
