@@ -74,9 +74,20 @@ class TeamWhatsAppDemoStoreTest extends TestCase
     {
         Config::set('humano-core.whatsapp_demo_line_team_id', 1);
         Config::set('humano-core.whatsapp_inbound_number_digits', null);
+        Config::set('app.wapify_whatsapp_phone', '');
         Config::set('services.twilio.whatsapp_from', '+5491112223333');
 
         $this->assertSame(1, Team::resolveInboundWebhookTeamId(null, '5491112223333'));
+    }
+
+    public function test_resolve_inbound_webhook_falls_back_to_wapify_phone_when_inbound_and_twilio_empty(): void
+    {
+        Config::set('humano-core.whatsapp_demo_line_team_id', 1);
+        Config::set('humano-core.whatsapp_inbound_number_digits', null);
+        Config::set('app.wapify_whatsapp_phone', '5491123245172');
+        Config::set('services.twilio.whatsapp_from', null);
+
+        $this->assertSame(1, Team::resolveInboundWebhookTeamId(null, '5491123245172'));
     }
 
     #[DataProvider('invalidToProvider')]

@@ -406,9 +406,30 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Digits to match webhook "To" when route team is missing: WHATSAPP_INBOUND_NUMBER, else
+     * WAPIFY_WHATSAPP_PHONE (config app.wapify_whatsapp_phone), else TWILIO_WHATSAPP_FROM.
+     */
+    private static function inboundWebhookMatchDigits(): string
+    {
+        $explicit = config('humano-core.whatsapp_inbound_number_digits');
+        if (is_string($explicit) && $explicit !== '')
+        {
+            return preg_replace('/\D/', '', $explicit);
+        }
+
+        $wapify = preg_replace('/\D/', '', (string) config('app.wapify_whatsapp_phone'));
+        if ($wapify !== '')
+        {
+            return $wapify;
+        }
+
+        return preg_replace('/\D/', '', (string) config('services.twilio.whatsapp_from'));
+    }
+
+    /**
      * When the HTTP webhook has no resolved team ($team is null), infer receiving team from the
-     * inbound "To" number: match humano-core.whatsapp_inbound_number_digits, else services.twilio.whatsapp_from,
-     * else team_settings (whatsapp_from). Local Baileys webhooks normally send team_id so $team is set.
+     * inbound "To" number (see {@see inboundWebhookMatchDigits}), else team_settings (whatsapp_from).
+     * Local Baileys webhooks normally send team_id so $team is set.
      *
      * @param  string  $cleanToDigits  Digits-only destination number from the webhook.
      */
@@ -422,10 +443,7 @@ class Team extends JetstreamTeam
         {
             return null;
         }
-        $configuredDigits = config('humano-core.whatsapp_inbound_number_digits');
-        $matchDigits = is_string($configuredDigits) && $configuredDigits !== ''
-            ? preg_replace('/\D/', '', $configuredDigits)
-            : preg_replace('/\D/', '', (string) config('services.twilio.whatsapp_from'));
+        $matchDigits = static::inboundWebhookMatchDigits();
         if ($matchDigits !== '' && $cleanToDigits === $matchDigits)
         {
             return static::whatsappDemoLineTeamId();

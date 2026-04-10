@@ -102,9 +102,8 @@ return [
 
     /*
     | Digits-only number for our WhatsApp line. Used when a webhook has no team in the URL
-    | but includes "To": if To matches, we treat it as the demo line team. Local (Baileys)
-    | webhooks usually include team_id so this is optional. If empty, falls back to
-    | services.twilio.whatsapp_from (Twilio-only installs).
+    | but includes "To": if To matches, we treat it as the demo line team. If empty, falls back
+    | to app.wapify_whatsapp_phone (WAPIFY_WHATSAPP_PHONE), then services.twilio.whatsapp_from.
     */
     'whatsapp_inbound_number_digits' => env('WHATSAPP_INBOUND_NUMBER') !== null && env('WHATSAPP_INBOUND_NUMBER') !== ''
         ? preg_replace('/\D/', '', (string) env('WHATSAPP_INBOUND_NUMBER'))
