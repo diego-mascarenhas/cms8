@@ -226,9 +226,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      * Must match {@see UserResolverService::findContactByNormalizedPhone} rules so we resolve the same contact
      * the user sees in CRM (e.g. DB phone stored as 9 digits, WhatsApp inbound as 34 + 9 digits).
      */
-    private function findTeamContactIdByPhoneDigits(string $cleanDigits): ?int
+    private function findTeamContactIdByPhoneDigits(string $cleanDigits, ?int $contactTeamId = null): ?int
     {
-        if ($cleanDigits === '' || $this->team === null)
+        $teamId = $contactTeamId ?? $this->team?->id;
+        if ($cleanDigits === '' || $teamId === null)
         {
             return null;
         }
@@ -236,7 +237,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS CHAR), ' ', ''), '+', ''), '-', '')";
 
         $query = Contact::withoutGlobalScopes()
-            ->where('team_id', $this->team->id)
+            ->where('team_id', $teamId)
             ->where(function ($q) use ($cleanDigits, $phoneNormalizedSql)
             {
                 $q->whereHas('sources', function ($q2) use ($cleanDigits)
@@ -274,16 +275,22 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     /**
      * Whether automatic assistant replies are allowed for this contact (team + contact JSON data).
      */
-    private function inboundContactAllowsAssistantAutoReply(?int $contactId): bool
+    private function inboundContactAllowsAssistantAutoReply(?int $contactId, ?int $contactTeamId = null): bool
     {
-        if ($contactId === null || $this->team === null)
+        if ($contactId === null)
+        {
+            return true;
+        }
+
+        $teamId = $contactTeamId ?? $this->team?->id;
+        if ($teamId === null)
         {
             return true;
         }
 
         $contact = Contact::withoutGlobalScopes()
             ->whereKey($contactId)
-            ->where('team_id', $this->team->id)
+            ->where('team_id', $teamId)
             ->first();
 
         return $contact ? $contact->allowsInboundChatAssistant() : true;
@@ -345,7 +352,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      *
      * @param  array<string, mixed>  $replyResponse  Optional full reply from getReply (usage, tool_calls, tool_results).
      */
-    private function persistWhatsAppExchangeToAgentContext(string $phone, string $userMessage, string $assistantMessage, array $replyResponse = []): void
+    private function persistWhatsAppExchangeToAgentContext(string $phone, string $userMessage, string $assistantMessage, array $replyResponse = [], ?int $contextTeamId = null): void
     {
         try
         {
@@ -354,7 +361,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $contextUser = $userResolver->resolveUserForConversation($phone, null);
             if ($contextUser !== null)
             {
-                $teamId = $this->team ? (int) $this->team->id : null;
+                $teamId = $contextTeamId ?? ($this->team ? (int) $this->team->id : null);
                 $contextService->persistMessages(
                     $contextUser->id,
                     $userMessage,
@@ -784,7 +791,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
                 {
-                    $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $greetingSent);
+                    $greetingContextTeamId = $this->team ? Team::resolveAssistantTeamIdForWhatsAppWebhook((int) $this->team->id) : null;
+                    $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $greetingSent, [], $greetingContextTeamId);
                 }
             }
 
@@ -911,30 +919,31 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         ->toArray();
 
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
-                    $teamId = $this->team?->id;
-                    $withTools = $teamId !== null;
+                    $webhookTeamId = $this->team?->id;
+                    $assistantTeamId = $webhookTeamId !== null
+                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook((int) $webhookTeamId)
+                        : null;
+                    $withTools = $assistantTeamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
                     $contextContactId = null;
-                    if ($contextUser !== null)
+                    if ($contextUser !== null && $assistantTeamId !== null)
                     {
-                        $contactQuery = Contact::withoutGlobalScopes()
-                            ->where('user_id', $contextUser->id);
-                        if ($teamId !== null)
-                        {
-                            $contactQuery->where('team_id', $teamId);
-                        }
-                        $contextContactId = $contactQuery->value('id');
+                        $contextContactId = Contact::withoutGlobalScopes()
+                            ->where('user_id', $contextUser->id)
+                            ->where('team_id', $assistantTeamId)
+                            ->value('id');
                     }
 
-                    $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom)
+                    $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom, $assistantTeamId)
                         ?? ($contextContactId !== null ? (int) $contextContactId : null);
 
-                    if (! $this->inboundContactAllowsAssistantAutoReply($contactIdForAssistantPreference))
+                    if (! $this->inboundContactAllowsAssistantAutoReply($contactIdForAssistantPreference, $assistantTeamId))
                     {
                         Log::info('Auto AI skipped: contact has assistant disabled in data', [
                             'from' => $cleanFrom,
                             'contact_id' => $contactIdForAssistantPreference,
-                            'team_id' => $teamId,
+                            'team_id' => $assistantTeamId,
+                            'webhook_team_id' => $webhookTeamId,
                         ]);
 
                         return response()->json([
@@ -948,7 +957,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $replyResponse = $replyService->getReply(
                         $body,
                         $history,
-                        $teamId,
+                        $assistantTeamId,
                         $withTools,
                         $contextUser?->id,
                         $cleanFrom,
@@ -963,12 +972,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         if (trim((string) $aiMessage) !== '')
                         {
                             $this->sendWhatsApp($cleanFrom, $aiMessage);
-                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse);
+                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse, $assistantTeamId);
 
                             Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                             $this->maybeSendCollectionPaymentLinksFollowUp(
                                 $cleanFrom,
-                                $teamId,
+                                $assistantTeamId,
                                 $contextContactId !== null ? (int) $contextContactId : null,
                                 $forcedFlowRoutingKey,
                                 (string) $body,
@@ -977,7 +986,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         } else
                         {
                             $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero no pude generar respuesta en este intento. Enviamelo de nuevo por favor.');
-                            Log::warning('Auto AI response was empty', ['from' => $cleanFrom, 'team_id' => $teamId]);
+                            Log::warning('Auto AI response was empty', ['from' => $cleanFrom, 'team_id' => $assistantTeamId]);
                         }
                     } else
                     {

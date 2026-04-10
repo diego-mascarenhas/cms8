@@ -353,6 +353,57 @@ class Team extends JetstreamTeam
         return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
     }
 
+    /** Default team id for the WhatsApp number that acts as the demo line. */
+    public const WHATSAPP_DEMO_LINE_TEAM_ID = 1;
+
+    /**
+     * Optional override: when set and inbound is the demo line team, assistant uses this team’s data.
+     * When null/empty, {@see resolveAssistantTeamIdForWhatsAppWebhook} keeps the webhook team (the line they wrote to).
+     */
+    public static function whatsappDemoStoreTeamId(): ?int
+    {
+        $raw = config('humano-core.whatsapp_demo_store_team_id');
+        if ($raw === null || $raw === '')
+        {
+            return null;
+        }
+        $id = (int) $raw;
+
+        return $id > 0 ? $id : null;
+    }
+
+    public static function whatsappDemoLineTeamId(): int
+    {
+        $raw = config('humano-core.whatsapp_demo_line_team_id');
+        if ($raw === null || $raw === '')
+        {
+            return self::WHATSAPP_DEMO_LINE_TEAM_ID;
+        }
+        $id = (int) $raw;
+
+        return $id > 0 ? $id : self::WHATSAPP_DEMO_LINE_TEAM_ID;
+    }
+
+    /**
+     * Team id the assistant should use: always the webhook team unless this inbound is the
+     * configured demo line (default 1) and whatsapp_demo_store_team_id is set — then show that
+     * store for presentations. Client teams (any other webhook id) are never affected.
+     */
+    public static function resolveAssistantTeamIdForWhatsAppWebhook(int $webhookTeamId): int
+    {
+        $storeId = static::whatsappDemoStoreTeamId();
+        if ($storeId === null)
+        {
+            return $webhookTeamId;
+        }
+        if ($webhookTeamId === static::whatsappDemoLineTeamId())
+        {
+            return $storeId;
+        }
+
+        return $webhookTeamId;
+    }
+
     /**
      * Normalize wizard "business_website" (or route segment) to hostname only: lowercase, no scheme, path, or trailing slash.
      */
