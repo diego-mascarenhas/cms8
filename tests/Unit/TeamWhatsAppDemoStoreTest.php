@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Team;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class TeamWhatsAppDemoStoreTest extends TestCase
@@ -51,5 +52,50 @@ class TeamWhatsAppDemoStoreTest extends TestCase
 
         $this->assertSame(8, Team::resolveAssistantTeamIdForWhatsAppWebhook(2));
         $this->assertSame(1, Team::resolveAssistantTeamIdForWhatsAppWebhook(1));
+    }
+
+    public function test_resolve_inbound_webhook_uses_route_team_when_present(): void
+    {
+        Config::set('services.twilio.whatsapp_from', '+5490000000000');
+
+        $this->assertSame(42, Team::resolveInboundWebhookTeamId(42, '5491111111111'));
+    }
+
+    public function test_resolve_inbound_webhook_matches_demo_line_via_whatsapp_inbound_number(): void
+    {
+        Config::set('humano-core.whatsapp_demo_line_team_id', 1);
+        Config::set('humano-core.whatsapp_inbound_number_digits', '5491112223333');
+        Config::set('services.twilio.whatsapp_from', null);
+
+        $this->assertSame(1, Team::resolveInboundWebhookTeamId(null, '5491112223333'));
+    }
+
+    public function test_resolve_inbound_webhook_falls_back_to_twilio_from_when_inbound_not_set(): void
+    {
+        Config::set('humano-core.whatsapp_demo_line_team_id', 1);
+        Config::set('humano-core.whatsapp_inbound_number_digits', null);
+        Config::set('services.twilio.whatsapp_from', '+5491112223333');
+
+        $this->assertSame(1, Team::resolveInboundWebhookTeamId(null, '5491112223333'));
+    }
+
+    #[DataProvider('invalidToProvider')]
+    public function test_resolve_inbound_webhook_returns_null_without_match(?int $route, string $to): void
+    {
+        Config::set('services.twilio.whatsapp_from', '+5499999999999');
+
+        $this->assertNull(Team::resolveInboundWebhookTeamId($route, $to));
+    }
+
+    /**
+     * @return array<string, array{0: int|null, 1: string}>
+     */
+    public static function invalidToProvider(): array
+    {
+        return [
+            'empty to' => [null, ''],
+            'short to' => [null, '123'],
+            'no route and wrong to' => [null, '5488776655443'],
+        ];
     }
 }

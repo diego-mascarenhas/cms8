@@ -791,7 +791,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
                 {
-                    $greetingContextTeamId = $this->team ? Team::resolveAssistantTeamIdForWhatsAppWebhook((int) $this->team->id) : null;
+                    $greetingWebhookTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
+                    $greetingContextTeamId = $greetingWebhookTeamId !== null
+                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook($greetingWebhookTeamId)
+                        : null;
                     $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $greetingSent, [], $greetingContextTeamId);
                 }
             }
@@ -919,9 +922,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         ->toArray();
 
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
-                    $webhookTeamId = $this->team?->id;
+                    $webhookTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
                     $assistantTeamId = $webhookTeamId !== null
-                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook((int) $webhookTeamId)
+                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook($webhookTeamId)
                         : null;
                     $withTools = $assistantTeamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);

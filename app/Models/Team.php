@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
@@ -402,6 +403,43 @@ class Team extends JetstreamTeam
         }
 
         return $webhookTeamId;
+    }
+
+    /**
+     * When the HTTP webhook has no resolved team ($team is null), infer receiving team from the
+     * inbound "To" number: match humano-core.whatsapp_inbound_number_digits, else services.twilio.whatsapp_from,
+     * else team_settings (whatsapp_from). Local Baileys webhooks normally send team_id so $team is set.
+     *
+     * @param  string  $cleanToDigits  Digits-only destination number from the webhook.
+     */
+    public static function resolveInboundWebhookTeamId(?int $routeTeamId, string $cleanToDigits): ?int
+    {
+        if ($routeTeamId !== null && $routeTeamId > 0)
+        {
+            return $routeTeamId;
+        }
+        if ($cleanToDigits === '' || strlen($cleanToDigits) < 8)
+        {
+            return null;
+        }
+        $configuredDigits = config('humano-core.whatsapp_inbound_number_digits');
+        $matchDigits = is_string($configuredDigits) && $configuredDigits !== ''
+            ? preg_replace('/\D/', '', $configuredDigits)
+            : preg_replace('/\D/', '', (string) config('services.twilio.whatsapp_from'));
+        if ($matchDigits !== '' && $cleanToDigits === $matchDigits)
+        {
+            return static::whatsappDemoLineTeamId();
+        }
+        if (Schema::hasTable('team_settings'))
+        {
+            $byNumber = static::findByWhatsAppNumber($cleanToDigits);
+            if ($byNumber !== null)
+            {
+                return (int) $byNumber->id;
+            }
+        }
+
+        return null;
     }
 
     /**

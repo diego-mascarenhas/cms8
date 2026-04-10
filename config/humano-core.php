@@ -100,4 +100,14 @@ return [
         ? (int) env('WHATSAPP_DEMO_STORE_TEAM_ID')
         : null,
 
+    /*
+    | Digits-only number for our WhatsApp line. Used when a webhook has no team in the URL
+    | but includes "To": if To matches, we treat it as the demo line team. Local (Baileys)
+    | webhooks usually include team_id so this is optional. If empty, falls back to
+    | services.twilio.whatsapp_from (Twilio-only installs).
+    */
+    'whatsapp_inbound_number_digits' => env('WHATSAPP_INBOUND_NUMBER') !== null && env('WHATSAPP_INBOUND_NUMBER') !== ''
+        ? preg_replace('/\D/', '', (string) env('WHATSAPP_INBOUND_NUMBER'))
+        : null,
+
 ];
