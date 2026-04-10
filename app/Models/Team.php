@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
@@ -406,46 +407,96 @@ class Team extends JetstreamTeam
         return static::normalizePublicShopDomain($website);
     }
 
-    public function publicCatalogShopUrl(): ?string
-    {
-        $domain = $this->getPublicCatalogShopDomain();
-
-        return $domain !== null ? url('/shop/'.$domain) : null;
-    }
-
     /**
-     * Public assistant shop at /shop/{domain} when enabled and business website yields a host.
+     * URL segment from business_config.business_name (fallback: team name) for /shop/{slug}.
      */
-    public static function findForPublicCatalog(string $slug): ?self
+    public function getPublicCatalogNameSlug(): ?string
     {
-        $requested = static::normalizePublicShopDomain($slug);
-        if ($requested === null || $requested === '')
+        $config = $this->getDecodedBusinessConfig();
+        $name = trim((string) ($config['business_name'] ?? ''));
+        if ($name === '')
+        {
+            $name = trim((string) $this->name);
+        }
+        if ($name === '')
         {
             return null;
         }
 
-        $rows = TeamSetting::query()
-            ->where('key', 'public_catalog_enabled')
-            ->get();
+        $slug = Str::slug($name);
 
-        foreach ($rows as $row)
+        return $slug !== '' ? $slug : null;
+    }
+
+    public function publicCatalogShopUrl(): ?string
+    {
+        $domain = $this->getPublicCatalogShopDomain();
+        if ($domain !== null)
+        {
+            return url('/shop/'.$domain);
+        }
+
+        $nameSlug = $this->getPublicCatalogNameSlug();
+        if ($nameSlug !== null)
+        {
+            return url('/shop/'.$nameSlug);
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve team for public catalog: match business website host first, then slug of business/team name.
+     * When multiple teams share the same name slug, returns null (ambiguous).
+     */
+    public static function findForPublicCatalog(string $slug): ?self
+    {
+        $enabledTeams = [];
+        foreach (TeamSetting::query()->where('key', 'public_catalog_enabled')->get() as $row)
         {
             if (! filter_var($row->value, FILTER_VALIDATE_BOOLEAN))
             {
                 continue;
             }
-
             $team = $row->team;
-            if (! $team)
+            if ($team)
             {
-                continue;
+                $enabledTeams[] = $team;
             }
+        }
 
-            $domain = $team->getPublicCatalogShopDomain();
-            if ($domain !== null && hash_equals($domain, $requested))
+        $requestedDomain = static::normalizePublicShopDomain($slug);
+        if ($requestedDomain !== null && $requestedDomain !== '')
+        {
+            foreach ($enabledTeams as $team)
             {
-                return $team;
+                $domain = $team->getPublicCatalogShopDomain();
+                if ($domain !== null && hash_equals($domain, $requestedDomain))
+                {
+                    return $team;
+                }
             }
+        }
+
+        $requestedNameSlug = Str::slug($slug);
+        if ($requestedNameSlug === '')
+        {
+            return null;
+        }
+
+        $nameMatches = [];
+        foreach ($enabledTeams as $team)
+        {
+            $nameSlug = $team->getPublicCatalogNameSlug();
+            if ($nameSlug !== null && hash_equals($nameSlug, $requestedNameSlug))
+            {
+                $nameMatches[] = $team;
+            }
+        }
+
+        if (count($nameMatches) === 1)
+        {
+            return $nameMatches[0];
         }
 
         return null;
