@@ -11,7 +11,10 @@ class StartCommand extends Command
     protected $signature = 'start
                             {--fresh : Fresh install (migrate:fresh + seed), then optionally demo (non-interactive: use with --demo)}
                             {--demo : After fresh, or alone: load demo data (non-interactive)}
-                            {--stores : Import Pedimos Facil stores into teams (non-interactive)}';
+                            {--stores : Import Pedimos Facil stores into teams (non-interactive)}
+                            {--clone-catalog : Clone products catalog (stores, categories, products) between teams}
+                            {--source-team= : Source team ID for --clone-catalog (optional; skips prompts if both IDs given)}
+                            {--target-team= : Target team ID for --clone-catalog}';
 
     protected $description = 'Humano setup: fresh install (migrate:fresh --seed) then choose to load demo data';
 
@@ -23,6 +26,8 @@ class StartCommand extends Command
 
     private const OPT_STORES = 'Import stores (Pedimos Facil -> Teams)';
 
+    private const OPT_CLONE_CATALOG = 'Clone catalog (stores, categories, products → another team)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -30,6 +35,7 @@ class StartCommand extends Command
         $fresh = $this->option('fresh');
         $demo = $this->option('demo');
         $stores = $this->option('stores');
+        $cloneCatalog = $this->option('clone-catalog');
 
         if ($fresh)
         {
@@ -59,6 +65,14 @@ class StartCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($cloneCatalog)
+        {
+            $this->runCloneCatalog();
+            $this->info('Done.');
+
+            return self::SUCCESS;
+        }
+
         $this->info('Humano — Setup');
         $this->newLine();
 
@@ -71,6 +85,7 @@ class StartCommand extends Command
                     self::OPT_DEMO_ONLY,
                     self::OPT_CHAT,
                     self::OPT_STORES,
+                    self::OPT_CLONE_CATALOG,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -98,6 +113,9 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_STORES)
             {
                 $this->runStoresImport();
+            } elseif ($choice === self::OPT_CLONE_CATALOG)
+            {
+                $this->runCloneCatalog();
             }
 
             $this->newLine();
@@ -150,5 +168,55 @@ class StartCommand extends Command
     {
         $this->info('Importing Pedimos Facil stores into teams...');
         $this->call('import:interactive', ['--stores' => true]);
+    }
+
+    private function runCloneCatalog(): void
+    {
+        $this->info('Clone products catalog (stores, categories, products)');
+
+        $sourceOpt = $this->option('source-team');
+        $targetOpt = $this->option('target-team');
+
+        if ($sourceOpt !== null && $sourceOpt !== '' && $targetOpt !== null && $targetOpt !== '')
+        {
+            $sourceId = (int) $sourceOpt;
+            $targetId = (int) $targetOpt;
+        } else
+        {
+            $sourceId = (int) $this->ask('Source team ID');
+            $targetId = (int) $this->ask('Target team ID');
+        }
+
+        if ($sourceId < 1 || $targetId < 1)
+        {
+            $this->error('Invalid team IDs.');
+
+            return;
+        }
+
+        if ($sourceId === $targetId)
+        {
+            $this->error('Source and target team must be different.');
+
+            return;
+        }
+
+        if ($this->confirm('Dry run first (count only, no database writes)?', false))
+        {
+            $this->call('team:clone-catalog', [
+                'source_team_id' => $sourceId,
+                'target_team_id' => $targetId,
+                '--dry-run' => true,
+            ]);
+            if (! $this->confirm('Proceed with the real clone?', true))
+            {
+                return;
+            }
+        }
+
+        $this->call('team:clone-catalog', [
+            'source_team_id' => $sourceId,
+            'target_team_id' => $targetId,
+        ]);
     }
 }
