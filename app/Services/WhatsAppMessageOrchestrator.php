@@ -791,10 +791,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
                 {
-                    $greetingWebhookTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
-                    $greetingContextTeamId = $greetingWebhookTeamId !== null
-                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook($greetingWebhookTeamId)
-                        : null;
+                    $greetingContextTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
                     $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $greetingSent, [], $greetingContextTeamId);
                 }
             }
@@ -922,10 +919,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         ->toArray();
 
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
-                    $webhookTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
-                    $assistantTeamId = $webhookTeamId !== null
-                        ? Team::resolveAssistantTeamIdForWhatsAppWebhook($webhookTeamId)
-                        : null;
+                    $assistantTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
                     $withTools = $assistantTeamId !== null;
                     $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
                     $contextContactId = null;
@@ -946,7 +940,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             'from' => $cleanFrom,
                             'contact_id' => $contactIdForAssistantPreference,
                             'team_id' => $assistantTeamId,
-                            'webhook_team_id' => $webhookTeamId,
+                            'webhook_team_id' => $assistantTeamId,
                         ]);
 
                         return response()->json([

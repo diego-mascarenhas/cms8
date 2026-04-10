@@ -354,81 +354,9 @@ class Team extends JetstreamTeam
         return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
     }
 
-    /** Default team id for the WhatsApp number that acts as the demo line. */
-    public const WHATSAPP_DEMO_LINE_TEAM_ID = 1;
-
     /**
-     * Optional override: when set and inbound is the demo line team, assistant uses this team’s data.
-     * When null/empty, {@see resolveAssistantTeamIdForWhatsAppWebhook} keeps the webhook team (the line they wrote to).
-     */
-    public static function whatsappDemoStoreTeamId(): ?int
-    {
-        $raw = config('humano-core.whatsapp_demo_store_team_id');
-        if ($raw === null || $raw === '')
-        {
-            return null;
-        }
-        $id = (int) $raw;
-
-        return $id > 0 ? $id : null;
-    }
-
-    public static function whatsappDemoLineTeamId(): int
-    {
-        $raw = config('humano-core.whatsapp_demo_line_team_id');
-        if ($raw === null || $raw === '')
-        {
-            return self::WHATSAPP_DEMO_LINE_TEAM_ID;
-        }
-        $id = (int) $raw;
-
-        return $id > 0 ? $id : self::WHATSAPP_DEMO_LINE_TEAM_ID;
-    }
-
-    /**
-     * Team id the assistant should use: always the webhook team unless this inbound is the
-     * configured demo line (default 1) and whatsapp_demo_store_team_id is set — then show that
-     * store for presentations. Client teams (any other webhook id) are never affected.
-     */
-    public static function resolveAssistantTeamIdForWhatsAppWebhook(int $webhookTeamId): int
-    {
-        $storeId = static::whatsappDemoStoreTeamId();
-        if ($storeId === null)
-        {
-            return $webhookTeamId;
-        }
-        if ($webhookTeamId === static::whatsappDemoLineTeamId())
-        {
-            return $storeId;
-        }
-
-        return $webhookTeamId;
-    }
-
-    /**
-     * Digits to match webhook "To" when route team is missing: WHATSAPP_INBOUND_NUMBER, else
-     * WAPIFY_WHATSAPP_PHONE (config app.wapify_whatsapp_phone), else TWILIO_WHATSAPP_FROM.
-     */
-    private static function inboundWebhookMatchDigits(): string
-    {
-        $explicit = config('humano-core.whatsapp_inbound_number_digits');
-        if (is_string($explicit) && $explicit !== '')
-        {
-            return preg_replace('/\D/', '', $explicit);
-        }
-
-        $wapify = preg_replace('/\D/', '', (string) config('app.wapify_whatsapp_phone'));
-        if ($wapify !== '')
-        {
-            return $wapify;
-        }
-
-        return preg_replace('/\D/', '', (string) config('services.twilio.whatsapp_from'));
-    }
-
-    /**
-     * When the HTTP webhook has no resolved team ($team is null), infer receiving team from the
-     * inbound "To" number (see {@see inboundWebhookMatchDigits}), else team_settings (whatsapp_from).
+     * When the HTTP webhook has no resolved team ($team is null), infer receiving team from
+     * {@see findByWhatsAppNumber} (team_settings: whatsapp_from / twilio_whatsapp_from).
      * Local Baileys webhooks normally send team_id so $team is set.
      *
      * @param  string  $cleanToDigits  Digits-only destination number from the webhook.
@@ -442,11 +370,6 @@ class Team extends JetstreamTeam
         if ($cleanToDigits === '' || strlen($cleanToDigits) < 8)
         {
             return null;
-        }
-        $matchDigits = static::inboundWebhookMatchDigits();
-        if ($matchDigits !== '' && $cleanToDigits === $matchDigits)
-        {
-            return static::whatsappDemoLineTeamId();
         }
         if (Schema::hasTable('team_settings'))
         {

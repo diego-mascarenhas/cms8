@@ -80,33 +80,4 @@ return [
         'show_breadcrumbs' => true,
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | WhatsApp demo line → store team (Humano showcase only)
-    |--------------------------------------------------------------------------
-    |
-    | Only the demo LINE team's inbound webhook is rewritten. Any other team's number
-    | (client after QR, etc.) always uses that team's own id — safe to change the store
-    | id here between prospect demos without breaking existing clients.
-    |
-    | If whatsapp_demo_store_team_id is empty/unset, every line uses the webhook team.
-    |
-    | When set AND inbound is for whatsapp_demo_line_team_id (default 1), that line's
-    | assistant uses the store team id for tools, catalog, cart, prompts, memory.
-    |
-    */
-    'whatsapp_demo_line_team_id' => (int) (env('WHATSAPP_DEMO_LINE_TEAM_ID') ?: 1),
-    'whatsapp_demo_store_team_id' => env('WHATSAPP_DEMO_STORE_TEAM_ID') !== null && env('WHATSAPP_DEMO_STORE_TEAM_ID') !== ''
-        ? (int) env('WHATSAPP_DEMO_STORE_TEAM_ID')
-        : null,
-
-    /*
-    | Digits-only number for our WhatsApp line. Used when a webhook has no team in the URL
-    | but includes "To": if To matches, we treat it as the demo line team. If empty, falls back
-    | to app.wapify_whatsapp_phone (WAPIFY_WHATSAPP_PHONE), then services.twilio.whatsapp_from.
-    */
-    'whatsapp_inbound_number_digits' => env('WHATSAPP_INBOUND_NUMBER') !== null && env('WHATSAPP_INBOUND_NUMBER') !== ''
-        ? preg_replace('/\D/', '', (string) env('WHATSAPP_INBOUND_NUMBER'))
-        : null,
-
 ];
