@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\EnsureRegistrationBillingComplete;
 use App\Http\Middleware\LocaleMiddleware;
 use App\Http\Middleware\ModifyMenuBasedOnRole;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             LocaleMiddleware::class,
             ModifyMenuBasedOnRole::class,
             TrackContactViewing::class,
+            EnsureRegistrationBillingComplete::class,
             // TEMPORARILY DISABLED FOR TESTING
             // \App\Http\Middleware\DashboardRedirect::class,
         ]);

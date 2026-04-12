@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
@@ -763,6 +764,74 @@ class Team extends JetstreamTeam
         }
 
         return trim((string) ($config['business_name'] ?? '')) !== '';
+    }
+
+    /**
+     * Stripe price IDs linked to the configured registration product (recurring checkout).
+     *
+     * @return Collection<int, string>
+     */
+    public static function registrationCheckoutStripePriceIds(): Collection
+    {
+        $productId = trim((string) config('registration.stripe_product_id', ''));
+
+        if ($productId === '')
+        {
+            return collect();
+        }
+
+        return SubscriptionProduct::query()
+            ->where(function ($query) use ($productId): void
+            {
+                $query->where('stripe_product', $productId)
+                    ->orWhere('stripe_id', $productId);
+            })
+            ->pluck('stripe_price')
+            ->filter(fn ($priceId): bool => is_string($priceId) && str_starts_with($priceId, 'price_'))
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Whether the current team satisfies registration billing (active subscription for the registration product prices).
+     */
+    public function passesRegistrationBillingGate(): bool
+    {
+        $demoTeamIds = config('registration.demo_team_ids', []);
+
+        if ($demoTeamIds !== [] && in_array((int) $this->id, $demoTeamIds, true))
+        {
+            return true;
+        }
+
+        $priceIds = static::registrationCheckoutStripePriceIds();
+
+        if ($priceIds->isEmpty())
+        {
+            return false;
+        }
+
+        foreach ($this->subscriptions()->get() as $subscription)
+        {
+            if (! $subscription->active())
+            {
+                continue;
+            }
+
+            if ($priceIds->contains($subscription->stripe_price))
+            {
+                return true;
+            }
+
+            $data = $subscription->data;
+
+            if (is_array($data) && (($data['registration_checkout'] ?? null) === '1' || ($data['registration_checkout'] ?? null) === 1))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Backwards compatibility methods (deprecated)

@@ -37,6 +37,12 @@
                     @if(!empty($prospect_plan))
                         <input type="hidden" name="prospect_plan" value="{{ $prospect_plan }}">
                     @endif
+                    @if(!empty($fromRegistration))
+                        <input type="hidden" name="from_registration" value="1">
+                    @endif
+                    @if(!empty($registrationCheckoutPriceId))
+                        <input type="hidden" name="price_id" value="{{ $registrationCheckoutPriceId }}">
+                    @endif
 
                     <div class="row g-3">
                         <!-- Individual Name -->
@@ -124,7 +130,7 @@
                         <button type="submit" class="btn btn-primary me-2">
                             <i class="ti ti-arrow-right me-1"></i>{{ __('Continuar al Pago') }}
                         </button>
-                        <a href="{{ route('subscription.index') }}" class="btn btn-label-secondary">
+                        <a href="{{ !empty($fromRegistration) ? route('registration.billing') : route('subscription.index') }}" class="btn btn-label-secondary">
                             {{ __('Cancelar') }}
                         </a>
                     </div>
@@ -177,6 +183,11 @@
                             <p class="mb-0">{{ $product->description }}</p>
                         </div>
                     @endif
+                @elseif(!empty($fromRegistration))
+                    <div class="mb-3">
+                        <h4 class="mb-1">{{ __('auth.registration.billing_heading') }}</h4>
+                        <p class="text-muted small mb-0">{{ __('auth.registration.billing_plan_sidebar_registration') }}</p>
+                    </div>
                 @else
                     {{-- Mailer Plan Summary --}}
                     @php
