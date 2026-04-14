@@ -247,4 +247,24 @@ return [
     'waiting_qr' => 'Esperando QR',
     'disconnected' => 'Desconectado',
     'unreachable' => 'No disponible',
+
+    'Section category data' => 'Datos de categoría de sección',
+    'For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.' => 'En el módulo Contenidos, cada sección es una categoría. Configúrala en Categorías del equipo; el campo JSON guarda metadatos del builder que consumen sitios externos vía esta API.',
+    'Typical keys in section_category.data' => 'Claves habituales en section_category.data',
+    'Stable identifier for filtering (e.g. oba-about)' => 'Identificador estable para filtrar (p. ej. oba-about)',
+    'Flags such as history_timeline to toggle parts of a page' => 'Banderas como history_timeline para mostrar u ocultar partes de una página',
+    'Optional headings or labels for a section' => 'Encabezados u etiquetas opcionales de una sección',
+    'Sort rules for contents in this section (same as admin category form)' => 'Reglas de orden para contenidos de esta sección (igual que en el formulario de categoría)',
+    'Tip: combine section_category_id or status filters to fetch only published items for one section, then read page_sections from the first item’s section_category.data.' => 'Consejo: combina section_category_id o filtros de estado para traer solo ítems publicados de una sección y lee page_sections desde section_category.data del primer ítem.',
+    'The success payload data is a Laravel pagination object. Published items are in data.data.' => 'El campo data de la respuesta correcta es un objeto de paginación de Laravel. Los ítems publicados están en data.data.',
+
+    'The team API token is managed in Team Settings → API Tokens. Use the “Generate API Token” button to create or rotate the token; it is stored per team, not per user session.' => 'El token API del equipo se gestiona en Ajustes del equipo → API Tokens. Usa el botón «Generate API Token» para crear o rotar el token; se guarda por equipo, no por sesión de usuario.',
+    'Open team API tokens' => 'Abrir API tokens del equipo',
+    'Team tokens: open Team Settings → API Tokens and click “Generate API Token”.' => 'Tokens de equipo: Ajustes del equipo → API Tokens y el botón «Generate API Token».',
+    'Open API tokens' => 'Abrir API tokens',
+    'Click “Generate API Token” (opens the generate form)' => 'Pulsa «Generate API Token» (abre el formulario de generación)',
+
+    'Content title separate from body hint' => 'Titular breve para este idioma — no es el párrafo de abajo.',
+    'Main content' => 'Contenido principal',
+    'Main content hint' => 'Texto largo / HTML enriquecido para este idioma. Las pestañas de idioma aplican al título y a este campo.',
 ];

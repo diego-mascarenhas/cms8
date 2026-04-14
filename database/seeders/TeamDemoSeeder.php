@@ -48,6 +48,8 @@ class TeamDemoSeeder extends Seeder
         // 2. Assign core modules to team
         $this->assignCoreModules($team);
 
+        $this->call(DemoObaContentsSectionSeeder::class);
+
         // 3. Create demo categories
         $this->createDemoCategories();
 

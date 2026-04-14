@@ -31,10 +31,17 @@
                             <ol>
                                 <li>{{ __('Log in to your Humano account') }}</li>
                                 <li>{{ __('Go to Team Settings → API Tokens') }}</li>
-                                <li>{{ __('Click "Generate New Token"') }}</li>
+                                <li>{{ __('Click “Generate API Token” (opens the generate form)') }}</li>
                                 <li>{{ __('Give your token a descriptive name') }}</li>
                                 <li>{{ __('Copy the generated token (you won\'t see it again)') }}</li>
                             </ol>
+                            @auth
+                                @if(auth()->user()->currentTeam)
+                                    <p class="mb-0">
+                                        <a href="{{ route('team-settings.api-tokens', auth()->user()->currentTeam) }}" class="btn btn-sm btn-primary">{{ __('Open team API tokens') }}</a>
+                                    </p>
+                                @endif
+                            @endauth
 
                             <div class="alert alert-warning" role="alert">
                                 <h6 class="alert-heading mb-2">

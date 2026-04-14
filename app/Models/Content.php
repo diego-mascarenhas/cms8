@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Website content row. Translatable copy lives in JSON columns ({@see $casts}) per locale key (e.g. es).
+ * {@see $title} is not the main body: use {@see $content} for the primary HTML/text body. {@see $data}
+ * holds ContentFieldConfig-driven fields (e.g. event_year, image_url for template timeline_item).
+ */
 class Content extends Model
 {
     use HasFactory;

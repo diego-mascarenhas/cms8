@@ -63,4 +63,24 @@ return [
         'logout' => 'Logout',
         'login' => 'Login',
     ],
+
+    'Section category data' => 'Section category data',
+    'For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.' => 'For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.',
+    'Typical keys in section_category.data' => 'Typical keys in section_category.data',
+    'Stable identifier for filtering (e.g. oba-about)' => 'Stable identifier for filtering (e.g. oba-about)',
+    'Flags such as history_timeline to toggle parts of a page' => 'Flags such as history_timeline to toggle parts of a page',
+    'Optional headings or labels for a section' => 'Optional headings or labels for a section',
+    'Sort rules for contents in this section (same as admin category form)' => 'Sort rules for contents in this section (same as admin category form)',
+    'Tip: combine section_category_id or status filters to fetch only published items for one section, then read page_sections from the first item’s section_category.data.' => 'Tip: combine section_category_id or status filters to fetch only published items for one section, then read page_sections from the first item’s section_category.data.',
+    'The success payload data is a Laravel pagination object. Published items are in data.data.' => 'The success payload data is a Laravel pagination object. Published items are in data.data.',
+
+    'The team API token is managed in Team Settings → API Tokens. Use the “Generate API Token” button to create or rotate the token; it is stored per team, not per user session.' => 'The team API token is managed in Team Settings → API Tokens. Use the “Generate API Token” button to create or rotate the token; it is stored per team, not per user session.',
+    'Open team API tokens' => 'Open team API tokens',
+    'Team tokens: open Team Settings → API Tokens and click “Generate API Token”.' => 'Team tokens: open Team Settings → API Tokens and click “Generate API Token”.',
+    'Open API tokens' => 'Open API tokens',
+    'Click “Generate API Token” (opens the generate form)' => 'Click “Generate API Token” (opens the generate form)',
+
+    'Content title separate from body hint' => 'Short headline for this locale — not the paragraph below.',
+    'Main content' => 'Main content',
+    'Main content hint' => 'Long text / rich HTML for this locale. Language tabs apply to both title and this field.',
 ];

@@ -26,6 +26,14 @@
                             <h5 class="mt-4">{{ __('Base URL') }}</h5>
                             <code class="d-block p-3 bg-light">{{ url('/') }}/api/team/contents</code>
                             <p class="text-muted mt-2">{{ __('Note: This endpoint uses team token authentication. Use your team API token instead of user Sanctum token.') }}</p>
+                            <p class="text-muted mt-2 mb-0">
+                                {{ __('The team API token is managed in Team Settings → API Tokens. Use the “Generate API Token” button to create or rotate the token; it is stored per team, not per user session.') }}
+                                @auth
+                                    @if(auth()->user()->currentTeam)
+                                        <a href="{{ route('team-settings.api-tokens', auth()->user()->currentTeam) }}" class="d-inline-block mt-1">{{ __('Open team API tokens') }}</a>
+                                    @endif
+                                @endauth
+                            </p>
 
                             <h5 class="mt-4">{{ __('Authentication') }}</h5>
                             <p>{{ __('All requests require Bearer token authentication. Include the token in the Authorization header:') }}</p>
@@ -49,6 +57,7 @@
                                         <div class="col-md-6">
                                             <ul class="list-unstyled mb-0">
                                                 <li><a href="#list-contents" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('List Contents') }}</a></li>
+                                                <li><a href="#section-category-builder" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Section category data') }}</a></li>
                                                 <li><a href="#get-content" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Get Content') }}</a></li>
                                                 <li><a href="#create-content" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Create Content') }}</a></li>
                                             </ul>
@@ -129,6 +138,23 @@
                                         </tbody>
                                     </table>
 
+                                    <div class="card bg-label-info mb-4 mt-4" id="section-category-builder">
+                                        <div class="card-body">
+                                            <h6 class="mb-2">
+                                                <a href="#section-category-builder" class="text-heading" title="{{ __('Anchor link') }}">{{ __('Section category data') }}</a>
+                                            </h6>
+                                            <p class="mb-2">{{ __('For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.') }}</p>
+                                            <p class="mb-2 text-muted">{{ __('Typical keys in section_category.data') }}:</p>
+                                            <ul class="mb-2">
+                                                <li><code>slug</code> — {{ __('Stable identifier for filtering (e.g. oba-about)') }}</li>
+                                                <li><code>page_sections</code> — {{ __('Flags such as history_timeline to toggle parts of a page') }}</li>
+                                                <li><code>history</code> — {{ __('Optional headings or labels for a section') }}</li>
+                                                <li><code>content_ordering</code> — {{ __('Sort rules for contents in this section (same as admin category form)') }}</li>
+                                            </ul>
+                                            <p class="mb-0 small">{{ __('Tip: combine section_category_id or status filters to fetch only published items for one section, then read page_sections from the first item’s section_category.data.') }}</p>
+                                        </div>
+                                    </div>
+
                                     <h6>{{ __('Example Request') }}</h6>
                             <pre class="docs-code"><code class="language-bash">curl -X GET "{{ url('/') }}/api/team/contents?page=1&per_page=10&locale=es&status=3" \
   -H "Authorization: Bearer {{ $apiToken }}" \
@@ -136,43 +162,60 @@
                             </div>
 
                                     <h6>{{ __('Response') }}</h6>
+                                    <p class="text-muted">{{ __('The success payload data is a Laravel pagination object. Published items are in data.data.') }}</p>
                                     <pre class="docs-code"><code class="language-json">{
   "success": true,
-  "message": "Contents retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "title": "Bienvenido",
-      "subtitle": "Subtítulo del contenido",
-      "url": "/bienvenido",
-      "content": "<p>Contenido HTML...</p>",
-      "section_category": {
-        "id": 1,
-        "name": "Home"
-      },
-      "category": {
-        "id": 2,
-        "name": "Principal"
-      },
-      "status": 3,
-      "featured": true,
-      "featured_slide": false,
-      "featured_modal": false,
-      "order": 1,
-      "template": null,
-      "seo_title": "Título SEO",
-      "seo_keywords": "palabras, clave",
-      "seo_description": "Descripción SEO",
-      "data": {},
-      "created_at": "2024-01-15T10:30:00.000000Z",
-      "updated_at": "2024-01-15T10:30:00.000000Z"
-    }
-  ],
-  "pagination": {
+  "data": {
     "current_page": 1,
+    "data": [
+      {
+        "id": 1,
+        "title": "Bienvenido",
+        "subtitle": "Subtítulo del contenido",
+        "url": "/bienvenido",
+        "content": "<p>Contenido HTML...</p>",
+        "section_category": {
+          "id": 1,
+          "name": "Home",
+          "data": {
+            "slug": "home",
+            "page_sections": { "history_timeline": true },
+            "history": { "heading": "Historia" }
+          }
+        },
+        "category": {
+          "id": 2,
+          "name": "Principal"
+        },
+        "status": 3,
+        "featured": true,
+        "featured_slide": false,
+        "featured_modal": false,
+        "order": 1,
+        "template": null,
+        "seo_title": "Título SEO",
+        "seo_keywords": "palabras, clave",
+        "seo_description": "Descripción SEO",
+        "data": {},
+        "created_at": "2024-01-15T10:30:00.000000Z",
+        "updated_at": "2024-01-15T10:30:00.000000Z"
+      }
+    ],
+    "first_page_url": "{{ url('/') }}/api/team/contents?page=1",
+    "from": 1,
+    "last_page": 3,
+    "last_page_url": "{{ url('/') }}/api/team/contents?page=3",
+    "links": [],
+    "next_page_url": null,
+    "path": "{{ url('/') }}/api/team/contents",
     "per_page": 10,
-    "total": 25,
-    "last_page": 3
+    "prev_page_url": null,
+    "to": 10,
+    "total": 25
+  },
+  "team": {
+    "id": 1,
+    "name": "Demo"
   }
 }</code></pre>
                             </div>

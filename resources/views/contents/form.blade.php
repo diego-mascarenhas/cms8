@@ -105,20 +105,37 @@
                             role="tabpanel" 
                             aria-labelledby="content-tab-{{ $localeCode }}">
                             <div class="row g-2 mt-0">
-                                <div class="col-md-12">
-                                    <x-input-general
-                                        id="title_{{ $localeCode }}"
+                                <div class="col-md-12 mb-1">
+                                    <label class="form-label" for="title_{{ $localeCode }}">{{ __('app.Title') }}</label>
+                                    <input
+                                        type="text"
                                         name="title_{{ $localeCode }}"
-                                        label="{{ __('app.Title') }}"
-                                        value="{{ old("title_{$localeCode}", isset($content) ? ($content->title[$localeCode] ?? '') : '') }}"
+                                        id="title_{{ $localeCode }}"
+                                        class="form-control{{ $errors->has('title_'.$localeCode) ? ' is-invalid' : '' }}"
+                                        value="{{ old('title_'.$localeCode, isset($content) ? ($content->getTranslatable('title', $localeCode) ?? '') : '') }}"
+                                        autocomplete="off"
                                     />
+                                    @error("title_{$localeCode}")
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    <p class="form-text small text-muted mt-2 mb-0">{{ __('app.Content title separate from body hint') }}</p>
+                                </div>
+                                <div class="col-md-12">
+                                    <label for="content_{{ $localeCode }}" class="form-label">{{ __('app.Main content') }}</label>
+                                    <p class="form-text small text-muted mb-1">{{ __('app.Main content hint') }}</p>
+                                    <div id="content-editor-{{ $localeCode }}" style="min-height: 400px;"></div>
+                                    <input type="hidden" id="content_{{ $localeCode }}" name="content_{{ $localeCode }}" 
+                                        value="{{ old("content_{$localeCode}", isset($content) ? ($content->getTranslatable('content', $localeCode) ?? '') : '') }}">
+                                    @error("content_{$localeCode}")
+                                        <div class="text-danger mt-1">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-md-6">
                                     <x-input-general
                                         id="subtitle_{{ $localeCode }}"
                                         name="subtitle_{{ $localeCode }}"
                                         label="{{ __('app.Subtitle') }}"
-                                        value="{{ old("subtitle_{$localeCode}", isset($content) ? ($content->subtitle[$localeCode] ?? '') : '') }}"
+                                        value="{{ old("subtitle_{$localeCode}", isset($content) ? ($content->getTranslatable('subtitle', $localeCode) ?? '') : '') }}"
                                     />
                                 </div>
                                 <div class="col-md-6">
@@ -126,17 +143,8 @@
                                         id="url_{{ $localeCode }}"
                                         name="url_{{ $localeCode }}"
                                         label="{{ __('app.URL') }}"
-                                        value="{{ old("url_{$localeCode}", isset($content) ? ($content->url[$localeCode] ?? '') : '') }}"
+                                        value="{{ old("url_{$localeCode}", isset($content) ? ($content->getTranslatable('url', $localeCode) ?? '') : '') }}"
                                     />
-                                </div>
-                                <div class="col-md-12">
-                                    <label for="content_{{ $localeCode }}" class="form-label">{{ __('app.Content') }}</label>
-                                    <div id="content-editor-{{ $localeCode }}" style="min-height: 400px;"></div>
-                                    <input type="hidden" id="content_{{ $localeCode }}" name="content_{{ $localeCode }}" 
-                                        value="{{ old("content_{$localeCode}", isset($content) ? ($content->content[$localeCode] ?? '') : '') }}">
-                                    @error("content_{$localeCode}")
-                                        <div class="text-danger mt-1">{{ $message }}</div>
-                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -222,7 +230,7 @@
                                         id="seo_title_{{ $localeCode }}"
                                         name="seo_title_{{ $localeCode }}"
                                         label="{{ __('app.SEO Title') }}"
-                                        value="{{ old("seo_title_{$localeCode}", isset($content) ? ($content->seo_title[$localeCode] ?? '') : '') }}"
+                                        value="{{ old("seo_title_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_title', $localeCode) ?? '') : '') }}"
                                     />
                                 </div>
                                 <div class="col-md-12">
@@ -230,12 +238,12 @@
                                         id="seo_keywords_{{ $localeCode }}"
                                         name="seo_keywords_{{ $localeCode }}"
                                         label="{{ __('app.SEO Keywords') }}"
-                                        value="{{ old("seo_keywords_{$localeCode}", isset($content) ? ($content->seo_keywords[$localeCode] ?? '') : '') }}"
+                                        value="{{ old("seo_keywords_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_keywords', $localeCode) ?? '') : '') }}"
                                     />
                                 </div>
                                 <div class="col-md-12">
                                     <label for="seo_description_{{ $localeCode }}" class="form-label">{{ __('app.SEO Description') }}</label>
-                                    <textarea class="form-control" id="seo_description_{{ $localeCode }}" name="seo_description_{{ $localeCode }}" rows="3">{{ old("seo_description_{$localeCode}", isset($content) ? ($content->seo_description[$localeCode] ?? '') : '') }}</textarea>
+                                    <textarea class="form-control" id="seo_description_{{ $localeCode }}" name="seo_description_{{ $localeCode }}" rows="3">{{ old("seo_description_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_description', $localeCode) ?? '') : '') }}</textarea>
                                     @error("seo_description_{$localeCode}")
                                         <div class="text-danger mt-1">{{ $message }}</div>
                                     @enderror
