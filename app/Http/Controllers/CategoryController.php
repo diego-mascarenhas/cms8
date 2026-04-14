@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
+use App\Support\ContentsSectionCategoryData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Tags\Tag;
@@ -183,6 +184,38 @@ class CategoryController extends Controller
             }
 
             $categoryData['content_ordering'] = $contentOrdering;
+
+            if ($request->has('content_form') && is_array($request->input('content_form')))
+            {
+                $defaults = ContentsSectionCategoryData::defaultContentFormVisibility();
+                $incoming = $request->input('content_form', []);
+                $merged = [];
+                foreach (array_keys($defaults) as $key)
+                {
+                    if (array_key_exists($key, $incoming))
+                    {
+                        $value = $incoming[$key];
+                        $merged[$key] = $value === true || $value === 1 || $value === '1' || $value === 'true';
+                    } else
+                    {
+                        $merged[$key] = $defaults[$key];
+                    }
+                }
+                $categoryData['content_form'] = $merged;
+            } elseif (! isset($categoryData['content_form']))
+            {
+                $categoryData['content_form'] = ContentsSectionCategoryData::defaultContentFormVisibility();
+            }
+
+            if ($request->has('content_locales_present'))
+            {
+                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromRequest(
+                    is_array($request->input('content_locales')) ? $request->input('content_locales') : [],
+                );
+            } elseif (! isset($categoryData['content_locales']))
+            {
+                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromStorage(null);
+            }
         }
 
         $category->fill([

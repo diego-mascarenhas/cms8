@@ -267,4 +267,17 @@ return [
     'Content title separate from body hint' => 'Titular breve para este idioma — no es el párrafo de abajo.',
     'Main content' => 'Contenido principal',
     'Main content hint' => 'Texto largo / HTML enriquecido para este idioma. Las pestañas de idioma aplican al título y a este campo.',
+
+    'Content form visibility' => 'Campos del formulario de contenido',
+    'Content form visibility hint' => 'Desmarca los que no quieras mostrar al crear o editar contenidos en esta sección.',
+    'Show title on content form' => 'Título',
+    'Show main content on content form' => 'Contenido principal (editor)',
+    'Show subtitle on content form' => 'Subtítulo',
+    'Show URL on content form' => 'URL',
+    'Show featured options on content form' => 'Destacados (slide, modal)',
+    'Show SEO block on content form' => 'SEO',
+    'Show multimedia on content form' => 'Multimedia',
+
+    'Content form languages' => 'Idiomas de esta sección',
+    'Content form languages hint' => 'Los editores solo verán pestañas para los idiomas que marques. El contenido y el SEO usan la misma selección.',
 ];

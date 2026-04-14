@@ -83,4 +83,19 @@ return [
     'Content title separate from body hint' => 'Short headline for this locale — not the paragraph below.',
     'Main content' => 'Main content',
     'Main content hint' => 'Long text / rich HTML for this locale. Language tabs apply to both title and this field.',
+
+    'Title' => 'Title',
+
+    'Content form visibility' => 'Content form fields',
+    'Content form visibility hint' => 'Uncheck to hide standard fields when editors create or update contents in this section.',
+    'Show title on content form' => 'Title',
+    'Show main content on content form' => 'Main content (editor)',
+    'Show subtitle on content form' => 'Subtitle',
+    'Show URL on content form' => 'URL',
+    'Show featured options on content form' => 'Featured flags (slide, modal)',
+    'Show SEO block on content form' => 'SEO',
+    'Show multimedia on content form' => 'Multimedia',
+
+    'Content form languages' => 'Languages for this section',
+    'Content form languages hint' => 'Editors will only see tabs for the languages you enable. Content and SEO use the same set.',
 ];

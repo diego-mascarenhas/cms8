@@ -81,7 +81,13 @@
                 @enderror
             </div>
 
-            {{-- Multi-language Content Fields --}}
+            @php
+                $cfv = $contentFormVisibility ?? \App\Support\ContentsSectionCategoryData::defaultContentFormVisibility();
+                $showLocaleTabsBlock = ($cfv['show_title'] ?? true) || ($cfv['show_subtitle'] ?? true) || ($cfv['show_url'] ?? true) || ($cfv['show_main_content'] ?? true) || ($cfv['show_seo'] ?? true);
+            @endphp
+
+            {{-- Single locale tabs: content + SEO (no duplicate language strip) --}}
+            @if($showLocaleTabsBlock)
             <div class="col-12">
                 <ul class="nav nav-tabs mb-0" role="tablist">
                     @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
@@ -105,6 +111,7 @@
                             role="tabpanel" 
                             aria-labelledby="content-tab-{{ $localeCode }}">
                             <div class="row g-2 mt-0">
+                                @if($cfv['show_title'] ?? true)
                                 <div class="col-md-12 mb-1">
                                     <label class="form-label" for="title_{{ $localeCode }}">{{ __('app.Title') }}</label>
                                     <input
@@ -120,6 +127,8 @@
                                     @enderror
                                     <p class="form-text small text-muted mt-2 mb-0">{{ __('app.Content title separate from body hint') }}</p>
                                 </div>
+                                @endif
+                                @if($cfv['show_main_content'] ?? true)
                                 <div class="col-md-12">
                                     <label for="content_{{ $localeCode }}" class="form-label">{{ __('app.Main content') }}</label>
                                     <p class="form-text small text-muted mb-1">{{ __('app.Main content hint') }}</p>
@@ -130,6 +139,8 @@
                                         <div class="text-danger mt-1">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                @endif
+                                @if($cfv['show_subtitle'] ?? true)
                                 <div class="col-md-6">
                                     <x-input-general
                                         id="subtitle_{{ $localeCode }}"
@@ -138,6 +149,8 @@
                                         value="{{ old("subtitle_{$localeCode}", isset($content) ? ($content->getTranslatable('subtitle', $localeCode) ?? '') : '') }}"
                                     />
                                 </div>
+                                @endif
+                                @if($cfv['show_url'] ?? true)
                                 <div class="col-md-6">
                                     <x-input-general
                                         id="url_{{ $localeCode }}"
@@ -146,12 +159,46 @@
                                         value="{{ old("url_{$localeCode}", isset($content) ? ($content->getTranslatable('url', $localeCode) ?? '') : '') }}"
                                     />
                                 </div>
+                                @endif
+                                @if($cfv['show_seo'] ?? true)
+                                <div class="col-12">
+                                    <hr class="my-2">
+                                    <h6 class="mb-2">{{ __('app.SEO') }}</h6>
+                                    <div class="row g-2">
+                                        <div class="col-md-12">
+                                            <x-input-general
+                                                id="seo_title_{{ $localeCode }}"
+                                                name="seo_title_{{ $localeCode }}"
+                                                label="{{ __('app.SEO Title') }}"
+                                                value="{{ old("seo_title_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_title', $localeCode) ?? '') : '') }}"
+                                            />
+                                        </div>
+                                        <div class="col-md-12">
+                                            <x-input-general
+                                                id="seo_keywords_{{ $localeCode }}"
+                                                name="seo_keywords_{{ $localeCode }}"
+                                                label="{{ __('app.SEO Keywords') }}"
+                                                value="{{ old("seo_keywords_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_keywords', $localeCode) ?? '') : '') }}"
+                                            />
+                                        </div>
+                                        <div class="col-md-12">
+                                            <label for="seo_description_{{ $localeCode }}" class="form-label">{{ __('app.SEO Description') }}</label>
+                                            <textarea class="form-control" id="seo_description_{{ $localeCode }}" name="seo_description_{{ $localeCode }}" rows="3">{{ old("seo_description_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_description', $localeCode) ?? '') : '') }}</textarea>
+                                            @error("seo_description_{$localeCode}")
+                                                <div class="text-danger mt-1">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     @endforeach
                 </div>
             </div>
+            @endif
 
+            @if($cfv['show_featured'] ?? true)
             <div class="col-md-3">
                 <div class="form-check form-switch mt-4">
                     <input class="form-check-input" type="checkbox" id="featured" name="featured" value="1"
@@ -175,6 +222,7 @@
                     <label class="form-check-label" for="featured_modal">{{ __('app.Featured Modal') }}</label>
                 </div>
             </div>
+            @endif
 
             <div class="col-md-3">
                 <label for="order" class="form-label">{{ __('app.Order') }}</label>
@@ -193,66 +241,13 @@
                 </div>
             @endif
 
+            @if($cfv['show_multimedia'] ?? true)
             <div class="col-12">
                 <hr class="my-1">
                 <h6 class="mb-1">{{ __('app.Multimedia') }}</h6>
                 @include('components.content-multimedia-selector', ['selectedMultimedia' => $selectedMultimedia ?? []])
             </div>
-
-            {{-- Multi-language SEO Fields --}}
-            <div class="col-12">
-                <hr class="my-1">
-                <h6 class="mb-1">{{ __('app.SEO') }}</h6>
-                <ul class="nav nav-tabs mb-1" role="tablist">
-                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
-                        <li class="nav-item">
-                            <button type="button" class="nav-link {{ $loop->first ? 'active' : '' }}" 
-                                id="seo-tab-{{ $localeCode }}" 
-                                data-bs-toggle="tab" 
-                                data-bs-target="#seo-pane-{{ $localeCode }}" 
-                                role="tab" 
-                                aria-controls="seo-pane-{{ $localeCode }}" 
-                                aria-selected="{{ $loop->first ? 'true' : 'false' }}">
-                                {{ $localeName }}
-                            </button>
-                        </li>
-                    @endforeach
-                </ul>
-                <div class="tab-content mt-0">
-                    @foreach($availableLocales ?? ['es' => 'Español'] as $localeCode => $localeName)
-                        <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
-                            id="seo-pane-{{ $localeCode }}" 
-                            role="tabpanel" 
-                            aria-labelledby="seo-tab-{{ $localeCode }}">
-                            <div class="row g-2 mt-0">
-                                <div class="col-md-12">
-                                    <x-input-general
-                                        id="seo_title_{{ $localeCode }}"
-                                        name="seo_title_{{ $localeCode }}"
-                                        label="{{ __('app.SEO Title') }}"
-                                        value="{{ old("seo_title_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_title', $localeCode) ?? '') : '') }}"
-                                    />
-                                </div>
-                                <div class="col-md-12">
-                                    <x-input-general
-                                        id="seo_keywords_{{ $localeCode }}"
-                                        name="seo_keywords_{{ $localeCode }}"
-                                        label="{{ __('app.SEO Keywords') }}"
-                                        value="{{ old("seo_keywords_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_keywords', $localeCode) ?? '') : '') }}"
-                                    />
-                                </div>
-                                <div class="col-md-12">
-                                    <label for="seo_description_{{ $localeCode }}" class="form-label">{{ __('app.SEO Description') }}</label>
-                                    <textarea class="form-control" id="seo_description_{{ $localeCode }}" name="seo_description_{{ $localeCode }}" rows="3">{{ old("seo_description_{$localeCode}", isset($content) ? ($content->getTranslatable('seo_description', $localeCode) ?? '') : '') }}</textarea>
-                                    @error("seo_description_{$localeCode}")
-                                        <div class="text-danger mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+            @endif
         </div>
 
         <div class="pt-3 mt-3">

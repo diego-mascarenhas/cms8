@@ -116,6 +116,24 @@
                     </div>
 
                     <div id="content-options" class="border rounded p-3 mb-3 d-none">
+                        <input type="hidden" name="content_locales_present" value="1">
+                        @php
+                            $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
+                            $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.Content form languages') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.Content form languages hint') }}</p>
+                        <div class="row g-2 mb-4">
+                            @foreach($localeLabels as $localeCode => $localeLabel)
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="content_locale_{{ $localeCode }}" name="content_locales[]" value="{{ $localeCode }}"
+                                            @checked(in_array($localeCode, old('content_locales', $mergedLocales), true))>
+                                        <label class="form-check-label" for="content_locale_{{ $localeCode }}">{{ $localeLabel }}</label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                         <h6 class="mb-3">Configuración de Ordenamiento de Contenidos</h6>
                         <div class="mb-3">
                             <label class="form-label">Ordenamiento por defecto</label>
@@ -155,6 +173,71 @@
                                         <option value="asc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
                                         <option value="desc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'desc' ? 'selected' : '' }}>Descendente</option>
                                     </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+                        @php
+                            $contentFormFields = \App\Support\ContentsSectionCategoryData::mergeContentFormVisibility($categoryData['content_form'] ?? null);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.Content form visibility') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.Content form visibility hint') }}</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_title]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_title" name="content_form[show_title]" value="1"
+                                        @checked(old('content_form.show_title', $contentFormFields['show_title']))>
+                                    <label class="form-check-label" for="cff_show_title">{{ __('app.Show title on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_main_content]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_main_content" name="content_form[show_main_content]" value="1"
+                                        @checked(old('content_form.show_main_content', $contentFormFields['show_main_content']))>
+                                    <label class="form-check-label" for="cff_show_main_content">{{ __('app.Show main content on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_subtitle]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_subtitle" name="content_form[show_subtitle]" value="1"
+                                        @checked(old('content_form.show_subtitle', $contentFormFields['show_subtitle']))>
+                                    <label class="form-check-label" for="cff_show_subtitle">{{ __('app.Show subtitle on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_url]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_url" name="content_form[show_url]" value="1"
+                                        @checked(old('content_form.show_url', $contentFormFields['show_url']))>
+                                    <label class="form-check-label" for="cff_show_url">{{ __('app.Show URL on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_featured]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_featured" name="content_form[show_featured]" value="1"
+                                        @checked(old('content_form.show_featured', $contentFormFields['show_featured']))>
+                                    <label class="form-check-label" for="cff_show_featured">{{ __('app.Show featured options on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_seo]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_seo" name="content_form[show_seo]" value="1"
+                                        @checked(old('content_form.show_seo', $contentFormFields['show_seo']))>
+                                    <label class="form-check-label" for="cff_show_seo">{{ __('app.Show SEO block on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_multimedia]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_multimedia" name="content_form[show_multimedia]" value="1"
+                                        @checked(old('content_form.show_multimedia', $contentFormFields['show_multimedia']))>
+                                    <label class="form-check-label" for="cff_show_multimedia">{{ __('app.Show multimedia on content form') }}</label>
                                 </div>
                             </div>
                         </div>
