@@ -197,7 +197,11 @@ class SubscriptionController extends Controller
         }
         if ($product)
         {
-            return StripeAccountResolver::normalizeCategory($product->category);
+            $category = $product->category;
+
+            return StripeAccountResolver::normalizeCategory(
+                is_string($category) && trim($category) !== '' ? $category : 'mailer',
+            );
         }
         if ($request->plan)
         {
@@ -205,6 +209,37 @@ class SubscriptionController extends Controller
         }
 
         return 'mailer';
+    }
+
+    /**
+     * Subscription product row for the configured registration Stripe product (when price_id alone does not match a row).
+     */
+    private function resolveRegistrationSubscriptionProductFromConfig(): ?SubscriptionProduct
+    {
+        $stripeProductId = trim((string) config('registration.stripe_product_id', ''));
+
+        if ($stripeProductId === '')
+        {
+            return null;
+        }
+
+        return SubscriptionProduct::query()
+            ->where(function ($query) use ($stripeProductId): void
+            {
+                $query->where('stripe_product', $stripeProductId)
+                    ->orWhere('stripe_id', $stripeProductId);
+            })
+            ->first();
+    }
+
+    /**
+     * In-app destination when leaving the subscription checkout flow with an error or cancel.
+     */
+    private function subscriptionCheckoutHomeRoute(Request $request): string
+    {
+        return $request->boolean('from_registration')
+            ? 'registration.billing'
+            : 'subscription.index';
     }
 
     /**
@@ -259,6 +294,7 @@ class SubscriptionController extends Controller
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
+            'from_registration' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
@@ -285,6 +321,11 @@ class SubscriptionController extends Controller
         } elseif ($request->price_id)
         {
             $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
+        }
+
+        if ($product === null && ! $request->prospection && ! $request->filled('prospect_plan'))
+        {
+            $product = $this->resolveRegistrationSubscriptionProductFromConfig();
         }
 
         $prospectPlan = ($request->prospect_plan && in_array($request->prospect_plan, ['basic', 'growth'], true))
@@ -361,6 +402,8 @@ class SubscriptionController extends Controller
             'coupon' => $request->coupon,
             'prospection' => (bool) $request->prospection,
             'prospectionConfig' => $prospectionConfig,
+            'fromRegistration' => $request->boolean('from_registration'),
+            'registrationCheckoutPriceId' => $request->filled('price_id') ? (string) $request->price_id : null,
         ]);
     }
 
@@ -377,6 +420,7 @@ class SubscriptionController extends Controller
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
+            'from_registration' => 'nullable|in:1',
             'individual_name' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'country' => 'required|string|size:2',
@@ -420,6 +464,10 @@ class SubscriptionController extends Controller
         } elseif ($request->price_id)
         {
             $product = SubscriptionProduct::where('stripe_price', $request->price_id)->first();
+        }
+        if ($product === null && ! $request->boolean('prospection') && ! $request->filled('prospect_plan'))
+        {
+            $product = $this->resolveRegistrationSubscriptionProductFromConfig();
         }
         $billingCategory = $this->resolveBillingCategory($request, $product);
 
@@ -548,6 +596,10 @@ class SubscriptionController extends Controller
         if ($request->coupon)
         {
             $redirectParams['coupon'] = $request->coupon;
+        }
+        if ($request->boolean('from_registration'))
+        {
+            $redirectParams['from_registration'] = 1;
         }
 
         // Prospection: create one-time Stripe Checkout Session and redirect to Stripe
@@ -781,9 +833,11 @@ class SubscriptionController extends Controller
             'domain' => 'nullable|string|max:255',
             'coupon' => 'nullable|string|max:255',
             'prospection' => 'nullable|in:1',
+            'from_registration' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
+        $isFromRegistration = $request->boolean('from_registration');
         $priceId = null;
         $product = null;
         $subscriptionType = 'mailer';
@@ -838,13 +892,31 @@ class SubscriptionController extends Controller
             $subscriptionType = 'mailer';
         } else
         {
-            return redirect()->route('subscription.index')
-                ->with('error', 'Debes especificar un plan o producto.');
+            $product = $this->resolveRegistrationSubscriptionProductFromConfig();
+            if ($product && $product->stripe_price && str_starts_with((string) $product->stripe_price, 'price_'))
+            {
+                $priceId = $product->stripe_price;
+                $subscriptionType = $product->category ?? 'mailer';
+            } else
+            {
+                return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
+                    ->with('error', 'Debes especificar un plan o producto.');
+            }
+        }
+
+        if ($isFromRegistration && $product === null)
+        {
+            $product = $this->resolveRegistrationSubscriptionProductFromConfig();
+        }
+
+        if ($isFromRegistration && $request->filled('price_id') && str_starts_with((string) $request->price_id, 'price_'))
+        {
+            $priceId = $request->price_id;
         }
 
         if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
         {
-            return redirect()->route('subscription.index')
+            return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
         }
 
@@ -856,6 +928,12 @@ class SubscriptionController extends Controller
             if ($request->domain)
             {
                 $redirectParams['domain'] = $request->domain;
+            }
+
+            if ($isFromRegistration)
+            {
+                return redirect()->route('registration.billing')
+                    ->with('error', 'Debes especificar un dominio para este servicio.');
             }
 
             return redirect()->route('subscription.index', $redirectParams)
@@ -910,6 +988,10 @@ class SubscriptionController extends Controller
                 {
                     $swapRequest->merge(['plan' => $request->plan]);
                 }
+                if ($isFromRegistration)
+                {
+                    $swapRequest->merge(['from_registration' => 1]);
+                }
 
                 return $this->swap($swapRequest);
             }
@@ -955,6 +1037,13 @@ class SubscriptionController extends Controller
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e)
             {
+                if ($isFromRegistration)
+                {
+                    return redirect()->route('registration.billing')
+                        ->withErrors($e->errors())
+                        ->withInput();
+                }
+
                 // Redirect back with errors and product_id to show modal
                 return redirect()->route('subscription.index', ['product_id' => $request->product_id])
                     ->withErrors($e->errors())
@@ -1039,6 +1128,13 @@ class SubscriptionController extends Controller
                     'existing_subscription_id' => $existingSubscription->id,
                 ]);
 
+                if ($isFromRegistration)
+                {
+                    return redirect()->route('registration.billing')
+                        ->with('error', $errorMessage)
+                        ->withInput();
+                }
+
                 return redirect()->route('subscription.index', ['product_id' => $request->product_id])
                     ->with('error', $errorMessage)
                     ->withInput();
@@ -1079,6 +1175,10 @@ class SubscriptionController extends Controller
             if ($request->coupon)
             {
                 $redirectParams['coupon'] = $request->coupon;
+            }
+            if ($isFromRegistration)
+            {
+                $redirectParams['from_registration'] = 1;
             }
 
             return redirect()->route('subscription.billing-info', $redirectParams);
@@ -1246,6 +1346,12 @@ class SubscriptionController extends Controller
                         default => '¡Suscripción activada exitosamente usando tu método de pago guardado!',
                     };
 
+                    if ($isFromRegistration)
+                    {
+                        return redirect()->route('registration.onboarding.qr')
+                            ->with('success', __('auth.registration.welcome_plan_active'));
+                    }
+
                     return redirect()->route('subscription.index')
                         ->with('success', $successMessage);
                 }
@@ -1279,7 +1385,7 @@ class SubscriptionController extends Controller
         {
             if (! $checkoutCustomerId)
             {
-                return redirect()->route('subscription.index')
+                return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                     ->with('error', __('No se pudo crear el cliente de pago. Asegúrate de tener un email.'));
             }
 
@@ -1292,6 +1398,13 @@ class SubscriptionController extends Controller
             ]);
 
             $successUrlWithCategory = route('subscription.success').'?session_id={CHECKOUT_SESSION_ID}&category='.urlencode($subscriptionType);
+            if ($isFromRegistration)
+            {
+                $successUrlWithCategory .= '&from_registration=1';
+            }
+            $checkoutCancelUrl = $isFromRegistration
+                ? route('registration.billing')
+                : route('subscription.index');
 
             // One-time prospect credit pack: create payment session instead of subscription
             if ($product && $product->category === 'prospecting' && ! $product->recurring_interval)
@@ -1305,7 +1418,7 @@ class SubscriptionController extends Controller
                         'quantity' => 1,
                     ]],
                     'success_url' => $successUrlWithCategory,
-                    'cancel_url' => route('subscription.index'),
+                    'cancel_url' => $checkoutCancelUrl,
                 ]);
 
                 return redirect($paymentSession->url);
@@ -1316,6 +1429,11 @@ class SubscriptionController extends Controller
                 'team_id' => $team->id,
                 'subscription_type' => $subscriptionType,
             ];
+
+            if ($isFromRegistration)
+            {
+                $subscriptionMetadata['registration_checkout'] = '1';
+            }
 
             // Add domain to metadata if provided (for hosting/support products)
             if ($request->domain)
@@ -1332,7 +1450,7 @@ class SubscriptionController extends Controller
                     'quantity' => 1,
                 ]],
                 'success_url' => $successUrlWithCategory,
-                'cancel_url' => route('subscription.index'),
+                'cancel_url' => $checkoutCancelUrl,
                 'subscription_data' => [
                     'metadata' => $subscriptionMetadata,
                 ],
@@ -1371,7 +1489,7 @@ class SubscriptionController extends Controller
         {
             \Log::error('Checkout error: '.$e->getMessage());
 
-            return redirect()->route('subscription.index')
+            return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Error al crear la sesión de pago: '.$e->getMessage());
         }
     }
@@ -1385,6 +1503,12 @@ class SubscriptionController extends Controller
 
         if (! $sessionId)
         {
+            if ($request->boolean('from_registration'))
+            {
+                return redirect()->route('registration.billing')
+                    ->with('error', __('auth.registration.invalid_payment_session'));
+            }
+
             return redirect()->route('subscription.index');
         }
 
@@ -1399,8 +1523,18 @@ class SubscriptionController extends Controller
             Stripe::setApiKey($secret);
             $session = \Stripe\Checkout\Session::retrieve($sessionId);
 
-            if ($session->customer !== $teamCustomerId)
+            $sessionCustomerId = is_string($session->customer)
+                ? $session->customer
+                : (isset($session->customer->id) ? (string) $session->customer->id : null);
+
+            if (($sessionCustomerId ?? '') !== ($teamCustomerId ?? ''))
             {
+                if ($request->boolean('from_registration'))
+                {
+                    return redirect()->route('registration.billing')
+                        ->with('error', __('auth.registration.invalid_payment_session'));
+                }
+
                 return redirect()->route('subscription.index')
                     ->with('error', 'Sesión inválida.');
             }
@@ -1418,7 +1552,8 @@ class SubscriptionController extends Controller
 
                 // Get product ID and price ID from Stripe subscription
                 $priceId = $stripeSubscription->items->data[0]->price->id;
-                $productId = $stripeSubscription->items->data[0]->price->product;
+                $rawProduct = $stripeSubscription->items->data[0]->price->product;
+                $productId = is_string($rawProduct) ? $rawProduct : (string) $rawProduct->id;
 
                 // Determine subscription type from local product
                 $subscriptionProduct = SubscriptionProduct::where('stripe_price', $priceId)
@@ -1478,10 +1613,21 @@ class SubscriptionController extends Controller
                     ]);
                 } else
                 {
-                    // Update existing subscription with metadata if not already set
-                    if (empty($localSubscription->data) && ! empty($metadata))
+                    if (! empty($metadata))
                     {
-                        $localSubscription->update(['data' => $metadata]);
+                        $existing = is_array($localSubscription->data) ? $localSubscription->data : [];
+                        $merged = array_merge($existing, $metadata);
+
+                        if ($merged !== $existing || $localSubscription->stripe_status !== $stripeSubscription->status)
+                        {
+                            $localSubscription->update([
+                                'data' => $merged,
+                                'stripe_status' => $stripeSubscription->status,
+                            ]);
+                        }
+                    } elseif ($localSubscription->stripe_status !== $stripeSubscription->status)
+                    {
+                        $localSubscription->update(['stripe_status' => $stripeSubscription->status]);
                     }
                 }
 
@@ -1515,11 +1661,28 @@ class SubscriptionController extends Controller
                 $this->applyProspectCreditPackFromSession($session, $team);
             }
 
+            $sessionMetadata = $session->metadata ? $session->metadata->toArray() : [];
+
+            $fromRegistration = $request->boolean('from_registration')
+                || (($sessionMetadata['registration_checkout'] ?? null) === '1');
+
+            if ($fromRegistration && auth()->check())
+            {
+                return redirect()->route('registration.onboarding.qr')
+                    ->with('success', __('auth.registration.welcome_plan_active'));
+            }
+
             return redirect()->route('subscription.index')
                 ->with('success', '¡Suscripción activada exitosamente!');
         } catch (\Exception $e)
         {
             \Log::error('Success handler error: '.$e->getMessage());
+
+            if ($request->boolean('from_registration'))
+            {
+                return redirect()->route('registration.billing')
+                    ->with('error', __('auth.registration.confirm_payment_failed'));
+            }
 
             return redirect()->route('subscription.index')
                 ->with('error', 'Error al procesar la suscripción: '.$e->getMessage());
@@ -1657,9 +1820,11 @@ class SubscriptionController extends Controller
             'plan' => 'nullable|in:basic,foundation,scale',
             'product_id' => 'nullable|exists:subscription_products,id',
             'price_id' => 'nullable|string',
+            'from_registration' => 'nullable|in:1',
         ]);
 
         $team = auth()->user()->currentTeam;
+        $isFromRegistration = $request->boolean('from_registration');
         $priceId = null;
         $product = null;
         $subscriptionType = 'mailer';
@@ -1685,13 +1850,13 @@ class SubscriptionController extends Controller
             $subscriptionType = 'mailer';
         } else
         {
-            return redirect()->route('subscription.index')
+            return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Debes especificar un plan o producto para cambiar.');
         }
 
         if (! $priceId || str_contains($priceId, 'REPLACE_ME'))
         {
-            return redirect()->route('subscription.index')
+            return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Este plan aún no está configurado. Por favor, configure los Price IDs de Stripe.');
         }
 
@@ -1724,7 +1889,7 @@ class SubscriptionController extends Controller
 
             if (! $subscription)
             {
-                return redirect()->route('subscription.index')
+                return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                     ->with('error', 'No se encontró una suscripción activa de este tipo. Por favor, crea una nueva suscripción primero.');
             }
 
@@ -1764,13 +1929,19 @@ class SubscriptionController extends Controller
                 }
             }
 
+            if ($isFromRegistration)
+            {
+                return redirect()->route('registration.onboarding.qr')
+                    ->with('success', __('auth.registration.welcome_plan_active'));
+            }
+
             return redirect()->route('subscription.index')
                 ->with('success', '¡Plan actualizado exitosamente!');
         } catch (\Exception $e)
         {
             \Log::error('Swap error: '.$e->getMessage());
 
-            return redirect()->route('subscription.index')
+            return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Error al actualizar el plan: '.$e->getMessage());
         }
     }

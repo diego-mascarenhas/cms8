@@ -126,6 +126,42 @@ class PublicShopTest extends TestCase
         $this->get(url('/shop/no-existe'))->assertNotFound();
     }
 
+    public function test_public_shop_loads_by_business_name_slug(): void
+    {
+        $team = $this->makeShopTeam();
+
+        $this->get(url('/shop/acme-demo-store'))
+            ->assertOk()
+            ->assertSeeLivewire(ShoppingAssistant::class);
+
+        $this->assertStringEndsWith('/shop/www.shop-demo.example', $team->publicCatalogShopUrl() ?? '');
+    }
+
+    public function test_public_shop_name_slug_ambiguous_returns_404(): void
+    {
+        $user = User::factory()->create();
+        foreach (['first', 'second'] as $suffix)
+        {
+            $team = Team::factory()->create([
+                'user_id' => $user->id,
+                'name' => 'Team '.$suffix,
+            ]);
+            $team->setSetting('business_config', [
+                'business_name' => 'Duplicate Brand SL',
+            ], [
+                'type' => 'json',
+                'group' => 'business-config',
+            ]);
+            $team->setSetting('public_catalog_enabled', true, [
+                'group' => 'public_shop',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ]);
+        }
+
+        $this->get(url('/shop/duplicate-brand-sl'))->assertNotFound();
+    }
+
     public function test_livewire_can_add_to_cart_and_redirect_whatsapp(): void
     {
         $team = $this->makeShopTeam();

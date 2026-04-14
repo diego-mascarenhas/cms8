@@ -60,6 +60,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PromptController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Http\Controllers\PublicShopController;
+use App\Http\Controllers\RegistrationBillingController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
@@ -140,6 +141,17 @@ Route::get('/register-for-prospects', function ()
 
     return redirect()->route('register');
 })->name('register.redirect-to-prospects');
+
+Route::middleware([
+    'auth',
+    config('jetstream.auth_session'),
+])->group(function ()
+{
+    Route::get('/registration/billing', [RegistrationBillingController::class, 'billing'])->name('registration.billing');
+    Route::get('/registration/checkout/start', [RegistrationBillingController::class, 'startCheckout'])->name('registration.checkout.start');
+    Route::get('/registration/onboarding/qr', [RegistrationBillingController::class, 'onboardingQr'])->name('registration.onboarding.qr');
+});
+
 Route::redirect('/prospectflow', '/prospect/search');
 
 // Auto-login with token route

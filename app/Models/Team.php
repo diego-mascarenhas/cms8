@@ -5,6 +5,9 @@ namespace App\Models;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
@@ -353,6 +356,35 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * When the HTTP webhook has no resolved team ($team is null), infer receiving team from
+     * {@see findByWhatsAppNumber} (team_settings: whatsapp_from / twilio_whatsapp_from).
+     * Local Baileys webhooks normally send team_id so $team is set.
+     *
+     * @param  string  $cleanToDigits  Digits-only destination number from the webhook.
+     */
+    public static function resolveInboundWebhookTeamId(?int $routeTeamId, string $cleanToDigits): ?int
+    {
+        if ($routeTeamId !== null && $routeTeamId > 0)
+        {
+            return $routeTeamId;
+        }
+        if ($cleanToDigits === '' || strlen($cleanToDigits) < 8)
+        {
+            return null;
+        }
+        if (Schema::hasTable('team_settings'))
+        {
+            $byNumber = static::findByWhatsAppNumber($cleanToDigits);
+            if ($byNumber !== null)
+            {
+                return (int) $byNumber->id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Normalize wizard "business_website" (or route segment) to hostname only: lowercase, no scheme, path, or trailing slash.
      */
     public static function normalizePublicShopDomain(?string $website): ?string
@@ -406,46 +438,96 @@ class Team extends JetstreamTeam
         return static::normalizePublicShopDomain($website);
     }
 
-    public function publicCatalogShopUrl(): ?string
-    {
-        $domain = $this->getPublicCatalogShopDomain();
-
-        return $domain !== null ? url('/shop/'.$domain) : null;
-    }
-
     /**
-     * Public assistant shop at /shop/{domain} when enabled and business website yields a host.
+     * URL segment from business_config.business_name (fallback: team name) for /shop/{slug}.
      */
-    public static function findForPublicCatalog(string $slug): ?self
+    public function getPublicCatalogNameSlug(): ?string
     {
-        $requested = static::normalizePublicShopDomain($slug);
-        if ($requested === null || $requested === '')
+        $config = $this->getDecodedBusinessConfig();
+        $name = trim((string) ($config['business_name'] ?? ''));
+        if ($name === '')
+        {
+            $name = trim((string) $this->name);
+        }
+        if ($name === '')
         {
             return null;
         }
 
-        $rows = TeamSetting::query()
-            ->where('key', 'public_catalog_enabled')
-            ->get();
+        $slug = Str::slug($name);
 
-        foreach ($rows as $row)
+        return $slug !== '' ? $slug : null;
+    }
+
+    public function publicCatalogShopUrl(): ?string
+    {
+        $domain = $this->getPublicCatalogShopDomain();
+        if ($domain !== null)
+        {
+            return url('/shop/'.$domain);
+        }
+
+        $nameSlug = $this->getPublicCatalogNameSlug();
+        if ($nameSlug !== null)
+        {
+            return url('/shop/'.$nameSlug);
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve team for public catalog: match business website host first, then slug of business/team name.
+     * When multiple teams share the same name slug, returns null (ambiguous).
+     */
+    public static function findForPublicCatalog(string $slug): ?self
+    {
+        $enabledTeams = [];
+        foreach (TeamSetting::query()->where('key', 'public_catalog_enabled')->get() as $row)
         {
             if (! filter_var($row->value, FILTER_VALIDATE_BOOLEAN))
             {
                 continue;
             }
-
             $team = $row->team;
-            if (! $team)
+            if ($team)
             {
-                continue;
+                $enabledTeams[] = $team;
             }
+        }
 
-            $domain = $team->getPublicCatalogShopDomain();
-            if ($domain !== null && hash_equals($domain, $requested))
+        $requestedDomain = static::normalizePublicShopDomain($slug);
+        if ($requestedDomain !== null && $requestedDomain !== '')
+        {
+            foreach ($enabledTeams as $team)
             {
-                return $team;
+                $domain = $team->getPublicCatalogShopDomain();
+                if ($domain !== null && hash_equals($domain, $requestedDomain))
+                {
+                    return $team;
+                }
             }
+        }
+
+        $requestedNameSlug = Str::slug($slug);
+        if ($requestedNameSlug === '')
+        {
+            return null;
+        }
+
+        $nameMatches = [];
+        foreach ($enabledTeams as $team)
+        {
+            $nameSlug = $team->getPublicCatalogNameSlug();
+            if ($nameSlug !== null && hash_equals($nameSlug, $requestedNameSlug))
+            {
+                $nameMatches[] = $team;
+            }
+        }
+
+        if (count($nameMatches) === 1)
+        {
+            return $nameMatches[0];
         }
 
         return null;
@@ -682,6 +764,74 @@ class Team extends JetstreamTeam
         }
 
         return trim((string) ($config['business_name'] ?? '')) !== '';
+    }
+
+    /**
+     * Stripe price IDs linked to the configured registration product (recurring checkout).
+     *
+     * @return Collection<int, string>
+     */
+    public static function registrationCheckoutStripePriceIds(): Collection
+    {
+        $productId = trim((string) config('registration.stripe_product_id', ''));
+
+        if ($productId === '')
+        {
+            return collect();
+        }
+
+        return SubscriptionProduct::query()
+            ->where(function ($query) use ($productId): void
+            {
+                $query->where('stripe_product', $productId)
+                    ->orWhere('stripe_id', $productId);
+            })
+            ->pluck('stripe_price')
+            ->filter(fn ($priceId): bool => is_string($priceId) && str_starts_with($priceId, 'price_'))
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Whether the current team satisfies registration billing (active subscription for the registration product prices).
+     */
+    public function passesRegistrationBillingGate(): bool
+    {
+        $demoTeamIds = config('registration.demo_team_ids', []);
+
+        if ($demoTeamIds !== [] && in_array((int) $this->id, $demoTeamIds, true))
+        {
+            return true;
+        }
+
+        $priceIds = static::registrationCheckoutStripePriceIds();
+
+        if ($priceIds->isEmpty())
+        {
+            return false;
+        }
+
+        foreach ($this->subscriptions()->get() as $subscription)
+        {
+            if (! $subscription->active())
+            {
+                continue;
+            }
+
+            if ($priceIds->contains($subscription->stripe_price))
+            {
+                return true;
+            }
+
+            $data = $subscription->data;
+
+            if (is_array($data) && (($data['registration_checkout'] ?? null) === '1' || ($data['registration_checkout'] ?? null) === 1))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Backwards compatibility methods (deprecated)

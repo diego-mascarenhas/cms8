@@ -12,47 +12,51 @@ use Laravel\Jetstream\Jetstream;
 
 class CreateNewUser implements CreatesNewUsers
 {
-	use PasswordValidationRules;
+    use PasswordValidationRules;
 
-	/**
-	 * Create a newly registered user.
-	 *
-	 * @param  array<string, string>  $input
-	 */
-	public function create(array $input): User
-	{
-		Validator::make($input, [
-			'name' => ['required', 'string', 'max:255'],
-			'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-			'password' => $this->passwordRules(),
-			'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
-		])->validate();
+    /**
+     * Create a newly registered user.
+     *
+     * @param  array<string, string>  $input
+     */
+    public function create(array $input): User
+    {
+        Validator::make($input, [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => $this->passwordRules(),
+            'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
+        ])->validate();
 
-		return DB::transaction(function () use ($input) {
-			return tap(User::create([
-				'name' => $input['name'],
-				'email' => $input['email'],
-				'password' => Hash::make($input['password']),
-			]), function (User $user) {
-				$this->createTeam($user);
-			});
-		});
-	}
+        return DB::transaction(function () use ($input)
+        {
+            $user = User::create([
+                'name' => $input['name'],
+                'email' => $input['email'],
+                'password' => Hash::make($input['password']),
+            ]);
 
-	/**
-	 * Create a personal team for the user.
-	 */
-	protected function createTeam(User $user): void
-	{
-		$team = $user->ownedTeams()->save(Team::forceCreate([
-			'user_id' => $user->id,
-			'name' => explode(' ', $user->name, 2)[0] . "'s Team",
-			'personal_team' => true,
-		]));
+            $this->createTeam($user);
+            $user->refresh();
 
-		// Set the current team for the user
-		$user->forceFill([
-			'current_team_id' => $team->id,
-		])->save();
-	}
+            return $user;
+        });
+    }
+
+    /**
+     * Create a personal team for the user.
+     */
+    protected function createTeam(User $user): void
+    {
+        $team = $user->ownedTeams()->save(Team::forceCreate([
+            'user_id' => $user->id,
+            'name' => explode(' ', $user->name, 2)[0]."'s Team",
+            'personal_team' => true,
+        ]));
+
+        // Set the current team for the user
+        $user->forceFill([
+            'current_team_id' => $team->id,
+        ])->save();
+    }
 }

@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
+use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
@@ -390,46 +391,13 @@ class ChatController extends Controller
             }
         }
 
-        $whatsappDriver = config('whatsapp.driver');
-        $whatsappStatus = null;
-        $teamWhatsAppNumber = null;
-        $teamWhatsAppNumberFormatted = null;
-        $teamWhatsAppIsConnected = false;
-        $qrImageUrl = null;
-        if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
-        {
-            $gateway = $this->getLocalGatewayForCurrentTeam() ?? app(WhatsAppGateway::class);
-            try
-            {
-                $whatsappStatus = $gateway->getConnectionStatus();
-            } catch (\Throwable $e)
-            {
-                $whatsappStatus = [
-                    'status' => 'disconnected',
-                    'number' => null,
-                ];
-            }
-            $baseUrl = auth()->user()->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
-            if ($baseUrl !== '')
-            {
-                $qrImageUrl = route('chat.whatsapp-qr-image');
-            }
-            if (auth()->check() && auth()->user()->currentTeam)
-            {
-                $team = auth()->user()->currentTeam;
-                $teamWhatsAppNumber = $team->getWhatsAppFrom();
-                $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
-                    ? \App\Helpers\PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
-                    : null;
-                $gatewayNumber = is_array($whatsappStatus) ? ($whatsappStatus['number'] ?? null) : null;
-                $teamNumNorm = $teamWhatsAppNumber ? preg_replace('/[^0-9]/', '', (string) $teamWhatsAppNumber) : '';
-                $gatewayNumNorm = $gatewayNumber ? preg_replace('/[^0-9]/', '', (string) $gatewayNumber) : '';
-                $teamWhatsAppIsConnected = ($whatsappStatus['status'] ?? '') === 'connected'
-                    && $teamNumNorm !== ''
-                    && $gatewayNumNorm !== ''
-                    && $teamNumNorm === $gatewayNumNorm;
-            }
-        }
+        $presentation = TeamWhatsAppChatPresentation::resolveForTeam(auth()->user()?->currentTeam);
+        $whatsappDriver = $presentation['whatsappDriver'];
+        $whatsappStatus = $presentation['whatsappStatus'];
+        $teamWhatsAppNumber = $presentation['teamWhatsAppNumber'];
+        $teamWhatsAppNumberFormatted = $presentation['teamWhatsAppNumberFormatted'];
+        $teamWhatsAppIsConnected = $presentation['teamWhatsAppIsConnected'];
+        $qrImageUrl = $presentation['qrImageUrl'];
 
         $notifyNewContactEmail = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('notify_new_contact_email', '0'), FILTER_VALIDATE_BOOLEAN)

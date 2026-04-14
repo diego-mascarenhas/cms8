@@ -208,18 +208,18 @@
 										}
 									}
 
-									// Get type icon and name
+									// Get type icon and name (mailer: lifebuoy like navbar help; label is user-facing, not internal "Mailer")
 									$typeIcons = [
-										'mailer' => 'ti-send',
+										'mailer' => 'ti-lifebuoy',
 										'hosting' => 'ti-server',
 										'domain' => 'ti-world',
 										'licence' => 'ti-license',
 										'default' => 'ti-package',
 									];
-									$typeIcon = $typeIcons[$type] ?? 'ti-package';
+									$typeIcon = $typeIcons[$type] ?? $typeIcons['default'];
 
 									$typeNames = [
-										'mailer' => 'Mailer',
+										'mailer' => __('billing.subscription_type_mailer'),
 										'hosting' => 'Hosting',
 										'domain' => 'Dominio',
 										'licence' => 'Licencia',
@@ -383,7 +383,7 @@
 									<div class="border rounded p-3">
 										<div class="d-flex justify-content-between align-items-start">
 											<div>
-												<span class="fw-medium">{{ __('Mailer') }}</span>
+												<span class="fw-medium">{{ __('billing.subscription_type_mailer') }}</span>
 												<span class="badge bg-label-primary ms-2">{{ $currentPlan->getDisplayName() }}</span>
 											</div>
 										</div>

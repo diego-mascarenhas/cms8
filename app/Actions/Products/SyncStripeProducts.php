@@ -287,6 +287,19 @@ class SyncStripeProducts
             $updateData['description'] = $mapped['description'];
         }
 
+        foreach (['category', 'plan', 'type'] as $field)
+        {
+            $value = $mapped[$field] ?? null;
+            if (is_string($value))
+            {
+                $value = trim($value);
+            }
+            if ($value !== null && $value !== '')
+            {
+                $updateData[$field] = $value;
+            }
+        }
+
         $product->fill($updateData);
         $product->save();
     }

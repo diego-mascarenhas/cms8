@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Features;
 use Laravel\Jetstream\Jetstream;
 use Tests\TestCase;
@@ -43,6 +44,13 @@ class RegistrationTest extends TestCase
             $this->markTestSkipped('Registration support is not enabled.');
         }
 
+        config(['registration.mode' => 'free']);
+
+        DB::table('roles')->updateOrInsert(
+            ['id' => 2],
+            ['name' => 'admin', 'guard_name' => 'web', 'created_at' => now(), 'updated_at' => now()],
+        );
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -51,6 +59,8 @@ class RegistrationTest extends TestCase
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature(),
         ]);
 
+        $response->assertSessionDoesntHaveErrors();
+        $response->assertStatus(302);
         $this->assertAuthenticated();
         $response->assertRedirect(RouteServiceProvider::HOME);
     }
