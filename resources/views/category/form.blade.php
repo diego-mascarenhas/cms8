@@ -22,7 +22,7 @@
                         <input type="hidden" name="id" value="{{ $category->id }}">
                     @endif
                     @php
-                        $categoryData = $category->data ?? [];
+                        $categoryData = isset($category) ? ($category->data ?? []) : [];
                     @endphp
 
             <div class="card mb-3">
@@ -245,6 +245,42 @@
                                         @checked(old('content_form.show_multimedia', $contentFormFields['show_multimedia']))>
                                     <label class="form-check-label" for="cff_show_multimedia">{{ __('app.Show multimedia on content form') }}</label>
                                 </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+                        @php
+                            $pageSectionsStored = $categoryData['page_sections'] ?? [];
+                            $historyTimelineChecked = old('page_sections.history_timeline', $pageSectionsStored['history_timeline'] ?? false);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
+                                <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
+                                    value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
+                                @error('contents_section_slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">{{ __('app.Section slug hint') }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="history_section_heading" class="form-label">{{ __('app.History section heading') }}</label>
+                                <input type="text" class="form-control @error('history_section_heading') is-invalid @enderror" id="history_section_heading" name="history_section_heading"
+                                    value="{{ old('history_section_heading', $categoryData['history']['heading'] ?? '') }}" maxlength="255">
+                                @error('history_section_heading')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="hidden" name="page_sections[history_timeline]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="page_sections_history_timeline" name="page_sections[history_timeline]" value="1"
+                                        @checked(filter_var($historyTimelineChecked, FILTER_VALIDATE_BOOLEAN))>
+                                    <label class="form-check-label" for="page_sections_history_timeline">{{ __('app.Enable history timeline') }}</label>
+                                </div>
+                                <div class="form-text">{{ __('app.Enable history timeline hint') }}</div>
                             </div>
                         </div>
                     </div>

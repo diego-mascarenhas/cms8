@@ -13,8 +13,13 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Idempotent seed for Demo team: API token, "OBA - Acerca de" contents section category,
- * field configs, and timeline items. Safe to run if TeamDemoSeeder was skipped or DB is old.
+ * Idempotent seed: API token, contents module pivot, "OBA - Acerca de" section (slug oba-about),
+ * field configs, and three timeline items.
+ *
+ * Target team (first match):
+ * 1. Env `DEMO_OBA_CONTENTS_TEAM_ID` when set to an existing team id
+ * 2. Otherwise team id **1** (typical first team in local installs)
+ * 3. If that team does not exist, first team named `DEMO_OBA_CONTENTS_TEAM_NAME` (default: "Demo")
  *
  * Usage: php artisan db:seed --class=DemoObaContentsSectionSeeder
  */
@@ -22,43 +27,51 @@ class DemoObaContentsSectionSeeder extends Seeder
 {
     public function run(): void
     {
-        $team = Team::query()->where('name', 'Demo')->orderBy('id')->first();
+        $team = $this->resolveTargetTeam();
 
         if (! $team)
         {
-            $this->command?->error('No team named "Demo" found. Create it or run UserSeeder / TeamDemoSeeder first.');
+            $this->command?->error('No target team found. Ensure team id 1 exists, set DEMO_OBA_CONTENTS_TEAM_ID, or create a team named "Demo" (DEMO_OBA_CONTENTS_TEAM_NAME).');
 
             return;
         }
 
-        $this->ensureContentsModuleEnabledForTeam($team);
+        $this->command?->info('📌 OBA contents seed target team: '.$team->name.' (id '.$team->id.')');
+
         $this->seedDemoTeamApiToken($team);
-        $this->seedObaAboutDynamicContent($team);
+
+        if (! $this->ensureContentsModuleEnabledForTeam($team))
+        {
+            return;
+        }
+
+        $this->seedObaAboutTimeline($team);
     }
 
-    private function ensureContentsModuleEnabledForTeam(Team $team): void
+    private function resolveTargetTeam(): ?Team
     {
-        $module = Module::query()->where('key', 'contents')->first();
-        if (! $module)
-        {
-            $this->command?->warn('Contents module not found in modules table. Run ModuleSeeder.');
+        $configured = env('DEMO_OBA_CONTENTS_TEAM_ID');
+        $effectiveId = ($configured !== null && $configured !== '' && is_numeric($configured))
+            ? (int) $configured
+            : 1;
 
-            return;
+        $byId = Team::query()->find($effectiveId);
+        if ($byId)
+        {
+            return $byId;
         }
 
-        DB::table('module_team')->updateOrInsert(
-            [
-                'module_id' => $module->id,
-                'team_id' => $team->id,
-            ],
-            [
-                'status' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        );
+        if ($configured !== null && $configured !== '' && is_numeric($configured))
+        {
+            $this->command?->warn('DEMO_OBA_CONTENTS_TEAM_ID='.$configured.' not found; falling back to team name.');
+        } else
+        {
+            $this->command?->warn('Team id '.$effectiveId.' not found; falling back to team name.');
+        }
 
-        $this->command?->info('✅ Contents module enabled for Demo team');
+        $name = env('DEMO_OBA_CONTENTS_TEAM_NAME', 'Demo');
+
+        return Team::query()->where('name', $name)->orderBy('id')->first();
     }
 
     private function seedDemoTeamApiToken(Team $team): void
@@ -91,9 +104,36 @@ class DemoObaContentsSectionSeeder extends Seeder
         $this->command?->info('✅ Demo API token configured (override with DEMO_TEAM_API_TOKEN in .env)');
     }
 
-    private function seedObaAboutDynamicContent(Team $team): void
+    private function ensureContentsModuleEnabledForTeam(Team $team): bool
     {
-        $this->command?->info('📄 Seeding OBA About section (contents module + timeline)...');
+        $module = Module::query()->where('key', 'contents')->first();
+        if (! $module)
+        {
+            $this->command?->warn('Contents module not found in modules table. Run ModuleSeeder.');
+
+            return false;
+        }
+
+        DB::table('module_team')->updateOrInsert(
+            [
+                'module_id' => $module->id,
+                'team_id' => $team->id,
+            ],
+            [
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+
+        $this->command?->info('✅ Contents module enabled for team '.$team->name);
+
+        return true;
+    }
+
+    private function seedObaAboutTimeline(Team $team): void
+    {
+        $this->command?->info('📄 Seeding OBA About history timeline (contents)...');
 
         $contentsModule = Module::where('key', 'contents')->first();
         if (! $contentsModule)
@@ -162,7 +202,7 @@ class DemoObaContentsSectionSeeder extends Seeder
                 'content' => ['es' => 'Representantes de Argentina, Brasil, Paraguay, Chile y Uruguay iniciaron conversaciones para crear una organización que uniera a los bomberos de América.'],
                 'data' => [
                     'event_year' => 1987,
-                    'image_url' => '/assets/timeline-1987.jpg',
+                    'image_url' => '/assets/images/timeline-1987.jpg',
                 ],
             ],
             [
@@ -171,7 +211,7 @@ class DemoObaContentsSectionSeeder extends Seeder
                 'content' => ['es' => 'Argentina, Paraguay y Uruguay firmaron un acta de compromiso para la creación de la Organización de Bomberos Americanos.'],
                 'data' => [
                     'event_year' => 2005,
-                    'image_url' => '/assets/timeline-2005-compromiso.jpg',
+                    'image_url' => '/assets/images/timeline-2005-compromiso.jpg',
                 ],
             ],
             [
@@ -180,7 +220,7 @@ class DemoObaContentsSectionSeeder extends Seeder
                 'content' => ['es' => 'Se firmó la carta fundacional de la OBA con los miembros fundadores: Argentina, Caracas (Venezuela), Paraguay, Santiago de Chile (Chile) y Uruguay.'],
                 'data' => [
                     'event_year' => 2005,
-                    'image_url' => '/assets/timeline-2005-fundacion.jpg',
+                    'image_url' => '/assets/images/timeline-2005-fundacion.jpg',
                 ],
             ],
         ];
@@ -211,6 +251,6 @@ class DemoObaContentsSectionSeeder extends Seeder
             );
         }
 
-        $this->command?->info('✅ OBA About section seeded (category id '.$sectionCategory->id.', timeline items)');
+        $this->command?->info('✅ OBA About timeline seeded (category id '.$sectionCategory->id.', '.count($timelineItems).' items)');
     }
 }

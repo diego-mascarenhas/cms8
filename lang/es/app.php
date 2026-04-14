@@ -124,7 +124,7 @@ return [
     ':count file uploaded successfully.|:count files uploaded successfully.' => ':count archivo cargado correctamente.|:count archivos cargados correctamente.',
     'Multimedia updated successfully.' => 'Multimedia actualizado correctamente.',
     'Multimedia deleted successfully.' => 'Multimedia eliminado correctamente.',
-    'Order updated successfully.' => 'Orden actualizado correctamente.',
+    'Order updated successfully.' => 'Orden actualizada correctamente.',
     'Drag files here or click to select' => 'Arrastra archivos aquí o haz clic para seleccionar',
     'Supports images, videos, audio and documents' => 'Soporta imágenes, videos, audio y documentos',
     'Select Files' => 'Seleccionar Archivos',
@@ -280,6 +280,16 @@ return [
     'Content form languages' => 'Idiomas de esta sección',
     'Content form languages hint' => 'Los editores solo verán pestañas para los idiomas que marques. El contenido y el SEO usan la misma selección.',
 
+    'External site and API' => 'Sitio público y API',
+    'External site and API contents hint' => 'Slug estable y opciones que consumen sitios externos (por ejemplo la API de contenidos del equipo). Activa la línea de tiempo si esta sección alimenta el carrusel de historia.',
+    'Section slug' => 'Slug de sección',
+    'Section slug hint' => 'Identificador en minúsculas que usan las integraciones (por ejemplo oba-about). Déjalo vacío si la sección no se expone por API.',
+    'History section heading' => 'Título del bloque de historia',
+    'Enable history timeline' => 'Activar línea de tiempo de historia',
+    'Enable history timeline hint' => 'Si está activo, los contenidos nuevos en esta sección usan por defecto el tipo «ítem de línea de tiempo» (año e imagen según la configuración de campos).',
+
+    'Dynamic url field hint' => 'Podés usar una URL completa (https://…) o una ruta que empiece con / para archivos del sitio público (por ejemplo /assets/images/foto.jpg).',
+
     'Parent category must belong to the same module.' => 'La categoría padre debe pertenecer al mismo módulo.',
 
     'Filter by module' => 'Módulo',
@@ -291,12 +301,14 @@ return [
     'Categories' => 'Categorías',
     'New Category' => 'Nueva categoría',
     'Category hierarchy' => 'Jerarquía de categorías',
+    'Drag to reorder categories' => 'Arrastra para ordenar',
     'Save order' => 'Guardar orden',
     'Quick Actions' => 'Acciones rápidas',
     'Add top-level category' => 'Añadir categoría raíz',
     'Add to current module' => 'Añadir al módulo actual',
     'Category settings' => 'Ajustes de categorías',
     'Success' => 'Listo',
+    'OK' => 'Aceptar',
     'Failed to update category order' => 'No se pudo actualizar el orden.',
     'Request failed' => 'La solicitud falló.',
 

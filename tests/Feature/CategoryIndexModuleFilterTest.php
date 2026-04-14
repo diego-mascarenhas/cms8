@@ -61,7 +61,8 @@ class CategoryIndexModuleFilterTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('<span class="category-name">Contents</span>', false);
-        $html = $response->getContent();
+        $html = $response->getContent() ?: '';
+        $this->assertStringContainsString('ti-grip-vertical', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/<span class="category-name">Contents<\/span>\s*<span class="badge bg-label-info[^"]*">Contents<\/span>/',
             $html,
@@ -86,6 +87,36 @@ class CategoryIndexModuleFilterTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('app.No categories in this module'), false);
         $response->assertDontSee('id="nestable"', false);
+    }
+
+    public function test_categories_index_with_tree_includes_nestable_vendor_script(): void
+    {
+        $user = $this->actingAdmin();
+        $team = $user->currentTeam;
+
+        $module = Module::query()->create([
+            'name' => 'Nestable Module',
+            'key' => 'nestable-mod-'.uniqid(),
+            'icon' => 'ti-box',
+            'description' => null,
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Root category',
+            'parent_id' => null,
+            'status' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('categories.index', ['module_id' => $module->id]));
+
+        $response->assertOk();
+        $html = $response->getContent() ?: '';
+        $this->assertStringContainsString('assets/vendor/libs/nestable/jquery.nestable.js', $html);
+        $this->assertStringNotContainsString('vendors/data-tables/js/jquery.dataTables.min.js', $html);
     }
 
     public function test_categories_module_options_returns_empty_groups_when_module_has_no_categories(): void

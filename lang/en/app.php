@@ -99,6 +99,16 @@ return [
     'Content form languages' => 'Languages for this section',
     'Content form languages hint' => 'Editors will only see tabs for the languages you enable. Content and SEO use the same set.',
 
+    'External site and API' => 'External site and API',
+    'External site and API contents hint' => 'Stable slug and flags consumed by public sites (for example the team contents API). Enable the timeline when this section feeds a history carousel.',
+    'Section slug' => 'Section slug',
+    'Section slug hint' => 'Lowercase identifier used by integrations (for example oba-about). Leave empty if this section is not exposed.',
+    'History section heading' => 'History block heading',
+    'Enable history timeline' => 'Enable history timeline',
+    'Enable history timeline hint' => 'When enabled, new contents in this section default to the timeline item type (year and image fields from field configuration).',
+
+    'Dynamic url field hint' => 'Use a full URL (https://…) or a path starting with / for assets on the public site.',
+
     'Parent category must belong to the same module.' => 'The parent category must belong to the same module.',
 
     'Filter by module' => 'Module',
@@ -108,14 +118,18 @@ return [
     'Create your first category' => 'Create your first category',
 
     'Categories' => 'Categories',
+    'Edit Category' => 'Edit category',
     'New Category' => 'New Category',
     'Category hierarchy' => 'Category hierarchy',
+    'Drag to reorder categories' => 'Drag to reorder',
     'Save order' => 'Save order',
     'Quick Actions' => 'Quick Actions',
     'Add top-level category' => 'Add top-level category',
     'Add to current module' => 'Add to current module',
     'Category settings' => 'Category settings',
     'Success' => 'Success',
+    'Order updated successfully.' => 'Order updated successfully.',
+    'OK' => 'OK',
     'Failed to update category order' => 'Failed to update order.',
     'Request failed' => 'Request failed.',
 

@@ -28,10 +28,7 @@
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 
 <script src="{{asset('assets/vendor/libs/toastr/toastr.js')}}"></script>
-@endsection
-
-@section('page-script')
-<script src="{{asset('assets/js/ui-toasts.js')}}"></script>
+<script src="{{ asset('assets/vendor/libs/nestable/jquery.nestable.js') }}"></script>
 @endsection
 
 <style>
@@ -143,13 +140,8 @@
 </div>
 @endsection
 
-@section('vendor-script')
-<script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
-<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
-<script src="{{ asset('assets/vendor/libs/nestable/jquery.nestable.js') }}"></script>
-@endsection
-
 @section('page-script')
+<script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var $filterModule = $('#categories_filter_module_id');
@@ -168,28 +160,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     @if(! empty($moduleId) && $categories->count() > 0)
-    // Initialize nestable (only when a module is selected and the tree exists)
+    // Initialize nestable (only when a module is selected and the tree exists).
+    // No expand/collapse controls: hierarchy is shown by indentation only (default +/- buttons removed).
     $('#nestable').nestable({
-        maxDepth: {{ $team->getSetting('categories_max_depth', 2) }}
+        maxDepth: {{ $team->getSetting('categories_max_depth', 2) }},
+        expandBtnHTML: '',
+        collapseBtnHTML: ''
     });
 
-    // Save order
+    // Save order (JSON body: same pattern as multimedia gallery; includes parent_id for nesting)
     $('#saveOrder').on('click', function() {
         const data = $('#nestable').nestable('serialize');
-        const orderedCategories = flattenNestable(data);
+        const categories = flattenCategoryTreeForSave(data, null);
 
         $.ajax({
             url: '{{ route("categories.order") }}',
             type: 'POST',
-            data: {
-                categories: orderedCategories,
-                _token: '{{ csrf_token() }}'
+            contentType: 'application/json',
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            data: JSON.stringify({
+                module_id: {{ (int) $moduleId }},
+                categories: categories
+            }),
             success: function(response) {
                 Swal.fire({
                     title: @json(__('app.Success')),
                     text: response.success,
                     icon: 'success',
+                    confirmButtonText: @json(__('app.OK')),
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     },
@@ -201,6 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: @json(__('app.Error')),
                     text: xhr.responseJSON?.error || @json(__('app.Failed to update category order')),
                     icon: 'error',
+                    confirmButtonText: @json(__('app.OK')),
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     },
@@ -224,9 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const active = parseInt(response.status, 10) === 1;
                 $btn.data('active', active ? '1' : '0');
                 $btn.attr('title', active ? @json(__('app.Deactivate category')) : @json(__('app.Activate category')));
-                $btn.find('i').attr('class', active ? 'ti ti-eye' : 'ti ti-eye-off');
-                $btn.removeClass('btn-outline-secondary btn-outline-success btn-outline-danger');
-                $btn.addClass(active ? 'btn-outline-success' : 'btn-outline-danger');
+                $btn.find('i').attr('class', active ? 'ti ti-eye ti-sm text-success' : 'ti ti-eye-off ti-sm text-danger');
 
                 const $handle = $btn.closest('.dd-item').children('.dd-handle').first();
                 $handle.find('.badge-inactive-status').remove();
@@ -250,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: @json(__('app.Error')),
                     text: xhr.responseJSON?.message || xhr.responseJSON?.error || @json(__('app.Request failed')),
                     icon: 'error',
+                    confirmButtonText: @json(__('app.OK')),
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     },
@@ -259,33 +262,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Helper function to flatten nestable data
-    function flattenNestable(items, order = 0) {
-        let result = [];
+    function normalizedParentIdForPayload(parentId) {
+        if (parentId === undefined || parentId === null || parentId === '' || parentId === 0 || parentId === '0') {
+            return null;
+        }
+        return Number(parentId);
+    }
 
-        items.forEach((item, index) => {
-            result.push({
-                id: item.id,
-                order: order + index
+    function flattenCategoryTreeForSave(items, parentId) {
+        let rows = [];
+        (items || []).forEach(function (item, index) {
+            rows.push({
+                id: Number(item.id),
+                parent_id: normalizedParentIdForPayload(parentId),
+                order: index
             });
-
             if (item.children && item.children.length > 0) {
-                const children = flattenNestable(item.children, 0);
-                result = result.concat(children);
+                rows = rows.concat(flattenCategoryTreeForSave(item.children, item.id));
             }
         });
-
-        return result;
+        return rows;
     }
 });
 </script>
-@endsection
-
-{{-- vendor scripts --}}
-@section('vendor-script')
-<script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-<script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
-<script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
 @endsection

@@ -142,6 +142,59 @@ class Content extends Model
     }
 
     /**
+     * Title for admin lists: prefers app locale, then Spanish, then the section’s configured locales, then any non-empty translation.
+     */
+    public function resolveAdministrativeTitle(): ?string
+    {
+        $raw = $this->title;
+
+        if (is_string($raw))
+        {
+            $trimmed = trim($raw);
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        if (! is_array($raw) || $raw === [])
+        {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+        $fromSection = [];
+        if ($this->relationLoaded('sectionCategory') && $this->sectionCategory)
+        {
+            $fromSection = $this->sectionCategory->contentFormLocales();
+        }
+
+        $candidates = array_values(array_unique(array_merge(
+            [$locale, 'es'],
+            $fromSection,
+            array_keys($raw),
+        )));
+
+        foreach ($candidates as $code)
+        {
+            if (! is_string($code) || $code === '')
+            {
+                continue;
+            }
+
+            $v = $raw[$code] ?? null;
+            if (is_string($v))
+            {
+                $trimmed = trim($v);
+                if ($trimmed !== '')
+                {
+                    return $trimmed;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get translatable field value for current locale
      */
     public function getTranslatable(string $field, ?string $locale = null): ?string

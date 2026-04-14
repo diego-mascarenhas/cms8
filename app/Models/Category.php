@@ -63,6 +63,20 @@ class Category extends Model
     }
 
     /**
+     * Whether this contents section category exposes the history timeline for external consumers (see {@see Category::$data} `page_sections`).
+     */
+    public function contentsPageSectionHistoryTimeline(): bool
+    {
+        $pageSections = $this->data['page_sections'] ?? null;
+        if (! is_array($pageSections))
+        {
+            return false;
+        }
+
+        return ! empty($pageSections['history_timeline']);
+    }
+
+    /**
      * Get the parent category.
      */
     public function parent()

@@ -3,14 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\CategoryDataTable;
+use App\Http\Requests\UpdateCategoryOrderRequest;
 use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
 use App\Support\ContentsSectionCategoryData;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Spatie\Tags\Tag;
 
 class CategoryController extends Controller
@@ -122,6 +126,8 @@ class CategoryController extends Controller
             'poster_height' => 'nullable|integer|min:1|max:10000',
             'fit' => 'nullable|in:crop,contain,max,stretch',
             'return_module_id' => 'nullable|integer|exists:modules,id',
+            'contents_section_slug' => 'nullable|string|max:100',
+            'history_section_heading' => 'nullable|string|max:255',
         ]);
 
         // Check if parent belongs to the current team
@@ -234,6 +240,35 @@ class CategoryController extends Controller
             } elseif (! isset($categoryData['content_locales']))
             {
                 $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromStorage(null);
+            }
+
+            $pageSections = is_array($categoryData['page_sections'] ?? null) ? $categoryData['page_sections'] : [];
+            $pageSections['history_timeline'] = $request->boolean('page_sections.history_timeline');
+            $categoryData['page_sections'] = $pageSections;
+
+            $rawSlug = trim((string) $request->input('contents_section_slug', ''));
+            if ($rawSlug !== '')
+            {
+                $slug = Str::slug($rawSlug);
+                if ($slug !== '')
+                {
+                    $categoryData['slug'] = $slug;
+                } else
+                {
+                    unset($categoryData['slug']);
+                }
+            } else
+            {
+                unset($categoryData['slug']);
+            }
+
+            $heading = trim((string) $request->input('history_section_heading', ''));
+            if ($heading !== '')
+            {
+                $categoryData['history'] = ['heading' => $heading];
+            } else
+            {
+                unset($categoryData['history']);
             }
         }
 
@@ -378,25 +413,36 @@ class CategoryController extends Controller
     /**
      * Update the order of categories.
      */
-    public function updateOrder(Request $request)
+    public function updateOrder(UpdateCategoryOrderRequest $request): JsonResponse
     {
-        // Get current team
         $team = Auth::user()->currentTeam;
+        $moduleId = (int) $request->validated('module_id');
 
-        $request->validate([
-            'categories' => 'required|array',
-            'categories.*.id' => 'required|exists:categories,id',
-            'categories.*.order' => 'required|integer|min:0',
-        ]);
-
-        foreach ($request->categories as $item)
+        DB::transaction(function () use ($request, $team, $moduleId): void
         {
-            Category::where('team_id', $team->id)
-                ->where('id', $item['id'])
-                ->update(['order' => $item['order']]);
-        }
+            foreach ($request->validated('categories') as $item)
+            {
+                $parentRaw = $item['parent_id'] ?? null;
+                $parentId = ($parentRaw === null || $parentRaw === '' || $parentRaw === false || $parentRaw === 0 || $parentRaw === '0')
+                    ? null
+                    : (int) $parentRaw;
 
-        return response()->json(['success' => 'Order updated successfully.'], 200);
+                Category::query()
+                    ->where('module_id', $moduleId)
+                    ->where(function ($query) use ($team): void
+                    {
+                        $query->whereNull('team_id')
+                            ->orWhere('team_id', $team->id);
+                    })
+                    ->where('id', (int) $item['id'])
+                    ->update([
+                        'parent_id' => $parentId,
+                        'order' => (int) $item['order'],
+                    ]);
+            }
+        });
+
+        return response()->json(['success' => __('app.Order updated successfully.')], 200);
     }
 
     /**

@@ -66,6 +66,12 @@ class ContentController extends Controller
         $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
         $section = Category::findOrFail($data['section_category_id']);
+
+        if ($section->contentsPageSectionHistoryTimeline() && empty($data['template'] ?? null))
+        {
+            $data['template'] = 'timeline_item';
+        }
+
         $localeCodes = $section->contentFormLocales();
 
         // Prepare translatable fields for all locales
@@ -167,6 +173,12 @@ class ContentController extends Controller
 
         $sectionId = $data['section_category_id'] ?? $content->section_category_id;
         $section = Category::findOrFail($sectionId);
+
+        if ($section->contentsPageSectionHistoryTimeline() && empty($data['template'] ?? null))
+        {
+            $data['template'] = 'timeline_item';
+        }
+
         $localeCodes = $section->contentFormLocales();
 
         // Prepare translatable fields for all locales

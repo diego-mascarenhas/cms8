@@ -15,9 +15,28 @@
 
         @switch($config->field_type)
             @case('text')
+                <input type="text"
+                    class="form-control"
+                    id="data_{{ $config->field_key }}"
+                    name="data[{{ $config->field_key }}]"
+                    value="{{ old("data.{$config->field_key}", $contentData[$config->field_key] ?? '') }}"
+                    @if($config->required) required @endif>
+                @break
+
             @case('url')
+                <input type="text"
+                    class="form-control"
+                    id="data_{{ $config->field_key }}"
+                    name="data[{{ $config->field_key }}]"
+                    value="{{ old("data.{$config->field_key}", $contentData[$config->field_key] ?? '') }}"
+                    autocomplete="off"
+                    inputmode="url"
+                    @if($config->required) required @endif>
+                <div class="form-text">{{ __('app.Dynamic url field hint') }}</div>
+                @break
+
             @case('email')
-                <input type="{{ $config->field_type === 'url' ? 'url' : ($config->field_type === 'email' ? 'email' : 'text') }}"
+                <input type="email"
                     class="form-control"
                     id="data_{{ $config->field_key }}"
                     name="data[{{ $config->field_key }}]"
