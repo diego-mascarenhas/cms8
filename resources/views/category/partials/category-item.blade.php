@@ -1,11 +1,17 @@
 <li class="dd-item" data-id="{{ $category->id }}">
     <div class="dd-handle">
         <span class="category-name">{{ $category->name }}</span>
-        @if($category->module)
-            <span class="badge bg-label-info ms-1">{{ $category->module->name }}</span>
+        @if(($showModuleBadge ?? true) && $category->module)
+            @php
+                $moduleLabel = $category->module->name;
+                $sameAsCategoryName = mb_strtolower(trim((string) $category->name)) === mb_strtolower(trim((string) $moduleLabel));
+            @endphp
+            @if(! $sameAsCategoryName)
+                <span class="badge bg-label-info ms-1">{{ $moduleLabel }}</span>
+            @endif
         @endif
-        @if(!$category->status)
-            <span class="badge bg-label-warning ms-1">Inactive</span>
+        @if(! $category->status)
+            <span class="badge bg-label-warning ms-1 badge-inactive-status">{{ __('app.Inactive') }}</span>
         @endif
     </div>
     <div class="dd-actions">
@@ -13,21 +19,26 @@
             <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-icon btn-outline-primary">
                 <i class="ti ti-edit"></i>
             </a>
-            <a href="{{ route('categories.create', ['parent_id' => $category->id]) }}" class="btn btn-icon btn-outline-success">
+            <a href="{{ route('categories.create', array_filter(['parent_id' => $category->id, 'module_id' => $category->module_id])) }}" class="btn btn-icon btn-outline-success">
                 <i class="ti ti-plus"></i>
             </a>
-            <a href="#" class="btn btn-icon btn-outline-danger delete-category" 
-               data-url="{{ route('categories.destroy', $category->id) }}"
-               data-name="{{ $category->name }}">
-                <i class="ti ti-trash"></i>
-            </a>
+            <button type="button"
+                class="btn btn-icon toggle-category-status waves-effect {{ $category->status ? 'btn-outline-secondary' : 'btn-outline-success' }}"
+                data-url="{{ route('categories.toggle-status', $category->id) }}"
+                data-active="{{ $category->status ? '1' : '0' }}"
+                title="{{ $category->status ? __('app.Deactivate category') : __('app.Activate category') }}">
+                <i class="ti {{ $category->status ? 'ti-eye' : 'ti-eye-off' }}"></i>
+            </button>
         </div>
     </div>
     
     @if($category->children && $category->children->count() > 0)
         <ol class="dd-list">
             @foreach($category->children as $child)
-                @include('category.partials.category-item', ['category' => $child])
+                @include('category.partials.category-item', [
+                    'category' => $child,
+                    'showModuleBadge' => $showModuleBadge ?? true,
+                ])
             @endforeach
         </ol>
     @endif

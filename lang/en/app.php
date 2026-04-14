@@ -98,4 +98,16 @@ return [
 
     'Content form languages' => 'Languages for this section',
     'Content form languages hint' => 'Editors will only see tabs for the languages you enable. Content and SEO use the same set.',
+
+    'Parent category must belong to the same module.' => 'The parent category must belong to the same module.',
+
+    'Filter by module' => 'Module',
+    'Select module to list categories' => '— Select a module —',
+    'Select module to list categories hint' => 'Choose a module in the filter above to view and reorder categories for that module.',
+    'No categories in this module' => 'No categories in this module.',
+    'Create your first category' => 'Create your first category',
+
+    'Category status updated' => 'Status updated.',
+    'Activate category' => 'Activate (show in lists)',
+    'Deactivate category' => 'Deactivate (hide from lists)',
 ];

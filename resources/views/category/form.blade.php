@@ -105,15 +105,11 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label for="order" class="form-label">{{ __('app.Display Order') }}</label>
-                        <input type="number" class="form-control @error('order') is-invalid @enderror"
-                            id="order" name="order" value="{{ old('order', $category->order ?? 0) }}" min="0">
-                        @error('order')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                        <div class="form-text">{{ __('app.Lower numbers appear first. Leave as 0 for automatic ordering.') }}</div>
-                    </div>
+                    {{-- Order is adjusted from the categories list (drag); value is preserved on save. --}}
+                    <input type="hidden" name="order" value="{{ old('order', isset($category) ? ($category->order ?? 0) : 0) }}">
+                    @error('order')
+                        <div class="text-danger small mb-2">{{ $message }}</div>
+                    @enderror
 
                     <div id="content-options" class="border rounded p-3 mb-3 d-none">
                         <input type="hidden" name="content_locales_present" value="1">
@@ -156,8 +152,9 @@
                                         <option value="desc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? '') === 'desc' ? 'selected' : '' }}>Descendente</option>
                                     </select>
                                 </div>
-                                
-                                <div class="col-md-6">
+
+                                {{-- Second sort criterion: hidden in UI for now; inputs remain so saves keep defaults / stored values. --}}
+                                <div class="col-md-6 d-none" aria-hidden="true">
                                     <label class="form-label">Segundo orden (opcional)</label>
                                     <select class="form-select" name="content_ordering[1][column]">
                                         <option value="">-- Sin segundo orden --</option>
@@ -167,7 +164,7 @@
                                         <option value="title" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-6 d-none" aria-hidden="true">
                                     <label class="form-label">Dirección</label>
                                     <select class="form-select" name="content_ordering[1][direction]">
                                         <option value="asc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
@@ -381,8 +378,46 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2 for dropdowns
-    $('#module_id, #parent_id').select2();
+    const parentCategoriesByModule = @json($parentCategoriesByModule ?? []);
+    const topLevelParentLabel = @json(__('app.Top Level'));
+    const moduleSelectEl = document.getElementById('module_id');
+    const $parentId = $('#parent_id');
+
+    function rebuildParentCategoryOptions() {
+        if (! moduleSelectEl || ! $parentId.length) {
+            return;
+        }
+
+        if ($parentId.hasClass('select2-hidden-accessible')) {
+            $parentId.select2('destroy');
+        }
+
+        const moduleId = moduleSelectEl.value;
+        const list = parentCategoriesByModule[moduleId] || parentCategoriesByModule[String(moduleId)] || [];
+        const previous = String($parentId.val() || '');
+
+        $parentId.empty();
+        $parentId.append(new Option(topLevelParentLabel, '', false, previous === ''));
+
+        let matched = previous === '';
+        list.forEach(function (row) {
+            const idStr = String(row.id);
+            const selected = idStr === previous;
+            if (selected) {
+                matched = true;
+            }
+            $parentId.append(new Option(row.name, idStr, false, selected));
+        });
+
+        if (! matched) {
+            $parentId.prop('selectedIndex', 0);
+        }
+
+        $parentId.select2();
+    }
+
+    $('#module_id').select2();
+    rebuildParentCategoryOptions();
 
     // Initialize Select2 for tags with autocomplete and creation
     const tagsSelect = $('#tags');
@@ -458,14 +493,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentsModuleId = '{{ \App\Models\Module::where("key", "contents")->value("id") ?? "" }}';
     const multimediaOptions = document.getElementById('multimedia-options');
     const contentOptions = document.getElementById('content-options');
-    const moduleSelect = document.getElementById('module_id');
 
     function toggleModuleOptions() {
-        if (!moduleSelect) {
+        if (! moduleSelectEl) {
             return;
         }
 
-        const selectedModule = moduleSelect.value;
+        const selectedModule = moduleSelectEl.value;
         
         // Toggle multimedia options
         if (multimediaOptions) {
@@ -487,7 +521,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     toggleModuleOptions();
-    moduleSelect.addEventListener('change', toggleModuleOptions);
+    moduleSelectEl.addEventListener('change', function () {
+        toggleModuleOptions();
+        rebuildParentCategoryOptions();
+    });
 });
 </script>
 @endsection

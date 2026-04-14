@@ -23,23 +23,23 @@ class CategoryController extends Controller
             $team->load('settings');
         }
 
-        // Get module filter if set
-        $moduleId = $request->get('module_id');
+        // Require a module before loading the tree (avoids mixing categories from different modules).
+        $moduleId = $request->filled('module_id') ? (int) $request->get('module_id') : null;
 
-        // Get only parent categories (null parent_id): global (team_id null) or belonging to current team
-        $categories = Category::where(function ($query) use ($team)
+        $categories = collect();
+        if ($moduleId !== null && $moduleId !== 0)
         {
-            $query->whereNull('team_id')->orWhere('team_id', $team->id);
-        })
-            ->when($moduleId, function ($query, $moduleId)
+            $categories = Category::where(function ($query) use ($team)
             {
-                return $query->where('module_id', $moduleId);
+                $query->whereNull('team_id')->orWhere('team_id', $team->id);
             })
-            ->whereNull('parent_id')
-            ->with(['children', 'module'])
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
+                ->where('module_id', $moduleId)
+                ->whereNull('parent_id')
+                ->with(['children', 'module'])
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get();
+        }
 
         // Get all modules for the filter dropdown
         $modules = Module::orderBy('name')->get();
@@ -78,16 +78,20 @@ class CategoryController extends Controller
         $modules = Module::orderBy('name')->get();
         $multimediaModuleId = Module::where('key', 'multimedia')->value('id');
 
-        // Get possible parent categories for dropdown
-        $parentCategories = Category::where('team_id', $team->id)
-            ->whereNull('parent_id')
-            ->orderBy('name')
-            ->get();
+        $selectedModuleId = old('module_id', $request->get('module_id'));
+        if ($parent)
+        {
+            $selectedModuleId = $selectedModuleId ?: $parent->module_id;
+        }
+        $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
+
+        $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id);
+        $parentCategories = $this->topLevelParentsForTeamModule($team->id, $selectedModuleId);
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
 
-        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        return view('category.form', compact('modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags'));
     }
 
     /**
@@ -117,6 +121,14 @@ class CategoryController extends Controller
         if ($request->parent_id)
         {
             $parent = Category::where('team_id', $team->id)->findOrFail($request->parent_id);
+
+            if ($request->filled('module_id') && (int) $parent->module_id !== (int) $request->module_id)
+            {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', __('app.Parent category must belong to the same module.'));
+            }
 
             // Check maximum depth allowed
             $maxDepth = (int) $team->getSetting('categories_max_depth', 2);
@@ -282,11 +294,11 @@ class CategoryController extends Controller
         $excludeIds = $this->getAllChildrenIds($category);
         $excludeIds[] = $category->id;
 
-        $parentCategories = Category::where('team_id', $team->id)
-            ->whereNull('parent_id')
-            ->whereNotIn('id', $excludeIds)
-            ->orderBy('name')
-            ->get();
+        $selectedModuleId = old('module_id', $category->module_id);
+        $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
+
+        $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id, $excludeIds);
+        $parentCategories = $this->topLevelParentsForTeamModule($team->id, $selectedModuleId, $excludeIds);
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
@@ -294,7 +306,7 @@ class CategoryController extends Controller
         // Parent is not needed in edit, only in create when creating a subcategory
         $parent = null;
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags'));
     }
 
     /**
@@ -329,6 +341,27 @@ class CategoryController extends Controller
         $category->delete();
 
         return response()->json(['success' => 'Category deleted successfully.'], 200);
+    }
+
+    /**
+     * Toggle category active flag (shown in hierarchy list).
+     */
+    public function toggleStatus(string $id)
+    {
+        $team = Auth::user()->currentTeam;
+
+        $category = Category::where('team_id', $team->id)->findOrFail($id);
+
+        $this->authorize('update', $category);
+
+        $category->status = ! $category->status;
+        $category->save();
+
+        return response()->json([
+            'success' => true,
+            'status' => $category->status ? 1 : 0,
+            'message' => __('app.Category status updated'),
+        ]);
     }
 
     /**
@@ -459,6 +492,65 @@ class CategoryController extends Controller
         }
 
         return $ids;
+    }
+
+    /**
+     * Top-level categories eligible as parent, for the same module only.
+     *
+     * @param  array<int>  $excludeIds
+     * @return \Illuminate\Database\Eloquent\Collection<int, Category>
+     */
+    private function topLevelParentsForTeamModule(int $teamId, ?int $moduleId, array $excludeIds = [])
+    {
+        $query = Category::query()
+            ->where('team_id', $teamId)
+            ->whereNull('parent_id')
+            ->whereNotNull('module_id')
+            ->orderBy('name');
+
+        if ($excludeIds !== [])
+        {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        if ($moduleId !== null && $moduleId !== 0)
+        {
+            $query->where('module_id', $moduleId);
+        } else
+        {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Parent options keyed by module id (string) for the category form JavaScript.
+     *
+     * @param  array<int>  $excludeIds
+     * @return array<string, list<array{id: int, name: string}>>
+     */
+    private function parentCategoriesGroupedByModule(int $teamId, array $excludeIds = []): array
+    {
+        $query = Category::query()
+            ->where('team_id', $teamId)
+            ->whereNull('parent_id')
+            ->whereNotNull('module_id')
+            ->orderBy('name');
+
+        if ($excludeIds !== [])
+        {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        $grouped = [];
+        foreach ($query->get(['id', 'name', 'module_id']) as $category)
+        {
+            $key = (string) $category->module_id;
+            $grouped[$key][] = ['id' => $category->id, 'name' => $category->name];
+        }
+
+        return $grouped;
     }
 
     /**

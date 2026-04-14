@@ -280,4 +280,16 @@ return [
 
     'Content form languages' => 'Idiomas de esta sección',
     'Content form languages hint' => 'Los editores solo verán pestañas para los idiomas que marques. El contenido y el SEO usan la misma selección.',
+
+    'Parent category must belong to the same module.' => 'La categoría padre debe pertenecer al mismo módulo.',
+
+    'Filter by module' => 'Módulo',
+    'Select module to list categories' => '— Selecciona un módulo —',
+    'Select module to list categories hint' => 'Elige un módulo en el filtro de arriba para ver y reordenar las categorías de ese módulo.',
+    'No categories in this module' => 'No hay categorías en este módulo.',
+    'Create your first category' => 'Crea tu primera categoría',
+
+    'Category status updated' => 'Estado actualizado.',
+    'Activate category' => 'Activar (mostrar en listas)',
+    'Deactivate category' => 'Desactivar (ocultar en listas)',
 ];
