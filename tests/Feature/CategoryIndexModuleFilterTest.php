@@ -31,6 +31,7 @@ class CategoryIndexModuleFilterTest extends TestCase
         $response = $this->actingAs($user)->get(route('categories.index'));
 
         $response->assertOk();
+        $response->assertSee('id="categories_filter_module_id"', false);
         $response->assertSee(__('app.Select module to list categories hint'), false);
     }
 

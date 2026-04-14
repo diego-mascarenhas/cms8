@@ -8,6 +8,7 @@ use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
 use App\Support\ContentsSectionCategoryData;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Tags\Tag;
@@ -86,12 +87,17 @@ class CategoryController extends Controller
         $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
 
         $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id);
-        $parentCategories = $this->topLevelParentsForTeamModule($team->id, $selectedModuleId);
+        $parentCategories = $this->withNestedParentAppendedToParentOptions(
+            $this->topLevelParentsForTeamModule($team->id, $selectedModuleId),
+            $parent,
+        );
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
 
-        return view('category.form', compact('modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        $returnModuleIdForIndex = $request->filled('module_id') ? (int) $request->get('module_id') : null;
+
+        return view('category.form', compact('modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags', 'returnModuleIdForIndex'));
     }
 
     /**
@@ -115,6 +121,7 @@ class CategoryController extends Controller
             'poster_width' => 'nullable|integer|min:1|max:10000',
             'poster_height' => 'nullable|integer|min:1|max:10000',
             'fit' => 'nullable|in:crop,contain,max,stretch',
+            'return_module_id' => 'nullable|integer|exists:modules,id',
         ]);
 
         // Check if parent belongs to the current team
@@ -256,9 +263,7 @@ class CategoryController extends Controller
             $category->syncTagsWithType([], 'general');
         }
 
-        return redirect()
-            ->route('categories.index')
-            ->with('success', 'Category saved successfully.');
+        return $this->redirectToCategoriesIndexAfterSave($request, $category);
     }
 
     /**
@@ -279,7 +284,7 @@ class CategoryController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         // Get current team
         $team = Auth::user()->currentTeam;
@@ -298,7 +303,11 @@ class CategoryController extends Controller
         $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
 
         $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id, $excludeIds);
-        $parentCategories = $this->topLevelParentsForTeamModule($team->id, $selectedModuleId, $excludeIds);
+        $category->loadMissing('parent');
+        $parentCategories = $this->withNestedParentAppendedToParentOptions(
+            $this->topLevelParentsForTeamModule($team->id, $selectedModuleId, $excludeIds),
+            $category->parent,
+        );
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
@@ -306,7 +315,9 @@ class CategoryController extends Controller
         // Parent is not needed in edit, only in create when creating a subcategory
         $parent = null;
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        $returnModuleIdForIndex = $request->filled('module_id') ? (int) $request->get('module_id') : null;
+
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags', 'returnModuleIdForIndex'));
     }
 
     /**
@@ -525,6 +536,28 @@ class CategoryController extends Controller
     }
 
     /**
+     * The parent select is built from top-level categories only; append the resolved parent
+     * when it is nested so "create under this row" and edit keep a valid selected value.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Category>  $topLevelParents
+     * @return \Illuminate\Database\Eloquent\Collection<int, Category>
+     */
+    private function withNestedParentAppendedToParentOptions($topLevelParents, ?Category $resolvedParent)
+    {
+        if ($resolvedParent === null)
+        {
+            return $topLevelParents;
+        }
+
+        if ($topLevelParents->contains(fn (Category $c): bool => (int) $c->id === (int) $resolvedParent->id))
+        {
+            return $topLevelParents;
+        }
+
+        return $topLevelParents->concat([$resolvedParent]);
+    }
+
+    /**
      * Parent options keyed by module id (string) for the category form JavaScript.
      *
      * @param  array<int>  $excludeIds
@@ -697,5 +730,27 @@ class CategoryController extends Controller
         }
 
         return response()->json(['groups' => $groups]);
+    }
+
+    private function redirectToCategoriesIndexAfterSave(Request $request, Category $category): RedirectResponse
+    {
+        $returnModuleId = (int) $request->input('return_module_id', 0);
+        if ($returnModuleId > 0 && Module::query()->whereKey($returnModuleId)->exists())
+        {
+            return redirect()
+                ->route('categories.index', ['module_id' => $returnModuleId])
+                ->with('success', 'Category saved successfully.');
+        }
+
+        if ($category->module_id)
+        {
+            return redirect()
+                ->route('categories.index', ['module_id' => (int) $category->module_id])
+                ->with('success', 'Category saved successfully.');
+        }
+
+        return redirect()
+            ->route('categories.index')
+            ->with('success', 'Category saved successfully.');
     }
 }

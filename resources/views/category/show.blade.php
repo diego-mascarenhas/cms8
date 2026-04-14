@@ -9,10 +9,10 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Category Details</h5>
                 <div class="btn-group">
-                    <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-primary">
+                    <a href="{{ route('categories.edit', array_filter(['id' => $category->id, 'module_id' => $category->module_id])) }}" class="btn btn-primary">
                         <i class="ti ti-edit me-1"></i> Edit
                     </a>
-                    <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('categories.index', array_filter(['module_id' => $category->module_id])) }}" class="btn btn-outline-secondary">
                         <i class="ti ti-list me-1"></i> All Categories
                     </a>
                 </div>
@@ -74,7 +74,7 @@
                                         <a href="{{ route('categories.show', $child->id) }}" class="btn btn-outline-primary">
                                             <i class="ti ti-eye"></i>
                                         </a>
-                                        <a href="{{ route('categories.edit', $child->id) }}" class="btn btn-outline-secondary">
+                                        <a href="{{ route('categories.edit', array_filter(['id' => $child->id, 'module_id' => $child->module_id ?? $category->module_id])) }}" class="btn btn-outline-secondary">
                                             <i class="ti ti-edit"></i>
                                         </a>
                                     </div>
@@ -111,7 +111,7 @@
                 </div>
                 
                 <div class="mt-4 d-flex justify-content-between">
-                    <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('categories.index', array_filter(['module_id' => $category->module_id])) }}" class="btn btn-outline-secondary">
                         <i class="ti ti-arrow-left me-1"></i> Back to Categories
                     </a>
                     <div>
@@ -122,7 +122,7 @@
                                 <i class="ti ti-trash me-1"></i> Delete
                             </a>
                         @endif
-                        <a href="{{ route('categories.create', ['parent_id' => $category->id]) }}" class="btn btn-success ms-2">
+                        <a href="{{ route('categories.create', array_filter(['parent_id' => $category->id, 'module_id' => $category->module_id])) }}" class="btn btn-success ms-2">
                             <i class="ti ti-plus me-1"></i> Add Subcategory
                         </a>
                     </div>

@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Categories')
+@section('title', __('app.Categories'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -46,9 +46,9 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Categories</h5>
+                <h5 class="mb-0">{{ __('app.Categories') }}</h5>
                 <a href="{{ route('categories.create', array_filter(['module_id' => $moduleId ?? null])) }}" class="btn btn-primary">
-                    <i class="ti ti-plus me-1"></i> New Category
+                    <i class="ti ti-plus me-1"></i> {{ __('app.New Category') }}
                 </a>
             </div>
             <div class="card-body">
@@ -56,8 +56,8 @@
                     <div class="col-md-6">
                         <form id="filterForm" method="get">
                             <div class="form-group">
-                                <label for="module_id" class="form-label">{{ __('app.Filter by module') }}</label>
-                                <select name="module_id" id="module_id" class="form-select" onchange="document.getElementById('filterForm').submit()" required>
+                                <label for="categories_filter_module_id" class="form-label">{{ __('app.Filter by module') }}</label>
+                                <select name="module_id" id="categories_filter_module_id" class="form-select">
                                     <option value="" disabled {{ empty($moduleId) ? 'selected' : '' }}>{{ __('app.Select module to list categories') }}</option>
                                     @foreach($modules as $module)
                                         <option value="{{ $module->id }}" {{ (int) ($moduleId ?? 0) === (int) $module->id ? 'selected' : '' }}>
@@ -84,7 +84,7 @@
                 
                 <div class="row">
                     <div class="col-md-8">
-                        <h6 class="mb-3">Category Hierarchy</h6>
+                        <h6 class="mb-3">{{ __('app.Category hierarchy') }}</h6>
                         @if(empty($moduleId))
                             <div class="alert alert-info mb-0">
                                 {{ __('app.Select module to list categories hint') }}
@@ -96,12 +96,13 @@
                                         @include('category.partials.category-item', [
                                             'category' => $category,
                                             'showModuleBadge' => false,
+                                            'indexModuleFilterId' => $moduleId,
                                         ])
                                     @endforeach
                                 </ol>
                             </div>
                             <div class="mt-3">
-                                <button type="button" id="saveOrder" class="btn btn-primary btn-sm">Save Order</button>
+                                <button type="button" id="saveOrder" class="btn btn-primary btn-sm">{{ __('app.Save order') }}</button>
                             </div>
                         @else
                             <div class="alert alert-info">
@@ -114,22 +115,22 @@
                     <div class="col-md-4">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0">Quick Actions</h6>
+                                <h6 class="mb-0">{{ __('app.Quick Actions') }}</h6>
                             </div>
                             <div class="card-body">
                                 <div class="d-grid gap-2">
                                     <a href="{{ route('categories.create', array_filter(['module_id' => $moduleId ?? null])) }}" class="btn btn-outline-primary">
-                                        <i class="ti ti-plus me-1"></i> Add Top-Level Category
+                                        <i class="ti ti-plus me-1"></i> {{ __('app.Add top-level category') }}
                                     </a>
                                     
                                     @if(isset($moduleId) && $moduleId)
                                         <a href="{{ route('categories.create', ['module_id' => $moduleId]) }}" class="btn btn-outline-primary">
-                                            <i class="ti ti-plus me-1"></i> Add to Current Module
+                                            <i class="ti ti-plus me-1"></i> {{ __('app.Add to current module') }}
                                         </a>
                                     @endif
                                     
                                     <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-outline-secondary">
-                                        <i class="ti ti-settings me-1"></i> Category Settings
+                                        <i class="ti ti-settings me-1"></i> {{ __('app.Category settings') }}
                                     </a>
                                 </div>
                             </div>
@@ -151,6 +152,21 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var $filterModule = $('#categories_filter_module_id');
+    if ($filterModule.length && typeof $.fn.select2 === 'function')
+    {
+        $filterModule.select2({
+            placeholder: @json(__('app.Select module to list categories')),
+            width: '100%',
+            allowClear: false,
+            dropdownParent: $filterModule.closest('.card-body'),
+        });
+        $filterModule.on('change', function ()
+        {
+            $(this).closest('form').trigger('submit');
+        });
+    }
+
     @if(! empty($moduleId) && $categories->count() > 0)
     // Initialize nestable (only when a module is selected and the tree exists)
     $('#nestable').nestable({
@@ -171,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             success: function(response) {
                 Swal.fire({
-                    title: 'Success!',
+                    title: @json(__('app.Success')),
                     text: response.success,
                     icon: 'success',
                     customClass: {
@@ -182,8 +198,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             error: function(xhr) {
                 Swal.fire({
-                    title: 'Error!',
-                    text: xhr.responseJSON?.error || 'Failed to update order',
+                    title: @json(__('app.Error')),
+                    text: xhr.responseJSON?.error || @json(__('app.Failed to update category order')),
                     icon: 'error',
                     customClass: {
                         confirmButton: 'btn btn-primary'
@@ -209,8 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 $btn.data('active', active ? '1' : '0');
                 $btn.attr('title', active ? @json(__('app.Deactivate category')) : @json(__('app.Activate category')));
                 $btn.find('i').attr('class', active ? 'ti ti-eye' : 'ti ti-eye-off');
-                $btn.removeClass('btn-outline-secondary btn-outline-success');
-                $btn.addClass(active ? 'btn-outline-secondary' : 'btn-outline-success');
+                $btn.removeClass('btn-outline-secondary btn-outline-success btn-outline-danger');
+                $btn.addClass(active ? 'btn-outline-success' : 'btn-outline-danger');
 
                 const $handle = $btn.closest('.dd-item').children('.dd-handle').first();
                 $handle.find('.badge-inactive-status').remove();
@@ -231,8 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             error: function (xhr) {
                 Swal.fire({
-                    title: 'Error!',
-                    text: xhr.responseJSON?.message || xhr.responseJSON?.error || 'Request failed',
+                    title: @json(__('app.Error')),
+                    text: xhr.responseJSON?.message || xhr.responseJSON?.error || @json(__('app.Request failed')),
                     icon: 'error',
                     customClass: {
                         confirmButton: 'btn btn-primary'

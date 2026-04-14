@@ -107,6 +107,18 @@ return [
     'No categories in this module' => 'No categories in this module.',
     'Create your first category' => 'Create your first category',
 
+    'Categories' => 'Categories',
+    'New Category' => 'New Category',
+    'Category hierarchy' => 'Category hierarchy',
+    'Save order' => 'Save order',
+    'Quick Actions' => 'Quick Actions',
+    'Add top-level category' => 'Add top-level category',
+    'Add to current module' => 'Add to current module',
+    'Category settings' => 'Category settings',
+    'Success' => 'Success',
+    'Failed to update category order' => 'Failed to update order.',
+    'Request failed' => 'Request failed.',
+
     'Category status updated' => 'Status updated.',
     'Activate category' => 'Activate (show in lists)',
     'Deactivate category' => 'Deactivate (hide from lists)',
