@@ -28,8 +28,8 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\FinancialDashboardController;
-use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleIntegrationController;
+use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
@@ -951,13 +951,24 @@ Route::middleware(['auth'])->prefix('app')->group(function ()
 Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
 Route::get('/pages/account-settings-account', [AccountSettingsAccount::class, 'index'])->name('pages-account-settings-account');
 
-// CMS
-Route::get('/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+// CMS — legal documents under /legal (legacy URLs redirect with 301)
+Route::redirect('/terms', '/legal/terms', 301);
+Route::redirect('/privacy', '/legal/privacy', 301);
+Route::redirect('/security', '/legal/security', 301);
+Route::redirect('/sla', '/legal/sla', 301);
+Route::redirect('/cookies', '/legal/cookies', 301);
 
-Route::get('/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
-Route::get('/security', [LegalDocumentsController::class, 'security'])->name('security');
-Route::get('/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
-Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name('legal.show');
+Route::get('/legal', [LegalDocumentsController::class, 'index'])->name('legal.index');
+Route::get('/legal/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+Route::get('/legal/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
+Route::get('/legal/cookies', [LegalDocumentsController::class, 'cookies'])->name('cookies');
+Route::get('/legal/security', [LegalDocumentsController::class, 'security'])->name('security');
+Route::get('/legal/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
+Route::get('/legal/application', [LegalDocumentsController::class, 'application'])->name('legal.application');
+Route::get('/legal/license', [LegalDocumentsController::class, 'license'])->name('legal.license');
+Route::get('/legal/google-connection', [LegalDocumentsController::class, 'googleConnection'])->name('legal.google-connection');
+Route::get('/legal/google-user-data', [LegalDocumentsController::class, 'googleUserData'])->name('legal.google-user-data');
+Route::get('/legal/data-deletion', [LegalDocumentsController::class, 'dataDeletion'])->name('legal.data-deletion');
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 

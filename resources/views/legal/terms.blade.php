@@ -19,6 +19,7 @@
     <!-- /Logo -->
     <div class="card">
       <div class="card-body">
+        @include('legal.partials.document-nav')
         <h2>Terms and Conditions</h2>
         
         <h3>1. Introduction</h3>
@@ -28,10 +29,11 @@
         <p>By accessing this website, we assume you accept these terms and conditions. Do not continue to use <strong>{{ $configData['templateName'] }}</strong> if you do not agree to all of the terms and conditions stated on this page.</p>
         
         <h3>3. Cookies</h3>
-        <p>We employ the use of cookies. By accessing <strong>{{ $configData['templateName'] }}</strong>, you agreed to use cookies in agreement with our privacy policy.</p>
+        <p>We employ the use of cookies. By accessing <strong>{{ $configData['templateName'] }}</strong>, you agree to our use of cookies as described in our <a href="{{ route('cookies') }}">Cookie Policy</a> and <a href="{{ route('privacy') }}">Privacy Policy</a>.</p>
         
         <h3>4. License</h3>
-        <p>Unless otherwise stated, <strong>{{ $configData['creatorName'] }}</strong> and/or its licensors own the intellectual property rights for all material on <strong>{{ $configData['templateName'] }}</strong>. All intellectual property rights are reserved. You may access this from <strong>{{ $configData['templateName'] }}</strong> for your own personal use subjected to restrictions set in these terms and conditions.</p>
+        <p>The <strong>{{ $configData['templateName'] }}</strong> software is free software licensed under the <strong>GNU AGPL v3.0</strong> (or any later version, at your option). See <a href="{{ route('legal.license') }}">License (GNU AGPL v3)</a> for a short summary and a link to the official license text. Where these terms and the AGPL conflict for AGPL-covered software, the AGPL controls for those portions.</p>
+        <p>Unless otherwise stated, <strong>{{ $configData['creatorName'] }}</strong> and/or its licensors own the intellectual property rights for other material made available through this site or service (for example branding, documentation, or media not marked as AGPL-covered). All such rights are reserved except as expressly granted.</p>
         
         <h3>5. User Comments</h3>
         <p>Certain parts of this website offer the opportunity for users to post and exchange opinions and information in certain areas of the website. <strong>{{ $configData['creatorName'] }}</strong> does not filter, edit, publish or review Comments prior to their presence on the website.</p>
@@ -55,26 +57,7 @@
         <p>We may update our Terms and Conditions from time to time. We will notify you of any changes by posting the new Terms and Conditions on this page.</p>
         
         <h3>12. Contact Us</h3>
-        <p>If you have any questions about these Terms, please contact us at <a href="{{ $configData['support'] }}">Support</a>.</p>
-
-        <h3>Follow Us</h3>
-        <ul>
-          @if (!empty($configData['facebookUrl']))
-            <li><a href="{{ $configData['facebookUrl'] }}">Facebook</a></li>
-          @endif
-          @if (!empty($configData['twitterUrl']))
-            <li><a href="{{ $configData['twitterUrl'] }}">Twitter</a></li>
-          @endif
-          @if (!empty($configData['githubUrl']))
-            <li><a href="{{ $configData['githubUrl'] }}">GitHub</a></li>
-          @endif
-          @if (!empty($configData['dribbbleUrl']))
-            <li><a href="{{ $configData['dribbbleUrl'] }}">Dribbble</a></li>
-          @endif
-          @if (!empty($configData['instagramUrl']))
-            <li><a href="{{ $configData['instagramUrl'] }}">Instagram</a></li>
-          @endif
-        </ul>
+        <p>If you have any questions about these Terms, please contact us at @include('legal.partials.support-link', ['label' => 'Support']).</p>
       </div>
     </div>
   </div>

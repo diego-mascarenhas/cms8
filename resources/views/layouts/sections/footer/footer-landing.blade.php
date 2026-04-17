@@ -9,6 +9,7 @@ $containerFooter = (isset($configData['contentLayout']) && $configData['contentL
       <div class="small">
         <em>
           ©<script>document.write(new Date().getFullYear())</script>, powered by <a href="{{ route('terms') }}" target="_blank" class="fw-medium">{{ (!empty(config('variables.creatorName')) ? config('variables.creatorName') : '') }}</a>
+          — <a href="{{ route('legal.index') }}" target="_blank" class="fw-medium">Legal</a>
         </em>
       </div>
     </div>
