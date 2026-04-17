@@ -12,30 +12,6 @@ use Yajra\DataTables\Services\DataTable;
 
 class ContactDataTable extends DataTable
 {
-    private function debugLog(string $runId, string $hypothesisId, string $location, string $message, array $data = []): void
-    {
-        try
-        {
-            $payload = json_encode([
-                'sessionId' => '934817',
-                'runId' => $runId,
-                'hypothesisId' => $hypothesisId,
-                'location' => $location,
-                'message' => $message,
-                'data' => $data,
-                'timestamp' => round(microtime(true) * 1000),
-            ], JSON_UNESCAPED_SLASHES);
-
-            if ($payload !== false)
-            {
-                file_put_contents(base_path('.cursor/debug-934817.log'), $payload.PHP_EOL, FILE_APPEND | LOCK_EX);
-            }
-        } catch (\Throwable $e)
-        {
-            // Intentionally swallow debug logging errors.
-        }
-    }
-
     /**
      * Build the DataTable class.
      *
@@ -43,21 +19,6 @@ class ContactDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        // #region agent log
-        $requestSearch = (string) request()->input('search.value', '');
-        $this->debugLog(
-            'pre-fix',
-            'H1',
-            'app/DataTables/ContactDataTable.php:dataTable',
-            'DataTable entry',
-            [
-                'team_id' => (int) (Auth::user()->currentTeam->id ?? 0),
-                'search_present' => $requestSearch !== '',
-                'search_len' => strlen($requestSearch),
-            ],
-        );
-        // #endregion
-
         $table = (new EloquentDataTable($query));
 
         // Add action column if user has any action permissions (always show for now, blade will handle permissions)
@@ -84,19 +45,6 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('name', function ($query, $keyword)
             {
-                // #region agent log
-                $this->debugLog(
-                    'pre-fix',
-                    'H2',
-                    'app/DataTables/ContactDataTable.php:filterColumn(name)',
-                    'Name filter invoked',
-                    [
-                        'keyword_len' => strlen((string) $keyword),
-                        'keyword_non_empty' => trim((string) $keyword) !== '',
-                    ],
-                );
-                // #endregion
-
                 // Search in both name and surname fields, and enterprise name
                 $query->where(function ($q) use ($keyword)
                 {
@@ -119,19 +67,6 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('current_sentiment', function ($query, $keyword)
             {
-                // #region agent log
-                $this->debugLog(
-                    'post-fix',
-                    'H4',
-                    'app/DataTables/ContactDataTable.php:filterColumn(current_sentiment)',
-                    'Current sentiment filter invoked',
-                    [
-                        'keyword' => (string) $keyword,
-                        'is_numeric' => is_numeric($keyword),
-                    ],
-                );
-                // #endregion
-
                 if ($keyword !== '' && is_numeric($keyword))
                 {
                     $query->whereHas('currentSentiment', function ($q) use ($keyword)
@@ -166,19 +101,6 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('categories', function ($query, $keyword)
             {
-                // #region agent log
-                $this->debugLog(
-                    'post-fix',
-                    'H5',
-                    'app/DataTables/ContactDataTable.php:filterColumn(categories)',
-                    'Categories filter invoked',
-                    [
-                        'keyword' => (string) $keyword,
-                        'is_numeric' => is_numeric($keyword),
-                    ],
-                );
-                // #endregion
-
                 if ($keyword !== '' && is_numeric($keyword))
                 {
                     $query->whereHas('categories', function ($q) use ($keyword)
@@ -196,19 +118,6 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        // #region agent log
-        $this->debugLog(
-            'pre-fix',
-            'H3',
-            'app/DataTables/ContactDataTable.php:query',
-            'Base query created',
-            [
-                'team_id' => (int) (Auth::user()->currentTeam->id ?? 0),
-                'user_role_collaborator' => (bool) (Auth::user()?->hasRole('collaborator') ?? false),
-            ],
-        );
-        // #endregion
-
         $query = $model->newQuery()
             ->where('team_id', Auth::user()->currentTeam->id)
             ->with([
