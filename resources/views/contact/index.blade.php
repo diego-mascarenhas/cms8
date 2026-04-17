@@ -159,6 +159,10 @@
                         <span class="d-none d-sm-inline-block">Buscar clientes</span>
                     </a>
                     @endcan
+                    <a href="{{ route('integrations.google.synced-contacts') }}" class="btn btn-outline-primary btn-sm waves-effect">
+                        <i class="ti ti-brand-google me-sm-1"></i>
+                        <span class="d-none d-sm-inline-block">{{ __('Google synced') }}</span>
+                    </a>
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-export me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Exportar</span>

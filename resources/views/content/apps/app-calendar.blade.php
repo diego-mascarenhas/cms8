@@ -67,11 +67,15 @@
     <!-- Calendar Sidebar -->
     <div class="col app-calendar-sidebar" id="app-calendar-sidebar">
       <div class="border-bottom p-4 my-sm-0 mb-3">
-        <div class="d-grid">
+        <div class="d-grid gap-2">
           <button class="btn btn-primary btn-toggle-sidebar" data-bs-toggle="offcanvas" data-bs-target="#addEventSidebar" aria-controls="addEventSidebar">
             <i class="ti ti-plus me-1"></i>
             <span class="align-middle">{{ __('Add Event') }}</span>
           </button>
+          <a href="{{ route('integrations.google.synced-calendar') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="ti ti-brand-google me-1"></i>
+            <span class="align-middle">{{ __('Google synced') }}</span>
+          </a>
         </div>
       </div>
       <div class="p-3">

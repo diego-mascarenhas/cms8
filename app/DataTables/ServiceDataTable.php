@@ -56,7 +56,7 @@ class ServiceDataTable extends DataTable
             })
             ->editColumn('category_id', function ($data)
             {
-                return $data->serviceType->name;  // Fix N+1: Use eager-loaded serviceType
+                return $data->serviceType?->name ?? '—';
             })
             ->filterColumn('category_id', function ($query, $keyword)
             {
@@ -142,19 +142,25 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
+        $user = Auth::user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return $model->newQuery()->whereRaw('1 = 0');
+        }
+
         $query = $model->newQuery()
             ->with([
                 'client',
                 'serviceType',  // Fix N+1: Use 'serviceType' instead of 'category' alias
                 'currency',
             ])
-            ->whereHas('client', function ($query)
+            ->whereHas('client', function ($query) use ($user)
             {
-                $query->where('team_id', auth()->user()->currentTeam->id);
+                $query->where('team_id', $user->currentTeam->id);
             });
 
-        $user = Auth::user();
-        if ($user && $user->hasRole('collaborator'))
+        if ($user->hasRole('collaborator'))
         {
             $query->where('responsible_id', $user->id);
         }

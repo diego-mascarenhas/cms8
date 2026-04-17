@@ -31,9 +31,12 @@ class Invoice extends Model
     {
         static::addGlobalScope('team', function (Builder $builder)
         {
-            if (auth()->check())
+            if (auth()->check() && auth()->user()->currentTeam)
             {
-                $builder->where('team_id', auth()->user()->currentTeam->id);
+                $builder->where(
+                    $builder->qualifyColumn('team_id'),
+                    auth()->user()->currentTeam->id,
+                );
             }
         });
     }

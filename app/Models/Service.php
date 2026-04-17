@@ -219,24 +219,29 @@ class Service extends Model
 
     public function getCalculatedPriceAttribute()
     {
-        $dataField = $this->category->data;
+        $serviceType = $this->serviceType;
 
         $categoryData = [];
 
-        if (is_string($dataField))
+        if ($serviceType !== null)
         {
-            $decodedData = json_decode($dataField, true);
+            $dataField = $serviceType->data;
 
-            if (json_last_error() === JSON_ERROR_NONE)
+            if (is_string($dataField))
             {
-                $categoryData = $decodedData;
+                $decodedData = json_decode($dataField, true);
+
+                if (json_last_error() === JSON_ERROR_NONE)
+                {
+                    $categoryData = $decodedData;
+                }
+            } elseif (is_array($dataField))
+            {
+                $categoryData = $dataField;
+            } elseif (is_object($dataField))
+            {
+                $categoryData = (array) $dataField;
             }
-        } elseif (is_array($dataField))
-        {
-            $categoryData = $dataField;
-        } elseif (is_object($dataField))
-        {
-            $categoryData = (array) $dataField;
         }
 
         if ($this->price !== null && $this->price != 0)
@@ -244,11 +249,19 @@ class Service extends Model
             $basePrice = $this->price;
             $discount = $this->discount ?? 0;
             $frequency = $this->frequency ?? 1;
-        } else
+        } elseif ($serviceType !== null)
         {
             $basePrice = $categoryData['price'] ?? 0;
             $discount = $categoryData['discount'] ?? 0;
             $frequency = $categoryData['frequency'] ?? 1;
+        } else
+        {
+            return 0.0;
+        }
+
+        if ($frequency === null || $frequency <= 0)
+        {
+            $frequency = 1;
         }
 
         $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));

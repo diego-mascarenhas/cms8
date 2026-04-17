@@ -25,6 +25,11 @@ class ServiceController extends Controller
     {
         $this->authorize('viewAny', Service::class);
 
+        if (! auth()->user()->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
         $teamId = auth()->user()->currentTeam->id;
 
         // Relevant dates
