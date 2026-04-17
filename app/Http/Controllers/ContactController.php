@@ -1062,7 +1062,7 @@ class ContactController extends Controller
 
                     return [
                         'name' => $displayName,
-                        'subtitle' => $contact->email ?: 'Creado el '.($contact->created_at?->format('d-m-Y H:i:s') ?? 'N/A').' hs',
+                        'subtitle' => $contact->email ?: 'Creado el '.($contact->created_at?->format('d-m-Y H:i:s') ?? '').' hs',
                         // remove avatar 'src' to simplify rendering
                         'url' => route('contact.show', $contact->id),
                     ];
@@ -1102,7 +1102,7 @@ class ContactController extends Controller
             {
                 return [
                     'name' => $enterprise->name,
-                    'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.($enterprise->created_at?->format('d-m-Y H:i:s') ?? 'N/A').' hs'),
+                    'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.($enterprise->created_at?->format('d-m-Y H:i:s') ?? '').' hs'),
                     // remove icon 'src' to simplify rendering
                     'url' => '#',
                 ];
@@ -1138,7 +1138,7 @@ class ContactController extends Controller
 
                     return [
                         'name' => $domain,
-                        'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.($service->created_at?->format('d-m-Y') ?? 'N/A'),
+                        'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.($service->created_at?->format('d-m-Y') ?? ''),
                         'src' => 'img/icons/brands/web.png',
                         'url' => route('service.show', $service->id),
                     ];
@@ -1201,7 +1201,7 @@ class ContactController extends Controller
                 {
                     return [
                         'name' => $contact->name,
-                        'subtitle' => 'Colaborador creado el '.($contact->created_at?->format('d-m-Y H:i:s') ?? 'N/A').' hs',
+                        'subtitle' => 'Colaborador creado el '.($contact->created_at?->format('d-m-Y H:i:s') ?? '').' hs',
                         'src' => 'img/avatars/collaborator.png',
                         'url' => route('collaborator.show', $contact->id),
                     ];
