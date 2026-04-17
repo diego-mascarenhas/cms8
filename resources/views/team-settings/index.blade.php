@@ -186,6 +186,28 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-users-group mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Google People & Calendar</h5>
+                            <p class="card-text">Connect one Google account per team to sync contacts and calendar events.</p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                @if ($googleExternalAccount)
+                                    <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">Reconnect</a>
+                                    <form method="POST" action="{{ route('integrations.google.disconnect') }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger">Disconnect</button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">Connect</a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-chart-line mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Google Analytics</h5>
                             <p class="card-text">Configure GA4 Property ID and service account for dashboard analytics</p>

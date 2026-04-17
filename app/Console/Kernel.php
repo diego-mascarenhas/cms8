@@ -107,6 +107,16 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->name('mailboxes-sync')
             ->description('Sync emails from team mailboxes into the database');
+
+        // ============================================
+        // GOOGLE PEOPLE + CALENDAR SYNC
+        // ============================================
+        $schedule->command('google:sync-data')
+            ->everyTenMinutes()
+            ->name('google-sync-data')
+            ->description('Queue Google contacts and calendar incremental sync jobs')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

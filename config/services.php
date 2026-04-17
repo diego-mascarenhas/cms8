@@ -96,6 +96,11 @@ return [
 
     'google' => [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY', ''),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // OAuth callback: always derived from APP_URL (see config/app.php → url).
+        'redirect' => rtrim((string) config('app.url'), '/').'/integrations/google/callback',
+        'oauth_scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('GOOGLE_OAUTH_SCOPES', 'openid,email,profile,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/calendar.readonly'))))),
     ],
 
     'apollo' => [

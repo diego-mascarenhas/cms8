@@ -192,6 +192,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display Google People & Calendar (OAuth) sync configuration documentation
+     */
+    public function googlePeopleCalendarSync()
+    {
+        return view('help.environment-variables-google-people-calendar', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display WooCommerce configuration documentation
      */
     public function woocommerceConfiguration()

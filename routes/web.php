@@ -29,6 +29,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\FinancialDashboardController;
 use App\Http\Controllers\GooglePlacesController;
+use App\Http\Controllers\GoogleIntegrationController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
@@ -255,6 +256,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+    Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
+    Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
+    Route::delete('/integrations/google/disconnect', [GoogleIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');
 
     // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
     Route::get('/mailboxes', function ()
@@ -1194,6 +1198,7 @@ Route::prefix('help')->name('help.')->group(function ()
 
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
+    Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
 });
 

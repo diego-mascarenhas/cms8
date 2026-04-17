@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ExternalProvider;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
@@ -29,7 +30,12 @@ class TeamSettingController extends Controller
             ->get()
             ->groupBy('group');
 
-        return view('team-settings.index', compact('team', 'groupedSettings'));
+        $googleExternalAccount = $team->externalAccounts()
+            ->where('provider', ExternalProvider::Google)
+            ->latest('id')
+            ->first();
+
+        return view('team-settings.index', compact('team', 'groupedSettings', 'googleExternalAccount'));
     }
 
     public function businessConfig(Team $team)
