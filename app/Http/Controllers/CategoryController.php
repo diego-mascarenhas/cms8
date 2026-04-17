@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\CategoryDataTable;
+use App\Http\Requests\UpdateCategoryOrderRequest;
 use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
+use App\Support\ContentsSectionCategoryData;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Spatie\Tags\Tag;
 
 class CategoryController extends Controller
@@ -22,23 +27,23 @@ class CategoryController extends Controller
             $team->load('settings');
         }
 
-        // Get module filter if set
-        $moduleId = $request->get('module_id');
+        // Require a module before loading the tree (avoids mixing categories from different modules).
+        $moduleId = $request->filled('module_id') ? (int) $request->get('module_id') : null;
 
-        // Get only parent categories (null parent_id): global (team_id null) or belonging to current team
-        $categories = Category::where(function ($query) use ($team)
+        $categories = collect();
+        if ($moduleId !== null && $moduleId !== 0)
         {
-            $query->whereNull('team_id')->orWhere('team_id', $team->id);
-        })
-            ->when($moduleId, function ($query, $moduleId)
+            $categories = Category::where(function ($query) use ($team)
             {
-                return $query->where('module_id', $moduleId);
+                $query->whereNull('team_id')->orWhere('team_id', $team->id);
             })
-            ->whereNull('parent_id')
-            ->with(['children', 'module'])
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
+                ->where('module_id', $moduleId)
+                ->whereNull('parent_id')
+                ->with(['children', 'module'])
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get();
+        }
 
         // Get all modules for the filter dropdown
         $modules = Module::orderBy('name')->get();
@@ -77,16 +82,25 @@ class CategoryController extends Controller
         $modules = Module::orderBy('name')->get();
         $multimediaModuleId = Module::where('key', 'multimedia')->value('id');
 
-        // Get possible parent categories for dropdown
-        $parentCategories = Category::where('team_id', $team->id)
-            ->whereNull('parent_id')
-            ->orderBy('name')
-            ->get();
+        $selectedModuleId = old('module_id', $request->get('module_id'));
+        if ($parent)
+        {
+            $selectedModuleId = $selectedModuleId ?: $parent->module_id;
+        }
+        $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
+
+        $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id);
+        $parentCategories = $this->withNestedParentAppendedToParentOptions(
+            $this->topLevelParentsForTeamModule($team->id, $selectedModuleId),
+            $parent,
+        );
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
 
-        return view('category.form', compact('modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        $returnModuleIdForIndex = $request->filled('module_id') ? (int) $request->get('module_id') : null;
+
+        return view('category.form', compact('modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags', 'returnModuleIdForIndex'));
     }
 
     /**
@@ -110,12 +124,23 @@ class CategoryController extends Controller
             'poster_width' => 'nullable|integer|min:1|max:10000',
             'poster_height' => 'nullable|integer|min:1|max:10000',
             'fit' => 'nullable|in:crop,contain,max,stretch',
+            'return_module_id' => 'nullable|integer|exists:modules,id',
+            'contents_section_slug' => 'nullable|string|max:100',
+            'history_section_heading' => 'nullable|string|max:255',
         ]);
 
         // Check if parent belongs to the current team
         if ($request->parent_id)
         {
             $parent = Category::where('team_id', $team->id)->findOrFail($request->parent_id);
+
+            if ($request->filled('module_id') && (int) $parent->module_id !== (int) $request->module_id)
+            {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', __('app.Parent category must belong to the same module.'));
+            }
 
             // Check maximum depth allowed
             $maxDepth = (int) $team->getSetting('categories_max_depth', 2);
@@ -183,6 +208,67 @@ class CategoryController extends Controller
             }
 
             $categoryData['content_ordering'] = $contentOrdering;
+
+            if ($request->has('content_form') && is_array($request->input('content_form')))
+            {
+                $defaults = ContentsSectionCategoryData::defaultContentFormVisibility();
+                $incoming = $request->input('content_form', []);
+                $merged = [];
+                foreach (array_keys($defaults) as $key)
+                {
+                    if (array_key_exists($key, $incoming))
+                    {
+                        $value = $incoming[$key];
+                        $merged[$key] = $value === true || $value === 1 || $value === '1' || $value === 'true';
+                    } else
+                    {
+                        $merged[$key] = $defaults[$key];
+                    }
+                }
+                $categoryData['content_form'] = $merged;
+            } elseif (! isset($categoryData['content_form']))
+            {
+                $categoryData['content_form'] = ContentsSectionCategoryData::defaultContentFormVisibility();
+            }
+
+            if ($request->has('content_locales_present'))
+            {
+                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromRequest(
+                    is_array($request->input('content_locales')) ? $request->input('content_locales') : [],
+                );
+            } elseif (! isset($categoryData['content_locales']))
+            {
+                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromStorage(null);
+            }
+
+            $pageSections = is_array($categoryData['page_sections'] ?? null) ? $categoryData['page_sections'] : [];
+            $pageSections['history_timeline'] = $request->boolean('page_sections.history_timeline');
+            $categoryData['page_sections'] = $pageSections;
+
+            $rawSlug = trim((string) $request->input('contents_section_slug', ''));
+            if ($rawSlug !== '')
+            {
+                $slug = Str::slug($rawSlug);
+                if ($slug !== '')
+                {
+                    $categoryData['slug'] = $slug;
+                } else
+                {
+                    unset($categoryData['slug']);
+                }
+            } else
+            {
+                unset($categoryData['slug']);
+            }
+
+            $heading = trim((string) $request->input('history_section_heading', ''));
+            if ($heading !== '')
+            {
+                $categoryData['history'] = ['heading' => $heading];
+            } else
+            {
+                unset($categoryData['history']);
+            }
         }
 
         $category->fill([
@@ -211,9 +297,7 @@ class CategoryController extends Controller
             $category->syncTagsWithType([], 'general');
         }
 
-        return redirect()
-            ->route('categories.index')
-            ->with('success', 'Category saved successfully.');
+        return $this->redirectToCategoriesIndexAfterSave($request, $category);
     }
 
     /**
@@ -234,7 +318,7 @@ class CategoryController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         // Get current team
         $team = Auth::user()->currentTeam;
@@ -249,11 +333,15 @@ class CategoryController extends Controller
         $excludeIds = $this->getAllChildrenIds($category);
         $excludeIds[] = $category->id;
 
-        $parentCategories = Category::where('team_id', $team->id)
-            ->whereNull('parent_id')
-            ->whereNotIn('id', $excludeIds)
-            ->orderBy('name')
-            ->get();
+        $selectedModuleId = old('module_id', $category->module_id);
+        $selectedModuleId = $selectedModuleId ? (int) $selectedModuleId : null;
+
+        $parentCategoriesByModule = $this->parentCategoriesGroupedByModule($team->id, $excludeIds);
+        $category->loadMissing('parent');
+        $parentCategories = $this->withNestedParentAppendedToParentOptions(
+            $this->topLevelParentsForTeamModule($team->id, $selectedModuleId, $excludeIds),
+            $category->parent,
+        );
 
         // Get tags for autocomplete
         $tags = Tag::getWithType('general')->sortBy('name')->values();
@@ -261,7 +349,9 @@ class CategoryController extends Controller
         // Parent is not needed in edit, only in create when creating a subcategory
         $parent = null;
 
-        return view('category.form', compact('category', 'modules', 'parentCategories', 'parent', 'team', 'multimediaModuleId', 'tags'));
+        $returnModuleIdForIndex = $request->filled('module_id') ? (int) $request->get('module_id') : null;
+
+        return view('category.form', compact('category', 'modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags', 'returnModuleIdForIndex'));
     }
 
     /**
@@ -299,27 +389,59 @@ class CategoryController extends Controller
     }
 
     /**
-     * Update the order of categories.
+     * Toggle category active flag (shown in hierarchy list).
      */
-    public function updateOrder(Request $request)
+    public function toggleStatus(string $id)
     {
-        // Get current team
         $team = Auth::user()->currentTeam;
 
-        $request->validate([
-            'categories' => 'required|array',
-            'categories.*.id' => 'required|exists:categories,id',
-            'categories.*.order' => 'required|integer|min:0',
+        $category = Category::where('team_id', $team->id)->findOrFail($id);
+
+        $this->authorize('update', $category);
+
+        $category->status = ! $category->status;
+        $category->save();
+
+        return response()->json([
+            'success' => true,
+            'status' => $category->status ? 1 : 0,
+            'message' => __('app.Category status updated'),
         ]);
+    }
 
-        foreach ($request->categories as $item)
+    /**
+     * Update the order of categories.
+     */
+    public function updateOrder(UpdateCategoryOrderRequest $request): JsonResponse
+    {
+        $team = Auth::user()->currentTeam;
+        $moduleId = (int) $request->validated('module_id');
+
+        Category::query()->getModel()->getConnection()->transaction(function () use ($request, $team, $moduleId): void
         {
-            Category::where('team_id', $team->id)
-                ->where('id', $item['id'])
-                ->update(['order' => $item['order']]);
-        }
+            foreach ($request->validated('categories') as $item)
+            {
+                $parentRaw = $item['parent_id'] ?? null;
+                $parentId = ($parentRaw === null || $parentRaw === '' || $parentRaw === false || $parentRaw === 0 || $parentRaw === '0')
+                    ? null
+                    : (int) $parentRaw;
 
-        return response()->json(['success' => 'Order updated successfully.'], 200);
+                Category::query()
+                    ->where('module_id', $moduleId)
+                    ->where(function ($query) use ($team): void
+                    {
+                        $query->whereNull('team_id')
+                            ->orWhere('team_id', $team->id);
+                    })
+                    ->where('id', (int) $item['id'])
+                    ->update([
+                        'parent_id' => $parentId,
+                        'order' => (int) $item['order'],
+                    ]);
+            }
+        });
+
+        return response()->json(['success' => __('app.Order updated successfully.')], 200);
     }
 
     /**
@@ -426,6 +548,87 @@ class CategoryController extends Controller
         }
 
         return $ids;
+    }
+
+    /**
+     * Top-level categories eligible as parent, for the same module only.
+     *
+     * @param  array<int>  $excludeIds
+     * @return \Illuminate\Database\Eloquent\Collection<int, Category>
+     */
+    private function topLevelParentsForTeamModule(int $teamId, ?int $moduleId, array $excludeIds = [])
+    {
+        $query = Category::query()
+            ->where('team_id', $teamId)
+            ->whereNull('parent_id')
+            ->whereNotNull('module_id')
+            ->orderBy('name');
+
+        if ($excludeIds !== [])
+        {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        if ($moduleId !== null && $moduleId !== 0)
+        {
+            $query->where('module_id', $moduleId);
+        } else
+        {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * The parent select is built from top-level categories only; append the resolved parent
+     * when it is nested so "create under this row" and edit keep a valid selected value.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Category>  $topLevelParents
+     * @return \Illuminate\Database\Eloquent\Collection<int, Category>
+     */
+    private function withNestedParentAppendedToParentOptions($topLevelParents, ?Category $resolvedParent)
+    {
+        if ($resolvedParent === null)
+        {
+            return $topLevelParents;
+        }
+
+        if ($topLevelParents->contains(fn (Category $c): bool => (int) $c->id === (int) $resolvedParent->id))
+        {
+            return $topLevelParents;
+        }
+
+        return $topLevelParents->concat([$resolvedParent]);
+    }
+
+    /**
+     * Parent options keyed by module id (string) for the category form JavaScript.
+     *
+     * @param  array<int>  $excludeIds
+     * @return array<string, list<array{id: int, name: string}>>
+     */
+    private function parentCategoriesGroupedByModule(int $teamId, array $excludeIds = []): array
+    {
+        $query = Category::query()
+            ->where('team_id', $teamId)
+            ->whereNull('parent_id')
+            ->whereNotNull('module_id')
+            ->orderBy('name');
+
+        if ($excludeIds !== [])
+        {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        $grouped = [];
+        foreach ($query->get(['id', 'name', 'module_id']) as $category)
+        {
+            $key = (string) $category->module_id;
+            $grouped[$key][] = ['id' => $category->id, 'name' => $category->name];
+        }
+
+        return $grouped;
     }
 
     /**
@@ -572,5 +775,27 @@ class CategoryController extends Controller
         }
 
         return response()->json(['groups' => $groups]);
+    }
+
+    private function redirectToCategoriesIndexAfterSave(Request $request, Category $category): RedirectResponse
+    {
+        $returnModuleId = (int) $request->input('return_module_id', 0);
+        if ($returnModuleId > 0 && Module::query()->whereKey($returnModuleId)->exists())
+        {
+            return redirect()
+                ->route('categories.index', ['module_id' => $returnModuleId])
+                ->with('success', 'Category saved successfully.');
+        }
+
+        if ($category->module_id)
+        {
+            return redirect()
+                ->route('categories.index', ['module_id' => (int) $category->module_id])
+                ->with('success', 'Category saved successfully.');
+        }
+
+        return redirect()
+            ->route('categories.index')
+            ->with('success', 'Category saved successfully.');
     }
 }

@@ -129,8 +129,9 @@ class TokenUsageLog extends Model
      */
     public static function getTotalTokensSaved(): int
     {
-        return self::where('used_toon', true)
-            ->sum(\DB::raw('json_tokens - toon_tokens'));
+        return (int) (self::where('used_toon', true)
+            ->selectRaw('COALESCE(SUM(json_tokens - toon_tokens), 0) as total_saved')
+            ->value('total_saved') ?? 0);
     }
 
     /**
@@ -166,9 +167,11 @@ class TokenUsageLog extends Model
      */
     public static function getCallsByService(): array
     {
-        return self::select('service', \DB::raw('count(*) as count'))
+        return self::query()
+            ->select('service')
+            ->selectRaw('count(*) as aggregate_count')
             ->groupBy('service')
-            ->pluck('count', 'service')
+            ->pluck('aggregate_count', 'service')
             ->toArray();
     }
 

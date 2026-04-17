@@ -165,7 +165,7 @@ class ModuleList extends Command
      */
     protected function isInstalledGlobally(Module $module)
     {
-        return DB::table('module_team')
+        return app('db')->table('module_team')
             ->where('module_id', $module->id)
             ->where('status', 1)
             ->exists();
@@ -198,7 +198,7 @@ class ModuleList extends Command
 
         foreach ($tableMap[$moduleKey] as $table)
         {
-            if (DB::getSchemaBuilder()->hasTable($table))
+            if (app('db')->getSchemaBuilder()->hasTable($table))
             {
                 return true;
             }
@@ -212,7 +212,7 @@ class ModuleList extends Command
      */
     protected function getTeamsCount(Module $module)
     {
-        return DB::table('module_team')
+        return app('db')->table('module_team')
             ->where('module_id', $module->id)
             ->where('status', 1)
             ->count();

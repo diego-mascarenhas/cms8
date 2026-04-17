@@ -19,10 +19,10 @@ class CheckInvoiceItemsImport extends Command
         try
         {
             // Get all invoices that have items in legacy
-            $legacyItems = DB::connection('mysql_legacy')
+            $legacyItems = app('db')->connection('mysql_legacy')
                 ->table('facturas_items')
                 ->where('grupo', env('CMS_GROUP', 502))
-                ->select('id_factura', DB::raw('COUNT(*) as item_count'))
+                ->select('id_factura', app('db')->raw('COUNT(*) as item_count'))
                 ->groupBy('id_factura')
                 ->get();
 
@@ -39,7 +39,7 @@ class CheckInvoiceItemsImport extends Command
                 $legacyItemCount = $legacy->item_count;
 
                 // Check if invoice exists
-                $invoiceExists = DB::table('invoices')->where('id', $invoiceId)->exists();
+                $invoiceExists = app('db')->table('invoices')->where('id', $invoiceId)->exists();
 
                 if (!$invoiceExists)
                 {
@@ -51,7 +51,7 @@ class CheckInvoiceItemsImport extends Command
                 }
 
                 // Check how many items exist in current system
-                $currentItemCount = DB::table('invoice_items')
+                $currentItemCount = app('db')->table('invoice_items')
                     ->where('invoice_id', $invoiceId)
                     ->count();
 

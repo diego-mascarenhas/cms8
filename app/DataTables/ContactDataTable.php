@@ -67,7 +67,7 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('current_sentiment', function ($query, $keyword)
             {
-                if ($keyword !== '')
+                if ($keyword !== '' && is_numeric($keyword))
                 {
                     $query->whereHas('currentSentiment', function ($q) use ($keyword)
                     {
@@ -101,7 +101,7 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('categories', function ($query, $keyword)
             {
-                if ($keyword !== '')
+                if ($keyword !== '' && is_numeric($keyword))
                 {
                     $query->whereHas('categories', function ($q) use ($keyword)
                     {

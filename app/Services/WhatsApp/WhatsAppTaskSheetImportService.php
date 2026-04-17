@@ -8,7 +8,6 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -64,7 +63,7 @@ class WhatsAppTaskSheetImportService
         $createdTitles = [];
         $errors = [];
 
-        DB::transaction(function () use ($rows, $teamId, $boardId, $responsibleId, &$createdTitles, &$errors): void
+        Task::query()->getModel()->getConnection()->transaction(function () use ($rows, $teamId, $boardId, $responsibleId, &$createdTitles, &$errors): void
         {
             foreach ($rows as $index => $row)
             {

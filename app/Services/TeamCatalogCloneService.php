@@ -7,7 +7,6 @@ use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class TeamCatalogCloneService
@@ -67,7 +66,7 @@ class TeamCatalogCloneService
 
         $stats = ['stores' => 0, 'categories' => 0, 'products' => 0];
 
-        DB::transaction(function () use (
+        Team::query()->getModel()->getConnection()->transaction(function () use (
             $targetTeam,
             $sourceStores,
             $sourceCategories,

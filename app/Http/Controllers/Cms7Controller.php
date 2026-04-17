@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class Cms7Controller extends Controller
 {
@@ -12,7 +11,7 @@ class Cms7Controller extends Controller
      */
     public function showContact($id)
     {
-        $contact = DB::connection('mysql_legacy')
+        $contact = $this->legacyConnection()
             ->table('contactos')
             ->where('id', $id)
             ->first();
@@ -28,7 +27,7 @@ class Cms7Controller extends Controller
         $empresa = null;
         if ($contact->id_empresa)
         {
-            $empresa = DB::connection('mysql_legacy')
+            $empresa = $this->legacyConnection()
                 ->table('empresas')
                 ->where('id', $contact->id_empresa)
                 ->first();
@@ -42,7 +41,7 @@ class Cms7Controller extends Controller
      */
     public function showEnterprise($id)
     {
-        $empresa = DB::connection('mysql_legacy')
+        $empresa = $this->legacyConnection()
             ->table('empresas')
             ->where('id', $id)
             ->first();
@@ -55,7 +54,7 @@ class Cms7Controller extends Controller
         }
 
         // Obtenemos los contactos asociados a esta empresa
-        $contactos = DB::connection('mysql_legacy')
+        $contactos = $this->legacyConnection()
             ->table('contactos')
             ->where('id_empresa', $id)
             ->orderBy('nombre')
@@ -69,7 +68,7 @@ class Cms7Controller extends Controller
      */
     public function showServices($empresaId = null)
     {
-        $query = DB::connection('mysql_legacy')
+        $query = $this->legacyConnection()
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
             ->where('servicios.grupo', env('CMS_GROUP', 501))
@@ -93,7 +92,7 @@ class Cms7Controller extends Controller
      */
     public function showInvoices($empresaId = null)
     {
-        $query = DB::connection('mysql_legacy')
+        $query = $this->legacyConnection()
             ->table('facturas')
             ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
             ->where('facturas.grupo', env('CMS_GROUP', 501))
@@ -137,7 +136,7 @@ class Cms7Controller extends Controller
             return view('cms7.search');
         }
 
-        $contactos = DB::connection('mysql_legacy')
+        $contactos = $this->legacyConnection()
             ->table('contactos')
             ->where('grupo', env('CMS_GROUP', 501))
             ->where(function ($q) use ($query)
@@ -153,7 +152,7 @@ class Cms7Controller extends Controller
             ->limit(50)
             ->get();
 
-        $empresas = DB::connection('mysql_legacy')
+        $empresas = $this->legacyConnection()
             ->table('empresas')
             ->where('grupo', env('CMS_GROUP', 501))
             ->where(function ($q) use ($query)
@@ -176,7 +175,7 @@ class Cms7Controller extends Controller
     public function enterpriseDetails($id)
     {
         // Buscar la empresa en la base de datos antigua
-        $empresa = DB::connection('mysql_legacy')
+        $empresa = $this->legacyConnection()
             ->table('empresas')
             ->where('id', $id)
             ->first();
@@ -187,13 +186,13 @@ class Cms7Controller extends Controller
         }
 
         // Obtener los contactos relacionados
-        $contactos = DB::connection('mysql_legacy')
+        $contactos = $this->legacyConnection()
             ->table('contactos')
             ->where('id_empresa', $id)
             ->get();
 
         // Obtener servicios relacionados con categoría
-        $servicios = DB::connection('mysql_legacy')
+        $servicios = $this->legacyConnection()
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio', 'left')
             ->leftJoin('categorias_generales', 'servicios.id_categoria', '=', 'categorias_generales.id')
@@ -203,13 +202,13 @@ class Cms7Controller extends Controller
             ->get();
 
         // Obtener datos fiscales si existen
-        $datosFiscales = DB::connection('mysql_legacy')
+        $datosFiscales = $this->legacyConnection()
             ->table('empresas_fiscales')
             ->where('id_empresa', $id)
             ->get();
 
         // Obtener facturas si existen
-        $facturas = DB::connection('mysql_legacy')
+        $facturas = $this->legacyConnection()
             ->table('facturas')
             ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
             ->where('empresas_fiscales.id_empresa', $id)
@@ -219,5 +218,10 @@ class Cms7Controller extends Controller
             ->get();
 
         return view('cms7.empresa-detalle', compact('empresa', 'contactos', 'servicios', 'datosFiscales', 'facturas'));
+    }
+
+    private function legacyConnection()
+    {
+        return app('db')->connection('mysql_legacy');
     }
 }

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
+use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\StripeSubscription;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 use Log;
 
@@ -33,16 +33,17 @@ class ServiceController extends Controller
         $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
         // Get the latest invoices of clients who have invoices in the last three months
-        $invoicesLastThreeMonths = DB::table('invoices')
+        $invoicesLastThreeMonths = Invoice::query()
             ->join('enterprises', 'invoices.enterprise_id', '=', 'enterprises.id')
-            ->select('invoices.enterprise_id', DB::raw('MAX(invoices.date) as last_invoice_date'))
+            ->select('invoices.enterprise_id')
+            ->selectRaw('MAX(invoices.date) as last_invoice_date')
             ->where('enterprises.team_id', $teamId)
             ->where('invoices.date', '>=', $threeMonthsAgo)
             ->groupBy('invoices.enterprise_id')
             ->havingRaw('COUNT(invoices.enterprise_id) >= 3');
 
         // Get the sum of the gross_amount of last month's invoices for those clients
-        $totalbuyLastMonth = DB::table('invoices')
+        $totalbuyLastMonth = Invoice::query()
             ->join('enterprises', 'invoices.enterprise_id', '=', 'enterprises.id')
             ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join)
             {

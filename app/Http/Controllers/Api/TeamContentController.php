@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
 use Illuminate\Http\Request;
@@ -67,7 +68,7 @@ class TeamContentController extends Controller
         $locale = $request->input('locale', 'es');
 
         $perPage = $request->input('per_page', 20);
-        $contents = $query->with(['sectionCategory:id,name', 'category:id,name'])
+        $contents = $query->with(['sectionCategory:id,name,data', 'category:id,name'])
             ->orderBy('order')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -81,10 +82,7 @@ class TeamContentController extends Controller
                 'subtitle' => $content->getTranslatable('subtitle', $locale),
                 'url' => $content->getTranslatable('url', $locale),
                 'content' => $content->getTranslatable('content', $locale),
-                'section_category' => $content->sectionCategory ? [
-                    'id' => $content->sectionCategory->id,
-                    'name' => $content->sectionCategory->name,
-                ] : null,
+                'section_category' => self::transformSectionCategory($content->sectionCategory),
                 'category' => $content->category ? [
                     'id' => $content->category->id,
                     'name' => $content->category->name,
@@ -265,10 +263,7 @@ class TeamContentController extends Controller
                     'id' => $content->id,
                     'title' => $content->getTranslatable('title', $locale),
                     'subtitle' => $content->getTranslatable('subtitle', $locale),
-                    'section_category' => $content->sectionCategory ? [
-                        'id' => $content->sectionCategory->id,
-                        'name' => $content->sectionCategory->name,
-                    ] : null,
+                    'section_category' => self::transformSectionCategory($content->sectionCategory),
                 ],
                 'team' => [
                     'id' => $team->id,
@@ -301,7 +296,7 @@ class TeamContentController extends Controller
 
         $content = Content::where('team_id', $team->id)
             ->where('id', $id)
-            ->with(['sectionCategory:id,name', 'category:id,name', 'multimedia'])
+            ->with(['sectionCategory:id,name,data', 'category:id,name', 'multimedia'])
             ->firstOrFail();
 
         // Get locale for translatable fields
@@ -313,10 +308,7 @@ class TeamContentController extends Controller
             'subtitle' => $content->getTranslatable('subtitle', $locale),
             'url' => $content->getTranslatable('url', $locale),
             'content' => $content->getTranslatable('content', $locale),
-            'section_category' => $content->sectionCategory ? [
-                'id' => $content->sectionCategory->id,
-                'name' => $content->sectionCategory->name,
-            ] : null,
+            'section_category' => self::transformSectionCategory($content->sectionCategory),
             'category' => $content->category ? [
                 'id' => $content->category->id,
                 'name' => $content->category->name,
@@ -516,7 +508,7 @@ class TeamContentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Content updated successfully',
-                'data' => $content->load(['sectionCategory:id,name', 'category:id,name']),
+                'data' => $content->load(['sectionCategory:id,name,data', 'category:id,name']),
                 'team' => [
                     'id' => $team->id,
                     'name' => $team->name,
@@ -569,5 +561,22 @@ class TeamContentController extends Controller
                 'message' => 'Error deleting content: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * @return array{id: int, name: string, data: array|null}|null
+     */
+    private static function transformSectionCategory(?Category $sectionCategory): ?array
+    {
+        if (! $sectionCategory)
+        {
+            return null;
+        }
+
+        return [
+            'id' => $sectionCategory->id,
+            'name' => $sectionCategory->name,
+            'data' => $sectionCategory->data,
+        ];
     }
 }

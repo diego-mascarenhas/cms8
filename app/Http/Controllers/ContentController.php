@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
 use App\Models\Multimedia;
+use App\Support\ContentsSectionCategoryData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -46,17 +47,10 @@ class ContentController extends Controller
         $selectedSection = $sectionId ? Category::find($sectionId) : null;
         $fieldConfigs = $selectedSection ? $selectedSection->contentFieldConfigs()->active()->ordered()->get() : collect();
 
-        // Get available locales for multi-language support
-        $availableLocales = [
-            'es' => 'Español',
-            'en' => 'English',
-            'it' => 'Italiano',
-            'pt' => 'Português',
-            'fr' => 'Français',
-            'de' => 'Deutsch',
-        ];
+        $availableLocales = $this->availableLocalesForContent(null, $selectedSection);
+        $contentFormVisibility = $this->contentFormVisibilityForContent(null, $selectedSection);
 
-        return view('contents.form', compact('sectionCategories', 'selectedSection', 'fieldConfigs', 'team', 'availableLocales'));
+        return view('contents.form', compact('sectionCategories', 'selectedSection', 'fieldConfigs', 'team', 'availableLocales', 'contentFormVisibility'));
     }
 
     public function store(StoreContentRequest $request)
@@ -71,14 +65,22 @@ class ContentController extends Controller
         $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
         $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
+        $section = Category::findOrFail($data['section_category_id']);
+
+        if ($section->contentsPageSectionHistoryTimeline() && empty($data['template'] ?? null))
+        {
+            $data['template'] = 'timeline_item';
+        }
+
+        $localeCodes = $section->contentFormLocales();
+
         // Prepare translatable fields for all locales
         $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
-        $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
 
         foreach ($translatableFields as $field)
         {
             $fieldData = [];
-            foreach ($availableLocales as $locale)
+            foreach ($localeCodes as $locale)
             {
                 $fieldKey = "{$field}_{$locale}";
                 if ($request->has($fieldKey) && $request->input($fieldKey) !== null && $request->input($fieldKey) !== '')
@@ -94,7 +96,6 @@ class ContentController extends Controller
 
         // Extract data fields (additional fields from config)
         $dataFields = [];
-        $section = Category::findOrFail($data['section_category_id']);
         $fieldConfigs = $section->contentFieldConfigs()->active()->get();
 
         foreach ($fieldConfigs as $config)
@@ -153,17 +154,10 @@ class ContentController extends Controller
         }
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
 
-        // Get available locales for multi-language support
-        $availableLocales = [
-            'es' => 'Español',
-            'en' => 'English',
-            'it' => 'Italiano',
-            'pt' => 'Português',
-            'fr' => 'Français',
-            'de' => 'Deutsch',
-        ];
+        $availableLocales = $this->availableLocalesForContent($content, null);
+        $contentFormVisibility = $this->contentFormVisibilityForContent($content, null);
 
-        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales'));
+        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales', 'contentFormVisibility'));
     }
 
     public function update(UpdateContentRequest $request, Content $content)
@@ -177,9 +171,18 @@ class ContentController extends Controller
         $data['featured_slide'] = $request->has('featured_slide') && $request->input('featured_slide') == '1';
         $data['featured_modal'] = $request->has('featured_modal') && $request->input('featured_modal') == '1';
 
+        $sectionId = $data['section_category_id'] ?? $content->section_category_id;
+        $section = Category::findOrFail($sectionId);
+
+        if ($section->contentsPageSectionHistoryTimeline() && empty($data['template'] ?? null))
+        {
+            $data['template'] = 'timeline_item';
+        }
+
+        $localeCodes = $section->contentFormLocales();
+
         // Prepare translatable fields for all locales
         $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
-        $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
 
         foreach ($translatableFields as $field)
         {
@@ -189,7 +192,7 @@ class ContentController extends Controller
                 $current = [];
             }
 
-            foreach ($availableLocales as $locale)
+            foreach ($localeCodes as $locale)
             {
                 $fieldKey = "{$field}_{$locale}";
                 if ($request->has($fieldKey) && $request->input($fieldKey) !== null && $request->input($fieldKey) !== '')
@@ -206,8 +209,6 @@ class ContentController extends Controller
 
         // Extract data fields (additional fields from config)
         $dataFields = $content->data ?? [];
-        $sectionId = $data['section_category_id'] ?? $content->section_category_id;
-        $section = Category::findOrFail($sectionId);
         $fieldConfigs = $section->contentFieldConfigs()->active()->get();
 
         foreach ($fieldConfigs as $config)
@@ -277,6 +278,72 @@ class ContentController extends Controller
         }
 
         return response()->json(['success' => __('app.Order updated successfully.')], 200);
+    }
+
+    /**
+     * Locale labels for content/SEO tabs from the section category (or all supported when no section).
+     *
+     * @return array<string, string>
+     */
+    private function availableLocalesForContent(?Content $content, ?Category $selectedSection): array
+    {
+        $section = $content?->sectionCategory;
+        if (! $section && $selectedSection)
+        {
+            $section = $selectedSection;
+        }
+        if (! $section && request()->old('section_category_id'))
+        {
+            $section = Category::find(request()->old('section_category_id'));
+        }
+
+        $labels = ContentsSectionCategoryData::supportedLocaleLabels();
+        if (! $section)
+        {
+            return $labels;
+        }
+
+        $codes = $section->contentFormLocales();
+        $map = [];
+        foreach ($codes as $code)
+        {
+            if (isset($labels[$code]))
+            {
+                $map[$code] = $labels[$code];
+            }
+        }
+
+        return $map !== [] ? $map : ['es' => $labels['es']];
+    }
+
+    /**
+     * Resolved visibility for standard fields on the contents form from the section category.
+     *
+     * @return array{
+     *     show_title: bool,
+     *     show_subtitle: bool,
+     *     show_url: bool,
+     *     show_main_content: bool,
+     *     show_featured: bool,
+     *     show_seo: bool,
+     *     show_multimedia: bool
+     * }
+     */
+    private function contentFormVisibilityForContent(?Content $content, ?Category $selectedSection): array
+    {
+        $section = $content?->sectionCategory;
+        if (! $section && $selectedSection)
+        {
+            $section = $selectedSection;
+        }
+        if (! $section && request()->old('section_category_id'))
+        {
+            $section = Category::find(request()->old('section_category_id'));
+        }
+
+        return $section
+            ? $section->contentFormVisibility()
+            : ContentsSectionCategoryData::defaultContentFormVisibility();
     }
 
     /**

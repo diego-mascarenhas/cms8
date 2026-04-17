@@ -49,7 +49,7 @@ class UpdateWHMServiceStatus extends Command
                     {
                         $user = $status['user'];
 
-                        $service = DB::table('services')->where('data->user', $user)->first();
+                        $service = app('db')->table('services')->where('data->user', $user)->first();
 
                         if ($service)
                         {
@@ -62,7 +62,7 @@ class UpdateWHMServiceStatus extends Command
 
                             $updatedServiceData = json_encode($serviceData);
 
-                            DB::table('services')->where('data->user', $user)->update([
+                            app('db')->table('services')->where('data->user', $user)->update([
                                 'data' => $updatedServiceData,
                                 'updated_at' => Carbon::now(),
                             ]);

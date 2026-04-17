@@ -7,7 +7,6 @@ use App\Enums\TransactionType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
 {
@@ -20,7 +19,8 @@ class ExpenseController extends Controller
             {
                 $balance = Payment::where('account_id', $account->id)
                     ->where('status', 2) // Approved
-                    ->sum(DB::raw('CASE WHEN transaction_type = "income" THEN amount ELSE -amount END'));
+                    ->selectRaw('COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance', [TransactionType::INCOME->value])
+                    ->value('balance');
 
                 return [
                     'id' => $account->id,

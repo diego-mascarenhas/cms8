@@ -29,7 +29,7 @@ class UpdateSubscriptionsType extends Command
         $this->info('Updating subscriptions type from "default" to "mailer"...');
 
         // Get count before update
-        $count = DB::table('subscriptions')
+        $count = app('db')->table('subscriptions')
             ->where('type', 'default')
             ->count();
 
@@ -43,7 +43,7 @@ class UpdateSubscriptionsType extends Command
         $this->info("Found {$count} subscription(s) with type 'default'.");
 
         // Update subscriptions
-        $updated = DB::table('subscriptions')
+        $updated = app('db')->table('subscriptions')
             ->where('type', 'default')
             ->update(['type' => 'mailer']);
 

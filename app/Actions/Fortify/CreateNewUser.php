@@ -4,7 +4,6 @@ namespace App\Actions\Fortify;
 
 use App\Models\Team;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -28,7 +27,7 @@ class CreateNewUser implements CreatesNewUsers
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();
 
-        return DB::transaction(function () use ($input)
+        return User::query()->getModel()->getConnection()->transaction(function () use ($input)
         {
             $user = User::create([
                 'name' => $input['name'],

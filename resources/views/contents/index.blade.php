@@ -104,16 +104,8 @@ $(function() {
 
     let table = window.LaravelDataTables['content-table'];
 
-    $('#filter_section').on('change', function() {
-        table.column(2).search(this.value).draw();
-    });
-
-    $('#filter_status').on('change', function() {
-        table.column(3).search(this.value).draw();
-    });
-
-    $('#filter_featured').on('change', function() {
-        table.column(4).search(this.value).draw();
+    $('#filter_section, #filter_status, #filter_featured').on('change', function() {
+        table.draw();
     });
     
     // Eliminar completamente el campo de búsqueda por defecto de DataTables

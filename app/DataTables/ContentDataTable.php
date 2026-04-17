@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Content;
+use App\Support\ContentsSectionCategoryData;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -22,10 +23,11 @@ class ContentDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('title', function (Content $content)
             {
-                $locale = app()->getLocale();
-                $title = $content->getTranslatable('title', $locale);
+                $title = $content->resolveAdministrativeTitle();
 
-                return $title ?: '<span class="text-muted">'.__('app.No title').'</span>';
+                return $title !== null
+                    ? e($title)
+                    : '<span class="text-muted">'.__('app.No title').'</span>';
             })
             ->editColumn('section_category_id', function (Content $content)
             {
@@ -100,12 +102,12 @@ class ContentDataTable extends DataTable
         $search = $request->input('search.value', $request->input('search'));
         if (is_string($search) && $search !== '')
         {
-            $locale = app()->getLocale();
-            $query->where(function ($q) use ($search, $locale)
+            $query->where(function ($q) use ($search)
             {
-                $q->whereRaw("JSON_EXTRACT(title, '$.{$locale}') LIKE ?", ["%{$search}%"])
-                    ->orWhereRaw("JSON_EXTRACT(subtitle, '$.{$locale}') LIKE ?", ["%{$search}%"])
-                    ->orWhereRaw("JSON_EXTRACT(content, '$.{$locale}') LIKE ?", ["%{$search}%"]);
+                // Engine-agnostic JSON text search (MySQL/PostgreSQL).
+                $q->whereRaw("CONCAT(title, '') LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(subtitle, '') LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(content, '') LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -117,10 +119,15 @@ class ContentDataTable extends DataTable
         return $this->builder()
             ->setTableId('content-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.section_id = $('#filter_section').val() || ''; data.status = $('#filter_status').val() || ''; data.featured = $('#filter_featured').val() || '';",
+            )
             ->dom('rtip')
             ->orderBy(5, 'desc')
             ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
             ->language([
                 'url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json',
                 'search' => '',

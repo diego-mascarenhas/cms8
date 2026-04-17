@@ -314,6 +314,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/{id}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('categories.toggle-status');
     Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
     Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
 

@@ -8,7 +8,6 @@ use App\Models\InvoiceItem;
 use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -75,7 +74,7 @@ class WhatsAppInvoiceSheetImportService
         $draftCount = 0;
         $errors = [];
 
-        DB::transaction(function () use ($rows, $teamId, $typeId, $draftEnterpriseId, &$createdSummaries, &$draftCount, &$errors): void
+        Invoice::query()->getModel()->getConnection()->transaction(function () use ($rows, $teamId, $typeId, $draftEnterpriseId, &$createdSummaries, &$draftCount, &$errors): void
         {
             foreach ($rows as $index => $row)
             {

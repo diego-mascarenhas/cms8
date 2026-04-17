@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ContentsSectionCategoryData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -32,6 +33,48 @@ class Category extends Model
         'data' => 'array',
         'status' => 'boolean',
     ];
+
+    /**
+     * Visibility flags for standard fields on the contents form (from {@see Category::$data} `content_form`).
+     *
+     * @return array{
+     *     show_title: bool,
+     *     show_subtitle: bool,
+     *     show_url: bool,
+     *     show_main_content: bool,
+     *     show_featured: bool,
+     *     show_seo: bool,
+     *     show_multimedia: bool
+     * }
+     */
+    public function contentFormVisibility(): array
+    {
+        return ContentsSectionCategoryData::mergeContentFormVisibility($this->data['content_form'] ?? null);
+    }
+
+    /**
+     * Locale codes enabled for the contents form for this section (from {@see Category::$data} `content_locales`).
+     *
+     * @return list<string>
+     */
+    public function contentFormLocales(): array
+    {
+        return ContentsSectionCategoryData::mergeContentLocalesFromStorage($this->data['content_locales'] ?? null);
+    }
+
+    /**
+     * Whether this contents section category exposes the history timeline for external consumers (see {@see Category::$data} `page_sections`).
+     */
+    public function contentsPageSectionHistoryTimeline(): bool
+    {
+        $pageSections = $this->data['page_sections'] ?? null;
+        if (! is_array($pageSections))
+        {
+            return false;
+        }
+
+        return ! empty($pageSections['history_timeline']);
+    }
 
     /**
      * Get the parent category.

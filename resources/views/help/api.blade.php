@@ -87,7 +87,14 @@
                                     <i class="ti ti-info-circle me-2"></i>
                                     {{ __('API Authentication Types') }}
                                 </h6>
-                                <p class="mb-0">{{ __('This API uses team-based authentication. Generate tokens in your team settings to access team-scoped data. Some endpoints may require user authentication instead.') }}</p>
+                                <p class="mb-2">{{ __('This API uses team-based authentication. Generate tokens in your team settings to access team-scoped data. Some endpoints may require user authentication instead.') }}</p>
+                                <p class="mb-0 small">{{ __('Team tokens: open Team Settings → API Tokens and click “Generate API Token”.') }}
+                                    @auth
+                                        @if(auth()->user()->currentTeam)
+                                            <a href="{{ route('team-settings.api-tokens', auth()->user()->currentTeam) }}">{{ __('Open API tokens') }}</a>
+                                        @endif
+                                    @endauth
+                                </p>
                             </div>
 
                             <h6 class="mt-4">{{ __('Available Endpoints') }}</h6>

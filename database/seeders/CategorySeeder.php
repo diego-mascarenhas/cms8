@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Module;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class CategorySeeder extends Seeder
 {
@@ -187,5 +188,30 @@ class CategorySeeder extends Seeder
         );
 
         $this->command->info('Basic system categories created successfully.');
+
+        $this->resyncCategoriesIdSequenceForPostgres();
+    }
+
+    /**
+     * PostgreSQL does not advance sequences when rows are inserted with explicit ids.
+     */
+    private function resyncCategoriesIdSequenceForPostgres(): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql')
+        {
+            return;
+        }
+
+        $maxId = (int) Category::query()->max('id');
+
+        if ($maxId < 1)
+        {
+            return;
+        }
+
+        DB::statement(
+            'SELECT setval(pg_get_serial_sequence(\'categories\', \'id\'), ?, true)',
+            [$maxId],
+        );
     }
 }

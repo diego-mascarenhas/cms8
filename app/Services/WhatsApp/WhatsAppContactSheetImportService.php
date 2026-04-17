@@ -7,7 +7,6 @@ use App\Models\ContactStatus;
 use App\Models\Enterprise;
 use App\Models\Team;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -66,7 +65,7 @@ class WhatsAppContactSheetImportService
         $createdNames = [];
         $errors = [];
 
-        DB::transaction(function () use ($rows, $teamId, $user, $statusId, &$createdNames, &$errors): void
+        Contact::query()->getModel()->getConnection()->transaction(function () use ($rows, $teamId, $user, $statusId, &$createdNames, &$errors): void
         {
             foreach ($rows as $index => $row)
             {

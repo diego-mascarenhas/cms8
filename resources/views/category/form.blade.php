@@ -9,26 +9,32 @@
 @section('content')
 <div class="row">
     <div class="col-md-8 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">{{ isset($category) ? __('app.Edit Category') : __('app.Create Category') }}</h5>
-            </div>
-            <div class="card-body">
-                @if(session('error'))
-                    <div class="alert alert-danger mb-3">
-                        {{ session('error') }}
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ isset($category) ? route('categories.update', $category->id) : route('categories.store') }}">
+        <form method="POST" action="{{ isset($category) ? route('categories.update', $category->id) : route('categories.store') }}">
                     @csrf
+                    @php
+                        $indexReturnModuleId = old('return_module_id', $returnModuleIdForIndex ?? null);
+                    @endphp
+                    @if($indexReturnModuleId)
+                        <input type="hidden" name="return_module_id" value="{{ (int) $indexReturnModuleId }}">
+                    @endif
                     @if(isset($category))
                         @method('PUT')
                         <input type="hidden" name="id" value="{{ $category->id }}">
                     @endif
                     @php
-                        $categoryData = $category->data ?? [];
+                        $categoryData = isset($category) ? ($category->data ?? []) : [];
                     @endphp
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ isset($category) ? __('app.Edit Category') : __('app.Create Category') }}</h5>
+                </div>
+                <div class="card-body">
+                    @if(session('error'))
+                        <div class="alert alert-danger mb-3">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
                     <div class="row mb-3">
                         <div class="col-md-8">
@@ -86,12 +92,6 @@
                                 @error('parent_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-
-                                @if(isset($parent))
-                                    <div class="form-text mt-1">
-                                        {{ __('app.Will be created as a subcategory of') }}: <strong>{{ $parent->name }}</strong>
-                                    </div>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -105,57 +105,182 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label for="order" class="form-label">{{ __('app.Display Order') }}</label>
-                        <input type="number" class="form-control @error('order') is-invalid @enderror"
-                            id="order" name="order" value="{{ old('order', $category->order ?? 0) }}" min="0">
-                        @error('order')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                        <div class="form-text">{{ __('app.Lower numbers appear first. Leave as 0 for automatic ordering.') }}</div>
-                    </div>
+                    {{-- Order is adjusted from the categories list (drag); value is preserved on save. --}}
+                    <input type="hidden" name="order" value="{{ old('order', isset($category) ? ($category->order ?? 0) : 0) }}">
+                    @error('order')
+                        <div class="text-danger small mb-2">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
 
+            <div id="content-ordering-section" class="card mb-3 d-none">
+                <div class="card-body">
+                    <h6 class="mb-3">Configuración de Ordenamiento de Contenidos</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Ordenamiento por defecto</label>
+                        <div class="form-text mb-2">Configura cómo se ordenarán los contenidos en esta categoría</div>
+
+                        <div class="row g-3" id="content-ordering-rules">
+                            <div class="col-md-6">
+                                <label class="form-label">Primer orden</label>
+                                <select class="form-select" name="content_ordering[0][column]">
+                                    <option value="order" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? 'order') === 'order' ? 'selected' : '' }}>Orden manual</option>
+                                    <option value="created_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
+                                    <option value="updated_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
+                                    <option value="title" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Dirección</label>
+                                <select class="form-select" name="content_ordering[0][direction]">
+                                    <option value="asc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? 'asc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
+                                    <option value="desc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? '') === 'desc' ? 'selected' : '' }}>Descendente</option>
+                                </select>
+                            </div>
+
+                            {{-- Second sort criterion: hidden in UI for now; inputs remain so saves keep defaults / stored values. --}}
+                            <div class="col-md-6 d-none" aria-hidden="true">
+                                <label class="form-label">Segundo orden (opcional)</label>
+                                <select class="form-select" name="content_ordering[1][column]">
+                                    <option value="">-- Sin segundo orden --</option>
+                                    <option value="order" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'order' ? 'selected' : '' }}>Orden manual</option>
+                                    <option value="created_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
+                                    <option value="updated_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
+                                    <option value="title" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-none" aria-hidden="true">
+                                <label class="form-label">Dirección</label>
+                                <select class="form-select" name="content_ordering[1][direction]">
+                                    <option value="asc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
+                                    <option value="desc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'desc' ? 'selected' : '' }}>Descendente</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
                     <div id="content-options" class="border rounded p-3 mb-3 d-none">
-                        <h6 class="mb-3">Configuración de Ordenamiento de Contenidos</h6>
-                        <div class="mb-3">
-                            <label class="form-label">Ordenamiento por defecto</label>
-                            <div class="form-text mb-2">Configura cómo se ordenarán los contenidos en esta categoría</div>
-                            
-                            <div class="row g-3" id="content-ordering-rules">
-                                <div class="col-md-6">
-                                    <label class="form-label">Primer orden</label>
-                                    <select class="form-select" name="content_ordering[0][column]">
-                                        <option value="order" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? 'order') === 'order' ? 'selected' : '' }}>Orden manual</option>
-                                        <option value="created_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
-                                        <option value="updated_at" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
-                                        <option value="title" {{ old('content_ordering.0.column', $categoryData['content_ordering'][0]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
-                                    </select>
+                        <input type="hidden" name="content_locales_present" value="1">
+                        @php
+                            $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
+                            $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.Content form languages') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.Content form languages hint') }}</p>
+                        <div class="row g-2 mb-4">
+                            @foreach($localeLabels as $localeCode => $localeLabel)
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="content_locale_{{ $localeCode }}" name="content_locales[]" value="{{ $localeCode }}"
+                                            @checked(in_array($localeCode, old('content_locales', $mergedLocales), true))>
+                                        <label class="form-check-label" for="content_locale_{{ $localeCode }}">{{ $localeLabel }}</label>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Dirección</label>
-                                    <select class="form-select" name="content_ordering[0][direction]">
-                                        <option value="asc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? 'asc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
-                                        <option value="desc" {{ old('content_ordering.0.direction', $categoryData['content_ordering'][0]['direction'] ?? '') === 'desc' ? 'selected' : '' }}>Descendente</option>
-                                    </select>
+                            @endforeach
+                        </div>
+
+                        <hr class="my-2">
+                        @php
+                            $contentFormFields = \App\Support\ContentsSectionCategoryData::mergeContentFormVisibility($categoryData['content_form'] ?? null);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.Content form visibility') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.Content form visibility hint') }}</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_title]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_title" name="content_form[show_title]" value="1"
+                                        @checked(old('content_form.show_title', $contentFormFields['show_title']))>
+                                    <label class="form-check-label" for="cff_show_title">{{ __('app.Show title on content form') }}</label>
                                 </div>
-                                
-                                <div class="col-md-6">
-                                    <label class="form-label">Segundo orden (opcional)</label>
-                                    <select class="form-select" name="content_ordering[1][column]">
-                                        <option value="">-- Sin segundo orden --</option>
-                                        <option value="order" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'order' ? 'selected' : '' }}>Orden manual</option>
-                                        <option value="created_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? 'created_at') === 'created_at' ? 'selected' : '' }}>Fecha de creación</option>
-                                        <option value="updated_at" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'updated_at' ? 'selected' : '' }}>Fecha de actualización</option>
-                                        <option value="title" {{ old('content_ordering.1.column', $categoryData['content_ordering'][1]['column'] ?? '') === 'title' ? 'selected' : '' }}>Título</option>
-                                    </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_main_content]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_main_content" name="content_form[show_main_content]" value="1"
+                                        @checked(old('content_form.show_main_content', $contentFormFields['show_main_content']))>
+                                    <label class="form-check-label" for="cff_show_main_content">{{ __('app.Show main content on content form') }}</label>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Dirección</label>
-                                    <select class="form-select" name="content_ordering[1][direction]">
-                                        <option value="asc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'asc' ? 'selected' : '' }}>Ascendente</option>
-                                        <option value="desc" {{ old('content_ordering.1.direction', $categoryData['content_ordering'][1]['direction'] ?? 'desc') === 'desc' ? 'selected' : '' }}>Descendente</option>
-                                    </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_subtitle]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_subtitle" name="content_form[show_subtitle]" value="1"
+                                        @checked(old('content_form.show_subtitle', $contentFormFields['show_subtitle']))>
+                                    <label class="form-check-label" for="cff_show_subtitle">{{ __('app.Show subtitle on content form') }}</label>
                                 </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_url]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_url" name="content_form[show_url]" value="1"
+                                        @checked(old('content_form.show_url', $contentFormFields['show_url']))>
+                                    <label class="form-check-label" for="cff_show_url">{{ __('app.Show URL on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_featured]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_featured" name="content_form[show_featured]" value="1"
+                                        @checked(old('content_form.show_featured', $contentFormFields['show_featured']))>
+                                    <label class="form-check-label" for="cff_show_featured">{{ __('app.Show featured options on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_seo]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_seo" name="content_form[show_seo]" value="1"
+                                        @checked(old('content_form.show_seo', $contentFormFields['show_seo']))>
+                                    <label class="form-check-label" for="cff_show_seo">{{ __('app.Show SEO block on content form') }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="hidden" name="content_form[show_multimedia]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cff_show_multimedia" name="content_form[show_multimedia]" value="1"
+                                        @checked(old('content_form.show_multimedia', $contentFormFields['show_multimedia']))>
+                                    <label class="form-check-label" for="cff_show_multimedia">{{ __('app.Show multimedia on content form') }}</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+                        @php
+                            $pageSectionsStored = $categoryData['page_sections'] ?? [];
+                            $historyTimelineChecked = old('page_sections.history_timeline', $pageSectionsStored['history_timeline'] ?? false);
+                        @endphp
+                        <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
+                                <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
+                                    value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
+                                @error('contents_section_slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">{{ __('app.Section slug hint') }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="history_section_heading" class="form-label">{{ __('app.History section heading') }}</label>
+                                <input type="text" class="form-control @error('history_section_heading') is-invalid @enderror" id="history_section_heading" name="history_section_heading"
+                                    value="{{ old('history_section_heading', $categoryData['history']['heading'] ?? '') }}" maxlength="255">
+                                @error('history_section_heading')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="hidden" name="page_sections[history_timeline]" value="0">
+                                    <input type="checkbox" class="form-check-input" id="page_sections_history_timeline" name="page_sections[history_timeline]" value="1"
+                                        @checked(filter_var($historyTimelineChecked, FILTER_VALIDATE_BOOLEAN))>
+                                    <label class="form-check-label" for="page_sections_history_timeline">{{ __('app.Enable history timeline') }}</label>
+                                </div>
+                                <div class="form-text">{{ __('app.Enable history timeline hint') }}</div>
                             </div>
                         </div>
                     </div>
@@ -276,11 +401,11 @@
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary me-2">{{ __('app.Save') }}</button>
-                        <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">{{ __('app.Cancel') }}</a>
+                        <a href="{{ route('categories.index', array_filter(['module_id' => $indexReturnModuleId])) }}" class="btn btn-outline-secondary">{{ __('app.Cancel') }}</a>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 @endsection
@@ -298,8 +423,46 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2 for dropdowns
-    $('#module_id, #parent_id').select2();
+    const parentCategoriesByModule = @json($parentCategoriesByModule ?? []);
+    const topLevelParentLabel = @json(__('app.Top Level'));
+    const moduleSelectEl = document.getElementById('module_id');
+    const $parentId = $('#parent_id');
+
+    function rebuildParentCategoryOptions() {
+        if (! moduleSelectEl || ! $parentId.length) {
+            return;
+        }
+
+        if ($parentId.hasClass('select2-hidden-accessible')) {
+            $parentId.select2('destroy');
+        }
+
+        const moduleId = moduleSelectEl.value;
+        const list = parentCategoriesByModule[moduleId] || parentCategoriesByModule[String(moduleId)] || [];
+        const previous = String($parentId.val() || '');
+
+        $parentId.empty();
+        $parentId.append(new Option(topLevelParentLabel, '', false, previous === ''));
+
+        let matched = previous === '';
+        list.forEach(function (row) {
+            const idStr = String(row.id);
+            const selected = idStr === previous;
+            if (selected) {
+                matched = true;
+            }
+            $parentId.append(new Option(row.name, idStr, false, selected));
+        });
+
+        if (! matched) {
+            $parentId.prop('selectedIndex', 0);
+        }
+
+        $parentId.select2();
+    }
+
+    $('#module_id').select2();
+    rebuildParentCategoryOptions();
 
     // Initialize Select2 for tags with autocomplete and creation
     const tagsSelect = $('#tags');
@@ -375,14 +538,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentsModuleId = '{{ \App\Models\Module::where("key", "contents")->value("id") ?? "" }}';
     const multimediaOptions = document.getElementById('multimedia-options');
     const contentOptions = document.getElementById('content-options');
-    const moduleSelect = document.getElementById('module_id');
+    const contentOrderingSection = document.getElementById('content-ordering-section');
 
     function toggleModuleOptions() {
-        if (!moduleSelect) {
+        if (! moduleSelectEl) {
             return;
         }
 
-        const selectedModule = moduleSelect.value;
+        const selectedModule = moduleSelectEl.value;
         
         // Toggle multimedia options
         if (multimediaOptions) {
@@ -393,18 +556,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Toggle content options
+        // Toggle content options (languages + form visibility) and ordering — Contents module only
+        const showContentsOptions = contentsModuleId && selectedModule === contentsModuleId.toString();
         if (contentOptions) {
-            if (contentsModuleId && selectedModule === contentsModuleId.toString()) {
+            if (showContentsOptions) {
                 contentOptions.classList.remove('d-none');
             } else {
                 contentOptions.classList.add('d-none');
             }
         }
+        if (contentOrderingSection) {
+            if (showContentsOptions) {
+                contentOrderingSection.classList.remove('d-none');
+            } else {
+                contentOrderingSection.classList.add('d-none');
+            }
+        }
     }
 
     toggleModuleOptions();
-    moduleSelect.addEventListener('change', toggleModuleOptions);
+
+    // Select2 updates the underlying <select> but the UI selection may only fire
+    // jQuery's change handler; bind with jQuery so Contents blocks hide/show correctly.
+    $('#module_id').on('change', function () {
+        toggleModuleOptions();
+        rebuildParentCategoryOptions();
+    });
 });
 </script>
 @endsection

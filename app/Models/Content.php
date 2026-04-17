@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Website content row. Translatable copy lives in JSON columns ({@see $casts}) per locale key (e.g. es).
+ * {@see $title} is not the main body: use {@see $content} for the primary HTML/text body. {@see $data}
+ * holds ContentFieldConfig-driven fields (e.g. event_year, image_url for template timeline_item).
+ */
 class Content extends Model
 {
     use HasFactory;
@@ -134,6 +139,59 @@ class Content extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Title for admin lists: prefers app locale, then Spanish, then the section’s configured locales, then any non-empty translation.
+     */
+    public function resolveAdministrativeTitle(): ?string
+    {
+        $raw = $this->title;
+
+        if (is_string($raw))
+        {
+            $trimmed = trim($raw);
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        if (! is_array($raw) || $raw === [])
+        {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+        $fromSection = [];
+        if ($this->relationLoaded('sectionCategory') && $this->sectionCategory)
+        {
+            $fromSection = $this->sectionCategory->contentFormLocales();
+        }
+
+        $candidates = array_values(array_unique(array_merge(
+            [$locale, 'es'],
+            $fromSection,
+            array_keys($raw),
+        )));
+
+        foreach ($candidates as $code)
+        {
+            if (! is_string($code) || $code === '')
+            {
+                continue;
+            }
+
+            $v = $raw[$code] ?? null;
+            if (is_string($v))
+            {
+                $trimmed = trim($v);
+                if ($trimmed !== '')
+                {
+                    return $trimmed;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

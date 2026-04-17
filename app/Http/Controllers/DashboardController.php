@@ -151,7 +151,7 @@ class DashboardController extends Controller
             $ongoingProjects = Project::with(['client', 'responsible', 'status'])
                 ->where('team_id', $activeTeam->id)
                 ->whereIn('status_id', [1, 2, 9])  // BUDGET, BUDGETED, IN_PROGRESS
-                ->orderByRaw('FIELD(status_id, 9, 2, 1)')  // IN_PROGRESS (9) first, then BUDGETED (2), then BUDGET (1)
+                ->orderByRaw('CASE status_id WHEN 9 THEN 1 WHEN 2 THEN 2 WHEN 1 THEN 3 ELSE 4 END')
                 ->orderBy('updated_at', 'desc')
                 ->take(10)  // Limit to 10 projects
                 ->get();

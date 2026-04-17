@@ -9,7 +9,6 @@ use App\Models\Language;
 use App\Models\UserFare;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class UserFareController extends Controller
 {
@@ -261,33 +260,38 @@ class UserFareController extends Controller
 
         try
         {
-            DB::beginTransaction();
-
-            // If language variants module is not active, save rates without language pairs
-            if (! $hasLanguageVariantsModule)
+            UserFare::query()->getModel()->getConnection()->transaction(function () use (
+                $hasLanguageVariantsModule,
+                $collaborator,
+                $validated,
+                $currency,
+                $sameRates
+            ): void
             {
-                $this->saveRatesWithoutLanguagePairs($collaborator, $validated, $currency);
-            } elseif ($sameRates)
-            {
-                // Same rates for all language combinations - OVERWRITE ALL
-                $this->saveSameRatesForAllLanguages($collaborator, $validated, $currency);
-            } else
-            {
-                // Different rates per language combination
-
-                // First, update existing currency codes for consistency
-                if ($collaborator->fares->count() > 0)
+                // If language variants module is not active, save rates without language pairs
+                if (! $hasLanguageVariantsModule)
                 {
-                    $collaborator->fares()->updateExistingPivot(
-                        $collaborator->fares->pluck('id')->toArray(),
-                        ['currency_code' => $currency],
-                    );
+                    $this->saveRatesWithoutLanguagePairs($collaborator, $validated, $currency);
+                } elseif ($sameRates)
+                {
+                    // Same rates for all language combinations - OVERWRITE ALL
+                    $this->saveSameRatesForAllLanguages($collaborator, $validated, $currency);
+                } else
+                {
+                    // Different rates per language combination
+
+                    // First, update existing currency codes for consistency
+                    if ($collaborator->fares->count() > 0)
+                    {
+                        $collaborator->fares()->updateExistingPivot(
+                            $collaborator->fares->pluck('id')->toArray(),
+                            ['currency_code' => $currency],
+                        );
+                    }
+
+                    $this->saveDifferentRatesPerLanguage($collaborator, $validated, $currency);
                 }
-
-                $this->saveDifferentRatesPerLanguage($collaborator, $validated, $currency);
-            }
-
-            DB::commit();
+            });
 
             if ($request->ajax())
             {
@@ -321,8 +325,6 @@ class UserFareController extends Controller
             return redirect($redirectUrl)->with('success', 'Tarifas actualizadas exitosamente.');
         } catch (\Exception $e)
         {
-            DB::rollBack();
-
             if ($request->ajax())
             {
                 return response()->json([
