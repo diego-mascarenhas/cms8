@@ -134,7 +134,7 @@ class WhatsAppCheckoutOrderService
                 {
                     $q2->where('source_id', 2)->where('value', $cleanDigits);
                 })
-                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(CAST(phone AS TEXT), ' ', ''), '+', ''), '-', '') = ?", [$cleanDigits]);
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(CONCAT(phone, ''), ' ', ''), '+', ''), '-', '') = ?", [$cleanDigits]);
             })
             ->first();
 

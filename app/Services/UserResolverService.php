@@ -54,7 +54,7 @@ class UserResolverService
                 {
                     $q2->where('source_id', 2)->where('value', $cleanNumber);
                 })
-                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(CAST(phone AS TEXT), ' ', ''), '+', ''), '-', '') = ?", [$cleanNumber]);
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(CONCAT(phone, ''), ' ', ''), '+', ''), '-', '') = ?", [$cleanNumber]);
             })
             ->first();
 
@@ -174,7 +174,7 @@ class UserResolverService
      */
     protected function findContactByNormalizedPhone(string $cleanNumber): ?Contact
     {
-        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS TEXT), ' ', ''), '+', ''), '-', '')";
+        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CONCAT(phone, ''), ' ', ''), '+', ''), '-', '')";
 
         return Contact::withoutGlobalScopes()
             ->where(function ($query) use ($cleanNumber, $phoneNormalizedSql)
