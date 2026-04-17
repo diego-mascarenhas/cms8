@@ -1049,7 +1049,7 @@ class ContactController extends Controller
                         ->where('name', 'like', "%{$query}%")
                         ->orWhere('surname', 'like', "%{$query}%")
                         ->orWhere('email', 'like', "%{$query}%")
-                        ->orWhere('phone', 'like', "%{$query}%");
+                        ->orWhereRaw("CONCAT(phone, '') LIKE ?", ["%{$query}%"]);
                 });
             }
 
@@ -1089,7 +1089,7 @@ class ContactController extends Controller
                 $q
                     ->where('name', 'like', "%{$query}%")
                     ->orWhere('code', 'like', "%{$query}%")
-                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhereRaw("CONCAT(phone, '') LIKE ?", ["%{$query}%"])
                     ->orWhere('email', 'like', "%{$query}%");
             });
         }
@@ -1122,8 +1122,8 @@ class ContactController extends Controller
                 {
                     $q
                         ->where('description', 'like', "%{$query}%")
-                        // Search in all JSON data fields
-                        ->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$query}%"]);
+                        // Engine-agnostic JSON text search (MySQL/PostgreSQL).
+                        ->orWhereRaw("CONCAT(data, '') LIKE ?", ["%{$query}%"]);
                 });
             }
 
@@ -1132,8 +1132,9 @@ class ContactController extends Controller
                 ->get()
                 ->map(function ($service)
                 {
-                    $domain = isset($service->data->domain) ? $service->data->domain : ($service->description ?: 'No domain');
-                    $user = isset($service->data->user) ? $service->data->user : '';
+                    $serviceData = is_array($service->data) ? $service->data : (array) ($service->data ?? []);
+                    $domain = $serviceData['domain'] ?? ($service->description ?: 'No domain');
+                    $user = $serviceData['user'] ?? '';
 
                     return [
                         'name' => $domain,

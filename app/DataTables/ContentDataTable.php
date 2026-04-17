@@ -102,18 +102,12 @@ class ContentDataTable extends DataTable
         $search = $request->input('search.value', $request->input('search'));
         if (is_string($search) && $search !== '')
         {
-            $locales = array_values(array_unique(array_merge(
-                [app()->getLocale(), 'es'],
-                array_keys(ContentsSectionCategoryData::supportedLocaleLabels()),
-            )));
-            $query->where(function ($q) use ($search, $locales)
+            $query->where(function ($q) use ($search)
             {
-                foreach ($locales as $locale)
-                {
-                    $q->orWhereRaw("JSON_EXTRACT(title, '$.{$locale}') LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("JSON_EXTRACT(subtitle, '$.{$locale}') LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("JSON_EXTRACT(content, '$.{$locale}') LIKE ?", ["%{$search}%"]);
-                }
+                // Engine-agnostic JSON text search (MySQL/PostgreSQL).
+                $q->whereRaw("CONCAT(title, '') LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(subtitle, '') LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(content, '') LIKE ?", ["%{$search}%"]);
             });
         }
 
