@@ -343,6 +343,42 @@ class ModuleSeeder extends Seeder
             'description' => 'Collaborators management module',
             'order' => 8,
         ],
+        'survival' => [
+            'name' => 'Survival',
+            'icon' => 'shield',
+            'description' => 'Survival management module',
+            'order' => 9,
+        ],
+        // INNOVATION GROUP
+        'proposals' => [
+            'name' => 'Proposals',
+            'icon' => 'bulb',
+            'description' => 'Innovation proposals management module',
+            'group' => 'innovation',
+            'order' => 1,
+        ],
+        'challenges' => [
+            'name' => 'Challenges',
+            'icon' => 'trophy',
+            'description' => 'Innovation challenges management module',
+            'group' => 'innovation',
+            'order' => 2,
+        ],
+        // SECURITY GROUP
+        'passwords' => [
+            'name' => 'Passwords',
+            'icon' => 'key',
+            'description' => 'Password vault and credential management module',
+            'group' => 'security',
+            'order' => 1,
+        ],
+        'canary_tokens' => [
+            'name' => 'Canary Tokens',
+            'icon' => 'shield-lock',
+            'description' => 'Canary token generation and monitoring module',
+            'group' => 'security',
+            'order' => 2,
+        ],
         // LEARNING & DEVELOPMENT
         'languages' => [
             'name' => 'Languages',
@@ -385,6 +421,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Stylebooks management module',
             'group' => 'learning',
             'order' => 6,
+        ],
+        'exams' => [
+            'name' => 'Exams',
+            'icon' => 'clipboard-check',
+            'description' => 'Learning exams and assessments module',
+            'group' => 'learning',
+            'order' => 7,
         ],
     ];
 

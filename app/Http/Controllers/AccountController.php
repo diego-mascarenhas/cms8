@@ -69,6 +69,8 @@ class AccountController extends Controller
             'infrastructure' => ['name' => 'Infrastructure', 'icon' => 'server', 'description' => 'Infrastructure management (servers, hosting)'],
             'campaigns' => ['name' => 'Campaigns', 'icon' => 'mail-forward', 'description' => 'Templates, email campaigns and marketing automation'],
             'automation' => ['name' => 'Automation', 'icon' => 'robot', 'description' => 'Assistant instructions, funnel and API.'],
+            'innovation' => ['name' => 'Innovation', 'icon' => 'bulb', 'description' => 'Ideas, proposals and innovation challenges'],
+            'security' => ['name' => 'Security', 'icon' => 'shield-lock', 'description' => 'Passwords and canary token security tools'],
             'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, academy and landing pages'],
             'support' => ['name' => 'Support', 'icon' => 'headset', 'description' => 'Customer support (tickets, mailbox, chat)'],
             'learning' => ['name' => 'Learning & Development', 'icon' => 'book', 'description' => 'Languages, certifications and training'],
