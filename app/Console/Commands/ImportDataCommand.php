@@ -82,12 +82,12 @@ class ImportDataCommand extends Command
         try
         {
             // Test local database connection
-            DB::connection()->getPdo();
-            $this->info('✓ Local database connection successful: '.DB::connection()->getDatabaseName());
+            app('db')->connection()->getPdo();
+            $this->info('✓ Local database connection successful: '.app('db')->connection()->getDatabaseName());
 
             // Test remote database connection
-            DB::connection('mysql_legacy')->getPdo();
-            $this->info('✓ Remote database connection successful: '.DB::connection('mysql_legacy')->getDatabaseName());
+            app('db')->connection('mysql_legacy')->getPdo();
+            $this->info('✓ Remote database connection successful: '.app('db')->connection('mysql_legacy')->getDatabaseName());
 
             return true;
         } catch (Exception $e)
@@ -215,7 +215,7 @@ class ImportDataCommand extends Command
     {
         $query = match ($type)
         {
-            '1. Users' => DB::connection('mysql_legacy')
+            '1. Users' => app('db')->connection('mysql_legacy')
                 ->table('contactos')
                 ->whereNotNull('email')
                 ->where('grupo', env('CMS_GROUP', 502))
@@ -227,27 +227,27 @@ class ImportDataCommand extends Command
                 ->whereRaw("TRIM(nombre) != ''")
                 ->select('id', 'email', 'nombre', 'apellido', 'estado', 'id_empresa', 'area_privada', 'telefono', 'celular', 'fecha_alta', 'fecha_modificacion'),
 
-            '2. Categories' => DB::connection('mysql_legacy')
+            '2. Categories' => app('db')->connection('mysql_legacy')
                 ->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('padre', 10)
                 ->select('id', 'categoria', 'padre', 'estado'),
 
-            '3. Service Types' => DB::connection('mysql_legacy')
+            '3. Service Types' => app('db')->connection('mysql_legacy')
                 ->table('categorias_generales_tipo')
                 ->select('id', 'tipo', 'descripcion', 'caracteristicas', 'id_moneda', 'valor', 'descuento', 'frecuencia', 'template_alta_de_servicio', 'orden', 'estado'),
 
-            '4. Payment Accounts' => DB::connection('mysql_legacy')
+            '4. Payment Accounts' => app('db')->connection('mysql_legacy')
                 ->table('cuentas')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'nombre_cuenta', 'id_empresa', 'id_moneda', 'estado'),
 
-            '5. Enterprises' => DB::connection('mysql_legacy')
+            '5. Enterprises' => app('db')->connection('mysql_legacy')
                 ->table('empresas')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado', 'fecha_modificacion'),
 
-            '6. Services' => DB::connection('mysql_legacy')
+            '6. Services' => app('db')->connection('mysql_legacy')
                 ->table('servicios')
                 ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
                 ->where('servicios.grupo', env('CMS_GROUP', 502))
@@ -255,12 +255,12 @@ class ImportDataCommand extends Command
                 ->where('servicios.operacion', 'V')
                 ->select('servicios.*', 'servicios_hosting.*'),
 
-            '7. Projects' => DB::connection('mysql_legacy')
+            '7. Projects' => app('db')->connection('mysql_legacy')
                 ->table('proyectos')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'nombre', 'id_empresa', 'estado'),
 
-            '8. Invoices' => DB::connection('mysql_legacy')
+            '8. Invoices' => app('db')->connection('mysql_legacy')
                 ->table('facturas')
                 ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
                 ->where('facturas.grupo', env('CMS_GROUP', 502))
@@ -291,39 +291,39 @@ class ImportDataCommand extends Command
                     'facturas.EXENTO',
                 ),
 
-            '9. Billing Addresses' => DB::connection('mysql_legacy')
+            '9. Billing Addresses' => app('db')->connection('mysql_legacy')
                 ->table('empresas_fiscales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('estado', 1)
                 ->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion'),
 
-            '10. Invoice Items' => DB::connection('mysql_legacy')
+            '10. Invoice Items' => app('db')->connection('mysql_legacy')
                 ->table('facturas_items')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion'),
 
-            '11. Payments' => DB::connection('mysql_legacy')
+            '11. Payments' => app('db')->connection('mysql_legacy')
                 ->table('pagos')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
 
-            '12. Notification Types' => DB::connection('mysql_legacy')
+            '12. Notification Types' => app('db')->connection('mysql_legacy')
                 ->table('comunicaciones_tipo')
                 ->select('id', 'tipo', 'estado'),
 
-            '13. Communications' => DB::connection('mysql_legacy')
+            '13. Communications' => app('db')->connection('mysql_legacy')
                 ->table('comunicaciones')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_contacto', 'id_tipo', 'asunto', 'estado'),
 
-            '14. Products (CMS7)' => DB::connection('mysql_legacy')
+            '14. Products (CMS7)' => app('db')->connection('mysql_legacy')
                 ->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->whereNull('padre')
                 ->where('estado', 1)
                 ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'estado', 'fecha_alta'),
 
-            '15. Stores (Pedimos Facil -> Teams)' => DB::connection('mysql_legacy')
+            '15. Stores (Pedimos Facil -> Teams)' => app('db')->connection('mysql_legacy')
                 ->table('tienda_configuracion as tc')
                 ->join('empresas as e', 'e.id', '=', 'tc.id_empresa')
                 ->where('tc.grupo', 513)
@@ -435,7 +435,7 @@ class ImportDataCommand extends Command
             $this->info('🧪 Running first-store validation import mode...');
             $this->newLine();
 
-            $firstStoreTeamId = DB::connection('mysql_legacy')
+            $firstStoreTeamId = app('db')->connection('mysql_legacy')
                 ->table('tienda_configuracion')
                 ->where('grupo', 513)
                 ->whereNotNull('id_empresa')
@@ -610,7 +610,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('contactos')
                 ->whereNotNull('email')
                 ->where('grupo', env('CMS_GROUP', 502))
@@ -640,11 +640,11 @@ class ImportDataCommand extends Command
             $bar->start();
 
             // Obtener o crear la categoría 'Legacy' para el módulo de contactos y el equipo
-            $contactsModuleId = DB::table('modules')->where('key', 'contacts')->value('id');
+            $contactsModuleId = app('db')->table('modules')->where('key', 'contacts')->value('id');
             $teamId = env('CMS_TEAM_ID', 2);
 
             // Buscar la categoría principal "Contactos" para usar como parent
-            $mainContactCategory = DB::table('categories')
+            $mainContactCategory = app('db')->table('categories')
                 ->where('name', 'Contactos')
                 ->where('module_id', $contactsModuleId)
                 ->where('team_id', $teamId)
@@ -668,7 +668,7 @@ class ImportDataCommand extends Command
 
             foreach ($contacts as $data)
             {
-                $existingContact = DB::table('contacts')->where('id', $data->id)->first();
+                $existingContact = app('db')->table('contacts')->where('id', $data->id)->first();
 
                 $phone = $data->celular ?? $data->telefono ?? null;
                 $cleaned_phone = PhoneHelper::clean($phone, '54', true);
@@ -677,7 +677,7 @@ class ImportDataCommand extends Command
                 $statusId = 5;
                 if (! empty($data->id_empresa))
                 {
-                    $enterprise = DB::table('enterprises')->where('id', $data->id_empresa)->first();
+                    $enterprise = app('db')->table('enterprises')->where('id', $data->id_empresa)->first();
                     if ($enterprise && $enterprise->status_id == 1)
                     {
                         $statusId = 6;
@@ -774,7 +774,7 @@ class ImportDataCommand extends Command
 
                 if (! $existingContact)
                 {
-                    DB::table('contacts')->insert($contactData);
+                    app('db')->table('contacts')->insert($contactData);
                     $stats['imported']++;
                 } else
                 {
@@ -793,7 +793,7 @@ class ImportDataCommand extends Command
                         $existingContact,
                         ['status_id', 'user_id'], // Always update status and user_id
                     );
-                    DB::table('contacts')->where('id', $existingContact->id)->update($mergedData);
+                    app('db')->table('contacts')->where('id', $existingContact->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -801,7 +801,7 @@ class ImportDataCommand extends Command
                 if (! empty($data->id_empresa))
                 {
                     // Verificar si existe la empresa
-                    $enterpriseExists = DB::table('enterprises')->where('id', $data->id_empresa)->exists();
+                    $enterpriseExists = app('db')->table('enterprises')->where('id', $data->id_empresa)->exists();
 
                     if ($enterpriseExists)
                     {
@@ -832,7 +832,7 @@ class ImportDataCommand extends Command
                         }
 
                         // Comprobar si ya existe la relación
-                        $relationExists = DB::table('contact_enterprise')
+                        $relationExists = app('db')->table('contact_enterprise')
                             ->where('contact_id', $data->id)
                             ->where('enterprise_id', $data->id_empresa)
                             ->exists();
@@ -840,7 +840,7 @@ class ImportDataCommand extends Command
                         if (! $relationExists)
                         {
                             // Crear la relación
-                            DB::table('contact_enterprise')->insert([
+                            app('db')->table('contact_enterprise')->insert([
                                 'contact_id' => $data->id,
                                 'enterprise_id' => $data->id_empresa,
                                 'position' => $position,
@@ -852,7 +852,7 @@ class ImportDataCommand extends Command
                         } else
                         {
                             // Actualizar la posición si la relación ya existe
-                            DB::table('contact_enterprise')
+                            app('db')->table('contact_enterprise')
                                 ->where('contact_id', $data->id)
                                 ->where('enterprise_id', $data->id_empresa)
                                 ->update([
@@ -871,13 +871,13 @@ class ImportDataCommand extends Command
                 // Al final de la importación de cada contacto:
                 if ($importedCategoryId)
                 {
-                    $exists = DB::table('contact_category')
+                    $exists = app('db')->table('contact_category')
                         ->where('contact_id', $data->id)
                         ->where('category_id', $importedCategoryId)
                         ->exists();
                     if (! $exists)
                     {
-                        DB::table('contact_category')->insert([
+                        app('db')->table('contact_category')->insert([
                             'contact_id' => $data->id,
                             'category_id' => $importedCategoryId,
                         ]);
@@ -933,7 +933,7 @@ class ImportDataCommand extends Command
                 5 => 840,  // Dolar MEP → USD
             ];
 
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('cuentas')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('estado', '>', 0);
@@ -961,7 +961,7 @@ class ImportDataCommand extends Command
             {
                 try
                 {
-                    $existingAccount = DB::table('payment_accounts')->where('id', $account->id)->first();
+                    $existingAccount = app('db')->table('payment_accounts')->where('id', $account->id)->first();
 
                     // Generate unique code
                     $code = 'PA-'.str_pad($account->id, 6, '0', STR_PAD_LEFT);
@@ -973,7 +973,7 @@ class ImportDataCommand extends Command
                     $oldCurrencyId = $account->id_moneda ?? 1;
                     $newCurrencyId = $currencyMap[$oldCurrencyId] ?? 840;  // Default to USD if not mapped
 
-                    DB::table('payment_accounts')->insert([
+                    app('db')->table('payment_accounts')->insert([
                         'id' => $account->id,
                         'team_id' => 2,  // REVISION ALPHA team
                         'code' => $code,
@@ -1040,7 +1040,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('empresas')
                 ->where('grupo', env('CMS_GROUP', 502));
 
@@ -1063,7 +1063,7 @@ class ImportDataCommand extends Command
 
             foreach ($enterprises as $data)
             {
-                $existingEnterprise = DB::table('enterprises')->where('id', $data->id)->first();
+                $existingEnterprise = app('db')->table('enterprises')->where('id', $data->id)->first();
 
                 if ($data->id_categoria == 3 || $data->id_categoria == 463)
                 {
@@ -1081,14 +1081,14 @@ class ImportDataCommand extends Command
                 // $contactId = null;
                 // if (! empty($data->id_contacto)) {
                 //	 // Verificamos si existe directamente en la tabla contacts
-                //	 $contactExists = DB::table('contacts')->where('id', $data->id_contacto)->exists();
+                //	 $contactExists = app('db')->table('contacts')->where('id', $data->id_contacto)->exists();
 
                 //	 if ($contactExists) {
                 //		 $contactId = $data->id_contacto;
                 //		 $this->info("Found contact with ID {$contactId} for enterprise {$data->id}");
                 //	 } else {
                 //		 // Si no existe, lo importamos desde la base de datos original
-                //		 $contactData = DB::connection('mysql_legacy')
+                //		 $contactData = app('db')->connection('mysql_legacy')
                 //			 ->table('contactos')
                 //			 ->where('id', $data->id_contacto)
                 //			 ->first();
@@ -1124,7 +1124,7 @@ class ImportDataCommand extends Command
                 //					 'updated_at' => $contactData->fecha_modificacion,
                 //				 ];
 
-                //				 DB::table('contacts')->insert($newContactData);
+                //				 app('db')->table('contacts')->insert($newContactData);
                 //				 $contactId = $contactData->id;
                 //				 $this->info("Contact with ID {$contactId} was imported for enterprise {$data->id}");
                 //			 } else {
@@ -1167,7 +1167,7 @@ class ImportDataCommand extends Command
 
                 if (! $existingEnterprise)
                 {
-                    DB::table('enterprises')->insert($enterpriseData);
+                    app('db')->table('enterprises')->insert($enterpriseData);
                     $stats['imported']++;
                 } else
                 {
@@ -1177,7 +1177,7 @@ class ImportDataCommand extends Command
                         $existingEnterprise,
                         ['status_id', 'type_id'], // Always update status and type
                     );
-                    DB::table('enterprises')->where('id', $existingEnterprise->id)->update($mergedData);
+                    app('db')->table('enterprises')->where('id', $existingEnterprise->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1230,7 +1230,7 @@ class ImportDataCommand extends Command
             }
 
             // Obtener todas las categorías del sistema antiguo
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('estado', '>', 0);
@@ -1291,11 +1291,11 @@ class ImportDataCommand extends Command
                         'updated_at' => $data->fecha_modificacion ?? now(),
                     ];
 
-                    $existingCategory = DB::table('categories')->where('id', $data->id)->first();
+                    $existingCategory = app('db')->table('categories')->where('id', $data->id)->first();
 
                     if (! $existingCategory)
                     {
-                        DB::table('categories')->insert($categoryData);
+                        app('db')->table('categories')->insert($categoryData);
                         $stats['imported']++;
                     } else
                     {
@@ -1305,7 +1305,7 @@ class ImportDataCommand extends Command
                             $existingCategory,
                             ['module_key', 'status_id'], // Always update these fields
                         );
-                        DB::table('categories')->where('id', $existingCategory->id)->update($mergedData);
+                        app('db')->table('categories')->where('id', $existingCategory->id)->update($mergedData);
                         $stats['updated']++;
                     }
 
@@ -1329,7 +1329,7 @@ class ImportDataCommand extends Command
                 foreach ($childCategories as $data)
                 {
                     // Verificar que el padre existe en categories
-                    $parentExists = DB::table('categories')->where('id', $data->padre)->exists();
+                    $parentExists = app('db')->table('categories')->where('id', $data->padre)->exists();
 
                     if (! $parentExists)
                     {
@@ -1357,11 +1357,11 @@ class ImportDataCommand extends Command
                         'updated_at' => $data->fecha_modificacion ?? now(),
                     ];
 
-                    $existingServiceType = DB::table('service_types')->where('id', $data->id)->first();
+                    $existingServiceType = app('db')->table('service_types')->where('id', $data->id)->first();
 
                     if (! $existingServiceType)
                     {
-                        DB::table('service_types')->insert($serviceTypeData);
+                        app('db')->table('service_types')->insert($serviceTypeData);
                         $serviceTypesImported++;
                     } else
                     {
@@ -1371,7 +1371,7 @@ class ImportDataCommand extends Command
                             $existingServiceType,
                             ['name', 'status_id'], // Always update these fields
                         );
-                        DB::table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
+                        app('db')->table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
                         $serviceTypesUpdated++;
                     }
 
@@ -1407,7 +1407,7 @@ class ImportDataCommand extends Command
         try
         {
             // Obtener todos los tipos de servicio del sistema antiguo
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('categorias_generales_tipo');
 
             if ($id)
@@ -1451,11 +1451,11 @@ class ImportDataCommand extends Command
                     'updated_at' => $data->fecha_modificacion ?? now(),
                 ];
 
-                $existingServiceType = DB::table('service_types')->where('id', $data->id)->first();
+                $existingServiceType = app('db')->table('service_types')->where('id', $data->id)->first();
 
                 if (! $existingServiceType)
                 {
-                    DB::table('service_types')->insert($serviceTypeData);
+                    app('db')->table('service_types')->insert($serviceTypeData);
                     $stats['imported']++;
                 } else
                 {
@@ -1465,7 +1465,7 @@ class ImportDataCommand extends Command
                         $existingServiceType,
                         ['name', 'status_id'], // Always update these fields
                     );
-                    DB::table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
+                    app('db')->table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1510,7 +1510,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('facturas')
                 ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
                 ->where('facturas.grupo', env('CMS_GROUP', 502))
@@ -1561,7 +1561,7 @@ class ImportDataCommand extends Command
 
             foreach ($invoices as $data)
             {
-                $existingInvoice = DB::table('invoices')->where('id', $data->id)->first();
+                $existingInvoice = app('db')->table('invoices')->where('id', $data->id)->first();
 
                 // Map operation from V/C to sell/buy
                 $operation = 'sell';
@@ -1618,7 +1618,7 @@ class ImportDataCommand extends Command
 
                 if (! $existingInvoice)
                 {
-                    DB::table('invoices')->insert($invoiceData);
+                    app('db')->table('invoices')->insert($invoiceData);
                     $stats['imported']++;
                 } else
                 {
@@ -1628,7 +1628,7 @@ class ImportDataCommand extends Command
                         $existingInvoice,
                         ['status_id', 'enterprise_id', 'total_amount', 'due_date'], // Always update these fields
                     );
-                    DB::table('invoices')->where('id', $existingInvoice->id)->update($mergedData);
+                    app('db')->table('invoices')->where('id', $existingInvoice->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1659,7 +1659,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('empresas_fiscales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion');
@@ -1684,7 +1684,7 @@ class ImportDataCommand extends Command
             foreach ($billingAddresses as $data)
             {
                 // Check if enterprise exists in the local database
-                $enterpriseExists = DB::table('enterprises')->where('id', $data->id_empresa)->exists();
+                $enterpriseExists = app('db')->table('enterprises')->where('id', $data->id_empresa)->exists();
                 if (! $enterpriseExists)
                 {
                     $bar->advance();
@@ -1692,7 +1692,7 @@ class ImportDataCommand extends Command
                     continue;
                 }
 
-                $existingBillingAddress = DB::table('enterprise_billing_addresses')->where('id', $data->id)->first();
+                $existingBillingAddress = app('db')->table('enterprise_billing_addresses')->where('id', $data->id)->first();
 
                 $billingAddressData = [
                     'id' => $data->id,
@@ -1712,7 +1712,7 @@ class ImportDataCommand extends Command
 
                 if (! $existingBillingAddress)
                 {
-                    DB::table('enterprise_billing_addresses')->insert($billingAddressData);
+                    app('db')->table('enterprise_billing_addresses')->insert($billingAddressData);
                     $stats['imported']++;
                 } else
                 {
@@ -1722,7 +1722,7 @@ class ImportDataCommand extends Command
                         $existingBillingAddress,
                         ['enterprise_id', 'is_default'], // Always update these fields
                     );
-                    DB::table('enterprise_billing_addresses')->where('id', $existingBillingAddress->id)->update($mergedData);
+                    app('db')->table('enterprise_billing_addresses')->where('id', $existingBillingAddress->id)->update($mergedData);
                     $stats['updated']++;
                 }
 
@@ -1755,7 +1755,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('facturas_items')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion');
@@ -1784,7 +1784,7 @@ class ImportDataCommand extends Command
                 try
                 {
                     // Check if invoice exists in the local database
-                    $invoiceExists = DB::table('invoices')->where('id', $data->id_factura)->exists();
+                    $invoiceExists = app('db')->table('invoices')->where('id', $data->id_factura)->exists();
                     if (! $invoiceExists)
                     {
                         $skippedNoInvoice++;
@@ -1799,13 +1799,13 @@ class ImportDataCommand extends Command
                         continue;
                     }
 
-                    $existingInvoiceItem = DB::table('invoice_items')->where('id', $data->id)->first();
+                    $existingInvoiceItem = app('db')->table('invoice_items')->where('id', $data->id)->first();
 
                     // Check if category exists, if not set to null
                     $categoryId = null;
                     if ($data->id_categoria)
                     {
-                        $categoryExists = DB::table('categories')->where('id', $data->id_categoria)->exists();
+                        $categoryExists = app('db')->table('categories')->where('id', $data->id_categoria)->exists();
                         $categoryId = $categoryExists ? $data->id_categoria : null;
                     }
 
@@ -1824,7 +1824,7 @@ class ImportDataCommand extends Command
 
                     if (! $existingInvoiceItem)
                     {
-                        DB::table('invoice_items')->insert($invoiceItemData);
+                        app('db')->table('invoice_items')->insert($invoiceItemData);
                         $stats['imported']++;
                     } else
                     {
@@ -1834,7 +1834,7 @@ class ImportDataCommand extends Command
                             $existingInvoiceItem,
                             ['invoice_id', 'quantity', 'price', 'total'], // Always update these fields
                         );
-                        DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($mergedData);
+                        app('db')->table('invoice_items')->where('id', $existingInvoiceItem->id)->update($mergedData);
                         $stats['updated']++;
                     }
                 } catch (\Exception $e)
@@ -1890,13 +1890,13 @@ class ImportDataCommand extends Command
         try
         {
             // Test connection
-            DB::connection('mysql_legacy')->getPdo();
+            app('db')->connection('mysql_legacy')->getPdo();
 
             // Get the CMS group
             $cmsGroup = env('CMS_GROUP', 502);
             $this->info("   Using CMS_GROUP: {$cmsGroup}");
 
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('servicios')
                 ->where('servicios.grupo', $cmsGroup)
                 ->where('servicios.estado', '>', 0)
@@ -2008,13 +2008,13 @@ class ImportDataCommand extends Command
         try
         {
             // Test connection
-            DB::connection('mysql_legacy')->getPdo();
+            app('db')->connection('mysql_legacy')->getPdo();
 
             // Get the CMS group
             $cmsGroup = env('CMS_GROUP', 502);
             $this->info("   Using CMS_GROUP: {$cmsGroup}");
 
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('proyectos')
                 ->where('grupo', $cmsGroup)
                 ->where('estado', '>', 0);
@@ -2049,7 +2049,7 @@ class ImportDataCommand extends Command
                     $responsibleId = \App\Models\User::where('email', 'diego.mascarenhas@icloud.com')->first()->id;
 
                     // Check if enterprise exists
-                    if (! DB::table('enterprises')->where('id', $project->id_empresa)->exists())
+                    if (! app('db')->table('enterprises')->where('id', $project->id_empresa)->exists())
                     {
                         $skipped++;
 
@@ -2060,7 +2060,7 @@ class ImportDataCommand extends Command
                     $categoryId = null;
                     if ($project->id_categoria)
                     {
-                        $categoryExists = DB::table('categories')->where('id', $project->id_categoria)->exists();
+                        $categoryExists = app('db')->table('categories')->where('id', $project->id_categoria)->exists();
                         if ($categoryExists)
                         {
                             $categoryId = $project->id_categoria;
@@ -2158,7 +2158,7 @@ class ImportDataCommand extends Command
             }
 
             // Test connection
-            DB::connection('mysql_legacy')->getPdo();
+            app('db')->connection('mysql_legacy')->getPdo();
 
             // Get the CMS group
             $cmsGroup = env('CMS_GROUP', 502);
@@ -2182,7 +2182,7 @@ class ImportDataCommand extends Command
                 14 => 12,  // MercadoPago
             ];
 
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('movimientos')
                 ->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
                 ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
@@ -2221,7 +2221,7 @@ class ImportDataCommand extends Command
             $bar->start();
 
             // Get default account for team (we ensured it exists above)
-            $defaultTeamAccount = DB::table('payment_accounts')->where('team_id', $teamId)->first();
+            $defaultTeamAccount = app('db')->table('payment_accounts')->where('team_id', $teamId)->first();
 
             $skipped = 0;
             foreach ($payments as $payment)
@@ -2230,7 +2230,7 @@ class ImportDataCommand extends Command
                 {
                     // Get account ID - if not exists, use default account for this team
                     $accountId = $payment->id_cuenta;
-                    if (! $accountId || ! DB::table('payment_accounts')->where('id', $accountId)->exists())
+                    if (! $accountId || ! app('db')->table('payment_accounts')->where('id', $accountId)->exists())
                     {
                         // Use the default team account
                         $accountId = $defaultTeamAccount->id;
@@ -2256,7 +2256,7 @@ class ImportDataCommand extends Command
                     // 1. Try from the JOIN result
                     if ($payment->enterprise_id)
                     {
-                        if (DB::table('enterprises')->where('id', $payment->enterprise_id)->exists())
+                        if (app('db')->table('enterprises')->where('id', $payment->enterprise_id)->exists())
                         {
                             $enterpriseId = $payment->enterprise_id;
                         }
@@ -2266,7 +2266,7 @@ class ImportDataCommand extends Command
                     $invoiceId = $payment->id_factura;
                     if (! $enterpriseId && $invoiceId)
                     {
-                        $invoice = DB::table('invoices')->where('id', $invoiceId)->first();
+                        $invoice = app('db')->table('invoices')->where('id', $invoiceId)->first();
                         if ($invoice && $invoice->enterprise_id)
                         {
                             $enterpriseId = $invoice->enterprise_id;
@@ -2281,7 +2281,7 @@ class ImportDataCommand extends Command
                     // 3. If still null and we have id_empresa_fiscal, try to find the enterprise
                     if (! $enterpriseId && isset($payment->id_empresa_fiscal))
                     {
-                        $enterpriseFromFiscal = DB::table('enterprises')
+                        $enterpriseFromFiscal = app('db')->table('enterprises')
                             ->where('id', $payment->id_empresa_fiscal)
                             ->where('team_id', $teamId)
                             ->first();
@@ -2368,7 +2368,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('comunicaciones_tipo')
                 ->where('estado', '>', 0);
 
@@ -2399,7 +2399,7 @@ class ImportDataCommand extends Command
                     if (! $existingType)
                     {
                         // Insert with original ID
-                        DB::table('notification_types')->insert([
+                        app('db')->table('notification_types')->insert([
                             'id' => $type->id,
                             'name' => $type->tipo,
                             'template_subject' => null,
@@ -2413,7 +2413,7 @@ class ImportDataCommand extends Command
                     } else
                     {
                         // Update existing
-                        DB::table('notification_types')
+                        app('db')->table('notification_types')
                             ->where('id', $type->id)
                             ->update([
                                 'name' => $type->tipo,
@@ -2461,7 +2461,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('comunicaciones')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('estado', '>', 0);
@@ -2496,7 +2496,7 @@ class ImportDataCommand extends Command
                 {
                     // Verificar si el contacto existe, si no existe usar NULL
                     $contactId = null;
-                    if ($comm->id_contacto && DB::table('contacts')->where('id', $comm->id_contacto)->exists())
+                    if ($comm->id_contacto && app('db')->table('contacts')->where('id', $comm->id_contacto)->exists())
                     {
                         $contactId = $comm->id_contacto;
                     }
@@ -2668,7 +2668,7 @@ class ImportDataCommand extends Command
             'updated' => 0,
         ];
 
-        $query = DB::connection('mysql_legacy')
+        $query = app('db')->connection('mysql_legacy')
             ->table('categorias_generales')
             ->where('grupo', env('CMS_GROUP', 502))
             ->whereNull('padre')  // Only parent categories
@@ -2751,7 +2751,7 @@ class ImportDataCommand extends Command
             'updated' => 0,
         ];
 
-        $query = DB::connection('mysql_legacy')
+        $query = app('db')->connection('mysql_legacy')
             ->table('categorias_generales')
             ->where('grupo', env('CMS_GROUP', 502))
             ->whereNotNull('padre')  // Only child products
@@ -2935,7 +2935,7 @@ class ImportDataCommand extends Command
         if (isset($cms7Product->padre) && $cms7Product->padre)
         {
             // Get parent category from CMS7
-            $parentCategory = DB::connection('mysql_legacy')
+            $parentCategory = app('db')->connection('mysql_legacy')
                 ->table('categorias_generales')
                 ->where('id', $cms7Product->padre)
                 ->first();
@@ -3119,7 +3119,7 @@ class ImportDataCommand extends Command
 
         try
         {
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('tienda_configuracion as tc')
                 ->join('empresas as e', 'e.id', '=', 'tc.id_empresa')
                 ->where('tc.grupo', 513)
@@ -3127,7 +3127,7 @@ class ImportDataCommand extends Command
                 ->orderBy('tc.id_empresa')
                 ->select(
                     'tc.id_empresa',
-                    DB::raw('CONVERT(CAST(CONVERT(e.empresa USING latin1) AS BINARY) USING utf8mb4) as empresa'),
+                    app('db')->raw('CONVERT(CAST(CONVERT(e.empresa USING latin1) AS BINARY) USING utf8mb4) as empresa'),
                 );
 
             if ($id)
@@ -3153,7 +3153,7 @@ class ImportDataCommand extends Command
             {
                 $normalizedTeamName = $this->normalizeLegacyText((string) $store->empresa);
                 $teamName = trim($normalizedTeamName) !== '' ? $normalizedTeamName : "Team {$store->id_empresa}";
-                $adminContact = DB::connection('mysql_legacy')
+                $adminContact = app('db')->connection('mysql_legacy')
                     ->table('contactos')
                     ->where('grupo', 513)
                     ->where('id_empresa', $store->id_empresa)
@@ -3202,7 +3202,7 @@ class ImportDataCommand extends Command
                         $teamOwnerId = $userByEmail->id;
                     } else
                     {
-                        DB::table('users')->insert([
+                        app('db')->table('users')->insert([
                             'id' => $adminContact->id,
                             'name' => $name,
                             'email' => $email,
@@ -3231,7 +3231,7 @@ class ImportDataCommand extends Command
 
                 if ($existingTeam)
                 {
-                    DB::table('teams')
+                    app('db')->table('teams')
                         ->where('id', $store->id_empresa)
                         ->update([
                             'user_id' => $teamOwnerId,
@@ -3241,7 +3241,7 @@ class ImportDataCommand extends Command
                     $stats['updated']++;
                 } else
                 {
-                    DB::table('teams')->insert([
+                    app('db')->table('teams')->insert([
                         'id' => $store->id_empresa,
                         'user_id' => $teamOwnerId,
                         'name' => $teamName,
@@ -3263,7 +3263,7 @@ class ImportDataCommand extends Command
                     $teamModel->disableModule('attendance');
                 }
 
-                DB::table('team_user')->updateOrInsert(
+                app('db')->table('team_user')->updateOrInsert(
                     [
                         'team_id' => $store->id_empresa,
                         'user_id' => $teamOwnerId,
@@ -3276,12 +3276,12 @@ class ImportDataCommand extends Command
                 );
 
                 $ownerUser = User::withTrashed()->find($teamOwnerId);
-                if ($ownerUser && DB::table('roles')->where('name', 'admin')->exists() && ! $ownerUser->hasRole('admin'))
+                if ($ownerUser && app('db')->table('roles')->where('name', 'admin')->exists() && ! $ownerUser->hasRole('admin'))
                 {
                     $ownerUser->assignRole('admin');
                 }
 
-                DB::table('users')
+                app('db')->table('users')
                     ->where('id', $teamOwnerId)
                     ->whereNull('current_team_id')
                     ->update(['current_team_id' => $store->id_empresa]);
@@ -3293,7 +3293,7 @@ class ImportDataCommand extends Command
             $bar->finish();
             $this->newLine();
 
-            $productsModuleId = (int) DB::table('modules')->where('key', 'products')->value('id');
+            $productsModuleId = (int) app('db')->table('modules')->where('key', 'products')->value('id');
             if ($productsModuleId > 0)
             {
                 $teamIds = array_values(array_unique($teamIds));
@@ -3338,7 +3338,7 @@ class ImportDataCommand extends Command
             'updated' => 0,
         ];
 
-        $categories = DB::connection('mysql_legacy')
+        $categories = app('db')->connection('mysql_legacy')
             ->table('tienda_productos_categorias as tpc')
             ->leftJoin('tienda_configuracion as tc_store', 'tc_store.id', '=', 'tpc.id_tienda')
             ->leftJoin('tienda_configuracion as tc_team', 'tc_team.id_empresa', '=', 'tpc.id_tienda')
@@ -3351,7 +3351,7 @@ class ImportDataCommand extends Command
                 'tpc.imagen',
                 'tpc.orden',
                 'tpc.estado',
-                DB::raw('COALESCE(tc_store.id_empresa, tc_team.id_empresa, tpc.id_tienda) as resolved_team_id'),
+                app('db')->raw('COALESCE(tc_store.id_empresa, tc_team.id_empresa, tpc.id_tienda) as resolved_team_id'),
             )
             ->whereRaw('COALESCE(tc_store.id_empresa, tc_team.id_empresa, tpc.id_tienda) = ?', [$teamId])
             ->get();
@@ -3414,7 +3414,7 @@ class ImportDataCommand extends Command
             'updated' => 0,
         ];
 
-        $branches = DB::connection('mysql_legacy')
+        $branches = app('db')->connection('mysql_legacy')
             ->table('tienda_sucursales as ts')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
             ->where('tc.grupo', 513)
@@ -3546,7 +3546,7 @@ class ImportDataCommand extends Command
             return $mainStoreId;
         }
 
-        $branch = DB::connection('mysql_legacy')
+        $branch = app('db')->connection('mysql_legacy')
             ->table('tienda_sucursales as ts')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
             ->where('tc.grupo', 513)
@@ -3569,7 +3569,7 @@ class ImportDataCommand extends Command
             return $mainStoreId;
         }
 
-        $mainLegacyBranchId = (int) (DB::connection('mysql_legacy')
+        $mainLegacyBranchId = (int) (app('db')->connection('mysql_legacy')
             ->table('tienda_sucursales as ts')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'ts.id_tienda')
             ->where('tc.grupo', 513)
@@ -3605,7 +3605,7 @@ class ImportDataCommand extends Command
             }
         }
 
-        $products = DB::connection('mysql_legacy')
+        $products = app('db')->connection('mysql_legacy')
             ->table('tienda_productos as tp')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'tp.id_tienda')
             ->where('tc.grupo', 513)
@@ -3651,7 +3651,7 @@ class ImportDataCommand extends Command
             {
                 $categoryId = Category::query()
                     ->where('team_id', $teamId)
-                    ->where('module_id', DB::table('modules')->where('key', 'products')->value('id'))
+                    ->where('module_id', app('db')->table('modules')->where('key', 'products')->value('id'))
                     ->where('data->legacy_store_category_id', (int) $legacyProduct->id_categoria)
                     ->value('id');
             }
@@ -3659,7 +3659,7 @@ class ImportDataCommand extends Command
             {
                 $categoryId = Category::query()
                     ->where('team_id', $teamId)
-                    ->where('module_id', DB::table('modules')->where('key', 'products')->value('id'))
+                    ->where('module_id', app('db')->table('modules')->where('key', 'products')->value('id'))
                     ->orderBy('id')
                     ->value('id');
             }
@@ -3762,7 +3762,7 @@ class ImportDataCommand extends Command
             }
         }
 
-        $rows = DB::connection('mysql_legacy')
+        $rows = app('db')->connection('mysql_legacy')
             ->table($ordersTable.' as o')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'o.id_tienda')
             ->where('tc.grupo', 513)
@@ -3863,7 +3863,7 @@ class ImportDataCommand extends Command
             }
         }
 
-        $rows = DB::connection('mysql_legacy')
+        $rows = app('db')->connection('mysql_legacy')
             ->table($ordersTable.' as o')
             ->join('tienda_configuracion as tc', 'tc.id', '=', 'o.id_tienda')
             ->where('tc.grupo', 513)

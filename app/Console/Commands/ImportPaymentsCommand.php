@@ -35,7 +35,7 @@ class ImportPaymentsCommand extends Command
             }
 
             // Test connection
-            DB::connection('mysql_legacy')->getPdo();
+            app('db')->connection('mysql_legacy')->getPdo();
 
             // Get the CMS group
             $cmsGroup = env('CMS_GROUP', 502);
@@ -59,7 +59,7 @@ class ImportPaymentsCommand extends Command
                 14 => 12,  // MercadoPago
             ];
 
-            $query = DB::connection('mysql_legacy')
+            $query = app('db')->connection('mysql_legacy')
                 ->table('movimientos')
                 ->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
                 ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
@@ -94,14 +94,14 @@ class ImportPaymentsCommand extends Command
             $bar->start();
 
             // Get default account for team, create if doesn't exist
-            $defaultTeamAccount = DB::table('payment_accounts')->where('team_id', $teamId)->first();
+            $defaultTeamAccount = app('db')->table('payment_accounts')->where('team_id', $teamId)->first();
             
             if (!$defaultTeamAccount)
             {
                 $this->warn("   ⚠️  No payment account found for team {$teamId}, creating default...");
                 
                 // Create a default payment account
-                $defaultAccountId = DB::table('payment_accounts')->insertGetId([
+                $defaultAccountId = app('db')->table('payment_accounts')->insertGetId([
                     'team_id' => $teamId,
                     'code' => 'DEFAULT',
                     'name' => 'Cuenta por Defecto',
@@ -112,7 +112,7 @@ class ImportPaymentsCommand extends Command
                     'updated_at' => now(),
                 ]);
                 
-                $defaultTeamAccount = DB::table('payment_accounts')->where('id', $defaultAccountId)->first();
+                $defaultTeamAccount = app('db')->table('payment_accounts')->where('id', $defaultAccountId)->first();
                 $this->info("   ✅ Created default payment account (ID: {$defaultAccountId})");
             }
 
@@ -123,7 +123,7 @@ class ImportPaymentsCommand extends Command
                 {
                     // Get account ID - if not exists, use default account for this team
                     $accountId = $payment->id_cuenta;
-                    if (! $accountId || ! DB::table('payment_accounts')->where('id', $accountId)->exists())
+                    if (! $accountId || ! app('db')->table('payment_accounts')->where('id', $accountId)->exists())
                     {
                         // Use the default team account
                         $accountId = $defaultTeamAccount->id;
@@ -149,7 +149,7 @@ class ImportPaymentsCommand extends Command
                     // 1. Try from the JOIN result
                     if ($payment->enterprise_id)
                     {
-                        if (DB::table('enterprises')->where('id', $payment->enterprise_id)->exists())
+                        if (app('db')->table('enterprises')->where('id', $payment->enterprise_id)->exists())
                         {
                             $enterpriseId = $payment->enterprise_id;
                         }
@@ -159,7 +159,7 @@ class ImportPaymentsCommand extends Command
                     $invoiceId = $payment->id_factura;
                     if (! $enterpriseId && $invoiceId)
                     {
-                        $invoice = DB::table('invoices')->where('id', $invoiceId)->first();
+                        $invoice = app('db')->table('invoices')->where('id', $invoiceId)->first();
                         if ($invoice && $invoice->enterprise_id)
                         {
                             $enterpriseId = $invoice->enterprise_id;
@@ -174,7 +174,7 @@ class ImportPaymentsCommand extends Command
                     // 3. If still null and we have id_empresa_fiscal, try to find the enterprise
                     if (! $enterpriseId && isset($payment->id_empresa_fiscal))
                     {
-                        $enterpriseFromFiscal = DB::table('enterprises')
+                        $enterpriseFromFiscal = app('db')->table('enterprises')
                             ->where('id', $payment->id_empresa_fiscal)
                             ->where('team_id', $teamId)
                             ->first();

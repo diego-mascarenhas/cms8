@@ -69,21 +69,21 @@ class SeedCollaborators extends Command
      */
     private function clearCollaboratorData()
     {
-        DB::table('contact_language_variants')->delete();
+        app('db')->table('contact_language_variants')->delete();
 
         // Only delete contacts that are collaborators (have collaborator role)
-        $collaboratorUserIds = DB::table('users')
+        $collaboratorUserIds = app('db')->table('users')
             ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
             ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
             ->where('roles.name', 'collaborator')
             ->pluck('users.id');
 
-        $collaboratorContactIds = DB::table('contacts')
+        $collaboratorContactIds = app('db')->table('contacts')
             ->whereIn('user_id', $collaboratorUserIds)
             ->pluck('id');
 
-        DB::table('contacts')->whereIn('id', $collaboratorContactIds)->delete();
-        DB::table('users')->whereIn('id', $collaboratorUserIds)->delete();
+        app('db')->table('contacts')->whereIn('id', $collaboratorContactIds)->delete();
+        app('db')->table('users')->whereIn('id', $collaboratorUserIds)->delete();
 
         $this->info('🗑️  Cleared existing collaborator data');
     }
@@ -93,10 +93,10 @@ class SeedCollaborators extends Command
      */
     private function showSummary()
     {
-        $languageCount = DB::table('languages')->count();
-        $variantCount = DB::table('language_variants')->count();
-        $contactCount = DB::table('contacts')->count();
-        $combinationCount = DB::table('contact_language_variants')->count();
+        $languageCount = app('db')->table('languages')->count();
+        $variantCount = app('db')->table('language_variants')->count();
+        $contactCount = app('db')->table('contacts')->count();
+        $combinationCount = app('db')->table('contact_language_variants')->count();
 
         $this->info('📊 Seeding Summary:');
         $this->line("   Languages: {$languageCount}");

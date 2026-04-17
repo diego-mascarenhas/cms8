@@ -165,7 +165,7 @@ class ModuleInstall extends Command
      */
     protected function getPendingMigrations($moduleKey)
     {
-        $ran = DB::table('migrations')->pluck('migration')->toArray();
+        $ran = app('db')->table('migrations')->pluck('migration')->toArray();
         $allMigrations = $this->getMigrationFiles();
 
         // Filter migrations that contain the module key
@@ -365,7 +365,7 @@ class ModuleInstall extends Command
         {
             foreach ($tables as $table)
             {
-                $recordCount = DB::table($table)->count();
+                $recordCount = app('db')->table($table)->count();
                 $this->line("   • {$table} ({$recordCount} records)");
             }
         } else
@@ -394,7 +394,7 @@ class ModuleInstall extends Command
         // Filter only existing tables
         return array_filter($tables, function ($table)
         {
-            return DB::getSchemaBuilder()->hasTable($table);
+            return app('db')->getSchemaBuilder()->hasTable($table);
         });
     }
 }

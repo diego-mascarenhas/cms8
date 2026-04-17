@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Product;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -32,7 +31,7 @@ class WhatsAppCheckoutOrderService
 
         $currencyId = $this->resolveCurrencyId($lines);
 
-        return DB::transaction(function () use ($teamId, $cleanPhoneDigits, $lines, $cartTotal, $currencyId, $storeId, $checkoutSnapshot)
+        return Order::query()->getModel()->getConnection()->transaction(function () use ($teamId, $cleanPhoneDigits, $lines, $cartTotal, $currencyId, $storeId, $checkoutSnapshot)
         {
             $orderNumber = $this->generateUniqueOrderNumber();
 

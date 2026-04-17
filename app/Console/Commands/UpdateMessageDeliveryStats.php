@@ -40,7 +40,7 @@ class UpdateMessageDeliveryStats extends Command
             $remaining = $subscribers - $sent;
             $ratio = $sent > 0 ? round(($opened / $sent) * 100, 2) : 0;
 
-            DB::table('message_delivery_stats')->updateOrInsert(
+            app('db')->table('message_delivery_stats')->updateOrInsert(
                 ['message_id' => $message->id],
                 [
                     'subscribers' => $subscribers,

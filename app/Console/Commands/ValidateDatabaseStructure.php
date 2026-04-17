@@ -167,9 +167,9 @@ class ValidateDatabaseStructure extends Command
     {
         try
         {
-            $connection = DB::connection();
+            $connection = app('db')->connection();
             $database = $connection->getDatabaseName();
-            $result = DB::select('
+            $result = app('db')->select('
 				SELECT DATA_TYPE, COLUMN_TYPE
 				FROM INFORMATION_SCHEMA.COLUMNS
 				WHERE TABLE_SCHEMA = ?

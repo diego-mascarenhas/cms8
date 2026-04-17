@@ -4,10 +4,10 @@ namespace App\Http\Requests;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Models\Category;
 use App\Models\Module;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UpdateLocalProductRequest extends FormRequest
@@ -97,7 +97,7 @@ class UpdateLocalProductRequest extends FormRequest
 
                         return;
                     }
-                    $exists = DB::table('categories')
+                    $exists = Category::query()
                         ->where('id', $value)
                         ->where('module_id', $moduleId)
                         ->whereNull('deleted_at')

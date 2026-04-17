@@ -36,8 +36,8 @@ class FullDatabaseSyncCommand extends Command
         $excludedTables = $this->parseListOption((string) $this->option('exclude'));
         $isDryRun = (bool) $this->option('dry-run');
 
-        $source = DB::connection($sourceName);
-        $target = DB::connection($targetName);
+        $source = app('db')->connection($sourceName);
+        $target = app('db')->connection($targetName);
 
         $this->info("Source connection: {$sourceName} ({$source->getDriverName()})");
         $this->info("Target connection: {$targetName} ({$target->getDriverName()})");
@@ -226,7 +226,7 @@ class FullDatabaseSyncCommand extends Command
 
         $orderColumn = $this->resolveChunkOrderColumn($targetName, $table, $columns, $sourceName);
         $conflictColumns = $this->resolvePostgresPrimaryKeyColumns($targetName, $table, $columns);
-        $totalRows = (int) DB::connection($sourceName)->table($table)->count();
+        $totalRows = (int) app('db')->connection($sourceName)->table($table)->count();
         $mode = $isDryRun ? 'PLAN' : 'SYNC';
         $pkHint = $conflictColumns === [] ? 'no PG PK in shared cols' : implode(', ', $conflictColumns);
         $this->line("[{$mode}] {$table}: {$totalRows} rows, ".count($columns)." shared columns, ordered by {$orderColumn}, upsert on ({$pkHint})");
@@ -236,7 +236,7 @@ class FullDatabaseSyncCommand extends Command
             return;
         }
 
-        $targetConnection = DB::connection($targetName);
+        $targetConnection = app('db')->connection($targetName);
         $updateColumns = array_values(array_diff($columns, $conflictColumns));
 
         $flushBatch = function (iterable $rows) use ($targetConnection, $table, $conflictColumns, $updateColumns): void
@@ -273,7 +273,7 @@ class FullDatabaseSyncCommand extends Command
             $targetConnection->table($table)->upsert($payload, $conflictColumns, $updateColumns);
         };
 
-        $sourceQuery = DB::connection($sourceName)->table($table)->select($columns);
+        $sourceQuery = app('db')->connection($sourceName)->table($table)->select($columns);
 
         $maxBatches = max(1, (int) ceil($totalRows / $chunkSize));
 
@@ -321,7 +321,7 @@ class FullDatabaseSyncCommand extends Command
     private function resolvePostgresPrimaryKeyColumns(string $targetConnection, string $table, array $sharedColumns): array
     {
         $lookup = array_fill_keys($sharedColumns, true);
-        $rows = DB::connection($targetConnection)->select(
+        $rows = app('db')->connection($targetConnection)->select(
             'SELECT kcu.column_name
              FROM information_schema.table_constraints tc
              JOIN information_schema.key_column_usage kcu
@@ -377,9 +377,9 @@ class FullDatabaseSyncCommand extends Command
      */
     private function resolveMysqlPrimaryKeyFirstColumn(string $sourceConnection, string $table, array $columns): string
     {
-        $database = DB::connection($sourceConnection)->getDatabaseName();
+        $database = app('db')->connection($sourceConnection)->getDatabaseName();
 
-        $primaryKey = DB::connection($sourceConnection)
+        $primaryKey = app('db')->connection($sourceConnection)
             ->table('information_schema.columns')
             ->where('table_schema', $database)
             ->where('table_name', $table)

@@ -32,7 +32,7 @@ class FixSubscriptionUserId extends Command
         try
         {
             // Get all subscriptions with mismatched user_id
-            $subscriptions = DB::table('subscriptions')
+            $subscriptions = app('db')->table('subscriptions')
                 ->join('teams', 'subscriptions.team_id', '=', 'teams.id')
                 ->select(
                     'subscriptions.id as subscription_id',
@@ -63,7 +63,7 @@ class FixSubscriptionUserId extends Command
                 $this->line("  New user_id: {$sub->correct_user_id}");
 
                 // Update the user_id
-                DB::table('subscriptions')
+                app('db')->table('subscriptions')
                     ->where('id', $sub->subscription_id)
                     ->update(['user_id' => $sub->correct_user_id]);
 

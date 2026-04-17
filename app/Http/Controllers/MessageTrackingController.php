@@ -26,19 +26,16 @@ class MessageTrackingController extends Controller
                 \Log::info('TEST: Delivery ID is: '.$delivery->id);
                 \Log::info('TEST: About to call DB insert');
 
-                // Direct database insert without using models
-                $inserted = \DB::table('message_delivery_tracking')->insert([
+                $inserted = \App\Models\MessageDeliveryTracking::query()->create([
                     'message_delivery_id' => $delivery->id,
                     'event' => 'opened',
                     'tracked_at' => now(),
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
-                    'metadata' => json_encode([
+                    'metadata' => [
                         'source' => 'email_tracking_pixel_direct',
                         'timestamp' => now(),
-                    ]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    ],
                 ]);
 
                 \Log::info('TEST: DB insert result', ['inserted' => $inserted]);
@@ -46,9 +43,7 @@ class MessageTrackingController extends Controller
                 // Also update the opened_at column in message_deliveries for statistics
                 if (! $delivery->opened_at)
                 {
-                    \DB::table('message_deliveries')
-                        ->where('id', $delivery->id)
-                        ->update(['opened_at' => now(), 'updated_at' => now()]);
+                    $delivery->forceFill(['opened_at' => now()])->save();
 
                     \Log::info('TEST: Updated opened_at in message_deliveries', ['delivery_id' => $delivery->id]);
                 }

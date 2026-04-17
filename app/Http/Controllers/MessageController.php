@@ -120,9 +120,10 @@ class MessageController extends Controller
             });
 
         // Get queue status
+        $connection = MessageDelivery::query()->getModel()->getConnection();
         $queueStatus = [
-            'failed_jobs_count' => \DB::table('failed_jobs')->count(),
-            'jobs_count' => \DB::table('jobs')->where('queue', 'mailer')->count(),
+            'failed_jobs_count' => $connection->table('failed_jobs')->count(),
+            'jobs_count' => $connection->table('jobs')->where('queue', 'mailer')->count(),
         ];
 
         // Get email limits
