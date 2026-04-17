@@ -15,6 +15,17 @@ class GoogleIntegrationController extends Controller
 
     public function connect(Request $request): RedirectResponse
     {
+        $cid = (string) config('services.google.client_id');
+
+        if ($cid === '')
+        {
+            $team = $request->user()->currentTeam;
+
+            return $team !== null
+                ? redirect()->route('team-settings.index', $team)->with('warning', 'Google OAuth is not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server, then run php artisan config:clear.')
+                : redirect()->route('error-without-team')->with('warning', 'Google OAuth is not configured: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server, then run php artisan config:clear.');
+        }
+
         $url = $this->googleOAuthService->buildAuthorizationUrl($request->user());
 
         return redirect()->away($url);
@@ -29,8 +40,11 @@ class GoogleIntegrationController extends Controller
 
         $this->googleOAuthService->exchangeCode($request->user(), $validated['code']);
 
-        return redirect()->route('team-settings.edit', ['team' => $request->user()->currentTeam, 'group' => 'analytics'])
-            ->with('success', 'Google account connected successfully.');
+        $team = $request->user()->currentTeam;
+
+        return $team !== null
+            ? redirect()->route('team-settings.index', $team)->with('success', 'Google account connected successfully.')
+            : redirect()->route('error-without-team')->with('warning', 'Google account connected, but no current team was found.');
     }
 
     public function disconnect(Request $request): RedirectResponse

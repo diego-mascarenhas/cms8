@@ -138,8 +138,10 @@ class GoogleOAuthService
 
     protected function makeBaseClient(): Client
     {
+        $cid = (string) config('services.google.client_id');
+
         $client = new Client;
-        $client->setClientId((string) config('services.google.client_id'));
+        $client->setClientId($cid);
         $client->setClientSecret((string) config('services.google.client_secret'));
         $client->setRedirectUri((string) config('services.google.redirect'));
 
