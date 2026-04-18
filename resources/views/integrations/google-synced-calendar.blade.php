@@ -31,27 +31,95 @@
 
 @include('integrations.partials.google-accounts-scopes', ['googleAccounts' => $googleAccounts])
 
-<div class="card mb-4">
-  <div class="card-body py-3">
-    <div class="row g-3 text-center text-md-start">
-      <div class="col-12 col-md-3">
-        <div class="text-muted small">{{ __('app.CRM calendar event mappings count') }}</div>
-        <div class="fs-5 fw-semibold">{{ (int) ($stats->mapped_total ?? 0) }}</div>
-        <div class="text-muted small mt-2">{{ __('app.Calendar items read last successful sync') }}</div>
-        <div class="fs-6 fw-semibold">{{ (int) ($calendarLastSyncPulledTotal ?? 0) }}</div>
-        <div class="small text-muted mt-1">{{ __('app.Last sync pulled hint calendar') }}</div>
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div class="content-left">
+            <span class="d-block text-muted small">{{ __('app.Google stats calendar kpi_mappings_short') }}</span>
+            <div class="d-flex align-items-center my-2">
+              <h3 class="mb-0">{{ (int) ($stats->mapped_total ?? 0) }}</h3>
+            </div>
+            <p class="mb-0 text-muted small">{{ __('app.CRM calendar event mappings count') }}</p>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-primary"><i class="ti ti-calendar-event ti-sm"></i></span>
+          </div>
+        </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="text-muted small">{{ __('app.Visible in app calendar') }}</div>
-        <div class="fs-5 fw-semibold text-success">{{ (int) ($stats->local_visible ?? 0) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div class="content-left">
+            <span class="d-block text-muted small">{{ __('app.Google stats calendar kpi_last_pull_short') }}</span>
+            <div class="d-flex align-items-center my-2">
+              <h3 class="mb-0">{{ (int) ($calendarLastSyncPulledTotal ?? 0) }}</h3>
+            </div>
+            <p class="mb-0 text-muted small">{{ __('app.Calendar items read last successful sync') }}</p>
+            <p class="mb-0 mt-1 text-muted small">{{ __('app.Last sync pulled hint calendar') }}</p>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-info"><i class="ti ti-refresh ti-sm"></i></span>
+          </div>
+        </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="text-muted small">{{ __('app.Hidden locally (soft-deleted)') }}</div>
-        <div class="fs-5 fw-semibold text-secondary">{{ (int) ($stats->local_soft_deleted ?? 0) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div class="content-left">
+            <span class="d-block text-muted small">{{ __('app.Visible in app calendar') }}</span>
+            <div class="d-flex align-items-center my-2">
+              <h3 class="mb-0 text-success">{{ (int) ($stats->local_visible ?? 0) }}</h3>
+            </div>
+            <p class="mb-0 text-muted small">{{ __('app.Google stats calendar kpi_visible_caption') }}</p>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-success"><i class="ti ti-calendar-check ti-sm"></i></span>
+          </div>
+        </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="text-muted small">{{ __('app.Mapping without local row') }}</div>
-        <div class="fs-5 fw-semibold text-danger">{{ (int) ($stats->missing_local_row ?? 0) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div class="content-left">
+            <span class="d-block text-muted small">{{ __('app.Hidden locally (soft-deleted)') }}</span>
+            <div class="d-flex align-items-center my-2">
+              <h3 class="mb-0 text-secondary">{{ (int) ($stats->local_soft_deleted ?? 0) }}</h3>
+            </div>
+            <p class="mb-0 text-muted small">{{ __('app.Google stats calendar kpi_hidden_caption') }}</p>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-secondary"><i class="ti ti-eye-off ti-sm"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div class="content-left">
+            <span class="d-block text-muted small">{{ __('app.Mapping without local row') }}</span>
+            <div class="d-flex align-items-center my-2">
+              <h3 class="mb-0 text-danger">{{ (int) ($stats->missing_local_row ?? 0) }}</h3>
+            </div>
+            <p class="mb-0 text-muted small">{{ __('app.Google stats calendar kpi_missing_caption') }}</p>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-danger"><i class="ti ti-alert-triangle ti-sm"></i></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
