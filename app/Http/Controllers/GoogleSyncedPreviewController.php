@@ -3,13 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ExternalProvider;
+use App\Enums\SyncResource;
+use App\Jobs\SyncGoogleCalendarEventsJob;
+use App\Jobs\SyncGoogleContactsJob;
 use App\Models\Contact;
 use App\Models\ExternalAccount;
+use App\Models\SyncRun;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use stdClass;
 
 class GoogleSyncedPreviewController extends Controller
@@ -29,6 +34,12 @@ class GoogleSyncedPreviewController extends Controller
         }
 
         $googleAccounts = $this->googleAccountsForTeam($team->id, ExternalProvider::Google);
+
+        $contactsLastSyncPulledTotal = $this->sumLastSuccessfulPulledForTeam(
+            $team->id,
+            ExternalProvider::Google,
+            SyncResource::Contacts,
+        );
 
         $stats = DB::table('contact_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'contact_sync_mappings.external_account_id')
@@ -69,7 +80,41 @@ class GoogleSyncedPreviewController extends Controller
             'team' => $team,
             'googleAccounts' => $googleAccounts,
             'stats' => $stats,
+            'contactsLastSyncPulledTotal' => $contactsLastSyncPulledTotal,
         ]);
+    }
+
+    public function queueContactsSync(Request $request): RedirectResponse
+    {
+        $this->authorize('viewAny', Contact::class);
+
+        $team = $request->user()->currentTeam;
+
+        if ($team === null)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $accountIds = ExternalAccount::query()
+            ->where('team_id', $team->id)
+            ->where('provider', ExternalProvider::Google->value)
+            ->pluck('id');
+
+        if ($accountIds->isEmpty())
+        {
+            return redirect()
+                ->route('integrations.google.synced-contacts')
+                ->with('warning', __('app.No Google accounts connected for team'));
+        }
+
+        foreach ($accountIds as $externalAccountId)
+        {
+            SyncGoogleContactsJob::dispatch((int) $externalAccountId);
+        }
+
+        return redirect()
+            ->route('integrations.google.synced-contacts')
+            ->with('status', __('app.Google contacts sync queued', ['count' => $accountIds->count()]));
     }
 
     /**
@@ -85,6 +130,12 @@ class GoogleSyncedPreviewController extends Controller
         }
 
         $googleAccounts = $this->googleAccountsForTeam($team->id, ExternalProvider::Google);
+
+        $calendarLastSyncPulledTotal = $this->sumLastSuccessfulPulledForTeam(
+            $team->id,
+            ExternalProvider::Google,
+            SyncResource::CalendarEvents,
+        );
 
         $stats = DB::table('calendar_event_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'calendar_event_sync_mappings.external_account_id')
@@ -127,7 +178,41 @@ class GoogleSyncedPreviewController extends Controller
             'team' => $team,
             'googleAccounts' => $googleAccounts,
             'stats' => $stats,
+            'calendarLastSyncPulledTotal' => $calendarLastSyncPulledTotal,
         ]);
+    }
+
+    public function queueCalendarSync(Request $request): RedirectResponse
+    {
+        $team = $request->user()->currentTeam;
+
+        if ($team === null)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        Gate::authorize('view', $team);
+
+        $accountIds = ExternalAccount::query()
+            ->where('team_id', $team->id)
+            ->where('provider', ExternalProvider::Google->value)
+            ->pluck('id');
+
+        if ($accountIds->isEmpty())
+        {
+            return redirect()
+                ->route('integrations.google.synced-calendar')
+                ->with('warning', __('app.No Google accounts connected for team'));
+        }
+
+        foreach ($accountIds as $externalAccountId)
+        {
+            SyncGoogleCalendarEventsJob::dispatch((int) $externalAccountId);
+        }
+
+        return redirect()
+            ->route('integrations.google.synced-calendar')
+            ->with('status', __('app.Google calendar sync queued', ['count' => $accountIds->count()]));
     }
 
     /**
@@ -144,5 +229,38 @@ class GoogleSyncedPreviewController extends Controller
             }])
             ->orderByDesc('last_synced_at')
             ->get();
+    }
+
+    /**
+     * Sum of {@see SyncRun::$pulled_count} from the latest successful run per Google account (same resource).
+     * Incremental runs may return a small count; a full sync reflects more of the remote directory.
+     */
+    private function sumLastSuccessfulPulledForTeam(int $teamId, ExternalProvider $provider, SyncResource $resource): int
+    {
+        $accountIds = ExternalAccount::query()
+            ->where('team_id', $teamId)
+            ->where('provider', $provider->value)
+            ->pluck('id');
+
+        if ($accountIds->isEmpty())
+        {
+            return 0;
+        }
+
+        $sum = 0;
+
+        foreach ($accountIds as $externalAccountId)
+        {
+            $run = SyncRun::query()
+                ->where('external_account_id', $externalAccountId)
+                ->where('resource', $resource)
+                ->where('status', 'success')
+                ->orderByDesc('finished_at')
+                ->first();
+
+            $sum += (int) ($run?->pulled_count ?? 0);
+        }
+
+        return $sum;
     }
 }

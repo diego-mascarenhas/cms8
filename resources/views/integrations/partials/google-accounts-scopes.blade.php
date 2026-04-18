@@ -11,12 +11,37 @@
     <div class="table-responsive">
       <table class="table table-sm mb-0">
         <thead>
-          <tr>
-            <th>{{ __('app.User') }}</th>
-            <th>{{ __('app.Google permission column calendar') }}</th>
-            <th>{{ __('app.Google permission column contacts') }}</th>
-            <th>{{ __('app.Last account sync') }}</th>
-            <th>{{ __('app.OAuth scopes granted') }}</th>
+          <tr class="align-middle">
+            <th scope="col" class="py-2 fw-normal text-nowrap">
+              <span class="small text-muted">{{ __('app.Google accounts col_abbr_user') }}</span>
+              <button type="button" class="btn btn-icon btn-sm p-0 ms-1 align-middle btn-text-secondary border-0 shadow-none lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_user') }}" aria-label="{{ __('app.Google accounts col_tip_user') }}">
+                <i class="ti ti-info-circle ti-sm"></i>
+              </button>
+            </th>
+            <th scope="col" class="py-2 fw-normal text-nowrap">
+              <span class="small text-muted">{{ __('app.Google accounts col_abbr_calendar') }}</span>
+              <button type="button" class="btn btn-icon btn-sm p-0 ms-1 align-middle btn-text-secondary border-0 shadow-none lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_calendar') }}" aria-label="{{ __('app.Google accounts col_tip_calendar') }}">
+                <i class="ti ti-info-circle ti-sm"></i>
+              </button>
+            </th>
+            <th scope="col" class="py-2 fw-normal text-nowrap">
+              <span class="small text-muted">{{ __('app.Google accounts col_abbr_contacts') }}</span>
+              <button type="button" class="btn btn-icon btn-sm p-0 ms-1 align-middle btn-text-secondary border-0 shadow-none lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_contacts') }}" aria-label="{{ __('app.Google accounts col_tip_contacts') }}">
+                <i class="ti ti-info-circle ti-sm"></i>
+              </button>
+            </th>
+            <th scope="col" class="py-2 fw-normal text-nowrap">
+              <span class="small text-muted">{{ __('app.Google accounts col_abbr_sync') }}</span>
+              <button type="button" class="btn btn-icon btn-sm p-0 ms-1 align-middle btn-text-secondary border-0 shadow-none lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_sync') }}" aria-label="{{ __('app.Google accounts col_tip_sync') }}">
+                <i class="ti ti-info-circle ti-sm"></i>
+              </button>
+            </th>
+            <th scope="col" class="py-2 fw-normal text-nowrap">
+              <span class="small text-muted">{{ __('app.Google accounts col_abbr_scopes') }}</span>
+              <button type="button" class="btn btn-icon btn-sm p-0 ms-1 align-middle btn-text-secondary border-0 shadow-none lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_scopes') }}" aria-label="{{ __('app.Google accounts col_tip_scopes') }}">
+                <i class="ti ti-info-circle ti-sm"></i>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>

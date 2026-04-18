@@ -3,6 +3,18 @@
 @section('title', __('app.Google synced events'))
 
 @section('content')
+@if (session('status'))
+  <div class="alert alert-success alert-dismissible mb-4" role="alert">
+    {{ session('status') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+@endif
+@if (session('warning'))
+  <div class="alert alert-warning alert-dismissible mb-4" role="alert">
+    {{ session('warning') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+@endif
 <div class="row g-4 mb-4">
   <div class="col-12">
     <div class="alert alert-info mb-0" role="alert">
@@ -22,9 +34,12 @@
 <div class="card mb-4">
   <div class="card-body py-3">
     <div class="row g-3 text-center text-md-start">
-      <div class="col-6 col-md-3">
-        <div class="text-muted small">{{ __('app.Mapped events (Google → local)') }}</div>
+      <div class="col-12 col-md-3">
+        <div class="text-muted small">{{ __('app.CRM calendar event mappings count') }}</div>
         <div class="fs-5 fw-semibold">{{ (int) ($stats->mapped_total ?? 0) }}</div>
+        <div class="text-muted small mt-2">{{ __('app.Calendar items read last successful sync') }}</div>
+        <div class="fs-6 fw-semibold">{{ (int) ($calendarLastSyncPulledTotal ?? 0) }}</div>
+        <div class="small text-muted mt-1">{{ __('app.Last sync pulled hint calendar') }}</div>
       </div>
       <div class="col-6 col-md-3">
         <div class="text-muted small">{{ __('app.Visible in app calendar') }}</div>
@@ -48,7 +63,11 @@
       <h5 class="card-title mb-0">{{ __('app.Calendar events synced from Google') }}</h5>
       <small class="text-muted">{{ __('app.Each row is a Google event id linked to a local copy. Table shows up to 500 rows.') }}</small>
     </div>
-    <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <form method="post" action="{{ route('integrations.google.sync-calendar') }}" class="d-inline">
+        @csrf
+        <button type="submit" class="btn btn-primary btn-sm">{{ __('app.Sync Google calendar now') }}</button>
+      </form>
       <a href="{{ route('app-calendar') }}" class="btn btn-label-secondary btn-sm">{{ __('app.Back to calendar') }}</a>
       <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary btn-sm">{{ __('app.Team settings') }}</a>
     </div>
