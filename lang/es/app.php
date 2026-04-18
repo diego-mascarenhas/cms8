@@ -376,7 +376,12 @@ return [
     'Name (CRM copy)' => 'Nombre (copia CRM)',
 
     'Google synced events' => 'Eventos sincronizados con Google',
+    'Google synced header sync' => 'Sincronizar',
+    'Google synced header settings' => 'Ajustes',
+    'Google synced header back' => 'Volver',
     'Google synced contacts' => 'Contactos sincronizados con Google',
+    'Google synced contacts empty title' => 'Sin contactos sincronizados',
+    'Google synced calendar empty title' => 'Sin eventos de calendario sincronizados',
     'Google synced contacts heading subtitle' => 'Mapeo y estado de sincronización de contactos Google para este equipo.',
     'Google synced calendar heading subtitle' => 'Mapeo y estado de sincronización del calendario Google para este equipo.',
     'Back to calendar' => 'Volver al calendario',

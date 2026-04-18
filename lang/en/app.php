@@ -197,7 +197,12 @@ return [
     'Name (CRM copy)' => 'Name (CRM copy)',
 
     'Google synced events' => 'Google synced events',
+    'Google synced header sync' => 'Sync',
+    'Google synced header settings' => 'Settings',
+    'Google synced header back' => 'Back',
     'Google synced contacts' => 'Google synced contacts',
+    'Google synced contacts empty title' => 'No synced contacts yet',
+    'Google synced calendar empty title' => 'No synced calendar events yet',
     'Google synced contacts heading subtitle' => 'Mapping and sync status for Google contacts on this team.',
     'Google synced calendar heading subtitle' => 'Mapping and sync status for Google Calendar on this team.',
     'Back to calendar' => 'Back to calendar',
