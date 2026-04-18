@@ -7,7 +7,9 @@ use App\Models\Contact;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 class GoogleSyncedPreviewController extends Controller
 {
@@ -27,13 +29,23 @@ class GoogleSyncedPreviewController extends Controller
 
         $provider = ExternalProvider::Google->value;
 
+        $googleAccounts = $this->googleAccountsForTeam($team->id, $provider);
+
+        $stats = DB::table('contact_sync_mappings')
+            ->join('external_accounts', 'external_accounts.id', '=', 'contact_sync_mappings.external_account_id')
+            ->leftJoin('contacts', 'contacts.id', '=', 'contact_sync_mappings.contact_id')
+            ->where('external_accounts.team_id', $team->id)
+            ->where('external_accounts.provider', $provider)
+            ->selectRaw('COUNT(*) as mapped_total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN contacts.id IS NOT NULL AND contacts.deleted_at IS NULL THEN 1 ELSE 0 END), 0) as local_active')
+            ->selectRaw('COALESCE(SUM(CASE WHEN contacts.deleted_at IS NOT NULL THEN 1 ELSE 0 END), 0) as local_soft_deleted')
+            ->selectRaw('COALESCE(SUM(CASE WHEN contacts.id IS NULL THEN 1 ELSE 0 END), 0) as missing_local_row')
+            ->first() ?? new stdClass;
+
         $rows = DB::table('contact_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'contact_sync_mappings.external_account_id')
-            ->leftJoin('contacts', function ($join): void
-            {
-                $join->on('contacts.id', '=', 'contact_sync_mappings.contact_id')
-                    ->whereNull('contacts.deleted_at');
-            })
+            ->leftJoin('contacts', 'contacts.id', '=', 'contact_sync_mappings.contact_id')
+            ->leftJoin('users', 'users.id', '=', 'external_accounts.user_id')
             ->where('external_accounts.team_id', $team->id)
             ->where('external_accounts.provider', $provider)
             ->orderByDesc('contact_sync_mappings.last_synced_at')
@@ -41,17 +53,23 @@ class GoogleSyncedPreviewController extends Controller
             ->select([
                 'contact_sync_mappings.external_id',
                 'contact_sync_mappings.last_synced_at',
+                'contact_sync_mappings.contact_id',
                 'contacts.name',
                 'contacts.surname',
                 'contacts.email',
                 'contacts.phone',
-                'contacts.id as contact_id',
+                'contacts.deleted_at as contact_deleted_at',
+                'external_accounts.last_synced_at as account_last_synced_at',
+                'users.name as connected_by_name',
+                'users.email as connected_by_email',
             ])
             ->get();
 
         return view('integrations.google-synced-contacts', [
             'rows' => $rows,
             'team' => $team,
+            'googleAccounts' => $googleAccounts,
+            'stats' => $stats,
         ]);
     }
 
@@ -69,31 +87,68 @@ class GoogleSyncedPreviewController extends Controller
 
         $provider = ExternalProvider::Google->value;
 
+        $googleAccounts = $this->googleAccountsForTeam($team->id, $provider);
+
+        $stats = DB::table('calendar_event_sync_mappings')
+            ->join('external_accounts', 'external_accounts.id', '=', 'calendar_event_sync_mappings.external_account_id')
+            ->leftJoin('calendar_events', 'calendar_events.id', '=', 'calendar_event_sync_mappings.calendar_event_id')
+            ->where('external_accounts.team_id', $team->id)
+            ->where('external_accounts.provider', $provider)
+            ->selectRaw('COUNT(*) as mapped_total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN calendar_events.id IS NOT NULL AND calendar_events.deleted_at IS NULL THEN 1 ELSE 0 END), 0) as local_visible')
+            ->selectRaw('COALESCE(SUM(CASE WHEN calendar_events.deleted_at IS NOT NULL THEN 1 ELSE 0 END), 0) as local_soft_deleted')
+            ->selectRaw('COALESCE(SUM(CASE WHEN calendar_events.id IS NULL THEN 1 ELSE 0 END), 0) as missing_local_row')
+            ->first() ?? new stdClass;
+
         $rows = DB::table('calendar_event_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'calendar_event_sync_mappings.external_account_id')
-            ->join('calendar_events', function ($join): void
-            {
-                $join->on('calendar_events.id', '=', 'calendar_event_sync_mappings.calendar_event_id')
-                    ->whereNull('calendar_events.deleted_at');
-            })
+            ->leftJoin('calendar_events', 'calendar_events.id', '=', 'calendar_event_sync_mappings.calendar_event_id')
+            ->leftJoin('users', 'users.id', '=', 'external_accounts.user_id')
             ->where('external_accounts.team_id', $team->id)
             ->where('external_accounts.provider', $provider)
             ->orderByDesc('calendar_events.start')
+            ->orderByDesc('calendar_event_sync_mappings.last_synced_at')
             ->limit(500)
             ->select([
+                'calendar_event_sync_mappings.calendar_event_id',
                 'calendar_event_sync_mappings.external_id',
                 'calendar_event_sync_mappings.last_synced_at',
                 'calendar_events.title',
                 'calendar_events.start',
                 'calendar_events.end',
                 'calendar_events.all_day',
-                'calendar_events.id as calendar_event_id',
+                'calendar_events.deleted_at as local_deleted_at',
+                'calendar_events.google_event_id as local_google_event_id',
+                'external_accounts.last_synced_at as account_last_synced_at',
+                'users.name as connected_by_name',
+                'users.email as connected_by_email',
             ])
             ->get();
 
         return view('integrations.google-synced-calendar', [
             'rows' => $rows,
             'team' => $team,
+            'googleAccounts' => $googleAccounts,
+            'stats' => $stats,
         ]);
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function googleAccountsForTeam(int $teamId, string $provider): Collection
+    {
+        return DB::table('external_accounts')
+            ->join('users', 'users.id', '=', 'external_accounts.user_id')
+            ->where('external_accounts.team_id', $teamId)
+            ->where('external_accounts.provider', $provider)
+            ->orderByDesc('external_accounts.last_synced_at')
+            ->select([
+                'external_accounts.id',
+                'external_accounts.last_synced_at',
+                'users.name as user_name',
+                'users.email as user_email',
+            ])
+            ->get();
     }
 }
