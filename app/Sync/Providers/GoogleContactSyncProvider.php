@@ -8,15 +8,14 @@ use App\Models\ContactSyncMapping;
 use App\Models\ExternalAccount;
 use App\Models\SyncCursor;
 use App\Services\GoogleOAuthService;
+use App\Support\GoogleIntegrationScopes;
 use App\Sync\Contracts\ContactSyncProviderInterface;
 use Google\Service\Exception as GoogleServiceException;
 use Google\Service\PeopleService;
 
 class GoogleContactSyncProvider implements ContactSyncProviderInterface
 {
-    public function __construct(private readonly GoogleOAuthService $googleOAuthService)
-    {
-    }
+    public function __construct(private readonly GoogleOAuthService $googleOAuthService) {}
 
     public function sync(ExternalAccount $account): array
     {
@@ -27,9 +26,7 @@ class GoogleContactSyncProvider implements ContactSyncProviderInterface
             ],
         );
 
-        $service = new PeopleService($this->googleOAuthService->buildApiClient($account, [
-            'https://www.googleapis.com/auth/contacts.readonly',
-        ]));
+        $service = new PeopleService($this->googleOAuthService->buildApiClient($account, GoogleIntegrationScopes::contactsForApiClient()));
 
         $baseParams = [
             'personFields' => 'names,emailAddresses,phoneNumbers,metadata',
@@ -82,7 +79,7 @@ class GoogleContactSyncProvider implements ContactSyncProviderInterface
                     {
                         if ($mapping !== null)
                         {
-                            $mapping->contact?->delete();
+                            $mapping->contact?->deleteQuietly();
                             $deleted++;
                         }
 
@@ -115,7 +112,7 @@ class GoogleContactSyncProvider implements ContactSyncProviderInterface
                     $contact->surname = $namePayload['familyName'] ?? null;
                     $contact->email = $emailPayload['value'] ?? null;
                     $contact->phone = isset($phonePayload['canonicalForm']) ? preg_replace('/[^0-9]/', '', (string) $phonePayload['canonicalForm']) : null;
-                    $contact->save();
+                    $contact->saveQuietly();
 
                     ContactSyncMapping::query()->updateOrCreate(
                         [

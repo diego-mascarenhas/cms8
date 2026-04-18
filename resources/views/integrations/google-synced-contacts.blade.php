@@ -17,39 +17,7 @@
   </div>
 </div>
 
-@if ($googleAccounts->isNotEmpty())
-<div class="card mb-4">
-  <div class="card-header">
-    <h6 class="mb-0">{{ __('app.Connected Google accounts (this team)') }}</h6>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead>
-          <tr>
-            <th>{{ __('app.User') }}</th>
-            <th>{{ __('app.Last account sync') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($googleAccounts as $acct)
-            <tr>
-              <td>{{ $acct->user_name ?? '—' }} <span class="text-muted small">({{ $acct->user_email ?? '—' }})</span></td>
-              <td>
-                @if (! empty($acct->last_synced_at))
-                  {{ \Carbon\Carbon::parse($acct->last_synced_at)->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
-                @else
-                  <span class="text-muted">—</span>
-                @endif
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-@endif
+@include('integrations.partials.google-accounts-scopes', ['googleAccounts' => $googleAccounts])
 
 <div class="card mb-4">
   <div class="card-body py-3">

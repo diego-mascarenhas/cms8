@@ -42,10 +42,10 @@
                 <pre class="mb-3"><code class="language-env">APP_URL=https://humano.test
 GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=tu-client-secret
-GOOGLE_OAUTH_SCOPES="openid,email,profile,https://www.googleapis.com/auth/contacts.readonly,https://www.googleapis.com/auth/calendar.readonly"</code></pre>
+GOOGLE_OAUTH_SCOPES="openid,email,profile,https://www.googleapis.com/auth/contacts,https://www.googleapis.com/auth/calendar.events"</code></pre>
                 <ul class="small text-muted">
                     <li>{{ __('La URL de redirección OAuth es siempre') }} <code>{{ rtrim(config('app.url'), '/') }}/integrations/google/callback</code> {{ __('según') }} <code>APP_URL</code> {{ __('en') }} <code>config/app.php</code>. {{ __('Registrá esa URI exacta en Google Cloud.') }}</li>
-                    <li><code>GOOGLE_OAUTH_SCOPES</code>: {{ __('lista separada por comas. Los scopes de solo lectura anteriores son los recomendados para importar contactos y eventos sin modificar Google.') }}</li>
+                    <li><code>GOOGLE_OAUTH_SCOPES</code>: {{ __('lista separada por comas. Los valores por defecto incluyen permisos de lectura y escritura en contactos y eventos del calendario principal (primary), para importar desde Google y enviar cambios hechos en Humano hacia Google. Tras cambiar scopes, reconecta Google en Team Settings para que el usuario vuelva a aceptar el consentimiento.') }}</li>
                 </ul>
 
                 <h5 class="mt-4">{{ __('3. Google Cloud: URI de redirección') }}</h5>

@@ -122,8 +122,8 @@ class GoogleOAuthService
                 'openid',
                 'email',
                 'profile',
-                'https://www.googleapis.com/auth/contacts.readonly',
-                'https://www.googleapis.com/auth/calendar.readonly',
+                'https://www.googleapis.com/auth/contacts',
+                'https://www.googleapis.com/auth/calendar.events',
             ];
     }
 

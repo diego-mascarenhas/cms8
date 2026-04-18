@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Jobs\GenerateTemplateHtmlJob;
+use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
@@ -1110,6 +1111,8 @@ class AssistantToolsService
             'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
 
+        PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+
         return $this->truncate(
             'Calendar event created: '.$event->title.' (id: '.$event->id.') from '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
         );
@@ -1248,6 +1251,7 @@ class AssistantToolsService
         if (! empty($updates))
         {
             $event->update($updates);
+            PushCalendarEventToGoogleJob::dispatch($event->id, 'updated');
         }
 
         return $this->truncate(

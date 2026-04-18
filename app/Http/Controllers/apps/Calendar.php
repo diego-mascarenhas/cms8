@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\apps;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use Illuminate\Http\Request;
@@ -97,6 +98,8 @@ class Calendar extends Controller
 
         $this->syncEventGuests($event, $teamId, $validated['guests'] ?? []);
 
+        PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+
         return response()->json($this->eventToFullCalendar($event->load('guests')), 201);
     }
 
@@ -141,6 +144,8 @@ class Calendar extends Controller
             $this->syncEventGuests($event, $teamId, $validated['guests']);
         }
 
+        PushCalendarEventToGoogleJob::dispatch($event->id, 'updated');
+
         return response()->json($this->eventToFullCalendar($event->fresh()->load('guests')));
     }
 
@@ -155,7 +160,9 @@ class Calendar extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $eventId = $event->id;
         $event->delete();
+        PushCalendarEventToGoogleJob::dispatch($eventId, 'deleted');
 
         return response()->json(['ok' => true], 200);
     }

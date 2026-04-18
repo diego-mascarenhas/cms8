@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Contracts\WhatsAppGateway;
+use App\Models\Contact;
 use App\Models\SubscriptionProduct;
 use App\Models\TicketResponse;
+use App\Observers\ContactGoogleOutboundObserver;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\AssistantToolsService;
@@ -59,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         // Register SubscriptionProduct Observer
         SubscriptionProduct::observe(SubscriptionProductObserver::class);
         TicketResponse::observe(TicketResponseObserver::class);
+        Contact::observe(ContactGoogleOutboundObserver::class);
 
         // Only register CustomTranslator when not in console mode to prevent bootstrap issues
         if (! $this->app->runningInConsole())

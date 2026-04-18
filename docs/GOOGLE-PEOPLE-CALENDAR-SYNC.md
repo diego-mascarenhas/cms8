@@ -7,6 +7,8 @@ This project now supports per-user Google OAuth accounts and incremental synchro
 - Contacts (`People API`)
 - Calendar events (`Google Calendar API`)
 
+**Outbound (Humano → Google):** local calendar changes enqueue `PushCalendarEventToGoogleJob` (primary calendar of the first Google account linked to the team). Local contact changes enqueue `PushContactToGoogleJob` via `ContactGoogleOutboundObserver`. Inbound sync uses `saveQuietly` / `deleteQuietly` on models it writes so those writes do not re-trigger outbound jobs. OAuth defaults use `calendar.events` and `contacts` scopes; users who connected under older read-only scopes must disconnect and connect again after updating `.env`.
+
 ## Data Model
 
 New tables:

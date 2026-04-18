@@ -8,6 +8,7 @@ use App\Models\CalendarEventSyncMapping;
 use App\Models\ExternalAccount;
 use App\Models\SyncCursor;
 use App\Services\GoogleOAuthService;
+use App\Support\GoogleIntegrationScopes;
 use App\Sync\Contracts\CalendarSyncProviderInterface;
 use Carbon\CarbonImmutable;
 use Google\Service\Calendar;
@@ -15,9 +16,7 @@ use Google\Service\Exception as GoogleServiceException;
 
 class GoogleCalendarSyncProvider implements CalendarSyncProviderInterface
 {
-    public function __construct(private readonly GoogleOAuthService $googleOAuthService)
-    {
-    }
+    public function __construct(private readonly GoogleOAuthService $googleOAuthService) {}
 
     public function sync(ExternalAccount $account): array
     {
@@ -28,9 +27,7 @@ class GoogleCalendarSyncProvider implements CalendarSyncProviderInterface
             ],
         );
 
-        $service = new Calendar($this->googleOAuthService->buildApiClient($account, [
-            'https://www.googleapis.com/auth/calendar.readonly',
-        ]));
+        $service = new Calendar($this->googleOAuthService->buildApiClient($account, GoogleIntegrationScopes::calendarForApiClient()));
 
         $pulled = 0;
         $upserted = 0;
@@ -114,7 +111,7 @@ class GoogleCalendarSyncProvider implements CalendarSyncProviderInterface
                     $calendarEvent->notes = $event->getDescription();
                     $calendarEvent->location = $event->getLocation();
                     $calendarEvent->google_event_id = $externalId;
-                    $calendarEvent->save();
+                    $calendarEvent->saveQuietly();
 
                     CalendarEventSyncMapping::query()->updateOrCreate(
                         [

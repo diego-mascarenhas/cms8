@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -23,6 +24,10 @@ class CalendarPage extends Component
     public bool $allDay = false;
 
     public string $notes = '';
+
+    public string $description = '';
+
+    public string $location = '';
 
     public string $url = '';
 
@@ -130,6 +135,8 @@ class CalendarPage extends Component
         $event->label = $this->label !== '' ? $this->label : null;
         $event->save();
 
+        PushCalendarEventToGoogleJob::dispatch($event->id, $this->editingId ? 'updated' : 'created');
+
         $this->resetForm();
         $this->loadEvents();
     }
@@ -137,7 +144,9 @@ class CalendarPage extends Component
     public function delete(int $id): void
     {
         $event = CalendarEvent::findOrFail($id);
+        $eventId = $event->id;
         $event->delete();
+        PushCalendarEventToGoogleJob::dispatch($eventId, 'deleted');
 
         $this->resetForm();
         $this->loadEvents();
