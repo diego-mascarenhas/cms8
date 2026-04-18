@@ -98,6 +98,50 @@ final class GoogleOAuthScopePresenter
     }
 
     /**
+     * Short badge text for the Google accounts table (no "Calendario:" / "Contactos:" prefix).
+     *
+     * @param  array<int, mixed>|null  $scopes
+     */
+    public static function calendarBadgeLabel(?array $scopes): string
+    {
+        return match (self::calendarAccessLevel($scopes))
+        {
+            'readonly' => __('app.Google badge readonly'),
+            'write' => self::calendarBadgeWriteLabel($scopes),
+            default => __('app.Google badge no access'),
+        };
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $scopes
+     */
+    public static function contactsBadgeLabel(?array $scopes): string
+    {
+        return match (self::contactsAccessLevel($scopes))
+        {
+            'readonly' => __('app.Google badge readonly'),
+            'write' => __('app.Google badge read write'),
+            default => __('app.Google badge no access'),
+        };
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $scopes
+     */
+    private static function calendarBadgeWriteLabel(?array $scopes): string
+    {
+        foreach (self::normalized($scopes) as $s)
+        {
+            if (str_contains($s, 'calendar.events'))
+            {
+                return __('app.Google badge read write');
+            }
+        }
+
+        return __('app.Google badge calendar full');
+    }
+
+    /**
      * @param  array<int, mixed>|null  $scopes
      */
     private static function calendarWriteLabel(?array $scopes): string
@@ -127,6 +171,7 @@ final class GoogleOAuthScopePresenter
             $scope === 'profile' => __('app.Google scope profile'),
             str_contains($scope, 'userinfo.email') => __('app.Google scope userinfo email'),
             str_contains($scope, 'userinfo.profile') => __('app.Google scope userinfo profile'),
+            str_contains($scope, 'userinfo.openid') => __('app.Google scope openid'),
             default => $scope,
         };
     }

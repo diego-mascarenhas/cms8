@@ -15,17 +15,18 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 @endif
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="alert alert-info mb-0" role="alert">
-      <h6 class="alert-heading mb-2">{{ __('app.How Google contacts sync works') }}</h6>
-      <p class="mb-2 small">{{ __('app.Google contacts sync help body') }}</p>
-      <ul class="small mb-0 ps-3">
-        <li>{{ __('app.Google sync schedule bullet') }}</li>
-        <li>{{ __('app.Google sync queue bullet') }}</li>
-        <li>{{ __('app.Google contacts remote id bullet') }}</li>
-      </ul>
-    </div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div class="d-flex flex-column justify-content-center">
+    <h4 class="mb-1">{{ __('app.Google synced contacts') }}</h4>
+    <p class="text-muted mb-0">{{ __('app.Google synced contacts heading subtitle') }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <form method="post" action="{{ route('integrations.google.sync-contacts') }}" class="d-inline">
+      @csrf
+      <button type="submit" class="btn btn-primary btn-sm">{{ __('app.Sync Google contacts now') }}</button>
+    </form>
+    <a href="{{ route('contact-list') }}" class="btn btn-label-secondary btn-sm">{{ __('app.Back to contacts') }}</a>
+    <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary btn-sm">{{ __('app.Team settings') }}</a>
   </div>
 </div>
 
@@ -55,25 +56,6 @@
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
-            <span class="d-block text-muted small">{{ __('app.Google stats kpi_last_pull_short') }}</span>
-            <div class="d-flex align-items-center my-2">
-              <h3 class="mb-0">{{ (int) ($contactsLastSyncPulledTotal ?? 0) }}</h3>
-            </div>
-            <p class="mb-0 text-muted small">{{ __('app.People read last successful sync') }}</p>
-            <p class="mb-0 mt-1 text-muted small">{{ __('app.Last sync pulled hint contacts') }}</p>
-          </div>
-          <div class="avatar">
-            <span class="avatar-initial rounded bg-label-info"><i class="ti ti-users ti-sm"></i></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
             <span class="d-block text-muted small">{{ __('app.Active in CRM') }}</span>
             <div class="d-flex align-items-center my-2">
               <h3 class="mb-0 text-success">{{ (int) ($stats->local_active ?? 0) }}</h3>
@@ -92,7 +74,7 @@
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
-            <span class="d-block text-muted small">{{ __('app.Soft-deleted in CRM') }}</span>
+            <span class="d-block text-muted small">{{ __('app.Google stats kpi_deleted_short') }}</span>
             <div class="d-flex align-items-center my-2">
               <h3 class="mb-0 text-secondary">{{ (int) ($stats->local_soft_deleted ?? 0) }}</h3>
             </div>
@@ -126,19 +108,9 @@
 </div>
 
 <div class="card">
-  <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-    <div>
-      <h5 class="card-title mb-0">{{ __('app.Contacts from Google (remote identifiers)') }}</h5>
-      <small class="text-muted">{{ __('app.Each row is a Google People resource id mapped to a CRM contact. Up to 500 rows.') }}</small>
-    </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-      <form method="post" action="{{ route('integrations.google.sync-contacts') }}" class="d-inline">
-        @csrf
-        <button type="submit" class="btn btn-primary btn-sm">{{ __('app.Sync Google contacts now') }}</button>
-      </form>
-      <a href="{{ route('contact-list') }}" class="btn btn-label-secondary btn-sm">{{ __('app.Back to contacts') }}</a>
-      <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary btn-sm">{{ __('app.Team settings') }}</a>
-    </div>
+  <div class="card-header border-bottom">
+    <h5 class="card-title mb-0">{{ __('app.Contacts from Google (remote identifiers)') }}</h5>
+    <small class="text-muted">{{ __('app.Each row is a Google People resource id mapped to a CRM contact. Up to 500 rows.') }}</small>
   </div>
   <div class="card-body">
     @if ($rows->isEmpty())
@@ -148,7 +120,7 @@
         <table class="table table-sm table-striped">
           <thead>
             <tr>
-              <th>{{ __('app.Name (CRM copy)') }}</th>
+              <th>{{ __('app.Google contacts column name') }}</th>
               <th>{{ __('app.Email') }}</th>
               <th>{{ __('app.Phone') }}</th>
               <th>{{ __('app.Google contacts column updated') }}</th>

@@ -15,17 +15,18 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 @endif
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="alert alert-info mb-0" role="alert">
-      <h6 class="alert-heading mb-2">{{ __('app.How Google calendar sync works') }}</h6>
-      <p class="mb-2 small">{{ __('app.Google calendar sync help body') }}</p>
-      <ul class="small mb-0 ps-3">
-        <li>{{ __('app.Google sync schedule bullet') }}</li>
-        <li>{{ __('app.Google sync queue bullet') }}</li>
-        <li>{{ __('app.Google calendar cancelled bullet') }}</li>
-      </ul>
-    </div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div class="d-flex flex-column justify-content-center">
+    <h4 class="mb-1">{{ __('app.Google synced events') }}</h4>
+    <p class="text-muted mb-0">{{ __('app.Google synced calendar heading subtitle') }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <form method="post" action="{{ route('integrations.google.sync-calendar') }}" class="d-inline">
+      @csrf
+      <button type="submit" class="btn btn-primary btn-sm">{{ __('app.Sync Google calendar now') }}</button>
+    </form>
+    <a href="{{ route('app-calendar') }}" class="btn btn-label-secondary btn-sm">{{ __('app.Back to calendar') }}</a>
+    <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary btn-sm">{{ __('app.Team settings') }}</a>
   </div>
 </div>
 
@@ -92,7 +93,7 @@
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
-            <span class="d-block text-muted small">{{ __('app.Hidden locally (soft-deleted)') }}</span>
+            <span class="d-block text-muted small">{{ __('app.Google stats kpi_deleted_short') }}</span>
             <div class="d-flex align-items-center my-2">
               <h3 class="mb-0 text-secondary">{{ (int) ($stats->local_soft_deleted ?? 0) }}</h3>
             </div>
@@ -126,19 +127,9 @@
 </div>
 
 <div class="card">
-  <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-    <div>
-      <h5 class="card-title mb-0">{{ __('app.Calendar events synced from Google') }}</h5>
-      <small class="text-muted">{{ __('app.Each row is a Google event id linked to a local copy. Table shows up to 500 rows.') }}</small>
-    </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-      <form method="post" action="{{ route('integrations.google.sync-calendar') }}" class="d-inline">
-        @csrf
-        <button type="submit" class="btn btn-primary btn-sm">{{ __('app.Sync Google calendar now') }}</button>
-      </form>
-      <a href="{{ route('app-calendar') }}" class="btn btn-label-secondary btn-sm">{{ __('app.Back to calendar') }}</a>
-      <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary btn-sm">{{ __('app.Team settings') }}</a>
-    </div>
+  <div class="card-header border-bottom">
+    <h5 class="card-title mb-0">{{ __('app.Calendar events synced from Google') }}</h5>
+    <small class="text-muted">{{ __('app.Each row is a Google event id linked to a local copy. Table shows up to 500 rows.') }}</small>
   </div>
   <div class="card-body">
     @if ($rows->isEmpty())

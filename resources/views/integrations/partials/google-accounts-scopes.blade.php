@@ -1,5 +1,6 @@
 @php
   use App\Support\GoogleOAuthScopePresenter;
+  use Illuminate\Support\Str;
 @endphp
 @if ($googleAccounts->isNotEmpty())
 <div class="card mb-4">
@@ -13,10 +14,10 @@
         <thead>
           <tr class="align-middle">
             <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.User') }}</th>
-            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google permission column calendar') }}</th>
-            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google permission column contacts') }}</th>
-            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Last account sync') }}</th>
-            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts col_scopes_header') }}</th>
+            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_calendar') }}</th>
+            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_contacts') }}</th>
+            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_sync') }}</th>
+            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_scope') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -35,44 +36,66 @@
                   'readonly' => 'bg-label-warning',
                   default => 'bg-label-secondary',
               };
+              $syncFormatted = null;
+              if ($acct->last_synced_at)
+              {
+                  $syncAt = $acct->last_synced_at->copy()->timezone(config('app.timezone'))->locale(app()->getLocale());
+                  $syncFormatted = Str::startsWith((string) app()->getLocale(), 'es')
+                      ? $syncAt->translatedFormat('j \d\e F \d\e Y, H:i')
+                      : $syncAt->translatedFormat('M j, Y, H:i');
+              }
             @endphp
             <tr>
               <td>{{ $acct->user?->name ?? '—' }} <span class="text-muted small">({{ $acct->user?->email ?? '—' }})</span></td>
               <td>
-                <span class="badge {{ $calBadge }}">{{ GoogleOAuthScopePresenter::calendarPermissionLabel($acct->scopes) }}</span>
+                <span class="badge {{ $calBadge }}">{{ GoogleOAuthScopePresenter::calendarBadgeLabel($acct->scopes) }}</span>
               </td>
               <td>
-                <span class="badge {{ $conBadge }}">{{ GoogleOAuthScopePresenter::contactsPermissionLabel($acct->scopes) }}</span>
+                <span class="badge {{ $conBadge }}">{{ GoogleOAuthScopePresenter::contactsBadgeLabel($acct->scopes) }}</span>
               </td>
               <td>
-                @if ($acct->last_synced_at)
-                  {{ $acct->last_synced_at->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
+                @if ($syncFormatted !== null)
+                  {{ $syncFormatted }}
                 @else
                   <span class="text-muted">—</span>
                 @endif
               </td>
-              <td class="small">
-                <div class="d-flex align-items-start gap-2">
-                  <button type="button" class="btn btn-icon btn-sm p-0 mt-0 align-self-start btn-text-secondary border-0 shadow-none flex-shrink-0 lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('app.Google accounts col_tip_scopes') }}" aria-label="{{ __('app.Google accounts col_tip_scopes') }}">
-                    <i class="ti ti-info-circle ti-sm"></i>
-                  </button>
-                  <div class="flex-grow-1 min-w-0">
-                    @forelse ($scopeList as $s)
-                      <div class="mb-1">
-                        <span class="text-body">{{ GoogleOAuthScopePresenter::describeScope($s) }}</span>
-                        <br><code class="text-muted small user-select-all">{{ $s }}</code>
-                      </div>
-                    @empty
-                      <span class="text-muted">—</span>
-                    @endforelse
-                  </div>
-                </div>
+              <td class="text-nowrap">
+                <button type="button" class="btn btn-sm btn-label-secondary" data-bs-toggle="modal" data-bs-target="#googleAccountScopesModal-{{ $acct->id }}" aria-label="{{ __('app.Google scopes modal open') }}">
+                  <i class="ti ti-info-circle ti-sm me-1"></i>{{ __('app.Google scopes modal open') }}
+                </button>
               </td>
             </tr>
           @endforeach
         </tbody>
       </table>
     </div>
+    @foreach ($googleAccounts as $acct)
+      @php
+        $modalScopes = GoogleOAuthScopePresenter::normalized($acct->scopes);
+      @endphp
+      <div class="modal fade" id="googleAccountScopesModal-{{ $acct->id }}" tabindex="-1" aria-labelledby="googleAccountScopesModalLabel-{{ $acct->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="googleAccountScopesModalLabel-{{ $acct->id }}">{{ __('app.Google scopes modal title') }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted small mb-3">{{ $acct->user?->name ?? '—' }} <span class="text-muted">({{ $acct->user?->email ?? '—' }})</span></p>
+              @forelse ($modalScopes as $s)
+                <div class="mb-3 pb-3 border-bottom">
+                  <div class="fw-medium">{{ GoogleOAuthScopePresenter::describeScope($s) }}</div>
+                  <code class="text-muted small user-select-all d-block mt-1">{{ $s }}</code>
+                </div>
+              @empty
+                <p class="text-muted mb-0">{{ __('app.Google scopes modal empty') }}</p>
+              @endforelse
+            </div>
+          </div>
+        </div>
+      </div>
+    @endforeach
   </div>
 </div>
 @endif

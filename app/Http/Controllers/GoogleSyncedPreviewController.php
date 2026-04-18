@@ -35,12 +35,6 @@ class GoogleSyncedPreviewController extends Controller
 
         $googleAccounts = $this->googleAccountsForTeam($team->id, ExternalProvider::Google);
 
-        $contactsLastSyncPulledTotal = $this->sumLastSuccessfulPulledForTeam(
-            $team->id,
-            ExternalProvider::Google,
-            SyncResource::Contacts,
-        );
-
         $stats = DB::table('contact_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'contact_sync_mappings.external_account_id')
             ->leftJoin('contacts', 'contacts.id', '=', 'contact_sync_mappings.contact_id')
@@ -80,7 +74,6 @@ class GoogleSyncedPreviewController extends Controller
             'team' => $team,
             'googleAccounts' => $googleAccounts,
             'stats' => $stats,
-            'contactsLastSyncPulledTotal' => $contactsLastSyncPulledTotal,
         ]);
     }
 
