@@ -168,7 +168,7 @@
                       <span class="badge bg-label-success">{{ __('app.In sync') }}</span>
                     @endif
                     @if ($canOpenContact)
-                      <a href="{{ route('contact.show', $row->contact_id) }}" class="btn btn-icon btn-sm btn-text-secondary" title="{{ __('app.View contact detail') }}" aria-label="{{ __('app.View contact detail') }}">
+                      <a href="{{ route('contact.show', $row->contact_id) }}" class="text-body" title="{{ __('app.View contact detail') }}" aria-label="{{ __('app.View contact detail') }}">
                         <i class="ti ti-eye ti-sm"></i>
                       </a>
                     @else

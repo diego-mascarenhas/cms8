@@ -61,8 +61,8 @@
                 @endif
               </td>
               <td class="text-nowrap">
-                <button type="button" class="btn btn-sm btn-label-secondary" data-bs-toggle="modal" data-bs-target="#googleAccountScopesModal-{{ $acct->id }}" aria-label="{{ __('app.Google scopes modal open') }}">
-                  <i class="ti ti-info-circle ti-sm me-1"></i>{{ __('app.Google scopes modal open') }}
+                <button type="button" class="btn btn-sm btn-icon btn-label-secondary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#googleAccountScopesModal-{{ $acct->id }}" title="{{ __('app.Google scopes modal open') }}" aria-label="{{ __('app.Google scopes modal open') }}">
+                  <i class="ti ti-info-circle ti-sm"></i>
                 </button>
               </td>
             </tr>
