@@ -26,7 +26,6 @@
         @csrf
         <button type="submit" class="btn btn-primary waves-effect waves-light" aria-label="{{ __('app.Sync Google contacts now') }}">{{ __('app.Google synced header sync') }}</button>
       </form>
-      <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary waves-effect waves-light">{{ __('app.Google synced header settings') }}</a>
       <a href="{{ route('contact-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('app.Google synced header back') }}</a>
     </div>
   </div>
@@ -124,7 +123,9 @@
         </div>
         <h5 class="mb-2">{{ __('app.Google synced contacts empty title') }}</h5>
         <p class="text-muted mb-4 mx-auto" style="max-width: 28rem;">{{ __('app.No synced contact rows yet. Connect Google in team settings and run sync (or wait for the scheduled job).') }}</p>
-        <a href="{{ route('team-settings.index', $team) }}" class="btn btn-primary waves-effect waves-light">{{ __('app.Google synced header settings') }}</a>
+        <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">
+          {{ $googleAccounts->isNotEmpty() ? __('app.Google integration reconnect') : __('app.Google integration connect') }}
+        </a>
       </div>
     @else
       <div class="table-responsive">

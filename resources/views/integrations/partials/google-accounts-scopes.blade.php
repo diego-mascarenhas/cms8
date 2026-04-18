@@ -17,7 +17,7 @@
             <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_calendar') }}</th>
             <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_contacts') }}</th>
             <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_sync') }}</th>
-            <th scope="col" class="py-2 fw-normal small text-muted">{{ __('app.Google accounts table_scope') }}</th>
+            <th scope="col" class="py-2 fw-normal small text-muted text-center">{{ __('app.Google accounts table_scope') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +45,7 @@
                       : $syncAt->translatedFormat('M j, Y, H:i');
               }
             @endphp
-            <tr>
+            <tr class="align-middle">
               <td>{{ $acct->user?->name ?? '—' }} <span class="text-muted small">({{ $acct->user?->email ?? '—' }})</span></td>
               <td>
                 <span class="badge {{ $calBadge }}">{{ GoogleOAuthScopePresenter::calendarBadgeLabel($acct->scopes) }}</span>
@@ -60,8 +60,8 @@
                   <span class="text-muted">—</span>
                 @endif
               </td>
-              <td class="text-nowrap">
-                <button type="button" class="btn btn-sm btn-icon btn-label-secondary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#googleAccountScopesModal-{{ $acct->id }}" title="{{ __('app.Google scopes modal open') }}" aria-label="{{ __('app.Google scopes modal open') }}">
+              <td class="text-nowrap text-center">
+                <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none" data-bs-toggle="modal" data-bs-target="#googleAccountScopesModal-{{ $acct->id }}" title="{{ __('app.Google scopes modal open') }}" aria-label="{{ __('app.Google scopes modal open') }}">
                   <i class="ti ti-info-circle ti-sm"></i>
                 </button>
               </td>
@@ -74,23 +74,30 @@
       @php
         $modalScopes = GoogleOAuthScopePresenter::normalized($acct->scopes);
       @endphp
-      <div class="modal fade" id="googleAccountScopesModal-{{ $acct->id }}" tabindex="-1" aria-labelledby="googleAccountScopesModalLabel-{{ $acct->id }}" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="googleAccountScopesModalLabel-{{ $acct->id }}">{{ __('app.Google scopes modal title') }}</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <p class="text-muted small mb-3">{{ $acct->user?->name ?? '—' }} <span class="text-muted">({{ $acct->user?->email ?? '—' }})</span></p>
-              @forelse ($modalScopes as $s)
-                <div class="mb-3 pb-3 border-bottom">
-                  <div class="fw-medium">{{ GoogleOAuthScopePresenter::describeScope($s) }}</div>
-                  <code class="text-muted small user-select-all d-block mt-1">{{ $s }}</code>
-                </div>
-              @empty
-                <p class="text-muted mb-0">{{ __('app.Google scopes modal empty') }}</p>
-              @endforelse
+      <div class="modal modal-transparent fade" id="googleAccountScopesModal-{{ $acct->id }}" tabindex="-1" aria-labelledby="googleAccountScopesModalLabel-{{ $acct->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+          <div class="modal-content border-0 shadow-none bg-transparent">
+            <div class="modal-body position-relative px-3 px-sm-4 py-4">
+              <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 mt-2 me-2" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="text-center mb-4 pt-2">
+                <span class="avatar avatar-xl mx-auto">
+                  <span class="avatar-initial rounded-circle bg-primary">
+                    <i class="ti ti-info-circle ti-md text-white" aria-hidden="true"></i>
+                  </span>
+                </span>
+                <span id="googleAccountScopesModalLabel-{{ $acct->id }}" class="visually-hidden">{{ __('app.Google scopes modal title') }}</span>
+              </div>
+              <div class="rounded-3 bg-body p-4 mx-auto w-100">
+                <p class="text-muted small mb-3 text-center">{{ $acct->user?->name ?? '—' }} <span class="text-muted">({{ $acct->user?->email ?? '—' }})</span></p>
+                @forelse ($modalScopes as $s)
+                  <div class="mb-4 pb-1">
+                    <div class="fw-medium">{{ GoogleOAuthScopePresenter::describeScope($s) }}</div>
+                    <code class="text-muted small user-select-all d-block mt-1">{{ $s }}</code>
+                  </div>
+                @empty
+                  <p class="text-muted mb-0 text-center">{{ __('app.Google scopes modal empty') }}</p>
+                @endforelse
+              </div>
             </div>
           </div>
         </div>

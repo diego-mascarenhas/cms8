@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ExternalProvider;
-use App\Enums\SyncResource;
 use App\Jobs\SyncGoogleCalendarEventsJob;
 use App\Jobs\SyncGoogleContactsJob;
 use App\Models\Contact;
 use App\Models\ExternalAccount;
-use App\Models\SyncRun;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,12 +122,6 @@ class GoogleSyncedPreviewController extends Controller
 
         $googleAccounts = $this->googleAccountsForTeam($team->id, ExternalProvider::Google);
 
-        $calendarLastSyncPulledTotal = $this->sumLastSuccessfulPulledForTeam(
-            $team->id,
-            ExternalProvider::Google,
-            SyncResource::CalendarEvents,
-        );
-
         $stats = DB::table('calendar_event_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'calendar_event_sync_mappings.external_account_id')
             ->leftJoin('calendar_events', 'calendar_events.id', '=', 'calendar_event_sync_mappings.calendar_event_id')
@@ -171,7 +163,6 @@ class GoogleSyncedPreviewController extends Controller
             'team' => $team,
             'googleAccounts' => $googleAccounts,
             'stats' => $stats,
-            'calendarLastSyncPulledTotal' => $calendarLastSyncPulledTotal,
         ]);
     }
 
@@ -222,38 +213,5 @@ class GoogleSyncedPreviewController extends Controller
             }])
             ->orderByDesc('last_synced_at')
             ->get();
-    }
-
-    /**
-     * Sum of {@see SyncRun::$pulled_count} from the latest successful run per Google account (same resource).
-     * Incremental runs may return a small count; a full sync reflects more of the remote directory.
-     */
-    private function sumLastSuccessfulPulledForTeam(int $teamId, ExternalProvider $provider, SyncResource $resource): int
-    {
-        $accountIds = ExternalAccount::query()
-            ->where('team_id', $teamId)
-            ->where('provider', $provider->value)
-            ->pluck('id');
-
-        if ($accountIds->isEmpty())
-        {
-            return 0;
-        }
-
-        $sum = 0;
-
-        foreach ($accountIds as $externalAccountId)
-        {
-            $run = SyncRun::query()
-                ->where('external_account_id', $externalAccountId)
-                ->where('resource', $resource)
-                ->where('status', 'success')
-                ->orderByDesc('finished_at')
-                ->first();
-
-            $sum += (int) ($run?->pulled_count ?? 0);
-        }
-
-        return $sum;
     }
 }

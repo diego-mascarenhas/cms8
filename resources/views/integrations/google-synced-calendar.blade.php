@@ -26,7 +26,6 @@
         @csrf
         <button type="submit" class="btn btn-primary waves-effect waves-light" aria-label="{{ __('app.Sync Google calendar now') }}">{{ __('app.Google synced header sync') }}</button>
       </form>
-      <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-primary waves-effect waves-light">{{ __('app.Google synced header settings') }}</a>
       <a href="{{ route('app-calendar') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('app.Google synced header back') }}</a>
     </div>
   </div>
@@ -48,25 +47,6 @@
           </div>
           <div class="avatar">
             <span class="avatar-initial rounded bg-label-primary"><i class="ti ti-calendar-event ti-sm"></i></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
-            <span class="d-block text-muted small">{{ __('app.Google stats calendar kpi_last_pull_short') }}</span>
-            <div class="d-flex align-items-center my-2">
-              <h3 class="mb-0">{{ (int) ($calendarLastSyncPulledTotal ?? 0) }}</h3>
-            </div>
-            <p class="mb-0 text-muted small">{{ __('app.Calendar items read last successful sync') }}</p>
-            <p class="mb-0 mt-1 text-muted small">{{ __('app.Last sync pulled hint calendar') }}</p>
-          </div>
-          <div class="avatar">
-            <span class="avatar-initial rounded bg-label-info"><i class="ti ti-refresh ti-sm"></i></span>
           </div>
         </div>
       </div>
@@ -143,7 +123,9 @@
         </div>
         <h5 class="mb-2">{{ __('app.Google synced calendar empty title') }}</h5>
         <p class="text-muted mb-4 mx-auto" style="max-width: 28rem;">{{ __('app.No synced calendar rows yet. Connect Google in team settings and run sync (or wait for the scheduled job).') }}</p>
-        <a href="{{ route('team-settings.index', $team) }}" class="btn btn-primary waves-effect waves-light">{{ __('app.Google synced header settings') }}</a>
+        <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">
+          {{ $googleAccounts->isNotEmpty() ? __('app.Google integration reconnect') : __('app.Google integration connect') }}
+        </a>
       </div>
     @else
       <div class="table-responsive">
