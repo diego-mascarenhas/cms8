@@ -26,6 +26,20 @@
 @endsection
 
 @section('content')
+    @php
+        // Toggle category selector mode for contacts.
+        // false = single select (same visual behavior as product form)
+        // true  = multiple select
+        $useMultipleCategories = true;
+        $contactCategoryIds = isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', []);
+        if (!is_array($contactCategoryIds)) {
+            $contactCategoryIds = [];
+        }
+        $contactCategorySelected = $useMultipleCategories
+            ? $contactCategoryIds
+            : (old('categories.0') ?? ($contactCategoryIds[0] ?? ''));
+    @endphp
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span>
@@ -203,11 +217,16 @@
                                     @enderror
                                 </div>
                                 <div class="col-sm-12">
-                                    <x-categories-select
+                                    <x-module-categories-select
                                         id="categories"
-                                        label="Categorías"
-                                        :selected="isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', [])"
+                                        name="categories[]"
+                                        errorKey="categories"
+                                        :label="$useMultipleCategories ? 'Categorías' : 'Categoría (*)'"
+                                        :selected="$contactCategorySelected"
                                         moduleKey="contacts"
+                                        :multiple="$useMultipleCategories"
+                                        :allowEmpty="true"
+                                        emptyText="Seleccione una categoría"
                                     />
                                 </div>
                                 <div class="col-sm-12">

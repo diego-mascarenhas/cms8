@@ -19,6 +19,28 @@
         const labelCreating = @json(__('Creating...'));
         const labelMinChars = @json(__('Please enter at least 2 characters to create a category.'));
         const labelError = @json(__('Could not create the category.'));
+        let multiDropdownSearchBound = false;
+        let multiKeyboardRedirectBound = false;
+
+        function getCurrentSearchTerm(select2Data) {
+            const dropdownSearch = select2Data?.dropdown?.$search ? String(select2Data.dropdown.$search.val() || '').trim() : '';
+            const dropdownField = select2Data?.$dropdown?.find('.select2-search__field').length
+                ? String(select2Data.$dropdown.find('.select2-search__field').first().val() || '').trim()
+                : '';
+            const containerSearch = select2Data?.$container?.find('.select2-search__field').length
+                ? String(select2Data.$container.find('.select2-search__field').first().val() || '').trim()
+                : '';
+            const openContainerSearch = $('.select2-container--open .select2-search__field').length
+                ? String($('.select2-container--open .select2-search__field').first().val() || '').trim()
+                : '';
+            return {
+                value: dropdownSearch || dropdownField || containerSearch || openContainerSearch,
+                fromDropdown: dropdownSearch.length > 0,
+                fromDropdownField: dropdownField.length > 0,
+                fromContainer: containerSearch.length > 0,
+                fromOpenContainer: openContainerSearch.length > 0,
+            };
+        }
 
         function escapeHtml(text) {
             return $('<div>').text(text).html();
@@ -33,6 +55,91 @@
                 .append($('<div class="p-2"></div>').append($btn));
         }
 
+        function ensureMultipleDropdownSearch(select2Data) {
+            if (!isMultiple || !select2Data || !select2Data.$dropdown) {
+                return;
+            }
+
+            const $results = select2Data.$dropdown.find('.select2-results__options');
+            if (!$results.length) {
+                return;
+            }
+
+            let $searchRow = select2Data.$dropdown.find('.module-cat-dropdown-search-row');
+            if (!$searchRow.length) {
+                $searchRow = $('<li class="module-cat-dropdown-search-row" style="list-style:none;padding:12px 20px 8px;"></li>')
+                    .append('<input type="text" class="form-control module-cat-dropdown-search" placeholder="" autocomplete="off">');
+                $results.before($searchRow);
+            }
+
+            const $customInput = $searchRow.find('.module-cat-dropdown-search');
+            const $inlineInput = select2Data.$container.find('.select2-search__field').first();
+            const inlineValue = String($inlineInput.val() || '');
+            $customInput.val(inlineValue);
+            $customInput.css({
+                borderColor: '#d9dee3',
+                boxShadow: 'none',
+                outline: 'none'
+            });
+
+            // Force the real typing surface to be the custom dropdown input,
+            // and keep Select2 inline search hidden/offscreen to avoid layout drift.
+            if ($inlineInput.length) {
+                $inlineInput.css({
+                    position: 'absolute',
+                    left: '-9999px',
+                    width: '1px',
+                    height: '1px',
+                    opacity: '0',
+                    pointerEvents: 'none'
+                });
+                $inlineInput.prop('readonly', true);
+                $inlineInput.attr('tabindex', '-1');
+            }
+            const customInputNode = $customInput.get(0);
+            const containerNode = select2Data.$container.get(0);
+            const customRect = customInputNode ? customInputNode.getBoundingClientRect() : null;
+            const containerRect = containerNode ? containerNode.getBoundingClientRect() : null;
+            const customStyles = customInputNode ? window.getComputedStyle(customInputNode) : null;
+
+            if (!multiDropdownSearchBound) {
+                $customInput.off('input.moduleCatDropdownSearch keyup.moduleCatDropdownSearch');
+                $customInput.on('input.moduleCatDropdownSearch keyup.moduleCatDropdownSearch', function () {
+                    const value = String($(this).val() || '');
+                    const s2 = select.data('select2');
+                    if (s2) {
+                        s2.trigger('query', { term: value });
+                    }
+                    $inlineInput.val('');
+                });
+                multiDropdownSearchBound = true;
+            }
+
+            if (!multiKeyboardRedirectBound) {
+                const $selectionContainer = select2Data.$container.find('.select2-selection--multiple');
+                $selectionContainer.off('keydown.moduleCatRedirect');
+                $selectionContainer.on('keydown.moduleCatRedirect', function (event) {
+                    if (!isMultiple) {
+                        return;
+                    }
+                    const isChar = event.key && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+                    const isBackspace = event.key === 'Backspace';
+                    if (!isChar && !isBackspace) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    const current = String($customInput.val() || '');
+                    const next = isBackspace ? current.slice(0, -1) : current + event.key;
+                    $customInput.val(next).trigger('input');
+                    $customInput.trigger('focus');
+                });
+                multiKeyboardRedirectBound = true;
+            }
+
+            $customInput.trigger('focus');
+        }
+
         function checkAndAddButton() {
             try {
                 const select2Data = select.data('select2');
@@ -41,13 +148,14 @@
                 }
 
                 const dropdown = select2Data.$dropdown;
+                dropdown.find('.select2-results__message').css('display', 'none');
                 const results = dropdown.find('.select2-results__options');
                 if (!results.length) {
                     return;
                 }
 
-                const searchInput = select2Data.dropdown.$search;
-                const searchTerm = searchInput ? String(searchInput.val()).trim() : '';
+                const searchInfo = getCurrentSearchTerm(select2Data);
+                const searchTerm = searchInfo.value;
                 const minLen = 2;
 
                 if (searchTerm.length < minLen) {
@@ -64,7 +172,7 @@
                     }
                 });
 
-                if (hasMatchingOption) {
+                if (hasMatchingOption && !isMultiple) {
                     results.find('#' + btnId).closest('li').remove();
                     return;
                 }
@@ -89,6 +197,9 @@
                         }
                     });
                 }
+                if (noResultsMsg.length) {
+                    noResultsMsg.css('display', 'none');
+                }
 
                 const visibleRealOptions = results.find('li.select2-results__option:visible')
                     .not('.select2-results__message')
@@ -97,9 +208,17 @@
                         return $(this).find('#' + btnId).length === 0;
                     });
 
+                if (isMultiple && searchTerm.length === 0) {
+                    visibleRealOptions.hide();
+                } else {
+                    results.find('li.select2-results__option').show();
+                }
+
                 if (noResultsMsg.length) {
                     noResultsMsg.replaceWith(buildQuickAddRow(searchTerm));
                 } else if (!visibleRealOptions.length && !noResultsMsg.length) {
+                    results.append(buildQuickAddRow(searchTerm));
+                } else if (isMultiple && !results.find('#' + btnId).length) {
                     results.append(buildQuickAddRow(searchTerm));
                 }
             } catch (e) {
@@ -114,12 +233,22 @@
                     return;
                 }
 
+                ensureMultipleDropdownSearch(select2Data);
                 checkAndAddButton();
 
                 const searchInput = select2Data.dropdown.$search;
                 if (searchInput) {
                     searchInput.off('input.moduleCatQuick keyup.moduleCatQuick');
                     searchInput.on('input.moduleCatQuick keyup.moduleCatQuick', function () {
+                        [10, 50, 100, 200, 400].forEach(function (ms) {
+                            setTimeout(checkAndAddButton, ms);
+                        });
+                    });
+                }
+                const openSearchInput = $('.select2-container--open .select2-search__field');
+                if (openSearchInput.length) {
+                    openSearchInput.off('input.moduleCatQuickOpen keyup.moduleCatQuickOpen');
+                    openSearchInput.on('input.moduleCatQuickOpen keyup.moduleCatQuickOpen', function () {
                         [10, 50, 100, 200, 400].forEach(function (ms) {
                             setTimeout(checkAndAddButton, ms);
                         });
@@ -133,6 +262,16 @@
             if (searchInput) {
                 searchInput.off('input.moduleCatQuick keyup.moduleCatQuick');
             }
+            multiDropdownSearchBound = false;
+            multiKeyboardRedirectBound = false;
+            const openSearchInput = $('.select2-container--open .select2-search__field');
+            if (openSearchInput.length) {
+                openSearchInput.off('input.moduleCatQuickOpen keyup.moduleCatQuickOpen');
+            }
+            const select2Data = select.data('select2');
+            if (select2Data?.$container) {
+                select2Data.$container.find('.select2-selection--multiple').off('keydown.moduleCatRedirect');
+            }
         });
 
         $(document).on('click', '#' + btnId, function (e) {
@@ -144,7 +283,8 @@
                 return;
             }
 
-            const searchTerm = select2Data.dropdown.$search ? String(select2Data.dropdown.$search.val()).trim() : '';
+            const searchInfo = getCurrentSearchTerm(select2Data);
+            const searchTerm = searchInfo.value;
             if (searchTerm.length < 2) {
                 alert(labelMinChars);
                 return;
