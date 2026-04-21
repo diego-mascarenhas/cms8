@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Subscriptions'))
+@section('title', __('stripe_subscription.title'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
@@ -16,14 +16,14 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('Subscriptions') }}</h4>
-        <p class="text-muted">{{ __('Client subscriptions synced from Stripe') }}</p>
+        <h4 class="mb-1 mt-3">{{ __('stripe_subscription.title') }}</h4>
+        <p class="text-muted">{{ __('stripe_subscription.subtitle') }}</p>
     </div>
     <div class="mt-3 mt-md-0">
         <form action="{{ route('subscription.sync') }}" method="POST" class="d-inline">
             @csrf
             <button type="submit" class="btn btn-primary">
-                <i class="ti ti-refresh me-1"></i>{{ __('Sync from Stripe') }}
+                <i class="ti ti-refresh me-1"></i>{{ __('stripe_subscription.sync_button') }}
             </button>
         </form>
     </div>

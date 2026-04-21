@@ -71,6 +71,14 @@ class StripeSubscription extends Model
         return $this->belongsTo(Team::class);
     }
 
+    /**
+     * Client enterprise: enterprises.code = Stripe customer_id (cus_…), same as account form field enterprise[code].
+     */
+    public function enterprise(): BelongsTo
+    {
+        return $this->belongsTo(Enterprise::class, 'customer_id', 'code');
+    }
+
     public function changes(): HasMany
     {
         return $this->hasMany(SubscriptionChange::class, 'subscription_id')->latest('detected_at');
@@ -79,6 +87,14 @@ class StripeSubscription extends Model
     public function notifications(): HasMany
     {
         return $this->hasMany(SubscriptionNotification::class, 'subscription_id')->latest();
+    }
+
+    /**
+     * Services in Humano linked to this Stripe subscription row (services.subscription_id).
+     */
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class, 'subscription_id');
     }
 
     public function getBillingFrequencyAttribute(): ?string

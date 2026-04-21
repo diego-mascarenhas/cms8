@@ -33,20 +33,20 @@ class SubscriptionController extends Controller
         $team = auth()->user()->currentTeam;
         if (! $team)
         {
-            return redirect()->route('subscription.index')->with('error', __('Equipo no seleccionado.'));
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.errors.no_team'));
         }
 
         $secret = $team->getSetting('stripe_secret');
         if (empty($secret))
         {
-            return redirect()->route('subscription.index')->with('error', __('Configura la clave secreta de Stripe en Ajustes del equipo para poder sincronizar. Puedes usar la API de test (claves que empiezan por sk_test_).'));
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.errors.no_stripe_secret'));
         }
 
         $stripeService = new StripeSubscriptionService(new StripeClient($secret));
         $sync = new SyncStripeSubscriptionsAction($stripeService);
         $count = $sync->handle($team);
 
-        return redirect()->route('subscription.index')->with('success', __('Suscripciones sincronizadas desde Stripe: :count procesadas.', ['count' => $count]));
+        return redirect()->route('subscription.index')->with('success', __('stripe_subscription.sync_success', ['count' => $count]));
     }
 
     /**

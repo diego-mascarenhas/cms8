@@ -16,9 +16,9 @@ class SyncStripeSubscriptions
     ) {}
 
     /**
-     * @param  \App\Models\Team|null  $forTeam  When provided, assign this team_id to subscriptions that don't match a team by customer_id (e.g. client subscriptions in this Stripe account).
+     * @param  \App\Models\Team|null  $syncingTeam  Team that runs the sync (Stripe secret + Humano scope). When set, all rows get this team_id; link to enterprise is via customer_id = enterprises.code (no extra column).
      */
-    public function handle(?Team $forTeam = null): int
+    public function handle(?Team $syncingTeam = null): int
     {
         $processed = 0;
 
@@ -27,14 +27,15 @@ class SyncStripeSubscriptions
             $payload = $stripeSubscription->toArray();
             $mapped = $this->mapSubscription($payload);
 
-            // Find team by customer_id (stripe_id in teams table), or use the team that triggered the sync (e.g. "my clients' subscriptions")
-            $team = Team::where('stripe_id', $mapped['customer_id'])->first();
-            if ($team)
+            if ($syncingTeam)
             {
-                $mapped['team_id'] = $team->id;
-            } elseif ($forTeam)
+                $mapped['team_id'] = $syncingTeam->id;
+            } elseif (filled($mapped['customer_id'] ?? null))
             {
-                $mapped['team_id'] = $forTeam->id;
+                $mapped['team_id'] = Team::where('stripe_id', $mapped['customer_id'])->value('id');
+            } else
+            {
+                $mapped['team_id'] = null;
             }
 
             $note = $mapped['amount_for_note'] !== null
