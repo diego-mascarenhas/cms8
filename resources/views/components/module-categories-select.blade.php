@@ -189,28 +189,30 @@
             });
             const $container = $moduleCategorySelect.next('.select2-container');
             const isMultipleSelect = $moduleCategorySelect.prop('multiple');
-            $container.find('.select2-selection--multiple .select2-selection__rendered').css({
-                paddingLeft: '0.75rem',
-                paddingRight: '0.75rem'
-            });
-            $container.find('.select2-selection--multiple .select2-search--inline .select2-search__field').css({
-                marginLeft: '0',
-                marginRight: '0',
-                textIndent: '0'
-            });
             if (isMultipleSelect) {
-                $container.find('.select2-selection--multiple .select2-search--inline').css({
-                    display: 'none'
-                });
                 $container.find('.select2-selection--multiple').css({
-                    paddingLeft: '0',
-                    paddingRight: '0',
+                    minHeight: 'calc(2.25rem + 2px)',
+                    padding: '0',
                     borderColor: '#d9dee3',
                     boxShadow: 'none'
                 });
+                $container.find('.select2-selection--multiple .select2-search--inline').css({
+                    margin: '0',
+                    width: '100%'
+                });
                 $container.find('.select2-selection--multiple .select2-selection__rendered').css({
-                    minHeight: '44px',
-                    lineHeight: '44px'
+                    minHeight: 'calc(2.25rem + 2px)',
+                    padding: '.375rem .75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '.25rem'
+                });
+                $container.find('.select2-selection--multiple .select2-search--inline .select2-search__field').css({
+                    margin: '0',
+                    textIndent: '0',
+                    height: 'auto',
+                    minHeight: '1.5rem'
                 });
             }
         }

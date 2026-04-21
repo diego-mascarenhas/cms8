@@ -19,8 +19,6 @@
         const labelCreating = @json(__('Creating...'));
         const labelMinChars = @json(__('Please enter at least 2 characters to create a category.'));
         const labelError = @json(__('Could not create the category.'));
-        let multiDropdownSearchBound = false;
-        let multiKeyboardRedirectBound = false;
 
         function getCurrentSearchTerm(select2Data) {
             const dropdownSearch = select2Data?.dropdown?.$search ? String(select2Data.dropdown.$search.val() || '').trim() : '';
@@ -53,91 +51,6 @@
                 .html('<i class="ti ti-plus me-1"></i>' + labelAdd + ' "' + escapeHtml(term) + '"');
             return $('<li class="select2-results__option" role="option" style="padding: 0;"></li>')
                 .append($('<div class="p-2"></div>').append($btn));
-        }
-
-        function ensureMultipleDropdownSearch(select2Data) {
-            if (!isMultiple || !select2Data || !select2Data.$dropdown) {
-                return;
-            }
-
-            const $results = select2Data.$dropdown.find('.select2-results__options');
-            if (!$results.length) {
-                return;
-            }
-
-            let $searchRow = select2Data.$dropdown.find('.module-cat-dropdown-search-row');
-            if (!$searchRow.length) {
-                $searchRow = $('<li class="module-cat-dropdown-search-row" style="list-style:none;padding:12px 20px 8px;"></li>')
-                    .append('<input type="text" class="form-control module-cat-dropdown-search" placeholder="" autocomplete="off">');
-                $results.before($searchRow);
-            }
-
-            const $customInput = $searchRow.find('.module-cat-dropdown-search');
-            const $inlineInput = select2Data.$container.find('.select2-search__field').first();
-            const inlineValue = String($inlineInput.val() || '');
-            $customInput.val(inlineValue);
-            $customInput.css({
-                borderColor: '#d9dee3',
-                boxShadow: 'none',
-                outline: 'none'
-            });
-
-            // Force the real typing surface to be the custom dropdown input,
-            // and keep Select2 inline search hidden/offscreen to avoid layout drift.
-            if ($inlineInput.length) {
-                $inlineInput.css({
-                    position: 'absolute',
-                    left: '-9999px',
-                    width: '1px',
-                    height: '1px',
-                    opacity: '0',
-                    pointerEvents: 'none'
-                });
-                $inlineInput.prop('readonly', true);
-                $inlineInput.attr('tabindex', '-1');
-            }
-            const customInputNode = $customInput.get(0);
-            const containerNode = select2Data.$container.get(0);
-            const customRect = customInputNode ? customInputNode.getBoundingClientRect() : null;
-            const containerRect = containerNode ? containerNode.getBoundingClientRect() : null;
-            const customStyles = customInputNode ? window.getComputedStyle(customInputNode) : null;
-
-            if (!multiDropdownSearchBound) {
-                $customInput.off('input.moduleCatDropdownSearch keyup.moduleCatDropdownSearch');
-                $customInput.on('input.moduleCatDropdownSearch keyup.moduleCatDropdownSearch', function () {
-                    const value = String($(this).val() || '');
-                    const s2 = select.data('select2');
-                    if (s2) {
-                        s2.trigger('query', { term: value });
-                    }
-                    $inlineInput.val('');
-                });
-                multiDropdownSearchBound = true;
-            }
-
-            if (!multiKeyboardRedirectBound) {
-                const $selectionContainer = select2Data.$container.find('.select2-selection--multiple');
-                $selectionContainer.off('keydown.moduleCatRedirect');
-                $selectionContainer.on('keydown.moduleCatRedirect', function (event) {
-                    if (!isMultiple) {
-                        return;
-                    }
-                    const isChar = event.key && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
-                    const isBackspace = event.key === 'Backspace';
-                    if (!isChar && !isBackspace) {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    const current = String($customInput.val() || '');
-                    const next = isBackspace ? current.slice(0, -1) : current + event.key;
-                    $customInput.val(next).trigger('input');
-                    $customInput.trigger('focus');
-                });
-                multiKeyboardRedirectBound = true;
-            }
-
-            $customInput.trigger('focus');
         }
 
         function checkAndAddButton() {
@@ -233,7 +146,6 @@
                     return;
                 }
 
-                ensureMultipleDropdownSearch(select2Data);
                 checkAndAddButton();
 
                 const searchInput = select2Data.dropdown.$search;
@@ -262,15 +174,9 @@
             if (searchInput) {
                 searchInput.off('input.moduleCatQuick keyup.moduleCatQuick');
             }
-            multiDropdownSearchBound = false;
-            multiKeyboardRedirectBound = false;
             const openSearchInput = $('.select2-container--open .select2-search__field');
             if (openSearchInput.length) {
                 openSearchInput.off('input.moduleCatQuickOpen keyup.moduleCatQuickOpen');
-            }
-            const select2Data = select.data('select2');
-            if (select2Data?.$container) {
-                select2Data.$container.find('.select2-selection--multiple').off('keydown.moduleCatRedirect');
             }
         });
 
