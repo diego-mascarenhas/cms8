@@ -462,6 +462,7 @@ Route::middleware(['auth'])->group(function ()
 
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
+    Route::get('/empresas/{id}', [ClientController::class, 'show'])->name('empresas.show');
     Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');

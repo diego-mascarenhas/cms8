@@ -121,7 +121,7 @@ class GlobalSearch extends Component
                         'id' => $enterprise->id,
                         'name' => $enterprise->name,
                         'subtitle' => $enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs',
-                        'url' => route('client.show', $enterprise->id),
+                        'url' => route('empresas.show', $enterprise->id),
                         'type' => 'enterprise',
                     ];
                 })

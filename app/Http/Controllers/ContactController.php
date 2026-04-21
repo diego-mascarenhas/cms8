@@ -1104,7 +1104,7 @@ class ContactController extends Controller
                     'name' => $enterprise->name,
                     'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.($enterprise->created_at?->format('d-m-Y H:i:s') ?? '').' hs'),
                     // remove icon 'src' to simplify rendering
-                    'url' => '#',
+                    'url' => route('empresas.show', $enterprise->id),
                 ];
             })
             ->values()
