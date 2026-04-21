@@ -326,13 +326,21 @@
                                 <h6 class="mb-0">Datos de la Empresa</h6>
                                 <small>Elegí una empresa del equipo o completá los campos para crear o actualizar datos de empresa.</small>
                             </div>
+                            @php
+                                $selectedEnterpriseIdForForm = old(
+                                    'enterprise.enterprise_id',
+                                    isset($data->id)
+                                        ? ($data->current_enterprise_id ?? null)
+                                        : ($data->prefill_enterprise_id ?? null),
+                                );
+                            @endphp
                             <div class="row g-3 mb-3">
                                 <div class="col-12">
                                     <label class="form-label" for="enterprise_enterprise_id">Empresa existente</label>
                                     <select name="enterprise[enterprise_id]" id="enterprise_enterprise_id" class="form-select">
                                         <option value="">— Sin seleccionar (usar campos de abajo) —</option>
                                         @foreach ($teamEnterprises ?? collect() as $ent)
-                                            <option value="{{ $ent->id }}" @selected((string) old('enterprise.enterprise_id', isset($data->id) ? ($data->current_enterprise_id ?? '') : '') === (string) $ent->id)>
+                                            <option value="{{ $ent->id }}" @selected((string) $selectedEnterpriseIdForForm === (string) $ent->id)>
                                                 {{ $ent->name }}@if ($ent->code) ({{ $ent->code }})@endif
                                             </option>
                                         @endforeach

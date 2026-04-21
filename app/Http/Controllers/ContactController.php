@@ -73,6 +73,18 @@ class ContactController extends Controller
             $data->user_id = request()->input('link_user');
         }
 
+        if (request()->filled('enterprise_id') && auth()->user()->currentTeam)
+        {
+            $prefillId = (int) request('enterprise_id');
+            if ($prefillId > 0 && Enterprise::query()
+                ->where('id', $prefillId)
+                ->where('team_id', auth()->user()->current_team_id)
+                ->exists())
+            {
+                $data->prefill_enterprise_id = $prefillId;
+            }
+        }
+
         $enterpriseStatuses = ContactStatus::getOptions();
         $socialSources = Source::getOptions();
         $teamEnterprises = $this->teamEnterprisesForContactForm();

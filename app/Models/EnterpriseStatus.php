@@ -53,8 +53,8 @@ class EnterpriseStatus extends Model
     protected static function ensureDefaultClientStatuses(): void
     {
         $defaults = [
-            ['id' => 1, 'name' => 'Inactiva', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
-            ['id' => 2, 'name' => 'Activa', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
+            ['id' => 1, 'name' => 'Inactivo', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
+            ['id' => 2, 'name' => 'Activo', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
         ];
         foreach ($defaults as $row)
         {

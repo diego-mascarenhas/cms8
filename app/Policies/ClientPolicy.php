@@ -80,6 +80,29 @@ class ClientPolicy
     }
 
     /**
+     * Determine whether the user can update the client (enterprise type client).
+     */
+    public function update(User $user, Enterprise $client): bool
+    {
+        if ($client->type_id !== 1)
+        {
+            return false;
+        }
+
+        if ($user->hasRole('admin'))
+        {
+            return $client->team_id === $user->currentTeam->id;
+        }
+
+        if ($user->hasRole('collaborator'))
+        {
+            return $client->assigned_to == $user->id && $client->team_id === $user->currentTeam->id;
+        }
+
+        return false;
+    }
+
+    /**
      * Get query filter for role-based access
      */
     public static function getQueryFilter(User $user)

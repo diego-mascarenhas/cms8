@@ -40,10 +40,15 @@
             <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
             <div class="row g-3">
-                <div class="col-12">
+                <div class="col-12 col-md-8">
                     <x-input-general id="name" label="Nombre de la empresa (*)"
                         value="{{ old('name', $data->name ?? '') }}" />
                 </div>
+                @if(isset($data->id))
+                    <div class="col-12 col-md-4">
+                        <x-enterprise-status-select :value="old('status_id', $data->status_id ?? '')" />
+                    </div>
+                @endif
 
                 @if(!isset($data->id))
                 {{-- Only show additional fields for new clients --}}

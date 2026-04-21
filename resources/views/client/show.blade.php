@@ -116,6 +116,9 @@
                         </div>
                     @endif
                     @can('contact.create')
+                        <a href="{{ route('contact.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-link me-1"></i>Asociar contacto a esta empresa
+                        </a>
                         <a href="{{ route('contact.create') }}" class="btn btn-sm btn-primary">
                             <i class="ti ti-user-plus me-1"></i>Ingresar contacto
                         </a>

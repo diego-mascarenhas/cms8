@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
 class ClientController extends Controller
@@ -63,6 +64,32 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
+        $teamId = auth()->user()->currentTeam->id;
+        $allowedStatusIds = EnterpriseStatus::getOptions(1)->pluck('id')->all();
+
+        if ($request->filled('id'))
+        {
+            $enterprise = Enterprise::query()
+                ->where('id', $request->id)
+                ->where('team_id', $teamId)
+                ->where('type_id', 1)
+                ->firstOrFail();
+
+            $this->authorize('update', $enterprise);
+
+            $request->validate([
+                'name' => 'required|string|min:3|max:75',
+                'status_id' => ['required', 'integer', Rule::in($allowedStatusIds)],
+            ]);
+
+            $enterprise->update([
+                'name' => $request->name,
+                'status_id' => (int) $request->status_id,
+            ]);
+
+            return redirect()->route('client-list')->with('success', 'Record saved successfully.');
+        }
+
         $this->authorize('create', Enterprise::class);
 
         $data = $request->except(['id', '_token']);
@@ -83,9 +110,10 @@ class ClientController extends Controller
             'longitude' => 'nullable|numeric',
             'contact_person' => 'nullable|string|max:255',
             'data' => 'nullable|array',
+            'status_id' => ['nullable', 'integer', Rule::in($allowedStatusIds)],
         ]);
 
-        $data['team_id'] = auth()->user()->currentTeam->id;
+        $data['team_id'] = $teamId;
         $data['status_id'] = $request->status_id ?? 1;
 
         $data['data'] = array_merge($data, [
@@ -180,12 +208,18 @@ class ClientController extends Controller
      */
     public function edit(string $id)
     {
-        $row = Enterprise::find($id);
+        $row = Enterprise::query()
+            ->where('id', $id)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->where('type_id', 1)
+            ->first();
 
         if (! $row)
         {
             return redirect()->route('client-list')->with('error', 'Client not found.');
         }
+
+        $this->authorize('update', $row);
 
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
