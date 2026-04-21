@@ -156,7 +156,10 @@
                                     <span class="fw-medium me-1">Empresa:</span>
                                     <span>
                                         @if ($data->enterprises->count() === 1)
-                                            <span class="badge bg-label-primary">{{ $data->enterprises->first()->name }}</span>
+                                            @php $linkedEnterprise = $data->enterprises->first(); @endphp
+                                            <a href="{{ route('empresas.show', $linkedEnterprise->id) }}" class="text-decoration-none" title="{{ __('View company') }}">
+                                                <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
+                                            </a>
                                         @else
                                             <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
                                                 <option value="">Seleccionar empresa</option>

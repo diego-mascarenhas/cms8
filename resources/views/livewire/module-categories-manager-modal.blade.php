@@ -4,6 +4,11 @@
     </button>
 
     @if ($show)
+        <style>
+            .table-module-categories-manager-modal tbody tr:last-child td {
+                border-bottom-width: 0;
+            }
+        </style>
         @teleport('body')
             <div
                 class="modal fade show"
@@ -26,7 +31,7 @@
                             @endif
 
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0">
+                                <table class="table table-sm align-middle mb-0 table-module-categories-manager-modal">
                                     <thead>
                                         <tr>
                                             <th>{{ __('Name') }}</th>
@@ -52,12 +57,12 @@
                                                             <button type="button" class="btn btn-sm btn-primary" wire:click="saveEdit">{{ __('Save') }}</button>
                                                             <button type="button" class="btn btn-sm btn-label-secondary" wire:click="cancelEdit">{{ __('Cancel') }}</button>
                                                         @else
-                                                            <button type="button" class="btn btn-sm btn-icon" title="{{ __('Edit') }}" wire:click="startEdit({{ $row['id'] }})">
+                                                            <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none" title="{{ __('Edit') }}" wire:click="startEdit({{ $row['id'] }})">
                                                                 <i class="ti ti-edit"></i>
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                class="btn btn-sm btn-icon text-danger"
+                                                                class="btn btn-sm btn-icon btn-text-danger border-0 shadow-none"
                                                                 title="{{ __('Delete') }}"
                                                                 wire:click="deleteCategory({{ $row['id'] }})"
                                                                 wire:confirm="{{ __('Are you sure?') }}"

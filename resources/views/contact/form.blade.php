@@ -324,9 +324,23 @@
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Datos de la Empresa</h6>
-                                <small>Datos específicos de la empresa</small>
+                                <small>Elegí una empresa del equipo o completá los campos para crear o actualizar datos de empresa.</small>
                             </div>
-                            <div class="row g-3">
+                            <div class="row g-3 mb-3">
+                                <div class="col-12">
+                                    <label class="form-label" for="enterprise_enterprise_id">Empresa existente</label>
+                                    <select name="enterprise[enterprise_id]" id="enterprise_enterprise_id" class="form-select">
+                                        <option value="">— Sin seleccionar (usar campos de abajo) —</option>
+                                        @foreach ($teamEnterprises ?? collect() as $ent)
+                                            <option value="{{ $ent->id }}" @selected((string) old('enterprise.enterprise_id', isset($data->id) ? ($data->current_enterprise_id ?? '') : '') === (string) $ent->id)>
+                                                {{ $ent->name }}@if ($ent->code) ({{ $ent->code }})@endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted d-block mt-1">Si elegís una empresa, al guardar se vincula el contacto a esa empresa y no se crea otra desde los campos de abajo.</small>
+                                </div>
+                            </div>
+                            <div id="enterprise-manual-fields" class="row g-3">
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[name]" name="enterprise[name]"
                                         label="Nombre de la empresa"
@@ -360,6 +374,23 @@
                                         onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
                                 </div>
                             </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    var sel = document.getElementById('enterprise_enterprise_id');
+                                    var manual = document.getElementById('enterprise-manual-fields');
+                                    if (!sel || !manual) return;
+                                    function toggleManualEnterpriseFields() {
+                                        var disabled = !!sel.value;
+                                        manual.querySelectorAll('input, textarea, select').forEach(function (el) {
+                                            if (!el.name || el.name.indexOf('enterprise[') !== 0) return;
+                                            el.disabled = disabled;
+                                        });
+                                        manual.classList.toggle('opacity-50', disabled);
+                                    }
+                                    sel.addEventListener('change', toggleManualEnterpriseFields);
+                                    toggleManualEnterpriseFields();
+                                });
+                            </script>
                         </div>
                         <!-- Address -->
                         <div id="address-modern" class="content">
