@@ -49,6 +49,7 @@ class StripeSubscriptionDataTable extends DataTable
                     });
                 });
             })
+            ->addColumn('enterprise_contact_search', fn () => '')
             ->addColumn('action', function (StripeSubscription $sub)
             {
                 $user = auth()->user();
