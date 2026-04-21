@@ -34,10 +34,8 @@
         </div>
     </div>
 
-        <!-- Projects & Services Section -->
-        <div class="col-12">
-            <!-- Style Guide Section -->
-            @if($client->data && ($client->data->style_guide ?? null))
+    <div class="col-12">
+        @if($client->data && ($client->data->style_guide ?? null))
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">Guía de estilo</h5>
@@ -46,255 +44,486 @@
                     <p>{{ $client->data->style_guide }}</p>
                 </div>
             </div>
-            @endif
+        @endif
 
-            <!-- Active Projects -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Proyectos activos</h5>
-                    @can('project.create')
-                    <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-plus me-1"></i>Nuevo proyecto
-                    </a>
+        {{-- Datos de facturación (similar bloque CMS7) --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Datos de facturación</h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-label-primary">{{ $billingAddresses->count() }} {{ $billingAddresses->count() === 1 ? 'registro' : 'registros' }}</span>
+                    @can('client.edit')
+                        <a href="{{ route('client.edit', $client->id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-file-invoice me-1"></i>Actualizar datos fiscales
+                        </a>
                     @endcan
                 </div>
-                <div class="card-body">
-                    @if($activeProjects->count() > 0)
-                        <div class="row">
-                            @foreach($activeProjects as $project)
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card h-100 border-success">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="card-title mb-1">
-                                                <a href="{{ route('project.show', $project->id) }}" class="text-decoration-none">
-                                                    {{ $project->name }}
-                                                </a>
-                                            </h6>
-                                            @if($project->status)
-                                                <span class="badge bg-success rounded-pill">
-                                                    {{ $project->status->name }}
-                                                </span>
+            </div>
+            <div class="card-body">
+                @if($billingAddresses->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Razón social</th>
+                                    <th>C.U.I.T. / ID fiscal</th>
+                                    <th>Condición fiscal</th>
+                                    <th>Dirección</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($billingAddresses as $billing)
+                                    <tr>
+                                        <td>{{ $billing->name }}</td>
+                                        <td>{{ $billing->identification_number ?: '—' }}</td>
+                                        <td>{{ $billing->taxStatusType->name ?? '—' }}</td>
+                                        <td class="text-muted small">
+                                            {{ \Illuminate\Support\Str::limit(trim(implode(', ', array_filter([$billing->address, $billing->locality, $billing->province]))), 80) ?: '—' }}
+                                        </td>
+                                        <td>
+                                            @if((int) $billing->status === 1)
+                                                <span class="badge bg-label-success rounded-pill">Activo</span>
+                                            @else
+                                                <span class="badge bg-label-secondary rounded-pill">Inactivo</span>
                                             @endif
-                                        </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="ti ti-receipt-2 display-4 text-muted"></i>
+                        </div>
+                        <h6 class="mb-1">Sin datos de facturación</h6>
+                        <p class="text-muted mb-0">Agrega una razón social y datos fiscales desde la edición del cliente.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
 
-                                        @if($project->description)
-                                        <p class="card-text small text-muted mb-2">
-                                            {{ Str::limit($project->description, 80) }}
-                                        </p>
-                                        @endif
+        {{-- Contactos --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Contactos</h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-label-primary">{{ $linkedContacts->count() }} {{ $linkedContacts->count() === 1 ? 'registro' : 'registros' }}</span>
+                    @can('contact.create')
+                        <a href="{{ route('contact.create') }}" class="btn btn-sm btn-primary">
+                            <i class="ti ti-user-plus me-1"></i>Ingresar contacto
+                        </a>
+                    @endcan
+                </div>
+            </div>
+            <div class="card-body">
+                @if($linkedContacts->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="clientContactsTable">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th>Cargo</th>
+                                    <th>Rol vinculado</th>
+                                    <th>Última actualización</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($linkedContacts as $contact)
+                                    <tr>
+                                        <td>
+                                            <a href="{{ route('contact.show', $contact->id) }}" class="text-decoration-none fw-medium">
+                                                {{ $contact->name }}{{ $contact->surname ? ' '.$contact->surname : '' }}
+                                            </a>
+                                        </td>
+                                        <td>{{ $contact->email ?: '—' }}</td>
+                                        <td>{{ $contact->phone ?: '—' }}</td>
+                                        <td>{{ $contact->pivot->position ?: '—' }}</td>
+                                        <td>
+                                            @if($contact->user && $contact->user->roles->isNotEmpty())
+                                                {{ $contact->user->roles->pluck('name')->join(', ') }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>{{ $contact->updated_at ? $contact->updated_at->format('d/m/Y H:i') : '—' }}</td>
+                                        <td>{{ optional($contact->status)->name ?? '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="ti ti-users display-4 text-muted"></i>
+                        </div>
+                        <h6 class="mb-1">Sin contactos vinculados</h6>
+                        <p class="text-muted mb-0">Asocia contactos a este cliente desde la ficha de cada contacto.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
 
-                                        <div class="small text-muted">
-                                            @if($project->responsible)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-user me-1"></i>
-                                                    {{ $project->responsible->name }}
-                                                </div>
+        {{-- Servicios --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Servicios</h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-label-primary">{{ $services->count() }} {{ $services->count() === 1 ? 'registro' : 'registros' }}</span>
+                    @can('service.create')
+                        <a href="{{ route('service.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary">
+                            <i class="ti ti-plus me-1"></i>Ingresar servicio
+                        </a>
+                    @endcan
+                </div>
+            </div>
+            <div class="card-body">
+                @if($services->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="clientServicesTable">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th>Plan / categoría</th>
+                                    <th>Dominio</th>
+                                    <th>Usuario</th>
+                                    <th>Valor</th>
+                                    <th>Frecuencia</th>
+                                    <th>Próxima</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($services as $service)
+                                    @php
+                                        $freq = (int) ($service->frequency ?? 1);
+                                        $frequencyLabel = match ($freq) {
+                                            1 => 'Mensual',
+                                            3 => 'Trimestral',
+                                            6 => 'Semestral',
+                                            12 => 'Anual',
+                                            default => $freq > 0 ? $freq.' mes(es)' : '—',
+                                        };
+                                        $desc = $service->description ?: ($service->service_name ?? '—');
+                                        $plan = optional($service->serviceType)->name ?? '—';
+                                        $cur = $service->currency;
+                                        $curCode = $cur->code ?? ($cur->symbol ?? '');
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <a href="{{ route('service.show', $service->id) }}" class="text-decoration-none">{{ \Illuminate\Support\Str::limit($desc, 64) }}</a>
+                                        </td>
+                                        <td>{{ $plan }}</td>
+                                        <td>{{ $service->domain ?: '—' }}</td>
+                                        <td>{{ $service->username ?: '—' }}</td>
+                                        <td>
+                                            @if($service->price !== null && (float) $service->price != 0.0)
+                                                {{ number_format((float) $service->price, 2) }} {{ $curCode }}
+                                            @else
+                                                —
                                             @endif
-                                            @if($project->category)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-category me-1"></i>
-                                                    {{ $project->category->name }}
-                                                </div>
-                                            @endif
-                                            @if($project->price)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-currency-dollar me-1"></i>
-                                                    ${{ number_format($project->price, 2) }}
-                                                </div>
-                                            @endif
-                                            @if($project->date_start)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-calendar me-1"></i>
-                                                    {{ Carbon\Carbon::parse($project->date_start)->format('d/m/Y') }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
+                                        </td>
+                                        <td>{{ $frequencyLabel }}</td>
+                                        <td>{{ $service->next_billing ? $service->next_billing->format('d/m/Y') : '—' }}</td>
+                                        <td>{!! $service->status_label !!}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="ti ti-tools display-4 text-muted"></i>
+                        </div>
+                        <h6 class="mb-1">Sin servicios</h6>
+                        <p class="text-muted mb-0">No hay servicios registrados para este cliente.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Facturas (bloque colapsable, estilo ibox CMS7) --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientInvoicesBlock" aria-expanded="false" aria-controls="clientInvoicesBlock" style="cursor: pointer;">
+                    <i class="ti ti-chevron-down collapse-chevron"></i>
+                    <span>Facturas</span>
+                </span>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-label-secondary">Saldo pendiente: {{ number_format((float) $invoiceBalanceTotal, 2) }}</span>
+                    <span class="badge bg-label-primary">{{ $invoices->count() }} {{ $invoices->count() === 1 ? 'registro' : 'registros' }}</span>
+                    @can('invoice.create')
+                        <a href="{{ route('invoice.create') }}" class="btn btn-sm btn-primary">
+                            <i class="ti ti-file-plus me-1"></i>Ingresar factura
+                        </a>
+                    @endcan
+                    @can('invoice.index')
+                        <a href="{{ route('invoice.index') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-list me-1"></i>Listado
+                        </a>
+                    @endcan
+                </div>
+            </div>
+            <div class="collapse" id="clientInvoicesBlock">
+                <div class="card-body border-top">
+                    @if($invoices->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="clientInvoicesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Fecha</th>
+                                        <th>Vencimiento</th>
+                                        <th>Total</th>
+                                        <th>Saldo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($invoices as $invoice)
+                                        <tr>
+                                            <td>
+                                                @can('invoice.show')
+                                                    <a href="{{ route('invoice.show', $invoice->id) }}" class="text-decoration-none">{{ $invoice->number ?: '—' }}</a>
+                                                @else
+                                                    {{ $invoice->number ?: '—' }}
+                                                @endcan
+                                            </td>
+                                            <td>{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
+                                            <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '—' }}</td>
+                                            <td>{{ number_format((float) ($invoice->total_amount ?? 0), 2) }} {{ $invoice->currency ?? '' }}</td>
+                                            <td>{{ number_format((float) ($invoice->balance ?? 0), 2) }} {{ $invoice->currency ?? '' }}</td>
+                                            <td>{!! $invoice->status_badge !!}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     @else
                         <div class="text-center py-4">
                             <div class="mb-3">
-                                <i class="ti ti-folder-off display-4 text-muted"></i>
+                                <i class="ti ti-file-invoice display-4 text-muted"></i>
                             </div>
-                            <h6 class="mb-1">Sin proyectos activos</h6>
-                            <p class="text-muted mb-3">Este cliente no tiene proyectos activos.</p>
+                            <h6 class="mb-1">Sin facturas</h6>
+                            <p class="text-muted mb-0">No hay facturas emitidas para este cliente.</p>
                         </div>
                     @endif
                 </div>
             </div>
+        </div>
 
-            <!-- Past Projects -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Proyectos pasados</h5>
-                </div>
-                <div class="card-body">
+        {{-- Proyectos (colapsable; activos + historial) --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientProjectsBlock" aria-expanded="true" aria-controls="clientProjectsBlock" style="cursor: pointer;">
+                    <i class="ti ti-chevron-up collapse-chevron"></i>
+                    <span>Proyectos</span>
+                </span>
+                @can('project.create')
+                    <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
+                        <i class="ti ti-plus me-1"></i>Ingresar proyecto
+                    </a>
+                @endcan
+            </div>
+            <div class="collapse show" id="clientProjectsBlock">
+                <div class="card-body border-top">
+                    @if($activeProjects->count() > 0)
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Proyecto</th>
+                                        <th>Descripción</th>
+                                        <th>Transcurrido</th>
+                                        <th>Responsable</th>
+                                        <th>Categoría</th>
+                                        <th class="text-end">Importe</th>
+                                        <th>Inicio</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($activeProjects as $project)
+                                        <tr>
+                                            <td class="fw-medium">
+                                                <a href="{{ route('project.show', $project->id) }}" class="text-decoration-none">{{ $project->name }}</a>
+                                            </td>
+                                            <td class="text-muted small">{{ $project->description ? Str::limit($project->description, 72) : '—' }}</td>
+                                            <td class="text-muted small">
+                                                @php
+                                                    $elapsedFrom = $project->date_start
+                                                        ? \Carbon\Carbon::parse($project->date_start)
+                                                        : ($project->created_at ? \Carbon\Carbon::parse($project->created_at) : null);
+                                                @endphp
+                                                @if($elapsedFrom)
+                                                    {{ $elapsedFrom->locale(app()->getLocale())->diffForHumans(\Carbon\Carbon::now(), true) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>{{ optional($project->responsible)->name ?? '—' }}</td>
+                                            <td>{{ optional($project->category)->name ?? '—' }}</td>
+                                            <td class="text-end">
+                                                @if($project->price)
+                                                    ${{ number_format($project->price, 2) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>{{ $project->date_start ? Carbon\Carbon::parse($project->date_start)->format('d/m/Y') : '—' }}</td>
+                                            <td>
+                                                @if($project->status)
+                                                    <span class="badge bg-label-success rounded-pill">{{ $project->status->translated_name }}</span>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-3 mb-4">
+                            <i class="ti ti-folder-off display-6 text-muted mb-2 d-block"></i>
+                            <p class="text-muted mb-0">Sin proyectos activos.</p>
+                        </div>
+                    @endif
+
                     @if($pastProjects->count() > 0)
-                        <div class="row">
-                            @foreach($pastProjects->take(6) as $project)
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card h-100 border-secondary">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="card-title mb-1">
-                                                <a href="{{ route('project.show', $project->id) }}" class="text-decoration-none text-muted">
-                                                    {{ $project->name }}
-                                                </a>
-                                            </h6>
-                                            @if($project->status)
-                                                <span class="badge bg-secondary rounded-pill">
-                                                    {{ $project->status->name }}
-                                                </span>
-                                            @endif
-                                        </div>
-
-                                        @if($project->description)
-                                        <p class="card-text small text-muted mb-2">
-                                            {{ Str::limit($project->description, 80) }}
-                                        </p>
-                                        @endif
-
-                                        <div class="small text-muted">
-                                            @if($project->responsible)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-user me-1"></i>
-                                                    {{ $project->responsible->name }}
-                                                </div>
-                                            @endif
-                                            @if($project->category)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-category me-1"></i>
-                                                    {{ $project->category->name }}
-                                                </div>
-                                            @endif
-                                            @if($project->date_end)
-                                                <div class="mb-1">
-                                                    <i class="ti ti-calendar-check me-1"></i>
-                                                    {{ Carbon\Carbon::parse($project->date_end)->format('d/m/Y') }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
+                        <h6 class="text-muted mb-3">Proyectos pasados</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Proyecto</th>
+                                        <th>Descripción</th>
+                                        <th>Transcurrido</th>
+                                        <th>Responsable</th>
+                                        <th>Categoría</th>
+                                        <th>Fin</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($pastProjects->take(6) as $project)
+                                        <tr>
+                                            <td class="fw-medium">
+                                                <a href="{{ route('project.show', $project->id) }}" class="text-decoration-none text-muted">{{ $project->name }}</a>
+                                            </td>
+                                            <td class="text-muted small">{{ $project->description ? Str::limit($project->description, 72) : '—' }}</td>
+                                            <td class="text-muted small">
+                                                @php
+                                                    $pastFrom = $project->date_start
+                                                        ? \Carbon\Carbon::parse($project->date_start)
+                                                        : ($project->created_at ? \Carbon\Carbon::parse($project->created_at) : null);
+                                                    $pastTo = $project->date_end
+                                                        ? \Carbon\Carbon::parse($project->date_end)
+                                                        : ($project->updated_at ? \Carbon\Carbon::parse($project->updated_at) : null);
+                                                @endphp
+                                                @if($pastFrom && $pastTo)
+                                                    {{ $pastFrom->locale(app()->getLocale())->diffForHumans($pastTo, true) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>{{ optional($project->responsible)->name ?? '—' }}</td>
+                                            <td>{{ optional($project->category)->name ?? '—' }}</td>
+                                            <td>{{ $project->date_end ? Carbon\Carbon::parse($project->date_end)->format('d/m/Y') : '—' }}</td>
+                                            <td>
+                                                @if($project->status)
+                                                    <span class="badge bg-label-secondary rounded-pill">{{ $project->status->translated_name }}</span>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                         @if($pastProjects->count() > 6)
-                            <div class="text-center">
+                            <div class="text-center mt-2">
                                 <small class="text-muted">Mostrando 6 de {{ $pastProjects->count() }} proyectos pasados</small>
                             </div>
                         @endif
-                    @else
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="ti ti-folder-check display-4 text-muted"></i>
-                            </div>
-                            <h6 class="mb-1">Sin proyectos pasados</h6>
-                            <p class="text-muted mb-3">Este cliente no tiene proyectos completados aún.</p>
-                        </div>
                     @endif
                 </div>
             </div>
-
-            <!-- Collaborators Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Colaboradores</h5>
-                </div>
-                <div class="card-body">
-                    @if($collaborators->count() > 0)
-                        <div class="row">
-                            @foreach($collaborators as $collaborator)
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="avatar avatar-sm">
-                                            <span class="avatar-initial rounded-circle bg-label-primary">
-                                                {{ strtoupper(substr($collaborator->name, 0, 2)) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h6 class="mb-0">
-                                            <a href="{{ route('contact.show', $collaborator->id) }}" class="text-decoration-none">
-                                                {{ $collaborator->name }}
-                                            </a>
-                                        </h6>
-                                        <small class="text-muted">
-                                            {{ $collaborator->projects->count() }} proyectos
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="ti ti-users display-4 text-muted"></i>
-                            </div>
-                            <h6 class="mb-1">Sin colaboradores</h6>
-                            <p class="text-muted mb-0">Ningún colaborador ha trabajado en proyectos para este cliente aún.</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Language Combinations Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Combinaciones de idiomas</h5>
-                </div>
-                <div class="card-body">
-                    @if($languageCombinations->count() > 0)
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach($languageCombinations as $combination)
-                            <span class="badge rounded-pill bg-label-info">
-                                {{ $combination }}
-                            </span>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="ti ti-language display-4 text-muted"></i>
-                            </div>
-                            <h6 class="mb-1">Sin combinaciones de idiomas</h6>
-                            <p class="text-muted mb-0">No hay combinaciones de idiomas disponibles para este cliente aún.</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Services Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Servicios utilizados</h5>
-                </div>
-                <div class="card-body">
-                    @if($services->count() > 0)
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach($services as $service)
-                            <span class="badge rounded-pill bg-label-primary">
-                                {{ $service->name }}
-                            </span>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="ti ti-tools display-4 text-muted"></i>
-                            </div>
-                            <h6 class="mb-1">Sin servicios</h6>
-                            <p class="text-muted mb-0">No se han utilizado servicios para este cliente aún.</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
         </div>
+    </div>
+@endsection
+
+@section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var dtLang = { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' };
+
+    if (document.getElementById('clientContactsTable')) {
+        $('#clientContactsTable').DataTable({
+            language: dtLang,
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            ordering: true,
+            responsive: true,
+            order: [[5, 'desc']],
+        });
+    }
+
+    if (document.getElementById('clientServicesTable')) {
+        $('#clientServicesTable').DataTable({
+            language: dtLang,
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            ordering: true,
+            responsive: true,
+        });
+    }
+
+    if (document.getElementById('clientInvoicesTable')) {
+        $('#clientInvoicesTable').DataTable({
+            language: dtLang,
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            ordering: true,
+            order: [[1, 'desc']],
+            responsive: true,
+        });
+    }
+
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function (toggle) {
+        var target = document.querySelector(toggle.getAttribute('data-bs-target'));
+        if (!target) {
+            return;
+        }
+        toggle.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggle.click();
+            }
+        });
+        target.addEventListener('shown.bs.collapse', function () {
+            var icon = toggle.querySelector('.collapse-chevron');
+            if (icon) {
+                icon.classList.remove('ti-chevron-down');
+                icon.classList.add('ti-chevron-up');
+            }
+        });
+        target.addEventListener('hidden.bs.collapse', function () {
+            var icon = toggle.querySelector('.collapse-chevron');
+            if (icon) {
+                icon.classList.remove('ti-chevron-up');
+                icon.classList.add('ti-chevron-down');
+            }
+        });
+    });
+});
+</script>
 @endsection

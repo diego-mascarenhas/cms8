@@ -26,6 +26,11 @@ class ProjectStatus extends Model
      */
     public function getTranslatedNameAttribute()
     {
+        if ($this->name === null || $this->name === '')
+        {
+            return '';
+        }
+
         return __("project_status.{$this->name}");
     }
 

@@ -111,10 +111,16 @@ class ClientController extends Controller
         $client = Enterprise::with([
             'responsible',
             'status',
+            'enterpriseBillingAddresses.taxStatusType',
+            'contacts' => function ($query)
+            {
+                $query->with(['status', 'user.roles']);
+            },
             'projects.responsible',
             'projects.status',
             'projects.category',
             'services.currency',
+            'services.serviceType',
             'invoices.billingAddress',
         ])->findOrFail($id);
 
@@ -138,53 +144,34 @@ class ClientController extends Controller
             return in_array($project->status_id, $pastProjectStatuses);
         });
 
-        // Get services
-        $services = $client->services;
+        // Get services (relation; keep ordering stable for tables)
+        $services = $client->services->sortBy('id')->values();
 
-        // Get unique collaborators from projects
-        $collaborators = collect();
-        foreach ($client->projects as $project)
+        $billingAddresses = $client->enterpriseBillingAddresses->sortByDesc('status')->values();
+
+        $linkedContacts = $client->contacts->sortBy('name')->values();
+
+        $invoices = $client->invoices->sortByDesc(function ($invoice)
         {
-            if ($project->responsible)
+            if (empty($invoice->date))
             {
-                $collaborators->push($project->responsible);
+                return 0;
             }
-        }
-        $collaborators = $collaborators->unique('id');
 
-        // Fix N+1: Load project counts for all collaborators at once
-        if ($collaborators->isNotEmpty())
-        {
-            $collaboratorIds = $collaborators->pluck('id')->toArray();
-            $projectCounts = \App\Models\User::whereIn('id', $collaboratorIds)
-                ->withCount('projects')
-                ->get()
-                ->keyBy('id');
+            return \Carbon\Carbon::parse($invoice->date)->timestamp;
+        })->values();
 
-            foreach ($collaborators as $collaborator)
-            {
-                $collaborator->projects_count = $projectCounts[$collaborator->id]->projects_count ?? 0;
-            }
-        }
-
-        // Get language combinations from projects
-        $languageCombinations = collect();
-        foreach ($client->projects as $project)
-        {
-            if (! empty($project->language_combination))
-            {
-                $languageCombinations->push($project->language_combination);
-            }
-        }
-        $languageCombinations = $languageCombinations->unique();
+        $invoiceBalanceTotal = $client->invoices->sum('balance');
 
         return view('client.show', compact(
             'client',
             'activeProjects',
             'pastProjects',
             'services',
-            'collaborators',
-            'languageCombinations',
+            'billingAddresses',
+            'linkedContacts',
+            'invoices',
+            'invoiceBalanceTotal',
         ));
     }
 
