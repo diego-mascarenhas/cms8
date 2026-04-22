@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransactionType;
-use App\Models\Enterprise;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use Carbon\Carbon;
@@ -41,62 +40,22 @@ class FinancialDashboardController extends Controller
         $incomeType = TransactionType::INCOME->value;
         $expenseType = TransactionType::EXPENSE->value;
 
-        /*
-         * payment_accounts are team-wide (no enterprise_id). Enterprise is stored on each payment
-         * (payments.enterprise_id). Optional filter: show only accounts that have movement for that enterprise.
-         */
-        $selectedAccountEnterpriseId = null;
-        if ($request->filled('enterprise_id'))
-        {
-            $candidateEnterpriseId = (int) $request->query('enterprise_id');
-            if ($candidateEnterpriseId > 0 && Enterprise::whereKey($candidateEnterpriseId)->exists())
-            {
-                $selectedAccountEnterpriseId = $candidateEnterpriseId;
-            }
-        }
+        // Account balances: sum payments by account (payment row status is not used here).
+        // Which rows load as PaymentAccount is controlled by the model (active account status = 1).
+        $balanceByAccountId = $payments->clone()
+            ->whereNotNull('account_id')
+            ->groupBy('account_id')
+            ->selectRaw(
+                'account_id, COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance',
+                [$incomeType]
+            )
+            ->pluck('balance', 'account_id');
 
-        $enterprises = Enterprise::query()->orderBy('name')->pluck('name', 'id');
+        $accountIds = $balanceByAccountId->keys()->values();
 
-        if ($selectedAccountEnterpriseId)
-        {
-            $accountIds = $payments->clone()
-                ->where('status', 2)
-                ->where('enterprise_id', $selectedAccountEnterpriseId)
-                ->distinct()
-                ->pluck('account_id')
-                ->filter()
-                ->values();
-
-            $accountsCollection = $accountIds->isNotEmpty()
-                ? PaymentAccount::with('currency')->whereIn('id', $accountIds)->orderBy('name')->get()
-                : collect();
-        }
-        else
-        {
-            $accountsCollection = PaymentAccount::with('currency')->orderBy('name')->get();
-            $accountIds = $accountsCollection->pluck('id');
-        }
-
-        $balanceByAccountId = collect();
-        if ($accountIds->isNotEmpty())
-        {
-            $balanceQuery = $payments->clone()
-                ->where('status', 2)
-                ->whereIn('account_id', $accountIds);
-
-            if ($selectedAccountEnterpriseId)
-            {
-                $balanceQuery->where('enterprise_id', $selectedAccountEnterpriseId);
-            }
-
-            $balanceByAccountId = $balanceQuery
-                ->groupBy('account_id')
-                ->selectRaw(
-                    'account_id, COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance',
-                    [$incomeType]
-                )
-                ->pluck('balance', 'account_id');
-        }
+        $accountsCollection = $accountIds->isNotEmpty()
+            ? PaymentAccount::with('currency')->whereIn('id', $accountIds)->orderBy('name')->get()
+            : collect();
 
         $accounts = $accountsCollection->map(function ($account) use ($balanceByAccountId)
         {
@@ -151,8 +110,6 @@ class FinancialDashboardController extends Controller
 
         return view('finance-dashboard.index', compact(
             'accounts',
-            'enterprises',
-            'selectedAccountEnterpriseId',
             'selectedYear',
             'availableYears',
             'currentMonthIncome',
