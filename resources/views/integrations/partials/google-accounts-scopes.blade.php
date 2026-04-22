@@ -8,7 +8,7 @@
     <h6 class="mb-0">{{ __('app.Connected Google accounts (this team)') }}</h6>
     <small class="text-muted d-block mt-1">{{ __('app.Google OAuth scopes note') }}</small>
   </div>
-  <div class="card-body p-0">
+  <div class="card-body pt-0 px-0 pb-2">
     <div class="table-responsive">
       <table class="table table-sm mb-0">
         <thead>

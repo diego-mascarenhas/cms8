@@ -370,7 +370,7 @@ return [
     'Google resource id' => 'ID de recurso en Google',
     'Local event id' => 'ID de evento local',
     'Row last synced' => 'Última sync de la fila',
-    'Each row is a Google event id linked to a local copy. Table shows up to 500 rows.' => 'Cada fila es un id de evento de Google enlazado a una copia local. Se muestran hasta 500 filas.',
+    'Each row is a Google event id linked to a local copy. Table shows up to 500 rows.' => 'Cada fila es un id de evento de Google enlazado a una copia local. Se muestran hasta 20 filas.',
     'Contacts from Google (remote identifiers)' => 'Contactos desde Google (identificadores remotos)',
     'Each row is a Google People resource id mapped to a CRM contact. Up to 500 rows.' => 'Cada fila es un id de recurso de Google People mapeado a un contacto del CRM. Hasta 500 filas.',
     'Name (CRM copy)' => 'Nombre (copia CRM)',

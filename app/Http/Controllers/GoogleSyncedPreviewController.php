@@ -149,7 +149,7 @@ class GoogleSyncedPreviewController extends Controller
             ->where('external_accounts.provider', ExternalProvider::Google->value)
             ->orderByDesc('calendar_events.start')
             ->orderByDesc('calendar_event_sync_mappings.last_synced_at')
-            ->limit(500)
+            ->limit(20)
             ->select([
                 'calendar_event_sync_mappings.calendar_event_id',
                 'calendar_event_sync_mappings.external_id',

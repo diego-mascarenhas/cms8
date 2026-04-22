@@ -191,7 +191,7 @@ return [
     'Google resource id' => 'Google resource id',
     'Local event id' => 'Local event id',
     'Row last synced' => 'Row last synced',
-    'Each row is a Google event id linked to a local copy. Table shows up to 500 rows.' => 'Each row is a Google event id linked to a local copy. Table shows up to 500 rows.',
+    'Each row is a Google event id linked to a local copy. Table shows up to 500 rows.' => 'Each row is a Google event id linked to a local copy. Table shows up to 20 rows.',
     'Contacts from Google (remote identifiers)' => 'Contacts from Google (remote identifiers)',
     'Each row is a Google People resource id mapped to a CRM contact. Up to 500 rows.' => 'Each row is a Google People resource id mapped to a CRM contact. Up to 500 rows.',
     'Name (CRM copy)' => 'Name (CRM copy)',

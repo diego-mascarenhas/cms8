@@ -92,7 +92,7 @@
 
 <div class="row g-4 mb-4">
   <div class="col-sm-6 col-xl-3">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
@@ -110,7 +110,7 @@
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
@@ -128,7 +128,7 @@
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
@@ -146,7 +146,7 @@
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-body">
         <div class="d-flex align-items-start justify-content-between">
           <div class="content-left">
@@ -189,14 +189,12 @@
         <table class="table table-sm table-striped">
           <thead>
             <tr>
-              <th>{{ __('app.Local status') }}</th>
-              <th>{{ __('app.Title (local copy)') }}</th>
+              <th>{{ __('Título') }}</th>
               <th>{{ __('app.Start') }}</th>
               <th>{{ __('app.End') }}</th>
-              <th>{{ __('app.All day') }}</th>
-              <th>{{ __('app.Google event id') }}</th>
-              <th>{{ __('app.Local event id') }}</th>
-              <th>{{ __('app.Row last synced') }}</th>
+              <th>{{ __('Día') }}</th>
+              <th>{{ __('Actualizado') }}</th>
+              <th>{{ __('Estado') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -206,6 +204,38 @@
                 $hasLocal = ! empty($row->calendar_event_id);
               @endphp
               <tr>
+                <td>{{ $row->title ?? '—' }}</td>
+                <td>
+                  @if (! empty($row->start))
+                    @php
+                      $startsAt = \Carbon\Carbon::parse($row->start)->timezone(config('app.timezone'))->locale('es');
+                    @endphp
+                    <span title="{{ $startsAt->format('Y-m-d H:i') }}">{{ $startsAt->translatedFormat('d M Y H:i') }}</span>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td>
+                  @if (! empty($row->end))
+                    @php
+                      $endsAt = \Carbon\Carbon::parse($row->end)->timezone(config('app.timezone'))->locale('es');
+                    @endphp
+                    <span title="{{ $endsAt->format('Y-m-d H:i') }}">{{ $endsAt->translatedFormat('d M Y H:i') }}</span>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td>{{ ! empty($row->all_day) && (bool) $row->all_day ? __('app.Yes') : __('app.No') }}</td>
+                <td>
+                  @if (! empty($row->last_synced_at))
+                    @php
+                      $syncedAt = \Carbon\Carbon::parse($row->last_synced_at)->timezone(config('app.timezone'));
+                    @endphp
+                    <span title="{{ $syncedAt->format('Y-m-d H:i') }}">{{ $syncedAt->locale('es')->diffForHumans() }}</span>
+                  @else
+                    —
+                  @endif
+                </td>
                 <td>
                   @if (! $hasLocal)
                     <span class="badge bg-label-danger">{{ __('app.Missing local') }}</span>
@@ -213,37 +243,6 @@
                     <span class="badge bg-label-secondary">{{ __('app.Hidden locally') }}</span>
                   @else
                     <span class="badge bg-label-success">{{ __('app.In sync') }}</span>
-                  @endif
-                </td>
-                <td>{{ $row->title ?? '—' }}</td>
-                <td>
-                  @if (! empty($row->start))
-                    {{ \Carbon\Carbon::parse($row->start)->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
-                  @else
-                    —
-                  @endif
-                </td>
-                <td>
-                  @if (! empty($row->end))
-                    {{ \Carbon\Carbon::parse($row->end)->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
-                  @else
-                    —
-                  @endif
-                </td>
-                <td>{{ ! empty($row->all_day) && (bool) $row->all_day ? __('app.Yes') : __('app.No') }}</td>
-                <td><code class="small">{{ \Illuminate\Support\Str::limit($row->external_id, 40) }}</code></td>
-                <td>
-                  @if (! empty($row->calendar_event_id))
-                    <code class="small">{{ $row->calendar_event_id }}</code>
-                  @else
-                    —
-                  @endif
-                </td>
-                <td>
-                  @if (! empty($row->last_synced_at))
-                    {{ \Carbon\Carbon::parse($row->last_synced_at)->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
-                  @else
-                    —
                   @endif
                 </td>
               </tr>
