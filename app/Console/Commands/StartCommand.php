@@ -13,6 +13,11 @@ class StartCommand extends Command
                             {--demo : After fresh, or alone: load demo data (non-interactive)}
                             {--stores : Import Pedimos Facil stores into teams (non-interactive)}
                             {--clone-catalog : Clone products catalog (stores, categories, products) between teams}
+                            {--google-sync : Queue Google contacts + calendar sync for all Google accounts (or --account_id)}
+                            {--google-inspect : Inspect Google sync status (all teams or --team_id)}
+                            {--account_id= : Account ID for --google-sync}
+                            {--team_id= : Team ID filter for --google-inspect}
+                            {--limit=200 : Row limit for --google-inspect}
                             {--source-team= : Source team ID for --clone-catalog (optional; skips prompts if both IDs given)}
                             {--target-team= : Target team ID for --clone-catalog}';
 
@@ -28,6 +33,10 @@ class StartCommand extends Command
 
     private const OPT_CLONE_CATALOG = 'Clone catalog (stores, categories, products → another team)';
 
+    private const OPT_GOOGLE_SYNC = 'Google: queue contacts + calendar sync';
+
+    private const OPT_GOOGLE_INSPECT = 'Google: inspect sync status (all teams)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -36,6 +45,8 @@ class StartCommand extends Command
         $demo = $this->option('demo');
         $stores = $this->option('stores');
         $cloneCatalog = $this->option('clone-catalog');
+        $googleSync = $this->option('google-sync');
+        $googleInspect = $this->option('google-inspect');
 
         if ($fresh)
         {
@@ -73,6 +84,22 @@ class StartCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($googleSync)
+        {
+            $this->runGoogleSyncData();
+            $this->info('Done.');
+
+            return self::SUCCESS;
+        }
+
+        if ($googleInspect)
+        {
+            $this->runGoogleInspect();
+            $this->info('Done.');
+
+            return self::SUCCESS;
+        }
+
         $this->info('Humano — Setup');
         $this->newLine();
 
@@ -86,6 +113,8 @@ class StartCommand extends Command
                     self::OPT_CHAT,
                     self::OPT_STORES,
                     self::OPT_CLONE_CATALOG,
+                    self::OPT_GOOGLE_SYNC,
+                    self::OPT_GOOGLE_INSPECT,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -116,6 +145,12 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_CLONE_CATALOG)
             {
                 $this->runCloneCatalog();
+            } elseif ($choice === self::OPT_GOOGLE_SYNC)
+            {
+                $this->runGoogleSyncData();
+            } elseif ($choice === self::OPT_GOOGLE_INSPECT)
+            {
+                $this->runGoogleInspect();
             }
 
             $this->newLine();
@@ -218,5 +253,74 @@ class StartCommand extends Command
             'source_team_id' => $sourceId,
             'target_team_id' => $targetId,
         ]);
+    }
+
+    private function runGoogleSyncData(): void
+    {
+        $this->info('Queueing Google contacts + calendar sync...');
+
+        $accountIdOpt = $this->option('account_id');
+
+        if ($accountIdOpt !== null && $accountIdOpt !== '')
+        {
+            $this->call('google:sync-data', [
+                '--account_id' => (int) $accountIdOpt,
+            ]);
+
+            return;
+        }
+
+        $useAccountFilter = $this->confirm('Filter by one Google external account ID?', false);
+
+        if ($useAccountFilter)
+        {
+            $accountId = (int) $this->ask('Google external account ID');
+            if ($accountId > 0)
+            {
+                $this->call('google:sync-data', ['--account_id' => $accountId]);
+
+                return;
+            }
+            $this->warn('Invalid account ID. Running for all Google accounts.');
+        }
+
+        $this->call('google:sync-data');
+    }
+
+    private function runGoogleInspect(): void
+    {
+        $this->info('Inspecting Google sync status...');
+
+        $teamIdOpt = $this->option('team_id');
+        $limitOpt = (int) ($this->option('limit') ?? 200);
+        $limit = $limitOpt > 0 ? $limitOpt : 200;
+
+        if ($teamIdOpt !== null && $teamIdOpt !== '')
+        {
+            $this->call('google:inspect-sync', [
+                '--team_id' => (int) $teamIdOpt,
+                '--limit' => $limit,
+            ]);
+
+            return;
+        }
+
+        $filterByTeam = $this->confirm('Filter inspect by team ID?', false);
+        if ($filterByTeam)
+        {
+            $teamId = (int) $this->ask('Team ID');
+            if ($teamId > 0)
+            {
+                $this->call('google:inspect-sync', [
+                    '--team_id' => $teamId,
+                    '--limit' => $limit,
+                ]);
+
+                return;
+            }
+            $this->warn('Invalid team ID. Showing all teams.');
+        }
+
+        $this->call('google:inspect-sync', ['--limit' => $limit]);
     }
 }

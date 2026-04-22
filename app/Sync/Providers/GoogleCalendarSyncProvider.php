@@ -20,6 +20,8 @@ class GoogleCalendarSyncProvider implements CalendarSyncProviderInterface
 
     public function sync(ExternalAccount $account): array
     {
+        $calendarId = (string) ($account->team?->getSetting('google_calendar_id') ?: 'primary');
+
         $cursor = SyncCursor::query()->firstOrCreate(
             [
                 'external_account_id' => $account->id,
@@ -59,7 +61,7 @@ class GoogleCalendarSyncProvider implements CalendarSyncProviderInterface
                     $params['pageToken'] = $nextPageToken;
                 }
 
-                $response = $service->events->listEvents('primary', $params);
+                $response = $service->events->listEvents($calendarId, $params);
                 $events = $response->getItems() ?? [];
 
                 foreach ($events as $event)
