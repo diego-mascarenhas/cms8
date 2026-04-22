@@ -139,7 +139,7 @@
                                     <th>Nombre</th>
                                     <th>Email</th>
                                     <th>Teléfono</th>
-                                    <th>Departamento</th>
+                                    <th>Área</th>
                                     <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
@@ -151,7 +151,7 @@
                                         </td>
                                         <td>{{ $contact->email ?: '—' }}</td>
                                         <td>{{ $contact->phone ?: '—' }}</td>
-                                        <td>{{ optional($enterpriseDepartments->firstWhere('id', $contact->pivot?->department_id))->name ?? '—' }}</td>
+                                        <td>{{ optional($enterpriseDepartments->firstWhere('id', $contact->pivot?->department_id))->name ?? '' }}</td>
                                         <td class="text-center text-nowrap">
                                             <div class="d-inline-flex justify-content-center align-items-center gap-1">
                                                 @can('view', $contact)
