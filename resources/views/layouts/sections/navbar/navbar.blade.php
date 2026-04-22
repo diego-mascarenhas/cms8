@@ -198,37 +198,6 @@
         <!-- /Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
-        {{-- Quick Time Tracker (attendance clock-in/out) --}}
-        @auth
-        @if(auth()->user()->currentTeam?->hasModule('attendances'))
-        <li class="nav-item dropdown me-2" id="quick-timer"
-            data-running-url="{{ route('attendance.running') }}"
-            data-start-url="{{ route('attendance.start') }}"
-            data-stop-url="/attendance/:ID/stop">
-            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
-               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
-                <i class="ti ti-clock ti-md" id="quick-timer-icon"></i>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
-                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
-                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
-                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
-                </li>
-                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
-                    <a href="{{ route('time.index') }}" class="text-decoration-none">
-                        <i class="ti ti-hourglass-low me-1"></i>
-                        <span id="project-running-name">—</span>
-                    </a>
-                </li>
-                <li><div class="dropdown-divider"></div></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
-            </ul>
-        </li>
-        @endif
-        @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
@@ -448,6 +417,38 @@
 			@livewire('help-center-icon')
 		@endif
         <!-- /Help Center -->
+
+        {{-- Quick Time Tracker (attendance clock-in/out) --}}
+        @auth
+        @if(auth()->user()->currentTeam?->hasModule('attendances'))
+        <li class="nav-item dropdown me-3 me-xl-1" id="quick-timer"
+            data-running-url="{{ route('attendance.running') }}"
+            data-start-url="{{ route('attendance.start') }}"
+            data-stop-url="/attendance/:ID/stop">
+            <a class="nav-link dropdown-toggle hide-arrow ps-0" href="javascript:void(0);" data-bs-toggle="dropdown"
+               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
+                <i class="ti ti-clock ti-md" id="quick-timer-icon"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
+                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
+                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+                </li>
+                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
+                    <a href="{{ route('time.index') }}" class="text-decoration-none">
+                        <i class="ti ti-hourglass-low me-1"></i>
+                        <span id="project-running-name">—</span>
+                    </a>
+                </li>
+                <li><div class="dropdown-divider"></div></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
+            </ul>
+        </li>
+        @endif
+        @endauth
 
         <!-- User -->
         <li class="nav-item navbar-dropdown dropdown-user dropdown">
@@ -769,9 +770,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const iconInline = document.getElementById('quick-timer-icon-inline');
         const applyIconState = (el) => {
             if (!el) return;
-            el.classList.remove('text-success', 'text-muted', 'text-warning');
+            el.classList.remove('text-success', 'text-muted', 'text-warning', 'text-body-secondary');
             if (!running) {
-                el.classList.add('text-muted');
+                // Keep default navbar icon color when timer is stopped.
             } else if (paused) {
                 el.classList.add('text-warning');
             } else {
