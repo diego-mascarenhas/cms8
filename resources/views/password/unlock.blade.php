@@ -1,13 +1,13 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Unlock Password Vault'))
+@section('title', 'Desbloquear cofre de contraseñas')
 
 @section('content')
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="ti ti-lock me-2"></i>Unlock password vault</h5>
+                <h5 class="mb-0"><i class="ti ti-lock me-2"></i>Desbloquear cofre de contraseñas</h5>
             </div>
             <div class="card-body">
                 @if (session('error'))
@@ -17,7 +17,7 @@
                 <form method="POST" action="{{ route('passwords.unlock') }}">
                     @csrf
                     <div class="mb-3">
-                        <label for="master_key" class="form-label">{{ __('Master key') }}</label>
+                        <label for="master_key" class="form-label">Clave maestra</label>
                         <input id="master_key" name="master_key" type="password" class="form-control @error('master_key') is-invalid @enderror" required autofocus>
                         @error('master_key')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -26,12 +26,12 @@
 
                     @if($masterKeyHint !== '')
                         <div class="alert alert-secondary py-2">
-                            <small class="text-muted">{{ __('Hint') }}: {{ $masterKeyHint }}</small>
+                            <small class="text-muted">Pista: {{ $masterKeyHint }}</small>
                         </div>
                     @endif
 
                     <button class="btn btn-primary" type="submit">
-                        <i class="ti ti-lock-open-2 me-1"></i>{{ __('Unlock for 15 minutes') }}
+                        <i class="ti ti-lock-open-2 me-1"></i>Desbloquear por 15 minutos
                     </button>
                 </form>
             </div>

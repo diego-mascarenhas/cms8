@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Secure Password Share</title>
+    <title>Compartir contraseña segura</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f7f7fb; margin: 0; padding: 24px; }
         .card { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb; }
@@ -17,19 +17,19 @@
 <body>
     <div class="card">
         @if($status === 'ok')
-            <h2>Secure password share</h2>
-            <p class="muted">This link is one-time. The secret is now consumed after this view.</p>
-            <p><strong>Name:</strong> {{ $name }}</p>
-            <p><strong>Username:</strong> {{ $username ?: '—' }}</p>
-            <p><strong>Password:</strong> <code>{{ $password }}</code></p>
+            <h2>Contraseña compartida de forma segura</h2>
+            <p class="muted">Este enlace es de un solo uso. El secreto se consume después de esta visualización.</p>
+            <p><strong>Nombre:</strong> {{ $name }}</p>
+            <p><strong>Usuario:</strong> {{ $username ?: '—' }}</p>
+            <p><strong>Contraseña:</strong> <code>{{ $password }}</code></p>
             <p><strong>URL:</strong> {{ $url ?: '—' }}</p>
-            <p><strong>Notes:</strong> {{ $notes ?: '—' }}</p>
+            <p><strong>Notas:</strong> {{ $notes ?: '—' }}</p>
         @elseif($status === 'expired')
-            <div class="alert warning">This secure link has expired.</div>
+            <div class="alert warning">Este enlace seguro ha expirado.</div>
         @elseif($status === 'consumed')
-            <div class="alert warning">This secure link was already used and is no longer available.</div>
+            <div class="alert warning">Este enlace seguro ya fue usado y no está disponible.</div>
         @else
-            <div class="alert danger">This secure link is invalid.</div>
+            <div class="alert danger">Este enlace seguro es inválido.</div>
         @endif
     </div>
 </body>

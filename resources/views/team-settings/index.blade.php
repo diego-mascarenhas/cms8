@@ -85,9 +85,9 @@
                     <div class="card h-100">
                         <div class="card-body text-center">
                             <i class="ti ti-lock mb-3" style="font-size: 2rem;"></i>
-                            <h5 class="card-title">Passwords Security</h5>
-                            <p class="card-text">Set and rotate the team master key for the password vault</p>
-                            <a href="{{ route('team-settings.passwords', $team) }}" class="btn btn-primary">Configure</a>
+                            <h5 class="card-title">Seguridad de contraseñas</h5>
+                            <p class="card-text">Configura y rota la clave maestra del equipo para el cofre de contraseñas</p>
+                            <a href="{{ route('team-settings.passwords', $team) }}" class="btn btn-primary">Configurar</a>
                         </div>
                     </div>
                 </div>

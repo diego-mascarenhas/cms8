@@ -27,7 +27,7 @@ class TeamPasswordController extends Controller
         {
             return redirect()
                 ->route('team-settings.passwords', $team)
-                ->with('error', __('Set your master key before using the vault.'));
+                ->with('error', __('Configura tu clave maestra antes de usar el cofre.'));
         }
 
         $enterprises = Enterprise::query()->orderBy('name')->pluck('name', 'id');
@@ -66,7 +66,7 @@ class TeamPasswordController extends Controller
         ]);
         $teamPassword->save();
 
-        return redirect()->route('passwords.index')->with('success', __('Password created successfully.'));
+        return redirect()->route('passwords.index')->with('success', __('Contraseña creada correctamente.'));
     }
 
     public function edit(TeamPassword $team_password)
@@ -100,7 +100,7 @@ class TeamPasswordController extends Controller
 
         $team_password->save();
 
-        return redirect()->route('passwords.index')->with('success', __('Password updated successfully.'));
+        return redirect()->route('passwords.index')->with('success', __('Contraseña actualizada correctamente.'));
     }
 
     public function destroy(TeamPassword $team_password)
@@ -109,7 +109,7 @@ class TeamPasswordController extends Controller
         $this->authorize('delete', $team_password);
         $team_password->delete();
 
-        return redirect()->route('passwords.index')->with('success', __('Password deleted successfully.'));
+        return redirect()->route('passwords.index')->with('success', __('Contraseña eliminada correctamente.'));
     }
 
     public function unlockForm()
@@ -137,10 +137,10 @@ class TeamPasswordController extends Controller
         {
             if ($request->expectsJson())
             {
-                return response()->json(['message' => __('Invalid master key.')], 422);
+                return response()->json(['message' => __('Clave maestra inválida.')], 422);
             }
 
-            return redirect()->back()->withErrors(['master_key' => __('Invalid master key.')]);
+            return redirect()->back()->withErrors(['master_key' => __('Clave maestra inválida.')]);
         }
 
         $request->session()->put("passwords_unlocked_team_{$team->id}", true);
@@ -148,10 +148,10 @@ class TeamPasswordController extends Controller
 
         if ($request->expectsJson())
         {
-            return response()->json(['success' => true, 'message' => __('Vault unlocked for 15 minutes.')]);
+            return response()->json(['success' => true, 'message' => __('Cofre desbloqueado por 15 minutos.')]);
         }
 
-        return redirect()->route('passwords.index')->with('success', __('Vault unlocked for 15 minutes.'));
+        return redirect()->route('passwords.index')->with('success', __('Cofre desbloqueado por 15 minutos.'));
     }
 
     public function lock(Request $request)
@@ -165,7 +165,7 @@ class TeamPasswordController extends Controller
         $request->session()->forget("passwords_unlocked_team_{$team->id}");
         $request->session()->forget("passwords_unlocked_until_team_{$team->id}");
 
-        return redirect()->route('passwords.unlock.form')->with('success', __('Vault locked.'));
+        return redirect()->route('passwords.unlock.form')->with('success', __('Cofre bloqueado.'));
     }
 
     public function reveal(TeamPassword $team_password)
@@ -176,7 +176,7 @@ class TeamPasswordController extends Controller
         {
             return response()->json([
                 'requires_unlock' => true,
-                'message' => __('Unlock your vault to reveal passwords.'),
+                'message' => __('Desbloquea el cofre para ver contraseñas.'),
             ], 423);
         }
 
@@ -185,7 +185,7 @@ class TeamPasswordController extends Controller
         {
             return response()->json([
                 'password' => null,
-                'message' => __('This record has no saved password.'),
+                'message' => __('Este registro no tiene contraseña guardada.'),
             ], 422);
         }
 
@@ -200,7 +200,7 @@ class TeamPasswordController extends Controller
         {
             return response()->json([
                 'requires_unlock' => true,
-                'message' => __('Unlock your vault to create share links.'),
+                'message' => __('Desbloquea el cofre para crear enlaces compartidos.'),
             ], 423);
         }
 

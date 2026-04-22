@@ -394,8 +394,8 @@
                                         <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                                             <i class="ti ti-lock fs-4"></i>
                                         </span>
-                                        <a href="{{ route('passwords.index') }}" class="stretched-link">Passwords</a>
-                                        <small class="text-muted mb-0">Vault</small>
+                                        <a href="{{ route('passwords.index') }}" class="stretched-link">Contraseñas</a>
+                                        <small class="text-muted mb-0">Cofre</small>
                                     </div>
                                 @endif
                             </div>

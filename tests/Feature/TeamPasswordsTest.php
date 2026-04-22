@@ -125,7 +125,7 @@ class TeamPasswordsTest extends TestCase
 
         $secondView = $this->get($url);
         $secondView->assertStatus(410);
-        $secondView->assertSee('already used');
+        $secondView->assertSee('ya fue usado');
     }
 
     public function test_share_link_expires_after_deadline(): void
@@ -150,7 +150,7 @@ class TeamPasswordsTest extends TestCase
 
         $this->get(route('passwords.share.consume', ['token' => $plainToken]))
             ->assertStatus(410)
-            ->assertSee('expired');
+            ->assertSee('ha expirado');
     }
 
     public function test_user_cannot_edit_password_from_another_team(): void
