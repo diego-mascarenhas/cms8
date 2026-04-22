@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ClientDataTable;
 use App\Models\Contact;
 use App\Models\Enterprise;
+use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
 use App\Policies\ContactPolicy;
 use Illuminate\Http\Request;
@@ -182,6 +183,9 @@ class ClientController extends Controller
         $billingAddresses = $client->enterpriseBillingAddresses->sortByDesc('status')->values();
 
         $linkedContacts = $client->contacts->sortBy('name')->values();
+        $enterpriseDepartments = EnterpriseDepartment::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         $invoices = $client->invoices->sortByDesc(function ($invoice)
         {
@@ -202,6 +206,7 @@ class ClientController extends Controller
             'services',
             'billingAddresses',
             'linkedContacts',
+            'enterpriseDepartments',
             'invoices',
             'invoiceBalanceTotal',
         ));
@@ -467,6 +472,7 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'contact_id' => 'required|integer',
+            'department_id' => 'nullable|integer|exists:enterprise_departments,id',
         ]);
 
         $enterprise = Enterprise::query()
@@ -492,7 +498,11 @@ class ClientController extends Controller
             ], 422);
         }
 
-        $contact->enterprises()->syncWithoutDetaching([$enterprise->id]);
+        $contact->enterprises()->syncWithoutDetaching([
+            $enterprise->id => [
+                'department_id' => $validated['department_id'] ?? null,
+            ],
+        ]);
 
         if ((int) $contact->status_id === 5 && ! $contact->current_enterprise_id)
         {

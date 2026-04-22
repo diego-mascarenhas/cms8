@@ -139,7 +139,7 @@
                                     <th>Nombre</th>
                                     <th>Email</th>
                                     <th>Teléfono</th>
-                                    <th>Rol</th>
+                                    <th>Departamento</th>
                                     <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
@@ -151,13 +151,7 @@
                                         </td>
                                         <td>{{ $contact->email ?: '—' }}</td>
                                         <td>{{ $contact->phone ?: '—' }}</td>
-                                        <td>
-                                            @if($contact->user && $contact->user->roles->isNotEmpty())
-                                                {{ $contact->user->roles->pluck('name')->join(', ') }}
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
+                                        <td>{{ optional($enterpriseDepartments->firstWhere('id', $contact->pivot?->department_id))->name ?? '—' }}</td>
                                         <td class="text-center text-nowrap">
                                             <div class="d-inline-flex justify-content-center align-items-center gap-1">
                                                 @can('view', $contact)
@@ -214,6 +208,13 @@
                         <div class="modal-body">
                             <label for="linkContactSearchInput" class="form-label">Buscar por nombre, email o teléfono</label>
                             <input type="search" class="form-control" id="linkContactSearchInput" placeholder="{{ __('Search') }}…" autocomplete="off">
+                            <label for="linkContactDepartmentId" class="form-label mt-3">Departamento</label>
+                            <select id="linkContactDepartmentId" class="form-select">
+                                <option value="">— Sin departamento —</option>
+                                @foreach($enterpriseDepartments as $department)
+                                    <option value="{{ $department->id }}">{{ $department->name }}</option>
+                                @endforeach
+                            </select>
                             <div id="linkContactFeedback" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
                             <div id="linkContactList" class="list-group list-group-flush mt-3 border rounded"></div>
                             <p id="linkContactEmpty" class="text-muted small d-none mb-0 mt-3">No hay contactos para mostrar. Probá con otra búsqueda.</p>
@@ -708,6 +709,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var emptyEl = document.getElementById('linkContactEmpty');
         var feedbackEl = document.getElementById('linkContactFeedback');
         var searchInput = document.getElementById('linkContactSearchInput');
+        var departmentSelect = document.getElementById('linkContactDepartmentId');
         var submitBtn = document.getElementById('linkContactSubmitBtn');
         var selectedId = null;
         var searchTimer = null;
@@ -798,6 +800,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (searchInput) {
                 searchInput.value = '';
             }
+            if (departmentSelect) {
+                departmentSelect.value = '';
+            }
             setSelected(null);
             loadContacts('');
         });
@@ -808,6 +813,9 @@ document.addEventListener('DOMContentLoaded', function () {
             emptyEl.classList.add('d-none');
             if (searchInput) {
                 searchInput.value = '';
+            }
+            if (departmentSelect) {
+                departmentSelect.value = '';
             }
             setSelected(null);
         });
@@ -838,7 +846,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     'X-CSRF-TOKEN': token,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ contact_id: selectedId }),
+                body: JSON.stringify({
+                    contact_id: selectedId,
+                    department_id: departmentSelect && departmentSelect.value ? parseInt(departmentSelect.value, 10) : null,
+                }),
             })
                 .then(function (r) {
                     return r.json().then(function (j) {
