@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyProdReadDatabaseWhenEnabled;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureRegistrationBillingComplete;
 use App\Http\Middleware\EnsurePasswordsUnlocked;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ModifyMenuBasedOnRole::class,
             TrackContactViewing::class,
             EnsureRegistrationBillingComplete::class,
+            ApplyProdReadDatabaseWhenEnabled::class,
             // TEMPORARILY DISABLED FOR TESTING
             // \App\Http\Middleware\DashboardRedirect::class,
         ]);

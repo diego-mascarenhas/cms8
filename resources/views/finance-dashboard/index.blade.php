@@ -19,6 +19,9 @@
     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
         <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
             <label for="financial-dashboard-year" class="form-label mb-0 me-2">{{ __('Year') }}</label>
+            @if ($selectedAccountEnterpriseId)
+                <input type="hidden" name="enterprise_id" value="{{ $selectedAccountEnterpriseId }}">
+            @endif
             <select id="financial-dashboard-year" name="year" class="form-select" onchange="this.form.submit()">
                 @foreach($availableYears as $year)
                     <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
@@ -222,11 +225,31 @@
 
 <!-- Account Balances -->
 <div class="card">
-    <div class="card-header">
-        <h5 class="card-title m-0">{{ __('Account Balances') }}</h5>
+    <div class="card-header border-bottom">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+                <h5 class="card-title m-0">{{ __('Account Balances') }}</h5>
+                <p class="text-muted small mb-0">{{ __('Balances use payments linked to an enterprise (payments.enterprise_id). Accounts are shared by team.') }}</p>
+            </div>
+            <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-end gap-2">
+                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                <div>
+                    <label for="finance-dashboard-account-enterprise" class="form-label mb-1 small">{{ __('Enterprise') }}</label>
+                    <select id="finance-dashboard-account-enterprise" name="enterprise_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">{{ __('All') }}</option>
+                        @foreach ($enterprises as $id => $name)
+                            <option value="{{ $id }}" @selected((int) $selectedAccountEnterpriseId === (int) $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </form>
+        </div>
     </div>
     <div class="card-widget-separator-wrapper">
         <div class="card-body card-widget-separator">
+            @if ($accounts->isEmpty())
+                <p class="text-muted mb-0">{{ __('No payment accounts with movement for this filter.') }}</p>
+            @else
             <div class="row gy-4 gy-sm-1">
                 @foreach($accounts as $index => $account)
                     <div class="col-sm-6 col-lg-3">
@@ -249,6 +272,7 @@
                     </div>
                 @endforeach
             </div>
+            @endif
         </div>
     </div>
 </div>

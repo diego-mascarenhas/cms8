@@ -198,6 +198,30 @@
         <!-- /Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
+        @php
+            $showProdReadToggle = app()->isLocal()
+                && config('app.allow_prod_read_toggle')
+                && config('app.prod_read_credentials_configured');
+        @endphp
+        @auth
+            @if ($showProdReadToggle)
+                <li class="nav-item d-flex align-items-center me-2 me-xl-3">
+                    <form method="POST" action="{{ route('dev.prod-read-database') }}" class="d-flex align-items-center gap-2 mb-0">
+                        @csrf
+                        <input type="hidden" name="enabled" id="prod-read-enabled-input" value="{{ session('use_prod_read_database') ? '1' : '0' }}">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="prod-read-toggle"
+                                {{ session('use_prod_read_database') ? 'checked' : '' }}
+                                onchange="document.getElementById('prod-read-enabled-input').value = this.checked ? '1' : '0'; this.form.submit();">
+                            <label class="form-check-label small text-nowrap text-body" for="prod-read-toggle">{{ __('app.prod_read.toggle_label') }}</label>
+                        </div>
+                        @if (session('use_prod_read_database'))
+                            <span class="badge bg-label-warning d-none d-md-inline-block">{{ __('app.prod_read.active_hint') }}</span>
+                        @endif
+                    </form>
+                </li>
+            @endif
+        @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">

@@ -275,4 +275,19 @@ return [
     'wapify_whatsapp_phone' => env('WAPIFY_WHATSAPP_PHONE', '34613194131'),
     'wapify_whatsapp_text' => env('WAPIFY_WHATSAPP_TEXT', 'Hola!'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Local-only: read production data via database.connections.prod_read
+    |--------------------------------------------------------------------------
+    |
+    | When ALLOW_PROD_READ_TOGGLE=true and APP_ENV=local, authenticated users
+    | can switch the default DB connection for the request (navbar). Use a
+    | read-only database user on production. Never enable outside local.
+    |
+    */
+    'allow_prod_read_toggle' => (bool) env('ALLOW_PROD_READ_TOGGLE', false),
+
+    'prod_read_credentials_configured' => filled(env('DB_PROD_READ_HOST'))
+        && (filled(env('DB_PROD_READ_DATABASE')) || filled(env('DB_PROD_READ_URL'))),
+
 ];

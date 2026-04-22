@@ -315,6 +315,8 @@
   "All time": "Todo el tiempo",
   "Active accounts": "Cuentas activas",
   "Account Balances": "Balances de Cuentas",
+  "Balances use payments linked to an enterprise (payments.enterprise_id). Accounts are shared by team.": "Los saldos se calculan con pagos vinculados a una empresa (payments.enterprise_id). Las cuentas de cobro/pago son del equipo.",
+  "No payment accounts with movement for this filter.": "No hay cuentas con movimientos para este filtro.",
   "Monthly Profit": "Beneficio Mensual",
   "Monthly Income": "Ingresos Mensuales",
   "Monthly Expenses": "Gastos Mensuales",

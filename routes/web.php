@@ -219,6 +219,21 @@ Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPubli
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
+    if (app()->isLocal())
+    {
+        Route::post('/dev/prod-read-database', function (\Illuminate\Http\Request $request)
+        {
+            if (! config('app.allow_prod_read_toggle'))
+            {
+                abort(404);
+            }
+
+            $request->session()->put('use_prod_read_database', $request->boolean('enabled'));
+
+            return redirect()->back();
+        })->name('dev.prod-read-database');
+    }
+
     Route::get('/dashboard', function ()
     {
         return redirect()->route('dashboard');

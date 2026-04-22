@@ -49,6 +49,10 @@ return [
         'accounts' => 'Accounts',
         'accounts_settings' => 'Accounts Settings',
     ],
+    'prod_read' => [
+        'toggle_label' => 'Read real data',
+        'active_hint' => 'Prod DB (read)',
+    ],
     'profile' => [
         'my_profile' => 'My Profile',
         'api_tokens' => 'API Tokens',

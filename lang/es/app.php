@@ -55,6 +55,10 @@ return [
         'accounts' => 'Cuentas',
         'accounts_settings' => 'Ajustes de Cuentas',
     ],
+    'prod_read' => [
+        'toggle_label' => 'Leer datos reales',
+        'active_hint' => 'BD prod (lectura)',
+    ],
     'profile' => [
         'my_profile' => 'Mi Perfil',
         'api_tokens' => 'Tokens API',
