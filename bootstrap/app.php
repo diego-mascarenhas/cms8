@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureRegistrationBillingComplete;
+use App\Http\Middleware\EnsurePasswordsUnlocked;
 use App\Http\Middleware\LocaleMiddleware;
 use App\Http\Middleware\ModifyMenuBasedOnRole;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -67,6 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'team.token' => TeamTokenAuth::class,
+            'passwords.unlocked' => EnsurePasswordsUnlocked::class,
         ]);
 
         // Encrypt cookies

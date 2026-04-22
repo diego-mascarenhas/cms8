@@ -84,6 +84,17 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-lock mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Passwords Security</h5>
+                            <p class="card-text">Set and rotate the team master key for the password vault</p>
+                            <a href="{{ route('team-settings.passwords', $team) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-language mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Custom Translations</h5>
                             <p class="card-text">Manage custom translations for your team</p>

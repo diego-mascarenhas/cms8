@@ -6,11 +6,34 @@ use App\Enums\TransactionType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class FinancialDashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $currentYear = Carbon::now()->year;
+        $requestedYear = (int) $request->query('year', $currentYear);
+        $selectedYear = $requestedYear > 0 ? $requestedYear : $currentYear;
+
+        $minYear = (int) (Payment::whereNotNull('date')
+            ->selectRaw('MIN(EXTRACT(YEAR FROM "date")) as year_value')
+            ->value('year_value') ?? 0);
+        $maxYear = (int) (Payment::whereNotNull('date')
+            ->selectRaw('MAX(EXTRACT(YEAR FROM "date")) as year_value')
+            ->value('year_value') ?? 0);
+
+        if ($minYear === 0 || $maxYear === 0)
+        {
+            $minYear = $currentYear;
+            $maxYear = $currentYear;
+        }
+
+        $minYear = min($minYear, $currentYear);
+        $maxYear = max($maxYear, $currentYear);
+        $selectedYear = max($minYear, min($selectedYear, $maxYear));
+        $availableYears = range($maxYear, $minYear);
+
         // Get accounts with balances
         $accounts = PaymentAccount::with('currency')
             ->get()
@@ -30,16 +53,18 @@ class FinancialDashboardController extends Controller
             });
 
         // Current month metrics
+        $selectedMonth = Carbon::now()->month;
+
         $currentMonthIncome = Payment::where('transaction_type', TransactionType::INCOME)
             ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->month)
-            ->whereYear('date', Carbon::now()->year)
+            ->whereMonth('date', $selectedMonth)
+            ->whereYear('date', $selectedYear)
             ->sum('amount');
 
         $currentMonthExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
             ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->month)
-            ->whereYear('date', Carbon::now()->year)
+            ->whereMonth('date', $selectedMonth)
+            ->whereYear('date', $selectedYear)
             ->sum('amount');
 
         $currentMonthProfit = $currentMonthIncome - $currentMonthExpense;
@@ -47,21 +72,21 @@ class FinancialDashboardController extends Controller
         // Year to date metrics
         $ytdIncome = Payment::where('transaction_type', TransactionType::INCOME)
             ->where('status', 2)
-            ->whereYear('date', Carbon::now()->year)
+            ->whereYear('date', $selectedYear)
             ->sum('amount');
 
         $ytdExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
             ->where('status', 2)
-            ->whereYear('date', Carbon::now()->year)
+            ->whereYear('date', $selectedYear)
             ->sum('amount');
 
         $ytdProfit = $ytdIncome - $ytdExpense;
 
-        // Monthly data for chart (last 12 months)
+        // Monthly data for the selected year
         $monthlyData = [];
-        for ($i = 11; $i >= 0; $i--)
+        for ($month = 1; $month <= 12; $month++)
         {
-            $date = Carbon::now()->subMonths($i);
+            $date = Carbon::create($selectedYear, $month, 1);
             $monthlyIncome = Payment::where('transaction_type', TransactionType::INCOME)
                 ->where('status', 2)
                 ->whereMonth('date', $date->month)
@@ -87,6 +112,8 @@ class FinancialDashboardController extends Controller
 
         return view('finance-dashboard.index', compact(
             'accounts',
+            'selectedYear',
+            'availableYears',
             'currentMonthIncome',
             'currentMonthExpense',
             'currentMonthProfit',

@@ -339,10 +339,16 @@
                                 && $shortcutTeam?->hasModule('team_files')
                                 && auth()->user()->can('viewAny', \App\Models\TeamFile::class);
                             $showTimesShortcut = auth()->check() && $shortcutTeam?->hasModule('times');
+                            $showPasswordsShortcut = auth()->check() && (
+                                $shortcutTeam?->hasModule('passwords')
+                                || auth()->user()->hasRole('admin')
+                                || auth()->user()->hasRole('developer')
+                            );
                             $shortcutVisibleCount = ($showCalendarShortcut ? 1 : 0)
                                 + ($showProspectShortcut ? 1 : 0)
                                 + ($showTeamFilesShortcut ? 1 : 0)
-                                + ($showTimesShortcut ? 1 : 0);
+                                + ($showTimesShortcut ? 1 : 0)
+                                + ($showPasswordsShortcut ? 1 : 0);
                             $shortcutColClass = $shortcutVisibleCount === 1 ? 'col-12' : 'col-6';
                         @endphp
                         @if ($shortcutVisibleCount > 0)
@@ -381,6 +387,15 @@
                                         </span>
                                         <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
                                         <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
+                                    </div>
+                                @endif
+                                @if ($showPasswordsShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-lock fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('passwords.index') }}" class="stretched-link">Passwords</a>
+                                        <small class="text-muted mb-0">Vault</small>
                                     </div>
                                 @endif
                             </div>

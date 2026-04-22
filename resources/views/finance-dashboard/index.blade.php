@@ -16,8 +16,17 @@
         <h4 class="mb-1 mt-3">{{ __('Accounting Dashboard') }}</h4>
         <p class="text-muted">{{ __('Financial overview and indicators') }}</p>
     </div>
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('income.index') }}" class="btn btn-outline-success me-2">
+    <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+        <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
+            <label for="financial-dashboard-year" class="form-label mb-0 me-2">{{ __('Year') }}</label>
+            <select id="financial-dashboard-year" name="year" class="form-select" onchange="this.form.submit()">
+                @foreach($availableYears as $year)
+                    <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
+                @endforeach
+            </select>
+        </form>
+
+        <a href="{{ route('income.index') }}" class="btn btn-outline-success">
             <i class="ti ti-trending-up me-1"></i> {{ __('Income') }}
         </a>
         <a href="{{ route('expense.index') }}" class="btn btn-outline-danger">
@@ -39,7 +48,7 @@
                                 {{ number_format($currentMonthProfit, 2) }}
                             </h3>
                         </div>
-                        <p class="mb-0">{{ date('F Y') }}</p>
+                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded {{ $currentMonthProfit >= 0 ? 'bg-label-success' : 'bg-label-danger' }}">
@@ -59,7 +68,7 @@
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2 text-success">{{ number_format($currentMonthIncome, 2) }}</h3>
                         </div>
-                        <p class="mb-0">{{ date('F Y') }}</p>
+                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-success">
@@ -79,7 +88,7 @@
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2 text-danger">{{ number_format($currentMonthExpense, 2) }}</h3>
                         </div>
-                        <p class="mb-0">{{ date('F Y') }}</p>
+                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
@@ -125,7 +134,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="mb-0 text-success">{{ number_format($ytdIncome, 2) }}</h2>
-                        <p class="text-muted mb-0">{{ date('Y') }}</p>
+                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle bg-label-success">
@@ -145,7 +154,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="mb-0 text-danger">{{ number_format($ytdExpense, 2) }}</h2>
-                        <p class="text-muted mb-0">{{ date('Y') }}</p>
+                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle bg-label-danger">
@@ -167,7 +176,7 @@
                         <h2 class="mb-0 {{ $ytdProfit >= 0 ? 'text-success' : 'text-danger' }}">
                             {{ number_format($ytdProfit, 2) }}
                         </h2>
-                        <p class="text-muted mb-0">{{ date('Y') }}</p>
+                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle {{ $ytdProfit >= 0 ? 'bg-label-success' : 'bg-label-danger' }}">
@@ -188,7 +197,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="card-title m-0">{{ __('Income vs Expenses') }}</h5>
-                    <p class="text-muted mb-0">{{ __('Last 12 months') }}</p>
+                    <p class="text-muted mb-0">{{ __('Selected year') }}: {{ $selectedYear }}</p>
                 </div>
             </div>
             <div class="card-body">
@@ -202,7 +211,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title m-0">{{ __('Monthly Profit') }}</h5>
-                <p class="text-muted mb-0">{{ __('Last 12 months') }}</p>
+                <p class="text-muted mb-0">{{ __('Selected year') }}: {{ $selectedYear }}</p>
             </div>
             <div class="card-body">
                 <div id="profitChart"></div>

@@ -13,6 +13,7 @@ use App\Services\AstralChartService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
 
@@ -940,6 +941,67 @@ class TeamSettingController extends Controller
         $tokenCreated = $team->getSetting('api_token_created_at');
 
         return view('team-settings.api-tokens', compact('team', 'currentToken', 'tokenName', 'tokenAbilities', 'tokenCreated'));
+    }
+
+    public function passwords(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $hasMasterKey = $team->hasPasswordsMasterKey();
+        $masterKeyHint = (string) $team->getSetting('passwords_master_key_hint', '');
+        $rotationAt = $team->getSetting('passwords_rotation_at');
+
+        return view('team-settings.passwords', compact('team', 'hasMasterKey', 'masterKeyHint', 'rotationAt'));
+    }
+
+    public function updatePasswordsMasterKey(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $rules = [
+            'new_master_key' => ['required', 'string', 'min:8', 'confirmed'],
+            'master_key_hint' => ['nullable', 'string', 'max:120'],
+        ];
+
+        if ($team->hasPasswordsMasterKey())
+        {
+            $rules['current_master_key'] = ['required', 'string'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($team->hasPasswordsMasterKey() && ! $team->verifyPasswordsMasterKey((string) $validated['current_master_key']))
+        {
+            return redirect()
+                ->back()
+                ->withErrors(['current_master_key' => __('The current master key is invalid.')])
+                ->withInput();
+        }
+
+        $team->setSetting('passwords_master_key_hash', Hash::make((string) $validated['new_master_key']), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => true,
+        ]);
+
+        $team->setSetting('passwords_master_key_hint', (string) ($validated['master_key_hint'] ?? ''), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('passwords_rotation_at', now()->toDateTimeString(), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+
+        $request->session()->forget("passwords_unlocked_team_{$team->id}");
+        $request->session()->forget("passwords_unlocked_until_team_{$team->id}");
+
+        return redirect()
+            ->route('team-settings.passwords', $team)
+            ->with('success', __('Master key saved successfully.'));
     }
 
     /**

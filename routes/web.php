@@ -74,6 +74,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamFileController;
 use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
+use App\Http\Controllers\TeamPasswordController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TicketController;
@@ -104,6 +105,7 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
     ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
+Route::get('/password/share/{token}', [TeamPasswordController::class, 'consumeShare'])->name('passwords.share.consume');
 
 Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::class, 'show'])
     ->name('public-shop.show');
@@ -293,7 +295,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Team API Tokens
     Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
+    Route::get('/team/{team}/passwords-settings', [TeamSettingController::class, 'passwords'])->name('team-settings.passwords');
     Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+    Route::put('/team/{team}/passwords-settings', [TeamSettingController::class, 'updatePasswordsMasterKey'])->name('team-settings.passwords.update');
     Route::put('/team/{team}/api-tokens', [TeamSettingController::class, 'updateApiToken'])->name('team-settings.update-api-token');
     Route::post('/team/{team}/api-tokens/reveal', [TeamSettingController::class, 'revealApiToken'])->name('team-settings.reveal-api-token');
     Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
@@ -308,6 +312,19 @@ Route::middleware(['auth'])->group(function ()
     // Team Shortcuts
     Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
     Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
+
+    // Team Passwords (Keychain)
+    Route::get('/password/unlock', [TeamPasswordController::class, 'unlockForm'])->name('passwords.unlock.form');
+    Route::post('/password/unlock', [TeamPasswordController::class, 'unlock'])->name('passwords.unlock');
+    Route::post('/password/lock', [TeamPasswordController::class, 'lock'])->name('passwords.lock');
+    Route::get('/password/list', [TeamPasswordController::class, 'index'])->name('passwords.index');
+    Route::get('/password/create', [TeamPasswordController::class, 'create'])->name('passwords.create');
+    Route::post('/password', [TeamPasswordController::class, 'store'])->name('passwords.store');
+    Route::get('/password/{team_password}/edit', [TeamPasswordController::class, 'edit'])->name('passwords.edit');
+    Route::put('/password/{team_password}', [TeamPasswordController::class, 'update'])->name('passwords.update');
+    Route::delete('/password/{team_password}', [TeamPasswordController::class, 'destroy'])->name('passwords.destroy');
+    Route::post('/password/{team_password}/reveal', [TeamPasswordController::class, 'reveal'])->name('passwords.reveal');
+    Route::post('/password/{team_password}/share', [TeamPasswordController::class, 'createShare'])->name('passwords.share');
 
     // Confirm team invitation (when email did not arrive)
     Route::post('/teams/invitations/{invitation}/confirm', TeamInvitationConfirmController::class)
