@@ -50,8 +50,7 @@ return [
         'accounts_settings' => 'Accounts Settings',
     ],
     'prod_read' => [
-        'toggle_label' => 'Read real data',
-        'active_hint' => 'Prod DB (read)',
+        'toggle_label' => 'Real data',
     ],
     'profile' => [
         'my_profile' => 'My Profile',

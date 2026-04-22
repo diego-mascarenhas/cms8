@@ -215,9 +215,6 @@
                                 onchange="document.getElementById('prod-read-enabled-input').value = this.checked ? '1' : '0'; this.form.submit();">
                             <label class="form-check-label small text-nowrap text-body" for="prod-read-toggle">{{ __('app.prod_read.toggle_label') }}</label>
                         </div>
-                        @if (session('use_prod_read_database'))
-                            <span class="badge bg-label-warning d-none d-md-inline-block">{{ __('app.prod_read.active_hint') }}</span>
-                        @endif
                     </form>
                 </li>
             @endif
