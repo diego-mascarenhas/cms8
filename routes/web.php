@@ -463,6 +463,9 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
     Route::get('/empresas/{id}', [ClientController::class, 'show'])->name('empresas.show');
+    Route::get('/client/{id}/linkable-contacts', [ClientController::class, 'linkableContacts'])->name('client.linkable-contacts');
+    Route::post('/client/{id}/attach-contact', [ClientController::class, 'attachContact'])->name('client.attach-contact');
+    Route::post('/client/{id}/detach-contact', [ClientController::class, 'detachContact'])->name('client.detach-contact');
     Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');

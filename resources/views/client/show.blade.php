@@ -50,9 +50,9 @@
 
         {{-- Datos de facturación (similar bloque CMS7) --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Datos de facturación</h5>
-                <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0 flex-shrink-0">Datos de facturación</h5>
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @can('client.edit')
                         <a href="{{ route('client.edit', $client->id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="ti ti-file-invoice me-1"></i>Actualizar datos fiscales
@@ -106,44 +106,48 @@
 
         {{-- Contactos --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Contactos</h5>
-                <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0 flex-shrink-0">Contactos</h5>
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @if($linkedContacts->count() > 0)
-                        <div class="input-group input-group-merge flex-grow-1 flex-md-grow-0" style="max-width: 280px;">
+                        <div class="input-group input-group-merge flex-shrink-1 min-w-0" style="max-width: 220px;">
                             <span class="input-group-text"><i class="ti ti-search"></i></span>
                             <input type="search" class="form-control form-control-sm" id="clientContactsTableSearch" placeholder="{{ __('Search') }}" autocomplete="off" aria-label="{{ __('Search') }}">
                         </div>
                     @endif
-                    @can('contact.create')
-                        <a href="{{ route('contact.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="ti ti-link me-1"></i>Asociar contacto a esta empresa
-                        </a>
-                        <a href="{{ route('contact.create') }}" class="btn btn-sm btn-primary">
-                            <i class="ti ti-user-plus me-1"></i>Ingresar contacto
-                        </a>
-                    @endcan
+                    <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
+                        @can('create', \App\Models\Contact::class)
+                            <a href="{{ route('contact.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="ti ti-user-plus me-1"></i>Nuevo contacto
+                            </a>
+                        @endcan
+                        @can('update', $client)
+                            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#modalLinkExistingContact">
+                                <i class="ti ti-link me-1"></i>Vincular existente
+                            </button>
+                        @endcan
+                    </div>
                 </div>
             </div>
             <div class="card-body">
                 @if($linkedContacts->count() > 0)
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="clientContactsTable">
+                        <table class="table table-hover mb-0" id="clientContactsTable"
+                            data-detach-url="{{ route('client.detach-contact', $client->id) }}">
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Email</th>
                                     <th>Teléfono</th>
                                     <th>Rol</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($linkedContacts as $contact)
                                     <tr>
-                                        <td>
-                                            <a href="{{ route('contact.show', $contact->id) }}" class="text-decoration-none fw-medium">
-                                                {{ $contact->name }}{{ $contact->surname ? ' '.$contact->surname : '' }}
-                                            </a>
+                                        <td class="fw-medium">
+                                            {{ $contact->name }}{{ $contact->surname ? ' '.$contact->surname : '' }}
                                         </td>
                                         <td>{{ $contact->email ?: '—' }}</td>
                                         <td>{{ $contact->phone ?: '—' }}</td>
@@ -153,6 +157,32 @@
                                             @else
                                                 —
                                             @endif
+                                        </td>
+                                        <td class="text-center text-nowrap">
+                                            <div class="d-inline-flex justify-content-center align-items-center gap-1">
+                                                @can('view', $contact)
+                                                    <a href="{{ route('contact.show', $contact->id) }}" class="btn btn-sm btn-icon btn-text-secondary" title="{{ __('View') }}">
+                                                        <i class="ti ti-eye"></i>
+                                                    </a>
+                                                @endcan
+                                                @if ($contact->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical'])))
+                                                    <a href="{{ $contact->chatIndexUrl() }}" class="btn btn-sm btn-icon btn-text-secondary" title="{{ __('Chat') }}">
+                                                        <i class="ti ti-message-chatbot"></i>
+                                                    </a>
+                                                @endif
+                                                @can('view', $contact)
+                                                    @if ($contact->mailComposeListUrl())
+                                                        <a href="{{ $contact->mailComposeListUrl() }}" class="btn btn-sm btn-icon btn-text-secondary" title="{{ __('Mail') }}">
+                                                            <i class="ti ti-mail"></i>
+                                                        </a>
+                                                    @endif
+                                                @endcan
+                                                @can('update', $client)
+                                                    <button type="button" class="btn btn-sm btn-icon btn-text-danger client-detach-contact-btn" title="Desvincular de este cliente" data-contact-id="{{ $contact->id }}">
+                                                        <i class="ti ti-unlink"></i>
+                                                    </button>
+                                                @endcan
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -165,28 +195,56 @@
                             <i class="ti ti-users display-4 text-muted"></i>
                         </div>
                         <h6 class="mb-1">Sin contactos vinculados</h6>
-                        <p class="text-muted mb-0">Asocia contactos a este cliente desde la ficha de cada contacto.</p>
+                        <p class="text-muted mb-0">Crea uno con <strong>Nuevo contacto</strong> o usá <strong>Vincular existente</strong> para elegir un contacto del equipo en el cuadro de diálogo.</p>
                     </div>
                 @endif
             </div>
         </div>
 
+        @can('update', $client)
+            <div class="modal fade" id="modalLinkExistingContact" tabindex="-1" aria-labelledby="modalLinkExistingContactLabel" aria-hidden="true"
+                data-link-url="{{ route('client.linkable-contacts', $client->id) }}"
+                data-attach-url="{{ route('client.attach-contact', $client->id) }}">
+                <div class="modal-dialog modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalLinkExistingContactLabel">Vincular contacto existente</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label for="linkContactSearchInput" class="form-label">Buscar por nombre, email o teléfono</label>
+                            <input type="search" class="form-control" id="linkContactSearchInput" placeholder="{{ __('Search') }}…" autocomplete="off">
+                            <div id="linkContactFeedback" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
+                            <div id="linkContactList" class="list-group list-group-flush mt-3 border rounded"></div>
+                            <p id="linkContactEmpty" class="text-muted small d-none mb-0 mt-3">No hay contactos para mostrar. Probá con otra búsqueda.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                            <button type="button" class="btn btn-primary" id="linkContactSubmitBtn" disabled>Vincular</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endcan
+
         {{-- Servicios --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Servicios</h5>
-                <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0 flex-shrink-0">Servicios</h5>
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @if($services->count() > 0)
-                        <div class="input-group input-group-merge flex-grow-1 flex-md-grow-0" style="max-width: 280px;">
+                        <div class="input-group input-group-merge flex-shrink-1 min-w-0" style="max-width: 220px;">
                             <span class="input-group-text"><i class="ti ti-search"></i></span>
                             <input type="search" class="form-control form-control-sm" id="clientServicesTableSearch" placeholder="{{ __('Search') }}" autocomplete="off" aria-label="{{ __('Search') }}">
                         </div>
                     @endif
-                    @can('service.create')
-                        <a href="{{ route('service.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary">
-                            <i class="ti ti-plus me-1"></i>Ingresar servicio
-                        </a>
-                    @endcan
+                    <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
+                        @can('create', \App\Models\Service::class)
+                            <a href="{{ route('service.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="ti ti-plus me-1"></i>Ingresar servicio
+                            </a>
+                        @endcan
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -253,24 +311,26 @@
 
         {{-- Facturas (bloque colapsable, estilo ibox CMS7) --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
-                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientInvoicesBlock" aria-expanded="false" aria-controls="clientInvoicesBlock" style="cursor: pointer;">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientInvoicesBlock" aria-expanded="false" aria-controls="clientInvoicesBlock" style="cursor: pointer;">
                     <i class="ti ti-chevron-down collapse-chevron"></i>
                     <span>Facturas</span>
                 </span>
-                <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     <span class="badge bg-label-secondary">Saldo pendiente: {{ number_format((float) $invoiceBalanceTotal, 2) }}</span>
                     <span class="badge bg-label-primary">{{ $invoices->count() }} {{ $invoices->count() === 1 ? 'registro' : 'registros' }}</span>
-                    @can('invoice.create')
-                        <a href="{{ route('invoice.create') }}" class="btn btn-sm btn-primary">
-                            <i class="ti ti-file-plus me-1"></i>Ingresar factura
-                        </a>
-                    @endcan
-                    @can('invoice.index')
-                        <a href="{{ route('invoice.index') }}" class="btn btn-sm btn-outline-primary">
-                            <i class="ti ti-list me-1"></i>Listado
-                        </a>
-                    @endcan
+                    <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
+                        @can('invoice.create')
+                            <a href="{{ route('invoice.create') }}" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="ti ti-file-plus me-1"></i>Ingresar factura
+                            </a>
+                        @endcan
+                        @can('invoice.index')
+                            <a href="{{ route('invoice.index') }}" class="btn btn-sm btn-outline-primary text-nowrap">
+                                <i class="ti ti-list me-1"></i>Listado
+                            </a>
+                        @endcan
+                    </div>
                 </div>
             </div>
             <div class="collapse" id="clientInvoicesBlock">
@@ -326,23 +386,25 @@
 
         {{-- Proyectos (colapsable; activos + historial) --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
-                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientProjectsBlock" aria-expanded="true" aria-controls="clientProjectsBlock" style="cursor: pointer;">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientProjectsBlock" aria-expanded="true" aria-controls="clientProjectsBlock" style="cursor: pointer;">
                     <i class="ti ti-chevron-up collapse-chevron"></i>
                     <span>Proyectos</span>
                 </span>
-                <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @if($activeProjects->count() > 0 || $pastProjects->count() > 0)
-                        <div class="input-group input-group-merge flex-grow-1 flex-md-grow-0" style="max-width: 280px;">
+                        <div class="input-group input-group-merge flex-shrink-1 min-w-0" style="max-width: 220px;">
                             <span class="input-group-text"><i class="ti ti-search"></i></span>
                             <input type="search" class="form-control form-control-sm" id="clientProjectsTableSearch" placeholder="{{ __('Search') }}" autocomplete="off" aria-label="{{ __('Search') }}">
                         </div>
                     @endif
-                    @can('project.create')
-                        <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                            <i class="ti ti-plus me-1"></i>Ingresar proyecto
-                        </a>
-                    @endcan
+                    <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
+                        @can('project.create')
+                            <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="ti ti-plus me-1"></i>Ingresar proyecto
+                            </a>
+                        @endcan
+                    </div>
                 </div>
             </div>
             <div class="collapse show" id="clientProjectsBlock">
@@ -470,11 +532,59 @@ document.addEventListener('DOMContentLoaded', function () {
             ordering: true,
             responsive: true,
             order: [[0, 'asc']],
+            columnDefs: [
+                { targets: -1, orderable: false, searchable: false, className: 'text-center' },
+            ],
         });
         var contactsSearchInput = document.getElementById('clientContactsTableSearch');
         if (contactsSearchInput) {
             contactsSearchInput.addEventListener('keyup', function () {
                 clientContactsDt.search(this.value).draw();
+            });
+        }
+
+        var contactsTableEl = document.getElementById('clientContactsTable');
+        if (contactsTableEl) {
+            contactsTableEl.addEventListener('click', function (e) {
+                var btn = e.target.closest('.client-detach-contact-btn');
+                if (!btn) {
+                    return;
+                }
+                if (!window.confirm('¿Desvincular este contacto de este cliente? El contacto no se elimina; solo deja de asociarse a esta empresa.')) {
+                    return;
+                }
+                var detachUrl = contactsTableEl.getAttribute('data-detach-url');
+                var contactId = btn.getAttribute('data-contact-id');
+                var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+                btn.disabled = true;
+                fetch(detachUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ contact_id: parseInt(contactId, 10) }),
+                })
+                    .then(function (r) {
+                        return r.json().then(function (j) {
+                            return { ok: r.ok, body: j };
+                        });
+                    })
+                    .then(function (res) {
+                        btn.disabled = false;
+                        if (!res.ok || !res.body.success) {
+                            window.alert((res.body && res.body.message) ? res.body.message : 'No se pudo desvincular.');
+                            return;
+                        }
+                        window.location.reload();
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        window.alert('Error de red al desvincular.');
+                    });
             });
         }
     }
@@ -520,6 +630,200 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('#clientProjectsBlock table tbody tr').forEach(function (row) {
                 row.style.display = !q || row.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
             });
+        });
+    }
+
+    var modalLink = document.getElementById('modalLinkExistingContact');
+    if (modalLink) {
+        var linkUrl = modalLink.getAttribute('data-link-url');
+        var attachUrl = modalLink.getAttribute('data-attach-url');
+        var listEl = document.getElementById('linkContactList');
+        var emptyEl = document.getElementById('linkContactEmpty');
+        var feedbackEl = document.getElementById('linkContactFeedback');
+        var searchInput = document.getElementById('linkContactSearchInput');
+        var submitBtn = document.getElementById('linkContactSubmitBtn');
+        var selectedId = null;
+        var searchTimer = null;
+
+        function hideFeedback() {
+            feedbackEl.classList.add('d-none');
+            feedbackEl.textContent = '';
+        }
+
+        function showFeedback(msg) {
+            feedbackEl.textContent = msg;
+            feedbackEl.classList.remove('d-none');
+        }
+
+        function escHtml(s) {
+            if (s === null || s === undefined) {
+                return '';
+            }
+            var d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        }
+
+        function renderContacts(rows) {
+            listEl.innerHTML = '';
+            emptyEl.classList.toggle('d-none', rows.length > 0);
+            if (!rows.length) {
+                return;
+            }
+            rows.forEach(function (row) {
+                var full = [row.name, row.surname].filter(Boolean).join(' ').trim();
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action link-contact-option text-start';
+                btn.setAttribute('data-contact-id', row.id);
+                btn.innerHTML = '<span class="fw-medium">' + escHtml(full || '—') + '</span>' +
+                    '<span class="d-block small text-muted">' + escHtml(row.email || '—') + ' · ' + escHtml(row.phone || '—') + '</span>';
+                listEl.appendChild(btn);
+            });
+        }
+
+        function setSelected(id) {
+            selectedId = id;
+            submitBtn.disabled = !id;
+            listEl.querySelectorAll('.link-contact-option').forEach(function (el) {
+                el.classList.toggle('active', String(el.getAttribute('data-contact-id')) === String(id));
+            });
+        }
+
+        function loadContacts(q) {
+            hideFeedback();
+            listEl.innerHTML = '<div class="text-center text-muted py-3">Cargando…</div>';
+            emptyEl.classList.add('d-none');
+            setSelected(null);
+            var sep = linkUrl.indexOf('?') === -1 ? '?' : '&';
+            fetch(linkUrl + sep + 'q=' + encodeURIComponent(q || ''), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(function (r) {
+                    return r.json().then(function (j) {
+                        return { ok: r.ok, body: j };
+                    });
+                })
+                .then(function (res) {
+                    if (!res.ok) {
+                        showFeedback((res.body && res.body.message) ? res.body.message : 'No se pudo cargar la lista.');
+                        listEl.innerHTML = '';
+                        return;
+                    }
+                    renderContacts(res.body.contacts || []);
+                })
+                .catch(function () {
+                    showFeedback('Error de red al cargar contactos.');
+                    listEl.innerHTML = '';
+                });
+        }
+
+        listEl.addEventListener('click', function (e) {
+            var opt = e.target.closest('.link-contact-option');
+            if (!opt) {
+                return;
+            }
+            setSelected(parseInt(opt.getAttribute('data-contact-id'), 10));
+        });
+
+        modalLink.addEventListener('shown.bs.modal', function () {
+            hideFeedback();
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            setSelected(null);
+            loadContacts('');
+        });
+
+        modalLink.addEventListener('hidden.bs.modal', function () {
+            hideFeedback();
+            listEl.innerHTML = '';
+            emptyEl.classList.add('d-none');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            setSelected(null);
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                var q = this.value;
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () {
+                    loadContacts(q);
+                }, 350);
+            });
+        }
+
+        submitBtn.addEventListener('click', function () {
+            if (!selectedId) {
+                return;
+            }
+            hideFeedback();
+            submitBtn.disabled = true;
+            var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+            fetch(attachUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ contact_id: selectedId }),
+            })
+                .then(function (r) {
+                    return r.json().then(function (j) {
+                        return { ok: r.ok, body: j };
+                    });
+                })
+                .then(function (res) {
+                    submitBtn.disabled = false;
+                    if (!res.ok || !res.body.success) {
+                        showFeedback((res.body && res.body.message) ? res.body.message : 'No se pudo vincular.');
+                        return;
+                    }
+                    var modalInstance = bootstrap.Modal.getInstance(modalLink);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: res.body.message || 'Listo',
+                            showConfirmButton: true,
+                            showCancelButton: false,
+                            showDenyButton: false,
+                            confirmButtonText: 'OK',
+                            buttonsStyling: false,
+                            customClass: {
+                                confirmButton: 'btn btn-primary',
+                            },
+                            didOpen: function (popup) {
+                                var actions = popup.querySelector('.swal2-actions');
+                                if (!actions) {
+                                    return;
+                                }
+                                ['.swal2-deny', '.swal2-cancel'].forEach(function (sel) {
+                                    var el = actions.querySelector(sel);
+                                    if (el) {
+                                        el.style.display = 'none';
+                                        el.setAttribute('hidden', 'hidden');
+                                    }
+                                });
+                            },
+                        }).then(function () {
+                            window.location.reload();
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch(function () {
+                    submitBtn.disabled = false;
+                    showFeedback('Error de red al vincular.');
+                });
         });
     }
 

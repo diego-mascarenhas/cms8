@@ -104,6 +104,12 @@ class UpdateContactRequest extends FormRequest
             ];
         }
 
+        $selectedEnterpriseId = (int) (data_get($validated, 'enterprise.enterprise_id') ?: 0);
+        if ($selectedEnterpriseId > 0)
+        {
+            $enterpriseData['enterprise_id'] = $selectedEnterpriseId;
+        }
+
         if ($contact->exists)
         {
             $enterprise = null;

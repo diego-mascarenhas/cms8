@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ClientDataTable;
+use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\EnterpriseStatus;
+use App\Policies\ContactPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -157,6 +159,8 @@ class ClientController extends Controller
         {
             return redirect()->route('client-list')->with('error', 'Record not found.');
         }
+
+        $this->authorize('view', $client);
 
         // Separate active and past projects
         // Past projects: FINISHED (10), INVOICED (12), NOT_APPROVED (13)
@@ -413,6 +417,151 @@ class ClientController extends Controller
         $header = preg_replace('/[^a-z0-9_]/', '_', $header);
 
         return $header;
+    }
+
+    /**
+     * JSON list of team contacts not yet linked to this client (for attach modal).
+     */
+    public function linkableContacts(Request $request, string $id)
+    {
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('type_id', 1)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $linkedIds = $enterprise->contacts()->pluck('contacts.id');
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->when($linkedIds->isNotEmpty(), function ($q) use ($linkedIds)
+            {
+                $q->whereNotIn('id', $linkedIds);
+            });
+
+        (ContactPolicy::getQueryFilter(auth()->user()))($query);
+
+        if ($search !== '')
+        {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($q) use ($like)
+            {
+                $q->where('name', 'like', $like)
+                    ->orWhere('surname', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like);
+            });
+        }
+
+        $contacts = $query->orderBy('name')->orderBy('surname')->limit(50)->get(['id', 'name', 'surname', 'email', 'phone']);
+
+        return response()->json(['contacts' => $contacts]);
+    }
+
+    /**
+     * Attach an existing contact to this client (pivot contact_enterprise).
+     */
+    public function attachContact(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer',
+        ]);
+
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('type_id', 1)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $query = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->whereKey($validated['contact_id']);
+
+        (ContactPolicy::getQueryFilter(auth()->user()))($query);
+
+        $contact = $query->firstOrFail();
+
+        if ($contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este contacto ya está vinculado a este cliente.',
+            ], 422);
+        }
+
+        $contact->enterprises()->syncWithoutDetaching([$enterprise->id]);
+
+        if ((int) $contact->status_id === 5 && ! $contact->current_enterprise_id)
+        {
+            $contact->update(['current_enterprise_id' => $enterprise->id]);
+        }
+
+        $contact->load(['user.roles']);
+
+        $displayName = trim($contact->name.' '.($contact->surname ?? ''));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contacto vinculado correctamente.',
+            'contact' => [
+                'id' => $contact->id,
+                'name' => $displayName,
+                'email' => $contact->email ?: '',
+                'phone' => $contact->phone ?: '',
+                'roles' => $contact->user && $contact->user->roles->isNotEmpty()
+                    ? $contact->user->roles->pluck('name')->join(', ')
+                    : '',
+            ],
+        ]);
+    }
+
+    /**
+     * Remove pivot link between this client and a contact.
+     */
+    public function detachContact(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer',
+        ]);
+
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('type_id', 1)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $contact = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->whereKey($validated['contact_id'])
+            ->firstOrFail();
+
+        if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este contacto no está vinculado a este cliente.',
+            ], 422);
+        }
+
+        $contact->enterprises()->detach($enterprise->id);
+        $contact->unsetRelation('enterprises');
+
+        if ((int) $contact->current_enterprise_id === (int) $enterprise->id)
+        {
+            $nextEnterprise = $contact->enterprises()->orderBy('enterprises.id')->first();
+            $contact->update([
+                'current_enterprise_id' => $nextEnterprise?->id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contacto desvinculado correctamente.',
+        ]);
     }
 
     public function showImportForm()

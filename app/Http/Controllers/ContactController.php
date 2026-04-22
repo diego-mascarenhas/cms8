@@ -2020,6 +2020,7 @@ class ContactController extends Controller
         }
 
         return Enterprise::query()
+            ->where('team_id', auth()->user()->current_team_id)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
     }
