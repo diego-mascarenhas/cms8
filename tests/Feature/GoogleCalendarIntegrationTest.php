@@ -2,11 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Team;
 use App\Models\User;
-use App\Services\GoogleCalendarService;
 use App\Services\GoogleCredentialsService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -115,12 +112,11 @@ class GoogleCalendarIntegrationTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->get(route('team-settings.edit', ['team' => $team, 'group' => 'analytics']));
+        $response = $this->get(route('team-settings.edit', ['team' => $team, 'group' => 'calendar']));
 
         $response->assertStatus(200);
-        $response->assertSee('Google Services');
+        $response->assertSee('Calendar');
         $response->assertSee('Google Calendar ID');
-        $response->assertSee('Service account credentials');
     }
 
     public function test_can_save_google_calendar_id_in_team_settings()
@@ -134,7 +130,7 @@ class GoogleCalendarIntegrationTest extends TestCase
 
         $response = $this->put(route('team-settings.update', $team), [
             '_token' => csrf_token(),
-            'analytics' => [
+            'calendar' => [
                 'google_calendar_id' => $calendarId,
             ],
         ]);

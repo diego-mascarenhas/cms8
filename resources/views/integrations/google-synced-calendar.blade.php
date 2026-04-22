@@ -33,6 +33,63 @@
 
 @include('integrations.partials.google-accounts-scopes', ['googleAccounts' => $googleAccounts])
 
+<div class="card mb-4">
+  <div class="card-header border-bottom">
+    <div>
+      <h5 class="card-title mb-0">Calendario de Google en uso</h5>
+      <small class="text-muted">Este es el calendario que se utiliza actualmente para los trabajos de sincronización.</small>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="mt-3 mb-3">
+      <code>{{ $selectedCalendarId ?: 'primary' }}</code>
+    </div>
+
+    @if (! empty($calendarListError))
+      <div class="alert alert-warning mb-0" role="alert">
+        {{ __('Could not list available calendars from Google right now:') }} {{ \Illuminate\Support\Str::limit($calendarListError, 180) }}
+      </div>
+    @elseif (empty($availableCalendars))
+      <p class="text-muted mb-0">Google no devolvió calendarios para la cuenta conectada.</p>
+    @else
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>{{ __('Calendar name') }}</th>
+              <th>{{ __('Calendar ID') }}</th>
+              <th>{{ __('Status') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($availableCalendars as $calendar)
+              @php
+                $isSelected = ($selectedCalendarId ?: 'primary') === $calendar['id'] || (($selectedCalendarId ?: 'primary') === 'primary' && $calendar['primary']);
+              @endphp
+              <tr>
+                <td>
+                  {{ $calendar['summary'] }}
+                  @if ($calendar['primary'])
+                    <span class="badge bg-label-info ms-1">{{ __('Primary') }}</span>
+                  @endif
+                </td>
+                <td><code class="small">{{ $calendar['id'] }}</code></td>
+                <td>
+                  @if ($isSelected)
+                    <span class="badge bg-label-success">{{ __('In use for sync') }}</span>
+                  @else
+                    <span class="badge bg-label-secondary">{{ __('Available') }}</span>
+                  @endif
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    @endif
+  </div>
+</div>
+
 <div class="row g-4 mb-4">
   <div class="col-sm-6 col-xl-3">
     <div class="card">

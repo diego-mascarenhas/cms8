@@ -329,7 +329,7 @@ return [
     'User' => 'Usuario',
     'Last account sync' => 'Última sincronización de cuenta (contactos + calendario)',
     'Mapped events (Google → local)' => 'Eventos mapeados (Google → local)',
-    'Visible in app calendar' => 'Visibles en el calendario de la app',
+    'Visible in app calendar' => 'Visibles en el calendario',
     'Hidden locally (soft-deleted)' => 'Ocultos localmente (borrado suave)',
     'Mapping without local row' => 'Mapeo sin fila local',
     'Remote links (Google → CRM)' => 'Enlaces remotos (Google → CRM)',

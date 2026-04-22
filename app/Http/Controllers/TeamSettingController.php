@@ -807,7 +807,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('analytics_credentials_json'),
                         'is_encrypted' => true,
                         'placeholder' => 'Paste the full JSON key from Google Cloud Console...',
-                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API and Google Calendar API, download the JSON key. These credentials will be used for both Analytics and Calendar.',
+                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API, and download the JSON key.',
                     ],
                     'analytics_property_id' => [
                         'label' => 'GA4 Property ID',
@@ -817,13 +817,19 @@ class TeamSettingController extends Controller
                         'placeholder' => '123456789',
                         'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
                     ],
+                ],
+            ],
+            'calendar' => [
+                'title' => 'Calendar',
+                'icon' => 'ti ti-calendar-event',
+                'settings' => [
                     'google_calendar_id' => [
                         'label' => 'Google Calendar ID (Optional)',
                         'type' => 'text',
                         'value' => $team->getSetting('google_calendar_id'),
                         'is_encrypted' => false,
                         'placeholder' => 'primary or your-calendar@group.calendar.google.com',
-                        'help' => 'Leave empty to use "primary" calendar. To use a specific calendar, share it with the service account email and paste the calendar ID here.',
+                        'help' => 'Leave empty to use "primary". To sync a specific calendar, paste its Calendar ID from Google Calendar settings.',
                     ],
                 ],
             ],

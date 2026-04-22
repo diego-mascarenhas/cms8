@@ -7,6 +7,9 @@ use App\Jobs\SyncGoogleCalendarEventsJob;
 use App\Jobs\SyncGoogleContactsJob;
 use App\Models\Contact;
 use App\Models\ExternalAccount;
+use App\Services\GoogleOAuthService;
+use App\Support\GoogleIntegrationScopes;
+use Google\Service\Calendar as GoogleCalendarService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,9 +17,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use stdClass;
+use Throwable;
 
 class GoogleSyncedPreviewController extends Controller
 {
+    public function __construct(private readonly GoogleOAuthService $googleOAuthService) {}
+
     /**
      * Rows synced from Google Contacts (via contact_sync_mappings) for the current team.
      */
@@ -121,6 +127,8 @@ class GoogleSyncedPreviewController extends Controller
         }
 
         $googleAccounts = $this->googleAccountsForTeam($team->id, ExternalProvider::Google);
+        $selectedCalendarId = trim((string) ($team->getSetting('google_calendar_id', 'primary') ?: 'primary'));
+        [$availableCalendars, $calendarListError] = $this->fetchAvailableCalendars($googleAccounts);
 
         $stats = DB::table('calendar_event_sync_mappings')
             ->join('external_accounts', 'external_accounts.id', '=', 'calendar_event_sync_mappings.external_account_id')
@@ -163,6 +171,9 @@ class GoogleSyncedPreviewController extends Controller
             'team' => $team,
             'googleAccounts' => $googleAccounts,
             'stats' => $stats,
+            'selectedCalendarId' => $selectedCalendarId,
+            'availableCalendars' => $availableCalendars,
+            'calendarListError' => $calendarListError,
         ]);
     }
 
@@ -213,5 +224,63 @@ class GoogleSyncedPreviewController extends Controller
             }])
             ->orderByDesc('last_synced_at')
             ->get();
+    }
+
+    /**
+     * @param  Collection<int, ExternalAccount>  $googleAccounts
+     * @return array{0: array<int, array{id: string, summary: string, primary: bool}>, 1: string|null}
+     */
+    private function fetchAvailableCalendars(Collection $googleAccounts): array
+    {
+        $account = $googleAccounts->first();
+
+        if (! $account instanceof ExternalAccount)
+        {
+            return [[], null];
+        }
+
+        try
+        {
+            $client = $this->googleOAuthService->buildApiClient($account, GoogleIntegrationScopes::calendarForApiClient());
+            $service = new GoogleCalendarService($client);
+            $calendarList = $service->calendarList->listCalendarList([
+                'maxResults' => 50,
+                'showHidden' => false,
+            ]);
+
+            $items = $calendarList->getItems() ?? [];
+            $rows = [];
+
+            foreach ($items as $item)
+            {
+                $calendarId = (string) $item->getId();
+
+                if ($calendarId === '')
+                {
+                    continue;
+                }
+
+                $rows[] = [
+                    'id' => $calendarId,
+                    'summary' => (string) ($item->getSummary() ?: $calendarId),
+                    'primary' => (bool) $item->getPrimary(),
+                ];
+            }
+
+            usort($rows, static function (array $a, array $b): int
+            {
+                if ($a['primary'] !== $b['primary'])
+                {
+                    return $a['primary'] ? -1 : 1;
+                }
+
+                return strcasecmp($a['summary'], $b['summary']);
+            });
+
+            return [$rows, null];
+        } catch (Throwable $exception)
+        {
+            return [[], $exception->getMessage()];
+        }
     }
 }
