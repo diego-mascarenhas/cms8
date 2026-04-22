@@ -12,6 +12,7 @@ use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Enterprise;
+use App\Models\EnterpriseDepartment;
 use App\Models\MessageDelivery;
 use App\Models\Opportunity;
 use App\Models\Source;
@@ -88,8 +89,9 @@ class ContactController extends Controller
         $enterpriseStatuses = ContactStatus::getOptions();
         $socialSources = Source::getOptions();
         $teamEnterprises = $this->teamEnterprisesForContactForm();
+        $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -567,8 +569,9 @@ class ContactController extends Controller
         $enterpriseStatuses = ContactStatus::getOptions();
         $socialSources = Source::getOptions();
         $teamEnterprises = $this->teamEnterprisesForContactForm();
+        $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -2038,6 +2041,7 @@ class ContactController extends Controller
 
         $teamId = $team->id;
         $existingId = ! empty($enterpriseInput['enterprise_id']) ? (int) $enterpriseInput['enterprise_id'] : null;
+        $departmentId = ! empty($enterpriseInput['department_id']) ? (int) $enterpriseInput['department_id'] : null;
 
         if ($existingId)
         {
@@ -2048,7 +2052,11 @@ class ContactController extends Controller
 
             if ($enterprise)
             {
-                $contact->enterprises()->sync([$enterprise->id]);
+                $contact->enterprises()->sync([
+                    $enterprise->id => [
+                        'department_id' => $departmentId,
+                    ],
+                ]);
 
                 if ((int) $contact->status_id === 5)
                 {
@@ -2078,7 +2086,11 @@ class ContactController extends Controller
             'creator_id' => auth()->id(),
         ]);
 
-        $contact->enterprises()->sync([$enterprise->id]);
+        $contact->enterprises()->sync([
+            $enterprise->id => [
+                'department_id' => $departmentId,
+            ],
+        ]);
 
         if ((int) $contact->status_id === 5)
         {

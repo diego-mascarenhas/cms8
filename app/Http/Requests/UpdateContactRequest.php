@@ -33,6 +33,7 @@ class UpdateContactRequest extends FormRequest
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email:rfc|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
+            'enterprise.department_id' => 'nullable|integer|exists:enterprise_departments,id',
             'enterprise.enterprise_id' => [
                 'nullable',
                 'integer',
@@ -108,6 +109,12 @@ class UpdateContactRequest extends FormRequest
         if ($selectedEnterpriseId > 0)
         {
             $enterpriseData['enterprise_id'] = $selectedEnterpriseId;
+        }
+
+        $selectedDepartmentId = (int) (data_get($validated, 'enterprise.department_id') ?: 0);
+        if ($selectedDepartmentId > 0)
+        {
+            $enterpriseData['department_id'] = $selectedDepartmentId;
         }
 
         if ($contact->exists)

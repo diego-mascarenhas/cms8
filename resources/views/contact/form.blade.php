@@ -333,6 +333,12 @@
                                         ? ($data->current_enterprise_id ?? null)
                                         : ($data->prefill_enterprise_id ?? null),
                                 );
+                                $selectedDepartmentIdForForm = old(
+                                    'enterprise.department_id',
+                                    isset($data->id) && isset($data->enterprises)
+                                        ? optional($data->enterprises->firstWhere('id', $data->current_enterprise_id ?? null))->pivot?->department_id
+                                        : null,
+                                );
                             @endphp
                             <div class="row g-3 mb-3">
                                 <div class="col-12">
@@ -346,6 +352,17 @@
                                         @endforeach
                                     </select>
                                     <small class="text-muted d-block mt-1">Si elegís una empresa, al guardar se vincula el contacto a esa empresa y no se crea otra desde los campos de abajo.</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="enterprise_department_id">Área</label>
+                                    <select name="enterprise[department_id]" id="enterprise_department_id" class="form-select">
+                                        <option value="">— Sin área —</option>
+                                        @foreach ($enterpriseDepartments ?? collect() as $department)
+                                            <option value="{{ $department->id }}" @selected((string) $selectedDepartmentIdForForm === (string) $department->id)>
+                                                {{ $department->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                             <div id="enterprise-manual-fields" class="row g-3">
@@ -391,6 +408,7 @@
                                         var disabled = !!sel.value;
                                         manual.querySelectorAll('input, textarea, select').forEach(function (el) {
                                             if (!el.name || el.name.indexOf('enterprise[') !== 0) return;
+                                            if (el.name === 'enterprise[department_id]') return;
                                             el.disabled = disabled;
                                         });
                                         manual.classList.toggle('opacity-50', disabled);

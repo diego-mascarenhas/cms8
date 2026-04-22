@@ -161,15 +161,23 @@
                                                 <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
                                             </a>
                                         @else
-                                            <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
-                                                <option value="">Seleccionar empresa</option>
-                                                @foreach ($data->enterprises as $enterprise)
-                                                    <option value="{{ $enterprise->id }}"
-                                                        {{ $data->current_enterprise_id == $enterprise->id ? 'selected' : '' }}>
-                                                        {{ $enterprise->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
+                                            <span class="d-inline-flex align-items-center gap-2">
+                                                <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
+                                                    <option value="">Seleccionar empresa</option>
+                                                    @foreach ($data->enterprises as $enterprise)
+                                                        <option value="{{ $enterprise->id }}"
+                                                            {{ $data->current_enterprise_id == $enterprise->id ? 'selected' : '' }}>
+                                                            {{ $enterprise->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <a id="go-current-enterprise"
+                                                    href="{{ $data->current_enterprise_id ? route('empresas.show', $data->current_enterprise_id) : '#' }}"
+                                                    class="btn btn-sm btn-outline-primary {{ $data->current_enterprise_id ? '' : 'disabled' }}"
+                                                    title="{{ __('View company') }}">
+                                                    <i class="ti ti-building me-1"></i>Ir a la empresa
+                                                </a>
+                                            </span>
                                         @endif
                                     </span>
                                 </li>
@@ -567,9 +575,19 @@
         $('#current-enterprise-selector').on('change', function() {
             const enterpriseId = $(this).val();
             const contactId = {{ $data->id }};
+            const goLink = document.getElementById('go-current-enterprise');
 
             if (!enterpriseId) {
+                if (goLink) {
+                    goLink.setAttribute('href', '#');
+                    goLink.classList.add('disabled');
+                }
                 return;
+            }
+
+            if (goLink) {
+                goLink.setAttribute('href', `{{ url('/empresas') }}/${enterpriseId}`);
+                goLink.classList.remove('disabled');
             }
 
             $.ajax({
