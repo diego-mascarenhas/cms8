@@ -550,41 +550,108 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!btn) {
                     return;
                 }
-                if (!window.confirm('¿Desvincular este contacto de este cliente? El contacto no se elimina; solo deja de asociarse a esta empresa.')) {
-                    return;
-                }
-                var detachUrl = contactsTableEl.getAttribute('data-detach-url');
-                var contactId = btn.getAttribute('data-contact-id');
-                var tokenMeta = document.querySelector('meta[name="csrf-token"]');
-                var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
-                btn.disabled = true;
-                fetch(detachUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'X-CSRF-TOKEN': token,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({ contact_id: parseInt(contactId, 10) }),
-                })
-                    .then(function (r) {
-                        return r.json().then(function (j) {
-                            return { ok: r.ok, body: j };
-                        });
+                var runDetach = function () {
+                    var detachUrl = contactsTableEl.getAttribute('data-detach-url');
+                    var contactId = btn.getAttribute('data-contact-id');
+                    var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                    var token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+                    btn.disabled = true;
+                    fetch(detachUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ contact_id: parseInt(contactId, 10) }),
                     })
-                    .then(function (res) {
-                        btn.disabled = false;
-                        if (!res.ok || !res.body.success) {
-                            window.alert((res.body && res.body.message) ? res.body.message : 'No se pudo desvincular.');
+                        .then(function (r) {
+                            return r.json().then(function (j) {
+                                return { ok: r.ok, body: j };
+                            });
+                        })
+                        .then(function (res) {
+                            btn.disabled = false;
+                            if (!res.ok || !res.body.success) {
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: (res.body && res.body.message) ? res.body.message : 'No se pudo desvincular.',
+                                        showConfirmButton: true,
+                                        showCancelButton: false,
+                                        showDenyButton: false,
+                                        confirmButtonText: 'OK',
+                                        buttonsStyling: false,
+                                        customClass: { confirmButton: 'btn btn-primary' },
+                                    });
+                                } else {
+                                    window.alert((res.body && res.body.message) ? res.body.message : 'No se pudo desvincular.');
+                                }
+                                return;
+                            }
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: res.body.message || 'Contacto desvinculado',
+                                    showConfirmButton: true,
+                                    showCancelButton: false,
+                                    showDenyButton: false,
+                                    confirmButtonText: 'OK',
+                                    buttonsStyling: false,
+                                    customClass: { confirmButton: 'btn btn-primary' },
+                                }).then(function () {
+                                    window.location.reload();
+                                });
+                            } else {
+                                window.location.reload();
+                            }
+                        })
+                        .catch(function () {
+                            btn.disabled = false;
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de red al desvincular.',
+                                    showConfirmButton: true,
+                                    showCancelButton: false,
+                                    showDenyButton: false,
+                                    confirmButtonText: 'OK',
+                                    buttonsStyling: false,
+                                    customClass: { confirmButton: 'btn btn-primary' },
+                                });
+                            } else {
+                                window.alert('Error de red al desvincular.');
+                            }
+                        });
+                };
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '¿Desvincular contacto?',
+                        text: 'El contacto no se elimina; solo deja de asociarse a esta empresa.',
+                        showCancelButton: true,
+                        showDenyButton: false,
+                        confirmButtonText: 'Sí, desvincular',
+                        cancelButtonText: 'Cancelar',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-danger me-2',
+                            cancelButton: 'btn btn-label-secondary',
+                        },
+                    }).then(function (result) {
+                        if (!result.isConfirmed) {
                             return;
                         }
-                        window.location.reload();
-                    })
-                    .catch(function () {
-                        btn.disabled = false;
-                        window.alert('Error de red al desvincular.');
+                        runDetach();
                     });
+                } else {
+                    if (!window.confirm('¿Desvincular este contacto de este cliente? El contacto no se elimina; solo deja de asociarse a esta empresa.')) {
+                        return;
+                    }
+                    runDetach();
+                }
             });
         }
     }
