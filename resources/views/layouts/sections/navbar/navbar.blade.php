@@ -288,7 +288,7 @@
         @endif
         @if ($configData['hasCustomizer'])
             <!-- Style Switcher -->
-            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0">
+            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0 d-none">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                     <i class='ti ti-md'></i>
                 </a>
@@ -491,6 +491,44 @@
                 <li>
                     <div class="dropdown-divider"></div>
                 </li>
+                @if ($configData['hasCustomizer'])
+                    <li>
+                        <div class="px-3 py-0">
+                            <div class="d-flex align-items-center justify-content-center gap-4 p-1 rounded-3 bg-lighter">
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="light"
+                               title="{{ __('app.theme.light') }}"
+                               aria-label="{{ __('app.theme.light') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('light')">
+                                <i class="ti ti-sun ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="dark"
+                               title="{{ __('app.theme.dark') }}"
+                               aria-label="{{ __('app.theme.dark') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('dark')">
+                                <i class="ti ti-moon ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="system"
+                               title="{{ __('app.theme.system') }}"
+                               aria-label="{{ __('app.theme.system') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('system')">
+                                <i class="ti ti-device-desktop ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-divider"></div>
+                    </li>
+                @endif
                 <li>
                     <a class="dropdown-item"
                         href="{{ Route::has('profile.show') ? route('profile.show') : url('pages/profile-user') }}">
@@ -512,6 +550,18 @@
                         <span class="align-middle">{{ __('app.profile.help_documentation') }}</span>
                     </a>
                 </li>
+
+                @if (
+                    (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
+                    || (Auth::check() && Auth::user()->hasRole('root'))
+                )
+                    <li>
+                        <div class="dropdown-divider"></div>
+                    </li>
+                    <li>
+                        <h6 class="dropdown-header">Configuración</h6>
+                    </li>
+                @endif
 
                 @if (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
                     {{-- Configuration variables (Team Settings module) --}}
@@ -541,6 +591,7 @@
                         </a>
                     </li>
                 @endif
+
                 <!--
               <li>
                 <a class="dropdown-item" href="{{ url('app/invoice/list') }}">
@@ -628,6 +679,38 @@
 @auth
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const themeChoiceButtons = document.querySelectorAll('.theme-choice-btn');
+    if (themeChoiceButtons.length) {
+        const templateName = document.documentElement.getAttribute('data-template');
+        const defaultStyle = window.templateCustomizer?.settings?.defaultStyle ?? 'light';
+        const storedStyle =
+            localStorage.getItem('templateCustomizer-' + templateName + '--Style') ||
+            defaultStyle;
+
+        const applyThemeChoiceState = (currentStyle) => {
+            themeChoiceButtons.forEach((btn) => {
+                const isActive = btn.getAttribute('data-theme') === currentStyle;
+                btn.classList.toggle('btn-label-success', isActive);
+                btn.classList.toggle('btn-text-secondary', !isActive);
+                btn.classList.toggle('text-success', isActive);
+
+                const checkIcon = btn.querySelector('.theme-choice-check');
+                if (checkIcon) {
+                    checkIcon.classList.toggle('d-none', !isActive);
+                }
+            });
+        };
+
+        applyThemeChoiceState(storedStyle);
+
+        themeChoiceButtons.forEach((btn) => {
+            btn.addEventListener('click', function() {
+                const selectedTheme = this.getAttribute('data-theme') || 'light';
+                applyThemeChoiceState(selectedTheme);
+            });
+        });
+    }
+
     const container = document.getElementById('quick-timer');
     if (!container) return;
 
