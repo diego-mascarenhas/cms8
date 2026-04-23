@@ -80,7 +80,7 @@ class StoreContentRequest extends FormRequest
             'seo_description_pt' => 'nullable|string',
             'seo_description_fr' => 'nullable|string',
             'seo_description_de' => 'nullable|string',
-            'cover_image' => 'nullable|image|max:10240',
+            'cover_image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:10240',
             'remove_cover_image' => 'nullable|boolean',
             'multimedia' => 'nullable|array',
             'multimedia.*.id' => 'required_with:multimedia|exists:multimedia,id',
