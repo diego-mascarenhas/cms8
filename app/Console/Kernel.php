@@ -27,6 +27,22 @@ class Kernel extends ConsoleKernel
             ->daily()
             ->at('03:00');
 
+        // Sync Stripe subscriptions into invoice_syncs (team-scoped credentials)
+        $schedule->command('subscriptions:sync')
+            ->hourly()
+            ->name('stripe-subscriptions-sync')
+            ->description('Sync Stripe subscriptions and stage latest invoices')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Import staged Stripe invoices into core invoices table
+        $schedule->command('invoice-syncs:import-stripe --limit=1000 --fallback-email --link-code-on-email-match')
+            ->hourlyAt(5)
+            ->name('stripe-invoice-syncs-import')
+            ->description('Import staged Stripe invoices into core invoices')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // ============================================
         // OVH SERVICES
         // ============================================
