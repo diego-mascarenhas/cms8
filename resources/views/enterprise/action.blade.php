@@ -15,14 +15,11 @@
         </a>
     @endrole
 
-    {{-- Client form / policy only apply to type_id = 1 (clients) --}}
     @role('admin|collaborator')
-        @if ((int) $enterprise->type_id === 1)
-            @can('edit', $enterprise)
-                <a href="{{ route('client.edit', $enterprise->id) }}" class="text-body" title="{{ __('Edit') }}">
-                    <i class="ti ti-edit ti-sm me-2"></i>
-                </a>
-            @endcan
-        @endif
+        @can('edit', $enterprise)
+            <a href="{{ route('client.edit', $enterprise->id) }}" class="text-body" title="{{ __('Edit') }}">
+                <i class="ti ti-edit ti-sm me-2"></i>
+            </a>
+        @endcan
     @endrole
 </div>

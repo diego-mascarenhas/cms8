@@ -68,17 +68,18 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $teamId = auth()->user()->currentTeam->id;
-        $allowedStatusIds = EnterpriseStatus::getOptions(1)->pluck('id')->all();
 
         if ($request->filled('id'))
         {
             $enterprise = Enterprise::query()
                 ->where('id', $request->id)
                 ->where('team_id', $teamId)
-                ->where('type_id', 1)
                 ->firstOrFail();
 
             $this->authorize('update', $enterprise);
+
+            $statusFormTypeId = EnterpriseStatus::resolveFormEnterpriseTypeId($enterprise->type_id);
+            $allowedStatusIds = EnterpriseStatus::getOptions($statusFormTypeId)->pluck('id')->all();
 
             $request->validate([
                 'name' => 'required|string|min:3|max:75',
@@ -131,6 +132,8 @@ class ClientController extends Controller
         }
 
         $this->authorize('create', Enterprise::class);
+
+        $allowedStatusIds = EnterpriseStatus::getOptions(1)->pluck('id')->all();
 
         $data = $request->except(['id', '_token']);
 
@@ -259,7 +262,6 @@ class ClientController extends Controller
         $row = Enterprise::query()
             ->where('id', $id)
             ->where('team_id', auth()->user()->current_team_id)
-            ->where('type_id', 1)
             ->first();
 
         if (! $row)
@@ -272,9 +274,7 @@ class ClientController extends Controller
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
 
-        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
-
-        return view('client.form', compact('data', 'enterpriseStatuses'));
+        return view('client.form', compact('data'));
     }
 
     /**
@@ -470,7 +470,7 @@ class ClientController extends Controller
     {
         $enterprise = Enterprise::query()
             ->where('id', $id)
-            ->where('type_id', 1)
+            ->where('team_id', auth()->user()->current_team_id)
             ->firstOrFail();
 
         $this->authorize('update', $enterprise);
@@ -516,7 +516,7 @@ class ClientController extends Controller
 
         $enterprise = Enterprise::query()
             ->where('id', $id)
-            ->where('type_id', 1)
+            ->where('team_id', auth()->user()->current_team_id)
             ->firstOrFail();
 
         $this->authorize('update', $enterprise);
@@ -578,7 +578,7 @@ class ClientController extends Controller
 
         $enterprise = Enterprise::query()
             ->where('id', $id)
-            ->where('type_id', 1)
+            ->where('team_id', auth()->user()->current_team_id)
             ->firstOrFail();
 
         $this->authorize('update', $enterprise);

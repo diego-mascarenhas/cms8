@@ -48,6 +48,27 @@ class EnterpriseStatus extends Model
     }
 
     /**
+     * Enterprise type id to use for status radios / validation when a type has no rows in enterprise_statuses.
+     */
+    public static function resolveFormEnterpriseTypeId(null|int|string $enterpriseTypeId = null): int
+    {
+        if ($enterpriseTypeId === null || $enterpriseTypeId === '')
+        {
+            return 1;
+        }
+
+        $typeId = (int) $enterpriseTypeId;
+        $options = self::getOptions($typeId);
+
+        if ($options->isEmpty() && $typeId !== 1)
+        {
+            return 1;
+        }
+
+        return $typeId;
+    }
+
+    /**
      * Ensure default enterprise statuses exist for clients (type_id = 1).
      */
     protected static function ensureDefaultClientStatuses(): void

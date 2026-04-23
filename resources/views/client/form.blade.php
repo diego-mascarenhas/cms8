@@ -65,7 +65,9 @@
                         value="{{ old('website', $data->website ?? '') }}" />
                 </div>
                 <div class="col-md-6">
-                    <x-enterprise-status-select :value="old('status_id', $data->status_id ?? '')" />
+                    <x-enterprise-status-select
+                        :enterprise-type-id="\App\Models\EnterpriseStatus::resolveFormEnterpriseTypeId($data->type_id ?? null)"
+                        :value="old('status_id', $data->status_id ?? '')" />
                 </div>
             </div>
 
