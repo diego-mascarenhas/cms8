@@ -265,6 +265,22 @@
                                 @enderror
                                 <div class="form-text">{{ __('app.Section slug hint') }}</div>
                             </div>
+                            <div class="col-md-3">
+                                <label for="cover_max_width" class="form-label">Cover max width (px)</label>
+                                <input type="number" class="form-control @error('cover_max_width') is-invalid @enderror" id="cover_max_width" name="cover_max_width"
+                                    value="{{ old('cover_max_width', $categoryData['cover']['max_width'] ?? '') }}" min="1" max="10000">
+                                @error('cover_max_width')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cover_max_height" class="form-label">Cover max height (px)</label>
+                                <input type="number" class="form-control @error('cover_max_height') is-invalid @enderror" id="cover_max_height" name="cover_max_height"
+                                    value="{{ old('cover_max_height', $categoryData['cover']['max_height'] ?? '') }}" min="1" max="10000">
+                                @error('cover_max_height')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                             <div class="col-md-6">
                                 <label for="history_section_heading" class="form-label">{{ __('app.History section heading') }}</label>
                                 <input type="text" class="form-control @error('history_section_heading') is-invalid @enderror" id="history_section_heading" name="history_section_heading"
@@ -272,6 +288,15 @@
                                 @error('history_section_heading')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="hidden" name="cover_crop" value="0">
+                                    <input type="checkbox" class="form-check-input" id="cover_crop" name="cover_crop" value="1"
+                                        @checked(filter_var(old('cover_crop', $categoryData['cover']['crop'] ?? false), FILTER_VALIDATE_BOOLEAN))>
+                                    <label class="form-check-label" for="cover_crop">Crop cover image to fit max dimensions</label>
+                                </div>
+                                <div class="form-text">When disabled, image is resized proportionally without forced crop.</div>
                             </div>
                             <div class="col-12">
                                 <div class="form-check">

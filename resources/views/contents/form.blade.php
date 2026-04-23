@@ -45,7 +45,7 @@
 
 <div class="card mb-4">
     <h5 class="card-header">{{ isset($content) ? __('app.Edit Content') : __('app.Create Content') }}</h5>
-    <form class="card-body" action="{{ isset($content) ? route('contents.update', $content->id) : route('contents.store') }}" method="POST">
+    <form class="card-body" action="{{ isset($content) ? route('contents.update', $content->id) : route('contents.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         @if(isset($content))
             @method('PUT')
@@ -233,6 +233,34 @@
                 @enderror
             </div>
 
+            @php
+                $coverData = isset($content) && is_array($content->data ?? null) ? ($content->data['cover'] ?? null) : null;
+                $coverUrl = is_array($coverData) ? ($coverData['url'] ?? null) : null;
+                $coverWidth = is_array($coverData) ? ($coverData['width'] ?? null) : null;
+                $coverHeight = is_array($coverData) ? ($coverData['height'] ?? null) : null;
+                $resolvedSectionId = (int) old('section_category_id', $content->section_category_id ?? $selectedSection->id ?? 0);
+            @endphp
+            <div class="col-md-6">
+                <label for="cover_image" class="form-label">Cover image</label>
+                <input type="file" class="form-control @error('cover_image') is-invalid @enderror" id="cover_image" name="cover_image" accept="image/*">
+                @error('cover_image')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+                <div class="form-text" id="cover-settings-hint">Select a section to see cover size and crop rules.</div>
+                @if($coverUrl)
+                    <div class="mt-2">
+                        <img src="{{ $coverUrl }}" alt="Current cover" class="img-thumbnail" style="max-height: 110px;">
+                        <div class="small text-muted mt-1">
+                            Current: {{ $coverWidth ?? '?' }}x{{ $coverHeight ?? '?' }} px
+                        </div>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" id="remove_cover_image" name="remove_cover_image" value="1">
+                            <label class="form-check-label" for="remove_cover_image">Remove current cover</label>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
             @if(isset($fieldConfigs) && $fieldConfigs->count() > 0)
                 <div class="col-12">
                     <hr class="my-1">
@@ -327,6 +355,62 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = contentEditors[locale].root.innerHTML;
             }
         });
+    });
+
+    @php
+        $sectionCoverConfigMap = ($sectionCategories ?? collect())->mapWithKeys(function ($sectionCategory) {
+            $cover = is_array($sectionCategory->data['cover'] ?? null) ? $sectionCategory->data['cover'] : [];
+
+            return [
+                (string) $sectionCategory->id => [
+                    'max_width' => isset($cover['max_width']) ? (int) $cover['max_width'] : null,
+                    'max_height' => isset($cover['max_height']) ? (int) $cover['max_height'] : null,
+                    'crop' => ! empty($cover['crop']),
+                ],
+            ];
+        })->toArray();
+    @endphp
+    const sectionCoverConfigMap = @json($sectionCoverConfigMap);
+    const resolvedSectionId = @json((string) $resolvedSectionId);
+    const coverHintEl = document.getElementById('cover-settings-hint');
+
+    function renderCoverHint(sectionId) {
+        if (!coverHintEl) {
+            return;
+        }
+
+        const cfg = sectionCoverConfigMap[String(sectionId)];
+        if (!cfg) {
+            coverHintEl.textContent = 'Select a section to see cover size and crop rules.';
+            return;
+        }
+
+        const width = cfg.max_width ? cfg.max_width + 'px' : 'auto';
+        const height = cfg.max_height ? cfg.max_height + 'px' : 'auto';
+        const cropText = cfg.crop ? 'enabled' : 'disabled';
+        coverHintEl.textContent = 'Max: ' + width + ' x ' + height + '. Crop: ' + cropText + '.';
+    }
+
+    renderCoverHint(resolvedSectionId);
+
+    const sectionSelectEl = document.getElementById('section_category_id');
+    const initialSectionValue = sectionSelectEl ? String(sectionSelectEl.value || '') : '';
+
+    $('#section_category_id').on('change', function () {
+        const nextSectionId = String(this.value || '');
+        renderCoverHint(nextSectionId);
+
+        if (nextSectionId === initialSectionValue) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        if (nextSectionId !== '') {
+            url.searchParams.set('section_id', nextSectionId);
+        } else {
+            url.searchParams.delete('section_id');
+        }
+        window.location.assign(url.toString());
     });
 });
 </script>

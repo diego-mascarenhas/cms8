@@ -127,6 +127,9 @@ class CategoryController extends Controller
             'return_module_id' => 'nullable|integer|exists:modules,id',
             'contents_section_slug' => 'nullable|string|max:100',
             'history_section_heading' => 'nullable|string|max:255',
+            'cover_max_width' => 'nullable|integer|min:1|max:10000',
+            'cover_max_height' => 'nullable|integer|min:1|max:10000',
+            'cover_crop' => 'nullable|boolean',
         ]);
 
         // Check if parent belongs to the current team
@@ -268,6 +271,26 @@ class CategoryController extends Controller
             } else
             {
                 unset($categoryData['history']);
+            }
+
+            $coverMaxWidth = $request->filled('cover_max_width') ? (int) $request->input('cover_max_width') : null;
+            $coverMaxHeight = $request->filled('cover_max_height') ? (int) $request->input('cover_max_height') : null;
+            $coverCrop = $request->boolean('cover_crop');
+            if ($coverMaxWidth || $coverMaxHeight)
+            {
+                $categoryData['cover'] = array_filter([
+                    'max_width' => $coverMaxWidth,
+                    'max_height' => $coverMaxHeight,
+                    'crop' => $coverCrop,
+                    // Placeholder for future extension.
+                    'variants' => [],
+                ], function ($value)
+                {
+                    return $value !== null;
+                });
+            } else
+            {
+                unset($categoryData['cover']);
             }
         }
 

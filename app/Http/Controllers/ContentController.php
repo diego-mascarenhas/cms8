@@ -10,8 +10,13 @@ use App\Models\Content;
 use App\Models\Module;
 use App\Models\Multimedia;
 use App\Support\ContentsSectionCategoryData;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\Image\Enums\Fit;
+use Spatie\Image\Image;
 
 class ContentController extends Controller
 {
@@ -112,6 +117,13 @@ class ContentController extends Controller
             $data['data'] = $dataFields;
         }
 
+        $data['data'] = $this->upsertCoverFromRequest(
+            $request,
+            $section,
+            $data['data'] ?? [],
+            null,
+        );
+
         $data['team_id'] = $team->id;
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
@@ -138,7 +150,7 @@ class ContentController extends Controller
         return view('contents.show', compact('content'));
     }
 
-    public function edit(Content $content)
+    public function edit(Request $request, Content $content)
     {
         $this->authorize('update', $content);
 
@@ -147,17 +159,32 @@ class ContentController extends Controller
         $contentsModuleId = Module::where('key', 'contents')->value('id');
         $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
-        $fieldConfigs = collect();
-        if ($content->sectionCategory)
+        $selectedSectionId = $request->filled('section_id') ? (int) $request->input('section_id') : null;
+        $selectedSection = null;
+        if ($selectedSectionId)
         {
-            $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
+            $selectedSection = Category::query()
+                ->where('team_id', $team->id)
+                ->where('module_id', $contentsModuleId)
+                ->where('status', true)
+                ->find($selectedSectionId);
+        }
+        if (! $selectedSection)
+        {
+            $selectedSection = $content->sectionCategory;
+        }
+
+        $fieldConfigs = collect();
+        if ($selectedSection)
+        {
+            $fieldConfigs = $selectedSection->contentFieldConfigs()->active()->ordered()->get();
         }
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
 
-        $availableLocales = $this->availableLocalesForContent($content, null);
-        $contentFormVisibility = $this->contentFormVisibilityForContent($content, null);
+        $availableLocales = $this->availableLocalesForContent(null, $selectedSection);
+        $contentFormVisibility = $this->contentFormVisibilityForContent(null, $selectedSection);
 
-        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales', 'contentFormVisibility'));
+        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales', 'contentFormVisibility', 'selectedSection'));
     }
 
     public function update(UpdateContentRequest $request, Content $content)
@@ -224,6 +251,13 @@ class ContentController extends Controller
         {
             $data['data'] = $dataFields;
         }
+
+        $data['data'] = $this->upsertCoverFromRequest(
+            $request,
+            $section,
+            $data['data'] ?? [],
+            $content,
+        );
 
         $data['updated_by'] = Auth::id();
 
@@ -433,5 +467,141 @@ class ContentController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataFields
+     * @return array<string, mixed>
+     */
+    private function upsertCoverFromRequest(Request $request, Category $section, array $dataFields, ?Content $existingContent): array
+    {
+        if ($request->boolean('remove_cover_image'))
+        {
+            $this->deleteCoverFromData($dataFields);
+        }
+
+        if (! $request->hasFile('cover_image'))
+        {
+            return $dataFields;
+        }
+
+        if ($existingContent)
+        {
+            $this->deleteCoverFromData($dataFields);
+        }
+
+        $settings = $this->resolveCoverSettings($section);
+        $cover = $this->storeCoverImage($request->file('cover_image'), $settings);
+
+        $dataFields['cover'] = $cover;
+
+        return $dataFields;
+    }
+
+    /**
+     * @return array{max_width: int|null, max_height: int|null, crop: bool}
+     */
+    private function resolveCoverSettings(Category $section): array
+    {
+        $coverData = is_array($section->data['cover'] ?? null) ? $section->data['cover'] : [];
+
+        $maxWidth = isset($coverData['max_width']) ? (int) $coverData['max_width'] : null;
+        $maxHeight = isset($coverData['max_height']) ? (int) $coverData['max_height'] : null;
+
+        return [
+            'max_width' => $maxWidth ?: null,
+            'max_height' => $maxHeight ?: null,
+            'crop' => ! empty($coverData['crop']),
+        ];
+    }
+
+    /**
+     * @param  array{max_width: int|null, max_height: int|null, crop: bool}  $settings
+     * @return array<string, mixed>
+     */
+    private function storeCoverImage(UploadedFile $file, array $settings): array
+    {
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $safeExtension = $extension !== '' ? $extension : 'jpg';
+        $filename = Str::uuid()->toString().'.'.$safeExtension;
+        $relativePath = 'contents/covers/'.$filename;
+        $absolutePath = Storage::disk('public')->path($relativePath);
+
+        if (! is_dir(dirname($absolutePath)))
+        {
+            mkdir(dirname($absolutePath), 0775, true);
+        }
+
+        $maxWidth = $settings['max_width'];
+        $maxHeight = $settings['max_height'];
+
+        if ($maxWidth || $maxHeight)
+        {
+            $image = Image::load($file->getRealPath());
+
+            if ($maxWidth && $maxHeight)
+            {
+                $fit = $settings['crop'] ? Fit::Crop : Fit::Max;
+                $image->fit($fit, $maxWidth, $maxHeight);
+            } elseif ($maxWidth)
+            {
+                $image->width($maxWidth);
+            } elseif ($maxHeight)
+            {
+                $image->height($maxHeight);
+            }
+
+            $image->save($absolutePath);
+        } else
+        {
+            Storage::disk('public')->putFileAs('contents/covers', $file, $filename);
+        }
+
+        [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);
+
+        return [
+            'url' => asset('storage/'.$relativePath),
+            'path' => $relativePath,
+            'width' => $storedWidth,
+            'height' => $storedHeight,
+            'mime_type' => $file->getMimeType(),
+            'size' => Storage::disk('public')->size($relativePath),
+            'max_width' => $maxWidth,
+            'max_height' => $maxHeight,
+            'crop' => $settings['crop'],
+            // Keep array ready for future derived assets.
+            'variants' => [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataFields
+     */
+    private function deleteCoverFromData(array &$dataFields): void
+    {
+        $coverPath = is_array($dataFields['cover'] ?? null) ? ($dataFields['cover']['path'] ?? null) : null;
+        if (is_string($coverPath) && $coverPath !== '' && Storage::disk('public')->exists($coverPath))
+        {
+            Storage::disk('public')->delete($coverPath);
+        }
+
+        unset($dataFields['cover']);
+    }
+
+    /**
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function extractImageDimensions(string $absolutePath): array
+    {
+        $size = @getimagesize($absolutePath);
+        if (! is_array($size))
+        {
+            return [null, null];
+        }
+
+        return [
+            isset($size[0]) ? (int) $size[0] : null,
+            isset($size[1]) ? (int) $size[1] : null,
+        ];
     }
 }
