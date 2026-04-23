@@ -8,12 +8,15 @@ use App\Models\InvoiceSync;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class ImportStripeInvoiceSyncsCommand extends Command
 {
     protected $signature = 'invoice-syncs:import-stripe
                             {--team_id= : Import only one team}
                             {--limit=500 : Max sync rows to process}
+                            {--fallback-email : Resolve enterprise by email when customer_id/code does not match}
+                            {--link-code-on-email-match : When fallback by email succeeds uniquely, write Stripe customer_id into enterprises.code}
                             {--dry-run : Preview without writing}';
 
     protected $description = 'Map Stripe invoice_syncs rows into core invoices table (idempotent by source reference)';
@@ -30,6 +33,8 @@ class ImportStripeInvoiceSyncsCommand extends Command
         $dryRun = (bool) $this->option('dry-run');
         $limit = max(1, (int) $this->option('limit'));
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
+        $fallbackEmail = (bool) $this->option('fallback-email');
+        $linkCodeOnEmailMatch = (bool) $this->option('link-code-on-email-match');
 
         $query = InvoiceSync::query()
             ->where('provider', 'stripe')
@@ -52,18 +57,25 @@ class ImportStripeInvoiceSyncsCommand extends Command
 
         foreach ($rows as $row)
         {
+            if (! $row instanceof InvoiceSync)
+            {
+                continue;
+            }
+
             $processed++;
 
-            $enterpriseId = Enterprise::query()
-                ->where('team_id', $row->team_id)
-                ->where('type_id', 1)
-                ->where('code', $row->customer_id)
-                ->value('id');
+            [$enterpriseId, $resolutionMode] = $this->resolveEnterpriseId(
+                $row,
+                $fallbackEmail,
+                $linkCodeOnEmailMatch,
+                $dryRun,
+            );
 
             if (! $enterpriseId)
             {
                 $skipped++;
-                $this->warn("Skip {$row->external_id}: enterprise not found by customer_id/code for team {$row->team_id}");
+                $reason = $fallbackEmail ? 'customer_id/code or unique email' : 'customer_id/code';
+                $this->warn("Skip {$row->external_id}: enterprise not found by {$reason} for team {$row->team_id}");
 
                 continue;
             }
@@ -86,7 +98,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
                 'billing_id' => null,
                 'type_id' => 1,
                 'operation' => 'sell',
-                'number' => $row->number ?: $row->external_id,
+                'number' => $this->resolveInvoiceNumber($row->number, $row->external_id),
                 'date' => $date,
                 'due_date' => $dueDate,
                 'gross_amount' => $gross,
@@ -106,7 +118,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
 
             if ($dryRun)
             {
-                $this->line("[dry-run] upsert invoice for stripe external_id={$row->external_id}, team={$row->team_id}");
+                $this->line("[dry-run] upsert invoice for stripe external_id={$row->external_id}, team={$row->team_id}, matched_by={$resolutionMode}");
 
                 continue;
             }
@@ -165,5 +177,76 @@ class ImportStripeInvoiceSyncsCommand extends Command
         }
 
         return $this->normalizeAmount($amount);
+    }
+
+    /**
+     * @return array{0: int|null, 1: string}
+     */
+    private function resolveEnterpriseId(
+        InvoiceSync $row,
+        bool $fallbackEmail,
+        bool $linkCodeOnEmailMatch,
+        bool $dryRun,
+    ): array {
+        $enterprise = Enterprise::query()
+            ->where('team_id', $row->team_id)
+            ->where('type_id', 1)
+            ->where('code', $row->customer_id)
+            ->first();
+
+        if ($enterprise)
+        {
+            return [$enterprise->id, 'code'];
+        }
+
+        if (! $fallbackEmail)
+        {
+            return [null, 'none'];
+        }
+
+        $email = strtolower(trim((string) $row->customer_email));
+        if ($email === '')
+        {
+            return [null, 'none'];
+        }
+
+        $emailMatches = Enterprise::query()
+            ->where('team_id', $row->team_id)
+            ->where('type_id', 1)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->get();
+
+        if ($emailMatches->count() !== 1)
+        {
+            return [null, 'none'];
+        }
+
+        /** @var Enterprise $matched */
+        $matched = $emailMatches->first();
+
+        if ($linkCodeOnEmailMatch && filled($row->customer_id) && blank($matched->code))
+        {
+            if ($dryRun)
+            {
+                $this->line("[dry-run] would set enterprises.code={$row->customer_id} on enterprise_id={$matched->id}");
+            } else
+            {
+                $matched->code = (string) $row->customer_id;
+                $matched->save();
+            }
+        }
+
+        return [$matched->id, 'email'];
+    }
+
+    private function resolveInvoiceNumber(?string $number, string $externalId): string
+    {
+        $number = trim((string) $number);
+        if ($number !== '')
+        {
+            return $number;
+        }
+
+        return 'STR-'.Str::upper(Str::substr($externalId, -8));
     }
 }
