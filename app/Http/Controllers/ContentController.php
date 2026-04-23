@@ -513,8 +513,19 @@ class ContentController extends Controller
      * @param  array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}  $settings
      * @return array<string, mixed>
      */
+    private function isSvgCoverUpload(UploadedFile $file): bool
+    {
+        if ($file->getMimeType() === 'image/svg+xml')
+        {
+            return true;
+        }
+
+        return strtolower($file->getClientOriginalExtension()) === 'svg';
+    }
+
     private function storeCoverImage(UploadedFile $file, array $settings): array
     {
+        $isSvg = $this->isSvgCoverUpload($file);
         $extension = strtolower((string) $file->getClientOriginalExtension());
         $safeExtension = $extension !== '' ? $extension : 'jpg';
         $filename = Str::uuid()->toString().'.'.$safeExtension;
@@ -532,7 +543,7 @@ class ContentController extends Controller
         $maxWidth = $settings['max_width'];
         $maxHeight = $settings['max_height'];
 
-        if ($maxWidth || $maxHeight)
+        if (! $isSvg && ($maxWidth || $maxHeight))
         {
             $image = Image::load($file->getRealPath());
 
@@ -551,6 +562,7 @@ class ContentController extends Controller
             $image->save($absolutePath);
         } else
         {
+            // SVG: Spatie\Image no procesa vectoriales; almacenar tal cual. Redimensiones de categoría no aplican a SVG.
             Storage::disk('public')->putFileAs($basePath, $file, $filename);
         }
 
@@ -578,6 +590,11 @@ class ContentController extends Controller
      */
     private function storeCoverVariants(UploadedFile $file, array $settings, string $basePath): array
     {
+        if ($this->isSvgCoverUpload($file))
+        {
+            return [];
+        }
+
         $out = [];
         $variants = $settings['variants'] ?? [];
         foreach ($variants as $variantKey => $variantCfg)
@@ -670,6 +687,11 @@ class ContentController extends Controller
      */
     private function extractImageDimensions(string $absolutePath): array
     {
+        if (str_ends_with(strtolower($absolutePath), '.svg'))
+        {
+            return $this->extractSvgDimensions($absolutePath);
+        }
+
         $size = @getimagesize($absolutePath);
         if (! is_array($size))
         {
@@ -680,5 +702,43 @@ class ContentController extends Controller
             isset($size[0]) ? (int) $size[0] : null,
             isset($size[1]) ? (int) $size[1] : null,
         ];
+    }
+
+    /**
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function extractSvgDimensions(string $absolutePath): array
+    {
+        $head = @file_get_contents($absolutePath, false, null, 0, 96 * 1024);
+        if (! is_string($head) || $head === '')
+        {
+            return [null, null];
+        }
+
+        if (preg_match('/viewBox\s*=\s*["\']\s*[-\d.eE]+\s+[-\d.eE]+\s+([-\d.eE]+)\s+([-\d.eE]+)\s*["\']/i', $head, $m))
+        {
+            return [
+                (int) round((float) $m[1]),
+                (int) round((float) $m[2]),
+            ];
+        }
+
+        $w = null;
+        $h = null;
+        if (preg_match('/<svg[^>]*\bwidth\s*=\s*["\']?([\d.]+)/i', $head, $wm))
+        {
+            $w = (int) round((float) $wm[1]);
+        }
+        if (preg_match('/<svg[^>]*\bheight\s*=\s*["\']?([\d.]+)/i', $head, $hm))
+        {
+            $h = (int) round((float) $hm[1]);
+        }
+
+        if ($w !== null && $h !== null)
+        {
+            return [$w, $h];
+        }
+
+        return [null, null];
     }
 }

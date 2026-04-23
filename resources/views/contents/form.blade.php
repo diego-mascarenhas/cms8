@@ -246,7 +246,7 @@
             @endphp
             <div class="col-md-6">
                 <label for="cover_image" class="form-label">Cover image</label>
-                <input type="file" class="form-control @error('cover_image') is-invalid @enderror" id="cover_image" name="cover_image" accept="image/*">
+                <input type="file" class="form-control @error('cover_image') is-invalid @enderror" id="cover_image" name="cover_image" accept="image/*,.svg,image/svg+xml">
                 @error('cover_image')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
