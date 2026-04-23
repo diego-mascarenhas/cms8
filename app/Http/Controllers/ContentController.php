@@ -543,6 +543,14 @@ class ContentController extends Controller
         $maxWidth = $settings['max_width'];
         $maxHeight = $settings['max_height'];
 
+        $originalPathRelative = null;
+        if (! $isSvg)
+        {
+            // Always keep a private copy of raster uploads (reprocess / variants) — not only when max dimensions are set in the category.
+            Storage::disk('originals')->putFileAs($basePath, $file, $filename);
+            $originalPathRelative = $relativePath;
+        }
+
         if (! $isSvg && ($maxWidth || $maxHeight))
         {
             $image = Image::load($file->getRealPath());
@@ -562,7 +570,7 @@ class ContentController extends Controller
             $image->save($absolutePath);
         } else
         {
-            // SVG: Spatie\Image no procesa vectoriales; almacenar tal cual. Redimensiones de categoría no aplican a SVG.
+            // No resize, or SVG: single file on public; SVG is not duplicated on originals (no raster pipeline).
             Storage::disk('public')->putFileAs($basePath, $file, $filename);
         }
 
@@ -570,7 +578,7 @@ class ContentController extends Controller
 
         $variantData = $this->storeCoverVariants($file, $settings, $basePath);
 
-        return [
+        $coverPayload = [
             'url' => asset('storage/'.$relativePath),
             'path' => $relativePath,
             'width' => $storedWidth,
@@ -582,6 +590,15 @@ class ContentController extends Controller
             'crop' => $settings['crop'],
             'variants' => $variantData,
         ];
+        if ($originalPathRelative !== null)
+        {
+            $coverPayload['original'] = [
+                'disk' => 'originals',
+                'path' => $originalPathRelative,
+            ];
+        }
+
+        return $coverPayload;
     }
 
     /**
@@ -677,6 +694,13 @@ class ContentController extends Controller
             {
                 Storage::disk('public')->delete($variantPath);
             }
+        }
+
+        $original = is_array($dataFields['cover']['original'] ?? null) ? $dataFields['cover']['original'] : null;
+        $originalPath = is_array($original) && is_string($original['path'] ?? null) ? $original['path'] : null;
+        if ($originalPath !== null && $originalPath !== '' && Storage::disk('originals')->exists($originalPath))
+        {
+            Storage::disk('originals')->delete($originalPath);
         }
 
         unset($dataFields['cover']);
