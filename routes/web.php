@@ -351,6 +351,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::post('/categories/quick-store', [CategoryController::class, 'quickStore'])->name('categories.quick-store');
     Route::get('/categories/module-options', [CategoryController::class, 'moduleOptions'])->name('categories.module-options');
+    Route::get('/categories/{id}/duplicate', [CategoryController::class, 'duplicate'])->name('categories.duplicate');
     Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');

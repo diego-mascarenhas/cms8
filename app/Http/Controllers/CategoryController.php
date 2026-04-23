@@ -103,6 +103,85 @@ class CategoryController extends Controller
         return view('category.form', compact('modules', 'parentCategories', 'parentCategoriesByModule', 'parent', 'team', 'multimediaModuleId', 'tags', 'returnModuleIdForIndex'));
     }
 
+    public function duplicate(Request $request, int $id): RedirectResponse
+    {
+        $team = Auth::user()->currentTeam;
+
+        $category = Category::query()
+            ->where(function ($query) use ($team)
+            {
+                $query->whereNull('team_id')->orWhere('team_id', $team->id);
+            })
+            ->findOrFail($id);
+
+        $data = is_array($category->data ?? null) ? $category->data : [];
+        $coverData = is_array($data['cover'] ?? null) ? $data['cover'] : [];
+        $coverVariants = is_array($coverData['variants'] ?? null) ? $coverData['variants'] : [];
+
+        $presetVariantKeys = ['logo_strip', 'thumb', 'hero', 'square', 'og', 'web'];
+        $selectedVariants = [];
+        $variantWidths = [];
+        $variantHeights = [];
+        $variantFits = [];
+
+        foreach ($coverVariants as $variantKey => $variantCfg)
+        {
+            if (! is_string($variantKey) || ! is_array($variantCfg))
+            {
+                continue;
+            }
+
+            $safeKey = in_array($variantKey, $presetVariantKeys, true) ? $variantKey : 'custom';
+            if (! in_array($safeKey, $selectedVariants, true))
+            {
+                $selectedVariants[] = $safeKey;
+            }
+
+            if ($safeKey !== 'custom')
+            {
+                $variantWidths[$safeKey] = $variantCfg['width'] ?? null;
+                $variantHeights[$safeKey] = $variantCfg['height'] ?? null;
+                $variantFits[$safeKey] = $variantCfg['fit'] ?? 'max';
+            }
+        }
+
+        $customVariant = is_array($coverVariants['custom'] ?? null)
+            ? $coverVariants['custom']
+            : collect($coverVariants)->first(fn ($v, $k) => is_string($k) && ! in_array($k, $presetVariantKeys, true) && is_array($v));
+
+        $input = [
+            'name' => $category->name.' (Copy)',
+            'status' => $category->status ? '1' : '0',
+            'module_id' => $category->module_id,
+            'parent_id' => $category->parent_id,
+            'description' => $category->description,
+            'order' => $category->order ?? 0,
+            'content_ordering' => is_array($data['content_ordering'] ?? null) ? $data['content_ordering'] : [],
+            'contents_section_slug' => $data['slug'] ?? null,
+            'content_locales' => ContentsSectionCategoryData::mergeContentLocalesFromStorage($data['content_locales'] ?? null),
+            'content_form' => ContentsSectionCategoryData::mergeContentFormVisibility($data['content_form'] ?? null),
+            'cover_variants' => $selectedVariants,
+            'cover_variant_width' => $variantWidths,
+            'cover_variant_height' => $variantHeights,
+            'cover_variant_fit' => $variantFits,
+            'cover_custom_variant_width' => is_array($customVariant) ? ($customVariant['width'] ?? null) : null,
+            'cover_custom_variant_height' => is_array($customVariant) ? ($customVariant['height'] ?? null) : null,
+            'cover_custom_variant_fit' => is_array($customVariant) ? ($customVariant['fit'] ?? 'max') : 'max',
+            'image_width' => $data['image_width'] ?? null,
+            'image_height' => $data['image_height'] ?? null,
+            'thumb_width' => $data['thumb_width'] ?? null,
+            'thumb_height' => $data['thumb_height'] ?? null,
+            'poster_width' => $data['poster_width'] ?? null,
+            'poster_height' => $data['poster_height'] ?? null,
+            'fit' => $data['fit'] ?? null,
+            'return_module_id' => $category->module_id,
+        ];
+
+        return redirect()
+            ->route('categories.create', ['module_id' => $category->module_id])
+            ->withInput($input);
+    }
+
     /**
      * Store a newly created resource in storage.
      */

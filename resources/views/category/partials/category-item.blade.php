@@ -27,6 +27,11 @@
                 title="{{ __('app.New Category') }}">
                 <i class="ti ti-plus ti-sm text-success"></i>
             </a>
+            <a href="{{ route('categories.duplicate', $category->id) }}"
+                class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none"
+                title="Duplicate category">
+                <i class="ti ti-copy ti-sm text-primary"></i>
+            </a>
             <button type="button"
                 class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none toggle-category-status"
                 data-url="{{ route('categories.toggle-status', $category->id) }}"
