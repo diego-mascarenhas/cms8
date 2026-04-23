@@ -25,6 +25,7 @@
 /storage/framework/sessions/*
 /storage/framework/views/*
 /storage/logs/*
+/storage/app/originals
 /bootstrap/cache/*.php
 /vendor
 Homestead.json
