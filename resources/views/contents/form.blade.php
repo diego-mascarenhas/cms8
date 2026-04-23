@@ -57,9 +57,13 @@
                 <select id="section_category_id" name="section_category_id" class="form-select select2" required>
                     <option value="">{{ __('app.Select Category') }}</option>
                     @foreach($sectionCategories as $sectionCategory)
+                        @php
+                            $depth = (int) ($sectionCategory->depth_level ?? 0);
+                            $indent = $depth > 0 ? str_repeat('— ', $depth) : '';
+                        @endphp
                         <option value="{{ $sectionCategory->id }}"
                             {{ old('section_category_id', $content->section_category_id ?? $selectedSection->id ?? '') == $sectionCategory->id ? 'selected' : '' }}>
-                            {{ $sectionCategory->name }}
+                            {{ $indent . $sectionCategory->name }}
                         </option>
                     @endforeach
                 </select>

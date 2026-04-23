@@ -387,7 +387,6 @@ class ContentController extends Controller
      */
     private function getFilteredSectionCategories(int $teamId, int $moduleId): \Illuminate\Support\Collection
     {
-        // Get all top level categories for this module
         $topLevelCategories = Category::where('team_id', $teamId)
             ->where('module_id', $moduleId)
             ->whereNull('parent_id')
@@ -403,45 +402,23 @@ class ContentController extends Controller
             ->get();
 
         $result = collect();
-
         foreach ($topLevelCategories as $topLevel)
         {
-            // Children are already filtered by status and ordered in eager loading
-            $activeChildren = $topLevel->children;
-
-            if ($activeChildren->count() >= 2)
-            {
-                // Top level has 2+ subcategories → show subcategories directly (not the top level)
-                // Add parent order as a temporary attribute to maintain parent ordering
-                foreach ($activeChildren as $child)
-                {
-                    $child->parent_order = $topLevel->order;
-                }
-                $result = $result->merge($activeChildren);
-            } else
-            {
-                // Top level has < 2 subcategories → include the top level itself
-                // Set parent_order to its own order for consistent sorting
-                $topLevel->parent_order = $topLevel->order;
-                $result->push($topLevel);
-                if ($activeChildren->count() === 1)
-                {
-                    $activeChildren->first()->parent_order = $topLevel->order;
-                    $result = $result->merge($activeChildren);
-                }
-            }
+            $this->appendCategoryHierarchy($result, $topLevel, 0);
         }
 
-        // Sort the final collection: first by parent order, then by category order, then by name
-        // This maintains the relative order within each parent group
-        return $result->sortBy(function ($item)
+        return $result->values();
+    }
+
+    private function appendCategoryHierarchy(\Illuminate\Support\Collection $result, Category $category, int $depth): void
+    {
+        $category->depth_level = $depth;
+        $result->push($category);
+
+        foreach ($category->children as $child)
         {
-            return [
-                $item->parent_order ?? $item->order ?? 999,
-                $item->order ?? 999,
-                $item->name ?? '',
-            ];
-        })->values();
+            $this->appendCategoryHierarchy($result, $child, $depth + 1);
+        }
     }
 
     private function syncMultimedia(Content $content, array $multimediaData): void
