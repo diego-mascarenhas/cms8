@@ -273,7 +273,7 @@ class ClientController extends Controller
             return redirect()->route('client-list')->with('error', 'Client not found.');
         }
 
-        $this->authorize('update', $row);
+        $this->authorize('edit', $row);
 
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;

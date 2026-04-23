@@ -40,11 +40,11 @@
             <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
             <div class="row g-3">
-                <div class="col-12 col-md-8">
+                <div class="col-12 col-md-6">
                     <x-input-general id="name" label="Nombre de la empresa (*)"
                         value="{{ old('name', $data->name ?? '') }}" />
                 </div>
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <x-input-general id="code" label="Stripe Customer ID (cus_...)"
                         value="{{ old('code', $data->code ?? '') }}" />
                 </div>

@@ -15,19 +15,17 @@
 @endsection
 
 @section('content')
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
-        <div class="d-flex flex-column justify-content-center flex-grow-1 min-w-0">
-            <div class="d-flex align-items-center flex-wrap gap-2 mt-3 mb-1">
-                <h4 class="mb-0"><span class="text-muted fw-light">{{ __('Clients') }}/</span> {{ $client->name }}</h4>
-                @can('client.edit')
-                    <a href="{{ route('client.edit', $client->id) }}" class="btn btn-sm btn-primary waves-effect waves-light">
-                        <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
-                    </a>
-                @endcan
-            </div>
-            <p class="text-muted mb-0">{{ __('Detailed client information') }}</p>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+        <div class="d-flex flex-column justify-content-center">
+            <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Clients') }}/</span> {{ $client->name }}</h4>
+            <p class="text-muted">{{ __('Detailed client information') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
+            @can('edit', $client)
+                <a href="{{ route('client.edit', $client->id) }}" class="btn btn-primary waves-effect waves-light">
+                    <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
+                </a>
+            @endcan
             @can('project.create')
                 <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-success waves-effect waves-light">
                     <i class="ti ti-folder-plus me-1"></i>{{ __('Create') }} {{ __('Project') }}
@@ -60,7 +58,7 @@
                     <span>Datos de facturación</span>
                 </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
-                    @can('client.edit')
+                    @can('edit', $client)
                         <a href="{{ route('client.edit', $client->id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="ti ti-file-invoice me-1"></i>Actualizar datos fiscales
                         </a>

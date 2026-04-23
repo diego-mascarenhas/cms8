@@ -80,6 +80,14 @@ class ClientPolicy
     }
 
     /**
+     * Determine whether the user can open the edit form (same rules as update).
+     */
+    public function edit(User $user, Enterprise $client): bool
+    {
+        return $this->update($user, $client);
+    }
+
+    /**
      * Determine whether the user can update the client (enterprise type client).
      */
     public function update(User $user, Enterprise $client): bool
