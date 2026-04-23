@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
+use App\Support\TeamContentsApiCache;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 
 class TeamContentController extends Controller
@@ -26,6 +29,42 @@ class TeamContentController extends Controller
             ], 401);
         }
 
+        $ttlSeconds = $this->teamContentsIndexCacheTtlSeconds();
+        if ($ttlSeconds === 0)
+        {
+            return $this->executeIndex($request, $team);
+        }
+
+        $teamId = (int) $team->id;
+        $generation = TeamContentsApiCache::currentGeneration($teamId);
+        $cacheKey = TeamContentsApiCache::indexCacheKey($teamId, $generation, $request);
+
+        $resolver = function () use ($request, $team)
+        {
+            $response = $this->executeIndex($request, $team);
+
+            return [
+                'status' => $response->getStatusCode(),
+                'payload' => $response->getData(true),
+            ];
+        };
+
+        if ($ttlSeconds < 0)
+        {
+            $cached = Cache::rememberForever($cacheKey, $resolver);
+        } else
+        {
+            $cached = Cache::remember($cacheKey, $ttlSeconds, $resolver);
+        }
+
+        return response()->json($cached['payload'], $cached['status']);
+    }
+
+    /**
+     * Uncached JSON response for GET /api/team/contents (index).
+     */
+    private function executeIndex(Request $request, $team): JsonResponse
+    {
         $query = Content::where('team_id', $team->id);
         $resolvedSectionCategory = null;
         $contentsModuleId = Module::where('key', 'contents')->value('id');
@@ -667,6 +706,20 @@ class TeamContentController extends Controller
         {
             $query->orderBy('order')->orderBy('created_at', 'desc');
         }
+    }
+
+    /**
+     * @return int 0 = cache off; negative = forever until generation bump; positive = TTL seconds
+     */
+    private function teamContentsIndexCacheTtlSeconds(): int
+    {
+        $raw = config('cache.team_contents_index_ttl', '-1');
+        if ($raw === null || $raw === '')
+        {
+            return -1;
+        }
+
+        return (int) $raw;
     }
 
     /**

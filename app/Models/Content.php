@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TeamContentsApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -85,6 +86,38 @@ class Content extends Model
             if (auth()->check())
             {
                 $content->updated_by = auth()->id();
+            }
+        });
+
+        static::saved(function (self $content)
+        {
+            if ($content->team_id)
+            {
+                TeamContentsApiCache::bumpTeam((int) $content->team_id);
+            }
+        });
+
+        static::deleted(function (self $content)
+        {
+            if ($content->team_id)
+            {
+                TeamContentsApiCache::bumpTeam((int) $content->team_id);
+            }
+        });
+
+        static::restored(function (self $content)
+        {
+            if ($content->team_id)
+            {
+                TeamContentsApiCache::bumpTeam((int) $content->team_id);
+            }
+        });
+
+        static::forceDeleted(function (self $content)
+        {
+            if ($content->team_id)
+            {
+                TeamContentsApiCache::bumpTeam((int) $content->team_id);
             }
         });
     }

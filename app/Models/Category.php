@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\ContentsSectionCategoryData;
+use App\Support\TeamContentsApiCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -33,6 +34,35 @@ class Category extends Model
         'data' => 'array',
         'status' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function (Category $category)
+        {
+            self::maybeBumpTeamContentsApiCache($category);
+        });
+
+        static::deleted(function (Category $category)
+        {
+            self::maybeBumpTeamContentsApiCache($category);
+        });
+    }
+
+    private static function maybeBumpTeamContentsApiCache(Category $category): void
+    {
+        if (! $category->team_id)
+        {
+            return;
+        }
+
+        $contentsModuleId = Module::where('key', 'contents')->value('id');
+        if (! $contentsModuleId || (int) $category->module_id !== (int) $contentsModuleId)
+        {
+            return;
+        }
+
+        TeamContentsApiCache::bumpTeam((int) $category->team_id);
+    }
 
     /**
      * Visibility flags for standard fields on the contents form (from {@see Category::$data} `content_form`).
