@@ -24,6 +24,9 @@ class Invoice extends Model
         'total_amount',
         'balance',
         'status',
+        'source_provider',
+        'source_reference_id',
+        'source_synced_at',
         'currency',
     ];
 
