@@ -83,11 +83,48 @@ class ClientController extends Controller
             $request->validate([
                 'name' => 'required|string|min:3|max:75',
                 'status_id' => ['required', 'integer', Rule::in($allowedStatusIds)],
+                'email' => 'nullable|email',
+                'website' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'whatsapp' => 'nullable|string|max:20',
+                'address' => 'nullable|string|max:255',
+                'postal_code' => 'nullable|string|max:20',
+                'locality' => 'nullable|string|max:50',
+                'province' => 'nullable|string|max:50',
+                'country' => 'nullable|string|max:100',
+                'opening_hours' => 'nullable|string|max:2000',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
+                'contact_person' => 'nullable|string|max:255',
+                'code' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('enterprises', 'code')
+                        ->where(fn ($q) => $q->where('team_id', $teamId))
+                        ->ignore($enterprise->id),
+                ],
             ]);
 
             $enterprise->update([
                 'name' => $request->name,
                 'status_id' => (int) $request->status_id,
+                'email' => $request->email,
+                'website' => $request->website,
+                'phone' => $request->phone,
+                'whatsapp' => $request->whatsapp,
+                'address' => $request->address,
+                'postal_code' => $request->postal_code,
+                'locality' => $request->locality,
+                'province' => $request->province,
+                'country' => $request->country,
+                'code' => $request->filled('code') ? trim((string) $request->code) : null,
+                'data' => array_merge((array) ($enterprise->data ?? []), [
+                    'opening_hours' => $request->input('opening_hours'),
+                    'latitude' => $request->input('latitude'),
+                    'longitude' => $request->input('longitude'),
+                    'contact_person' => $request->input('contact_person'),
+                ]),
             ]);
 
             return redirect()->route('client-list')->with('success', 'Record saved successfully.');
@@ -112,12 +149,20 @@ class ClientController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'contact_person' => 'nullable|string|max:255',
+            'code' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('enterprises', 'code')
+                    ->where(fn ($q) => $q->where('team_id', $teamId)),
+            ],
             'data' => 'nullable|array',
             'status_id' => ['nullable', 'integer', Rule::in($allowedStatusIds)],
         ]);
 
         $data['team_id'] = $teamId;
         $data['status_id'] = $request->status_id ?? 1;
+        $data['code'] = $request->filled('code') ? trim((string) $request->code) : null;
 
         $data['data'] = array_merge($data, [
             'opening_hours' => $request->input('opening_hours'),
