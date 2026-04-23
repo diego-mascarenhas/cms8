@@ -25,7 +25,7 @@ class EnterpriseDataTable extends DataTable
                 $contactId = $firstContact ? $firstContact->id : null;
 
                 return view('enterprise.action', [
-                    'id' => $row->id,
+                    'enterprise' => $row,
                     'contactId' => $contactId,
                 ])->render();
             })
@@ -69,6 +69,7 @@ class EnterpriseDataTable extends DataTable
                 'enterprises.responsible_id',
                 'enterprises.status_id',
                 'enterprises.team_id',
+                'enterprises.type_id',
             ])
             ->with([
                 'status:id,name,label_class',

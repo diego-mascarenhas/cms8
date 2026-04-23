@@ -200,12 +200,6 @@ class ClientController extends Controller
             'invoices.billingAddress',
         ])->findOrFail($id);
 
-        // Ensure it's a client (type_id = 1)
-        if ($client->type_id != 1)
-        {
-            return redirect()->route('client-list')->with('error', 'Record not found.');
-        }
-
         $this->authorize('view', $client);
 
         // Separate active and past projects
