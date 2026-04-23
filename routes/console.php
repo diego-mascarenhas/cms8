@@ -41,17 +41,19 @@ Schedule::command('subscriptions:sync')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('stripe:sync-invoices --mode=auto --limit=100 --recent-days=45')
-    ->everyFiveMinutes()
+// Stripe invoice_syncs: small batches, staggered from import to limit CPU/API/DB churn.
+// Raise limits or frequency manually during one-off backfill if needed.
+Schedule::command('stripe:sync-invoices --mode=auto --limit=60 --recent-days=30')
+    ->everyTenMinutes()
     ->name('stripe-invoices-sync-auto')
     ->description('Auto Stripe invoices sync: backfill first, then mutable refresh')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('invoice-syncs:import-stripe --limit=500 --fallback-email --link-code-on-email-match')
-    ->everyFiveMinutes()
+Schedule::command('invoice-syncs:import-stripe --limit=120 --fallback-email --link-code-on-email-match')
+    ->cron('5,15,25,35,45,55 * * * *')
     ->name('stripe-invoice-syncs-import')
-    ->description('Import staged Stripe invoices into core invoices')
+    ->description('Import pending-only Stripe invoice_syncs into core invoices')
     ->withoutOverlapping()
     ->runInBackground();
 

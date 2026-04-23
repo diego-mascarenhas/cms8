@@ -21,20 +21,19 @@ class SyncStripeInvoicesCommand extends Command
 
     protected $signature = 'stripe:sync-invoices
                             {--team_id= : Sync only one team}
-                            {--mode=auto : auto (backfill then mutable), backfill (ordered by time window), or mutable (refresh invoices that can still change)}
+                            {--mode=auto : auto: backfill history then mutable refresh; backfill: time windows only; mutable: recent refresh}
                             {--limit=500 : Maximum invoices to sync per team in this run}
                             {--starting-after= : Stripe invoice id cursor to continue within the current time window (advanced)}
-                            {--backfill-window=month : Time window for ordered backfill: month or week}
-                            {--backfill-start=2000-01-01 : First window start date (Y-m-d) for ordered backfill}
+                            {--backfill-window=month : Time window for backfill: month or week}
+                            {--backfill-start=2000-01-01 : First window start date (Y-m-d) for backfill}
                             {--reset-backfill : Clear saved backfill progress and start over}
-                            {--legacy-cursor : Use legacy full-list cursor backfill (not recommended)}
                             {--no-resume : Ignore saved team cursor and start without checkpoint}
                             {--recent-days=45 : In mutable mode, look back this many days when --from/--to are not set}
                             {--from= : Invoice created date from (Y-m-d)}
                             {--to= : Invoice created date to (Y-m-d)}
                             {--dry-run : Preview without writing}';
 
-    protected $description = 'Backfill Stripe invoices into invoice_syncs in blocks';
+    protected $description = 'Sync Stripe invoices into invoice_syncs (backfill then mutable); order in app by invoice_created_at';
 
     public function handle(): int
     {
@@ -58,7 +57,6 @@ class SyncStripeInvoicesCommand extends Command
         }
         $backfillStartDefault = trim((string) ($this->option('backfill-start') ?? '2000-01-01'));
         $resetBackfill = (bool) $this->option('reset-backfill');
-        $legacyCursor = (bool) $this->option('legacy-cursor');
         $noResume = (bool) $this->option('no-resume');
         $recentDays = max(1, (int) $this->option('recent-days'));
         $dryRun = (bool) $this->option('dry-run');
@@ -130,55 +128,30 @@ class SyncStripeInvoicesCommand extends Command
                 );
             } else
             {
-                if ($legacyCursor)
+                if (! $noResume)
                 {
-                    $savedCursor = trim((string) $team->getSetting(self::SETTING_BACKFILL_LEGACY_CURSOR, ''));
-                    $startingAfter = $startingAfterOption;
-                    if ($startingAfter === '' && ! $noResume)
-                    {
-                        $startingAfter = $savedCursor;
-                    }
-
-                    [$syncedForTeam, $scannedForTeam, $lastProcessedId] = $this->syncBackfillInvoicesForTeam(
-                        $client,
-                        $team->id,
-                        $maxPerTeam,
-                        $createdFilter,
-                        $startingAfter,
-                        $dryRun,
-                    );
-                } else
-                {
-                    if (! $noResume)
-                    {
-                        $this->maybeClearLegacyCursorForOrderedBackfill($team);
-                    }
-
-                    $startingAfter = $startingAfterOption;
-                    if ($startingAfter === '' && ! $noResume)
-                    {
-                        $state = $this->getTeamOrderedBackfillState($team);
-                        $startingAfter = is_array($state) ? trim((string) ($state['starting_after'] ?? '')) : '';
-                    }
-
-                    [$syncedForTeam, $scannedForTeam, $lastProcessedId, $backfillStatusLine, $backfillComplete] = $this->syncOrderedBackfillInvoicesForTeam(
-                        $client,
-                        $team,
-                        $maxPerTeam,
-                        $backfillWindow,
-                        $backfillStartDefault,
-                        $this->option('from'),
-                        $this->option('to'),
-                        $startingAfter,
-                        $noResume,
-                        $dryRun,
-                    );
+                    $this->maybeClearLegacyCursorForOrderedBackfill($team);
                 }
-            }
 
-            if ($effectiveMode === 'backfill' && $legacyCursor)
-            {
-                $backfillComplete = $syncedForTeam < $maxPerTeam;
+                $startingAfter = $startingAfterOption;
+                if ($startingAfter === '' && ! $noResume)
+                {
+                    $state = $this->getTeamOrderedBackfillState($team);
+                    $startingAfter = is_array($state) ? trim((string) ($state['starting_after'] ?? '')) : '';
+                }
+
+                [$syncedForTeam, $scannedForTeam, $lastProcessedId, $backfillStatusLine, $backfillComplete] = $this->syncBackfillWindowedInvoicesForTeam(
+                    $client,
+                    $team,
+                    $maxPerTeam,
+                    $backfillWindow,
+                    $backfillStartDefault,
+                    $this->option('from'),
+                    $this->option('to'),
+                    $startingAfter,
+                    $noResume,
+                    $dryRun,
+                );
             }
 
             $processedTeams++;
@@ -190,9 +163,6 @@ class SyncStripeInvoicesCommand extends Command
             if ($effectiveMode === 'backfill' && $backfillStatusLine)
             {
                 $this->line($backfillStatusLine);
-            } elseif ($effectiveMode === 'backfill' && $legacyCursor && $lastProcessedId)
-            {
-                $this->line("Team {$team->id}: next cursor --legacy-cursor --starting-after={$lastProcessedId}");
             }
 
             if ($effectiveMode === 'mutable')
@@ -200,71 +170,33 @@ class SyncStripeInvoicesCommand extends Command
                 $this->line("Team {$team->id}: mutable refresh done (statuses: draft, open, uncollectible).");
             } else
             {
-                if ($legacyCursor)
+                if ($syncedForTeam >= $maxPerTeam)
                 {
-                    if ($syncedForTeam >= $maxPerTeam)
+                    $this->line("Team {$team->id}: limit reached for this run, run again to continue (time windows).");
+                } elseif (! $backfillComplete)
+                {
+                    if ($dryRun)
                     {
-                        if (! $dryRun)
-                        {
-                            $team->setSetting(self::SETTING_BACKFILL_LEGACY_CURSOR, (string) $lastProcessedId, [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                            $team->setSetting(self::SETTING_BACKFILL_LEGACY_CURSOR_UPDATED, now()->toDateTimeString(), [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                        }
-                        $this->line("Team {$team->id}: limit reached, run command again to continue with next block.");
+                        $this->line("Team {$team->id}: dry-run preview (no saved progress).");
                     } else
                     {
-                        if (! $dryRun)
-                        {
-                            $team->setSetting(self::SETTING_BACKFILL_LEGACY_CURSOR, '', [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                            $team->setSetting(self::SETTING_BACKFILL_LEGACY_CURSOR_UPDATED, now()->toDateTimeString(), [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                            $team->setSetting(self::SETTING_BACKFILL_COMPLETED_AT, now()->toDateTimeString(), [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                        }
-                        $this->line("Team {$team->id}: legacy backfill completed; use ordered backfill for chronological history in future.");
+                        $this->line("Team {$team->id}: backfill in progress, run again to continue (time windows).");
                     }
                 } else
                 {
-                    if ($syncedForTeam >= $maxPerTeam)
+                    if (! $dryRun)
                     {
-                        $this->line("Team {$team->id}: limit reached for this run, run again to continue (ordered windows).");
-                    } elseif (! $backfillComplete)
-                    {
-                        if ($dryRun)
-                        {
-                            $this->line("Team {$team->id}: dry-run preview (no saved progress).");
-                        } else
-                        {
-                            $this->line("Team {$team->id}: ordered backfill in progress, run again to continue (ordered windows).");
-                        }
-                    } else
-                    {
-                        if (! $dryRun)
-                        {
-                            $team->setSetting(self::SETTING_BACKFILL_ORDERED_STATE, null, [
-                                'type' => 'json',
-                                'group' => 'stripe',
-                            ]);
-                            $team->setSetting(self::SETTING_BACKFILL_COMPLETED_AT, now()->toDateTimeString(), [
-                                'type' => 'string',
-                                'group' => 'stripe',
-                            ]);
-                            $this->clearLegacyBackfillCursor($team);
-                        }
-                        $this->line("Team {$team->id}: ordered backfill completed; next runs in auto mode will use mutable refresh.");
+                        $team->setSetting(self::SETTING_BACKFILL_ORDERED_STATE, null, [
+                            'type' => 'json',
+                            'group' => 'stripe',
+                        ]);
+                        $team->setSetting(self::SETTING_BACKFILL_COMPLETED_AT, now()->toDateTimeString(), [
+                            'type' => 'string',
+                            'group' => 'stripe',
+                        ]);
+                        $this->clearLegacyBackfillCursor($team);
                     }
+                    $this->line("Team {$team->id}: backfill completed; --mode=auto will use mutable refresh from now on.");
                 }
             }
         }
@@ -355,7 +287,7 @@ class SyncStripeInvoicesCommand extends Command
     /**
      * @return array{0: int, 1: int, 2: string|null, 3: string|null, 4: bool}
      */
-    private function syncOrderedBackfillInvoicesForTeam(
+    private function syncBackfillWindowedInvoicesForTeam(
         StripeClient $client,
         Team $team,
         int $maxPerTeam,
@@ -510,19 +442,7 @@ class SyncStripeInvoicesCommand extends Command
                 continue;
             }
 
-            $remainingSlots = $maxPerTeam - $synced;
-            if ($remainingSlots <= 0)
-            {
-                $reachedRunLimit = true;
-                break;
-            }
-
-            $take = min($remainingSlots, count($data));
-            $apiOrderSlice = array_slice($data, 0, $take);
-            $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
-            $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
-
-            foreach ($toUpsert as $row)
+            foreach ($data as $row)
             {
                 if ($synced >= $maxPerTeam)
                 {
@@ -541,20 +461,6 @@ class SyncStripeInvoicesCommand extends Command
 
             if ($reachedRunLimit)
             {
-                if ($sliceLastCursor !== null)
-                {
-                    $lastId = $sliceLastCursor;
-                }
-                break;
-            }
-
-            if ($take < count($data))
-            {
-                $reachedRunLimit = true;
-                if ($sliceLastCursor !== null)
-                {
-                    $lastId = $sliceLastCursor;
-                }
                 break;
             }
 
@@ -690,39 +596,6 @@ class SyncStripeInvoicesCommand extends Command
         return $id === '' ? null : $id;
     }
 
-    /**
-     * Sort invoice payloads for upsert so DB row ids (insert order) follow creation time
-     * within a Stripe list slice. Stripe returns newest first; this reverses for writes only.
-     *
-     * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, array<string, mixed>>
-     */
-    private function sortInvoicePayloadsOldestFirst(array $rows): array
-    {
-        if ($rows === [])
-        {
-            return [];
-        }
-        usort(
-            $rows,
-            function (array $a, array $b): int {
-                $ac = (int) ($a['created'] ?? 0);
-                $bc = (int) ($b['created'] ?? 0);
-                if ($ac !== $bc)
-                {
-                    return $ac <=> $bc;
-                }
-
-                $aid = (string) ($a['id'] ?? '');
-                $bid = (string) ($b['id'] ?? '');
-
-                return $aid <=> $bid;
-            }
-        );
-
-        return array_values($rows);
-    }
-
     private function parseYmdToStartOfDay(?string $date): ?Carbon
     {
         if (! is_string($date) || trim($date) === '')
@@ -759,142 +632,6 @@ class SyncStripeInvoicesCommand extends Command
 
     /**
      * @param  array{gte?: int, lte?: int}  $createdFilter
-     * @return array{0: int, 1: int, 2: string|null}
-     */
-    private function syncBackfillInvoicesForTeam(
-        StripeClient $client,
-        int $teamId,
-        int $maxPerTeam,
-        array $createdFilter,
-        string $startingAfter,
-        bool $dryRun,
-    ): array {
-        $params = [
-            'limit' => 100,
-            'expand' => [
-                'data.customer',
-                'data.subscription',
-            ],
-        ];
-
-        if ($createdFilter !== [])
-        {
-            $params['created'] = $createdFilter;
-        }
-        if ($startingAfter !== '')
-        {
-            $params['starting_after'] = $startingAfter;
-            $this->line("Team {$teamId}: resuming with cursor {$startingAfter}");
-        }
-
-        $synced = 0;
-        $scanned = 0;
-        $lastProcessedId = null;
-        $pageStartingAfter = $startingAfter;
-        $hasMore = true;
-        $reachedRunLimit = false;
-
-        while ($synced < $maxPerTeam && $hasMore)
-        {
-            if ($pageStartingAfter !== '')
-            {
-                $params['starting_after'] = $pageStartingAfter;
-            } else
-            {
-                unset($params['starting_after']);
-            }
-
-            $page = $client->invoices->all($params)->toArray();
-            $raw = is_array($page) ? ($page['data'] ?? []) : [];
-            $hasMore = (bool) ($page['has_more'] ?? false);
-
-            if (! is_array($raw) || $raw === [])
-            {
-                break;
-            }
-
-            $rawLastCursor = $this->lastStripeListItemId($raw);
-            $data = array_values(array_filter($raw, 'is_array'));
-            if ($data === [])
-            {
-                if (! $hasMore)
-                {
-                    break;
-                } elseif ($rawLastCursor === null)
-                {
-                    $this->warn("Team {$teamId}: could not read cursor id for legacy backfill pagination, stopping.");
-                    break;
-                } else
-                {
-                    $pageStartingAfter = $rawLastCursor;
-                }
-                continue;
-            }
-
-            $remainingSlots = $maxPerTeam - $synced;
-            if ($remainingSlots <= 0)
-            {
-                $reachedRunLimit = true;
-                break;
-            }
-
-            $take = min($remainingSlots, count($data));
-            $apiOrderSlice = array_slice($data, 0, $take);
-            $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
-            $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
-
-            foreach ($toUpsert as $row)
-            {
-                if ($synced >= $maxPerTeam)
-                {
-                    $reachedRunLimit = true;
-                    break 2;
-                }
-                $scanned++;
-                if (! $dryRun)
-                {
-                    $this->upsertInvoiceSyncRow($teamId, $row);
-                }
-                $lastProcessedId = (string) ($row['id'] ?? $lastProcessedId);
-                $synced++;
-            }
-
-            if ($reachedRunLimit)
-            {
-                if ($sliceLastCursor !== null)
-                {
-                    $lastProcessedId = $sliceLastCursor;
-                }
-                break;
-            }
-
-            if ($take < count($data))
-            {
-                $reachedRunLimit = true;
-                if ($sliceLastCursor !== null)
-                {
-                    $lastProcessedId = $sliceLastCursor;
-                }
-                break;
-            }
-
-            if (! $hasMore)
-            {
-                break;
-            }
-            if ($rawLastCursor === null)
-            {
-                $this->warn("Team {$teamId}: could not read last invoice id for legacy backfill pagination, stopping.");
-                break;
-            }
-            $pageStartingAfter = $rawLastCursor;
-        }
-
-        return [$synced, $scanned, $lastProcessedId];
-    }
-
-    /**
-     * @param  array{gte?: int, lte?: int}  $createdFilter
      * @return array{0: int, 1: int}
      */
     private function syncMutableInvoicesForTeam(
@@ -915,9 +652,8 @@ class SyncStripeInvoicesCommand extends Command
                 break;
             }
 
-            $remaining = $maxPerTeam - $synced;
             $params = [
-                'limit' => min(100, $remaining),
+                'limit' => 100,
                 'status' => $status,
                 'expand' => [
                     'data.customer',
@@ -970,19 +706,7 @@ class SyncStripeInvoicesCommand extends Command
                     continue;
                 }
 
-                $remainingSlots = $maxPerTeam - $synced;
-                if ($remainingSlots <= 0)
-                {
-                    $reachedRunLimit = true;
-                    break 2;
-                }
-
-                $take = min($remainingSlots, count($data));
-                $apiOrderSlice = array_slice($data, 0, $take);
-                $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
-                $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
-
-                foreach ($toUpsert as $row)
+                foreach ($data as $row)
                 {
                     if ($synced >= $maxPerTeam)
                     {
@@ -998,10 +722,6 @@ class SyncStripeInvoicesCommand extends Command
                 }
 
                 if ($reachedRunLimit)
-                {
-                    break 2;
-                }
-                if ($take < count($data))
                 {
                     break 2;
                 }

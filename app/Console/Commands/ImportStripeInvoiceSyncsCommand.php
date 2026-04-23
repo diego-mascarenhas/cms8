@@ -15,6 +15,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
     protected $signature = 'invoice-syncs:import-stripe
                             {--team_id= : Import only one team}
                             {--limit=500 : Max sync rows to process}
+                            {--reconcile : Also refresh rows that already have a core invoice (same team + Stripe source id)}
                             {--fallback-email : Resolve enterprise by email when customer_id/code does not match}
                             {--link-code-on-email-match : When fallback by email succeeds uniquely, write Stripe customer_id into enterprises.code}
                             {--dry-run : Preview without writing}';
@@ -33,11 +34,13 @@ class ImportStripeInvoiceSyncsCommand extends Command
         $dryRun = (bool) $this->option('dry-run');
         $limit = max(1, (int) $this->option('limit'));
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
+        $reconcile = (bool) $this->option('reconcile');
         $fallbackEmail = (bool) $this->option('fallback-email');
         $linkCodeOnEmailMatch = (bool) $this->option('link-code-on-email-match');
 
-        // Process in stable chronological order: business time, then row id. When importing
-        // all teams, group by team first so logs and any side effects are predictable.
+        // Process in stable chronological order (invoice_created_at), then row id. When
+        // not reconciling, only rows with no core invoice yet (avoids re-processing the
+        // same “first N” sync rows on every run).
         $query = InvoiceSync::query()->where('provider', 'stripe');
 
         if ($teamId)
@@ -46,6 +49,17 @@ class ImportStripeInvoiceSyncsCommand extends Command
         } else
         {
             $query->orderBy('team_id');
+        }
+
+        if (! $reconcile)
+        {
+            $query->whereNotExists(function ($q)
+            {
+                $q->from('invoices')
+                    ->whereColumn('invoices.source_reference_id', 'invoice_syncs.external_id')
+                    ->whereColumn('invoices.team_id', 'invoice_syncs.team_id')
+                    ->where('invoices.source_provider', 'stripe');
+            });
         }
 
         $query
@@ -147,7 +161,11 @@ class ImportStripeInvoiceSyncsCommand extends Command
             }
         }
 
-        $this->info("Processed: {$processed} | created: {$created} | updated: {$updated} | skipped: {$skipped}".($dryRun ? ' | dry-run' : ''));
+        $this->info(
+            "Processed: {$processed} | created: {$created} | updated: {$updated} | skipped: {$skipped}".
+            ($reconcile ? ' | reconcile' : ' | pending-only').
+            ($dryRun ? ' | dry-run' : '')
+        );
 
         return self::SUCCESS;
     }
