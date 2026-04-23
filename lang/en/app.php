@@ -88,6 +88,8 @@ return [
     'Main content hint' => 'Long text / rich HTML for this locale. Language tabs apply to both title and this field.',
 
     'Title' => 'Title',
+    'Details' => 'Details',
+    'Content details' => 'Content details',
 
     'Content form visibility' => 'Content form fields',
     'Content form visibility hint' => 'Uncheck to hide standard fields when editors create or update contents in this section.',
@@ -96,6 +98,8 @@ return [
     'Show subtitle on content form' => 'Subtitle',
     'Show URL on content form' => 'URL',
     'Show featured options on content form' => 'Featured flags (slide, modal)',
+    'Show cover image options on content form' => 'Cover image',
+    'Show caption on content form' => 'Caption',
     'Show SEO block on content form' => 'SEO',
     'Show multimedia on content form' => 'Multimedia',
 

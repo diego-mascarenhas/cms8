@@ -131,7 +131,7 @@ class CategoryController extends Controller
             'cover_max_height' => 'nullable|integer|min:1|max:10000',
             'cover_crop' => 'nullable|boolean',
             'cover_variants' => 'nullable|array',
-            'cover_variants.*' => 'nullable|string|in:logo_strip,thumb,hero,square,og,web',
+            'cover_variants.*' => 'nullable|string|in:logo_strip,thumb,hero,square,og,web,custom',
             'cover_variant_fit' => 'nullable|array',
             'cover_variant_fit.*' => 'nullable|string|in:crop,contain,max,stretch',
             'cover_variant_width' => 'nullable|array',
@@ -327,15 +327,15 @@ class CategoryController extends Controller
                 ];
             }
 
-            $customVariantKey = trim((string) $request->input('cover_custom_variant_key', ''));
-            if ($customVariantKey !== '')
+            $customVariantSelected = in_array('custom', $selectedVariants, true);
+            if ($customVariantSelected)
             {
-                $customSlug = Str::slug($customVariantKey, '_');
+                $customSlug = 'custom';
                 $customWidth = $request->filled('cover_custom_variant_width') ? (int) $request->input('cover_custom_variant_width') : null;
                 $customHeight = $request->filled('cover_custom_variant_height') ? (int) $request->input('cover_custom_variant_height') : null;
                 $customFit = trim((string) $request->input('cover_custom_variant_fit', 'max'));
 
-                if ($customSlug !== '' && ($customWidth || $customHeight))
+                if ($customWidth || $customHeight)
                 {
                     $coverVariants[$customSlug] = [
                         'width' => $customWidth,

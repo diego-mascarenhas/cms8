@@ -8,8 +8,10 @@
 
 @section('content')
 <div class="row">
-    <div class="col-md-8 mx-auto">
+    <div class="col-12">
         <form method="POST" action="{{ isset($category) ? route('categories.update', $category->id) : route('categories.store') }}">
+            <div class="row g-3 align-items-start">
+                <div class="col-12 col-xl-8">
                     @csrf
                     @php
                         $indexReturnModuleId = old('return_module_id', $returnModuleIdForIndex ?? null);
@@ -161,198 +163,118 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div id="content-public-api-section" class="card mb-3 d-none">
                 <div class="card-body">
-                    <div id="content-options" class="border rounded p-3 mb-3 d-none">
-                        <input type="hidden" name="content_locales_present" value="1">
-                        <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
-                        <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
-                        <div class="row g-3 mb-2">
-                            <div class="col-12">
-                                <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
-                                <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
-                                    value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
-                                @error('contents_section_slug')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">{{ __('app.Section slug hint') }}</div>
-                            </div>
+                    <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
+                    <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
+                    <div class="row g-3 mb-2">
+                        <div class="col-12">
+                            <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
+                            <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
+                                value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
+                            @error('contents_section_slug')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">{{ __('app.Section slug hint') }}</div>
                         </div>
-                        @php
-                            $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
-                            $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
-                        @endphp
-                        <hr class="my-2">
-                        <h6 class="mb-2">{{ __('app.Content form languages') }}</h6>
-                        <p class="form-text mb-3">{{ __('app.Content form languages hint') }}</p>
-                        <div class="row g-2 mb-4">
-                            @foreach($localeLabels as $localeCode => $localeLabel)
-                                <div class="col-6 col-md-4 col-lg-3">
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" id="content_locale_{{ $localeCode }}" name="content_locales[]" value="{{ $localeCode }}"
-                                            @checked(in_array($localeCode, old('content_locales', $mergedLocales), true))>
-                                        <label class="form-check-label" for="content_locale_{{ $localeCode }}">{{ $localeLabel }}</label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="content-options-secondary" class="card mb-3 d-none">
+                <div class="card-body">
+                    @php
+                        $storedCoverVariants = is_array($categoryData['cover']['variants'] ?? null) ? $categoryData['cover']['variants'] : [];
+                        $presetVariantLabels = [
+                            'logo_strip' => 'Logo strip',
+                            'thumb' => 'Thumbnail',
+                            'hero' => 'Hero',
+                            'square' => 'Square',
+                            'og' => 'Open Graph',
+                            'web' => 'Web',
+                        ];
+                        $presetVariantDefaults = [
+                            'logo_strip' => ['width' => 100, 'height' => 60, 'fit' => 'contain'],
+                            'thumb' => ['width' => 320, 'height' => 320, 'fit' => 'crop'],
+                            'hero' => ['width' => 1600, 'height' => 900, 'fit' => 'crop'],
+                            'square' => ['width' => 800, 'height' => 800, 'fit' => 'crop'],
+                            'og' => ['width' => 1200, 'height' => 630, 'fit' => 'crop'],
+                            'web' => ['width' => 1400, 'height' => 1400, 'fit' => 'max'],
+                        ];
+                        $storedCustomVariantKey = collect(array_keys($storedCoverVariants))
+                            ->first(fn($k) => ! array_key_exists($k, $presetVariantLabels));
+                        $customVariantKey = 'custom';
+                        $customVariantEnabledByDefault = $storedCustomVariantKey !== null;
+                        $customVariantEnabled = in_array($customVariantKey, old('cover_variants', $customVariantEnabledByDefault ? [$customVariantKey] : []), true)
+                            || (is_array(old('cover_variants')) && in_array($customVariantKey, old('cover_variants', []), true));
+                    @endphp
+                    <h6 class="mb-2">Cover variants</h6>
+                    <p class="form-text mb-3">Select predefined variants and optional custom variant. Use fit = contain/max for logos to avoid cropping.</p>
+                    <div class="row g-3 mb-2">
+                        @foreach($presetVariantLabels as $variantKey => $variantLabel)
+                            @php
+                                $enabledByDefault = array_key_exists($variantKey, $storedCoverVariants);
+                                $enabled = in_array($variantKey, old('cover_variants', $enabledByDefault ? [$variantKey] : []), true)
+                                    || (is_array(old('cover_variants')) && in_array($variantKey, old('cover_variants', []), true));
+                                $variantCfg = is_array($storedCoverVariants[$variantKey] ?? null) ? $storedCoverVariants[$variantKey] : [];
+                                $variantWidth = old("cover_variant_width.{$variantKey}", $variantCfg['width'] ?? $presetVariantDefaults[$variantKey]['width']);
+                                $variantHeight = old("cover_variant_height.{$variantKey}", $variantCfg['height'] ?? $presetVariantDefaults[$variantKey]['height']);
+                                $variantFit = old("cover_variant_fit.{$variantKey}", $variantCfg['fit'] ?? $presetVariantDefaults[$variantKey]['fit']);
+                            @endphp
+                            <div class="col-12 border rounded p-2">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="cover_variant_{{ $variantKey }}" name="cover_variants[]" value="{{ $variantKey }}" @checked($enabled)>
+                                    <label class="form-check-label" for="cover_variant_{{ $variantKey }}">{{ $variantLabel }} ({{ $variantKey }})</label>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <input type="number" class="form-control" name="cover_variant_width[{{ $variantKey }}]" value="{{ $variantWidth }}" min="1" max="10000" placeholder="Width">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" class="form-control" name="cover_variant_height[{{ $variantKey }}]" value="{{ $variantHeight }}" min="1" max="10000" placeholder="Height">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select class="form-select" name="cover_variant_fit[{{ $variantKey }}]">
+                                            <option value="crop" @selected($variantFit === 'crop')>crop</option>
+                                            <option value="contain" @selected($variantFit === 'contain')>contain</option>
+                                            <option value="max" @selected($variantFit === 'max')>max</option>
+                                            <option value="stretch" @selected($variantFit === 'stretch')>stretch</option>
+                                        </select>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
-
-                        <hr class="my-2">
-                        @php
-                            $contentFormFields = \App\Support\ContentsSectionCategoryData::mergeContentFormVisibility($categoryData['content_form'] ?? null);
-                        @endphp
-                        <h6 class="mb-2">{{ __('app.Content form visibility') }}</h6>
-                        <p class="form-text mb-3">{{ __('app.Content form visibility hint') }}</p>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_title]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_title" name="content_form[show_title]" value="1"
-                                        @checked(old('content_form.show_title', $contentFormFields['show_title']))>
-                                    <label class="form-check-label" for="cff_show_title">{{ __('app.Show title on content form') }}</label>
-                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_main_content]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_main_content" name="content_form[show_main_content]" value="1"
-                                        @checked(old('content_form.show_main_content', $contentFormFields['show_main_content']))>
-                                    <label class="form-check-label" for="cff_show_main_content">{{ __('app.Show main content on content form') }}</label>
-                                </div>
+                        @endforeach
+                        <div class="col-12 border rounded p-2">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="cover_variant_custom" name="cover_variants[]" value="custom" @checked($customVariantEnabled)>
+                                <label class="form-check-label" for="cover_variant_custom">Custom (custom)</label>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_subtitle]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_subtitle" name="content_form[show_subtitle]" value="1"
-                                        @checked(old('content_form.show_subtitle', $contentFormFields['show_subtitle']))>
-                                    <label class="form-check-label" for="cff_show_subtitle">{{ __('app.Show subtitle on content form') }}</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="number" class="form-control" name="cover_custom_variant_width" value="{{ old('cover_custom_variant_width', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['width'] ?? '') : '') }}" min="1" max="10000" placeholder="Width">
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_url]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_url" name="content_form[show_url]" value="1"
-                                        @checked(old('content_form.show_url', $contentFormFields['show_url']))>
-                                    <label class="form-check-label" for="cff_show_url">{{ __('app.Show URL on content form') }}</label>
+                                <div class="col-md-4">
+                                    <input type="number" class="form-control" name="cover_custom_variant_height" value="{{ old('cover_custom_variant_height', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['height'] ?? '') : '') }}" min="1" max="10000" placeholder="Height">
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_featured]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_featured" name="content_form[show_featured]" value="1"
-                                        @checked(old('content_form.show_featured', $contentFormFields['show_featured']))>
-                                    <label class="form-check-label" for="cff_show_featured">{{ __('app.Show featured options on content form') }}</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_seo]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_seo" name="content_form[show_seo]" value="1"
-                                        @checked(old('content_form.show_seo', $contentFormFields['show_seo']))>
-                                    <label class="form-check-label" for="cff_show_seo">{{ __('app.Show SEO block on content form') }}</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="hidden" name="content_form[show_multimedia]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cff_show_multimedia" name="content_form[show_multimedia]" value="1"
-                                        @checked(old('content_form.show_multimedia', $contentFormFields['show_multimedia']))>
-                                    <label class="form-check-label" for="cff_show_multimedia">{{ __('app.Show multimedia on content form') }}</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr class="my-2">
-                        @php
-                            $storedCoverVariants = is_array($categoryData['cover']['variants'] ?? null) ? $categoryData['cover']['variants'] : [];
-                            $presetVariantLabels = [
-                                'logo_strip' => 'Logo strip',
-                                'thumb' => 'Thumbnail',
-                                'hero' => 'Hero',
-                                'square' => 'Square',
-                                'og' => 'Open Graph',
-                                'web' => 'Web',
-                            ];
-                            $presetVariantDefaults = [
-                                'logo_strip' => ['width' => 100, 'height' => 60, 'fit' => 'contain'],
-                                'thumb' => ['width' => 320, 'height' => 320, 'fit' => 'crop'],
-                                'hero' => ['width' => 1600, 'height' => 900, 'fit' => 'crop'],
-                                'square' => ['width' => 800, 'height' => 800, 'fit' => 'crop'],
-                                'og' => ['width' => 1200, 'height' => 630, 'fit' => 'crop'],
-                                'web' => ['width' => 1400, 'height' => 1400, 'fit' => 'max'],
-                            ];
-                            $storedCustomVariantKey = collect(array_keys($storedCoverVariants))
-                                ->first(fn($k) => ! array_key_exists($k, $presetVariantLabels));
-                        @endphp
-                        <div class="row g-3 mb-2">
-                            <div class="col-12">
-                                <h6 class="mb-2">Cover variants</h6>
-                                <p class="form-text mb-3">Select predefined variants and optional custom variant. Use fit = contain/max for logos to avoid cropping.</p>
-                                <div class="row g-3">
-                                    @foreach($presetVariantLabels as $variantKey => $variantLabel)
-                                        @php
-                                            $enabledByDefault = array_key_exists($variantKey, $storedCoverVariants);
-                                            $enabled = in_array($variantKey, old('cover_variants', $enabledByDefault ? [$variantKey] : []), true)
-                                                || (is_array(old('cover_variants')) && in_array($variantKey, old('cover_variants', []), true));
-                                            $variantCfg = is_array($storedCoverVariants[$variantKey] ?? null) ? $storedCoverVariants[$variantKey] : [];
-                                            $variantWidth = old("cover_variant_width.{$variantKey}", $variantCfg['width'] ?? $presetVariantDefaults[$variantKey]['width']);
-                                            $variantHeight = old("cover_variant_height.{$variantKey}", $variantCfg['height'] ?? $presetVariantDefaults[$variantKey]['height']);
-                                            $variantFit = old("cover_variant_fit.{$variantKey}", $variantCfg['fit'] ?? $presetVariantDefaults[$variantKey]['fit']);
-                                        @endphp
-                                        <div class="col-12 border rounded p-2">
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" type="checkbox" id="cover_variant_{{ $variantKey }}" name="cover_variants[]" value="{{ $variantKey }}" @checked($enabled)>
-                                                <label class="form-check-label" for="cover_variant_{{ $variantKey }}">{{ $variantLabel }} ({{ $variantKey }})</label>
-                                            </div>
-                                            <div class="row g-2">
-                                                <div class="col-md-4">
-                                                    <input type="number" class="form-control" name="cover_variant_width[{{ $variantKey }}]" value="{{ $variantWidth }}" min="1" max="10000" placeholder="Width">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <input type="number" class="form-control" name="cover_variant_height[{{ $variantKey }}]" value="{{ $variantHeight }}" min="1" max="10000" placeholder="Height">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <select class="form-select" name="cover_variant_fit[{{ $variantKey }}]">
-                                                        <option value="crop" @selected($variantFit === 'crop')>crop</option>
-                                                        <option value="contain" @selected($variantFit === 'contain')>contain</option>
-                                                        <option value="max" @selected($variantFit === 'max')>max</option>
-                                                        <option value="stretch" @selected($variantFit === 'stretch')>stretch</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                    <div class="col-12 border rounded p-2">
-                                        <h6 class="mb-2">Custom variant</h6>
-                                        <div class="row g-2">
-                                            <div class="col-md-3">
-                                                <input type="text" class="form-control" name="cover_custom_variant_key" value="{{ old('cover_custom_variant_key', $storedCustomVariantKey ?? '') }}" placeholder="Key (example: homepage_logo)">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <input type="number" class="form-control" name="cover_custom_variant_width" value="{{ old('cover_custom_variant_width', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['width'] ?? '') : '') }}" min="1" max="10000" placeholder="Width">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <input type="number" class="form-control" name="cover_custom_variant_height" value="{{ old('cover_custom_variant_height', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['height'] ?? '') : '') }}" min="1" max="10000" placeholder="Height">
-                                            </div>
-                                            <div class="col-md-3">
-                                                @php
-                                                    $customFit = old('cover_custom_variant_fit', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['fit'] ?? 'max') : 'max');
-                                                @endphp
-                                                <select class="form-select" name="cover_custom_variant_fit">
-                                                    <option value="crop" @selected($customFit === 'crop')>crop</option>
-                                                    <option value="contain" @selected($customFit === 'contain')>contain</option>
-                                                    <option value="max" @selected($customFit === 'max')>max</option>
-                                                    <option value="stretch" @selected($customFit === 'stretch')>stretch</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="col-md-4">
+                                    @php
+                                        $customFit = old('cover_custom_variant_fit', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['fit'] ?? 'max') : 'max');
+                                    @endphp
+                                    <select class="form-select" name="cover_custom_variant_fit">
+                                        <option value="crop" @selected($customFit === 'crop')>crop</option>
+                                        <option value="contain" @selected($customFit === 'contain')>contain</option>
+                                        <option value="max" @selected($customFit === 'max')>max</option>
+                                        <option value="stretch" @selected($customFit === 'stretch')>stretch</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="multimedia-options" class="border rounded p-3 mb-3 d-none">
+                </div>
+            </div>
+
+            <div id="multimedia-options" class="border rounded p-3 mb-3 d-none">
                         <h6 class="mb-3">{{ __('app.Multimedia Settings') }}</h6>
                         <div class="row">
                             <div class="col-md-6">
@@ -443,32 +365,120 @@
                             @enderror
                             <div class="form-text">{{ __('app.Used for image, thumbnail, and poster resizing.') }}</div>
                         </div>
-                    </div>
+            </div>
 
-                    <div class="row mb-3 d-none">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="tags" class="form-label">Etiquetas</label>
-                                <select id="tags" name="tags[]" class="form-select select2" multiple>
-                                    @php
-                                        $selectedTags = old('tags', isset($category) ? $category->tags->pluck('name')->toArray() : []);
-                                    @endphp
-                                    @foreach($tags as $tag)
-                                        <option value="{{ $tag->name }}" {{ in_array($tag->name, $selectedTags, true) ? 'selected' : '' }}>
-                                            {{ $tag->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('tags')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+            <div class="row mb-3 d-none">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="tags" class="form-label">Etiquetas</label>
+                        <select id="tags" name="tags[]" class="form-select select2" multiple>
+                            @php
+                                $selectedTags = old('tags', isset($category) ? $category->tags->pluck('name')->toArray() : []);
+                            @endphp
+                            @foreach($tags as $tag)
+                                <option value="{{ $tag->name }}" {{ in_array($tag->name, $selectedTags, true) ? 'selected' : '' }}>
+                                    {{ $tag->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('tags')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-1 mb-3">
+                <button type="submit" class="btn btn-primary me-2">{{ __('app.Save') }}</button>
+                <a href="{{ route('categories.index', array_filter(['module_id' => $indexReturnModuleId])) }}" class="btn btn-outline-secondary">{{ __('app.Cancel') }}</a>
+            </div>
+                </div>
+
+                <div class="col-12 col-xl-4">
+                    <div id="content-options" class="card mb-3 d-none">
+                        <div class="card-body">
+                            <input type="hidden" name="content_locales_present" value="1">
+                            @php
+                                $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
+                                $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
+                                $contentFormFields = \App\Support\ContentsSectionCategoryData::mergeContentFormVisibility($categoryData['content_form'] ?? null);
+                            @endphp
+                            <h6 class="mb-2">{{ __('app.Content form visibility') }}</h6>
+                            <p class="form-text mb-3">{{ __('app.Content form visibility hint') }}</p>
+                            <div class="row g-3 text-start mb-4">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_title]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_title" name="content_form[show_title]" value="1"
+                                            @checked(old('content_form.show_title', $contentFormFields['show_title']))>
+                                        <label class="form-check-label" for="cff_show_title">{{ __('app.Show title on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_subtitle]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_subtitle" name="content_form[show_subtitle]" value="1"
+                                            @checked(old('content_form.show_subtitle', $contentFormFields['show_subtitle']))>
+                                        <label class="form-check-label" for="cff_show_subtitle">{{ __('app.Show subtitle on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_main_content]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_main_content" name="content_form[show_main_content]" value="1"
+                                            @checked(old('content_form.show_main_content', $contentFormFields['show_main_content']))>
+                                        <label class="form-check-label" for="cff_show_main_content">{{ __('app.Show main content on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_featured]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_featured" name="content_form[show_featured]" value="1"
+                                            @checked(old('content_form.show_featured', $contentFormFields['show_featured']))>
+                                        <label class="form-check-label" for="cff_show_featured">{{ __('app.Show cover image options on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_url]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_url" name="content_form[show_url]" value="1"
+                                            @checked(old('content_form.show_url', $contentFormFields['show_url']))>
+                                        <label class="form-check-label" for="cff_show_url">{{ __('app.Show caption on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_seo]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_seo" name="content_form[show_seo]" value="1"
+                                            @checked(old('content_form.show_seo', $contentFormFields['show_seo']))>
+                                        <label class="form-check-label" for="cff_show_seo">{{ __('app.Show SEO block on content form') }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input type="hidden" name="content_form[show_multimedia]" value="0">
+                                        <input type="checkbox" class="form-check-input" id="cff_show_multimedia" name="content_form[show_multimedia]" value="1"
+                                            @checked(old('content_form.show_multimedia', $contentFormFields['show_multimedia']))>
+                                        <label class="form-check-label" for="cff_show_multimedia">{{ __('app.Show multimedia on content form') }}</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-2">
+                            <h6 class="mb-2">{{ __('app.Content form languages') }}</h6>
+                            <p class="form-text mb-3">{{ __('app.Content form languages hint') }}</p>
+                            <div class="row g-2 mb-4">
+                                @foreach($localeLabels as $localeCode => $localeLabel)
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="content_locale_{{ $localeCode }}" name="content_locales[]" value="{{ $localeCode }}"
+                                                @checked(in_array($localeCode, old('content_locales', $mergedLocales), true))>
+                                            <label class="form-check-label" for="content_locale_{{ $localeCode }}">{{ $localeLabel }}</label>
+                                        </div>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary me-2">{{ __('app.Save') }}</button>
-                        <a href="{{ route('categories.index', array_filter(['module_id' => $indexReturnModuleId])) }}" class="btn btn-outline-secondary">{{ __('app.Cancel') }}</a>
                     </div>
                 </div>
             </div>
@@ -605,6 +615,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentsModuleId = '{{ \App\Models\Module::where("key", "contents")->value("id") ?? "" }}';
     const multimediaOptions = document.getElementById('multimedia-options');
     const contentOptions = document.getElementById('content-options');
+    const contentPublicApiSection = document.getElementById('content-public-api-section');
+    const contentOptionsSecondary = document.getElementById('content-options-secondary');
     const contentOrderingSection = document.getElementById('content-ordering-section');
 
     function toggleModuleOptions() {
@@ -630,6 +642,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 contentOptions.classList.remove('d-none');
             } else {
                 contentOptions.classList.add('d-none');
+            }
+        }
+        if (contentPublicApiSection) {
+            if (showContentsOptions) {
+                contentPublicApiSection.classList.remove('d-none');
+            } else {
+                contentPublicApiSection.classList.add('d-none');
+            }
+        }
+        if (contentOptionsSecondary) {
+            if (showContentsOptions) {
+                contentOptionsSecondary.classList.remove('d-none');
+            } else {
+                contentOptionsSecondary.classList.add('d-none');
             }
         }
         if (contentOrderingSection) {

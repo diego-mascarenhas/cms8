@@ -138,7 +138,7 @@ class ContentController extends Controller
         }
 
         return redirect()
-            ->route('contents.index', ['section_id' => $content->section_category_id])
+            ->route('contents.show', $content->id)
             ->with('success', __('app.Content created successfully.'));
     }
 
@@ -278,7 +278,7 @@ class ContentController extends Controller
         }
 
         return redirect()
-            ->route('contents.index', ['section_id' => $content->section_category_id])
+            ->route('contents.show', $content->id)
             ->with('success', __('app.Content updated successfully.'));
     }
 

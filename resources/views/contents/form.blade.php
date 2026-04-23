@@ -45,7 +45,7 @@
 
 <div class="card mb-4">
     <h5 class="card-header">{{ isset($content) ? __('app.Edit Content') : __('app.Create Content') }}</h5>
-    <form class="card-body" action="{{ isset($content) ? route('contents.update', $content->id) : route('contents.store') }}" method="POST" enctype="multipart/form-data">
+    <form id="content-form" class="card-body" action="{{ isset($content) ? route('contents.update', $content->id) : route('contents.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         @if(isset($content))
             @method('PUT')
@@ -351,15 +351,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Update hidden inputs on form submit
-    document.querySelector('form').addEventListener('submit', function() {
-        availableLocales.forEach(function(locale) {
-            const inputId = '#content_' + locale;
-            const input = document.querySelector(inputId);
-            if (input && contentEditors[locale]) {
-                input.value = contentEditors[locale].root.innerHTML;
-            }
+    const contentForm = document.getElementById('content-form');
+    if (contentForm) {
+        contentForm.addEventListener('submit', function() {
+            availableLocales.forEach(function(locale) {
+                const inputId = '#content_' + locale;
+                const input = document.querySelector(inputId);
+                if (input && contentEditors[locale]) {
+                    input.value = contentEditors[locale].root.innerHTML;
+                }
+            });
         });
-    });
+    }
 
     @php
         $sectionCoverConfigMap = ($sectionCategories ?? collect())->mapWithKeys(function ($sectionCategory) {
