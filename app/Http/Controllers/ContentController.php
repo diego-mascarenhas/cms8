@@ -477,24 +477,40 @@ class ContentController extends Controller
     }
 
     /**
-     * @return array{max_width: int|null, max_height: int|null, crop: bool}
+     * @return array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}
      */
     private function resolveCoverSettings(Category $section): array
     {
         $coverData = is_array($section->data['cover'] ?? null) ? $section->data['cover'] : [];
+        $rawVariants = is_array($coverData['variants'] ?? null) ? $coverData['variants'] : [];
 
         $maxWidth = isset($coverData['max_width']) ? (int) $coverData['max_width'] : null;
         $maxHeight = isset($coverData['max_height']) ? (int) $coverData['max_height'] : null;
+        $variants = [];
+        foreach ($rawVariants as $variantKey => $variantCfg)
+        {
+            if (! is_string($variantKey) || ! is_array($variantCfg))
+            {
+                continue;
+            }
+
+            $variants[$variantKey] = [
+                'width' => isset($variantCfg['width']) ? (int) $variantCfg['width'] : null,
+                'height' => isset($variantCfg['height']) ? (int) $variantCfg['height'] : null,
+                'fit' => isset($variantCfg['fit']) && is_string($variantCfg['fit']) ? $variantCfg['fit'] : 'max',
+            ];
+        }
 
         return [
             'max_width' => $maxWidth ?: null,
             'max_height' => $maxHeight ?: null,
             'crop' => ! empty($coverData['crop']),
+            'variants' => $variants,
         ];
     }
 
     /**
-     * @param  array{max_width: int|null, max_height: int|null, crop: bool}  $settings
+     * @param  array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}  $settings
      * @return array<string, mixed>
      */
     private function storeCoverImage(UploadedFile $file, array $settings): array
@@ -540,6 +556,8 @@ class ContentController extends Controller
 
         [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);
 
+        $variantData = $this->storeCoverVariants($file, $settings, $basePath);
+
         return [
             'url' => asset('storage/'.$relativePath),
             'path' => $relativePath,
@@ -550,9 +568,77 @@ class ContentController extends Controller
             'max_width' => $maxWidth,
             'max_height' => $maxHeight,
             'crop' => $settings['crop'],
-            // Keep array ready for future derived assets.
-            'variants' => [],
+            'variants' => $variantData,
         ];
+    }
+
+    /**
+     * @param  array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}  $settings
+     * @return array<string, array<string, mixed>>
+     */
+    private function storeCoverVariants(UploadedFile $file, array $settings, string $basePath): array
+    {
+        $out = [];
+        $variants = $settings['variants'] ?? [];
+        foreach ($variants as $variantKey => $variantCfg)
+        {
+            $width = $variantCfg['width'] ?? null;
+            $height = $variantCfg['height'] ?? null;
+            if (! $width && ! $height)
+            {
+                continue;
+            }
+
+            $fit = is_string($variantCfg['fit'] ?? null) ? $variantCfg['fit'] : 'max';
+            $safeVariantKey = Str::slug((string) $variantKey, '_');
+            if ($safeVariantKey === '')
+            {
+                continue;
+            }
+
+            $filename = $safeVariantKey.'_'.Str::uuid().'.webp';
+            $relativePath = $basePath.'/variants/'.$filename;
+            $absolutePath = Storage::disk('public')->path($relativePath);
+            if (! is_dir(dirname($absolutePath)))
+            {
+                mkdir(dirname($absolutePath), 0775, true);
+            }
+
+            $image = Image::load($file->getRealPath());
+            $resolvedFit = match ($fit)
+            {
+                'crop' => Fit::Crop,
+                'contain' => Fit::Contain,
+                'stretch' => Fit::Stretch,
+                default => Fit::Max,
+            };
+
+            if ($width && $height)
+            {
+                $image->fit($resolvedFit, (int) $width, (int) $height);
+            } elseif ($width)
+            {
+                $image->width((int) $width);
+            } else
+            {
+                $image->height((int) $height);
+            }
+
+            $image->save($absolutePath);
+            [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);
+
+            $out[$safeVariantKey] = [
+                'url' => asset('storage/'.$relativePath),
+                'path' => $relativePath,
+                'width' => $storedWidth,
+                'height' => $storedHeight,
+                'fit' => $fit,
+                'size' => Storage::disk('public')->size($relativePath),
+                'mime_type' => 'image/webp',
+            ];
+        }
+
+        return $out;
     }
 
     /**
@@ -564,6 +650,16 @@ class ContentController extends Controller
         if (is_string($coverPath) && $coverPath !== '' && Storage::disk('public')->exists($coverPath))
         {
             Storage::disk('public')->delete($coverPath);
+        }
+
+        $variants = is_array($dataFields['cover']['variants'] ?? null) ? $dataFields['cover']['variants'] : [];
+        foreach ($variants as $variant)
+        {
+            $variantPath = is_array($variant) ? ($variant['path'] ?? null) : null;
+            if (is_string($variantPath) && $variantPath !== '' && Storage::disk('public')->exists($variantPath))
+            {
+                Storage::disk('public')->delete($variantPath);
+            }
         }
 
         unset($dataFields['cover']);

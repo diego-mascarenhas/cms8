@@ -130,6 +130,18 @@ class CategoryController extends Controller
             'cover_max_width' => 'nullable|integer|min:1|max:10000',
             'cover_max_height' => 'nullable|integer|min:1|max:10000',
             'cover_crop' => 'nullable|boolean',
+            'cover_variants' => 'nullable|array',
+            'cover_variants.*' => 'nullable|string|in:logo_strip,thumb,hero,square,og,web',
+            'cover_variant_fit' => 'nullable|array',
+            'cover_variant_fit.*' => 'nullable|string|in:crop,contain,max,stretch',
+            'cover_variant_width' => 'nullable|array',
+            'cover_variant_width.*' => 'nullable|integer|min:1|max:10000',
+            'cover_variant_height' => 'nullable|array',
+            'cover_variant_height.*' => 'nullable|integer|min:1|max:10000',
+            'cover_custom_variant_key' => 'nullable|string|max:50',
+            'cover_custom_variant_width' => 'nullable|integer|min:1|max:10000',
+            'cover_custom_variant_height' => 'nullable|integer|min:1|max:10000',
+            'cover_custom_variant_fit' => 'nullable|string|in:crop,contain,max,stretch',
         ]);
 
         // Check if parent belongs to the current team
@@ -276,14 +288,70 @@ class CategoryController extends Controller
             $coverMaxWidth = $request->filled('cover_max_width') ? (int) $request->input('cover_max_width') : null;
             $coverMaxHeight = $request->filled('cover_max_height') ? (int) $request->input('cover_max_height') : null;
             $coverCrop = $request->boolean('cover_crop');
-            if ($coverMaxWidth || $coverMaxHeight)
+            $variantDefaults = [
+                'logo_strip' => ['width' => 100, 'height' => 60, 'fit' => 'contain'],
+                'thumb' => ['width' => 320, 'height' => 320, 'fit' => 'crop'],
+                'hero' => ['width' => 1600, 'height' => 900, 'fit' => 'crop'],
+                'square' => ['width' => 800, 'height' => 800, 'fit' => 'crop'],
+                'og' => ['width' => 1200, 'height' => 630, 'fit' => 'crop'],
+                'web' => ['width' => 1400, 'height' => 1400, 'fit' => 'max'],
+            ];
+            $selectedVariants = is_array($request->input('cover_variants')) ? $request->input('cover_variants') : [];
+            $variantFits = is_array($request->input('cover_variant_fit')) ? $request->input('cover_variant_fit') : [];
+            $variantWidths = is_array($request->input('cover_variant_width')) ? $request->input('cover_variant_width') : [];
+            $variantHeights = is_array($request->input('cover_variant_height')) ? $request->input('cover_variant_height') : [];
+            $coverVariants = [];
+
+            foreach ($selectedVariants as $variantKey)
+            {
+                if (! is_string($variantKey) || ! isset($variantDefaults[$variantKey]))
+                {
+                    continue;
+                }
+
+                $defaultCfg = $variantDefaults[$variantKey];
+                $width = isset($variantWidths[$variantKey]) && $variantWidths[$variantKey] !== ''
+                    ? (int) $variantWidths[$variantKey]
+                    : $defaultCfg['width'];
+                $height = isset($variantHeights[$variantKey]) && $variantHeights[$variantKey] !== ''
+                    ? (int) $variantHeights[$variantKey]
+                    : $defaultCfg['height'];
+                $fit = isset($variantFits[$variantKey]) && is_string($variantFits[$variantKey]) && $variantFits[$variantKey] !== ''
+                    ? $variantFits[$variantKey]
+                    : $defaultCfg['fit'];
+
+                $coverVariants[$variantKey] = [
+                    'width' => $width,
+                    'height' => $height,
+                    'fit' => $fit,
+                ];
+            }
+
+            $customVariantKey = trim((string) $request->input('cover_custom_variant_key', ''));
+            if ($customVariantKey !== '')
+            {
+                $customSlug = Str::slug($customVariantKey, '_');
+                $customWidth = $request->filled('cover_custom_variant_width') ? (int) $request->input('cover_custom_variant_width') : null;
+                $customHeight = $request->filled('cover_custom_variant_height') ? (int) $request->input('cover_custom_variant_height') : null;
+                $customFit = trim((string) $request->input('cover_custom_variant_fit', 'max'));
+
+                if ($customSlug !== '' && ($customWidth || $customHeight))
+                {
+                    $coverVariants[$customSlug] = [
+                        'width' => $customWidth,
+                        'height' => $customHeight,
+                        'fit' => in_array($customFit, ['crop', 'contain', 'max', 'stretch'], true) ? $customFit : 'max',
+                    ];
+                }
+            }
+
+            if ($coverMaxWidth || $coverMaxHeight || $coverVariants !== [])
             {
                 $categoryData['cover'] = array_filter([
                     'max_width' => $coverMaxWidth,
                     'max_height' => $coverMaxHeight,
                     'crop' => $coverCrop,
-                    // Placeholder for future extension.
-                    'variants' => [],
+                    'variants' => $coverVariants,
                 ], function ($value)
                 {
                     return $value !== null;

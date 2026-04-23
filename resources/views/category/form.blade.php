@@ -165,10 +165,24 @@
                 <div class="card-body">
                     <div id="content-options" class="border rounded p-3 mb-3 d-none">
                         <input type="hidden" name="content_locales_present" value="1">
+                        <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
+                        <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
+                        <div class="row g-3 mb-2">
+                            <div class="col-12">
+                                <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
+                                <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
+                                    value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
+                                @error('contents_section_slug')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">{{ __('app.Section slug hint') }}</div>
+                            </div>
+                        </div>
                         @php
                             $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
                             $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
                         @endphp
+                        <hr class="my-2">
                         <h6 class="mb-2">{{ __('app.Content form languages') }}</h6>
                         <p class="form-text mb-3">{{ __('app.Content form languages hint') }}</p>
                         <div class="row g-2 mb-4">
@@ -250,62 +264,90 @@
 
                         <hr class="my-2">
                         @php
-                            $pageSectionsStored = $categoryData['page_sections'] ?? [];
-                            $historyTimelineChecked = old('page_sections.history_timeline', $pageSectionsStored['history_timeline'] ?? false);
+                            $storedCoverVariants = is_array($categoryData['cover']['variants'] ?? null) ? $categoryData['cover']['variants'] : [];
+                            $presetVariantLabels = [
+                                'logo_strip' => 'Logo strip',
+                                'thumb' => 'Thumbnail',
+                                'hero' => 'Hero',
+                                'square' => 'Square',
+                                'og' => 'Open Graph',
+                                'web' => 'Web',
+                            ];
+                            $presetVariantDefaults = [
+                                'logo_strip' => ['width' => 100, 'height' => 60, 'fit' => 'contain'],
+                                'thumb' => ['width' => 320, 'height' => 320, 'fit' => 'crop'],
+                                'hero' => ['width' => 1600, 'height' => 900, 'fit' => 'crop'],
+                                'square' => ['width' => 800, 'height' => 800, 'fit' => 'crop'],
+                                'og' => ['width' => 1200, 'height' => 630, 'fit' => 'crop'],
+                                'web' => ['width' => 1400, 'height' => 1400, 'fit' => 'max'],
+                            ];
+                            $storedCustomVariantKey = collect(array_keys($storedCoverVariants))
+                                ->first(fn($k) => ! array_key_exists($k, $presetVariantLabels));
                         @endphp
-                        <h6 class="mb-2">{{ __('app.External site and API') }}</h6>
-                        <p class="form-text mb-3">{{ __('app.External site and API contents hint') }}</p>
                         <div class="row g-3 mb-2">
-                            <div class="col-md-6">
-                                <label for="contents_section_slug" class="form-label">{{ __('app.Section slug') }}</label>
-                                <input type="text" class="form-control @error('contents_section_slug') is-invalid @enderror" id="contents_section_slug" name="contents_section_slug"
-                                    value="{{ old('contents_section_slug', $categoryData['slug'] ?? '') }}" placeholder="oba-about" autocomplete="off">
-                                @error('contents_section_slug')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">{{ __('app.Section slug hint') }}</div>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="cover_max_width" class="form-label">Cover max width (px)</label>
-                                <input type="number" class="form-control @error('cover_max_width') is-invalid @enderror" id="cover_max_width" name="cover_max_width"
-                                    value="{{ old('cover_max_width', $categoryData['cover']['max_width'] ?? '') }}" min="1" max="10000">
-                                @error('cover_max_width')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-3">
-                                <label for="cover_max_height" class="form-label">Cover max height (px)</label>
-                                <input type="number" class="form-control @error('cover_max_height') is-invalid @enderror" id="cover_max_height" name="cover_max_height"
-                                    value="{{ old('cover_max_height', $categoryData['cover']['max_height'] ?? '') }}" min="1" max="10000">
-                                @error('cover_max_height')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="history_section_heading" class="form-label">{{ __('app.History section heading') }}</label>
-                                <input type="text" class="form-control @error('history_section_heading') is-invalid @enderror" id="history_section_heading" name="history_section_heading"
-                                    value="{{ old('history_section_heading', $categoryData['history']['heading'] ?? '') }}" maxlength="255">
-                                @error('history_section_heading')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
                             <div class="col-12">
-                                <div class="form-check">
-                                    <input type="hidden" name="cover_crop" value="0">
-                                    <input type="checkbox" class="form-check-input" id="cover_crop" name="cover_crop" value="1"
-                                        @checked(filter_var(old('cover_crop', $categoryData['cover']['crop'] ?? false), FILTER_VALIDATE_BOOLEAN))>
-                                    <label class="form-check-label" for="cover_crop">Crop cover image to fit max dimensions</label>
+                                <h6 class="mb-2">Cover variants</h6>
+                                <p class="form-text mb-3">Select predefined variants and optional custom variant. Use fit = contain/max for logos to avoid cropping.</p>
+                                <div class="row g-3">
+                                    @foreach($presetVariantLabels as $variantKey => $variantLabel)
+                                        @php
+                                            $enabledByDefault = array_key_exists($variantKey, $storedCoverVariants);
+                                            $enabled = in_array($variantKey, old('cover_variants', $enabledByDefault ? [$variantKey] : []), true)
+                                                || (is_array(old('cover_variants')) && in_array($variantKey, old('cover_variants', []), true));
+                                            $variantCfg = is_array($storedCoverVariants[$variantKey] ?? null) ? $storedCoverVariants[$variantKey] : [];
+                                            $variantWidth = old("cover_variant_width.{$variantKey}", $variantCfg['width'] ?? $presetVariantDefaults[$variantKey]['width']);
+                                            $variantHeight = old("cover_variant_height.{$variantKey}", $variantCfg['height'] ?? $presetVariantDefaults[$variantKey]['height']);
+                                            $variantFit = old("cover_variant_fit.{$variantKey}", $variantCfg['fit'] ?? $presetVariantDefaults[$variantKey]['fit']);
+                                        @endphp
+                                        <div class="col-12 border rounded p-2">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="cover_variant_{{ $variantKey }}" name="cover_variants[]" value="{{ $variantKey }}" @checked($enabled)>
+                                                <label class="form-check-label" for="cover_variant_{{ $variantKey }}">{{ $variantLabel }} ({{ $variantKey }})</label>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-md-4">
+                                                    <input type="number" class="form-control" name="cover_variant_width[{{ $variantKey }}]" value="{{ $variantWidth }}" min="1" max="10000" placeholder="Width">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="number" class="form-control" name="cover_variant_height[{{ $variantKey }}]" value="{{ $variantHeight }}" min="1" max="10000" placeholder="Height">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <select class="form-select" name="cover_variant_fit[{{ $variantKey }}]">
+                                                        <option value="crop" @selected($variantFit === 'crop')>crop</option>
+                                                        <option value="contain" @selected($variantFit === 'contain')>contain</option>
+                                                        <option value="max" @selected($variantFit === 'max')>max</option>
+                                                        <option value="stretch" @selected($variantFit === 'stretch')>stretch</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                    <div class="col-12 border rounded p-2">
+                                        <h6 class="mb-2">Custom variant</h6>
+                                        <div class="row g-2">
+                                            <div class="col-md-3">
+                                                <input type="text" class="form-control" name="cover_custom_variant_key" value="{{ old('cover_custom_variant_key', $storedCustomVariantKey ?? '') }}" placeholder="Key (example: homepage_logo)">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input type="number" class="form-control" name="cover_custom_variant_width" value="{{ old('cover_custom_variant_width', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['width'] ?? '') : '') }}" min="1" max="10000" placeholder="Width">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input type="number" class="form-control" name="cover_custom_variant_height" value="{{ old('cover_custom_variant_height', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['height'] ?? '') : '') }}" min="1" max="10000" placeholder="Height">
+                                            </div>
+                                            <div class="col-md-3">
+                                                @php
+                                                    $customFit = old('cover_custom_variant_fit', $storedCustomVariantKey ? ($storedCoverVariants[$storedCustomVariantKey]['fit'] ?? 'max') : 'max');
+                                                @endphp
+                                                <select class="form-select" name="cover_custom_variant_fit">
+                                                    <option value="crop" @selected($customFit === 'crop')>crop</option>
+                                                    <option value="contain" @selected($customFit === 'contain')>contain</option>
+                                                    <option value="max" @selected($customFit === 'max')>max</option>
+                                                    <option value="stretch" @selected($customFit === 'stretch')>stretch</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-text">When disabled, image is resized proportionally without forced crop.</div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input type="hidden" name="page_sections[history_timeline]" value="0">
-                                    <input type="checkbox" class="form-check-input" id="page_sections_history_timeline" name="page_sections[history_timeline]" value="1"
-                                        @checked(filter_var($historyTimelineChecked, FILTER_VALIDATE_BOOLEAN))>
-                                    <label class="form-check-label" for="page_sections_history_timeline">{{ __('app.Enable history timeline') }}</label>
-                                </div>
-                                <div class="form-text">{{ __('app.Enable history timeline hint') }}</div>
                             </div>
                         </div>
                     </div>
