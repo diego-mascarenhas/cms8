@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
 use App\Models\Multimedia;
+use App\Models\Team;
 use App\Support\ContentsSectionCategoryData;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
@@ -501,7 +502,10 @@ class ContentController extends Controller
         $extension = strtolower((string) $file->getClientOriginalExtension());
         $safeExtension = $extension !== '' ? $extension : 'jpg';
         $filename = Str::uuid()->toString().'.'.$safeExtension;
-        $relativePath = 'contents/covers/'.$filename;
+        $teamId = Auth::user()?->currentTeam?->id;
+        $teamHash = $teamId ? Team::generateTeamHash($teamId) : 'default';
+        $basePath = "contents/{$teamHash}/covers";
+        $relativePath = $basePath.'/'.$filename;
         $absolutePath = Storage::disk('public')->path($relativePath);
 
         if (! is_dir(dirname($absolutePath)))
@@ -531,7 +535,7 @@ class ContentController extends Controller
             $image->save($absolutePath);
         } else
         {
-            Storage::disk('public')->putFileAs('contents/covers', $file, $filename);
+            Storage::disk('public')->putFileAs($basePath, $file, $filename);
         }
 
         [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class TeamContentController extends Controller
 {
@@ -680,7 +681,7 @@ class TeamContentController extends Controller
         }
 
         return [
-            'url' => $cover['url'] ?? null,
+            'url' => self::resolveAbsoluteCoverUrl($cover),
             'width' => $cover['width'] ?? null,
             'height' => $cover['height'] ?? null,
             'mime_type' => $cover['mime_type'] ?? null,
@@ -690,5 +691,35 @@ class TeamContentController extends Controller
             'crop' => $cover['crop'] ?? false,
             'variants' => is_array($cover['variants'] ?? null) ? $cover['variants'] : [],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $cover
+     */
+    private static function resolveAbsoluteCoverUrl(array $cover): ?string
+    {
+        $url = isset($cover['url']) && is_string($cover['url']) ? trim($cover['url']) : '';
+        if ($url !== '')
+        {
+            if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+            {
+                return $url;
+            }
+
+            if (str_starts_with($url, '/'))
+            {
+                return URL::to($url);
+            }
+
+            return URL::to('/'.ltrim($url, '/'));
+        }
+
+        $path = isset($cover['path']) && is_string($cover['path']) ? trim($cover['path']) : '';
+        if ($path === '')
+        {
+            return null;
+        }
+
+        return URL::to('/storage/'.ltrim($path, '/'));
     }
 }
