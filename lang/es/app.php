@@ -188,6 +188,8 @@ return [
     'Edit Content' => 'Editar Contenido',
     'New Content' => 'Nuevo Contenido',
     'Manage website contents' => 'Gestionar contenidos del sitio web',
+    'Team contents API cache generation hint' => 'Generación de caché del listado GET /api/team/contents para este equipo. Aumenta al cambiar contenidos o categorías de sección del módulo Contenidos.',
+    'Contents API cache version' => 'Versión :n',
     'Select Category' => 'Seleccionar Categoría',
     'Section' => 'Sección',
     'Select Section' => 'Seleccionar Sección',

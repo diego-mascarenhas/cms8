@@ -69,6 +69,8 @@ return [
 
     'Section category data' => 'Section category data',
     'For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.' => 'For the Contents module, each section is a category. Configure it under Categories for your team; the JSON field stores builder metadata consumed by external sites via this API.',
+    'Team contents API cache generation hint' => 'GET /api/team/contents list cache generation for this team. Increments when contents or contents section categories change.',
+    'Contents API cache version' => 'Version :n',
     'Typical keys in section_category.data' => 'Typical keys in section_category.data',
     'Stable identifier for filtering (e.g. oba-about)' => 'Stable identifier for filtering (e.g. oba-about)',
     'Flags such as history_timeline to toggle parts of a page' => 'Flags such as history_timeline to toggle parts of a page',
