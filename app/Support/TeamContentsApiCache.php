@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Per-team generation counter for GET /api/team/contents index responses.
- * Works with any Laravel cache store that supports {@see Cache::increment()} (file, database, redis, …).
+ *
+ * Uses get + forever (not {@see Cache::increment}) because the database cache
+ * driver returns false and writes nothing when incrementing a missing key.
  */
 class TeamContentsApiCache
 {
@@ -28,7 +30,9 @@ class TeamContentsApiCache
             return;
         }
 
-        Cache::increment(self::generationCacheKey($teamId));
+        $key = self::generationCacheKey($teamId);
+        $next = (int) Cache::get($key, 0) + 1;
+        Cache::forever($key, $next);
     }
 
     /**
