@@ -481,22 +481,49 @@ class SyncStripeInvoicesCommand extends Command
 
             $invoices = $client->invoices->all($params);
             $page = $invoices->toArray();
-            $data = is_array($page) ? ($page['data'] ?? []) : [];
+            $raw = is_array($page) ? ($page['data'] ?? []) : [];
             $hasMoreInWindow = (bool) ($page['has_more'] ?? false);
             $pageIndex++;
 
-            if (! is_array($data) || $data === [])
+            if (! is_array($raw) || $raw === [])
             {
                 $windowFinished = ! $hasMoreInWindow;
                 break;
             }
 
-            foreach ($data as $row)
+            $rawLastCursor = $this->lastStripeListItemId($raw);
+            $data = array_values(array_filter($raw, 'is_array'));
+            if ($data === [])
             {
-                if (! is_array($row))
+                $this->warn("Team {$teamId}: page had no valid invoice array rows, skipping page.");
+                if (! $hasMoreInWindow)
                 {
-                    continue;
+                    $windowFinished = true;
+                } elseif ($rawLastCursor === null)
+                {
+                    $this->warn("Team {$teamId}: could not read cursor id for pagination; stop to avoid a loop.");
+                    break;
+                } else
+                {
+                    $pageStartingAfter = $rawLastCursor;
                 }
+                continue;
+            }
+
+            $remainingSlots = $maxPerTeam - $synced;
+            if ($remainingSlots <= 0)
+            {
+                $reachedRunLimit = true;
+                break;
+            }
+
+            $take = min($remainingSlots, count($data));
+            $apiOrderSlice = array_slice($data, 0, $take);
+            $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
+            $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
+
+            foreach ($toUpsert as $row)
+            {
                 if ($synced >= $maxPerTeam)
                 {
                     $reachedRunLimit = true;
@@ -514,6 +541,20 @@ class SyncStripeInvoicesCommand extends Command
 
             if ($reachedRunLimit)
             {
+                if ($sliceLastCursor !== null)
+                {
+                    $lastId = $sliceLastCursor;
+                }
+                break;
+            }
+
+            if ($take < count($data))
+            {
+                $reachedRunLimit = true;
+                if ($sliceLastCursor !== null)
+                {
+                    $lastId = $sliceLastCursor;
+                }
                 break;
             }
 
@@ -523,14 +564,14 @@ class SyncStripeInvoicesCommand extends Command
                 break;
             }
 
-            if ($lastId === null || $lastId === '')
+            if ($rawLastCursor === null)
             {
                 $this->warn("Team {$teamId}: could not read last invoice id for pagination; stop to avoid a loop.");
                 $windowFinished = ! $hasMoreInWindow;
                 break;
             }
 
-            $pageStartingAfter = $lastId;
+            $pageStartingAfter = $rawLastCursor;
         }
 
         $statusLine = "Team {$teamId}: backfill status window {$label}, pages={$pageIndex}, synced in this run={$synced}, has_more in window=".($hasMoreInWindow ? 'yes' : 'no');
@@ -628,6 +669,60 @@ class SyncStripeInvoicesCommand extends Command
         return $a->gt($b) ? $a->copy() : $b->copy();
     }
 
+    /**
+     * Last object on a Stripe list page; used for starting_after cursors.
+     *
+     * @param  array<int, mixed>  $data
+     */
+    private function lastStripeListItemId(array $data): ?string
+    {
+        if ($data === [])
+        {
+            return null;
+        }
+        $last = $data[array_key_last($data)];
+        if (! is_array($last))
+        {
+            return null;
+        }
+        $id = trim((string) ($last['id'] ?? ''));
+
+        return $id === '' ? null : $id;
+    }
+
+    /**
+     * Sort invoice payloads for upsert so DB row ids (insert order) follow creation time
+     * within a Stripe list slice. Stripe returns newest first; this reverses for writes only.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function sortInvoicePayloadsOldestFirst(array $rows): array
+    {
+        if ($rows === [])
+        {
+            return [];
+        }
+        usort(
+            $rows,
+            function (array $a, array $b): int {
+                $ac = (int) ($a['created'] ?? 0);
+                $bc = (int) ($b['created'] ?? 0);
+                if ($ac !== $bc)
+                {
+                    return $ac <=> $bc;
+                }
+
+                $aid = (string) ($a['id'] ?? '');
+                $bid = (string) ($b['id'] ?? '');
+
+                return $aid <=> $bid;
+            }
+        );
+
+        return array_values($rows);
+    }
+
     private function parseYmdToStartOfDay(?string $date): ?Carbon
     {
         if (! is_string($date) || trim($date) === '')
@@ -695,25 +790,104 @@ class SyncStripeInvoicesCommand extends Command
         $synced = 0;
         $scanned = 0;
         $lastProcessedId = null;
+        $pageStartingAfter = $startingAfter;
+        $hasMore = true;
+        $reachedRunLimit = false;
 
-        $collection = $client->invoices->all($params);
-        foreach ($collection->autoPagingIterator() as $invoice)
+        while ($synced < $maxPerTeam && $hasMore)
         {
-            if ($synced >= $maxPerTeam)
+            if ($pageStartingAfter !== '')
+            {
+                $params['starting_after'] = $pageStartingAfter;
+            } else
+            {
+                unset($params['starting_after']);
+            }
+
+            $page = $client->invoices->all($params)->toArray();
+            $raw = is_array($page) ? ($page['data'] ?? []) : [];
+            $hasMore = (bool) ($page['has_more'] ?? false);
+
+            if (! is_array($raw) || $raw === [])
             {
                 break;
             }
 
-            $scanned++;
-            $payload = $invoice->toArray();
-            $lastProcessedId = (string) Arr::get($payload, 'id');
-
-            if (! $dryRun)
+            $rawLastCursor = $this->lastStripeListItemId($raw);
+            $data = array_values(array_filter($raw, 'is_array'));
+            if ($data === [])
             {
-                $this->upsertInvoiceSyncRow($teamId, $payload);
+                if (! $hasMore)
+                {
+                    break;
+                } elseif ($rawLastCursor === null)
+                {
+                    $this->warn("Team {$teamId}: could not read cursor id for legacy backfill pagination, stopping.");
+                    break;
+                } else
+                {
+                    $pageStartingAfter = $rawLastCursor;
+                }
+                continue;
             }
 
-            $synced++;
+            $remainingSlots = $maxPerTeam - $synced;
+            if ($remainingSlots <= 0)
+            {
+                $reachedRunLimit = true;
+                break;
+            }
+
+            $take = min($remainingSlots, count($data));
+            $apiOrderSlice = array_slice($data, 0, $take);
+            $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
+            $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
+
+            foreach ($toUpsert as $row)
+            {
+                if ($synced >= $maxPerTeam)
+                {
+                    $reachedRunLimit = true;
+                    break 2;
+                }
+                $scanned++;
+                if (! $dryRun)
+                {
+                    $this->upsertInvoiceSyncRow($teamId, $row);
+                }
+                $lastProcessedId = (string) ($row['id'] ?? $lastProcessedId);
+                $synced++;
+            }
+
+            if ($reachedRunLimit)
+            {
+                if ($sliceLastCursor !== null)
+                {
+                    $lastProcessedId = $sliceLastCursor;
+                }
+                break;
+            }
+
+            if ($take < count($data))
+            {
+                $reachedRunLimit = true;
+                if ($sliceLastCursor !== null)
+                {
+                    $lastProcessedId = $sliceLastCursor;
+                }
+                break;
+            }
+
+            if (! $hasMore)
+            {
+                break;
+            }
+            if ($rawLastCursor === null)
+            {
+                $this->warn("Team {$teamId}: could not read last invoice id for legacy backfill pagination, stopping.");
+                break;
+            }
+            $pageStartingAfter = $rawLastCursor;
         }
 
         return [$synced, $scanned, $lastProcessedId];
@@ -756,21 +930,91 @@ class SyncStripeInvoicesCommand extends Command
                 $params['created'] = $createdFilter;
             }
 
-            $collection = $client->invoices->all($params);
-            foreach ($collection->autoPagingIterator() as $invoice)
+            $pageStartingAfter = '';
+            $hasMore = true;
+            $reachedRunLimit = false;
+            while ($synced < $maxPerTeam && $hasMore)
             {
-                if ($synced >= $maxPerTeam)
+                if ($pageStartingAfter !== '')
                 {
+                    $params['starting_after'] = $pageStartingAfter;
+                } else
+                {
+                    unset($params['starting_after']);
+                }
+
+                $page = $client->invoices->all($params)->toArray();
+                $raw = is_array($page) ? ($page['data'] ?? []) : [];
+                $hasMore = (bool) ($page['has_more'] ?? false);
+
+                if (! is_array($raw) || $raw === [])
+                {
+                    break;
+                }
+
+                $rawLastCursor = $this->lastStripeListItemId($raw);
+                $data = array_values(array_filter($raw, 'is_array'));
+                if ($data === [])
+                {
+                    if (! $hasMore)
+                    {
+                        break;
+                    } elseif ($rawLastCursor === null)
+                    {
+                        $this->warn("Team {$teamId}: could not read cursor id for mutable sync pagination, stopping.");
+                        break 2;
+                    } else
+                    {
+                        $pageStartingAfter = $rawLastCursor;
+                    }
+                    continue;
+                }
+
+                $remainingSlots = $maxPerTeam - $synced;
+                if ($remainingSlots <= 0)
+                {
+                    $reachedRunLimit = true;
                     break 2;
                 }
 
-                $scanned++;
-                $payload = $invoice->toArray();
-                if (! $dryRun)
+                $take = min($remainingSlots, count($data));
+                $apiOrderSlice = array_slice($data, 0, $take);
+                $toUpsert = $this->sortInvoicePayloadsOldestFirst($apiOrderSlice);
+                $sliceLastCursor = $this->lastStripeListItemId($apiOrderSlice);
+
+                foreach ($toUpsert as $row)
                 {
-                    $this->upsertInvoiceSyncRow($teamId, $payload);
+                    if ($synced >= $maxPerTeam)
+                    {
+                        $reachedRunLimit = true;
+                        break 3;
+                    }
+                    $scanned++;
+                    if (! $dryRun)
+                    {
+                        $this->upsertInvoiceSyncRow($teamId, $row);
+                    }
+                    $synced++;
                 }
-                $synced++;
+
+                if ($reachedRunLimit)
+                {
+                    break 2;
+                }
+                if ($take < count($data))
+                {
+                    break 2;
+                }
+                if (! $hasMore)
+                {
+                    break;
+                }
+                if ($rawLastCursor === null)
+                {
+                    $this->warn("Team {$teamId}: could not read last invoice id for mutable sync pagination, stopping.");
+                    break 2;
+                }
+                $pageStartingAfter = $rawLastCursor;
             }
         }
 
