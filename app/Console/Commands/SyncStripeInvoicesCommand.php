@@ -13,7 +13,7 @@ class SyncStripeInvoicesCommand extends Command
 {
     protected $signature = 'stripe:sync-invoices
                             {--team_id= : Sync only one team}
-                            {--mode=backfill : backfill (cursor-based) or mutable (refresh invoices that can still change)}
+                            {--mode=auto : auto (backfill then mutable), backfill (cursor-based), or mutable (refresh invoices that can still change)}
                             {--limit=500 : Maximum invoices to sync per team in this run}
                             {--starting-after= : Stripe invoice id cursor to continue from previous block}
                             {--no-resume : Ignore saved team cursor and start without checkpoint}
@@ -27,10 +27,10 @@ class SyncStripeInvoicesCommand extends Command
     public function handle(): int
     {
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
-        $mode = strtolower(trim((string) ($this->option('mode') ?? 'backfill')));
-        if (! in_array($mode, ['backfill', 'mutable'], true))
+        $mode = strtolower(trim((string) ($this->option('mode') ?? 'auto')));
+        if (! in_array($mode, ['auto', 'backfill', 'mutable'], true))
         {
-            $this->error("Invalid --mode={$mode}. Allowed: backfill, mutable");
+            $this->error("Invalid --mode={$mode}. Allowed: auto, backfill, mutable");
 
             return self::INVALID;
         }
@@ -78,12 +78,14 @@ class SyncStripeInvoicesCommand extends Command
                 continue;
             }
 
+            $effectiveMode = $this->resolveEffectiveModeForTeam($team, $mode);
+
             $client = new StripeClient($secret);
             $syncedForTeam = 0;
             $scannedForTeam = 0;
             $lastProcessedId = null;
 
-            if ($mode === 'mutable')
+            if ($effectiveMode === 'mutable')
             {
                 [$syncedForTeam, $scannedForTeam] = $this->syncMutableInvoicesForTeam(
                     $client,
@@ -116,13 +118,13 @@ class SyncStripeInvoicesCommand extends Command
             $globalScanned += $scannedForTeam;
 
             $dryText = $dryRun ? ' [dry-run]' : '';
-            $this->info("Team {$team->id} ({$team->name}): synced {$syncedForTeam}/{$maxPerTeam} invoices{$dryText}.");
-            if ($mode === 'backfill' && $lastProcessedId)
+            $this->info("Team {$team->id} ({$team->name}) [{$effectiveMode}]: synced {$syncedForTeam}/{$maxPerTeam} invoices{$dryText}.");
+            if ($effectiveMode === 'backfill' && $lastProcessedId)
             {
                 $this->line("Team {$team->id}: next cursor --starting-after={$lastProcessedId}");
             }
 
-            if ($mode === 'mutable')
+            if ($effectiveMode === 'mutable')
             {
                 $this->line("Team {$team->id}: mutable refresh done (statuses: draft, open, uncollectible).");
             } else
@@ -154,8 +156,12 @@ class SyncStripeInvoicesCommand extends Command
                             'type' => 'string',
                             'group' => 'stripe',
                         ]);
+                        $team->setSetting('stripe_invoices_backfill_completed_at', now()->toDateTimeString(), [
+                            'type' => 'string',
+                            'group' => 'stripe',
+                        ]);
                     }
-                    $this->line("Team {$team->id}: reached end of available invoices for current filter.");
+                    $this->line("Team {$team->id}: backfill completed; next runs in auto mode will use mutable refresh.");
                 }
             }
         }
@@ -171,6 +177,24 @@ class SyncStripeInvoicesCommand extends Command
         $this->info("Stripe invoices sync complete: teams={$processedTeams}, synced={$globalSynced}, scanned={$globalScanned}{$drySuffix}.");
 
         return self::SUCCESS;
+    }
+
+    private function resolveEffectiveModeForTeam(Team $team, string $requestedMode): string
+    {
+        if ($requestedMode !== 'auto')
+        {
+            return $requestedMode;
+        }
+
+        $savedCursor = trim((string) $team->getSetting('stripe_invoices_sync_cursor', ''));
+        $backfillCompletedAt = trim((string) $team->getSetting('stripe_invoices_backfill_completed_at', ''));
+
+        if ($savedCursor !== '' || $backfillCompletedAt === '')
+        {
+            return 'backfill';
+        }
+
+        return 'mutable';
     }
 
     /**

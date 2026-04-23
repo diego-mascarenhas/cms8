@@ -41,10 +41,10 @@ Schedule::command('subscriptions:sync')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('stripe:sync-invoices --mode=mutable --limit=100 --recent-days=45')
+Schedule::command('stripe:sync-invoices --mode=auto --limit=100 --recent-days=45')
     ->everyFiveMinutes()
-    ->name('stripe-invoices-sync-mutable')
-    ->description('Refresh Stripe invoices that can still change status (draft/open/uncollectible)')
+    ->name('stripe-invoices-sync-auto')
+    ->description('Auto Stripe invoices sync: backfill first, then mutable refresh')
     ->withoutOverlapping()
     ->runInBackground();
 
