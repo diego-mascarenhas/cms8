@@ -393,6 +393,17 @@
                                         label="WhatsApp"
                                         value="{{ old('enterprise.whatsapp', $data->currentEnterprise->whatsapp ?? '') }}" />
                                 </div>
+                                <div class="col-sm-6">
+                                    <label for="enterprise_status_id" class="form-label">Estado de empresa</label>
+                                    <select name="enterprise[status_id]" id="enterprise_status_id" class="form-select">
+                                        <option value="">— Sin cambiar / por defecto —</option>
+                                        @foreach (($enterpriseClientStatuses ?? collect()) as $status)
+                                            <option value="{{ $status['id'] }}" @selected((string) old('enterprise.status_id', $data->currentEnterprise->status_id ?? '') === (string) $status['id'])>
+                                                {{ $status['name'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                                     <button type="reset" class="btn btn-label-secondary"
@@ -402,19 +413,15 @@
                             <script>
                                 document.addEventListener('DOMContentLoaded', function () {
                                     var sel = document.getElementById('enterprise_enterprise_id');
-                                    var manual = document.getElementById('enterprise-manual-fields');
-                                    if (!sel || !manual) return;
-                                    function toggleManualEnterpriseFields() {
-                                        var disabled = !!sel.value;
-                                        manual.querySelectorAll('input, textarea, select').forEach(function (el) {
-                                            if (!el.name || el.name.indexOf('enterprise[') !== 0) return;
-                                            if (el.name === 'enterprise[department_id]') return;
-                                            el.disabled = disabled;
-                                        });
-                                        manual.classList.toggle('opacity-50', disabled);
+                                    var helper = sel ? sel.closest('.row.g-3.mb-3')?.querySelector('.text-muted') : null;
+                                    if (!sel || !helper) return;
+                                    function updateHelperText() {
+                                        helper.textContent = sel.value
+                                            ? 'Empresa seleccionada. También podés editar los campos de abajo para actualizar sus datos.'
+                                            : 'Si elegís una empresa, al guardar se vincula el contacto a esa empresa y podés actualizar datos desde los campos de abajo.';
                                     }
-                                    sel.addEventListener('change', toggleManualEnterpriseFields);
-                                    toggleManualEnterpriseFields();
+                                    sel.addEventListener('change', updateHelperText);
+                                    updateHelperText();
                                 });
                             </script>
                         </div>

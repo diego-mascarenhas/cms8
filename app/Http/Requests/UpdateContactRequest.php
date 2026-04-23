@@ -33,6 +33,7 @@ class UpdateContactRequest extends FormRequest
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email:rfc|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
+            'enterprise.status_id' => 'nullable|integer|exists:enterprise_statuses,id',
             'enterprise.department_id' => 'nullable|integer|exists:enterprise_departments,id',
             'enterprise.enterprise_id' => [
                 'nullable',
@@ -100,7 +101,7 @@ class UpdateContactRequest extends FormRequest
                 'phone' => $validated['enterprise']['phone'] ?? null,
                 'email' => $validated['enterprise']['email'] ?? null,
                 'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
-                'status_id' => $validated['status_id'] == 5 ? 2 : 1,
+                'status_id' => (int) ($validated['enterprise']['status_id'] ?? ($validated['status_id'] == 5 ? 2 : 1)),
                 'responsible_id' => $validated['responsible_id'] ?? $contact->responsible_id ?? null,
             ];
         }
@@ -128,6 +129,11 @@ class UpdateContactRequest extends FormRequest
                     ->where('id', $fromSelectId)
                     ->where('team_id', $contact->team_id)
                     ->first();
+
+                if ($enterprise && ! empty($validated['enterprise']['name']))
+                {
+                    $enterprise->update($enterpriseData);
+                }
             }
 
             if (! $enterprise)

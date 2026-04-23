@@ -12,6 +12,7 @@ use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Enterprise;
+use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseDepartment;
 use App\Models\MessageDelivery;
 use App\Models\Opportunity;
@@ -87,11 +88,12 @@ class ContactController extends Controller
         }
 
         $enterpriseStatuses = ContactStatus::getOptions();
+        $enterpriseClientStatuses = EnterpriseStatus::getOptions(1);
         $socialSources = Source::getOptions();
         $teamEnterprises = $this->teamEnterprisesForContactForm();
         $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'enterpriseClientStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -567,11 +569,12 @@ class ContactController extends Controller
         }
 
         $enterpriseStatuses = ContactStatus::getOptions();
+        $enterpriseClientStatuses = EnterpriseStatus::getOptions(1);
         $socialSources = Source::getOptions();
         $teamEnterprises = $this->teamEnterprisesForContactForm();
         $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'enterpriseClientStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -2052,6 +2055,17 @@ class ContactController extends Controller
 
             if ($enterprise)
             {
+                $manualStatusId = ! empty($enterpriseInput['status_id']) ? (int) $enterpriseInput['status_id'] : null;
+                $enterprise->update([
+                    'name' => $enterpriseInput['name'] ?? $enterprise->name,
+                    'code' => $enterpriseInput['code'] ?? $enterprise->code,
+                    'website' => $enterpriseInput['website'] ?? $enterprise->website,
+                    'phone' => $enterpriseInput['phone'] ?? $enterprise->phone,
+                    'email' => $enterpriseInput['email'] ?? $enterprise->email,
+                    'whatsapp' => $enterpriseInput['whatsapp'] ?? $enterprise->whatsapp,
+                    'status_id' => $manualStatusId ?: $enterprise->status_id,
+                ]);
+
                 $contact->enterprises()->sync([
                     $enterprise->id => [
                         'department_id' => $departmentId,
@@ -2080,8 +2094,10 @@ class ContactController extends Controller
             'phone' => $enterpriseInput['phone'] ?? null,
             'email' => $enterpriseInput['email'] ?? null,
             'whatsapp' => $enterpriseInput['whatsapp'] ?? null,
+            'status_id' => ! empty($enterpriseInput['status_id'])
+                ? (int) $enterpriseInput['status_id']
+                : ((int) $contact->status_id === 5 ? 2 : 1),
             'type_id' => 1,
-            'status_id' => (int) $contact->status_id === 5 ? 2 : 1,
             'responsible_id' => $contact->responsible_id,
             'creator_id' => auth()->id(),
         ]);

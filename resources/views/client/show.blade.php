@@ -48,10 +48,17 @@
             </div>
         @endif
 
+        @php
+            $hasBillingData = $billingAddresses->count() > 0;
+        @endphp
+
         {{-- Datos de facturación (similar bloque CMS7) --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0 flex-shrink-0">Datos de facturación</h5>
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientBillingBlock" aria-expanded="{{ $hasBillingData ? 'true' : 'false' }}" aria-controls="clientBillingBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasBillingData ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
+                    <span>Datos de facturación</span>
+                </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @can('client.edit')
                         <a href="{{ route('client.edit', $client->id) }}" class="btn btn-sm btn-outline-primary">
@@ -60,7 +67,8 @@
                     @endcan
                 </div>
             </div>
-            <div class="card-body">
+            <div class="collapse {{ $hasBillingData ? 'show' : '' }}" id="clientBillingBlock">
+                <div class="card-body border-top">
                 @if($billingAddresses->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
@@ -101,6 +109,7 @@
                         <p class="text-muted mb-0">Agrega una razón social y datos fiscales desde la edición del cliente.</p>
                     </div>
                 @endif
+                </div>
             </div>
         </div>
 
@@ -228,10 +237,17 @@
             </div>
         @endcan
 
+        @php
+            $hasServices = $services->count() > 0;
+        @endphp
+
         {{-- Servicios --}}
         <div class="card mb-4">
-            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2">
-                <h5 class="mb-0 flex-shrink-0">Servicios</h5>
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientServicesBlock" aria-expanded="{{ $hasServices ? 'true' : 'false' }}" aria-controls="clientServicesBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasServices ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
+                    <span>Servicios</span>
+                </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @if($services->count() > 0)
                         <div class="input-group input-group-merge flex-shrink-1 min-w-0" style="max-width: 220px;">
@@ -248,7 +264,8 @@
                     </div>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="collapse {{ $hasServices ? 'show' : '' }}" id="clientServicesBlock">
+                <div class="card-body border-top">
                 @if($services->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover mb-0" id="clientServicesTable">
@@ -307,14 +324,20 @@
                         <p class="text-muted mb-0">No hay servicios registrados para este cliente.</p>
                     </div>
                 @endif
+                </div>
             </div>
         </div>
+
+        @php
+            $hasInvoices = $invoices->count() > 0;
+            $hasProjects = $activeProjects->count() > 0 || $pastProjects->count() > 0;
+        @endphp
 
         {{-- Facturas (bloque colapsable, estilo ibox CMS7) --}}
         <div class="card mb-4">
             <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
-                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientInvoicesBlock" aria-expanded="false" aria-controls="clientInvoicesBlock" style="cursor: pointer;">
-                    <i class="ti ti-chevron-down collapse-chevron"></i>
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientInvoicesBlock" aria-expanded="{{ $hasInvoices ? 'true' : 'false' }}" aria-controls="clientInvoicesBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasInvoices ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
                     <span>Facturas</span>
                 </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
@@ -334,7 +357,7 @@
                     </div>
                 </div>
             </div>
-            <div class="collapse" id="clientInvoicesBlock">
+            <div class="collapse {{ $hasInvoices ? 'show' : '' }}" id="clientInvoicesBlock">
                 <div class="card-body border-top">
                     @if($invoices->count() > 0)
                         <div class="table-responsive">
@@ -388,8 +411,8 @@
         {{-- Proyectos (colapsable; activos + historial) --}}
         <div class="card mb-4">
             <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
-                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientProjectsBlock" aria-expanded="true" aria-controls="clientProjectsBlock" style="cursor: pointer;">
-                    <i class="ti ti-chevron-up collapse-chevron"></i>
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientProjectsBlock" aria-expanded="{{ $hasProjects ? 'true' : 'false' }}" aria-controls="clientProjectsBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasProjects ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
                     <span>Proyectos</span>
                 </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
@@ -408,7 +431,7 @@
                     </div>
                 </div>
             </div>
-            <div class="collapse show" id="clientProjectsBlock">
+            <div class="collapse {{ $hasProjects ? 'show' : '' }}" id="clientProjectsBlock">
                 <div class="card-body border-top">
                     @if($activeProjects->count() > 0)
                         <div class="table-responsive mb-4">
@@ -452,10 +475,10 @@
                                 </tbody>
                             </table>
                         </div>
-                    @else
+                    @elseif($pastProjects->count() === 0)
                         <div class="text-center py-3 mb-4">
                             <i class="ti ti-folder-off display-6 text-muted mb-2 d-block"></i>
-                            <p class="text-muted mb-0">Sin proyectos activos.</p>
+                            <p class="text-muted mb-0">Sin proyectos.</p>
                         </div>
                     @endif
 
@@ -527,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (document.getElementById('clientContactsTable')) {
         var clientContactsDt = $('#clientContactsTable').DataTable({
             language: dtLang,
-            pageLength: 5,
+            pageLength: 10,
             lengthChange: false,
             dom: 'rtip',
             ordering: true,
