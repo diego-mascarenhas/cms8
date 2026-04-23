@@ -41,8 +41,15 @@ Schedule::command('subscriptions:sync')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('invoice-syncs:import-stripe --limit=1000 --fallback-email --link-code-on-email-match')
-    ->hourlyAt(5)
+Schedule::command('stripe:sync-invoices --mode=mutable --limit=100 --recent-days=45')
+    ->everyFiveMinutes()
+    ->name('stripe-invoices-sync-mutable')
+    ->description('Refresh Stripe invoices that can still change status (draft/open/uncollectible)')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('invoice-syncs:import-stripe --limit=500 --fallback-email --link-code-on-email-match')
+    ->everyFiveMinutes()
     ->name('stripe-invoice-syncs-import')
     ->description('Import staged Stripe invoices into core invoices')
     ->withoutOverlapping()
