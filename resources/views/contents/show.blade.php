@@ -230,8 +230,8 @@
                     @endif
 
                 </dl>
-                @if(auth()->check() && auth()->user()->currentTeam)
-                    @php($contentsApiCacheGeneration = \App\Support\TeamContentsApiCache::currentGeneration((int) auth()->user()->currentTeam->id))
+                @if(auth()->check() && $content->team_id)
+                    @php($contentsApiCacheGeneration = \App\Support\TeamContentsApiCache::currentGeneration((int) $content->team_id))
                     <div class="pt-2 mt-2 border-top border-light">
                         <span class="d-block text-end text-muted user-select-all" title="{{ __('app.Team contents API cache generation hint') }}" aria-label="{{ __('app.Contents API cache version', ['n' => $contentsApiCacheGeneration]) }}" style="font-size: 0.65rem; opacity: 0.38; letter-spacing: 0.06em; font-variant-numeric: tabular-nums;">{{ __('app.Contents API cache version', ['n' => $contentsApiCacheGeneration]) }}</span>
                     </div>
