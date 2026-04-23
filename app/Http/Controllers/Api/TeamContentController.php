@@ -38,7 +38,7 @@ class TeamContentController extends Controller
                 ->where('team_id', $team->id)
                 ->where('module_id', $contentsModuleId)
                 ->where('status', 1)
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.slug')) = ?", [$sectionSlug])
+                ->where('data->slug', $sectionSlug)
                 ->first();
 
             if (! $resolvedSectionCategory)
