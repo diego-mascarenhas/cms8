@@ -36,15 +36,22 @@ class ImportStripeInvoiceSyncsCommand extends Command
         $fallbackEmail = (bool) $this->option('fallback-email');
         $linkCodeOnEmailMatch = (bool) $this->option('link-code-on-email-match');
 
-        $query = InvoiceSync::query()
-            ->where('provider', 'stripe')
-            ->orderBy('invoice_created_at')
-            ->orderBy('id');
+        // Process in stable chronological order: business time, then row id. When importing
+        // all teams, group by team first so logs and any side effects are predictable.
+        $query = InvoiceSync::query()->where('provider', 'stripe');
 
         if ($teamId)
         {
             $query->where('team_id', $teamId);
+        } else
+        {
+            $query->orderBy('team_id');
         }
+
+        $query
+            ->orderByRaw('invoice_created_at IS NULL')
+            ->orderBy('invoice_created_at')
+            ->orderBy('id');
 
         $rows = $query->limit($limit)->get();
 
