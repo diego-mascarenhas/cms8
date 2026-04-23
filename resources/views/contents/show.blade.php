@@ -42,7 +42,18 @@
             $coverData = is_array($content->data ?? null) ? ($content->data['cover'] ?? null) : null;
             $coverImageUrl = is_array($coverData) ? ($coverData['url'] ?? null) : null;
             $coverVariants = is_array($coverData) && is_array($coverData['variants'] ?? null) ? $coverData['variants'] : [];
+            $sectionSlug = is_array($content->sectionCategory->data ?? null) ? ($content->sectionCategory->data['slug'] ?? null) : null;
         @endphp
+        @if(is_string($sectionSlug) && $sectionSlug !== '')
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ __('app.Section slug') }}</h5>
+                </div>
+                <div class="card-body">
+                    <code>{{ $sectionSlug }}</code>
+                </div>
+            </div>
+        @endif
         <div class="card mb-4">
             <div class="card-body">
                 <ul class="nav nav-tabs mb-3" role="tablist">
