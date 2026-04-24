@@ -57,6 +57,20 @@ Schedule::command('invoice-syncs:import-stripe --limit=120 --fallback-email --li
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('stripe:sync-payments --limit=40 --recent-days=90')
+    ->cron('8,23,38,53 * * * *')
+    ->name('stripe-payments-sync')
+    ->description('Sync Stripe charges into payment_syncs (staging)')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('payment-syncs:import-stripe --limit=120 --fallback-email --link-code-on-email-match')
+    ->cron('12,27,42,57 * * * *')
+    ->name('stripe-payment-syncs-import')
+    ->description('Import pending payment_syncs rows into core payments')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('ovh:sync')->daily();
 
 Schedule::command('notifications:send-pending')

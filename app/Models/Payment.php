@@ -21,11 +21,15 @@ class Payment extends Model
         'amount',
         'remarks',
         'status',
+        'source_provider',
+        'source_reference_id',
+        'source_synced_at',
     ];
 
     protected $casts = [
         'transaction_type' => TransactionType::class,
         'date' => 'date',
+        'source_synced_at' => 'datetime',
     ];
 
     protected $appends = ['transaction_type_label'];
