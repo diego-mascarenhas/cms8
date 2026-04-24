@@ -22,6 +22,11 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if (session('error'))
+                <div class="alert alert-warning">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             <form id="formTeamSettings" method="POST" action="{{ route('team-settings.update', $team) }}">
                 @csrf
@@ -46,6 +51,11 @@
 
                             <div class="row">
                                 @php $currentSection = null; @endphp
+                                @if (($groupKey ?? '') === 'chat')
+                                    <div class="col-12 mb-2">
+                                        <small class="text-muted text-uppercase">{{ __('Settings') }}</small>
+                                    </div>
+                                @endif
                                 @foreach ($group['settings'] as $key => $setting)
                                     @if(isset($setting['section']) && $setting['section'] !== $currentSection)
                                         @if($currentSection !== null)
@@ -64,6 +74,13 @@
                                         @elseif($setting['section'] === 'incoming')
                                             <div class="col-12 mb-3">
                                                 <h6 class="text-muted mb-0">📥 Incoming Email (IMAP)</h6>
+                                            </div>
+                                        @elseif($setting['section'] === 'routing')
+                                            <div class="col-12 mb-2">
+                                                <p class="small text-muted mb-0">
+                                                    <i class="ti ti-sparkles me-1"></i>{{ __('Default assistant flow (AI discovery)') }} ·
+                                                    <i class="ti ti-webhook me-1"></i>{{ __('How flows are chosen: AI asks vs automatic keyword routing.') }}
+                                                </p>
                                             </div>
                                         @endif
                                     @endif
@@ -146,6 +163,9 @@
                                         @error("{$groupKey}.{$key}")
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        @if (!empty($setting['help'] ?? null))
+                                            <div class="form-text">{{ $setting['help'] }}</div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
@@ -157,6 +177,29 @@
                     </div>
                 @endforeach
             </form>
+
+            @if (($group ?? '') === 'chat')
+                <div class="card mb-4">
+                    <h5 class="card-header d-flex align-items-center">
+                        <i class="ti ti-file-text me-2"></i>
+                        {{ __('Default assistant flows (module prompts)') }}
+                    </h5>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3 mb-md-2">
+                            {{ __('Creates the default assistant flow prompts for this team (citas, contactos, catálogo, campañas News, tareas) if they are missing. Your existing custom prompt text in Prompts is not overwritten.') }}
+                        </p>
+                        <form method="post" action="{{ route('team-settings.chat.seed-default-assistant-prompts', $team) }}" class="d-flex flex-wrap align-items-center gap-2">
+                            @csrf
+                            <button type="submit" class="btn btn-label-primary">
+                                <i class="ti ti-refresh me-1"></i>{{ __('Ensure default assistant prompts') }}
+                            </button>
+                            @if (auth()->user()->currentTeam?->hasModule('prompts'))
+                                <a href="{{ route('prompt-list') }}" class="btn btn-sm btn-outline-secondary">{{ __('Open prompt list') }}</a>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 @endsection

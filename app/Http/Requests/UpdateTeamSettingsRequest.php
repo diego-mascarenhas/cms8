@@ -31,6 +31,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'notifications.notifications_sms' => 'nullable|in:0,1',
 
             // Chat / Assistant settings
+            'chat.assistant_auto_respond' => 'nullable|in:0,1',
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
             'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',

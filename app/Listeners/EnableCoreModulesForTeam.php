@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Models\Module;
 use App\Models\Team;
+use App\Services\DefaultAssistantFlowPromptsService;
 use Laravel\Jetstream\Events\TeamCreated;
 
 class EnableCoreModulesForTeam
@@ -42,5 +43,7 @@ class EnableCoreModulesForTeam
             }
             $team->enableModule($moduleKey);
         }
+
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
     }
 }

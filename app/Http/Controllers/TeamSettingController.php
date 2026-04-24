@@ -10,6 +10,7 @@ use App\Models\Prompt;
 use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
+use App\Services\DefaultAssistantFlowPromptsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -188,7 +189,16 @@ class TeamSettingController extends Controller
                 }
             }
 
-            // When group is chat, ensure assistant_chat_stub is persisted (unchecked = false)
+            // When group is chat, ensure boolean team settings are persisted (unchecked = false in POST)
+            if ($group === 'chat' && ! array_key_exists('assistant_auto_respond', $settings))
+            {
+                $team->setSetting('assistant_auto_respond', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
             if ($group === 'chat' && ! array_key_exists('assistant_chat_stub', $settings))
             {
                 $team->setSetting('assistant_chat_stub', false, [
@@ -235,6 +245,28 @@ class TeamSettingController extends Controller
     }
 
     /**
+     * Create missing default assistant flow rows in module_prompts (editable in /prompt/list).
+     * Does not overwrite existing prompt_instruction text.
+     */
+    public function seedDefaultAssistantFlowPrompts(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        if ((int) $team->id !== (int) (auth()->user()->currentTeam?->id))
+        {
+            return redirect()
+                ->back()
+                ->with('error', __('Switch to this team in the app bar to run this action.'));
+        }
+
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+
+        return redirect()
+            ->back()
+            ->with('success', __('Default assistant flow prompts are ready. You can review and edit them in Prompts.'));
+    }
+
+    /**
      * Get the appropriate type for a setting
      */
     private function getSettingType(string $key): string
@@ -247,6 +279,7 @@ class TeamSettingController extends Controller
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
+            'assistant_auto_respond',
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
@@ -459,26 +492,37 @@ class TeamSettingController extends Controller
                 'title' => __('Chat / Asistente'),
                 'icon' => 'ti ti-lifebuoy',
                 'settings' => [
+                    'assistant_auto_respond' => [
+                        'label' => __('Humano Assistant replies'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_auto_respond', '1') ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('When enabled, the assistant can reply automatically. Turn off to pause (same as the chat sidebar).'),
+                    ],
                     'assistant_chat_stub' => [
-                        'label' => __('Modo prueba del asistente'),
+                        'label' => __('Predefined test responses'),
                         'type' => 'checkbox',
                         'value' => $team->getSetting('assistant_chat_stub', false) ? '1' : '0',
                         'is_encrypted' => false,
-                        'help' => __('Si está activo, el chat y WhatsApp no llaman a la IA real; devuelven una respuesta de prueba para poder probar el flujo sin consumir créditos.'),
+                        'help' => __('If enabled, chat and WhatsApp do not call the real AI; they return a test response (no credits, same as the chat sidebar).'),
                     ],
                     'assistant_keyword_intent_routing' => [
-                        'label' => __('Enrutado automático por palabras clave a flujos'),
+                        'label' => __('Keyword routing'),
                         'type' => 'checkbox',
                         'value' => $team->getSetting('assistant_keyword_intent_routing', false) ? '1' : '0',
                         'is_encrypted' => false,
-                        'help' => __('Desactivado por defecto: el asistente infiere la intención (lista de claves módulo:sección) y confirma con el usuario. Si lo activás, se puede asociar un flujo de module_prompts según frases y palabras en config/assistant_tool_intent_prompts.php y la clave de sección, sin otra capa de IA solo para enrutar.'),
+                        'section' => 'routing',
+                        'help' => __('Off means :default. On means :keyword, using module prompts and assistant tool intent. Same value as the “default flow” (inverted) switch in the chat sidebar.', [
+                            'default' => __('Default assistant flow (AI discovery)'),
+                            'keyword' => __('Keyword routing'),
+                        ]),
                     ],
                     'chat_ai_assistance_blocked' => [
                         'label' => __('Block assistant AI button'),
                         'type' => 'checkbox',
                         'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
                         'is_encrypted' => false,
-                        'help' => __('Si está activo, el interruptor de IA del chat inicia en “desactivado” para todo el equipo. Las preferencias por contacto (cuando apliquen) siguen teniendo prioridad.'),
+                        'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
                     ],
                 ],
             ],

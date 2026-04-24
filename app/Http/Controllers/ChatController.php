@@ -400,10 +400,6 @@ class ChatController extends Controller
         $teamWhatsAppIsConnected = $presentation['teamWhatsAppIsConnected'];
         $qrImageUrl = $presentation['qrImageUrl'];
 
-        $notifyNewContactEmail = auth()->check() && auth()->user()->currentTeam
-            ? filter_var(auth()->user()->currentTeam->getSetting('notify_new_contact_email', '0'), FILTER_VALIDATE_BOOLEAN)
-            : false;
-
         $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
@@ -436,7 +432,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
     }
 
     /**
