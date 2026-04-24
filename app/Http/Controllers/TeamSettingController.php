@@ -198,6 +198,24 @@ class TeamSettingController extends Controller
                 ]);
             }
 
+            if ($group === 'chat' && ! array_key_exists('assistant_keyword_intent_routing', $settings))
+            {
+                $team->setSetting('assistant_keyword_intent_routing', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
+            if ($group === 'chat' && ! array_key_exists('chat_ai_assistance_blocked', $settings))
+            {
+                $team->setSetting('chat_ai_assistance_blocked', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
             if ($group === 'public_shop' && ! array_key_exists('public_catalog_enabled', $settings))
             {
                 $team->setSetting('public_catalog_enabled', false, [
@@ -230,6 +248,8 @@ class TeamSettingController extends Controller
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
             'assistant_chat_stub',
+            'assistant_keyword_intent_routing',
+            'chat_ai_assistance_blocked',
             'public_catalog_enabled',
         ];
 
@@ -445,6 +465,20 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('assistant_chat_stub', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('Si está activo, el chat y WhatsApp no llaman a la IA real; devuelven una respuesta de prueba para poder probar el flujo sin consumir créditos.'),
+                    ],
+                    'assistant_keyword_intent_routing' => [
+                        'label' => __('Enrutado automático por palabras clave a flujos'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_keyword_intent_routing', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('Desactivado por defecto: el asistente infiere la intención (lista de claves módulo:sección) y confirma con el usuario. Si lo activás, se puede asociar un flujo de module_prompts según frases y palabras en config/assistant_tool_intent_prompts.php y la clave de sección, sin otra capa de IA solo para enrutar.'),
+                    ],
+                    'chat_ai_assistance_blocked' => [
+                        'label' => __('Block assistant AI button'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('Si está activo, el interruptor de IA del chat inicia en “desactivado” para todo el equipo. Las preferencias por contacto (cuando apliquen) siguen teniendo prioridad.'),
                     ],
                 ],
             ],

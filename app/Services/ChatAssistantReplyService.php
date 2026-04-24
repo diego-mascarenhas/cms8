@@ -37,6 +37,7 @@ class ChatAssistantReplyService
      * When $teamId is set, a markdown block from team business_config (wizard) is appended to instructions when non-empty.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
+     * @param  bool  $inboundWhatsapp  When true (auto-reply to a customer on WhatsApp), add instructions to infer intent from business config, avoid assuming e-commerce, and for anonymous customers append flow discovery (routing keys) when needed.
      * @return array{
      *     success: bool,
      *     text?: string,
@@ -46,7 +47,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false): array
     {
         if ($this->useStub($teamId))
         {
@@ -155,7 +156,7 @@ class ChatAssistantReplyService
 
             if ($flowPrompt === null
                 && ! $previewOnly
-                && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled())
+                && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled($teamId))
             {
                 $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
                 if ($discovery !== '')
@@ -173,6 +174,19 @@ class ChatAssistantReplyService
                 $collectionsTotalLabel = $this->collectionAssistantContext->unpaidTotalLabelForContact($contactId, $teamId);
             }
             $instructions .= $this->previewModeInstructionsAppendix($flowRoutingKey, $collectionsTotalLabel);
+        }
+
+        if ($inboundWhatsapp && $withTools && $teamId !== null && ! $previewOnly)
+        {
+            $instructions .= $this->inboundWhatsappCustomerIntentAppendix();
+            if ($contextUserId === null && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled($teamId))
+            {
+                $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
+                if ($discovery !== '')
+                {
+                    $instructions .= $discovery;
+                }
+            }
         }
 
         $tools = $withTools ? $this->buildLaravelAiTools($previewOnly) : [];
@@ -565,6 +579,27 @@ No team flow is locked to this thread yet (or the thread was reset).
 - Never invent routing_keys — only use keys from this list:
 
 {$keys}
+EOT;
+    }
+
+    /**
+     * Extra instructions for automatic replies to inbound WhatsApp customers: interpret from business
+     * configuration and converse until intent is clear (no separate classifier).
+     */
+    private function inboundWhatsappCustomerIntentAppendix(): string
+    {
+        return <<<'EOT'
+
+
+### Entrada de cliente por WhatsApp (intención)
+
+Escriben desde WhatsApp. Priorizá entender qué necesitan **en conversación** (no hace falta una sola frase adivinando el tema).
+
+- El bloque **Contexto del negocio (configuración del equipo)**, arriba, es referencia: **no inventes** ofertas ni servicios; usalo para interpretar términos ambiguos y para el tono.
+- **No asumas** que el mensaje es de compra o catálogo. Palabras como *agregar*, *cita*, *turno*, *reunión*, *visita* suelen ser agenda u otro trámite; el carrito de productos es **solo** si el contexto o el propio mensaje dejan claro que quieren **comprar** o manejan **productos** explícitamente.
+- Si la intención no está clara, hacé **una** pregunta corta de aclaración (o 2–3 opciones) alineada con lo que ofrece el negocio según el contexto. Si ya está claro (misma conversación o mensaje inequívoco), seguí sin re-preguntar de más.
+- Cuando (y solo cuando) quede claro un objetivo de **venta/catálogo**, usá las herramientas de búsqueda y carrito (p. ej. *add_to_whatsapp_cart*) según corresponde.
+- Si aplica, la sección *Conversation flow (discovery mode)* indica claves: usá **commit_assistant_flow** con la routing_key adecuada.
 EOT;
     }
 

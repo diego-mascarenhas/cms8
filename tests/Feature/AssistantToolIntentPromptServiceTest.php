@@ -8,12 +8,20 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolIntentPromptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class AssistantToolIntentPromptServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setTeamKeywordIntentRouting(Team $team, bool $enabled): void
+    {
+        $team->setSetting('assistant_keyword_intent_routing', $enabled, [
+            'group' => 'chat',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+    }
 
     /**
      * @return array{0: Team, 1: Prompt, 2: User}
@@ -46,6 +54,7 @@ class AssistantToolIntentPromptServiceTest extends TestCase
     public function test_find_prompt_when_intent_matches(): void
     {
         [$team] = $this->createTeamWithCapabilitiesPrompt();
+        $this->setTeamKeywordIntentRouting($team, true);
 
         $service = app(AssistantToolIntentPromptService::class);
         $found = $service->findPromptForMessage((int) $team->id, 'Quiero probar el asistente');
@@ -57,6 +66,7 @@ class AssistantToolIntentPromptServiceTest extends TestCase
     public function test_find_prompt_returns_null_when_no_match(): void
     {
         [$team] = $this->createTeamWithCapabilitiesPrompt();
+        $this->setTeamKeywordIntentRouting($team, true);
 
         $service = app(AssistantToolIntentPromptService::class);
         $this->assertNull($service->findPromptForMessage((int) $team->id, 'Solo un saludo genérico sin keywords'));
@@ -84,6 +94,8 @@ class AssistantToolIntentPromptServiceTest extends TestCase
             'order' => 0,
         ]);
 
+        $this->setTeamKeywordIntentRouting($team, true);
+
         $found = app(AssistantToolIntentPromptService::class)->findPromptForMessage((int) $team->id, 'Mostrame el catálogo de productos');
 
         $this->assertNotNull($found);
@@ -92,8 +104,8 @@ class AssistantToolIntentPromptServiceTest extends TestCase
 
     public function test_resolve_flow_skips_keyword_attach_when_keyword_routing_disabled(): void
     {
-        Config::set('assistant_tool_intent_prompts.keyword_intent_routing', false);
         [$team] = $this->createTeamWithCapabilitiesPrompt();
+        $this->setTeamKeywordIntentRouting($team, false);
 
         $service = app(AssistantToolIntentPromptService::class);
         $resolution = $service->resolveFlowForToolAssistant((int) $team->id, 'Quiero probar el asistente', null);
@@ -104,13 +116,47 @@ class AssistantToolIntentPromptServiceTest extends TestCase
 
     public function test_resolve_flow_keyword_attach_when_keyword_routing_enabled(): void
     {
-        Config::set('assistant_tool_intent_prompts.keyword_intent_routing', true);
         [$team] = $this->createTeamWithCapabilitiesPrompt();
+        $this->setTeamKeywordIntentRouting($team, true);
 
         $service = app(AssistantToolIntentPromptService::class);
         $resolution = $service->resolveFlowForToolAssistant((int) $team->id, 'Quiero probar el asistente', null);
 
         $this->assertNotNull($resolution['prompt']);
         $this->assertSame('set', $resolution['persist_assistant_flow_key']);
+    }
+
+    public function test_find_prompt_matches_section_key_when_no_config_intent_matches(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $this->setTeamKeywordIntentRouting($team, true);
+
+        $module = Module::query()->create([
+            'name' => 'Custom flow module',
+            'key' => 'custom_routing_'.substr(md5((string) $team->id), 0, 8),
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        Prompt::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'plan_sucesorio_unique',
+            'section_label' => 'Plan sucesorio',
+            'prompt_instruction' => 'Help with inheritance in Spanish.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+
+        $service = app(AssistantToolIntentPromptService::class);
+        $pair = $service->findPromptAndRoutingKeyForMessage(
+            (int) $team->id,
+            'Necesito el plan sucesorio unique para un cliente, gracias',
+        );
+
+        $this->assertNotNull($pair);
+        $this->assertSame('plan_sucesorio_unique', $pair['prompt']->section_key);
+        $this->assertStringContainsString('plan_sucesorio_unique', $pair['routing_key']);
     }
 }

@@ -1,26 +1,23 @@
 <?php
 
 /**
- * When enabled, the tool-enabled assistant (WhatsApp + API chat_assistant) merges an extra
- * instruction block from module_prompts when the *latest user message* matches an intent.
+ * When enabled, the tool-enabled assistant (WhatsApp + API chat_assistant) can merge an extra
+ * instruction block from module_prompts for the active flow.
  *
- * Cost: no extra LLM call for keyword routing (when enabled) — phrase / word scoring only.
- * With keyword routing off (default), the model picks a flow using commit_assistant_flow (still one main LLM call).
+ * Default (team setting off): routing is LLM-driven — discovery list includes routing keys built from
+ * each active prompt's module key + section_key; the model calls commit_assistant_flow. No automatic keyword router.
+ * When a team enables "keyword intent routing" in team settings (Chat / Asistente): phrase/word scoring
+ * (config + optional section_key) can attach a flow without the LLM choosing. Default is off (LLM + commit_assistant_flow).
  * Create one active prompt per team
  * using one of the routing_keys listed under each intent (same keys as Prompt::findByRoutingKey).
+ * When keyword routing is on, if no config intent matches, {@see \App\Services\AssistantToolIntentPromptService::findPromptBySectionKeyKeywords}
+ * also scores the message against each active prompt's section_key (underscores as spaces; word tokens).
  *
  * @see \App\Services\AssistantToolIntentPromptService
  */
 return [
 
     'enabled' => (bool) env('ASSISTANT_TOOL_INTENT_PROMPTS', true),
-
-    /**
-     * When false (default), incoming messages do NOT auto-pick a module flow from keywords.
-     * The assistant should clarify the user's intent, then call commit_assistant_flow with a routing key.
-     * Set ASSISTANT_KEYWORD_INTENT_ROUTING=true to restore the legacy keyword-based auto-routing.
-     */
-    'keyword_intent_routing' => (bool) env('ASSISTANT_KEYWORD_INTENT_ROUTING', false),
 
     /** Minimum score to attach a flow prompt (phrase = +2, word = +1). */
     'minimum_score' => (int) env('ASSISTANT_TOOL_INTENT_PROMPTS_MIN_SCORE', 1),

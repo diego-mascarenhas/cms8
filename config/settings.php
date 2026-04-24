@@ -7,7 +7,6 @@ return [
      * put them (manually) here.
      */
     'settings' => [
-        App\Settings\UserPreferencesSettings::class,
     ],
 
     /*

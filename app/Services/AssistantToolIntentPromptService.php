@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Prompt;
+use App\Models\Team;
 
 /**
  * Picks an optional {@see Prompt} from module_prompts to merge into the tool-assistant system
@@ -10,14 +11,29 @@ use App\Models\Prompt;
  */
 class AssistantToolIntentPromptService
 {
-    public function keywordIntentRoutingEnabled(): bool
+    /**
+     * Per-team setting (Team settings → Chat / Asistente). When false (default), flows are chosen by the LLM
+     * (discovery + commit_assistant_flow), not by automatic keyword scoring.
+     */
+    public function keywordIntentRoutingEnabled(?int $teamId = null): bool
     {
         if (! config('assistant_tool_intent_prompts.enabled', true))
         {
             return false;
         }
 
-        return (bool) config('assistant_tool_intent_prompts.keyword_intent_routing', false);
+        if ($teamId === null || $teamId <= 0)
+        {
+            return false;
+        }
+
+        $team = Team::query()->find($teamId);
+        if ($team === null)
+        {
+            return false;
+        }
+
+        return filter_var($team->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOL);
     }
 
     /**
@@ -25,7 +41,7 @@ class AssistantToolIntentPromptService
      */
     protected function tryKeywordResolution(int $teamId, string $message): ?array
     {
-        if (! $this->keywordIntentRoutingEnabled())
+        if (! $this->keywordIntentRoutingEnabled($teamId))
         {
             return null;
         }
@@ -60,6 +76,25 @@ class AssistantToolIntentPromptService
             return null;
         }
 
+        if (! $this->keywordIntentRoutingEnabled($teamId))
+        {
+            return null;
+        }
+
+        $fromConfig = $this->tryResolvePromptFromConfigIntent($teamId, $message);
+        if ($fromConfig !== null)
+        {
+            return $fromConfig;
+        }
+
+        return $this->findPromptBySectionKeyKeywords($teamId, $message);
+    }
+
+    /**
+     * @return array{prompt: Prompt, routing_key: string}|null
+     */
+    protected function tryResolvePromptFromConfigIntent(int $teamId, string $message): ?array
+    {
         $intentId = $this->detectBestIntentId($message);
         if ($intentId === null)
         {
@@ -97,6 +132,96 @@ class AssistantToolIntentPromptService
         }
 
         return null;
+    }
+
+    /**
+     * When config intents do not match, score the user message against each active prompt's
+     * {@see Prompt::$section_key} (phrase + word tokens). Lets teams route by the same key they
+     * configure in the prompt form without duplicating words in config.
+     *
+     * @return array{prompt: Prompt, routing_key: string}|null
+     */
+    protected function findPromptBySectionKeyKeywords(int $teamId, string $message): ?array
+    {
+        $normalized = $this->normalizeMessage($message);
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
+        $prompts = Prompt::forTeam($teamId)
+            ->active()
+            ->with('module')
+            ->where('section_key', '!=', 'general')
+            ->orderBy('order')
+            ->get();
+
+        $best = null;
+        $bestScore = -1;
+
+        foreach ($prompts as $prompt)
+        {
+            $score = $this->scoreMessageAgainstSectionKey($normalized, (string) $prompt->section_key);
+            if ($score > $bestScore)
+            {
+                $bestScore = $score;
+                $best = $prompt;
+            }
+        }
+
+        if ($best === null || $bestScore < $minScore)
+        {
+            return null;
+        }
+
+        $routingKey = $best->module
+            ? $best->module->key.':'.$best->section_key
+            : $best->section_key;
+
+        return [
+            'prompt' => $best,
+            'routing_key' => $routingKey,
+        ];
+    }
+
+    /**
+     * Score how well the normalized message matches a prompt section_key (underscores → spaces, word tokens).
+     */
+    protected function scoreMessageAgainstSectionKey(string $normalized, string $sectionKey): int
+    {
+        $sk = mb_strtolower(trim($sectionKey));
+        if ($sk === '' || $sk === 'general')
+        {
+            return 0;
+        }
+
+        $spaced = preg_replace('/[_\-]+/u', ' ', $sk) ?? $sk;
+        $spaced = preg_replace('/\s+/u', ' ', trim($spaced)) ?? $spaced;
+
+        if (mb_strlen($spaced) >= 2 && str_contains($normalized, $spaced))
+        {
+            return 3;
+        }
+
+        $score = 0;
+        $tokens = preg_split('/[_\s\-]+/u', $sk) ?: [];
+        foreach ($tokens as $token)
+        {
+            $t = mb_strtolower(trim((string) $token));
+            if (mb_strlen($t) < 2)
+            {
+                continue;
+            }
+
+            $pattern = '/(?<![\p{L}\p{N}_])'.preg_quote($t, '/').'(?![\p{L}\p{N}_])/u';
+            if (preg_match($pattern, $normalized) === 1)
+            {
+                $score += 1;
+            }
+        }
+
+        return min($score, 4);
     }
 
     public function matchesFlowReset(string $message): bool
@@ -148,7 +273,7 @@ class AssistantToolIntentPromptService
 
         if ($this->matchesFlowReset($message))
         {
-            $found = $this->keywordIntentRoutingEnabled()
+            $found = $this->keywordIntentRoutingEnabled($teamId)
                 ? $this->findPromptAndRoutingKeyForMessage($teamId, $message)
                 : null;
 

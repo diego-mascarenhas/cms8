@@ -141,7 +141,7 @@
                         <div class="card-body text-center">
                             <i class="ti ti-lifebuoy mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">{{ __('Chat / Asistente') }}</h5>
-                            <p class="card-text">{{ __('Modo prueba del asistente de chat (sin llamar a la IA)') }}</p>
+                            <p class="card-text">{{ __('Asistente: modo prueba, enrutado por palabras opcional') }}</p>
                             <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'chat']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
                         </div>
                     </div>
