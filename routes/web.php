@@ -785,6 +785,8 @@ Route::middleware(['auth'])->group(function ()
     {
         return redirect()->route('invoice.index');
     });
+    Route::get('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterpriseForm'])->name('invoice.link-enterprise');
+    Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
@@ -803,6 +805,8 @@ Route::middleware(['auth'])->group(function ()
 
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
+    Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
 
     // Income module
@@ -949,6 +953,8 @@ Route::middleware(['auth'])->group(function ()
 
     // Subscription Management
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClientForm'])->name('subscription.stripe-link-client');
+    Route::post('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClient'])->name('subscription.stripe-link-client.store');
     Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');

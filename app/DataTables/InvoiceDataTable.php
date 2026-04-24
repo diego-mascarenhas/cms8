@@ -52,7 +52,20 @@ class InvoiceDataTable extends DataTable
             })
             ->editColumn('enterprise_id', function ($data)
             {
-                return $data->enterprise?->name ?? '<span class="text-muted">Sin empresa</span>';
+                if ($data->enterprise)
+                {
+                    return '<a href="'.e(route('client.show', $data->enterprise->id)).'" class="text-body">'.e($data->enterprise->name).'</a>';
+                }
+
+                $user = auth()->user();
+                if ($user && $user->hasAnyRole(['admin', 'collaborator']))
+                {
+                    return '<a href="'.e(route('invoice.link-enterprise', $data->id)).'" class="text-body" title="'.e(__('invoice_enterprise.link.action_title')).'">'
+                        .'<i class="ti ti-link ti-sm"></i>'
+                        .'</a>';
+                }
+
+                return '<span class="text-muted">'.e(__('invoice_enterprise.no_enterprise')).'</span>';
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {

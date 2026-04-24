@@ -35,8 +35,7 @@ class PaymentController extends Controller
 
         try
         {
-            // Build base query
-            $query = Payment::withoutGlobalScopes(['fromJuly2024'])
+            $query = Payment::query()
                 ->with(['enterprise', 'invoice', 'account', 'type']);
 
             // Filter by transaction type if provided
@@ -112,8 +111,7 @@ class PaymentController extends Controller
 
         try
         {
-            // Find the payment first
-            $payment = Payment::withoutGlobalScopes(['fromJuly2024'])
+            $payment = Payment::query()
                 ->where('id', $id)
                 ->with(['enterprise', 'invoice', 'account', 'type'])
                 ->firstOrFail();

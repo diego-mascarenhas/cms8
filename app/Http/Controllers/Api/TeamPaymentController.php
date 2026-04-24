@@ -23,7 +23,7 @@ class TeamPaymentController extends Controller
             ], 401);
         }
 
-        $query = Payment::withoutGlobalScopes(['fromJuly2024'])
+        $query = Payment::query()
             ->where('team_id', $team->id)
             ->with(['enterprise', 'invoice', 'account', 'type']);
 
@@ -78,7 +78,7 @@ class TeamPaymentController extends Controller
             ], 401);
         }
 
-        $payment = Payment::withoutGlobalScopes(['fromJuly2024'])
+        $payment = Payment::query()
             ->where('team_id', $team->id)
             ->where('id', $id)
             ->with(['enterprise', 'invoice', 'account', 'type'])

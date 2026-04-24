@@ -12,8 +12,7 @@ class FinancialDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // Full financial history for this team (do not apply the July 2024 cutoff used elsewhere).
-        $payments = Payment::withoutGlobalScope('fromJuly2024');
+        $payments = Payment::query();
 
         $currentYear = Carbon::now()->year;
         $requestedYear = (int) $request->query('year', $currentYear);

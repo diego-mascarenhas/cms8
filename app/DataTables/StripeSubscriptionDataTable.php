@@ -93,6 +93,12 @@ class StripeSubscriptionDataTable extends DataTable
                         }
                     }
                 }
+                elseif (filled($sub->customer_id) && $user->hasAnyRole(['admin', 'collaborator']))
+                {
+                    $parts[] = '<a href="'.e(route('subscription.stripe-link-client', $sub->id)).'" class="text-body" title="'.e(__('stripe_subscription.link_client')).'">'
+                        .'<i class="ti ti-link ti-sm"></i>'
+                        .'</a>';
+                }
 
                 if ($parts === [])
                 {
@@ -210,8 +216,8 @@ class StripeSubscriptionDataTable extends DataTable
             Column::make('customer_name')->title(__('stripe_subscription.columns.customer_name'))->addClass('all')->searchable(true)->orderable(true),
             Column::make('plan_name')->title(__('stripe_subscription.columns.plan_name'))->addClass('min-tablet')->searchable(true)->orderable(true),
             Column::make('status')->title(__('stripe_subscription.columns.status'))->addClass('min-phone')->className('text-center')->orderable(true),
-            Column::make('amount_total')->title(__('stripe_subscription.columns.amount_total'))->addClass('min-desktop')->className('text-end')->orderable(true),
             Column::make('current_period_end')->title(__('stripe_subscription.columns.current_period_end'))->addClass('min-desktop')->className('text-center')->orderable(true),
+            Column::make('amount_total')->title(__('stripe_subscription.columns.amount_total'))->addClass('min-desktop')->className('text-end')->orderable(true),
             Column::make('enterprise_contact_search')
                 ->title('')
                 ->visible(false)

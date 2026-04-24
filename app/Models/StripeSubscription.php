@@ -72,6 +72,24 @@ class StripeSubscription extends Model
     }
 
     /**
+     * Link flow must only resolve a subscription in the current team (same as the list).
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+        $user = auth()->user();
+        if (! $user?->currentTeam)
+        {
+            abort(404);
+        }
+
+        return static::query()
+            ->where('team_id', $user->currentTeam->id)
+            ->where($field, $value)
+            ->firstOrFail();
+    }
+
+    /**
      * Client enterprise: enterprises.code = Stripe customer_id (cus_…), same as account form field enterprise[code].
      */
     public function enterprise(): BelongsTo
