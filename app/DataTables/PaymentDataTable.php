@@ -72,11 +72,7 @@ class PaymentDataTable extends DataTable
             })
             ->editColumn('type_id', function ($data)
             {
-                $name = $data->display_payment_type_name;
-
-                return $name !== ''
-                    ? e($name)
-                    : '<span class="text-muted">-</span>';
+                return $data->type?->name ?? '<span class="text-muted">-</span>';
             })
             ->editColumn('amount', function ($data)
             {
@@ -92,7 +88,7 @@ class PaymentDataTable extends DataTable
     {
         return $model
             ->newQuery()
-            ->with(['enterprise', 'invoice', 'account', 'type', 'stripeChargeSync']);
+            ->with(['enterprise', 'invoice', 'account', 'type']);
     }
 
     public function html(): HtmlBuilder

@@ -3,10 +3,8 @@
 namespace App\Models;
 
 use App\Enums\TransactionType;
-use App\Support\Payments\StripePaymentMethodLabel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Payment extends Model
 {
@@ -75,44 +73,6 @@ class Payment extends Model
     public function type()
     {
         return $this->belongsTo(PaymentType::class);
-    }
-
-    /**
-     * Staging row for Stripe (charge payload); used to show card / bank / etc. instead of generic "Stripe" type.
-     */
-    public function stripeChargeSync(): HasOne
-    {
-        return $this->hasOne(PaymentSync::class, 'external_id', 'source_reference_id')
-            ->where('payment_syncs.provider', 'stripe')
-            ->whereColumn('payment_syncs.team_id', 'payments.team_id');
-    }
-
-    /**
-     * @see StripePaymentMethodLabel
-     */
-    public function getDisplayPaymentTypeNameAttribute(): string
-    {
-        if ((string) $this->getAttribute('source_provider') !== 'stripe' || $this->getAttribute('source_reference_id') === null)
-        {
-            return (string) ($this->type?->name ?? '');
-        }
-
-        if (! $this->relationLoaded('stripeChargeSync'))
-        {
-            $this->load('stripeChargeSync');
-        }
-
-        $sync = $this->stripeChargeSync;
-        if ($sync && is_array($sync->raw_payload))
-        {
-            $label = StripePaymentMethodLabel::fromChargePayload($sync->raw_payload);
-            if ($label !== '')
-            {
-                return $label;
-            }
-        }
-
-        return (string) ($this->type?->name ?? 'Stripe');
     }
 
     public function getTransactionTypeLabelAttribute()
