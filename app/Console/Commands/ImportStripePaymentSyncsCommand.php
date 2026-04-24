@@ -53,12 +53,24 @@ class ImportStripePaymentSyncsCommand extends Command
 
         if (! $reconcile)
         {
-            $query->whereNotExists(function ($q)
+            // Pending-only, but still reprocess linked rows that are incomplete
+            // (for example payment exists but invoice_id is null yet).
+            $query->where(function ($outer)
             {
-                $q->from('payments')
-                    ->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
-                    ->whereColumn('payments.team_id', 'payment_syncs.team_id')
-                    ->where('payments.source_provider', 'stripe');
+                $outer->whereNotExists(function ($q)
+                {
+                    $q->from('payments')
+                        ->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
+                        ->whereColumn('payments.team_id', 'payment_syncs.team_id')
+                        ->where('payments.source_provider', 'stripe');
+                })->orWhereExists(function ($q)
+                {
+                    $q->from('payments')
+                        ->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
+                        ->whereColumn('payments.team_id', 'payment_syncs.team_id')
+                        ->where('payments.source_provider', 'stripe')
+                        ->whereNull('payments.invoice_id');
+                });
             });
         }
 
@@ -119,9 +131,7 @@ class ImportStripePaymentSyncsCommand extends Command
             }
 
             $invoiceId = $this->resolveInvoiceId($row->team_id, $row->invoice_external_id);
-            $date = $row->charge_created_at
-                ? $row->charge_created_at->toDateString()
-                : now()->toDateString();
+            $date = $this->resolvePaymentDate($row);
 
             $description = (string) ($row->description ?? '');
             $remarks = trim($description) !== ''
@@ -308,5 +318,21 @@ class ImportStripePaymentSyncsCommand extends Command
             ->value('id');
 
         return $id !== null ? (int) $id : null;
+    }
+
+    private function resolvePaymentDate(PaymentSync $row): string
+    {
+        if ($row->charge_created_at)
+        {
+            return $row->charge_created_at->toDateString();
+        }
+
+        $rawCreated = data_get($row->raw_payload, 'created');
+        if (is_numeric($rawCreated))
+        {
+            return \Carbon\Carbon::createFromTimestamp((int) $rawCreated)->toDateString();
+        }
+
+        return now()->toDateString();
     }
 }
