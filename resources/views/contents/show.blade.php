@@ -199,7 +199,6 @@
                 '',
                 'Payload:',
                 '{',
-                '  "project_path": "<ABSOLUTE_FRONTEND_PATH>",',
                 '  "section_slug": "'.(is_string($sectionSlug) && $sectionSlug !== '' ? $sectionSlug : '').'",',
                 '  "status": 3,',
                 '  "locale": "'.$activeLocale.'",',
@@ -208,9 +207,27 @@
                 '}',
                 '',
                 'Frontend note:',
+                'When generating frontend code, load API URL and token from .env (no hardcoded credentials).',
                 'Render cover inside a reserved box using cover.max_width and cover.max_height, with object-fit: contain.',
             ];
             $mcpPromptText = implode("\n", $mcpPromptLines);
+            $mcpPromptByIdLines = [
+                'Fetch content data from Humano MCP.',
+                '',
+                'Tool:',
+                'fetch-humano-contents',
+                '',
+                'Payload:',
+                '{',
+                '  "id": '.$content->id.',',
+                '  "locale": "'.$activeLocale.'",',
+                '}',
+                '',
+                'Frontend note:',
+                'When generating frontend code, load API URL and token from .env (no hardcoded credentials).',
+                'Render cover inside a reserved box using cover.max_width and cover.max_height, with object-fit: contain.',
+            ];
+            $mcpPromptByIdText = implode("\n", $mcpPromptByIdLines);
         @endphp
         <div class="card mb-4">
             <div class="card-header">
@@ -282,12 +299,27 @@
                         <i class="ti ti-help-circle"></i>
                     </a>
                 </h5>
-                <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 waves-effect" data-copy-target="#mcp-content-prompt">
-                    <i class="ti ti-copy me-1"></i>Copiar
-                </button>
             </div>
             <div class="card-body">
-                <textarea id="mcp-content-prompt" class="form-control font-monospace" rows="14" readonly>{{ $mcpPromptText }}</textarea>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="small text-muted">Global (section_slug)</span>
+                        <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 waves-effect" data-copy-target="#mcp-content-prompt">
+                            <i class="ti ti-copy me-1"></i>Copiar
+                        </button>
+                    </div>
+                    <textarea id="mcp-content-prompt" class="form-control font-monospace" rows="12" readonly>{{ $mcpPromptText }}</textarea>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                        <span class="small text-muted">Detalle (id exacto)</span>
+                        <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 waves-effect" data-copy-target="#mcp-content-id-prompt">
+                            <i class="ti ti-copy me-1"></i>Copiar
+                        </button>
+                    </div>
+                    <textarea id="mcp-content-id-prompt" class="form-control font-monospace" rows="12" readonly>{{ $mcpPromptByIdText }}</textarea>
+                </div>
             </div>
         </div>
     </div>
@@ -298,17 +330,24 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const mcpPromptEl = document.getElementById('mcp-content-prompt');
+    const mcpPromptByIdEl = document.getElementById('mcp-content-id-prompt');
     const localeTabButtons = document.querySelectorAll('[data-bs-target^="#content-locale-"]');
 
     function updateMcpPromptLocale(localeCode) {
-        if (!mcpPromptEl || !localeCode) {
+        if (!localeCode) {
             return;
         }
 
-        mcpPromptEl.value = mcpPromptEl.value.replace(
-            /"locale":\s*"[^"]*"/,
-            '"locale": "' + localeCode + '"'
-        );
+        [mcpPromptEl, mcpPromptByIdEl].forEach(function(promptEl) {
+            if (!promptEl) {
+                return;
+            }
+
+            promptEl.value = promptEl.value.replace(
+                /"locale":\s*"[^"]*"/,
+                '"locale": "' + localeCode + '"'
+            );
+        });
     }
 
     localeTabButtons.forEach(function(tabButton) {
