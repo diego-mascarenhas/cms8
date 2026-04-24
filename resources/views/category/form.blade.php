@@ -210,6 +210,43 @@
                     @endphp
                     <h6 class="mb-2">Cover variants</h6>
                     <p class="form-text mb-3">Select predefined variants and optional custom variant. Use fit = contain/max for logos to avoid cropping.</p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="cover_max_width" class="form-label">{{ __('app.Cover max box width') }} (px)</label>
+                            <input
+                                type="number"
+                                class="form-control @error('cover_max_width') is-invalid @enderror"
+                                id="cover_max_width"
+                                name="cover_max_width"
+                                value="{{ old('cover_max_width', $categoryData['cover']['max_width'] ?? '') }}"
+                                min="1"
+                                max="10000"
+                                placeholder="320"
+                            >
+                            @error('cover_max_width')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cover_max_height" class="form-label">{{ __('app.Cover max box height') }} (px)</label>
+                            <input
+                                type="number"
+                                class="form-control @error('cover_max_height') is-invalid @enderror"
+                                id="cover_max_height"
+                                name="cover_max_height"
+                                value="{{ old('cover_max_height', $categoryData['cover']['max_height'] ?? '') }}"
+                                min="1"
+                                max="10000"
+                                placeholder="200"
+                            >
+                            @error('cover_max_height')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-12">
+                            <div class="form-text">{{ __('app.Cover max box size hint') }}</div>
+                        </div>
+                    </div>
                     <div class="row g-3 mb-2">
                         @foreach($presetVariantLabels as $variantKey => $variantLabel)
                             @php

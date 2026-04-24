@@ -96,6 +96,24 @@
                                 <p class="mb-0">{{ __('If you\'re new to Humano, we recommend starting with our "How to Use" guide to familiarize yourself with the platform.') }}</p>
                                 <a href="{{ route('help.usage') }}" class="alert-link">{{ __('Read the guide →') }}</a>
                             </div>
+
+                            <div id="cursor-mcp-setup" class="card border-primary mt-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="ti ti-plug-connected me-2"></i>Cursor MCP setup</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2">Install MCP in Cursor:</p>
+                                    <ol class="mb-3">
+                                        <li>Open <code>~/.cursor/mcp.json</code></li>
+                                        <li>Add this server entry inside <code>mcpServers</code></li>
+                                    </ol>
+<pre class="language-json mb-0"><code>{
+  "idoneo-mcp": {
+    "url": "https://mcp.idoneo.dev/mcp"
+  }
+}</code></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
             </div>

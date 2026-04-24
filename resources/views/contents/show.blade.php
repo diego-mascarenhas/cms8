@@ -42,6 +42,18 @@
             $coverData = is_array($content->data ?? null) ? ($content->data['cover'] ?? null) : null;
             $coverImageUrl = is_array($coverData) ? ($coverData['url'] ?? null) : null;
             $coverVariants = is_array($coverData) && is_array($coverData['variants'] ?? null) ? $coverData['variants'] : [];
+            $coverMaxWidth = is_array($coverData) && isset($coverData['max_width']) ? (int) $coverData['max_width'] : null;
+            $coverMaxHeight = is_array($coverData) && isset($coverData['max_height']) ? (int) $coverData['max_height'] : null;
+            $coverBoxStyleParts = ['max-width: 100%'];
+            if ($coverMaxWidth && $coverMaxWidth > 0)
+            {
+                $coverBoxStyleParts[] = 'width: '.$coverMaxWidth.'px';
+            }
+            if ($coverMaxHeight && $coverMaxHeight > 0)
+            {
+                $coverBoxStyleParts[] = 'height: '.$coverMaxHeight.'px';
+            }
+            $coverBoxStyle = implode('; ', $coverBoxStyleParts);
             $sectionSlug = is_array($content->sectionCategory->data ?? null) ? ($content->sectionCategory->data['slug'] ?? null) : null;
         @endphp
         @if(is_string($sectionSlug) && $sectionSlug !== '')
@@ -153,7 +165,9 @@
                             <div class="col-md-6">
                                 <div class="border rounded p-2 h-100">
                                     <div class="small text-muted mb-2">Cover</div>
-                                    <img src="{{ $coverImageUrl }}" alt="Cover image" class="img-fluid rounded">
+                                    <div class="border rounded d-flex align-items-center justify-content-center overflow-hidden bg-body" style="{{ $coverBoxStyle }}">
+                                        <img src="{{ $coverImageUrl }}" alt="Cover image" class="img-fluid rounded" style="max-height: 100%; object-fit: contain;">
+                                    </div>
                                 </div>
                             </div>
                         @endif
@@ -176,6 +190,28 @@
         @endif
     </div>
     <div class="col-md-4">
+        @php
+            $mcpPromptLines = [
+                'Fetch content data from Humano MCP.',
+                '',
+                'Tool:',
+                'fetch-humano-contents',
+                '',
+                'Payload:',
+                '{',
+                '  "project_path": "<ABSOLUTE_FRONTEND_PATH>",',
+                '  "section_slug": "'.(is_string($sectionSlug) && $sectionSlug !== '' ? $sectionSlug : '').'",',
+                '  "status": 3,',
+                '  "locale": "'.$activeLocale.'",',
+                '  "per_page": 100,',
+                '  "page": 1',
+                '}',
+                '',
+                'Frontend note:',
+                'Render cover inside a reserved box using cover.max_width and cover.max_height, with object-fit: contain.',
+            ];
+            $mcpPromptText = implode("\n", $mcpPromptLines);
+        @endphp
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">{{ __('app.Details') }}</h5>
@@ -238,11 +274,77 @@
                 @endif
             </div>
         </div>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                    MCP Prompt
+                    <a href="{{ route('help.index') }}#cursor-mcp-setup" class="text-muted" title="Ver ayuda MCP" aria-label="Ver ayuda MCP">
+                        <i class="ti ti-help-circle"></i>
+                    </a>
+                </h5>
+                <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 waves-effect" data-copy-target="#mcp-content-prompt">
+                    <i class="ti ti-copy me-1"></i>Copiar
+                </button>
+            </div>
+            <div class="card-body">
+                <textarea id="mcp-content-prompt" class="form-control font-monospace" rows="14" readonly>{{ $mcpPromptText }}</textarea>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
 
 @section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mcpPromptEl = document.getElementById('mcp-content-prompt');
+    const localeTabButtons = document.querySelectorAll('[data-bs-target^="#content-locale-"]');
+
+    function updateMcpPromptLocale(localeCode) {
+        if (!mcpPromptEl || !localeCode) {
+            return;
+        }
+
+        mcpPromptEl.value = mcpPromptEl.value.replace(
+            /"locale":\s*"[^"]*"/,
+            '"locale": "' + localeCode + '"'
+        );
+    }
+
+    localeTabButtons.forEach(function(tabButton) {
+        tabButton.addEventListener('shown.bs.tab', function() {
+            const target = tabButton.getAttribute('data-bs-target') || '';
+            const localeCode = target.replace('#content-locale-', '').trim();
+            updateMcpPromptLocale(localeCode);
+        });
+    });
+
+    document.querySelectorAll('[data-copy-target]').forEach(function(button) {
+        button.addEventListener('click', async function() {
+            const selector = button.getAttribute('data-copy-target');
+            const source = selector ? document.querySelector(selector) : null;
+            if (!source) {
+                return;
+            }
+
+            const text = source.value || source.textContent || '';
+            try {
+                await navigator.clipboard.writeText(text);
+                button.classList.remove('btn-outline-primary');
+                button.classList.add('btn-success');
+                button.innerHTML = '<i class="ti ti-check me-1"></i>Copiado';
+                setTimeout(function() {
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-primary');
+                    button.innerHTML = '<i class="ti ti-copy me-1"></i>Copiar';
+                }, 1600);
+            } catch (error) {
+                alert('No se pudo copiar automáticamente. Copia manual desde el bloque.');
+            }
+        });
+    });
+});
+</script>
 @if(app()->environment('production'))
 <script>
 document.addEventListener('DOMContentLoaded', function() {

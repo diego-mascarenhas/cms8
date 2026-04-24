@@ -160,6 +160,8 @@ class CategoryController extends Controller
             'contents_section_slug' => $data['slug'] ?? null,
             'content_locales' => ContentsSectionCategoryData::mergeContentLocalesFromStorage($data['content_locales'] ?? null),
             'content_form' => ContentsSectionCategoryData::mergeContentFormVisibility($data['content_form'] ?? null),
+            'cover_max_width' => $coverData['max_width'] ?? null,
+            'cover_max_height' => $coverData['max_height'] ?? null,
             'cover_variants' => $selectedVariants,
             'cover_variant_width' => $variantWidths,
             'cover_variant_height' => $variantHeights,
