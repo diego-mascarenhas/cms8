@@ -35,6 +35,31 @@ class Category extends Model
         'status' => 'boolean',
     ];
 
+    /**
+     * Primary keys that still exist and are not soft-deleted. Use before writing the contact_category pivot.
+     *
+     * @param  iterable<int|string|null>  $ids
+     * @return list<int>
+     */
+    public static function onlyExistingIds(iterable $ids): array
+    {
+        $normalized = [];
+        foreach ($ids as $id)
+        {
+            $int = (int) $id;
+            if ($int > 0)
+            {
+                $normalized[$int] = $int;
+            }
+        }
+        if ($normalized === [])
+        {
+            return [];
+        }
+
+        return static::query()->whereIn('id', array_values($normalized))->pluck('id')->all();
+    }
+
     protected static function booted(): void
     {
         static::saved(function (Category $category)

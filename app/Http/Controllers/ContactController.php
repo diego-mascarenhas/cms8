@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ContactDataTable;
 use App\Http\Requests\UpdateContactRequest;
 use App\Jobs\SendMessageCampaignJob;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
@@ -12,8 +13,8 @@ use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Enterprise;
-use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseDepartment;
+use App\Models\EnterpriseStatus;
 use App\Models\MessageDelivery;
 use App\Models\Opportunity;
 use App\Models\Source;
@@ -129,9 +130,10 @@ class ContactController extends Controller
             $categoryIds[] = $defaultCategoryId;
         }
 
-        if (! empty($categoryIds))
+        $validCategoryIds = Category::onlyExistingIds(array_unique($categoryIds));
+        if ($validCategoryIds !== [])
         {
-            $contact->categories()->sync(array_unique($categoryIds));
+            $contact->categories()->sync($validCategoryIds);
         }
 
         // Sync software
@@ -622,7 +624,7 @@ class ContactController extends Controller
         // Sync categories
         if (isset($data['categories']))
         {
-            $contact->categories()->sync($data['categories']);
+            $contact->categories()->sync(Category::onlyExistingIds($data['categories']));
         }
 
         // Sync software
