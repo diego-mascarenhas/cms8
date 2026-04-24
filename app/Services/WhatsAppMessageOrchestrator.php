@@ -234,40 +234,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return null;
         }
 
-        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS CHAR), ' ', ''), '+', ''), '-', '')";
-
-        $query = Contact::withoutGlobalScopes()
+        $id = Contact::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->where(function ($q) use ($cleanDigits, $phoneNormalizedSql)
-            {
-                $q->whereHas('sources', function ($q2) use ($cleanDigits)
-                {
-                    $q2->where('source_id', 2)->where('value', $cleanDigits);
-                })
-                    ->orWhereRaw("{$phoneNormalizedSql} = ?", [$cleanDigits]);
-
-                if (strlen($cleanDigits) > 9)
-                {
-                    $national = substr($cleanDigits, -9);
-                    $q->orWhereHas('sources', function ($q2) use ($national)
-                    {
-                        $q2->where('source_id', 2)->where('value', $national);
-                    })
-                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$national]);
-                }
-
-                if (strlen($cleanDigits) === 9)
-                {
-                    $with34 = '34'.$cleanDigits;
-                    $q->orWhereHas('sources', function ($q2) use ($with34)
-                    {
-                        $q2->where('source_id', 2)->where('value', $with34);
-                    })
-                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$with34]);
-                }
-            });
-
-        $id = $query->value('id');
+            ->where('phone', $cleanDigits)
+            ->value('id');
 
         return $id !== null ? (int) $id : null;
     }
