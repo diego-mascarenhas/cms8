@@ -130,7 +130,8 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(6, 'asc') // Ordenar por status
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->orderBy(5, 'asc') // Ordenar por próxima facturación
             ->pageLength(25);
     }
 
