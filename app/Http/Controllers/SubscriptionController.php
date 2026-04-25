@@ -25,6 +25,7 @@ class SubscriptionController extends Controller
     public function index(StripeSubscriptionDataTable $dataTable)
     {
         $teamId = auth()->user()->currentTeam?->id;
+        $selectedStatus = strtolower(trim((string) request()->query('status', '')));
         $statuses = [
             'active',
             'trialing',
@@ -42,20 +43,29 @@ class SubscriptionController extends Controller
         {
             $counts = StripeSubscription::query()
                 ->where('team_id', $teamId)
-                ->whereIn('status', $statuses)
-                ->selectRaw('status, COUNT(*) as total')
-                ->groupBy('status')
-                ->pluck('total', 'status');
+                ->selectRaw('LOWER(TRIM(status)) as normalized_status, COUNT(*) as total')
+                ->groupByRaw('LOWER(TRIM(status))')
+                ->pluck('total', 'normalized_status');
 
             foreach ($counts as $status => $total)
             {
-                $statusCounts[(string) $status] = (int) $total;
+                $normalized = strtolower(trim((string) $status));
+                if (array_key_exists($normalized, $statusCounts))
+                {
+                    $statusCounts[$normalized] = (int) $total;
+                }
             }
+        }
+
+        if (! in_array($selectedStatus, $statuses, true))
+        {
+            $selectedStatus = '';
         }
 
         return $dataTable->render('subscription.index', [
             'statusCounts' => $statusCounts,
             'subscriptionStatuses' => $statuses,
+            'selectedStatus' => $selectedStatus,
         ]);
     }
 

@@ -165,6 +165,18 @@ class StripeSubscriptionDataTable extends DataTable
     public function query(StripeSubscription $model): QueryBuilder
     {
         $teamId = auth()->user()->currentTeam?->id;
+        $allowedStatuses = [
+            'active',
+            'trialing',
+            'past_due',
+            'unpaid',
+            'incomplete',
+            'incomplete_expired',
+            'canceled',
+            'paused',
+        ];
+        $selectedStatus = strtolower(trim((string) request()->query('status', '')));
+        $selectedStatus = in_array($selectedStatus, $allowedStatuses, true) ? $selectedStatus : null;
 
         $query = $model
             ->newQuery()
@@ -179,8 +191,20 @@ class StripeSubscriptionDataTable extends DataTable
 
         return $query
             ->when($teamId, fn ($q) => $q->where('stripe_subscriptions.team_id', $teamId))
+            ->when($selectedStatus !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(stripe_subscriptions.status)) = ?', [$selectedStatus]))
             ->when(! $teamId, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderByRaw('enterprises.id IS NULL DESC')
+            ->orderByRaw("CASE LOWER(TRIM(stripe_subscriptions.status))
+                WHEN 'past_due' THEN 1
+                WHEN 'unpaid' THEN 2
+                WHEN 'incomplete' THEN 3
+                WHEN 'incomplete_expired' THEN 4
+                WHEN 'trialing' THEN 5
+                WHEN 'active' THEN 6
+                WHEN 'paused' THEN 7
+                WHEN 'canceled' THEN 8
+                ELSE 99
+            END ASC")
             ->orderBy('stripe_subscriptions.customer_name');
     }
 

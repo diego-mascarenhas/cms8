@@ -45,9 +45,11 @@
     @foreach(($subscriptionStatuses ?? []) as $statusKey)
         @php
             $iconMeta = $statusIcons[$statusKey] ?? ['icon' => 'ti-circle', 'bg' => 'bg-label-primary', 'text' => 'text-primary'];
+            $isSelected = ($selectedStatus ?? '') === $statusKey;
         @endphp
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card h-100">
+            <a href="{{ route('subscription.index', ['status' => $statusKey]) }}" class="text-decoration-none text-body">
+            <div class="card h-100 {{ $isSelected ? 'border border-primary' : '' }}">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <span class="text-muted small">{{ __('stripe_subscription.status.'.$statusKey) }}</span>
@@ -60,9 +62,17 @@
                     <h4 class="mb-0 mt-2">{{ number_format((int) ($statusCounts[$statusKey] ?? 0)) }}</h4>
                 </div>
             </div>
+            </a>
         </div>
     @endforeach
 </div>
+@if(! empty($selectedStatus))
+    <div class="mb-3">
+        <a href="{{ route('subscription.index') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="ti ti-filter-off me-1"></i>{{ __('Quitar filtro') }}
+        </a>
+    </div>
+@endif
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible" role="alert">
