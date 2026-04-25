@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
+use App\Models\StripeSubscription;
 use App\Policies\ContactPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,14 @@ class ClientController extends Controller
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
         $placeData = session('place_data', []);
+        $prefillData = array_filter([
+            'name' => request()->query('name', ''),
+            'email' => request()->query('email', ''),
+            'phone' => request()->query('phone', ''),
+            'website' => request()->query('website', ''),
+            'code' => request()->query('code', ''),
+        ], static fn ($value) => is_string($value) && trim($value) !== '');
+        $linkSubscriptionId = request()->query('link_subscription_id');
         $data = (object) array_merge([
             'name' => '',
             'email' => '',
@@ -56,7 +65,8 @@ class ClientController extends Controller
             'latitude' => '',
             'longitude' => '',
             'contact_person' => '',
-        ], $placeData);
+            'link_subscription_id' => $linkSubscriptionId,
+        ], $placeData, $prefillData);
         $trackingId = session('client_form_tracking_id');
 
         return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId'));
@@ -167,6 +177,21 @@ class ClientController extends Controller
         $data['status_id'] = $request->status_id ?? 1;
         $data['code'] = $request->filled('code') ? trim((string) $request->code) : null;
 
+        $linkSubscriptionId = (int) $request->input('link_subscription_id', 0);
+        if ($linkSubscriptionId > 0)
+        {
+            $linkSubscription = StripeSubscription::query()
+                ->where('id', $linkSubscriptionId)
+                ->where('team_id', $teamId)
+                ->first();
+
+            if ($linkSubscription && blank($data['code']) && filled($linkSubscription->customer_id))
+            {
+                // Creating from Stripe link flow: enforce customer_id as enterprise code.
+                $data['code'] = (string) $linkSubscription->customer_id;
+            }
+        }
+
         $data['data'] = array_merge($data, [
             'opening_hours' => $request->input('opening_hours'),
             'latitude' => $request->input('latitude'),
@@ -174,10 +199,19 @@ class ClientController extends Controller
             'contact_person' => $request->input('contact_person'),
         ]);
 
-        Enterprise::updateOrCreate(
+        $createdEnterprise = Enterprise::updateOrCreate(
             ['id' => $request->id],
             $data,
         );
+
+        if ($linkSubscriptionId > 0)
+        {
+            return redirect()
+                ->route('subscription.index')
+                ->with('success', __('stripe_subscription.link.auto_link_success', [
+                    'client' => $createdEnterprise->name,
+                ]));
+        }
 
         return redirect()->route('client-list')->with('success', 'Record saved successfully.');
     }

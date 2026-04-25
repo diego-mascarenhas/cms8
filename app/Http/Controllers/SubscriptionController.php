@@ -7,6 +7,7 @@ use App\DataTables\StripeSubscriptionDataTable;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Models\Enterprise;
+use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
 use App\Services\Stripe\StripeSubscriptionService;
@@ -117,9 +118,25 @@ class SubscriptionController extends Controller
             ->orderBy('name')
             ->get();
 
+        $linkedService = Service::withoutGlobalScopes()
+            ->with(['serviceType', 'currency', 'enterprise'])
+            ->where('subscription_id', $stripeSubscription->id)
+            ->whereNull('deleted_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $matchedEnterprise = Enterprise::query()
+            ->where('team_id', $stripeSubscription->team_id)
+            ->where('code', $stripeSubscription->customer_id)
+            ->whereNull('deleted_at')
+            ->with(['contacts' => fn ($q) => $q->select(['id', 'name', 'surname', 'email', 'phone', 'current_enterprise_id'])])
+            ->first();
+
         return view('subscription.link-client', [
             'subscription' => $stripeSubscription,
             'enterprises' => $enterprises,
+            'linkedService' => $linkedService,
+            'matchedEnterprise' => $matchedEnterprise,
         ]);
     }
 

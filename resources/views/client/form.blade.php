@@ -38,6 +38,7 @@
         <form class="card-body" id="clientForm" action="{{ route('client.store') }}" method="POST">
             @csrf
             <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+            <input type="hidden" name="link_subscription_id" value="{{ $data->link_subscription_id ?? '' }}">
 
             <div class="row g-3">
                 <div class="col-12 col-md-6">

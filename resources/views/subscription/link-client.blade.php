@@ -24,12 +24,85 @@
 
 <div class="card">
     <div class="card-body">
+        <h6 class="mb-3">{{ __('stripe_subscription.link.section_subscription') }}</h6>
         <dl class="row mb-4">
             <dt class="col-sm-3">{{ __('stripe_subscription.link.stripe_customer_id') }}</dt>
             <dd class="col-sm-9"><code>{{ $subscription->customer_id ?? '—' }}</code></dd>
             <dt class="col-sm-3">{{ __('stripe_subscription.columns.customer_name') }}</dt>
             <dd class="col-sm-9">{{ $subscription->customer_name ?: '—' }}</dd>
+            <dt class="col-sm-3">{{ __('stripe_subscription.columns.customer_email') }}</dt>
+            <dd class="col-sm-9">{{ $subscription->customer_email ?: '—' }}</dd>
+            <dt class="col-sm-3">{{ __('stripe_subscription.columns.plan_name') }}</dt>
+            <dd class="col-sm-9">{{ $subscription->plan_name ?: '—' }}</dd>
+            <dt class="col-sm-3">{{ __('stripe_subscription.columns.status') }}</dt>
+            <dd class="col-sm-9">
+                @php
+                    $statusKey = 'stripe_subscription.status.'.$subscription->status;
+                    $statusLabel = __($statusKey);
+                @endphp
+                {{ $statusLabel === $statusKey ? ($subscription->status ?: '—') : $statusLabel }}
+            </dd>
+            <dt class="col-sm-3">{{ __('stripe_subscription.columns.amount_total') }}</dt>
+            <dd class="col-sm-9">
+                @if($subscription->amount_total !== null)
+                    {{ number_format((float) $subscription->amount_total, 2, ',', '.') }} {{ strtoupper($subscription->price_currency ?? 'EUR') }}
+                @else
+                    —
+                @endif
+            </dd>
         </dl>
+
+        <h6 class="mb-3">{{ __('stripe_subscription.link.section_service') }}</h6>
+        @if($linkedService)
+            <dl class="row mb-4">
+                <dt class="col-sm-3">{{ __('stripe_subscription.link.service_id') }}</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ route('service.show', $linkedService->id) }}" class="text-body">
+                        #{{ $linkedService->id }}
+                    </a>
+                </dd>
+                <dt class="col-sm-3">{{ __('stripe_subscription.link.service_type') }}</dt>
+                <dd class="col-sm-9">{{ $linkedService->serviceType?->name ?? '—' }}</dd>
+                <dt class="col-sm-3">{{ __('stripe_subscription.link.service_price') }}</dt>
+                <dd class="col-sm-9">
+                    @if($linkedService->price !== null)
+                        {{ number_format((float) $linkedService->price, 2, ',', '.') }} {{ $linkedService->currency?->symbol ?? '' }}
+                    @else
+                        —
+                    @endif
+                </dd>
+                <dt class="col-sm-3">{{ __('stripe_subscription.link.service_client') }}</dt>
+                <dd class="col-sm-9">{{ $linkedService->enterprise?->name ?? '—' }}</dd>
+            </dl>
+        @else
+            <p class="text-muted mb-4">{{ __('stripe_subscription.link.service_not_found') }}</p>
+        @endif
+
+        <h6 class="mb-3">{{ __('stripe_subscription.link.section_client_match') }}</h6>
+        @if($matchedEnterprise)
+            <div class="alert alert-success mb-4" role="alert">
+                <div class="fw-semibold">{{ __('stripe_subscription.link.match_found') }}</div>
+                <div class="small mt-1">
+                    {{ $matchedEnterprise->name }}
+                    @if($matchedEnterprise->email) · {{ $matchedEnterprise->email }} @endif
+                    @if($matchedEnterprise->phone) · {{ $matchedEnterprise->phone }} @endif
+                </div>
+            </div>
+        @else
+            <div class="alert alert-warning mb-4" role="alert">
+                <div class="fw-semibold">{{ __('stripe_subscription.link.match_not_found') }}</div>
+                <div class="small mt-1">{{ __('stripe_subscription.link.match_not_found_hint') }}</div>
+            </div>
+        @endif
+
+        <div class="mb-4">
+            <a
+                href="{{ route('client.create', ['name' => $subscription->customer_name, 'email' => $subscription->customer_email, 'code' => $subscription->customer_id, 'link_subscription_id' => $subscription->id]) }}"
+                class="btn btn-outline-primary"
+            >
+                <i class="ti ti-building-plus me-1"></i>{{ __('stripe_subscription.link.create_client') }}
+            </a>
+        </div>
 
         <form action="{{ route('subscription.stripe-link-client.store', $subscription) }}" method="POST" class="row g-3">
             @csrf
