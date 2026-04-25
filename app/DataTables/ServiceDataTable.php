@@ -120,19 +120,69 @@ class ServiceDataTable extends DataTable
             $query->where('responsible_id', $user->id);
         }
 
+        $statusFilter = request()->input('status_filter', '4');
+        if ((string) $statusFilter !== 'all')
+        {
+            $query->where('services.status', (int) $statusFilter);
+        }
+
         return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $statusLabel = e(__('Status'));
+        $allLabel = e(__('All'));
+        $initComplete = "function () {
+    var api = this.api();
+    var f = jQuery('#service-table_filter');
+    if (! f.length) { return; }
+    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    if (! jQuery('#service-filter-status').length) {
+        f.prepend(
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"service-filter-status\" class=\"form-label mb-0 me-2 text-nowrap\">{$statusLabel}</label>' +
+            '<select id=\"service-filter-status\" class=\"form-select form-select-sm\" style=\"min-width:12rem;max-width:14rem;\">' +
+            '<option value=\"all\">{$allLabel}</option>' +
+            '<option value=\"1\">Suspendido</option>' +
+            '<option value=\"2\">Suspender</option>' +
+            '<option value=\"3\">Activar</option>' +
+            '<option value=\"4\" selected>Activo</option>' +
+            '<option value=\"5\">Migrar</option>' +
+            '<option value=\"6\">Migrando</option>' +
+            '<option value=\"7\">Delegar</option>' +
+            '<option value=\"8\">Analizar</option>' +
+            '</select></div>'
+        );
+    }
+    f.find('label').addClass('ms-auto mb-0');
+    jQuery('#service-filter-status').off('change.serviceStatus').on('change.serviceStatus', function () {
+        api.ajax.reload();
+    });
+}";
+
         return $this->builder()
             ->setTableId('service-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.status_filter = ($('#service-filter-status').val() || '4');",
+            )
             ->dom('frtip')
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->orderBy(5, 'asc') // Ordenar por próxima facturación
-            ->pageLength(25);
+            ->pageLength(25)
+            ->parameters([
+                'initComplete' => $initComplete,
+                'drawCallback' => "function () {
+                    var f = jQuery('#service-table_filter');
+                    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+                    f.find('label').addClass('ms-auto mb-0');
+                }",
+            ]);
     }
 
     public function getColumns(): array
