@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -105,6 +106,15 @@ class ServiceDataTable extends DataTable
         }
 
         $query = $model->newQuery()
+            ->select('services.*')
+            ->when(DB::getDriverName() === 'pgsql', function ($q)
+            {
+                $q->selectRaw('CAST(services.data AS TEXT) as metadata_search');
+            })
+            ->when(DB::getDriverName() !== 'pgsql', function ($q)
+            {
+                $q->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(services.data, '$')) as metadata_search");
+            })
             ->with([
                 'client',
                 'serviceType',  // Fix N+1: Use 'serviceType' instead of 'category' alias
@@ -189,6 +199,7 @@ class ServiceDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
+            Column::make('metadata_search')->visible(false),
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title(__('Client')),
             Column::make('category_id')->title(__('Category')),

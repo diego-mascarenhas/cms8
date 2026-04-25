@@ -160,8 +160,7 @@
     <!-- Service Content -->
     <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
         <!-- Service Tabs -->
-        <div class="card mb-4">
-            <div class="card-body">
+        <div class="mb-4">
                 <ul class="nav nav-pills flex-column flex-md-row mb-4">
                     <li class="nav-item">
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#service-overview">
@@ -177,72 +176,49 @@
                 <div class="tab-content">
                     <!-- Overview Tab -->
                     <div class="tab-pane fade show active" id="service-overview">
-                        <div class="card">
-                            <div class="card-body">
+                        <div>
                                 <h5 class="card-title">Description</h5>
                                 <p>{{ $service->description ?? 'No description available' }}</p>
-
-                                @if(!empty($serviceData))
-                                <div class="mt-4">
-                                    <h5>{{ __('Metadata') }}</h5>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            @foreach($serviceData as $key => $value)
-                                            <tr>
-                                                <th style="width: 30%">{{ \Illuminate\Support\Str::headline((string) $key) }}</th>
-                                                <td>
-                                                    @if(is_array($value) || is_object($value))
-                                                        <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                                                    @else
-                                                        {{ $value }}
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            @endforeach
-                                        </table>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
                         </div>
                     </div>
 
                     <!-- Service Data Tab -->
                     <div class="tab-pane fade" id="service-data">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ __('Raw Service Data') }}</h5>
+                        <div>
+                            <h5 class="card-title">{{ __('Metadata') }}</h5>
+                            @if(!empty($serviceData))
                                 <div class="json-data-container">
                                     <div class="table-responsive">
                                         <table class="table table-bordered">
                                             <thead>
-                                                <tr>
-                                                    <th style="width: 30%">Field</th>
-                                                    <th>Value</th>
-                                                </tr>
+                                            <tr>
+                                                <th style="width: 30%">Field</th>
+                                                <th>Value</th>
+                                            </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($serviceData as $key => $value)
+                                            @foreach($serviceData as $key => $value)
                                                 <tr>
-                                                    <td>{{ $key }}</td>
+                                                    <td>{{ \Illuminate\Support\Str::headline((string) $key) }}</td>
                                                     <td>
                                                         @if(is_array($value) || is_object($value))
-                                                            <pre>{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
+                                                            <pre>{{ json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
                                                         @else
                                                             {{ $value }}
                                                         @endif
                                                     </td>
                                                 </tr>
-                                                @endforeach
+                                            @endforeach
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                            </div>
+                            @else
+                                <p class="text-muted mb-0">{{ __('No metadata available') }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 </div>
