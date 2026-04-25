@@ -24,7 +24,39 @@ class SubscriptionController extends Controller
      */
     public function index(StripeSubscriptionDataTable $dataTable)
     {
-        return $dataTable->render('subscription.index');
+        $teamId = auth()->user()->currentTeam?->id;
+        $statuses = [
+            'active',
+            'trialing',
+            'past_due',
+            'unpaid',
+            'incomplete',
+            'incomplete_expired',
+            'canceled',
+            'paused',
+        ];
+
+        $statusCounts = array_fill_keys($statuses, 0);
+
+        if ($teamId)
+        {
+            $counts = StripeSubscription::query()
+                ->where('team_id', $teamId)
+                ->whereIn('status', $statuses)
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
+
+            foreach ($counts as $status => $total)
+            {
+                $statusCounts[(string) $status] = (int) $total;
+            }
+        }
+
+        return $dataTable->render('subscription.index', [
+            'statusCounts' => $statusCounts,
+            'subscriptionStatuses' => $statuses,
+        ]);
     }
 
     /**
