@@ -12,9 +12,6 @@ use Yajra\DataTables\Services\DataTable;
 
 class ServiceDataTable extends DataTable
 {
-    // Fix N+1: Cache servers to avoid querying in the loop
-    protected $serversCache = null;
-
     /**
      * Build the DataTable class.
      *
@@ -22,9 +19,6 @@ class ServiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        // Fix N+1: Load all servers once
-        $this->serversCache = \App\Models\Server::pluck('name', 'id');
-
         $table = (new EloquentDataTable($query));
 
         // Add action column (blade view will handle policy-based permissions)
@@ -63,45 +57,6 @@ class ServiceDataTable extends DataTable
                 $query->whereHas('serviceType', function ($q) use ($keyword)  // Fix N+1: Use serviceType relation
                 {$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
-            })
-            ->addColumn('domain', function ($data)
-            {
-                return $data->domain ?: '-';
-            })
-            ->addColumn('server', function ($data)
-            {
-                // Fix N+1: Use cache instead of individual queries
-                if (! empty($data->data['server_id']))
-                {
-                    return $this->serversCache[$data->data['server_id']] ?? '-';
-                }
-
-                return '-';
-            })
-            ->filterColumn('server', function ($query, $keyword)
-            {
-                // Buscar servidores por nombre
-                $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
-                    ->pluck('id')
-                    ->toArray();
-
-                if (! empty($serverIds))
-                {
-                    $conditions = [];
-                    foreach ($serverIds as $serverId)
-                    {
-                        $conditions[] = "JSON_EXTRACT(data, '$.server_id') = '{$serverId}'";
-                    }
-                    $query->whereRaw('('.implode(' OR ', $conditions).')');
-                } else
-                {
-                    // Si no hay coincidencias, asegurar que no se devuelvan resultados
-                    $query->whereRaw('1=0');
-                }
-            })
-            ->filterColumn('domain', function ($query, $keyword)
-            {
-                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) LIKE ?", ['%'.strtolower($keyword).'%']);
             })
             ->editColumn('next_billing', function ($data)
             {
@@ -175,7 +130,7 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(8, 'asc') // Ordenar por status
+            ->orderBy(6, 'asc') // Ordenar por status
             ->pageLength(25);
     }
 
@@ -186,10 +141,8 @@ class ServiceDataTable extends DataTable
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title(__('Client')),
             Column::make('category_id')->title(__('Category')),
-            Column::make('domain')->title(__('Domain')),
-            Column::make('server')->title(__('Server')),
             Column::make('calculated_price')->title(__('Price'))->className('text-center'),
-            Column::make('next_billing')->title(__('Next Billing'))->className('text-center'),
+            Column::make('next_billing')->title(__('Próxima'))->className('text-center'),
             Column::make('status')->title(__('Status'))->className('text-center'),
             Column::computed('action')
                 ->title(__('Actions'))
