@@ -34,10 +34,17 @@ Schedule::command('stripe:suspend-overdue')
     ->daily()
     ->at('03:00');
 
-Schedule::command('subscriptions:sync')
+Schedule::command('stripe:sync-service-syncs')
     ->hourly()
-    ->name('stripe-subscriptions-sync')
-    ->description('Sync Stripe subscriptions and stage latest invoices')
+    ->name('service-syncs-stripe-sync')
+    ->description('Sync Stripe subscriptions into service_syncs staging')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('service-syncs:import --provider=stripe --limit=120 --fallback-email --link-code-on-email-match')
+    ->cron('3,18,33,48 * * * *')
+    ->name('service-syncs-import')
+    ->description('Import pending service_syncs rows into services (create-only)')
     ->withoutOverlapping()
     ->runInBackground();
 

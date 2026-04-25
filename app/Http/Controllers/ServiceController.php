@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ServiceDataTable;
 use App\Models\Invoice;
 use App\Models\Service;
-use App\Models\StripeSubscription;
+use App\Models\ServiceSync;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Log;
@@ -121,11 +121,11 @@ class ServiceController extends Controller
 
         $enterprise_id = $request->input('enterprise_id');
         $teamId = auth()->user()->currentTeam?->id;
-        $stripeSubscriptions = $teamId
-            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
+        $serviceSyncs = $teamId
+            ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
 
-        return view('service.form', compact('enterprise_id', 'stripeSubscriptions'));
+        return view('service.form', compact('enterprise_id', 'serviceSyncs'));
     }
 
     /**
@@ -139,7 +139,7 @@ class ServiceController extends Controller
         {
             $validator = \Validator::make($request->all(), [
                 'enterprise_id' => 'required|exists:enterprises,id',
-                'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+                'subscription_id' => ['nullable', 'exists:service_syncs,id'],
                 'category_id' => ['nullable', 'exists:categories,id'],
                 'operation' => 'required|in:buy,sell',
                 'description' => 'nullable|string',
@@ -258,11 +258,11 @@ class ServiceController extends Controller
 
         $enterprise_id = $data->enterprise_id;
         $teamId = auth()->user()->currentTeam?->id;
-        $stripeSubscriptions = $teamId
-            ? StripeSubscription::where('team_id', $teamId)->orderBy('customer_name')->orderBy('plan_name')->get()
+        $serviceSyncs = $teamId
+            ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
 
-        return view('service.form', compact('data', 'enterprise_id', 'stripeSubscriptions'));
+        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs'));
     }
 
     /**
@@ -275,7 +275,7 @@ class ServiceController extends Controller
 
         $rules = [
             'enterprise_id' => 'required|exists:enterprises,id',
-            'subscription_id' => ['nullable', 'exists:stripe_subscriptions,id'],
+            'subscription_id' => ['nullable', 'exists:service_syncs,id'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'operation' => 'required|in:buy,sell',
             'description' => 'nullable|string',

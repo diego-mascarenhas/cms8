@@ -71,7 +71,7 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Sync client subscriptions from Stripe to local stripe_subscriptions table.
+     * Sync client subscriptions from Stripe to local service_syncs staging table.
      * Uses the current team's Stripe API key (test or live) from team settings.
      */
     public function syncFromStripe()

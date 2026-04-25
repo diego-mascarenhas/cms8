@@ -5,7 +5,8 @@ namespace App\DataTables;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
-use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as BaseQueryBuilder;
 use Illuminate\Support\Str;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -14,32 +15,32 @@ use Yajra\DataTables\Services\DataTable;
 
 class StripeSubscriptionDataTable extends DataTable
 {
-    public function dataTable(QueryBuilder $query): EloquentDataTable
+    public function dataTable(Builder|BaseQueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
             ->setRowId('id')
             ->rawColumns(['status', 'action'])
-            ->filterColumn('customer_name', function (QueryBuilder $builder, string $keyword)
+            ->filterColumn('customer_name', function (Builder $builder, string $keyword)
             {
-                $builder->where('stripe_subscriptions.customer_name', 'like', '%'.$keyword.'%');
+                $builder->where('service_syncs.customer_name', 'like', '%'.$keyword.'%');
             })
-            ->filterColumn('enterprise_contact_search', function (QueryBuilder $builder, string $keyword)
+            ->filterColumn('enterprise_contact_search', function (Builder $builder, string $keyword)
             {
                 $like = '%'.$keyword.'%';
 
-                $builder->where(function (QueryBuilder $q) use ($like)
+                $builder->where(function (Builder $q) use ($like)
                 {
-                    $q->whereHas('enterprise', function (QueryBuilder $eq) use ($like)
+                    $q->whereHas('enterprise', function (Builder $eq) use ($like)
                     {
-                        $eq->whereColumn('enterprises.team_id', 'stripe_subscriptions.team_id')
+                        $eq->whereColumn('enterprises.team_id', 'service_syncs.team_id')
                             ->whereNull('enterprises.deleted_at')
-                            ->where(function (QueryBuilder $inner) use ($like)
+                            ->where(function (Builder $inner) use ($like)
                             {
                                 $inner->where('enterprises.name', 'like', $like)
-                                    ->orWhereHas('contacts', function (QueryBuilder $cq) use ($like)
+                                    ->orWhereHas('contacts', function (Builder $cq) use ($like)
                                     {
                                         $cq->whereNull('contacts.deleted_at')
-                                            ->where(function (QueryBuilder $c2) use ($like)
+                                            ->where(function (Builder $c2) use ($like)
                                             {
                                                 $c2->where('contacts.name', 'like', $like)
                                                     ->orWhere('contacts.surname', 'like', $like);
@@ -162,7 +163,7 @@ class StripeSubscriptionDataTable extends DataTable
             });
     }
 
-    public function query(StripeSubscription $model): QueryBuilder
+    public function query(StripeSubscription $model): Builder|BaseQueryBuilder
     {
         $teamId = auth()->user()->currentTeam?->id;
         $allowedStatuses = [
@@ -180,21 +181,21 @@ class StripeSubscriptionDataTable extends DataTable
 
         $query = $model
             ->newQuery()
-            ->select('stripe_subscriptions.*')
+            ->select('service_syncs.*')
             ->leftJoin('enterprises', function ($join)
             {
-                $join->on('enterprises.code', '=', 'stripe_subscriptions.customer_id')
-                    ->on('enterprises.team_id', '=', 'stripe_subscriptions.team_id')
+                $join->on('enterprises.code', '=', 'service_syncs.customer_id')
+                    ->on('enterprises.team_id', '=', 'service_syncs.team_id')
                     ->whereNull('enterprises.deleted_at');
             })
             ->addSelect('enterprises.id as enterprise_match_id');
 
         return $query
-            ->when($teamId, fn ($q) => $q->where('stripe_subscriptions.team_id', $teamId))
-            ->when($selectedStatus !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(stripe_subscriptions.status)) = ?', [$selectedStatus]))
+            ->when($teamId, fn ($q) => $q->where('service_syncs.team_id', $teamId))
+            ->when($selectedStatus !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(service_syncs.status)) = ?', [$selectedStatus]))
             ->when(! $teamId, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderByRaw('enterprises.id IS NULL DESC')
-            ->orderByRaw("CASE LOWER(TRIM(stripe_subscriptions.status))
+            ->orderByRaw("CASE LOWER(TRIM(service_syncs.status))
                 WHEN 'past_due' THEN 1
                 WHEN 'unpaid' THEN 2
                 WHEN 'incomplete' THEN 3
@@ -205,7 +206,7 @@ class StripeSubscriptionDataTable extends DataTable
                 WHEN 'canceled' THEN 8
                 ELSE 99
             END ASC")
-            ->orderBy('stripe_subscriptions.customer_name');
+            ->orderBy('service_syncs.customer_name');
     }
 
     public function html(): HtmlBuilder

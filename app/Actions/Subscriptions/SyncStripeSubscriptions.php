@@ -3,7 +3,7 @@
 namespace App\Actions\Subscriptions;
 
 use App\Models\InvoiceSync;
-use App\Models\StripeSubscription;
+use App\Models\ServiceSync;
 use App\Models\SubscriptionChange;
 use App\Models\Team;
 use App\Services\Stripe\StripeSubscriptionService;
@@ -19,7 +19,7 @@ class SyncStripeSubscriptions
     /**
      * @param  \App\Models\Team|null  $syncingTeam  Team that runs the sync (Stripe secret + Humano scope). When set, all rows get this team_id; link to enterprise is via customer_id = enterprises.code (no extra column).
      */
-    public function handle(?Team $syncingTeam = null): int
+    public function handle(?Team $syncingTeam = null, ?int $limit = null): int
     {
         $processed = 0;
 
@@ -45,7 +45,11 @@ class SyncStripeSubscriptions
             $mapped['invoice_note'] = $note;
             unset($mapped['amount_for_note']);
 
-            $subscription = StripeSubscription::firstWhere('stripe_id', $mapped['stripe_id']);
+            $subscription = ServiceSync::query()
+                ->where('provider', 'stripe')
+                ->where('team_id', $mapped['team_id'])
+                ->where('stripe_id', $mapped['stripe_id'])
+                ->first();
 
             if ($subscription)
             {
@@ -57,7 +61,7 @@ class SyncStripeSubscriptions
                 $this->updateSubscription($subscription, $mapped);
             } else
             {
-                $subscription = StripeSubscription::create($mapped + ['last_synced_at' => now()]);
+                $subscription = ServiceSync::create($mapped + ['last_synced_at' => now()]);
 
                 SubscriptionChange::create([
                     'subscription_id' => $subscription->id,
@@ -75,12 +79,17 @@ class SyncStripeSubscriptions
             );
 
             $processed++;
+
+            if ($limit !== null && $processed >= $limit)
+            {
+                break;
+            }
         }
 
         return $processed;
     }
 
-    private function updateSubscription(StripeSubscription $subscription, array $payload): void
+    private function updateSubscription(ServiceSync $subscription, array $payload): void
     {
         // Preserve local metadata that doesn't come from Stripe (plan, whm_status, etc.)
         if (! empty($subscription->data) && isset($payload['data']))
@@ -186,6 +195,7 @@ class SyncStripeSubscriptions
         ], fn ($value) => $value !== null && $value !== '');
 
         return [
+            'provider' => 'stripe',
             'stripe_id' => Arr::get($payload, 'id'),
             'type' => 'sell',
             'customer_id' => is_string($customer)

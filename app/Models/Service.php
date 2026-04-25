@@ -120,13 +120,21 @@ class Service extends Model
     }
 
     /**
-     * Stripe subscription (stripe_subscriptions, from /subscription) this service is linked to.
+     * Provider service sync row (service_syncs, from /subscription) this service is linked to.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
+    public function serviceSync()
+    {
+        return $this->belongsTo(ServiceSync::class, 'subscription_id');
+    }
+
+    /**
+     * Backward-compatible alias for legacy callers.
+     */
     public function stripeSubscription()
     {
-        return $this->belongsTo(StripeSubscription::class, 'subscription_id');
+        return $this->serviceSync();
     }
 
     public function responsible()
