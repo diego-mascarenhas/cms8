@@ -40,7 +40,7 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
             <span class="text-muted fw-light">{{ __('Service') }}/</span>
-            {{ isset($serviceData['domain']) ? $serviceData['domain'] : __('Service') . ' #' . $service->id }}
+            {{ $service->description ?: __('Service') . ' #' . $service->id }}
         </h4>
         <p class="text-muted">
             Created on {{ \Carbon\Carbon::parse($service->created_at)->format('F d, Y') }}
@@ -72,10 +72,7 @@
                             src="{{ asset('assets/img/icons/brands/social-label.png') }}" height="100"
                             width="100" alt="Service icon" />
                         <div class="user-info text-center">
-                            <h4 class="mb-2">{{ isset($serviceData['domain']) ? $serviceData['domain'] : 'Service #' . $service->id }}</h4>
-                            @if(isset($serviceData['user']))
-                                <span class="badge bg-label-secondary mt-1">User: {{ $serviceData['user'] }}</span>
-                            @endif
+                            <h4 class="mb-2">{{ $service->description ?: 'Service #' . $service->id }}</h4>
                         </div>
                     </div>
                 </div>
@@ -185,73 +182,23 @@
                                 <h5 class="card-title">Description</h5>
                                 <p>{{ $service->description ?? 'No description available' }}</p>
 
-                                @if(isset($serviceData['domain']))
+                                @if(!empty($serviceData))
                                 <div class="mt-4">
-                                    <h5>Domain Information</h5>
+                                    <h5>{{ __('Metadata') }}</h5>
                                     <div class="table-responsive">
                                         <table class="table table-bordered">
+                                            @foreach($serviceData as $key => $value)
                                             <tr>
-                                                <th style="width: 30%">Domain</th>
-                                                <td>{{ $serviceData['domain'] }}</td>
-                                            </tr>
-                                            @if(isset($serviceData['user']))
-                                            <tr>
-                                                <th>Username</th>
-                                                <td>{{ $serviceData['user'] }}</td>
-                                            </tr>
-                                            @endif
-                                            @if(isset($serviceData['ip']))
-                                            <tr>
-                                                <th>IP Address</th>
-                                                <td>{{ $serviceData['ip'] }}</td>
-                                            </tr>
-                                            @endif
-                                            @if(isset($serviceData['plan']))
-                                            <tr>
-                                                <th>Plan</th>
-                                                <td>{{ $serviceData['plan'] }}</td>
-                                            </tr>
-                                            @endif
-                                            @if(isset($serviceData['partition']))
-                                            <tr>
-                                                <th>Partition</th>
-                                                <td>{{ $serviceData['partition'] }}</td>
-                                            </tr>
-                                            @endif
-                                        </table>
-                                    </div>
-                                </div>
-                                @endif
-
-                                @if(isset($serviceData['email']) || isset($serviceData['diskused']) || isset($serviceData['bandwidthused']))
-                                <div class="mt-4">
-                                    <h5>Hosting Information</h5>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered">
-                                            @if(isset($serviceData['email']))
-                                            <tr>
-                                                <th style="width: 30%">Email</th>
-                                                <td>{{ $serviceData['email'] }}</td>
-                                            </tr>
-                                            @endif
-                                            @if(isset($serviceData['diskused']) && isset($serviceData['disklimit']))
-                                            <tr>
-                                                <th>Disk Usage</th>
+                                                <th style="width: 30%">{{ \Illuminate\Support\Str::headline((string) $key) }}</th>
                                                 <td>
-                                                    {{ number_format($serviceData['diskused']) }} MB of {{ number_format($serviceData['disklimit']) }} MB
-                                                    ({{ round(($serviceData['diskused'] / $serviceData['disklimit']) * 100, 2) }}%)
+                                                    @if(is_array($value) || is_object($value))
+                                                        <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                                    @else
+                                                        {{ $value }}
+                                                    @endif
                                                 </td>
                                             </tr>
-                                            @endif
-                                            @if(isset($serviceData['bandwidthused']) && isset($serviceData['bandwidthlimit']))
-                                            <tr>
-                                                <th>Bandwidth</th>
-                                                <td>
-                                                    {{ number_format($serviceData['bandwidthused']) }} MB of {{ number_format($serviceData['bandwidthlimit']) }} MB
-                                                    ({{ round(($serviceData['bandwidthused'] / $serviceData['bandwidthlimit']) * 100, 2) }}%)
-                                                </td>
-                                            </tr>
-                                            @endif
+                                            @endforeach
                                         </table>
                                     </div>
                                 </div>

@@ -111,13 +111,8 @@ class ImportServiceSyncsCommand extends Command
                 'service_type_id' => (int) $defaultServiceTypeId,
                 'operation' => 'sell',
                 'description' => $description,
-                'data' => [
-                    'provider' => $provider,
-                    'external_id' => $row->stripe_id,
-                    'customer_id' => $row->customer_id,
-                    'customer_email' => $row->customer_email,
-                    'resolution_mode' => $resolutionMode,
-                ],
+                // Keep only provider metadata payload for service detail visualization.
+                'data' => is_array($row->data) ? $row->data : [],
                 'currency_id' => $currencyId,
                 'price' => $row->amount_total ?? $row->unit_amount,
                 'discount' => 0,
