@@ -92,8 +92,7 @@ class StripeSubscriptionDataTable extends DataTable
                                 .'</a>';
                         }
                     }
-                }
-                elseif (filled($sub->customer_id) && $user->hasAnyRole(['admin', 'collaborator']))
+                } elseif (filled($sub->customer_id) && $user->hasAnyRole(['admin', 'collaborator']))
                 {
                     $parts[] = '<a href="'.e(route('subscription.stripe-link-client', $sub->id)).'" class="text-body" title="'.e(__('stripe_subscription.link_client')).'">'
                         .'<i class="ti ti-link ti-sm"></i>'
@@ -180,7 +179,9 @@ class StripeSubscriptionDataTable extends DataTable
 
         return $query
             ->when($teamId, fn ($q) => $q->where('stripe_subscriptions.team_id', $teamId))
-            ->when(! $teamId, fn ($q) => $q->whereRaw('1 = 0'));
+            ->when(! $teamId, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderByRaw('enterprises.id IS NULL DESC')
+            ->orderBy('stripe_subscriptions.customer_name');
     }
 
     public function html(): HtmlBuilder
