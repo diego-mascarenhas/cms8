@@ -23,7 +23,7 @@ return new class extends Migration
         {
             if (! Schema::hasColumn('service_syncs', 'provider'))
             {
-                $table->string('provider', 32)->default('stripe')->after('stripe_id');
+                $table->string('provider', 32)->default('stripe')->after('team_id');
             }
         });
 
