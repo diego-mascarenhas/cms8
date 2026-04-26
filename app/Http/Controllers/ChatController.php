@@ -1936,7 +1936,7 @@ class ChatController extends Controller
         $sessionPhone = WhatsAppCartSessionKey::fromPhone($parsed['phone_digits']);
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
 
-        $operatorPrompt = __('[Operador Humano] Iniciá conversación proactiva por WhatsApp: usá la herramienta send_whatsapp_message una vez con el número ya autorizado en esta sesión para enviar un solo mensaje de apertura al cliente. Seguí el flujo del equipo ya cargado. Sé breve y profesional.');
+        $operatorPrompt = __('[Operador Humano] Iniciá conversación proactiva por WhatsApp: en esta misma respuesta invocá send_whatsapp_message como máximo una vez, con el único mensaje de apertura que debe ver el cliente. No hagas un segundo envío ni uses la herramienta para confirmaciones al operador (esas van solo en tu texto de respuesta al chat, no a WhatsApp). El número de destino ya está autorizado en esta sesión: no pidas número. Seguí el flujo del equipo para el saludo; sé breve. Si no podés usar la herramienta, el sistema reenviará tu texto plano al cliente: escribí solo lo que debe leer el cliente, sin meta-aclaraciones ni pedidos de teléfono.');
 
         $replyResponse = $replyService->getReply(
             $operatorPrompt,
@@ -1949,6 +1949,7 @@ class ChatController extends Controller
             null,
             false,
             false,
+            true,
         );
 
         if (! ($replyResponse['success'] ?? false))
@@ -1975,7 +1976,7 @@ class ChatController extends Controller
         {
             try
             {
-                $gateway->sendMessage($parsed['phone_digits'], WhatsAppOutboundText::sanitize($assistantText), [
+                $gateway->sendMessage($parsed['phone_digits'], WhatsAppOutboundText::stripInternalQaMarkers(WhatsAppOutboundText::sanitize($assistantText)), [
                     'source' => 'admin_proactive_whatsapp_keyword',
                     'routing_key' => $routingKey,
                 ], $actor->id);

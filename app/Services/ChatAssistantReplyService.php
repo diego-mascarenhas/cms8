@@ -38,6 +38,7 @@ class ChatAssistantReplyService
      *
      * @param  array<int, array{direction: string, body: string}>  $history
      * @param  bool  $inboundWhatsapp  When true (auto-reply to a customer on WhatsApp), add instructions to infer intent from business config, avoid assuming e-commerce, and for anonymous customers append flow discovery (routing keys) when needed.
+     * @param  bool  $singleCustomerWhatsAppSendPerTurn  When true, only the first {@see AssistantToolsService::sendWhatsAppMessage()} send in this request succeeds (admin proactive opening).
      * @return array{
      *     success: bool,
      *     text?: string,
@@ -47,7 +48,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false, bool $singleCustomerWhatsAppSendPerTurn = false): array
     {
         if ($this->useStub($teamId))
         {
@@ -58,6 +59,10 @@ class ChatAssistantReplyService
         if ($withTools && $teamId !== null)
         {
             $this->assistantTools->setRequestContext($contextUserId, $teamId, $contextCustomerPhone);
+            if ($singleCustomerWhatsAppSendPerTurn)
+            {
+                $this->assistantTools->setWhatsAppToolSingleCustomerSendPerTurn(true);
+            }
         }
 
         $flowRoutedTo = null;

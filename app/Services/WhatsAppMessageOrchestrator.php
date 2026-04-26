@@ -946,6 +946,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $contextContactId !== null ? (int) $contextContactId : null,
                         false,
                         true,
+                        false,
                     );
 
                     if ($replyResponse['success'] ?? false)

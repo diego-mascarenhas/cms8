@@ -27,7 +27,7 @@ class ChatAssistantProactiveDemoPromptsSeeder extends Seeder
                 'order' => 100,
                 'instruction' => <<<'TXT'
 Flujo demo: saluda brevemente por WhatsApp y explica que es un mensaje de prueba del equipo (Humano).
-Incluye la marca [DEMO_FLOW:demo] al final del mensaje visible al cliente.
+No agregues marcas internas ni códigos de seguimiento al texto que lee el cliente.
 TXT,
             ],
             [

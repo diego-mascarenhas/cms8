@@ -44,6 +44,22 @@ class WhatsAppOutboundText
         return self::normalizeBrokenEmphasis($text);
     }
 
+    /**
+     * Remove internal QA / routing markers (e.g. from demo seeders) so customers never see them on WhatsApp.
+     */
+    public static function stripInternalQaMarkers(string $text): string
+    {
+        if ($text === '')
+        {
+            return $text;
+        }
+
+        $text = preg_replace('/\s*\[DEMO_FLOW:[^\]]+\]/iu', '', $text) ?? $text;
+        $text = preg_replace('/\s*\[DEMOFLOW:[^\]]+\]/iu', '', $text) ?? $text;
+
+        return trim($text);
+    }
+
     private static function convertMarkdownTablesToList(string $text): string
     {
         $lines = preg_split('/\R/u', $text) ?: [];
