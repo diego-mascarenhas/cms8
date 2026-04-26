@@ -932,19 +932,6 @@ class ChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Could not resolve user for conversation'], 400);
         }
 
-        // #region agent log
-        $assistantDebugRunId = bin2hex(random_bytes(8));
-        $request->attributes->set('assistant_debug_run_id', $assistantDebugRunId);
-        $this->agentDebugSessionNdjson('H1', 'ChatController.php:assistant', 'assistant_request', [
-            'runId' => $assistantDebugRunId,
-            'actor_id' => auth()->id(),
-            'context_user_id' => $contextUser->id,
-            'preview_only' => $request->boolean('preview_only'),
-            'has_recipient_param' => $request->filled('recipient'),
-            'message_len' => strlen($message),
-        ]);
-        // #endregion
-
         $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
 
@@ -983,14 +970,6 @@ class ChatController extends Controller
             );
             if ($proactiveOutreach !== null)
             {
-                // #region agent log
-                $this->agentDebugSessionNdjson('H1', 'ChatController.php:assistant', 'returning_proactive_payload', [
-                    'runId' => (string) $request->attributes->get('assistant_debug_run_id', ''),
-                    'action_performed' => $proactiveOutreach['action_performed'] ?? null,
-                    'success' => $proactiveOutreach['success'] ?? null,
-                    'http_status' => (int) ($proactiveOutreach['_http_status'] ?? 200),
-                ]);
-                // #endregion
                 $httpStatus = (int) ($proactiveOutreach['_http_status'] ?? 200);
                 unset($proactiveOutreach['_http_status']);
 
@@ -1042,13 +1021,6 @@ class ChatController extends Controller
             $customerPhone = $fromUser !== '' ? $fromUser : null;
         }
         $forcedFlowRoutingKey = $request->filled('flow_routing_key') ? trim((string) $request->input('flow_routing_key')) : '';
-        // #region agent log
-        $this->agentDebugSessionNdjson('H1', 'ChatController.php:assistant', 'normal_get_reply_path', [
-            'runId' => (string) $request->attributes->get('assistant_debug_run_id', ''),
-            'with_tools' => $withTools,
-            'forced_flow_non_empty' => $forcedFlowRoutingKey !== '',
-        ]);
-        // #endregion
         $replyResponse = $replyService->getReply(
             $message,
             $history,
@@ -1091,12 +1063,6 @@ class ChatController extends Controller
                 (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
                 $replyResponse['assistant_flow_routing_key'] ?? null,
             );
-            // #region agent log
-            $this->agentDebugSessionNdjson('H1', 'ChatController.php:assistant', 'normal_path_persisted', [
-                'runId' => (string) $request->attributes->get('assistant_debug_run_id', ''),
-                'assistant_text_len' => strlen((string) $assistantText),
-            ]);
-            // #endregion
         }
 
         $payload = [
@@ -1851,15 +1817,6 @@ class ChatController extends Controller
     ): ?array {
         if ($hasAudio || $actor->id !== $contextUser->id)
         {
-            // #region agent log
-            $this->agentDebugSessionNdjson('H3', 'ChatController.php:tryHandleAdminProactiveWhatsAppKeywordCommand', 'proactive_skipped', [
-                'runId' => (string) request()->attributes->get('assistant_debug_run_id', ''),
-                'reason' => $hasAudio ? 'has_audio' : 'actor_context_mismatch',
-                'actor_id' => $actor->id,
-                'context_user_id' => $contextUser->id,
-            ]);
-            // #endregion
-
             return null;
         }
 
@@ -1869,13 +1826,6 @@ class ChatController extends Controller
         {
             return null;
         }
-
-        // #region agent log
-        $this->agentDebugSessionNdjson('H2', 'ChatController.php:tryHandleAdminProactiveWhatsAppKeywordCommand', 'proactive_keyword_phone_matched', [
-            'runId' => (string) request()->attributes->get('assistant_debug_run_id', ''),
-            'keyword_len' => strlen((string) $parsed['keyword']),
-        ]);
-        // #endregion
 
         if (! $actor->hasAnyRole(['admin', 'root']))
         {
@@ -1964,14 +1914,6 @@ class ChatController extends Controller
         $assistantText = trim((string) ($replyResponse['text'] ?? ''));
         $sentViaTool = $this->assistantToolCallsIncludeSendWhatsApp($replyResponse['tool_calls'] ?? []);
 
-        // #region agent log
-        $this->agentDebugSessionNdjson('H4', 'ChatController.php:tryHandleAdminProactiveWhatsAppKeywordCommand', 'proactive_inner_model_summary', [
-            'runId' => (string) request()->attributes->get('assistant_debug_run_id', ''),
-            'llm_text_len' => strlen($assistantText),
-            'sent_via_tool' => $sentViaTool,
-        ]);
-        // #endregion
-
         if (! $sentViaTool && $assistantText !== '')
         {
             try
@@ -2024,13 +1966,6 @@ class ChatController extends Controller
             $replyResponse['assistant_flow_routing_key'] ?? null,
         );
 
-        // #region agent log
-        $this->agentDebugSessionNdjson('H2', 'ChatController.php:tryHandleAdminProactiveWhatsAppKeywordCommand', 'proactive_persist_complete', [
-            'runId' => (string) request()->attributes->get('assistant_debug_run_id', ''),
-            'confirmation_len' => strlen($confirmation),
-        ]);
-        // #endregion
-
         $payload = [
             'success' => true,
             'response' => $confirmation,
@@ -2046,25 +1981,6 @@ class ChatController extends Controller
         }
 
         return $payload;
-    }
-
-    /** Sentinel for grep in production logs (see {@see self::agentDebugSessionNdjson()}). */
-    private const AGENT_DEBUG_LOG_MARKER = 'AGENT_DEBUG_61a2dd';
-
-    /**
-     * Structured debug for assistant routing (session 61a2dd). Uses Laravel log so it works on production.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function agentDebugSessionNdjson(string $hypothesisId, string $location, string $message, array $data = []): void
-    {
-        Log::info('['.self::AGENT_DEBUG_LOG_MARKER.'] '.$message, [
-            'sessionId' => '61a2dd',
-            'hypothesisId' => $hypothesisId,
-            'location' => $location,
-            'data' => $data,
-            'timestamp' => (int) round(microtime(true) * 1000),
-        ]);
     }
 
     /**

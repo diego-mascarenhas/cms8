@@ -39,6 +39,7 @@ class ChatAssistantReplyService
      * @param  array<int, array{direction: string, body: string}>  $history
      * @param  bool  $inboundWhatsapp  When true (auto-reply to a customer on WhatsApp), add instructions to infer intent from business config, avoid assuming e-commerce, and for anonymous customers append flow discovery (routing keys) when needed.
      * @param  bool  $singleCustomerWhatsAppSendPerTurn  When true, only the first {@see AssistantToolsService::sendWhatsAppMessage()} send in this request succeeds (admin proactive opening).
+     * @param  string|null  $humanoGuideAppendix  When set, appended to system instructions (e.g. terminal interactive tour); does not enable tools by itself.
      * @return array{
      *     success: bool,
      *     text?: string,
@@ -48,7 +49,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false, bool $singleCustomerWhatsAppSendPerTurn = false): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false, bool $singleCustomerWhatsAppSendPerTurn = false, ?string $humanoGuideAppendix = null): array
     {
         if ($this->useStub($teamId))
         {
@@ -191,6 +192,20 @@ class ChatAssistantReplyService
                 {
                     $instructions .= $discovery;
                 }
+            }
+        }
+
+        if ($humanoGuideAppendix !== null && trim($humanoGuideAppendix) !== '')
+        {
+            $instructions .= "\n\n---\n\n".trim($humanoGuideAppendix);
+        } elseif ($withTools && $teamId !== null)
+        {
+            $hint = $inboundWhatsapp
+                ? trim((string) config('humano_interactive_guide.whatsapp_help_hint', ''))
+                : trim((string) config('humano_interactive_guide.web_help_hint', ''));
+            if ($hint !== '')
+            {
+                $instructions .= "\n\n---\n\n".$hint;
             }
         }
 
