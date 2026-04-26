@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppOutboundText;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AdminProactiveWhatsAppOutreachService;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\TeamWhatsAppChatPresentation;
@@ -957,6 +959,23 @@ class ChatController extends Controller
                 return response()->json($adminAutoRespondCommand);
             }
 
+            $proactiveOutreach = $this->tryHandleAdminProactiveWhatsAppKeywordCommand(
+                $message,
+                auth()->user(),
+                (int) $teamId,
+                $contextUser,
+                $contextService,
+                $replyService,
+                $hasAudio,
+            );
+            if ($proactiveOutreach !== null)
+            {
+                $httpStatus = (int) ($proactiveOutreach['_http_status'] ?? 200);
+                unset($proactiveOutreach['_http_status']);
+
+                return response()->json($proactiveOutreach, $httpStatus >= 400 ? $httpStatus : 200);
+            }
+
             $uid = (int) $teamId;
             $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
                 ?? app(WhatsAppContactSheetImportService::class)->tryHandle($message, auth()->user(), $uid)
@@ -1779,6 +1798,212 @@ class ChatController extends Controller
         Log::info('WhatsApp number re-linked to team from service', ['team_id' => $team->id, 'number' => $normalized]);
 
         return response()->json(['ok' => true, 'team_id' => $team->id]);
+    }
+
+    /**
+     * Admins (admin/root) in their own assistant thread can start WhatsApp outreach with:
+     * «keyword +E164», «keyword: +E164», or «multi word keyword +E164» where keyword maps to an active team prompt.
+     *
+     * @return array<string, mixed>|null Null if the message does not match this pattern.
+     */
+    private function tryHandleAdminProactiveWhatsAppKeywordCommand(
+        string $message,
+        User $actor,
+        int $teamId,
+        User $contextUser,
+        AgentConversationContextService $contextService,
+        ChatAssistantReplyService $replyService,
+        bool $hasAudio,
+    ): ?array {
+        if ($hasAudio || $actor->id !== $contextUser->id)
+        {
+            return null;
+        }
+
+        $outreach = app(AdminProactiveWhatsAppOutreachService::class);
+        $parsed = $outreach->parseKeywordAndPhone($message);
+        if ($parsed === null)
+        {
+            return null;
+        }
+
+        if (! $actor->hasAnyRole(['admin', 'root']))
+        {
+            return [
+                'success' => false,
+                'message' => __('Solo administradores pueden iniciar conversaciones proactivas por WhatsApp con palabra clave + teléfono.'),
+                '_http_status' => 403,
+            ];
+        }
+
+        $team = $actor->currentTeam;
+        if (! $team || (int) $team->id !== $teamId)
+        {
+            return [
+                'success' => false,
+                'message' => __('No team context.'),
+                '_http_status' => 403,
+            ];
+        }
+
+        $routingKey = $outreach->resolveRoutingKeyForKeyword($teamId, $parsed['keyword']);
+        if ($routingKey === null)
+        {
+            $hints = Prompt::forTeam($teamId)
+                ->active()
+                ->with('module')
+                ->where('section_key', '!=', 'general')
+                ->orderBy('order')
+                ->limit(25)
+                ->get()
+                ->map(fn (Prompt $p) => $outreach->routingKeyForPrompt($p))
+                ->implode(', ');
+
+            $hintText = $hints !== ''
+                ? ' '.__('Flujos activos (ejemplos): :keys', ['keys' => $hints])
+                : '';
+
+            return [
+                'success' => false,
+                'message' => __('No hay un prompt activo que coincida con la palabra clave «:kw».', ['kw' => $parsed['keyword']]).$hintText,
+                '_http_status' => 422,
+            ];
+        }
+
+        $gateway = config('whatsapp.driver') === 'local'
+            ? ($this->getLocalGatewayForCurrentTeam() ?? app(WhatsAppGateway::class))
+            : app(WhatsAppGateway::class);
+
+        if (! $gateway->isConfigured())
+        {
+            return [
+                'success' => false,
+                'message' => __('WhatsApp no está configurado para este equipo.'),
+                '_http_status' => 422,
+            ];
+        }
+
+        $sessionPhone = WhatsAppCartSessionKey::fromPhone($parsed['phone_digits']);
+        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
+
+        $operatorPrompt = __('[Operador Humano] Iniciá conversación proactiva por WhatsApp: usá la herramienta send_whatsapp_message una vez con el número ya autorizado en esta sesión para enviar un solo mensaje de apertura al cliente. Seguí el flujo del equipo ya cargado. Sé breve y profesional.');
+
+        $replyResponse = $replyService->getReply(
+            $operatorPrompt,
+            $history,
+            $teamId,
+            true,
+            $contextUser->id,
+            $sessionPhone,
+            $routingKey,
+            null,
+            false,
+            false,
+        );
+
+        if (! ($replyResponse['success'] ?? false))
+        {
+            return [
+                'success' => false,
+                'message' => $replyResponse['message'] ?? __('El asistente no pudo generar el mensaje de apertura.'),
+                '_http_status' => 502,
+            ];
+        }
+
+        $assistantText = trim((string) ($replyResponse['text'] ?? ''));
+        $sentViaTool = $this->assistantToolCallsIncludeSendWhatsApp($replyResponse['tool_calls'] ?? []);
+
+        if (! $sentViaTool && $assistantText !== '')
+        {
+            try
+            {
+                $gateway->sendMessage($parsed['phone_digits'], WhatsAppOutboundText::sanitize($assistantText), [
+                    'source' => 'admin_proactive_whatsapp_keyword',
+                    'routing_key' => $routingKey,
+                ], $actor->id);
+            } catch (\Throwable $e)
+            {
+                Log::error('Admin proactive WhatsApp send failed', [
+                    'team_id' => $teamId,
+                    'phone' => $parsed['phone_digits'],
+                    'routing_key' => $routingKey,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => __('No se pudo enviar el mensaje por WhatsApp: :err', ['err' => $e->getMessage()]),
+                    '_http_status' => 502,
+                ];
+            }
+        }
+
+        $confirmation = $sentViaTool
+            ? __('Outreach enviado: el asistente usó la herramienta de WhatsApp hacia :phone con el flujo «:flow».', ['phone' => $parsed['phone_digits'], 'flow' => $routingKey])
+            : __('Outreach enviado: mensaje de apertura enviado a :phone con el flujo «:flow».', ['phone' => $parsed['phone_digits'], 'flow' => $routingKey]);
+
+        Log::info('Admin proactive WhatsApp keyword outreach', [
+            'team_id' => $teamId,
+            'actor_id' => $actor->id,
+            'phone' => $parsed['phone_digits'],
+            'routing_key' => $routingKey,
+            'keyword' => $parsed['keyword'],
+            'sent_via_tool' => $sentViaTool,
+        ]);
+
+        $contextService->persistMessages(
+            $contextUser->id,
+            $message,
+            $confirmation,
+            $replyResponse['routed_to'] ?? null,
+            $replyResponse['usage'] ?? [],
+            $replyResponse['meta'] ?? [],
+            $replyResponse['tool_calls'] ?? [],
+            $replyResponse['tool_results'] ?? [],
+            $teamId,
+            (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
+            $replyResponse['assistant_flow_routing_key'] ?? null,
+        );
+
+        $payload = [
+            'success' => true,
+            'response' => $confirmation,
+            'action_performed' => 'proactive_whatsapp_outreach',
+            'routing_key' => $routingKey,
+            'phone' => $parsed['phone_digits'],
+            'sent_via_tool' => $sentViaTool,
+            '_http_status' => 200,
+        ];
+        if ($hasAudio)
+        {
+            $payload['transcript'] = $message;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<int, mixed>  $toolCalls
+     */
+    private function assistantToolCallsIncludeSendWhatsApp(array $toolCalls): bool
+    {
+        foreach ($toolCalls as $tc)
+        {
+            $name = '';
+            if (is_array($tc))
+            {
+                $name = (string) ($tc['name'] ?? ($tc['function']['name'] ?? ''));
+            } elseif (is_object($tc))
+            {
+                $name = (string) ($tc->name ?? (isset($tc->function->name) ? $tc->function->name : ''));
+            }
+            if ($name === 'send_whatsapp_message')
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
