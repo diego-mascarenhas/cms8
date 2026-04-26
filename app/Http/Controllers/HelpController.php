@@ -56,8 +56,12 @@ class HelpController extends Controller
      */
     public function index()
     {
+        $registrationMode = strtolower((string) config('registration.mode', 'free'));
+        $showOnboardingRegistrationPaymentStep = in_array($registrationMode, ['checkout', 'gate'], true);
+
         return view('help.index', [
             'apiToken' => $this->getUserApiToken(),
+            'showOnboardingRegistrationPaymentStep' => $showOnboardingRegistrationPaymentStep,
         ]);
     }
 

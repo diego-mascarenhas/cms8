@@ -8,7 +8,7 @@ use App\Services\AdminProactiveWhatsAppOutreachExecutor;
 use Illuminate\Console\Command;
 
 /**
- * Send a proactive WhatsApp opening using the team flow for a keyword (default: demo — instructivo / onboarding).
+ * Send a proactive WhatsApp opening using the team flow for a keyword (default: demo; use --keyword=onboarding for /enviar-onboarding).
  */
 class HumanoSendDemoWhatsAppCommand extends Command
 {
@@ -18,7 +18,7 @@ class HumanoSendDemoWhatsAppCommand extends Command
                             {--user= : User ID to act as (must be admin/root on that team; default: team owner)}
                             {--keyword=demo : Flow keyword matching an active team prompt (section key, routing key, or label)}';
 
-    protected $description = 'Send proactive WhatsApp outreach (same as /enviar-demo in chat or WhatsApp). Forced team flow + opening message';
+    protected $description = 'Send proactive WhatsApp outreach (same as /enviar-demo, /enviar-onboarding, or /enviar-flujo in chat or WhatsApp). Forced team flow + opening message';
 
     public function handle(AdminProactiveWhatsAppOutreachExecutor $executor): int
     {

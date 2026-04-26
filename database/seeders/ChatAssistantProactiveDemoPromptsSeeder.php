@@ -22,6 +22,14 @@ class ChatAssistantProactiveDemoPromptsSeeder extends Seeder
     {
         return [
             [
+                'section_key' => 'onboarding',
+                'section_label' => 'Onboarding ayuda centro (WhatsApp)',
+                'order' => 95,
+                'instruction' => <<<'TXT'
+Flujo onboarding: mensaje breve y cordial con los primeros pasos en Humano (registro en /register, datos del negocio o equipo, pago solo si el entorno usa checkout o gate, enlace de WhatsApp o QR cuando corresponda). No inventes importes, planes ni dominios que el usuario no haya mencionado.
+TXT,
+            ],
+            [
                 'section_key' => 'demo',
                 'section_label' => 'Demo outreach WhatsApp',
                 'order' => 100,
@@ -89,9 +97,10 @@ TXT,
         }
 
         $helper = <<<'MD'
-**Proactive admin (admin/root):** en el chat asistente (tu hilo) o escribiendo al WhatsApp del equipo: `/enviar-demo +34…` o `/enviar-flujo cobrar +34…`. En el servidor: `php artisan humano:send-demo "+34…" --team=ID_EQUIPO` (`--keyword=demo` por defecto).
+**Proactive admin (admin/root):** en el chat asistente (tu hilo) o al WhatsApp del equipo: `/enviar-demo +34…`, `/enviar-onboarding +34…` o `/enviar-flujo cobrar +34…`. En el servidor: `php artisan humano:send-demo "+34…" --team=ID_EQUIPO` (`--keyword=demo` por defecto; `--keyword=onboarding` para el flujo de alta).
 
 **Claves de este seeder (módulo Chat):**
+- `onboarding` → `chat:onboarding`
 - `demo` → `chat:demo`
 - `cobrar` → `chat:cobrar`
 - `reunion` → `chat:reunion`
@@ -99,7 +108,7 @@ TXT,
 - `mi flujo demo` o `mi-flujo-demo` → `chat:mi-flujo-demo`
 - Palabra clave por etiqueta: usá literalmente **Outreach solo por etiqueta larga demo** en el texto si querés forzar por etiqueta (enrutado por keywords + etiqueta ≥12 caracteres).
 
-**Ejemplo:** `php artisan humano:send-demo "+34722372858" --team=1` con flujo demo; `… --keyword=cobrar` para cobrar.
+**Ejemplo:** `php artisan humano:send-demo "+34722372858" --team=1` con flujo demo; `… --keyword=onboarding` para onboarding; `… --keyword=cobrar` para cobrar.
 MD;
 
         foreach (Team::query()->orderBy('id')->get() as $team)

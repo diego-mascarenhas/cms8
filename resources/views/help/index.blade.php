@@ -31,6 +31,40 @@
                                 <p class="mb-0">{{ __('For a non-technical guide to what you can do in the platform (contacts, projects, tasks, billing, etc.), see the') }} <a href="{{ route('manual.index') }}" class="alert-link">{{ __('User Manual') }}</a>.</p>
                             </div>
 
+                            <div class="card border-success mb-4">
+                                <div class="card-header d-flex align-items-center">
+                                    <i class="ti ti-rocket text-success me-2"></i>
+                                    <h5 class="card-title mb-0">{{ __('Onboarding: registration and first steps') }}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-3">{{ __('Onboarding help center intro') }}</p>
+                                    <ol class="mb-0 ps-3">
+                                        <li class="mb-3">
+                                            <strong>{{ __('Onboarding step 1 title') }}</strong>
+                                            <p class="mb-0 text-muted">{!! __('Onboarding step 1 body_html', ['url' => e(route('register'))]) !!}</p>
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong>{{ __('Onboarding step 2 title') }}</strong>
+                                            <p class="mb-0 text-muted">{{ __('Onboarding step 2 body') }}</p>
+                                        </li>
+                                        @if ($showOnboardingRegistrationPaymentStep ?? false)
+                                            <li class="mb-3">
+                                                <strong>{{ __('Onboarding step 3 title') }}</strong>
+                                                <p class="mb-0 text-muted">{!! __('Onboarding step 3 body_html', ['url' => e(route('registration.billing'))]) !!}</p>
+                                            </li>
+                                        @endif
+                                        <li class="mb-3">
+                                            <strong>{{ __('Onboarding step 4 title') }}</strong>
+                                            <p class="mb-0 text-muted">{{ __('Onboarding step 4 body') }}</p>
+                                        </li>
+                                        <li class="mb-0">
+                                            <strong>{{ __('Onboarding step 5 title') }}</strong>
+                                            <p class="mb-0 text-muted">{{ __('Onboarding step 5 body') }}</p>
+                                        </li>
+                                    </ol>
+                                </div>
+                            </div>
+
                             <div class="row mt-4">
                                 <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-primary">
@@ -88,6 +122,27 @@
                                 </div>
                             </div>
 
+                            <div id="cursor-mcp-setup" class="card border-primary mb-4 mt-4">
+                                <div class="card-header d-flex align-items-center">
+                                    <i class="ti ti-plug-connected text-primary me-2"></i>
+                                    <h5 class="card-title mb-0">{{ __('Cursor MCP setup') }}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="lead mb-3">{{ __('Help section MCP Cursor lead') }}</p>
+                                    <p class="mb-3">{{ __('Help section MCP Cursor body') }}</p>
+                                    <h6 class="mt-4 mb-2">{{ __('Install MCP in Cursor:') }}</h6>
+                                    <ol class="mb-3 ps-3">
+                                        <li class="mb-2">{!! __('Open Cursor MCP config file step') !!}</li>
+                                        <li>{!! __('Add MCP server entry step') !!}</li>
+                                    </ol>
+<pre class="language-json mb-0"><code>{
+  "idoneo-mcp": {
+    "url": "https://mcp.idoneo.dev/mcp"
+  }
+}</code></pre>
+                                </div>
+                            </div>
+
                             <div class="alert alert-info mt-4" role="alert">
                                 <h6 class="alert-heading mb-2">
                                     <i class="ti ti-info-circle me-2"></i>
@@ -97,23 +152,6 @@
                                 <a href="{{ route('help.usage') }}" class="alert-link">{{ __('Read the guide →') }}</a>
                             </div>
 
-                            <div id="cursor-mcp-setup" class="card border-primary mt-4">
-                                <div class="card-header">
-                                    <h5 class="mb-0"><i class="ti ti-plug-connected me-2"></i>Cursor MCP setup</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p class="mb-2">Install MCP in Cursor:</p>
-                                    <ol class="mb-3">
-                                        <li>Open <code>~/.cursor/mcp.json</code></li>
-                                        <li>Add this server entry inside <code>mcpServers</code></li>
-                                    </ol>
-<pre class="language-json mb-0"><code>{
-  "idoneo-mcp": {
-    "url": "https://mcp.idoneo.dev/mcp"
-  }
-}</code></pre>
-                                </div>
-                            </div>
                         </div>
                     </div>
             </div>

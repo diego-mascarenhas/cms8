@@ -10,6 +10,7 @@ use App\Models\User;
  *
  * Supported (trimmed, case-insensitive command prefix):
  * - `/enviar-demo +34…` or `/send-demo +34…` → keyword demo + destination phone
+ * - `/enviar-onboarding +34…` or `/send-onboarding +34…` → keyword onboarding + destination phone
  * - `/enviar-flujo cobrar +34…` or `/send-flow cobrar +34…` → keyword + phone (same rules as keyword+phone parsing)
  */
 class AdminProactiveOutreachSlashDispatcher
@@ -17,9 +18,7 @@ class AdminProactiveOutreachSlashDispatcher
     public function __construct(
         protected AdminProactiveWhatsAppOutreachService $outreach,
         protected AdminProactiveWhatsAppOutreachExecutor $executor,
-    )
-    {
-    }
+    ) {}
 
     /**
      * Web assistant chat (Humano): only in own thread, no audio.
@@ -49,7 +48,7 @@ class AdminProactiveOutreachSlashDispatcher
         {
             return [
                 'success' => false,
-                'message' => __('Formato: /enviar-demo +34… o /enviar-flujo clave +34… (teléfono al final).'),
+                'message' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
                 '_http_status' => 422,
             ];
         }
@@ -88,14 +87,14 @@ class AdminProactiveOutreachSlashDispatcher
         if ($parsed === null)
         {
             return [
-                'whatsapp_reply' => __('Formato: /enviar-demo +34… o /enviar-flujo clave +34… (teléfono al final).'),
+                'whatsapp_reply' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
             ];
         }
 
         if (! $contextUser->hasAnyRole(['admin', 'root']))
         {
             return [
-                'whatsapp_reply' => __('Solo administradores pueden usar /enviar-demo o /enviar-flujo.'),
+                'whatsapp_reply' => __('Solo administradores pueden usar /enviar-demo, /enviar-onboarding o /enviar-flujo.'),
             ];
         }
 
@@ -123,7 +122,7 @@ class AdminProactiveOutreachSlashDispatcher
 
     public function isProactiveOutreachSlash(string $t): bool
     {
-        return $t !== '' && preg_match('#^/(?:enviar-demo|send-demo|enviar-flujo|send-flow)\b#iu', $t) === 1;
+        return $t !== '' && preg_match('#^/(?:enviar-demo|send-demo|enviar-onboarding|send-onboarding|enviar-flujo|send-flow)\b#iu', $t) === 1;
     }
 
     /**
@@ -139,6 +138,14 @@ class AdminProactiveOutreachSlashDispatcher
         if (preg_match('#^/(?:enviar-demo|send-demo)\s*(.+)$#iu', $t, $m))
         {
             $synthetic = 'demo '.trim($m[1]);
+            $p = $this->outreach->parseKeywordAndPhone($synthetic);
+
+            return $p !== null ? ['keyword' => $p['keyword'], 'phone_digits' => $p['phone_digits']] : null;
+        }
+
+        if (preg_match('#^/(?:enviar-onboarding|send-onboarding)\s*(.+)$#iu', $t, $m))
+        {
+            $synthetic = 'onboarding '.trim($m[1]);
             $p = $this->outreach->parseKeywordAndPhone($synthetic);
 
             return $p !== null ? ['keyword' => $p['keyword'], 'phone_digits' => $p['phone_digits']] : null;
