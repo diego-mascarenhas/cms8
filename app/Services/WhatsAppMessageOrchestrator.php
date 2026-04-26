@@ -915,6 +915,25 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             ->value('id');
                     }
 
+                    if ($contextUser !== null && $assistantTeamId !== null && trim((string) $body) !== '')
+                    {
+                        $waSlash = app(AdminProactiveOutreachSlashDispatcher::class)->tryWhatsAppInbound(
+                            (string) $body,
+                            $contextUser,
+                            (int) $assistantTeamId,
+                        );
+                        if ($waSlash !== null)
+                        {
+                            $this->sendWhatsApp($cleanFrom, $waSlash['whatsapp_reply']);
+
+                            return response()->json([
+                                'status' => 'success',
+                                'conversation_id' => $conversation->id,
+                                'auto_ai' => 'admin_proactive_outreach_slash',
+                            ]);
+                        }
+                    }
+
                     $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom, $assistantTeamId)
                         ?? ($contextContactId !== null ? (int) $contextContactId : null);
 

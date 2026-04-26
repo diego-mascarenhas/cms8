@@ -78,14 +78,21 @@
                     <p>{{ __('The best global intent score and the best team-prompt score are compared; whichever side has the higher score wins. If both sides tie, the global intent wins. This is still literal text matching, not semantic «intent» from an embedding or a second model.') }}</p>
                     <p><strong>{{ __('Keyword routing off (default flow / AI discovery)') }}</strong> {{ __('— No automatic attachment from keywords. The model sees available routing keys and can commit a flow when appropriate. Better for paraphrasing and vague user messages, at the cost of the model sometimes skipping a flow.') }}</p>
 
-                    <h6 class="mt-4" id="admin-proactive-whatsapp">{{ __('Admin: proactive WhatsApp from the assistant chat') }}</h6>
-                    <p>{{ __('In your own assistant thread (no client selected), users with roles admin or root can start an outbound WhatsApp conversation tied to a team flow by typing a keyword and a phone number in one line.') }}</p>
+                    <h6 class="mt-4" id="admin-proactive-whatsapp">{{ __('Admin: proactive WhatsApp (demo / onboarding)') }}</h6>
+                    <p>{{ __('Users with roles admin or root can send a forced-flow WhatsApp opening in three ways: slash command in the web assistant (own thread), slash command on the team WhatsApp number, or Artisan on the server.') }}</p>
+                    <h6 class="mt-4">{{ __('Slash commands (chat or WhatsApp)') }}</h6>
                     <ul>
-                        <li>{{ __('Examples: «demo +34722372858», «cobrar +34 722 372 111», «reunion: +34 (722) 372-858», «mi flujo (34) 722 372 858». Spaces, hyphens and parentheses in the number are allowed; the system keeps only digits for sending.') }}</li>
-                        <li>{{ __('The keyword must match an active team prompt: section key, full routing key (module:key), suffix after «:», or the section label (normalized).') }}</li>
-                        <li>{{ __('The assistant runs with that flow forced and either calls send_whatsapp_message or the system sends the generated opening text if the model did not call the tool.') }}</li>
-                        <li>{{ __('Requires WhatsApp configured for the team. Same flow engine as inbound WhatsApp auto-replies, but initiated from the web assistant.') }}</li>
-                        <li>{{ __('Local demo data: run «php artisan db:seed --class=ChatAssistantProactiveDemoPromptsSeeder» (after ModuleSeeder) to create sample flows «demo», «cobrar», «reunion», «registar», «mi-flujo-demo» and a long-label flow; it also turns keyword routing on per team.') }}</li>
+                        <li><code>/enviar-demo +34…</code> {{ __('or') }} <code>/send-demo +34…</code> — {{ __('keyword «demo» + destination number.') }}</li>
+                        <li><code>/enviar-flujo cobrar +34…</code> {{ __('or') }} <code>/send-flow cobrar +34…</code> — {{ __('another active team prompt + number (spaces in the number are allowed).') }}</li>
+                        <li>{{ __('In chat: only in your own assistant thread (no client selected). On WhatsApp: the sender must be a user linked to that phone with admin/root; runs even if inbound assistant is off for that contact.') }}</li>
+                    </ul>
+                    <h6 class="mt-4">{{ __('Artisan (server)') }}</h6>
+                    <pre class="language-bash"><code>php artisan humano:send-demo "+34600111222" --team=YOUR_TEAM_ID</code></pre>
+                    <ul>
+                        <li>{{ __('Optional: --user=USER_ID (defaults to the team owner). The user must belong to the team and have admin or root.') }}</li>
+                        <li>{{ __('Optional: --keyword=cobrar (must match an active team prompt: section key, routing key, or label).') }}</li>
+                        <li>{{ __('Requires WhatsApp configured for the team and the same assistant flow engine as inbound auto-replies.') }}</li>
+                        <li>{{ __('Local demo prompts: run «php artisan db:seed --class=ChatAssistantProactiveDemoPromptsSeeder» (after ModuleSeeder) for sample flows.') }}</li>
                     </ul>
 
                     <h6 class="mt-4">{{ __('Sticky flow and reset') }}</h6>

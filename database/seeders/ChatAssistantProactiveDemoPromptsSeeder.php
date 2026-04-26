@@ -89,7 +89,7 @@ TXT,
         }
 
         $helper = <<<'MD'
-**Proactive admin (chat asistente, admin/root):** escribí `clave +teléfono` o `clave: +teléfono` (el teléfono puede llevar espacios, guiones y paréntesis).
+**Proactive admin (admin/root):** en el chat asistente (tu hilo) o escribiendo al WhatsApp del equipo: `/enviar-demo +34…` o `/enviar-flujo cobrar +34…`. En el servidor: `php artisan humano:send-demo "+34…" --team=ID_EQUIPO` (`--keyword=demo` por defecto).
 
 **Claves de este seeder (módulo Chat):**
 - `demo` → `chat:demo`
@@ -99,7 +99,7 @@ TXT,
 - `mi flujo demo` o `mi-flujo-demo` → `chat:mi-flujo-demo`
 - Palabra clave por etiqueta: usá literalmente **Outreach solo por etiqueta larga demo** en el texto si querés forzar por etiqueta (enrutado por keywords + etiqueta ≥12 caracteres).
 
-**Ejemplos:** `demo +34 (722) 372-858`, `cobrar +34 722 372 111`, `reunion: +34722372858`, `registar: +34 722 372 858`, `mi flujo demo +34600111222`.
+**Ejemplo:** `php artisan humano:send-demo "+34722372858" --team=1` con flujo demo; `… --keyword=cobrar` para cobrar.
 MD;
 
         foreach (Team::query()->orderBy('id')->get() as $team)
