@@ -29,6 +29,60 @@
 
                     <h6 class="mt-4">{{ __('Chat with a client') }}</h6>
                     <p>{{ __('If you select a client or contact in the chat list, the conversation is specific to that recipient (e.g. WhatsApp). The assistant can suggest replies; you can enable or disable this with the robot toggle next to the message box.') }}</p>
+
+                    <h6 class="mt-4" id="assistant-flow-routing">{{ __('Team flow prompts and routing') }}</h6>
+                    <p>{{ __('The Humano Assistant can merge extra instructions from per-team prompts (module prompts). Each prompt has a module (optional), a stable section key, a section label, and the instruction text for the model.') }}</p>
+                    <ul>
+                        <li>{{ __('Routing key: if the prompt has a module, the key is «module_key:section_key» (e.g. «chat:onboarding»). Without a module, the routing key is just «section_key».') }}</li>
+                        <li>{{ __('Manage prompts from the prompts list in the app (authenticated users).') }} <span class="text-muted">{{ __('Path: /prompt/list') }}</span></li>
+                    </ul>
+
+                    <h6 class="mt-4">{{ __('Chat sidebar: Settings (AJUSTES)') }}</h6>
+                    <p>{{ __('Admins (admin / root) can change team-wide chat assistant options from the left sidebar in Chat.') }}</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr><th>{{ __('Toggle') }}</th><th>{{ __('Meaning') }}</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ __('Humano Assistant replies / Assistant auto-respond') }}</td>
+                                    <td>{{ __('Controls automatic assistant behaviour where that setting applies (e.g. inbound auto-replies).') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ __('Predefined test responses / Stub') }}</td>
+                                    <td>{{ __('When on, uses canned test replies instead of the real model (development only).') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ __('Default assistant flow (AI discovery)') }}</td>
+                                    <td>{{ __('When on, keyword routing to flows is off: the model picks flows using discovery and the commit-flow tool. Mutually exclusive with the keyword toggle below (same team setting, inverted in the UI).') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ __('Keyword routing') }}</td>
+                                    <td>{{ __('When on, attaches a team flow from the message using deterministic scoring (no extra LLM call for routing). See the next section.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ __('Block assistant AI button') }}</td>
+                                    <td>{{ __('Team-level block for the assistant AI button in the chat UI.') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="mt-4">{{ __('Keyword routing vs AI discovery') }}</h6>
+                    <p><strong>{{ __('Keyword routing on') }}</strong> {{ __('— The system scores global «intents» from configuration (phrases/words such as catalog, billing, etc.) and scores each active team prompt using:') }}</p>
+                    <ul>
+                        <li>{{ __('The section key: hyphens/underscores are treated like spaces; a strong match is when the normalized phrase appears in the message, plus per-word matches with word boundaries.') }}</li>
+                        <li>{{ __('The section label (additional signal): if the label is at least 12 characters after normalizing punctuation, the same scoring runs on the label text. Use the label for natural phrases users might type, while keeping the section key stable for APIs and routing keys.') }}</li>
+                    </ul>
+                    <p>{{ __('The best global intent score and the best team-prompt score are compared; whichever side has the higher score wins. If both sides tie, the global intent wins. This is still literal text matching, not semantic «intent» from an embedding or a second model.') }}</p>
+                    <p><strong>{{ __('Keyword routing off (default flow / AI discovery)') }}</strong> {{ __('— No automatic attachment from keywords. The model sees available routing keys and can commit a flow when appropriate. Better for paraphrasing and vague user messages, at the cost of the model sometimes skipping a flow.') }}</p>
+
+                    <h6 class="mt-4">{{ __('Sticky flow and reset') }}</h6>
+                    <p>{{ __('When a tool flow is active, the routing key may stick across messages until the user clearly changes topic. Substrings configured under assistant_tool_intent_prompts (e.g. «cambiar de tema») clear the sticky key and re-evaluate routing for that message.') }}</p>
+
+                    <h6 class="mt-4">{{ __('Environment') }}</h6>
+                    <p>{{ __('Global intent routing can be disabled with ASSISTANT_TOOL_INTENT_PROMPTS=false. Minimum match score can be tuned with ASSISTANT_TOOL_INTENT_PROMPTS_MIN_SCORE.') }}</p>
                 </div>
             </div>
         </div>

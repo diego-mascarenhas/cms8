@@ -66,6 +66,9 @@
                 <label class="form-label" for="section_label">{{ __('Etiqueta de sección') }} (*)</label>
                 <input type="text" class="form-control @error('section_label') is-invalid @enderror" id="section_label" name="section_label"
                     value="{{ old('section_label', $prompt->section_label ?? '') }}" maxlength="255" required>
+                <div class="form-text">
+                    {{ __('Si el chat del equipo tiene activo el enrutado por palabras clave, y esta etiqueta tiene al menos 12 caracteres, el mensaje del usuario también se compara contra esta frase (además de la clave): misma lógica de palabras/frases, sin inferencia semántica por IA.') }}
+                </div>
                 @error('section_label')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

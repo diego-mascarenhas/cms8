@@ -11,7 +11,7 @@
  * Create one active prompt per team
  * using one of the routing_keys listed under each intent (same keys as Prompt::findByRoutingKey).
  * When keyword routing is on, both config intents and {@see \App\Services\AssistantToolIntentPromptService::findPromptBySectionKeyKeywords}
- * run; the higher score wins (section_key phrase/word scoring vs intent phrase/word scores). Ties favour the config intent.
+ * run; the higher score wins (section_key + optional long section_label phrase/word scoring vs intent scores). Ties favour the config intent.
  *
  * @see \App\Services\AssistantToolIntentPromptService
  */

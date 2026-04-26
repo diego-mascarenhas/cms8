@@ -168,9 +168,9 @@ class AssistantToolIntentPromptService
     }
 
     /**
-     * When config intents do not match, score the user message against each active prompt's
-     * {@see Prompt::$section_key} (phrase + word tokens). Lets teams route by the same key they
-     * configure in the prompt form without duplicating words in config.
+     * Scores the message against {@see Prompt::$section_key} and, when the label is long enough,
+     * against a normalized {@see Prompt::$section_label} so teams can express “intent” phrasing
+     * in the label without changing the stable routing key. Still deterministic text match (no LLM).
      *
      * @return array{prompt: Prompt, routing_key: string, match_score: int}|null
      */
@@ -195,7 +195,7 @@ class AssistantToolIntentPromptService
 
         foreach ($prompts as $prompt)
         {
-            $score = $this->scoreMessageAgainstSectionKey($normalized, (string) $prompt->section_key);
+            $score = $this->scorePromptKeywordAttachment($normalized, $prompt);
             if ($score > $bestScore)
             {
                 $bestScore = $score;
@@ -217,6 +217,44 @@ class AssistantToolIntentPromptService
             'routing_key' => $routingKey,
             'match_score' => $bestScore,
         ];
+    }
+
+    /**
+     * Max of section_key score and (optional) section_label score — same substring / word rules as keys.
+     */
+    protected function scorePromptKeywordAttachment(string $normalized, Prompt $prompt): int
+    {
+        $keyScore = $this->scoreMessageAgainstSectionKey($normalized, (string) $prompt->section_key);
+        $labelPhrase = $this->normalizeSectionLabelForIntentScoring((string) $prompt->section_label);
+        if ($labelPhrase === '')
+        {
+            return $keyScore;
+        }
+
+        return max($keyScore, $this->scoreMessageAgainstSectionKey($normalized, $labelPhrase));
+    }
+
+    /**
+     * Strip punctuation from the section label so it can reuse {@see scoreMessageAgainstSectionKey}.
+     * Short labels are ignored to limit accidental matches on generic words.
+     */
+    protected function normalizeSectionLabelForIntentScoring(string $sectionLabel): string
+    {
+        $t = mb_strtolower(trim($sectionLabel));
+        if ($t === '')
+        {
+            return '';
+        }
+
+        $t = preg_replace('/[^\p{L}\p{N}\s\-_]+/u', ' ', $t) ?? $t;
+        $t = preg_replace('/\s+/u', ' ', trim($t)) ?? $t;
+
+        if (mb_strlen($t) < 12)
+        {
+            return '';
+        }
+
+        return $t;
     }
 
     /**
@@ -263,7 +301,8 @@ class AssistantToolIntentPromptService
     }
 
     /**
-     * Score how well the normalized message matches a prompt section_key (underscores → spaces, word tokens).
+     * Score how well the normalized message matches a routing phrase (underscores → spaces, word tokens).
+     * Used for {@see Prompt::$section_key} and for normalized {@see Prompt::$section_label} text.
      */
     protected function scoreMessageAgainstSectionKey(string $normalized, string $sectionKey): int
     {
