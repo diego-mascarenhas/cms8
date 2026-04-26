@@ -159,4 +159,35 @@ class AssistantToolIntentPromptServiceTest extends TestCase
         $this->assertSame('plan_sucesorio_unique', $pair['prompt']->section_key);
         $this->assertStringContainsString('plan_sucesorio_unique', $pair['routing_key']);
     }
+
+    public function test_section_key_wins_when_score_higher_than_config_intent(): void
+    {
+        [$team] = $this->createTeamWithCapabilitiesPrompt();
+        $this->setTeamKeywordIntentRouting($team, true);
+
+        $chatModule = Module::query()->firstOrCreate(
+            ['key' => 'chat'],
+            ['name' => 'Chat', 'is_core' => false, 'status' => 1],
+        );
+
+        Prompt::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $chatModule->id,
+            'section_key' => 'humano-disparador-debug',
+            'section_label' => 'Debug flow',
+            'prompt_instruction' => 'Reply with [HUMANO_FLOW_OK] only.',
+            'is_active' => true,
+            'order' => 5,
+        ]);
+
+        $service = app(AssistantToolIntentPromptService::class);
+        $pair = $service->findPromptAndRoutingKeyForMessage(
+            (int) $team->id,
+            'quiero probar humano disparador debug',
+        );
+
+        $this->assertNotNull($pair);
+        $this->assertSame('humano-disparador-debug', $pair['prompt']->section_key);
+        $this->assertSame('chat:humano-disparador-debug', $pair['routing_key']);
+    }
 }

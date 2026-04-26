@@ -81,25 +81,57 @@ class AssistantToolIntentPromptService
             return null;
         }
 
+        $fromSection = $this->findPromptBySectionKeyKeywords($teamId, $message);
         $fromConfig = $this->tryResolvePromptFromConfigIntent($teamId, $message);
-        if ($fromConfig !== null)
+
+        $sectionScore = (int) ($fromSection['match_score'] ?? 0);
+        $configScore = (int) ($fromConfig['intent_score'] ?? 0);
+
+        $picked = null;
+        if ($fromSection !== null && $fromConfig !== null)
         {
-            return $fromConfig;
+            $picked = $sectionScore > $configScore ? 'section_key' : 'config_intent';
+        } elseif ($fromSection !== null)
+        {
+            $picked = 'section_key';
+        } elseif ($fromConfig !== null)
+        {
+            $picked = 'config_intent';
         }
 
-        return $this->findPromptBySectionKeyKeywords($teamId, $message);
+        if ($picked === 'section_key')
+        {
+            return [
+                'prompt' => $fromSection['prompt'],
+                'routing_key' => $fromSection['routing_key'],
+            ];
+        }
+
+        if ($picked === 'config_intent')
+        {
+            return [
+                'prompt' => $fromConfig['prompt'],
+                'routing_key' => $fromConfig['routing_key'],
+            ];
+        }
+
+        return null;
     }
 
     /**
-     * @return array{prompt: Prompt, routing_key: string}|null
+     * @return array{prompt: Prompt, routing_key: string, intent_score: int}|null
      */
     protected function tryResolvePromptFromConfigIntent(int $teamId, string $message): ?array
     {
-        $intentId = $this->detectBestIntentId($message);
-        if ($intentId === null)
+        $normalized = $this->normalizeMessage($message);
+        $bestIntent = $this->resolveBestConfigIntent($normalized);
+        if ($bestIntent === null)
         {
             return null;
         }
+
+        $intentId = $bestIntent['id'];
+        $intentScore = $bestIntent['score'];
 
         $intentCfg = config('assistant_tool_intent_prompts.intents.'.$intentId);
         if (! is_array($intentCfg))
@@ -127,6 +159,7 @@ class AssistantToolIntentPromptService
                 return [
                     'prompt' => $prompt,
                     'routing_key' => $key,
+                    'intent_score' => $intentScore,
                 ];
             }
         }
@@ -139,7 +172,7 @@ class AssistantToolIntentPromptService
      * {@see Prompt::$section_key} (phrase + word tokens). Lets teams route by the same key they
      * configure in the prompt form without duplicating words in config.
      *
-     * @return array{prompt: Prompt, routing_key: string}|null
+     * @return array{prompt: Prompt, routing_key: string, match_score: int}|null
      */
     protected function findPromptBySectionKeyKeywords(int $teamId, string $message): ?array
     {
@@ -182,6 +215,50 @@ class AssistantToolIntentPromptService
         return [
             'prompt' => $best,
             'routing_key' => $routingKey,
+            'match_score' => $bestScore,
+        ];
+    }
+
+    /**
+     * @return array{id: string, score: int}|null
+     */
+    protected function resolveBestConfigIntent(string $normalized): ?array
+    {
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        $order = config('assistant_tool_intent_prompts.intents_order', []);
+        $intents = config('assistant_tool_intent_prompts.intents', []);
+        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
+
+        $bestId = null;
+        $bestScore = -1;
+
+        foreach ($order as $intentId)
+        {
+            if (! is_string($intentId) || ! isset($intents[$intentId]) || ! is_array($intents[$intentId]))
+            {
+                continue;
+            }
+
+            $score = $this->scoreIntent($normalized, $intents[$intentId]);
+            if ($score > $bestScore)
+            {
+                $bestScore = $score;
+                $bestId = $intentId;
+            }
+        }
+
+        if ($bestId === null || $bestScore < $minScore)
+        {
+            return null;
+        }
+
+        return [
+            'id' => $bestId,
+            'score' => $bestScore,
         ];
     }
 
@@ -325,40 +402,9 @@ class AssistantToolIntentPromptService
 
     public function detectBestIntentId(string $message): ?string
     {
-        $normalized = $this->normalizeMessage($message);
-        if ($normalized === '')
-        {
-            return null;
-        }
+        $resolved = $this->resolveBestConfigIntent($this->normalizeMessage($message));
 
-        $order = config('assistant_tool_intent_prompts.intents_order', []);
-        $intents = config('assistant_tool_intent_prompts.intents', []);
-        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
-
-        $bestId = null;
-        $bestScore = -1;
-
-        foreach ($order as $intentId)
-        {
-            if (! is_string($intentId) || ! isset($intents[$intentId]) || ! is_array($intents[$intentId]))
-            {
-                continue;
-            }
-
-            $score = $this->scoreIntent($normalized, $intents[$intentId]);
-            if ($score > $bestScore)
-            {
-                $bestScore = $score;
-                $bestId = $intentId;
-            }
-        }
-
-        if ($bestId === null || $bestScore < $minScore)
-        {
-            return null;
-        }
-
-        return $bestId;
+        return $resolved['id'] ?? null;
     }
 
     /**

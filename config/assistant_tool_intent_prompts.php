@@ -10,8 +10,8 @@
  * (config + optional section_key) can attach a flow without the LLM choosing. Default is off (LLM + commit_assistant_flow).
  * Create one active prompt per team
  * using one of the routing_keys listed under each intent (same keys as Prompt::findByRoutingKey).
- * When keyword routing is on, if no config intent matches, {@see \App\Services\AssistantToolIntentPromptService::findPromptBySectionKeyKeywords}
- * also scores the message against each active prompt's section_key (underscores as spaces; word tokens).
+ * When keyword routing is on, both config intents and {@see \App\Services\AssistantToolIntentPromptService::findPromptBySectionKeyKeywords}
+ * run; the higher score wins (section_key phrase/word scoring vs intent phrase/word scores). Ties favour the config intent.
  *
  * @see \App\Services\AssistantToolIntentPromptService
  */
