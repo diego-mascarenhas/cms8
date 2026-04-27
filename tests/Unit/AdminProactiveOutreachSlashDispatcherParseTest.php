@@ -36,4 +36,22 @@ class AdminProactiveOutreachSlashDispatcherParseTest extends TestCase
         $this->assertTrue($dispatcher->isProactiveOutreachSlash('/enviar-onboarding +34'));
         $this->assertTrue($dispatcher->isProactiveOutreachSlash('/send-onboarding +34'));
     }
+
+    public function test_parse_system_onboarding_with_phone(): void
+    {
+        $dispatcher = app(AdminProactiveOutreachSlashDispatcher::class);
+
+        $parsed = $dispatcher->parseSystemOnboardingBody('/system-onboarding +34 600 11 12 22');
+
+        $this->assertNotNull($parsed);
+        $this->assertSame('34600111222', $parsed['phone_digits']);
+    }
+
+    public function test_is_proactive_outreach_slash_recognizes_system_onboarding(): void
+    {
+        $dispatcher = app(AdminProactiveOutreachSlashDispatcher::class);
+
+        $this->assertTrue($dispatcher->isProactiveOutreachSlash('/system-onboarding +34600111222'));
+        $this->assertTrue($dispatcher->isProactiveOutreachSlash('/send-system-onboarding +34600111222'));
+    }
 }

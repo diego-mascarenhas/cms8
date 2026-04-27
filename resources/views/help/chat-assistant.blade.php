@@ -94,12 +94,14 @@
                     <ul>
                         <li><code>/enviar-demo +34…</code> {{ __('or') }} <code>/send-demo +34…</code> — {{ __('keyword «demo» + destination number.') }}</li>
                         <li><code>/enviar-onboarding +34…</code> {{ __('or') }} <code>/send-onboarding +34…</code> — {{ __('keyword «onboarding» + destination number; active Chat prompt section_key onboarding.') }}</li>
+                        <li><code>/system-onboarding +34…</code> {{ __('or') }} <code>/send-system-onboarding +34…</code> — {{ __('fixed Humano reseller onboarding (text + static screenshots), independent of team prompts.') }}</li>
                         <li><code>/enviar-flujo cobrar +34…</code> {{ __('or') }} <code>/send-flow cobrar +34…</code> — {{ __('another active team prompt + number (spaces in the number are allowed).') }}</li>
                         <li>{{ __('In chat: only in your own assistant thread (no client selected). On WhatsApp: the sender must be a user linked to that phone with admin/root; runs even if inbound assistant is off for that contact.') }}</li>
                     </ul>
                     <h6 class="mt-4">{{ __('Artisan (server)') }}</h6>
                     <pre class="language-bash"><code>php artisan humano:send-demo "+34600111222" --team=YOUR_TEAM_ID
-php artisan humano:send-demo "+34600111222" --team=YOUR_TEAM_ID --keyword=onboarding</code></pre>
+php artisan humano:send-demo "+34600111222" --team=YOUR_TEAM_ID --keyword=onboarding
+php artisan humano:system-onboarding "+34600111222" --team=YOUR_TEAM_ID</code></pre>
                     <ul>
                         <li>{{ __('Optional: --user=USER_ID (defaults to the team owner). The user must belong to the team and have admin or root.') }}</li>
                         <li>{{ __('Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).') }}</li>

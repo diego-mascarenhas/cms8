@@ -11,6 +11,7 @@ use App\Models\User;
  * Supported (trimmed, case-insensitive command prefix):
  * - `/enviar-demo +34…` or `/send-demo +34…` → keyword demo + destination phone
  * - `/enviar-onboarding +34…` or `/send-onboarding +34…` → keyword onboarding + destination phone
+ * - `/system-onboarding +34…` or `/send-system-onboarding +34…` → fixed reseller onboarding (text + static screenshots)
  * - `/enviar-flujo cobrar +34…` or `/send-flow cobrar +34…` → keyword + phone (same rules as keyword+phone parsing)
  */
 class AdminProactiveOutreachSlashDispatcher
@@ -18,6 +19,7 @@ class AdminProactiveOutreachSlashDispatcher
     public function __construct(
         protected AdminProactiveWhatsAppOutreachService $outreach,
         protected AdminProactiveWhatsAppOutreachExecutor $executor,
+        protected SystemOnboardingWhatsAppService $systemOnboarding,
     ) {}
 
     /**
@@ -43,12 +45,39 @@ class AdminProactiveOutreachSlashDispatcher
             return null;
         }
 
+        $systemParsed = $this->parseSystemOnboardingBody($t);
+        if ($systemParsed !== null)
+        {
+            $team = $actor->currentTeam;
+            if (! $team || (int) $team->id !== $teamId)
+            {
+                return [
+                    'success' => false,
+                    'message' => __('No team context.'),
+                    '_http_status' => 403,
+                ];
+            }
+
+            $result = $this->systemOnboarding->execute(
+                $actor,
+                $team,
+                $systemParsed['phone_digits'],
+                'web_assistant_slash',
+            );
+
+            return $this->executorResultToChatPayload(
+                $result,
+                $hasAudio,
+                trim($message),
+            );
+        }
+
         $parsed = $this->parseSlashBody($t);
         if ($parsed === null)
         {
             return [
                 'success' => false,
-                'message' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
+                'message' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34…, /system-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
                 '_http_status' => 422,
             ];
         }
@@ -83,18 +112,48 @@ class AdminProactiveOutreachSlashDispatcher
             return null;
         }
 
+        $systemParsed = $this->parseSystemOnboardingBody($t);
+        if ($systemParsed !== null)
+        {
+            $team = Team::withoutGlobalScopes()->find($assistantTeamId);
+            if (! $team || ! $contextUser->belongsToTeam($team))
+            {
+                return [
+                    'whatsapp_reply' => __('No team context.'),
+                ];
+            }
+
+            $result = $this->systemOnboarding->execute(
+                $contextUser,
+                $team,
+                $systemParsed['phone_digits'],
+                'whatsapp_inbound_slash',
+            );
+
+            if (! ($result['success'] ?? false))
+            {
+                return [
+                    'whatsapp_reply' => (string) ($result['message'] ?? __('No se pudo completar el envío.')),
+                ];
+            }
+
+            return [
+                'whatsapp_reply' => (string) ($result['response'] ?? __('Listo.')),
+            ];
+        }
+
         $parsed = $this->parseSlashBody($t);
         if ($parsed === null)
         {
             return [
-                'whatsapp_reply' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
+                'whatsapp_reply' => __('Formato: /enviar-demo +34…, /enviar-onboarding +34…, /system-onboarding +34… o /enviar-flujo clave +34… (teléfono al final).'),
             ];
         }
 
         if (! $contextUser->hasAnyRole(['admin', 'root']))
         {
             return [
-                'whatsapp_reply' => __('Solo administradores pueden usar /enviar-demo, /enviar-onboarding o /enviar-flujo.'),
+                'whatsapp_reply' => __('Solo administradores pueden usar /enviar-demo, /enviar-onboarding, /system-onboarding o /enviar-flujo.'),
             ];
         }
 
@@ -122,7 +181,32 @@ class AdminProactiveOutreachSlashDispatcher
 
     public function isProactiveOutreachSlash(string $t): bool
     {
-        return $t !== '' && preg_match('#^/(?:enviar-demo|send-demo|enviar-onboarding|send-onboarding|enviar-flujo|send-flow)\b#iu', $t) === 1;
+        return $t !== '' && preg_match('#^/(?:enviar-demo|send-demo|enviar-onboarding|send-onboarding|system-onboarding|send-system-onboarding|enviar-flujo|send-flow)\b#iu', $t) === 1;
+    }
+
+    /**
+     * @return array{phone_digits: string}|null
+     */
+    public function parseSystemOnboardingBody(string $t): ?array
+    {
+        if (! preg_match('#^/(?:system-onboarding|send-system-onboarding)\s*(.+)$#iu', $t, $m))
+        {
+            return null;
+        }
+
+        $tail = trim((string) ($m[1] ?? ''));
+        if ($tail === '')
+        {
+            return null;
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', $tail) ?? '';
+        if (strlen($digits) < 10 || strlen($digits) > 15)
+        {
+            return null;
+        }
+
+        return ['phone_digits' => $digits];
     }
 
     /**
