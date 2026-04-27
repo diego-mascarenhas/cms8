@@ -86,15 +86,16 @@ Schedule::command('notifications:send-pending')
     ->onOneServer()
     ->runInBackground();
 
-Schedule::command('team:test-configurations --failures-only')
-    ->dailyAt('08:00')
-    ->name('team-config-monitoring')
-    ->description('Monitor team configurations and send individual failure reports to owners')
-    ->onFailure(function ()
-    {
-        Log::error('Team configuration monitoring command failed');
-    })
-    ->runInBackground();
+// Paused: daily Team Configuration Report
+// Schedule::command('team:test-configurations --failures-only')
+//     ->dailyAt('08:00')
+//     ->name('team-config-monitoring')
+//     ->description('Monitor team configurations and send individual failure reports to owners')
+//     ->onFailure(function ()
+//     {
+//         Log::error('Team configuration monitoring command failed');
+//     })
+//     ->runInBackground();
 
 Schedule::command('team:test-configurations --admin-summary')
     ->weeklyOn(1, '09:00')
