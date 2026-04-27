@@ -14,7 +14,9 @@ class SystemOnboardingWhatsAppService
 {
     protected const ONBOARDING_TEXT = 'Hola, soy del equipo Humano 👋 Te comparto el onboarding para dar de alta tu cuenta paso a paso. Primero te envio un resumen breve y luego las capturas de cada paso.';
 
-    protected const STEP_PAUSE_MS = 1200;
+    protected const STEP_PAUSE_MIN_MS = 900;
+
+    protected const STEP_PAUSE_MAX_MS = 2400;
 
     /**
      * @return array<int, array{image: string, message: string}>
@@ -26,27 +28,27 @@ class SystemOnboardingWhatsAppService
         return [
             [
                 'image' => '/images/system-onboarding/step-1.png',
-                'message' => "Paso 1/6: Crea tu cuenta desde este enlace: {$registerUrl}\nCuando termines el registro, responde \"listo\".",
+                'message' => "Paso 1/6: Crea tu cuenta desde este enlace: {$registerUrl}.",
             ],
             [
                 'image' => '/images/system-onboarding/step-2.png',
-                'message' => 'Paso 2/6: Completa los datos de facturacion para avanzar al checkout. Cuando finalices, responde "listo".',
+                'message' => 'Paso 2/6: Completa los datos de facturacion para avanzar al checkout.',
             ],
             [
                 'image' => '/images/system-onboarding/step-3.png',
-                'message' => 'Paso 3/6: En la pantalla de pago requerido, presiona "Pagar con Stripe". Cuando lo hagas, responde "listo".',
+                'message' => 'Paso 3/6: En la pantalla de pago requerido, presiona "Pagar con Stripe".',
             ],
             [
                 'image' => '/images/system-onboarding/step-4.png',
-                'message' => 'Paso 4/6: Completa el pago en Stripe. Cuando el pago salga aprobado, responde "listo" o "ya pague".',
+                'message' => 'Paso 4/6: Completa el pago en Stripe.',
             ],
             [
                 'image' => '/images/system-onboarding/step-5.png',
-                'message' => 'Paso 5/6: Vincula tu WhatsApp escaneando el QR. Cuando quede conectado, responde "listo".',
+                'message' => 'Paso 5/6: Vincula tu WhatsApp escaneando el QR.',
             ],
             [
                 'image' => '/images/system-onboarding/step-6.png',
-                'message' => 'Paso 6/6: Completa la configuracion del negocio. Es esencial para que el bot responda con tu tono, contexto y enfoque comercial. Cuando lo termines, responde "listo".',
+                'message' => 'Paso 6/6: Completa la configuracion del negocio. Es esencial para que el bot responda con tu tono, contexto y enfoque comercial.',
             ],
         ];
     }
@@ -363,6 +365,14 @@ class SystemOnboardingWhatsAppService
 
         $missingMedia = [];
         $sentMedia = 0;
+        $gateway->sendMessage(
+            $digits,
+            WhatsAppOutboundText::sanitize($payload['message']),
+            ['source' => 'system_onboarding_step_text', 'step' => $step],
+            $userId,
+        );
+        $this->sleepRandomPause();
+
         $normalizedPath = '/'.ltrim($payload['image'], '/');
         $absolute = public_path(ltrim($normalizedPath, '/'));
 
@@ -373,7 +383,7 @@ class SystemOnboardingWhatsAppService
         {
             try
             {
-                if ($gateway->sendMedia($digits, $normalizedPath, WhatsAppOutboundText::sanitize($payload['message'])))
+                if ($gateway->sendMedia($digits, $normalizedPath, null))
                 {
                     $sentMedia = 1;
                 } else
@@ -391,13 +401,6 @@ class SystemOnboardingWhatsAppService
                 ]);
             }
         }
-
-        $gateway->sendMessage(
-            $digits,
-            WhatsAppOutboundText::sanitize($payload['message']),
-            ['source' => 'system_onboarding_step_text', 'step' => $step],
-            $userId,
-        );
 
         return [
             'sent_media_count' => $sentMedia,
@@ -417,7 +420,18 @@ class SystemOnboardingWhatsAppService
             return;
         }
 
-        usleep(self::STEP_PAUSE_MS * 1000);
+        $this->sleepRandomPause();
+    }
+
+    private function sleepRandomPause(): void
+    {
+        if (app()->environment('testing'))
+        {
+            return;
+        }
+
+        $pauseMs = random_int(self::STEP_PAUSE_MIN_MS, self::STEP_PAUSE_MAX_MS);
+        usleep($pauseMs * 1000);
     }
 
     protected function gatewayForTeam(Team $team): WhatsAppGateway
