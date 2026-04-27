@@ -97,11 +97,12 @@ Schedule::command('notifications:send-pending')
 //     })
 //     ->runInBackground();
 
-Schedule::command('team:test-configurations --admin-summary')
-    ->weeklyOn(1, '09:00')
-    ->name('team-config-weekly-report')
-    ->description('Weekly team configuration report with admin summary')
-    ->runInBackground();
+// Paused: weekly Team Configuration admin summary
+// Schedule::command('team:test-configurations --admin-summary')
+//     ->weeklyOn(1, '09:00')
+//     ->name('team-config-weekly-report')
+//     ->description('Weekly team configuration report with admin summary')
+//     ->runInBackground();
 
 Schedule::command('campaigns:process-active')
     ->everyFiveMinutes()
