@@ -934,6 +934,50 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         }
                     }
 
+                    if ($assistantTeamId !== null && trim((string) $body) !== '')
+                    {
+                        $assistantTeam = Team::withoutGlobalScopes()->find((int) $assistantTeamId);
+                        if ($assistantTeam !== null)
+                        {
+                            $onboardingReply = app(SystemOnboardingWhatsAppService::class)->tryHandleInbound(
+                                $assistantTeam,
+                                $cleanFrom,
+                                (string) $body,
+                            );
+                            if ($onboardingReply !== null)
+                            {
+                                $mediaPath = (string) ($onboardingReply['media_path'] ?? '');
+                                if ($mediaPath !== '')
+                                {
+                                    try
+                                    {
+                                        $this->sendMedia($cleanFrom, $mediaPath, null);
+                                    } catch (\Throwable $e)
+                                    {
+                                        Log::warning('System onboarding inbound media send failed', [
+                                            'team_id' => $assistantTeamId,
+                                            'from' => $cleanFrom,
+                                            'path' => $mediaPath,
+                                            'error' => $e->getMessage(),
+                                        ]);
+                                    }
+                                }
+
+                                $replyText = trim((string) ($onboardingReply['message'] ?? ''));
+                                if ($replyText !== '')
+                                {
+                                    $this->sendWhatsApp($cleanFrom, $replyText);
+                                }
+
+                                return response()->json([
+                                    'status' => 'success',
+                                    'conversation_id' => $conversation->id,
+                                    'auto_ai' => 'system_onboarding_interactive',
+                                ]);
+                            }
+                        }
+                    }
+
                     $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom, $assistantTeamId)
                         ?? ($contextContactId !== null ? (int) $contextContactId : null);
 
