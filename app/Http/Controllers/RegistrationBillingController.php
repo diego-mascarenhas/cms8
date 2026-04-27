@@ -75,6 +75,16 @@ class RegistrationBillingController extends Controller
         $product = $this->resolveSubscriptionProduct();
         $stripeProductId = trim(config('registration.stripe_product_id', ''));
 
+        Log::info('Registration debug: startCheckout resolved product context', [
+            'user_id' => $user?->id,
+            'team_id' => $team->id,
+            'registration_mode' => RegistrationMode::fromConfiguration()->value,
+            'configured_registration_product_id' => $stripeProductId,
+            'resolved_product_id' => $product?->id,
+            'resolved_product_stripe_product' => $product?->stripe_product,
+            'resolved_product_stripe_price' => $product?->stripe_price,
+        ]);
+
         if (! $product && $stripeProductId === '')
         {
             return redirect()->route('registration.billing')
@@ -84,6 +94,12 @@ class RegistrationBillingController extends Controller
         $priceId = $product
             ? $this->resolveStripePriceId($product)
             : $this->resolveStripePriceIdForProductId($stripeProductId, 'mailer');
+
+        Log::info('Registration debug: startCheckout resolved price', [
+            'team_id' => $team->id,
+            'price_id' => $priceId,
+            'from_product' => $product !== null,
+        ]);
 
         if (! $priceId || ! str_starts_with($priceId, 'price_'))
         {

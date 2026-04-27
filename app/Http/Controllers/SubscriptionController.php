@@ -1669,6 +1669,13 @@ class SubscriptionController extends Controller
     public function success(Request $request)
     {
         $sessionId = $request->get('session_id');
+        $this->logRegistrationDebug('subscription.success entry', [
+            'session_id' => $sessionId,
+            'from_registration_query' => $request->boolean('from_registration'),
+            'category_query' => $request->get('category'),
+            'auth_user_id' => auth()->id(),
+            'team_id' => auth()->user()?->currentTeam?->id,
+        ]);
 
         if (! $sessionId)
         {
@@ -1682,10 +1689,16 @@ class SubscriptionController extends Controller
         }
 
         $team = auth()->user()->currentTeam;
+        $customerService = app(TeamStripeCustomerService::class);
         $category = $request->get('category');
         $category = $category ? StripeAccountResolver::normalizeCategory($category) : 'mailer';
         $secret = StripeAccountResolver::secretForCategory($category);
-        $teamCustomerId = $category ? app(TeamStripeCustomerService::class)->getStripeCustomerIdForCategory($team, $category) : $team->stripe_id;
+        $teamCustomerId = $customerService->getStripeCustomerIdForCategory($team, $category);
+        $this->logRegistrationDebug('subscription.success pre-retrieve context', [
+            'team_id' => $team?->id,
+            'category' => $category,
+            'team_customer_id' => $teamCustomerId,
+        ]);
 
         try
         {
@@ -1695,9 +1708,36 @@ class SubscriptionController extends Controller
             $sessionCustomerId = is_string($session->customer)
                 ? $session->customer
                 : (isset($session->customer->id) ? (string) $session->customer->id : null);
+            $this->logRegistrationDebug('subscription.success session retrieved', [
+                'session_id' => $sessionId,
+                'session_customer_id' => $sessionCustomerId,
+                'team_customer_id_before_heal' => $teamCustomerId,
+                'session_subscription_id' => $session->subscription,
+                'session_metadata' => $session->metadata ? $session->metadata->toArray() : [],
+            ]);
+
+            // Self-heal missing local customer linkage after successful Stripe checkout.
+            // This avoids false "invalid session" redirects when team stripe_id/setting was not persisted.
+            if (($teamCustomerId ?? '') === '' && ($sessionCustomerId ?? '') !== '')
+            {
+                $customerService->persistStripeCustomerIdForCategory($team, $category, (string) $sessionCustomerId);
+                $teamCustomerId = $customerService->getStripeCustomerIdForCategory($team, $category);
+                $this->logRegistrationDebug('subscription.success customer linkage healed', [
+                    'team_id' => $team?->id,
+                    'category' => $category,
+                    'persisted_customer_id' => $sessionCustomerId,
+                    'team_customer_id_after_heal' => $teamCustomerId,
+                ]);
+            }
 
             if (($sessionCustomerId ?? '') !== ($teamCustomerId ?? ''))
             {
+                $this->logRegistrationDebug('subscription.success customer mismatch', [
+                    'team_id' => $team?->id,
+                    'category' => $category,
+                    'session_customer_id' => $sessionCustomerId,
+                    'team_customer_id' => $teamCustomerId,
+                ]);
                 if ($request->boolean('from_registration'))
                 {
                     return redirect()->route('registration.billing')
@@ -1780,6 +1820,12 @@ class SubscriptionController extends Controller
                         'ends_at' => null,
                         'data' => ! empty($metadata) ? json_encode($metadata) : null,
                     ]);
+                    $this->logRegistrationDebug('subscription.success local subscription created', [
+                        'team_id' => $team?->id,
+                        'stripe_subscription_id' => $stripeSubscription->id,
+                        'stripe_price' => $priceId,
+                        'subscription_type' => $subscriptionType,
+                    ]);
                 } else
                 {
                     if (! empty($metadata))
@@ -1798,6 +1844,12 @@ class SubscriptionController extends Controller
                     {
                         $localSubscription->update(['stripe_status' => $stripeSubscription->status]);
                     }
+                    $this->logRegistrationDebug('subscription.success local subscription updated', [
+                        'team_id' => $team?->id,
+                        'local_subscription_id' => $localSubscription->id,
+                        'stripe_subscription_id' => $stripeSubscription->id,
+                        'stripe_status' => $stripeSubscription->status,
+                    ]);
                 }
 
                 // Only assign EmailPlan if it's a mailer subscription
@@ -1834,6 +1886,12 @@ class SubscriptionController extends Controller
 
             $fromRegistration = $request->boolean('from_registration')
                 || (($sessionMetadata['registration_checkout'] ?? null) === '1');
+            $this->logRegistrationDebug('subscription.success final routing decision', [
+                'team_id' => $team?->id,
+                'from_registration_resolved' => $fromRegistration,
+                'query_from_registration' => $request->boolean('from_registration'),
+                'metadata_registration_checkout' => $sessionMetadata['registration_checkout'] ?? null,
+            ]);
 
             if ($fromRegistration && auth()->check())
             {
@@ -1846,6 +1904,11 @@ class SubscriptionController extends Controller
         } catch (\Exception $e)
         {
             \Log::error('Success handler error: '.$e->getMessage());
+            $this->logRegistrationDebug('subscription.success exception', [
+                'team_id' => $team?->id,
+                'session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
 
             if ($request->boolean('from_registration'))
             {
@@ -1856,6 +1919,16 @@ class SubscriptionController extends Controller
             return redirect()->route('subscription.index')
                 ->with('error', 'Error al procesar la suscripción: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Registration billing debug logs toggled via REGISTRATION_DEBUG_FLOW=true.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function logRegistrationDebug(string $message, array $context = []): void
+    {
+        \Log::info('Registration debug: '.$message, $context);
     }
 
     /**

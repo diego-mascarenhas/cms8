@@ -77,4 +77,39 @@ class TeamStripeCustomerService
 
         return $team->getSetting(self::SETTING_PREFIX.$category);
     }
+
+    /**
+     * Persist a known Stripe customer ID for the team/category without creating a new customer.
+     * Useful when checkout succeeds but local linkage is still missing.
+     */
+    public function persistStripeCustomerIdForCategory(Team $team, string $category, string $customerId): void
+    {
+        $category = StripeAccountResolver::normalizeCategory($category);
+        $customerId = trim($customerId);
+        if ($customerId === '')
+        {
+            return;
+        }
+
+        $hasDedicatedAccount = ! empty(config("stripe_accounts.{$category}.secret"));
+        if (! $hasDedicatedAccount)
+        {
+            if ($team->stripe_id !== $customerId)
+            {
+                $team->forceFill(['stripe_id' => $customerId])->save();
+            }
+
+            return;
+        }
+
+        $settingKey = self::SETTING_PREFIX.$category;
+        if ($team->getSetting($settingKey) !== $customerId)
+        {
+            $team->setSetting($settingKey, $customerId, [
+                'group' => 'billing',
+                'type' => 'string',
+                'is_encrypted' => false,
+            ]);
+        }
+    }
 }
