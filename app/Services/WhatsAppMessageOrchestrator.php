@@ -234,40 +234,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return null;
         }
 
-        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CAST(phone AS CHAR), ' ', ''), '+', ''), '-', '')";
-
-        $query = Contact::withoutGlobalScopes()
+        $id = Contact::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->where(function ($q) use ($cleanDigits, $phoneNormalizedSql)
-            {
-                $q->whereHas('sources', function ($q2) use ($cleanDigits)
-                {
-                    $q2->where('source_id', 2)->where('value', $cleanDigits);
-                })
-                    ->orWhereRaw("{$phoneNormalizedSql} = ?", [$cleanDigits]);
-
-                if (strlen($cleanDigits) > 9)
-                {
-                    $national = substr($cleanDigits, -9);
-                    $q->orWhereHas('sources', function ($q2) use ($national)
-                    {
-                        $q2->where('source_id', 2)->where('value', $national);
-                    })
-                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$national]);
-                }
-
-                if (strlen($cleanDigits) === 9)
-                {
-                    $with34 = '34'.$cleanDigits;
-                    $q->orWhereHas('sources', function ($q2) use ($with34)
-                    {
-                        $q2->where('source_id', 2)->where('value', $with34);
-                    })
-                        ->orWhereRaw("{$phoneNormalizedSql} = ?", [$with34]);
-                }
-            });
-
-        $id = $query->value('id');
+            ->where('phone', $cleanDigits)
+            ->value('id');
 
         return $id !== null ? (int) $id : null;
     }
@@ -837,39 +807,53 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
                 }
 
-                // Check if user is using cart commands (HIGHEST PRIORITY)
-                $cartResponse = $this->processCartCommands($cleanFrom, $body);
-                if ($cartResponse)
+                // Detect user intent first, then route to the most relevant flow.
+                // This prevents false positives (for example: "agregar cita..." should not go to cart).
+                $detectedIntent = $this->detectWhatsAppIntent((string) $body);
+
+                if ($detectedIntent === 'cart')
                 {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
+                    $cartResponse = $this->processCartCommands($cleanFrom, $body);
+                    if ($cartResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
+                    }
                 }
 
-                // Check if user is asking about products
-                $productResponse = $this->processProductCommands($cleanFrom, $body);
-                if ($productResponse)
+                if ($detectedIntent === 'product')
                 {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
+                    $productResponse = $this->processProductCommands($cleanFrom, $body);
+                    if ($productResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
+                    }
                 }
 
-                // Check if user is trying to report service information
-                $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
-                if ($serviceResponse)
+                if ($detectedIntent === 'service')
                 {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
+                    $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
+                    if ($serviceResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
+                    }
                 }
 
-                // Check if user sent "DEMO" command
-                $demoResponse = $this->processDemoCommand($cleanFrom, $body);
-                if ($demoResponse)
+                if ($detectedIntent === 'demo')
                 {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
+                    $demoResponse = $this->processDemoCommand($cleanFrom, $body);
+                    if ($demoResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
+                    }
                 }
 
-                // Check if user is requesting QR code
-                $qrResponse = $this->processQrCommand($cleanFrom, $body);
-                if ($qrResponse)
+                if ($detectedIntent === 'qr')
                 {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
+                    $qrResponse = $this->processQrCommand($cleanFrom, $body);
+                    if ($qrResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
+                    }
                 }
             }
 
@@ -931,6 +915,25 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             ->value('id');
                     }
 
+                    if ($contextUser !== null && $assistantTeamId !== null && trim((string) $body) !== '')
+                    {
+                        $waSlash = app(AdminProactiveOutreachSlashDispatcher::class)->tryWhatsAppInbound(
+                            (string) $body,
+                            $contextUser,
+                            (int) $assistantTeamId,
+                        );
+                        if ($waSlash !== null)
+                        {
+                            $this->sendWhatsApp($cleanFrom, $waSlash['whatsapp_reply']);
+
+                            return response()->json([
+                                'status' => 'success',
+                                'conversation_id' => $conversation->id,
+                                'auto_ai' => 'admin_proactive_outreach_slash',
+                            ]);
+                        }
+                    }
+
                     $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom, $assistantTeamId)
                         ?? ($contextContactId !== null ? (int) $contextContactId : null);
 
@@ -960,6 +963,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $cleanFrom,
                         $forcedFlowRoutingKey,
                         $contextContactId !== null ? (int) $contextContactId : null,
+                        false,
+                        true,
+                        false,
                     );
 
                     if ($replyResponse['success'] ?? false)
@@ -2424,6 +2430,100 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         $t = preg_replace('/^\s*(?:el|la|los|las)\s+/iu', '', $t) ?? $t;
 
         return trim($t);
+    }
+
+    /**
+     * Detect the most likely inbound intent to route the message into a specific flow.
+     *
+     * @return 'assistant'|'cart'|'product'|'service'|'demo'|'qr'
+     */
+    private function detectWhatsAppIntent(string $message): string
+    {
+        $normalized = mb_strtolower(trim(\Illuminate\Support\Str::ascii($message)));
+
+        if ($normalized === '')
+        {
+            return 'assistant';
+        }
+
+        $demoPattern = '/^(demo|crear demo|cuenta demo)\b/u';
+        if (preg_match($demoPattern, $normalized) === 1)
+        {
+            return 'demo';
+        }
+
+        $qrPattern = '/\b(qr|codigo qr|codigo de qr|codigo)\b/u';
+        if (preg_match($qrPattern, $normalized) === 1)
+        {
+            return 'qr';
+        }
+
+        $servicePattern = '/\b(servicio|servicios|soporte|asistencia|tecnico|tecnica)\b/u';
+        if (preg_match($servicePattern, $normalized) === 1)
+        {
+            return 'service';
+        }
+
+        $cartExact = [
+            'carrito',
+            'ver carrito',
+            'mi carrito',
+            'cart',
+            'vaciar carrito',
+            'limpiar carrito',
+            'borrar carrito',
+            'clear cart',
+            'checkout',
+            'finalizar',
+            'finalizar compra',
+            'pagar',
+            'comprar todo',
+            'cerrar pedido',
+            'cerrar el pedido',
+            'terminar compra',
+            'confirmar pedido',
+            'si',
+            'sí',
+            'yes',
+            'no',
+            'nah',
+            'seguir comprando',
+            'continuar',
+            'agregar mas',
+            'cancelar',
+        ];
+        if (in_array($normalized, $cartExact, true))
+        {
+            return 'cart';
+        }
+
+        if (preg_match('/^(quitar|eliminar|sacar|restar|borrar)\s+/u', $normalized) === 1)
+        {
+            return 'cart';
+        }
+
+        if (preg_match('/^(comprar|contratar|compra|contrata)\s+.+/u', $normalized) === 1)
+        {
+            return 'cart';
+        }
+
+        if (preg_match('/^(agregar|anadir)\s+\d+\s+.+/u', $normalized) === 1)
+        {
+            return 'cart';
+        }
+
+        if (preg_match('/^(agregar|anadir)\s+.+\s+al\s+carrito\s*$/u', $normalized) === 1)
+        {
+            return 'cart';
+        }
+
+        $productPattern = '/\b(producto|productos|catalogo|pedido|pedidos)\b/u';
+        if (preg_match($productPattern, $normalized) === 1)
+        {
+            return 'product';
+        }
+
+        return 'assistant';
     }
 
     /**

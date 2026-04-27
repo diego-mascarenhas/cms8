@@ -10,6 +10,7 @@ use App\Models\Conversation;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\TeamWhatsAppChatPresentation;
@@ -19,7 +20,6 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
-use App\Settings\UserPreferencesSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +27,6 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Transcription;
-use Spatie\LaravelSettings\Factories\SettingsRepositoryFactory;
 
 class ChatController extends Controller
 {
@@ -376,10 +375,13 @@ class ChatController extends Controller
         $assistantContactId = $selectedAssistantUser
             ? (Contact::withoutGlobalScopes()->where('user_id', $selectedAssistantUser->id)->first()?->id ?? '')
             : '';
-        // Opt-out only: no row / chat_ai_assistance_blocked false => AI may respond.
-        $userChatAiToggleDefault = auth()->check()
-            ? ! app(UserPreferencesSettings::class)->chat_ai_assistance_blocked
-            : true;
+        // Team opt-out: chat_ai_assistance_blocked false / unset => AI may respond in chat (no per-contact).
+        $userChatAiToggleDefault = true;
+        if (auth()->check() && auth()->user()->currentTeam)
+        {
+            $blocked = auth()->user()->currentTeam->getSetting('chat_ai_assistance_blocked', false);
+            $userChatAiToggleDefault = ! filter_var($blocked, FILTER_VALIDATE_BOOLEAN);
+        }
 
         $contactChatAiToggleDefault = $userChatAiToggleDefault;
         if ($selectedContact)
@@ -399,13 +401,20 @@ class ChatController extends Controller
         $teamWhatsAppIsConnected = $presentation['teamWhatsAppIsConnected'];
         $qrImageUrl = $presentation['qrImageUrl'];
 
-        $notifyNewContactEmail = auth()->check() && auth()->user()->currentTeam
-            ? filter_var(auth()->user()->currentTeam->getSetting('notify_new_contact_email', '0'), FILTER_VALIDATE_BOOLEAN)
-            : false;
-
         $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
+
+        $currentTeam = auth()->user()?->currentTeam;
+        $assistantChatStub = $currentTeam
+            && filter_var($currentTeam->getSetting('assistant_chat_stub', false), FILTER_VALIDATE_BOOLEAN);
+        $assistantKeywordIntentRouting = $currentTeam
+            && filter_var($currentTeam->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOLEAN);
+        $chatAiAssistanceBlockedTeam = $currentTeam
+            && filter_var($currentTeam->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOLEAN);
+        $canManageChatTeamSidebarSettings = auth()->check()
+            && $currentTeam
+            && auth()->user()->hasAnyRole(['admin', 'root']);
 
         $assistantFlowPrompts = collect();
         if (auth()->check() && auth()->user()->currentTeam)
@@ -424,7 +433,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'notifyNewContactEmail', 'assistantAutoRespond', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
     }
 
     /**
@@ -705,7 +714,7 @@ class ChatController extends Controller
 
     /**
      * Save per-contact AI assistance preference in {@see Contact::$data} when contact_id is sent;
-     * otherwise fall back to user-level opt-out ({@see UserPreferencesSettings}).
+     * otherwise persist team-level opt-out in team settings (group chat, key chat_ai_assistance_blocked).
      */
     public function updateAiTogglePreference(Request $request)
     {
@@ -743,55 +752,98 @@ class ChatController extends Controller
             return response()->json(['success' => true]);
         }
 
-        $group = 'user_'.auth()->id();
-        $repository = SettingsRepositoryFactory::create();
-
-        if ($request->boolean('on'))
+        if (! auth()->user()->currentTeam)
         {
-            if ($repository->checkIfPropertyExists($group, 'chat_ai_assistance_blocked'))
-            {
-                $repository->deleteProperty($group, 'chat_ai_assistance_blocked');
-            }
-        } else
-        {
-            $repository->updatePropertiesPayload($group, ['chat_ai_assistance_blocked' => true]);
+            return response()->json(['success' => false], 401);
         }
+
+        auth()->user()->currentTeam->setSetting('chat_ai_assistance_blocked', ! $request->boolean('on'), [
+            'group' => 'chat',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
 
         return response()->json(['success' => true]);
     }
 
     /**
-     * Save team setting: assistant auto-responds to inbound WhatsApp messages (sidebar "Respuestas del Asistente Humano").
+     * Save a team “Chat / asistente” setting from the chat sidebar. Requires team admin (or root).
+     */
+    public function updateChatTeamSettingsSidebar(Request $request)
+    {
+        $request->validate([
+            'key' => ['required', 'string', 'in:assistant_auto_respond,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked'],
+            'on' => ['required', 'boolean'],
+        ]);
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        if (! $this->userCanManageChatTeamSidebarSettings(auth()->user()))
+        {
+            return response()->json(['success' => false], 403);
+        }
+
+        $this->applyChatTeamSidebarSetting(
+            $request->string('key')->toString(),
+            $request->boolean('on'),
+        );
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * @deprecated Use updateChatTeamSettingsSidebar with key assistant_auto_respond
      */
     public function updateAssistantAutoRespond(Request $request)
     {
         $request->validate(['on' => 'required|boolean']);
+        $request->merge(['key' => 'assistant_auto_respond']);
 
-        if (! auth()->check() || ! auth()->user()->currentTeam)
-        {
-            return response()->json(['success' => false], 401);
-        }
-
-        auth()->user()->currentTeam->setSetting('assistant_auto_respond', $request->boolean('on') ? '1' : '0');
-
-        return response()->json(['success' => true]);
+        return $this->updateChatTeamSettingsSidebar($request);
     }
 
     /**
-     * Save team setting: notify by email when a new client contacts (sidebar notification toggle).
+     * @deprecated Use updateChatTeamSettingsSidebar with key notify_new_contact_email
      */
     public function updateNotificationPreference(Request $request)
     {
         $request->validate(['on' => 'required|boolean']);
+        $request->merge(['key' => 'notify_new_contact_email']);
 
-        if (! auth()->check() || ! auth()->user()->currentTeam)
+        return $this->updateChatTeamSettingsSidebar($request);
+    }
+
+    private function userCanManageChatTeamSidebarSettings(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'root']);
+    }
+
+    private function applyChatTeamSidebarSetting(string $key, bool $on): void
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
         {
-            return response()->json(['success' => false], 401);
+            return;
         }
 
-        auth()->user()->currentTeam->setSetting('notify_new_contact_email', $request->boolean('on') ? '1' : '0');
+        if (in_array($key, ['assistant_auto_respond', 'notify_new_contact_email'], true))
+        {
+            $team->setSetting($key, $on ? '1' : '0');
 
-        return response()->json(['success' => true]);
+            return;
+        }
+
+        if (in_array($key, ['assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked'], true))
+        {
+            $team->setSetting($key, $on, [
+                'group' => 'chat',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ]);
+        }
     }
 
     /**
@@ -904,6 +956,21 @@ class ChatController extends Controller
                 unset($adminAutoRespondCommand['_http_status']);
 
                 return response()->json($adminAutoRespondCommand);
+            }
+
+            $slashOutreach = app(AdminProactiveOutreachSlashDispatcher::class)->tryWebAssistantMessage(
+                $message,
+                auth()->user(),
+                (int) $teamId,
+                $contextUser,
+                $hasAudio,
+            );
+            if ($slashOutreach !== null)
+            {
+                $httpStatus = (int) ($slashOutreach['_http_status'] ?? 200);
+                unset($slashOutreach['_http_status']);
+
+                return response()->json($slashOutreach, $httpStatus >= 400 ? $httpStatus : 200);
             }
 
             $uid = (int) $teamId;

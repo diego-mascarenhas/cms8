@@ -91,6 +91,29 @@ return [
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ],
+
+        /*
+         * Optional: production database for read-only inspection from local/staging.
+         * Use: DB::connection('prod_read')->table(...); — never set as default connection.
+         */
+        'prod_read' => [
+            'driver' => env('DB_PROD_READ_CONNECTION', 'pgsql'),
+            'url' => env('DB_PROD_READ_URL'),
+            'host' => env('DB_PROD_READ_HOST', '127.0.0.1'),
+            'port' => env('DB_PROD_READ_PORT', '5432'),
+            'database' => env('DB_PROD_READ_DATABASE', 'forge'),
+            'username' => env('DB_PROD_READ_USERNAME', 'forge'),
+            'password' => env('DB_PROD_READ_PASSWORD', ''),
+            'charset' => env('DB_PROD_READ_CONNECTION', 'pgsql') === 'mysql' ? 'utf8mb4' : 'utf8',
+            'collation' => env('DB_PROD_READ_CONNECTION', 'pgsql') === 'mysql' ? 'utf8mb4_unicode_ci' : null,
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => env('DB_PROD_READ_SCHEMA', 'public'),
+            'sslmode' => env('DB_PROD_READ_SSLMODE', 'prefer'),
+            'unix_socket' => env('DB_PROD_READ_SOCKET', ''),
+            'strict' => true,
+            'engine' => null,
+        ],
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DATABASE_URL'),

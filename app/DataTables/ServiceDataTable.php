@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -12,9 +13,6 @@ use Yajra\DataTables\Services\DataTable;
 
 class ServiceDataTable extends DataTable
 {
-    // Fix N+1: Cache servers to avoid querying in the loop
-    protected $serversCache = null;
-
     /**
      * Build the DataTable class.
      *
@@ -22,9 +20,6 @@ class ServiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        // Fix N+1: Load all servers once
-        $this->serversCache = \App\Models\Server::pluck('name', 'id');
-
         $table = (new EloquentDataTable($query));
 
         // Add action column (blade view will handle policy-based permissions)
@@ -56,52 +51,13 @@ class ServiceDataTable extends DataTable
             })
             ->editColumn('category_id', function ($data)
             {
-                return $data->serviceType->name;  // Fix N+1: Use eager-loaded serviceType
+                return $data->serviceType?->name ?? '—';
             })
             ->filterColumn('category_id', function ($query, $keyword)
             {
                 $query->whereHas('serviceType', function ($q) use ($keyword)  // Fix N+1: Use serviceType relation
                 {$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
-            })
-            ->addColumn('domain', function ($data)
-            {
-                return $data->domain ?: '-';
-            })
-            ->addColumn('server', function ($data)
-            {
-                // Fix N+1: Use cache instead of individual queries
-                if (! empty($data->data['server_id']))
-                {
-                    return $this->serversCache[$data->data['server_id']] ?? '-';
-                }
-
-                return '-';
-            })
-            ->filterColumn('server', function ($query, $keyword)
-            {
-                // Buscar servidores por nombre
-                $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
-                    ->pluck('id')
-                    ->toArray();
-
-                if (! empty($serverIds))
-                {
-                    $conditions = [];
-                    foreach ($serverIds as $serverId)
-                    {
-                        $conditions[] = "JSON_EXTRACT(data, '$.server_id') = '{$serverId}'";
-                    }
-                    $query->whereRaw('('.implode(' OR ', $conditions).')');
-                } else
-                {
-                    // Si no hay coincidencias, asegurar que no se devuelvan resultados
-                    $query->whereRaw('1=0');
-                }
-            })
-            ->filterColumn('domain', function ($query, $keyword)
-            {
-                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) LIKE ?", ['%'.strtolower($keyword).'%']);
             })
             ->editColumn('next_billing', function ($data)
             {
@@ -142,21 +98,42 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
+        $user = Auth::user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return $model->newQuery()->whereRaw('1 = 0');
+        }
+
         $query = $model->newQuery()
+            ->select('services.*')
+            ->when(DB::getDriverName() === 'pgsql', function ($q)
+            {
+                $q->selectRaw('CAST(services.data AS TEXT) as metadata_search');
+            })
+            ->when(DB::getDriverName() !== 'pgsql', function ($q)
+            {
+                $q->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(services.data, '$')) as metadata_search");
+            })
             ->with([
                 'client',
                 'serviceType',  // Fix N+1: Use 'serviceType' instead of 'category' alias
                 'currency',
             ])
-            ->whereHas('client', function ($query)
+            ->whereHas('client', function ($query) use ($user)
             {
-                $query->where('team_id', auth()->user()->currentTeam->id);
+                $query->where('team_id', $user->currentTeam->id);
             });
 
-        $user = Auth::user();
-        if ($user && $user->hasRole('collaborator'))
+        if ($user->hasRole('collaborator'))
         {
             $query->where('responsible_id', $user->id);
+        }
+
+        $statusFilter = request()->input('status_filter', '4');
+        if ((string) $statusFilter !== 'all')
+        {
+            $query->where('services.status', (int) $statusFilter);
         }
 
         return $query;
@@ -164,26 +141,70 @@ class ServiceDataTable extends DataTable
 
     public function html(): HtmlBuilder
     {
+        $statusLabel = e(__('Status'));
+        $allLabel = e(__('All'));
+        $initComplete = "function () {
+    var api = this.api();
+    var f = jQuery('#service-table_filter');
+    if (! f.length) { return; }
+    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    if (! jQuery('#service-filter-status').length) {
+        f.prepend(
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"service-filter-status\" class=\"form-label mb-0 me-2 text-nowrap\">{$statusLabel}</label>' +
+            '<select id=\"service-filter-status\" class=\"form-select form-select-sm\" style=\"min-width:12rem;max-width:14rem;\">' +
+            '<option value=\"all\">{$allLabel}</option>' +
+            '<option value=\"1\">Suspendido</option>' +
+            '<option value=\"2\">Suspender</option>' +
+            '<option value=\"3\">Activar</option>' +
+            '<option value=\"4\" selected>Activo</option>' +
+            '<option value=\"5\">Migrar</option>' +
+            '<option value=\"6\">Migrando</option>' +
+            '<option value=\"7\">Delegar</option>' +
+            '<option value=\"8\">Analizar</option>' +
+            '</select></div>'
+        );
+    }
+    f.find('label').addClass('ms-auto mb-0');
+    jQuery('#service-filter-status').off('change.serviceStatus').on('change.serviceStatus', function () {
+        api.ajax.reload();
+    });
+}";
+
         return $this->builder()
             ->setTableId('service-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.status_filter = ($('#service-filter-status').val() || '4');",
+            )
             ->dom('frtip')
-            ->orderBy(8, 'asc') // Ordenar por status
-            ->pageLength(25);
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->orderBy(5, 'asc') // Ordenar por próxima facturación
+            ->pageLength(25)
+            ->parameters([
+                'initComplete' => $initComplete,
+                'drawCallback' => "function () {
+                    var f = jQuery('#service-table_filter');
+                    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+                    f.find('label').addClass('ms-auto mb-0');
+                }",
+            ]);
     }
 
     public function getColumns(): array
     {
         return [
             Column::make('id')->hidden(),
+            Column::make('metadata_search')->visible(false),
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title(__('Client')),
             Column::make('category_id')->title(__('Category')),
-            Column::make('domain')->title(__('Domain')),
-            Column::make('server')->title(__('Server')),
             Column::make('calculated_price')->title(__('Price'))->className('text-center'),
-            Column::make('next_billing')->title(__('Next Billing'))->className('text-center'),
+            Column::make('next_billing')->title(__('Próxima'))->className('text-center'),
             Column::make('status')->title(__('Status'))->className('text-center'),
             Column::computed('action')
                 ->title(__('Actions'))

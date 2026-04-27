@@ -108,4 +108,17 @@ return [
 
     'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache_'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Team API GET /api/team/contents (index) cache
+    |--------------------------------------------------------------------------
+    |
+    | -1 (default): cache until invalidated (rememberForever + generation bump).
+    | 0: disabled (always hit the database).
+    | >0: TTL in seconds (safety net so old generation keys eventually expire).
+    |
+    */
+
+    'team_contents_index_ttl' => env('TEAM_CONTENTS_INDEX_CACHE_TTL', '-1'),
+
 ];

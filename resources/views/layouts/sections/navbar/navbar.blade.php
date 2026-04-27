@@ -198,36 +198,26 @@
         <!-- /Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto" :class="{ 'd-none': !isHidden }">
-        {{-- Quick Time Tracker (attendance clock-in/out) --}}
+        @php
+            $showProdReadToggle = app()->isLocal()
+                && config('app.allow_prod_read_toggle')
+                && config('app.prod_read_credentials_configured');
+        @endphp
         @auth
-        @if(auth()->user()->currentTeam?->hasModule('attendances'))
-        <li class="nav-item dropdown me-2" id="quick-timer"
-            data-running-url="{{ route('attendance.running') }}"
-            data-start-url="{{ route('attendance.start') }}"
-            data-stop-url="/attendance/:ID/stop">
-            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
-               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
-                <i class="ti ti-clock ti-md" id="quick-timer-icon"></i>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
-                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
-                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
-                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+            @if ($showProdReadToggle)
+                <li class="nav-item d-flex align-items-center me-2 me-xl-3">
+                    <form method="POST" action="{{ route('dev.prod-read-database') }}" class="d-flex align-items-center gap-2 mb-0">
+                        @csrf
+                        <input type="hidden" name="enabled" id="prod-read-enabled-input" value="{{ session('use_prod_read_database') ? '1' : '0' }}">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="prod-read-toggle"
+                                {{ session('use_prod_read_database') ? 'checked' : '' }}
+                                onchange="document.getElementById('prod-read-enabled-input').value = this.checked ? '1' : '0'; this.form.submit();">
+                            <label class="form-check-label small text-nowrap text-body" for="prod-read-toggle">{{ __('app.prod_read.toggle_label') }}</label>
+                        </div>
+                    </form>
                 </li>
-                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
-                    <a href="{{ route('time.index') }}" class="text-decoration-none">
-                        <i class="ti ti-hourglass-low me-1"></i>
-                        <span id="project-running-name">—</span>
-                    </a>
-                </li>
-                <li><div class="dropdown-divider"></div></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
-                <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
-            </ul>
-        </li>
-        @endif
+            @endif
         @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
@@ -288,7 +278,7 @@
         @endif
         @if ($configData['hasCustomizer'])
             <!-- Style Switcher -->
-            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0">
+            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0 d-none">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                     <i class='ti ti-md'></i>
                 </a>
@@ -339,10 +329,16 @@
                                 && $shortcutTeam?->hasModule('team_files')
                                 && auth()->user()->can('viewAny', \App\Models\TeamFile::class);
                             $showTimesShortcut = auth()->check() && $shortcutTeam?->hasModule('times');
+                            $showPasswordsShortcut = auth()->check() && (
+                                $shortcutTeam?->hasModule('passwords')
+                                || auth()->user()->hasRole('admin')
+                                || auth()->user()->hasRole('developer')
+                            );
                             $shortcutVisibleCount = ($showCalendarShortcut ? 1 : 0)
                                 + ($showProspectShortcut ? 1 : 0)
                                 + ($showTeamFilesShortcut ? 1 : 0)
-                                + ($showTimesShortcut ? 1 : 0);
+                                + ($showTimesShortcut ? 1 : 0)
+                                + ($showPasswordsShortcut ? 1 : 0);
                             $shortcutColClass = $shortcutVisibleCount === 1 ? 'col-12' : 'col-6';
                         @endphp
                         @if ($shortcutVisibleCount > 0)
@@ -381,6 +377,15 @@
                                         </span>
                                         <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
                                         <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
+                                    </div>
+                                @endif
+                                @if ($showPasswordsShortcut)
+                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                            <i class="ti ti-lock fs-4"></i>
+                                        </span>
+                                        <a href="{{ route('passwords.index') }}" class="stretched-link">Contraseñas</a>
+                                        <small class="text-muted mb-0">Cofre</small>
                                     </div>
                                 @endif
                             </div>
@@ -434,6 +439,38 @@
 		@endif
         <!-- /Help Center -->
 
+        {{-- Quick Time Tracker (attendance clock-in/out) --}}
+        @auth
+        @if(auth()->user()->currentTeam?->hasModule('attendances'))
+        <li class="nav-item dropdown me-3 me-xl-1" id="quick-timer"
+            data-running-url="{{ route('attendance.running') }}"
+            data-start-url="{{ route('attendance.start') }}"
+            data-stop-url="/attendance/:ID/stop">
+            <a class="nav-link dropdown-toggle hide-arrow ps-0" href="javascript:void(0);" data-bs-toggle="dropdown"
+               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
+                <i class="ti ti-clock ti-md" id="quick-timer-icon"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
+                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
+                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+                </li>
+                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
+                    <a href="{{ route('time.index') }}" class="text-decoration-none">
+                        <i class="ti ti-hourglass-low me-1"></i>
+                        <span id="project-running-name">—</span>
+                    </a>
+                </li>
+                <li><div class="dropdown-divider"></div></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
+            </ul>
+        </li>
+        @endif
+        @endauth
+
         <!-- User -->
         <li class="nav-item navbar-dropdown dropdown-user dropdown">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
@@ -476,6 +513,44 @@
                 <li>
                     <div class="dropdown-divider"></div>
                 </li>
+                @if ($configData['hasCustomizer'])
+                    <li>
+                        <div class="px-3 py-0">
+                            <div class="d-flex align-items-center justify-content-center gap-4 p-1 rounded-3 bg-lighter">
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="light"
+                               title="{{ __('app.theme.light') }}"
+                               aria-label="{{ __('app.theme.light') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('light')">
+                                <i class="ti ti-sun ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="dark"
+                               title="{{ __('app.theme.dark') }}"
+                               aria-label="{{ __('app.theme.dark') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('dark')">
+                                <i class="ti ti-moon ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            <a class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none rounded-2 position-relative theme-choice-btn"
+                               href="javascript:void(0);"
+                               data-theme="system"
+                               title="{{ __('app.theme.system') }}"
+                               aria-label="{{ __('app.theme.system') }}"
+                               onclick="window.templateCustomizer && window.templateCustomizer.setStyle('system')">
+                                <i class="ti ti-device-desktop ti-sm"></i>
+                                <i class="ti ti-check ti-xs position-absolute bottom-0 end-0 me-1 mb-1 d-none theme-choice-check"></i>
+                            </a>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="dropdown-divider"></div>
+                    </li>
+                @endif
                 <li>
                     <a class="dropdown-item"
                         href="{{ Route::has('profile.show') ? route('profile.show') : url('pages/profile-user') }}">
@@ -497,6 +572,18 @@
                         <span class="align-middle">{{ __('app.profile.help_documentation') }}</span>
                     </a>
                 </li>
+
+                @if (
+                    (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
+                    || (Auth::check() && Auth::user()->hasRole('root'))
+                )
+                    <li>
+                        <div class="dropdown-divider"></div>
+                    </li>
+                    <li>
+                        <h6 class="dropdown-header">Configuración</h6>
+                    </li>
+                @endif
 
                 @if (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
                     {{-- Configuration variables (Team Settings module) --}}
@@ -526,6 +613,7 @@
                         </a>
                     </li>
                 @endif
+
                 <!--
               <li>
                 <a class="dropdown-item" href="{{ url('app/invoice/list') }}">
@@ -613,6 +701,38 @@
 @auth
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const themeChoiceButtons = document.querySelectorAll('.theme-choice-btn');
+    if (themeChoiceButtons.length) {
+        const templateName = document.documentElement.getAttribute('data-template');
+        const defaultStyle = window.templateCustomizer?.settings?.defaultStyle ?? 'light';
+        const storedStyle =
+            localStorage.getItem('templateCustomizer-' + templateName + '--Style') ||
+            defaultStyle;
+
+        const applyThemeChoiceState = (currentStyle) => {
+            themeChoiceButtons.forEach((btn) => {
+                const isActive = btn.getAttribute('data-theme') === currentStyle;
+                btn.classList.toggle('btn-label-success', isActive);
+                btn.classList.toggle('btn-text-secondary', !isActive);
+                btn.classList.toggle('text-success', isActive);
+
+                const checkIcon = btn.querySelector('.theme-choice-check');
+                if (checkIcon) {
+                    checkIcon.classList.toggle('d-none', !isActive);
+                }
+            });
+        };
+
+        applyThemeChoiceState(storedStyle);
+
+        themeChoiceButtons.forEach((btn) => {
+            btn.addEventListener('click', function() {
+                const selectedTheme = this.getAttribute('data-theme') || 'light';
+                applyThemeChoiceState(selectedTheme);
+            });
+        });
+    }
+
     const container = document.getElementById('quick-timer');
     if (!container) return;
 
@@ -671,9 +791,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const iconInline = document.getElementById('quick-timer-icon-inline');
         const applyIconState = (el) => {
             if (!el) return;
-            el.classList.remove('text-success', 'text-muted', 'text-warning');
+            el.classList.remove('text-success', 'text-muted', 'text-warning', 'text-body-secondary');
             if (!running) {
-                el.classList.add('text-muted');
+                // Keep default navbar icon color when timer is stopped.
             } else if (paused) {
                 el.classList.add('text-warning');
             } else {

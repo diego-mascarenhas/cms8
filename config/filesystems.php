@@ -44,6 +44,16 @@ return [
             'throw' => false,
         ],
 
+        /*
+         * Unprocessed file originals (private, not under public/). Feature-specific subpaths, e.g. contents/.../covers/...
+         * Default root: storage/app/originals (set ORIGINALS_PATH to override or point elsewhere; use s3 driver to move to cloud).
+         */
+        'originals' => [
+            'driver' => 'local',
+            'root' => env('ORIGINALS_PATH') ?: storage_path('app/originals'),
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

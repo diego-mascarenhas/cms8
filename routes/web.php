@@ -28,7 +28,9 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\FinancialDashboardController;
+use App\Http\Controllers\GoogleIntegrationController;
 use App\Http\Controllers\GooglePlacesController;
+use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
@@ -72,6 +74,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamFileController;
 use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
+use App\Http\Controllers\TeamPasswordController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TicketController;
@@ -102,6 +105,7 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
     ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
+Route::get('/password/share/{token}', [TeamPasswordController::class, 'consumeShare'])->name('passwords.share.consume');
 
 Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::class, 'show'])
     ->name('public-shop.show');
@@ -215,6 +219,21 @@ Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPubli
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
+    if (app()->isLocal())
+    {
+        Route::post('/dev/prod-read-database', function (\Illuminate\Http\Request $request)
+        {
+            if (! config('app.allow_prod_read_toggle'))
+            {
+                abort(404);
+            }
+
+            $request->session()->put('use_prod_read_database', $request->boolean('enabled'));
+
+            return redirect()->back();
+        })->name('dev.prod-read-database');
+    }
+
     Route::get('/dashboard', function ()
     {
         return redirect()->route('dashboard');
@@ -252,9 +271,17 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+    Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
+    Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
+    Route::delete('/integrations/google/disconnect', [GoogleIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');
+    Route::get('/integrations/google/synced-contacts', [GoogleSyncedPreviewController::class, 'contacts'])->name('integrations.google.synced-contacts');
+    Route::post('/integrations/google/sync-contacts', [GoogleSyncedPreviewController::class, 'queueContactsSync'])->name('integrations.google.sync-contacts');
+    Route::get('/integrations/google/synced-calendar', [GoogleSyncedPreviewController::class, 'calendar'])->name('integrations.google.synced-calendar');
+    Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
 
     // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
     Route::get('/mailboxes', function ()
@@ -284,7 +311,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Team API Tokens
     Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
+    Route::get('/team/{team}/passwords-settings', [TeamSettingController::class, 'passwords'])->name('team-settings.passwords');
     Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+    Route::put('/team/{team}/passwords-settings', [TeamSettingController::class, 'updatePasswordsMasterKey'])->name('team-settings.passwords.update');
     Route::put('/team/{team}/api-tokens', [TeamSettingController::class, 'updateApiToken'])->name('team-settings.update-api-token');
     Route::post('/team/{team}/api-tokens/reveal', [TeamSettingController::class, 'revealApiToken'])->name('team-settings.reveal-api-token');
     Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
@@ -300,6 +329,19 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
     Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
 
+    // Team Passwords (Keychain)
+    Route::get('/password/unlock', [TeamPasswordController::class, 'unlockForm'])->name('passwords.unlock.form');
+    Route::post('/password/unlock', [TeamPasswordController::class, 'unlock'])->name('passwords.unlock');
+    Route::post('/password/lock', [TeamPasswordController::class, 'lock'])->name('passwords.lock');
+    Route::get('/password/list', [TeamPasswordController::class, 'index'])->name('passwords.index');
+    Route::get('/password/create', [TeamPasswordController::class, 'create'])->name('passwords.create');
+    Route::post('/password', [TeamPasswordController::class, 'store'])->name('passwords.store');
+    Route::get('/password/{team_password}/edit', [TeamPasswordController::class, 'edit'])->name('passwords.edit');
+    Route::put('/password/{team_password}', [TeamPasswordController::class, 'update'])->name('passwords.update');
+    Route::delete('/password/{team_password}', [TeamPasswordController::class, 'destroy'])->name('passwords.destroy');
+    Route::post('/password/{team_password}/reveal', [TeamPasswordController::class, 'reveal'])->name('passwords.reveal');
+    Route::post('/password/{team_password}/share', [TeamPasswordController::class, 'createShare'])->name('passwords.share');
+
     // Confirm team invitation (when email did not arrive)
     Route::post('/teams/invitations/{invitation}/confirm', TeamInvitationConfirmController::class)
         ->name('teams.invitations.confirm');
@@ -310,6 +352,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::post('/categories/quick-store', [CategoryController::class, 'quickStore'])->name('categories.quick-store');
     Route::get('/categories/module-options', [CategoryController::class, 'moduleOptions'])->name('categories.module-options');
+    Route::get('/categories/{id}/duplicate', [CategoryController::class, 'duplicate'])->name('categories.duplicate');
     Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
@@ -453,6 +496,10 @@ Route::middleware(['auth'])->group(function ()
 
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
+    Route::get('/empresas/{id}', [ClientController::class, 'show'])->name('empresas.show');
+    Route::get('/client/{id}/linkable-contacts', [ClientController::class, 'linkableContacts'])->name('client.linkable-contacts');
+    Route::post('/client/{id}/attach-contact', [ClientController::class, 'attachContact'])->name('client.attach-contact');
+    Route::post('/client/{id}/detach-contact', [ClientController::class, 'detachContact'])->name('client.detach-contact');
     Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
@@ -483,6 +530,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/chat/assistant-history', [ChatController::class, 'assistantHistory'])->name('chat.assistant-history');
     Route::patch('/chat/ai-toggle-preference', [ChatController::class, 'updateAiTogglePreference'])->name('chat.ai-toggle-preference');
+    Route::patch('/chat/team-settings-sidebar', [ChatController::class, 'updateChatTeamSettingsSidebar'])->name('chat.team-settings-sidebar');
     Route::patch('/chat/assistant-auto-respond', [ChatController::class, 'updateAssistantAutoRespond'])->name('chat.assistant-auto-respond');
     Route::patch('/chat/notification-preference', [ChatController::class, 'updateNotificationPreference'])->name('chat.notification-preference');
     Route::post('/chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
@@ -737,6 +785,8 @@ Route::middleware(['auth'])->group(function ()
     {
         return redirect()->route('invoice.index');
     });
+    Route::get('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterpriseForm'])->name('invoice.link-enterprise');
+    Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
@@ -755,6 +805,8 @@ Route::middleware(['auth'])->group(function ()
 
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
+    Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
 
     // Income module
@@ -901,6 +953,8 @@ Route::middleware(['auth'])->group(function ()
 
     // Subscription Management
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClientForm'])->name('subscription.stripe-link-client');
+    Route::post('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClient'])->name('subscription.stripe-link-client.store');
     Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');
@@ -947,13 +1001,24 @@ Route::middleware(['auth'])->prefix('app')->group(function ()
 Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
 Route::get('/pages/account-settings-account', [AccountSettingsAccount::class, 'index'])->name('pages-account-settings-account');
 
-// CMS
-Route::get('/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+// CMS — legal documents under /legal (legacy URLs redirect with 301)
+Route::redirect('/terms', '/legal/terms', 301);
+Route::redirect('/privacy', '/legal/privacy', 301);
+Route::redirect('/security', '/legal/security', 301);
+Route::redirect('/sla', '/legal/sla', 301);
+Route::redirect('/cookies', '/legal/cookies', 301);
 
-Route::get('/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
-Route::get('/security', [LegalDocumentsController::class, 'security'])->name('security');
-Route::get('/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
-Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name('legal.show');
+Route::get('/legal', [LegalDocumentsController::class, 'index'])->name('legal.index');
+Route::get('/legal/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+Route::get('/legal/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
+Route::get('/legal/cookies', [LegalDocumentsController::class, 'cookies'])->name('cookies');
+Route::get('/legal/security', [LegalDocumentsController::class, 'security'])->name('security');
+Route::get('/legal/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
+Route::get('/legal/application', [LegalDocumentsController::class, 'application'])->name('legal.application');
+Route::get('/legal/license', [LegalDocumentsController::class, 'license'])->name('legal.license');
+Route::get('/legal/google-connection', [LegalDocumentsController::class, 'googleConnection'])->name('legal.google-connection');
+Route::get('/legal/google-user-data', [LegalDocumentsController::class, 'googleUserData'])->name('legal.google-user-data');
+Route::get('/legal/data-deletion', [LegalDocumentsController::class, 'dataDeletion'])->name('legal.data-deletion');
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
@@ -1194,6 +1259,7 @@ Route::prefix('help')->name('help.')->group(function ()
 
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
+    Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
 });
 

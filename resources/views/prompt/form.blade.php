@@ -62,20 +62,28 @@
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
-            <div class="col-md-3">
-                <label class="form-label" for="section_key">{{ __('Clave de sección') }} (*)</label>
-                <input type="text" class="form-control @error('section_key') is-invalid @enderror" id="section_key" name="section_key"
-                    value="{{ old('section_key', $prompt->section_key ?? '') }}" placeholder="ej: estrategia, human_3_0" maxlength="255" required>
-                <div class="form-text">{{ __('El asistente (chat) encadena automáticamente todos los prompts activos: el enrutador usa la lista generada desde la base de datos. Cualquier prompt activo con clave única se ofrece como flujo.') }}</div>
-                @error('section_key')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
                 <label class="form-label" for="section_label">{{ __('Etiqueta de sección') }} (*)</label>
                 <input type="text" class="form-control @error('section_label') is-invalid @enderror" id="section_label" name="section_label"
                     value="{{ old('section_label', $prompt->section_label ?? '') }}" maxlength="255" required>
+                <div class="form-text">
+                    {{ __('Si el chat del equipo tiene activo el enrutado por palabras clave, y esta etiqueta tiene al menos 12 caracteres, el mensaje del usuario también se compara contra esta frase (además de la clave): misma lógica de palabras/frases, sin inferencia semántica por IA.') }}
+                </div>
                 @error('section_label')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="col-12">
+                <label class="form-label" for="section_key">{{ __('Clave de sección') }} (*)</label>
+                <input type="text" class="form-control @error('section_key') is-invalid @enderror" id="section_key" name="section_key"
+                    value="{{ old('section_key', $prompt->section_key ?? '') }}" placeholder="ej: estrategia, human_3_0" maxlength="255" required>
+                <div class="form-text">
+                    {{ __('Por defecto el enrutado es por la IA: el asistente ve la lista de claves (módulo + esta clave, p. ej. «chat:mi_flujo») y confirma la intención con el usuario cuando hace falta, luego usa la herramienta de flujo con esa clave.') }}
+                    {{ __('Esta clave es el identificador del flujo; mantenela estable y sin espacios (usá guiones bajos).') }}
+                    {{ __('Solo si en Configuración del equipo → Chat / Asistente activás «Enrutado automático por palabras clave a flujos», se puede asociar el mensaje a un flujo sin que el modelo elija, comparando además con esta clave (guiones bajos como espacio; palabras sueltas).') }}
+                </div>
+                @error('section_key')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>

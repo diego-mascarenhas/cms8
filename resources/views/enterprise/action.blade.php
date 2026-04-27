@@ -8,17 +8,18 @@
         @endrole
     @endif
 
-    {{-- View enterprise details --}}
+    {{-- Detail: same screen for clients and other enterprise types (fiscal entities, etc.) --}}
     @role('admin|collaborator|client')
-        <a href="{{ route('client.show', $id) }}" class="text-body">
+        <a href="{{ route('client.show', $enterprise->id) }}" class="text-body" title="{{ __('View') }}">
             <i class="ti ti-eye ti-sm me-2"></i>
         </a>
     @endrole
 
-    {{-- Edit enterprise --}}
     @role('admin|collaborator')
-        <a href="{{ route('client.edit', $id) }}" class="text-body">
-            <i class="ti ti-edit ti-sm me-2"></i>
-        </a>
+        @can('edit', $enterprise)
+            <a href="{{ route('client.edit', $enterprise->id) }}" class="text-body" title="{{ __('Edit') }}">
+                <i class="ti ti-edit ti-sm me-2"></i>
+            </a>
+        @endcan
     @endrole
 </div>

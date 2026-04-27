@@ -185,33 +185,39 @@
             });
         })();
 
-        (function persistSidebarAssistantAutoRespond() {
-            var sidebar = document.getElementById('sidebar-ai-replies-toggle');
-            if (!sidebar) return;
+        (function persistChatTeamSettingsSidebarToggles() {
+            var box = document.getElementById('chat-team-settings-sidebar-toggles');
+            if (!box || box.getAttribute('data-can-manage') !== '1') return;
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
-            sidebar.addEventListener('change', function () {
-                if (!token) return;
-                fetch('{{ route("chat.assistant-auto-respond") }}', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                    body: JSON.stringify({ on: sidebar.checked })
-                }).catch(function () {});
-            });
-        })();
-
-        (function persistNotificationToggle() {
-            var notifToggle = document.getElementById('sidebar-notification-toggle');
-            if (!notifToggle) return;
-            var tokenEl = document.querySelector('meta[name="csrf-token"]');
-            var token = tokenEl ? tokenEl.getAttribute('content') : '';
-            notifToggle.addEventListener('change', function () {
-                if (!token) return;
-                fetch('{{ route("chat.notification-preference") }}', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                    body: JSON.stringify({ on: notifToggle.checked })
-                }).catch(function () {});
+            if (!token) return;
+            var url = '{{ route("chat.team-settings-sidebar") }}';
+            var flowPairKey = 'assistant_keyword_intent_routing';
+            var elDefaultFlow = document.getElementById('sidebar-default-assistant-flow-toggle');
+            var elKeywordRouting = document.getElementById('sidebar-assistant-keyword-routing-toggle');
+            function syncKeywordFlowPair(changed) {
+                if (!elDefaultFlow || !elKeywordRouting) return;
+                if (changed === elDefaultFlow) {
+                    elKeywordRouting.checked = elDefaultFlow.checked ? false : true;
+                } else if (changed === elKeywordRouting) {
+                    elDefaultFlow.checked = elKeywordRouting.checked ? false : true;
+                }
+            }
+            box.querySelectorAll('input[data-team-setting-key]').forEach(function (input) {
+                input.addEventListener('change', function () {
+                    var key = input.getAttribute('data-team-setting-key');
+                    if (!key) return;
+                    var invert = input.getAttribute('data-team-setting-invert') === '1';
+                    var on = invert ? !input.checked : input.checked;
+                    if (key === flowPairKey) {
+                        syncKeywordFlowPair(input);
+                    }
+                    fetch(url, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                        body: JSON.stringify({ key: key, on: on })
+                    }).catch(function () {});
+                });
             });
         })();
 
@@ -1521,8 +1527,8 @@
                         data-target="#app-chat-sidebar-left"></i>
                 </div>
                 <div class="sidebar-body px-4 pb-4">
+                    @if(($whatsappDriver ?? 'twilio') === 'local')
                     <div class="my-4">
-                        @if(($whatsappDriver ?? 'twilio') === 'local')
                             <div id="chat-sidebar-whatsapp-connection-block" class="{{ ($teamWhatsAppIsConnected ?? false) ? 'd-none' : '' }}" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
@@ -1546,42 +1552,26 @@
                                 </div>
                             </div>
                             </div>
-                        @elseif(($whatsappDriver ?? 'twilio') !== 'local')
-                            <small class="text-muted text-uppercase">{{ __('Status') }}</small>
-                            <div class="d-grid gap-2 mt-3">
-                                <div class="form-check form-check-success">
-                                    <input name="chat-user-status" class="form-check-input" type="radio" value="active"
-                                        id="user-active" checked>
-                                    <label class="form-check-label" for="user-active">{{ __('Active') }}</label>
-                                </div>
-                                <div class="form-check form-check-danger">
-                                    <input name="chat-user-status" class="form-check-input" type="radio" value="busy"
-                                        id="user-busy">
-                                    <label class="form-check-label" for="user-busy">{{ __('Busy') }}</label>
-                                </div>
-                                <div class="form-check form-check-warning">
-                                    <input name="chat-user-status" class="form-check-input" type="radio" value="away"
-                                        id="user-away">
-                                    <label class="form-check-label" for="user-away">{{ __('Away') }}</label>
-                                </div>
-                                <div class="form-check form-check-secondary">
-                                    <input name="chat-user-status" class="form-check-input" type="radio" value="offline"
-                                        id="user-offline">
-                                    <label class="form-check-label" for="user-offline">{{ __('Offline') }}</label>
-                                </div>
-                            </div>
-                        @endif
                     </div>
-                    <div class="my-4">
+                    @endif
+                    <div
+                        class="my-4"
+                        id="chat-team-settings-sidebar-toggles"
+                        data-can-manage="{{ ($canManageChatTeamSidebarSettings ?? false) ? '1' : '0' }}">
                         <small class="text-muted text-uppercase">{{ __('Settings') }}</small>
-                        <ul class="list-unstyled d-grid gap-2 me-3 mt-3">
+                        @php
+                            $sidebarReadOnly = !($canManageChatTeamSidebarSettings ?? false);
+                        @endphp
+                        <ul class="list-unstyled d-grid gap-2 mt-3 pe-3">
                             <li class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class='ti ti-robot me-1 ti-sm'></i>
-                                    <span class="align-middle">{{ __('Humano Assistant replies') }}</span>
+                                <div class="pe-1 text-truncate" title="{{ __('Humano Assistant replies') }}">
+                                    <i class="ti ti-robot me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Humano Assistant replies') }}</span>
                                 </div>
-                                <label class="switch switch-primary me-4 switch-sm">
-                                    <input type="checkbox" class="switch-input" id="sidebar-ai-replies-toggle" {{ ($assistantAutoRespond ?? false) ? 'checked' : '' }} />
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-ai-replies-toggle"
+                                        data-team-setting-key="assistant_auto_respond"
+                                        @checked($assistantAutoRespond ?? false) @if($sidebarReadOnly) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
@@ -1589,12 +1579,60 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class='ti ti-bell me-1 ti-sm'></i>
-                                    <span class="align-middle">{{ __('Notification by email') }}</span>
+                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
+                                    <i class="ti ti-bug me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
                                 </div>
-                                <label class="switch switch-primary me-4 switch-sm opacity-50">
-                                    <input type="checkbox" class="switch-input" id="sidebar-notification-toggle" {{ ($notifyNewContactEmail ?? false) ? 'checked' : '' }} disabled />
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
+                                        data-team-setting-key="assistant_chat_stub"
+                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('How flows are chosen: AI asks vs automatic keyword routing.') }}">
+                                    <i class="ti ti-sparkles me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Default assistant flow (AI discovery)') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-default-assistant-flow-toggle"
+                                        data-team-setting-key="assistant_keyword_intent_routing"
+                                        data-team-setting-invert="1"
+                                        @checked(!($assistantKeywordIntentRouting ?? false)) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('Keyword routing') }}">
+                                    <i class="ti ti-webhook me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Keyword routing') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-keyword-routing-toggle"
+                                        data-team-setting-key="assistant_keyword_intent_routing"
+                                        @checked($assistantKeywordIntentRouting ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('Block assistant AI button') }}">
+                                    <i class="ti ti-message-off me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Block assistant AI button') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-chat-ai-blocked-toggle"
+                                        data-team-setting-key="chat_ai_assistance_blocked"
+                                        @checked($chatAiAssistanceBlockedTeam ?? false) @if($sidebarReadOnly) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>

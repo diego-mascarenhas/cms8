@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Contact;
 use App\Models\Enterprise;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateContactRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class UpdateContactRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
-            'email' => 'nullable|email:rfc,dns|max:255',
+            'email' => 'nullable|email:rfc|max:255',
             'phone' => ['nullable', 'string', 'regex:/^\+?[0-9\s\-\(\)]+$/', 'min:7', 'max:25'],
             'birthday' => 'nullable|date',
             'status_id' => 'required|exists:contact_statuses,id',
@@ -30,8 +31,25 @@ class UpdateContactRequest extends FormRequest
             'enterprise.code' => 'nullable|string|max:255',
             'enterprise.website' => 'nullable|max:255',  // !FIXME: Add url validation
             'enterprise.phone' => 'nullable|string|max:20',
-            'enterprise.email' => 'nullable|email:rfc,dns|max:255',
+            'enterprise.email' => 'nullable|email:rfc|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
+            'enterprise.status_id' => 'nullable|integer|exists:enterprise_statuses,id',
+            'enterprise.department_id' => 'nullable|integer|exists:enterprise_departments,id',
+            'enterprise.enterprise_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('enterprises', 'id')->where(function ($q)
+                {
+                    $teamId = auth()->user()->current_team_id;
+                    if ($teamId)
+                    {
+                        $q->where('team_id', $teamId);
+                    } else
+                    {
+                        $q->whereRaw('1 = 0');
+                    }
+                }),
+            ],
             'source_id' => 'array',
             'source_id.*' => 'required|exists:sources,id',
             'source_value' => 'array',
@@ -83,40 +101,34 @@ class UpdateContactRequest extends FormRequest
                 'phone' => $validated['enterprise']['phone'] ?? null,
                 'email' => $validated['enterprise']['email'] ?? null,
                 'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
-                'status_id' => $validated['status_id'] == 5 ? 2 : 1,
+                'status_id' => (int) ($validated['enterprise']['status_id'] ?? ($validated['status_id'] == 5 ? 2 : 1)),
                 'responsible_id' => $validated['responsible_id'] ?? $contact->responsible_id ?? null,
             ];
+        }
+
+        $selectedEnterpriseId = (int) (data_get($validated, 'enterprise.enterprise_id') ?: 0);
+        if ($selectedEnterpriseId > 0)
+        {
+            $enterpriseData['enterprise_id'] = $selectedEnterpriseId;
+        }
+
+        $selectedDepartmentId = (int) (data_get($validated, 'enterprise.department_id') ?: 0);
+        if ($selectedDepartmentId > 0)
+        {
+            $enterpriseData['department_id'] = $selectedDepartmentId;
         }
 
         if ($contact->exists)
         {
             $enterprise = null;
+            $fromSelectId = isset($validated['enterprise']['enterprise_id']) ? (int) $validated['enterprise']['enterprise_id'] : 0;
 
-            // Load contact's enterprises if not already loaded
-            if (! $contact->relationLoaded('enterprises'))
+            if ($fromSelectId > 0)
             {
-                $contact->load('enterprises');
-            }
-
-            // First, check if contact has a current enterprise that belongs to this contact
-            if ($contact->current_enterprise_id)
-            {
-                $enterprise = $contact->enterprises->firstWhere('id', $contact->current_enterprise_id);
-
-                if ($enterprise)
-                {
-                    // Only update if there's data to update
-                    if (! empty($validated['enterprise']['name']))
-                    {
-                        $enterprise->update($enterpriseData);
-                    }
-                }
-            }
-
-            // If no current enterprise in contact's enterprises, get the first associated enterprise
-            if (! $enterprise && $contact->enterprises->isNotEmpty())
-            {
-                $enterprise = $contact->enterprises->first();
+                $enterprise = Enterprise::query()
+                    ->where('id', $fromSelectId)
+                    ->where('team_id', $contact->team_id)
+                    ->first();
 
                 if ($enterprise && ! empty($validated['enterprise']['name']))
                 {
@@ -124,29 +136,58 @@ class UpdateContactRequest extends FormRequest
                 }
             }
 
-            // If still no enterprise, try to find by code
-            if (! $enterprise && ! empty($validated['enterprise']['code']))
+            if (! $enterprise)
             {
-                $enterprise = Enterprise::withTrashed()
-                    ->where('code', $validated['enterprise']['code'])
-                    ->where('team_id', $contact->team_id)
-                    ->first();
-
-                if ($enterprise)
+                if (! $contact->relationLoaded('enterprises'))
                 {
-                    if ($enterprise->trashed())
-                    {
-                        $enterprise->restore();
-                    }
-                    $enterprise->update($enterpriseData);
+                    $contact->load('enterprises');
                 }
-            }
 
-            // Only create a new enterprise if none exists and we have a name
-            if (! $enterprise && ! empty($validated['enterprise']['name']))
-            {
-                $enterpriseData['team_id'] = $contact->team_id;
-                $enterprise = Enterprise::create($enterpriseData);
+                if ($contact->current_enterprise_id)
+                {
+                    $enterprise = $contact->enterprises->firstWhere('id', $contact->current_enterprise_id);
+
+                    if ($enterprise)
+                    {
+                        if (! empty($validated['enterprise']['name']))
+                        {
+                            $enterprise->update($enterpriseData);
+                        }
+                    }
+                }
+
+                if (! $enterprise && $contact->enterprises->isNotEmpty())
+                {
+                    $enterprise = $contact->enterprises->first();
+
+                    if ($enterprise && ! empty($validated['enterprise']['name']))
+                    {
+                        $enterprise->update($enterpriseData);
+                    }
+                }
+
+                if (! $enterprise && ! empty($validated['enterprise']['code']))
+                {
+                    $enterprise = Enterprise::withTrashed()
+                        ->where('code', $validated['enterprise']['code'])
+                        ->where('team_id', $contact->team_id)
+                        ->first();
+
+                    if ($enterprise)
+                    {
+                        if ($enterprise->trashed())
+                        {
+                            $enterprise->restore();
+                        }
+                        $enterprise->update($enterpriseData);
+                    }
+                }
+
+                if (! $enterprise && ! empty($validated['enterprise']['name']))
+                {
+                    $enterpriseData['team_id'] = $contact->team_id;
+                    $enterprise = Enterprise::create($enterpriseData);
+                }
             }
 
             // Store enterprise_id for syncing the many-to-many relationship

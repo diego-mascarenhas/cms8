@@ -18,13 +18,16 @@ class UpdateContentRequest extends FormRequest
     public function rules(): array
     {
         $contentsModuleId = Module::where('key', 'contents')->value('id');
+        $teamId = $this->user()?->currentTeam?->id;
 
         $rules = [
             'section_category_id' => [
                 'required',
-                Rule::exists('categories', 'id')->where(function ($query) use ($contentsModuleId)
+                Rule::exists('categories', 'id')->where(function ($query) use ($contentsModuleId, $teamId)
                 {
-                    $query->where('module_id', $contentsModuleId);
+                    $query->where('module_id', $contentsModuleId)
+                        ->where('status', 1)
+                        ->where('team_id', $teamId);
                 }),
             ],
             'category_id' => 'nullable|exists:categories,id',
@@ -77,6 +80,8 @@ class UpdateContentRequest extends FormRequest
             'seo_description_pt' => 'nullable|string',
             'seo_description_fr' => 'nullable|string',
             'seo_description_de' => 'nullable|string',
+            'cover_image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,bmp,svg|max:10240',
+            'remove_cover_image' => 'nullable|boolean',
             'multimedia' => 'nullable|array',
             'multimedia.*.id' => 'required_with:multimedia|exists:multimedia,id',
             'multimedia.*.language' => 'nullable|string|max:2',

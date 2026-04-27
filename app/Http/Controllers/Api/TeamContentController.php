@@ -6,7 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
+use App\Support\TeamContentsApiCache;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 
 class TeamContentController extends Controller
 {
@@ -25,12 +29,82 @@ class TeamContentController extends Controller
             ], 401);
         }
 
+        $ttlSeconds = $this->teamContentsIndexCacheTtlSeconds();
+        if ($ttlSeconds === 0)
+        {
+            return $this->executeIndex($request, $team);
+        }
+
+        $teamId = (int) $team->id;
+        $generation = TeamContentsApiCache::currentGeneration($teamId);
+        $cacheKey = TeamContentsApiCache::indexCacheKey($teamId, $generation, $request);
+
+        $resolver = function () use ($request, $team)
+        {
+            $response = $this->executeIndex($request, $team);
+
+            return [
+                'status' => $response->getStatusCode(),
+                'payload' => $response->getData(true),
+            ];
+        };
+
+        if ($ttlSeconds < 0)
+        {
+            $cached = Cache::rememberForever($cacheKey, $resolver);
+        } else
+        {
+            $cached = Cache::remember($cacheKey, $ttlSeconds, $resolver);
+        }
+
+        return response()->json($cached['payload'], $cached['status']);
+    }
+
+    /**
+     * Uncached JSON response for GET /api/team/contents (index).
+     */
+    private function executeIndex(Request $request, $team): JsonResponse
+    {
         $query = Content::where('team_id', $team->id);
+        $resolvedSectionCategory = null;
+        $contentsModuleId = Module::where('key', 'contents')->value('id');
+
+        // Filter by section slug configured in section category data.slug
+        if ($request->filled('section_slug'))
+        {
+            $sectionSlug = trim((string) $request->input('section_slug'));
+            $resolvedSectionCategory = Category::query()
+                ->where('team_id', $team->id)
+                ->where('module_id', $contentsModuleId)
+                ->where('status', 1)
+                ->where('data->slug', $sectionSlug)
+                ->first();
+
+            if (! $resolvedSectionCategory)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Section slug not found',
+                ], 404);
+            }
+
+            $query->where('section_category_id', $resolvedSectionCategory->id);
+        }
 
         // Filter by section category
         if ($request->has('section_category_id'))
         {
-            $query->where('section_category_id', $request->input('section_category_id'));
+            $sectionCategoryId = (int) $request->input('section_category_id');
+            $query->where('section_category_id', $sectionCategoryId);
+            if (! $resolvedSectionCategory)
+            {
+                $resolvedSectionCategory = Category::query()
+                    ->where('team_id', $team->id)
+                    ->where('module_id', $contentsModuleId)
+                    ->where('status', 1)
+                    ->where('id', $sectionCategoryId)
+                    ->first();
+            }
         }
 
         // Filter by category
@@ -66,11 +140,10 @@ class TeamContentController extends Controller
 
         // Get locale for translatable fields
         $locale = $request->input('locale', 'es');
+        self::applyOrderingRules($query, $resolvedSectionCategory, $locale);
 
         $perPage = $request->input('per_page', 20);
         $contents = $query->with(['sectionCategory:id,name,data', 'category:id,name'])
-            ->orderBy('order')
-            ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
         // Transform contents to include translatable fields
@@ -97,6 +170,7 @@ class TeamContentController extends Controller
                 'seo_keywords' => $content->getTranslatable('seo_keywords', $locale),
                 'seo_description' => $content->getTranslatable('seo_description', $locale),
                 'data' => $content->data,
+                'cover' => self::transformCover($content->data['cover'] ?? null),
                 'created_at' => $content->created_at,
                 'updated_at' => $content->updated_at,
             ];
@@ -323,6 +397,7 @@ class TeamContentController extends Controller
             'seo_keywords' => $content->getTranslatable('seo_keywords', $locale),
             'seo_description' => $content->getTranslatable('seo_description', $locale),
             'data' => $content->data,
+            'cover' => self::transformCover($content->data['cover'] ?? null),
             'multimedia' => $content->multimedia->map(function ($media)
             {
                 return [
@@ -578,5 +653,126 @@ class TeamContentController extends Controller
             'name' => $sectionCategory->name,
             'data' => $sectionCategory->data,
         ];
+    }
+
+    private static function applyOrderingRules($query, ?Category $sectionCategory, string $locale): void
+    {
+        if (! $sectionCategory)
+        {
+            $query->orderBy('order')->orderBy('created_at', 'desc');
+
+            return;
+        }
+
+        $ordering = $sectionCategory->getContentOrdering();
+        if (! is_array($ordering) || $ordering === [])
+        {
+            $query->orderBy('order')->orderBy('created_at', 'desc');
+
+            return;
+        }
+
+        $applied = false;
+        foreach ($ordering as $rule)
+        {
+            if (! is_array($rule))
+            {
+                continue;
+            }
+
+            $column = $rule['column'] ?? null;
+            $direction = strtolower((string) ($rule['direction'] ?? 'asc'));
+            if (! in_array($direction, ['asc', 'desc'], true))
+            {
+                $direction = 'asc';
+            }
+
+            if ($column === 'title')
+            {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(title, '$.\"{$locale}\"')) {$direction}");
+                $applied = true;
+
+                continue;
+            }
+
+            if (in_array($column, ['order', 'created_at', 'updated_at'], true))
+            {
+                $query->orderBy($column, $direction);
+                $applied = true;
+            }
+        }
+
+        if (! $applied)
+        {
+            $query->orderBy('order')->orderBy('created_at', 'desc');
+        }
+    }
+
+    /**
+     * @return int 0 = cache off; negative = forever until generation bump; positive = TTL seconds
+     */
+    private function teamContentsIndexCacheTtlSeconds(): int
+    {
+        $raw = config('cache.team_contents_index_ttl', '-1');
+        if ($raw === null || $raw === '')
+        {
+            return -1;
+        }
+
+        return (int) $raw;
+    }
+
+    /**
+     * @param  mixed  $cover
+     * @return array<string, mixed>|null
+     */
+    private static function transformCover($cover): ?array
+    {
+        if (! is_array($cover))
+        {
+            return null;
+        }
+
+        return [
+            'url' => self::resolveAbsoluteCoverUrl($cover),
+            'width' => $cover['width'] ?? null,
+            'height' => $cover['height'] ?? null,
+            'mime_type' => $cover['mime_type'] ?? null,
+            'size' => $cover['size'] ?? null,
+            'max_width' => $cover['max_width'] ?? null,
+            'max_height' => $cover['max_height'] ?? null,
+            'crop' => $cover['crop'] ?? false,
+            'variants' => is_array($cover['variants'] ?? null) ? $cover['variants'] : [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $cover
+     */
+    private static function resolveAbsoluteCoverUrl(array $cover): ?string
+    {
+        $url = isset($cover['url']) && is_string($cover['url']) ? trim($cover['url']) : '';
+        if ($url !== '')
+        {
+            if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+            {
+                return $url;
+            }
+
+            if (str_starts_with($url, '/'))
+            {
+                return URL::to($url);
+            }
+
+            return URL::to('/'.ltrim($url, '/'));
+        }
+
+        $path = isset($cover['path']) && is_string($cover['path']) ? trim($cover['path']) : '';
+        if ($path === '')
+        {
+            return null;
+        }
+
+        return URL::to('/storage/'.ltrim($path, '/'));
     }
 }

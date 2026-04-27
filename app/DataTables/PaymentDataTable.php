@@ -33,7 +33,20 @@ class PaymentDataTable extends DataTable
             })
             ->editColumn('invoice_id', function ($data)
             {
-                return $data->invoice?->number ?? '<span class="text-muted">-</span>';
+                if ($data->invoice)
+                {
+                    return '<a href="'.e(route('invoice.show', $data->invoice->id)).'" class="text-body">'.e($data->invoice->number).'</a>';
+                }
+
+                $user = auth()->user();
+                if ($user && $user->hasAnyRole(['admin', 'collaborator']))
+                {
+                    return '<a href="'.e(route('payments.link-invoice', $data->id)).'" class="text-body" title="'.e(__('payment_invoice.link.action_title')).'">'
+                        .'<i class="ti ti-link ti-sm"></i>'
+                        .'</a>';
+                }
+
+                return '<span class="text-muted">-</span>';
             })
             ->filterColumn('invoice_id', function ($query, $keyword)
             {
@@ -123,7 +136,8 @@ class PaymentDataTable extends DataTable
                 ->className('text-center'),
             Column::make('invoice_id')
                 ->title(__('Invoice'))
-                ->addClass('min-tablet'),
+                ->addClass('min-tablet')
+                ->className('text-center'),
             Column::make('enterprise_id')
                 ->title(__('Enterprise'))
                 ->addClass('all')

@@ -31,7 +31,10 @@ class UpdateTeamSettingsRequest extends FormRequest
             'notifications.notifications_sms' => 'nullable|in:0,1',
 
             // Chat / Assistant settings
+            'chat.assistant_auto_respond' => 'nullable|in:0,1',
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
+            'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
+            'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
 
             // Twilio settings
             'twilio.twilio_sid' => 'nullable|string|max:255',
@@ -69,7 +72,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Analytics settings
             'analytics.analytics_property_id' => 'nullable|string|max:255',
             'analytics.analytics_credentials_json' => 'nullable|string',
-            'analytics.google_calendar_id' => 'nullable|string|max:255',
+
+            // Calendar settings
+            'calendar.google_calendar_id' => 'nullable|string|max:255',
 
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',

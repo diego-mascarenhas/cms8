@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
@@ -64,9 +65,10 @@ class WhatsappCartRemoveItemTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createMidiDressProduct($team);
         $phone = '+5491199900011';
+        $sessionKey = WhatsAppCartSessionKey::fromPhone($phone);
 
-        Cart::session($phone)->clear();
-        Cart::session($phone)->add([
+        Cart::session($sessionKey)->clear();
+        Cart::session($sessionKey)->add([
             'id' => $product->id,
             'name' => $product->name,
             'price' => $product->currentSellingPrice(),
@@ -97,7 +99,7 @@ class WhatsappCartRemoveItemTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertTrue($service->sent);
 
-        Cart::session($phone);
+        Cart::session($sessionKey);
         $item = Cart::getContent()->first();
         $this->assertNotNull($item);
         $this->assertSame(1, (int) $item->quantity);
@@ -108,9 +110,10 @@ class WhatsappCartRemoveItemTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createMidiDressProduct($team);
         $phone = '+5491199900012';
+        $sessionKey = WhatsAppCartSessionKey::fromPhone($phone);
 
-        Cart::session($phone)->clear();
-        Cart::session($phone)->add([
+        Cart::session($sessionKey)->clear();
+        Cart::session($sessionKey)->add([
             'id' => $product->id,
             'name' => $product->name,
             'price' => $product->currentSellingPrice(),
@@ -136,7 +139,7 @@ class WhatsappCartRemoveItemTest extends TestCase
         $this->assertIsArray($result);
         $this->assertTrue($result['success']);
 
-        Cart::session($phone);
+        Cart::session($sessionKey);
         $this->assertTrue(Cart::getContent()->isEmpty());
     }
 

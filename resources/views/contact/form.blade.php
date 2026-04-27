@@ -26,6 +26,20 @@
 @endsection
 
 @section('content')
+    @php
+        // Toggle category selector mode for contacts.
+        // false = single select (same visual behavior as product form)
+        // true  = multiple select
+        $useMultipleCategories = true;
+        $contactCategoryIds = isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', []);
+        if (!is_array($contactCategoryIds)) {
+            $contactCategoryIds = [];
+        }
+        $contactCategorySelected = $useMultipleCategories
+            ? $contactCategoryIds
+            : (old('categories.0') ?? ($contactCategoryIds[0] ?? ''));
+    @endphp
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span>
@@ -203,11 +217,16 @@
                                     @enderror
                                 </div>
                                 <div class="col-sm-12">
-                                    <x-categories-select
+                                    <x-module-categories-select
                                         id="categories"
-                                        label="Categorías"
-                                        :selected="isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', [])"
+                                        name="categories[]"
+                                        errorKey="categories"
+                                        :label="$useMultipleCategories ? 'Categorías' : 'Categoría (*)'"
+                                        :selected="$contactCategorySelected"
                                         moduleKey="contacts"
+                                        :multiple="$useMultipleCategories"
+                                        :allowEmpty="true"
+                                        emptyText="Seleccione una categoría"
                                     />
                                 </div>
                                 <div class="col-sm-12">
@@ -305,9 +324,48 @@
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Datos de la Empresa</h6>
-                                <small>Datos específicos de la empresa</small>
+                                <small>Elegí una empresa del equipo o completá los campos para crear o actualizar datos de empresa.</small>
                             </div>
-                            <div class="row g-3">
+                            @php
+                                $selectedEnterpriseIdForForm = old(
+                                    'enterprise.enterprise_id',
+                                    isset($data->id)
+                                        ? ($data->current_enterprise_id ?? null)
+                                        : ($data->prefill_enterprise_id ?? null),
+                                );
+                                $selectedDepartmentIdForForm = old(
+                                    'enterprise.department_id',
+                                    isset($data->id) && isset($data->enterprises)
+                                        ? optional($data->enterprises->firstWhere('id', $data->current_enterprise_id ?? null))->pivot?->department_id
+                                        : null,
+                                );
+                            @endphp
+                            <div class="row g-3 mb-3">
+                                <div class="col-12">
+                                    <label class="form-label" for="enterprise_enterprise_id">Empresa existente</label>
+                                    <select name="enterprise[enterprise_id]" id="enterprise_enterprise_id" class="form-select">
+                                        <option value="">— Sin seleccionar (usar campos de abajo) —</option>
+                                        @foreach ($teamEnterprises ?? collect() as $ent)
+                                            <option value="{{ $ent->id }}" @selected((string) $selectedEnterpriseIdForForm === (string) $ent->id)>
+                                                {{ $ent->name }}@if ($ent->code) ({{ $ent->code }})@endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted d-block mt-1">Si elegís una empresa, al guardar se vincula el contacto a esa empresa y no se crea otra desde los campos de abajo.</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="enterprise_department_id">Área</label>
+                                    <select name="enterprise[department_id]" id="enterprise_department_id" class="form-select">
+                                        <option value="">— Sin área —</option>
+                                        @foreach ($enterpriseDepartments ?? collect() as $department)
+                                            <option value="{{ $department->id }}" @selected((string) $selectedDepartmentIdForForm === (string) $department->id)>
+                                                {{ $department->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="enterprise-manual-fields" class="row g-3">
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[name]" name="enterprise[name]"
                                         label="Nombre de la empresa"
@@ -335,12 +393,37 @@
                                         label="WhatsApp"
                                         value="{{ old('enterprise.whatsapp', $data->currentEnterprise->whatsapp ?? '') }}" />
                                 </div>
+                                <div class="col-sm-6">
+                                    <label for="enterprise_status_id" class="form-label">Estado de empresa</label>
+                                    <select name="enterprise[status_id]" id="enterprise_status_id" class="form-select">
+                                        <option value="">— Sin cambiar / por defecto —</option>
+                                        @foreach (($enterpriseClientStatuses ?? collect()) as $status)
+                                            <option value="{{ $status['id'] }}" @selected((string) old('enterprise.status_id', $data->currentEnterprise->status_id ?? '') === (string) $status['id'])>
+                                                {{ $status['name'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                                     <button type="reset" class="btn btn-label-secondary"
                                         onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
                                 </div>
                             </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    var sel = document.getElementById('enterprise_enterprise_id');
+                                    var helper = sel ? sel.closest('.row.g-3.mb-3')?.querySelector('.text-muted') : null;
+                                    if (!sel || !helper) return;
+                                    function updateHelperText() {
+                                        helper.textContent = sel.value
+                                            ? 'Empresa seleccionada. También podés editar los campos de abajo para actualizar sus datos.'
+                                            : 'Si elegís una empresa, al guardar se vincula el contacto a esa empresa y podés actualizar datos desde los campos de abajo.';
+                                    }
+                                    sel.addEventListener('change', updateHelperText);
+                                    updateHelperText();
+                                });
+                            </script>
                         </div>
                         <!-- Address -->
                         <div id="address-modern" class="content">

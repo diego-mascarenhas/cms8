@@ -54,7 +54,7 @@ class ClientPolicy
 
         if ($user->hasRole('collaborator'))
         {
-            return $client->assigned_to == $user->id && $client->team_id === $user->currentTeam->id;
+            return $client->team_id === $user->currentTeam->id;
         }
 
         // Client can see enterprises they belong to
@@ -80,6 +80,32 @@ class ClientPolicy
     }
 
     /**
+     * Determine whether the user can open the edit form (same rules as update).
+     */
+    public function edit(User $user, Enterprise $client): bool
+    {
+        return $this->update($user, $client);
+    }
+
+    /**
+     * Determine whether the user can update this enterprise from the client module (any type_id).
+     */
+    public function update(User $user, Enterprise $client): bool
+    {
+        if ($user->hasRole('admin'))
+        {
+            return $client->team_id === $user->currentTeam->id;
+        }
+
+        if ($user->hasRole('collaborator'))
+        {
+            return $client->team_id === $user->currentTeam->id;
+        }
+
+        return false;
+    }
+
+    /**
      * Get query filter for role-based access
      */
     public static function getQueryFilter(User $user)
@@ -92,11 +118,10 @@ class ClientPolicy
                 return $query->where('team_id', $user->currentTeam->id);
             }
 
-            // Collaborator can see enterprises they are assigned to
+            // Collaborator: all enterprises in the current team (same scope as view/update)
             if ($user->hasRole('collaborator'))
             {
-                return $query->where('team_id', $user->currentTeam->id)
-                    ->where('assigned_to', $user->id);
+                return $query->where('team_id', $user->currentTeam->id);
             }
 
             // Client can see enterprises they belong to

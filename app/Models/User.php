@@ -15,6 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -164,6 +165,11 @@ class User extends Authenticatable
     public function clients()
     {
         return $this->hasMany(Enterprise::class, 'assigned_to', 'id');
+    }
+
+    public function externalAccounts(): HasMany
+    {
+        return $this->hasMany(ExternalAccount::class);
     }
 
     /**

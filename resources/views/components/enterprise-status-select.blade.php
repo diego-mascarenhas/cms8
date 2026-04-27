@@ -1,26 +1,16 @@
 <div class="form-group">
-    <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="form-select @error($id) is-invalid @enderror" data-allow-clear="false">
-        <option value="">Seleccione una opción</option>
+    <span class="form-label d-block">{{ $label }}</span>
+    <div class="@error($id) is-invalid @enderror">
         @foreach ($options as $option)
-            <option value="{{ $option['id'] }}" @if (old($id, $value) == $option['id']) selected @endif>
-                {{ $option['name'] }}
-            </option>
+            <label class="form-check form-check-inline mt-2" for="{{ $id }}_{{ $option['id'] }}">
+                <input type="radio" name="{{ $id }}" id="{{ $id }}_{{ $option['id'] }}" value="{{ $option['id'] }}"
+                    class="form-check-input @error($id) is-invalid @enderror"
+                    @checked($selected === (int) $option['id'])>
+                <span class="form-check-label">{{ $option['name'] }}</span>
+            </label>
         @endforeach
-    </select>
+    </div>
     @error($id)
-        <div class="invalid-feedback">{{ $message }}</div>
+        <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    $('#{{ $id }}').select2({
-        minimumResultsForSearch: Infinity,
-        allowClear: false,
-        placeholder: 'Seleccione una opción'
-    });
-});
-</script>
-@endpush

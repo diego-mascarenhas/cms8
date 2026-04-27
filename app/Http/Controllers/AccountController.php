@@ -53,7 +53,9 @@ class AccountController extends Controller
     public function edit(string $id)
     {
         $team = Team::findOrFail($id);
-        $coreModules = Module::where('is_core', true)->get();
+        $coreModules = Module::where('is_core', true)
+            ->orderBy('name')
+            ->get();
 
         // Group additional modules by their 'group' field
         $additionalModules = Module::where('is_core', false)

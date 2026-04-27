@@ -9,9 +9,15 @@ use App\Models\Category;
 use App\Models\Content;
 use App\Models\Module;
 use App\Models\Multimedia;
+use App\Models\Team;
 use App\Support\ContentsSectionCategoryData;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\Image\Enums\Fit;
+use Spatie\Image\Image;
 
 class ContentController extends Controller
 {
@@ -112,6 +118,13 @@ class ContentController extends Controller
             $data['data'] = $dataFields;
         }
 
+        $data['data'] = $this->upsertCoverFromRequest(
+            $request,
+            $section,
+            $data['data'] ?? [],
+            null,
+        );
+
         $data['team_id'] = $team->id;
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
@@ -125,7 +138,7 @@ class ContentController extends Controller
         }
 
         return redirect()
-            ->route('contents.index', ['section_id' => $content->section_category_id])
+            ->route('contents.show', $content->id)
             ->with('success', __('app.Content created successfully.'));
     }
 
@@ -138,7 +151,7 @@ class ContentController extends Controller
         return view('contents.show', compact('content'));
     }
 
-    public function edit(Content $content)
+    public function edit(Request $request, Content $content)
     {
         $this->authorize('update', $content);
 
@@ -147,17 +160,32 @@ class ContentController extends Controller
         $contentsModuleId = Module::where('key', 'contents')->value('id');
         $sectionCategories = $this->getFilteredSectionCategories($team->id, $contentsModuleId);
 
-        $fieldConfigs = collect();
-        if ($content->sectionCategory)
+        $selectedSectionId = $request->filled('section_id') ? (int) $request->input('section_id') : null;
+        $selectedSection = null;
+        if ($selectedSectionId)
         {
-            $fieldConfigs = $content->sectionCategory->contentFieldConfigs()->active()->ordered()->get();
+            $selectedSection = Category::query()
+                ->where('team_id', $team->id)
+                ->where('module_id', $contentsModuleId)
+                ->where('status', true)
+                ->find($selectedSectionId);
+        }
+        if (! $selectedSection)
+        {
+            $selectedSection = $content->sectionCategory;
+        }
+
+        $fieldConfigs = collect();
+        if ($selectedSection)
+        {
+            $fieldConfigs = $selectedSection->contentFieldConfigs()->active()->ordered()->get();
         }
         $selectedMultimedia = $content->multimedia->pluck('id')->toArray();
 
-        $availableLocales = $this->availableLocalesForContent($content, null);
-        $contentFormVisibility = $this->contentFormVisibilityForContent($content, null);
+        $availableLocales = $this->availableLocalesForContent(null, $selectedSection);
+        $contentFormVisibility = $this->contentFormVisibilityForContent(null, $selectedSection);
 
-        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales', 'contentFormVisibility'));
+        return view('contents.form', compact('content', 'sectionCategories', 'fieldConfigs', 'selectedMultimedia', 'team', 'availableLocales', 'contentFormVisibility', 'selectedSection'));
     }
 
     public function update(UpdateContentRequest $request, Content $content)
@@ -225,6 +253,13 @@ class ContentController extends Controller
             $data['data'] = $dataFields;
         }
 
+        $data['data'] = $this->upsertCoverFromRequest(
+            $request,
+            $section,
+            $data['data'] ?? [],
+            $content,
+        );
+
         $data['updated_by'] = Auth::id();
 
         $content->update($data);
@@ -243,7 +278,7 @@ class ContentController extends Controller
         }
 
         return redirect()
-            ->route('contents.index', ['section_id' => $content->section_category_id])
+            ->route('contents.show', $content->id)
             ->with('success', __('app.Content updated successfully.'));
     }
 
@@ -353,7 +388,6 @@ class ContentController extends Controller
      */
     private function getFilteredSectionCategories(int $teamId, int $moduleId): \Illuminate\Support\Collection
     {
-        // Get all top level categories for this module
         $topLevelCategories = Category::where('team_id', $teamId)
             ->where('module_id', $moduleId)
             ->whereNull('parent_id')
@@ -369,45 +403,23 @@ class ContentController extends Controller
             ->get();
 
         $result = collect();
-
         foreach ($topLevelCategories as $topLevel)
         {
-            // Children are already filtered by status and ordered in eager loading
-            $activeChildren = $topLevel->children;
-
-            if ($activeChildren->count() >= 2)
-            {
-                // Top level has 2+ subcategories → show subcategories directly (not the top level)
-                // Add parent order as a temporary attribute to maintain parent ordering
-                foreach ($activeChildren as $child)
-                {
-                    $child->parent_order = $topLevel->order;
-                }
-                $result = $result->merge($activeChildren);
-            } else
-            {
-                // Top level has < 2 subcategories → include the top level itself
-                // Set parent_order to its own order for consistent sorting
-                $topLevel->parent_order = $topLevel->order;
-                $result->push($topLevel);
-                if ($activeChildren->count() === 1)
-                {
-                    $activeChildren->first()->parent_order = $topLevel->order;
-                    $result = $result->merge($activeChildren);
-                }
-            }
+            $this->appendCategoryHierarchy($result, $topLevel, 0);
         }
 
-        // Sort the final collection: first by parent order, then by category order, then by name
-        // This maintains the relative order within each parent group
-        return $result->sortBy(function ($item)
+        return $result->values();
+    }
+
+    private function appendCategoryHierarchy(\Illuminate\Support\Collection $result, Category $category, int $depth): void
+    {
+        $category->depth_level = $depth;
+        $result->push($category);
+
+        foreach ($category->children as $child)
         {
-            return [
-                $item->parent_order ?? $item->order ?? 999,
-                $item->order ?? 999,
-                $item->name ?? '',
-            ];
-        })->values();
+            $this->appendCategoryHierarchy($result, $child, $depth + 1);
+        }
     }
 
     private function syncMultimedia(Content $content, array $multimediaData): void
@@ -433,5 +445,324 @@ class ContentController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataFields
+     * @return array<string, mixed>
+     */
+    private function upsertCoverFromRequest(Request $request, Category $section, array $dataFields, ?Content $existingContent): array
+    {
+        if ($request->boolean('remove_cover_image'))
+        {
+            $this->deleteCoverFromData($dataFields);
+        }
+
+        if (! $request->hasFile('cover_image'))
+        {
+            return $dataFields;
+        }
+
+        if ($existingContent)
+        {
+            $this->deleteCoverFromData($dataFields);
+        }
+
+        $settings = $this->resolveCoverSettings($section);
+        $cover = $this->storeCoverImage($request->file('cover_image'), $settings);
+
+        $dataFields['cover'] = $cover;
+
+        return $dataFields;
+    }
+
+    /**
+     * @return array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}
+     */
+    private function resolveCoverSettings(Category $section): array
+    {
+        $coverData = is_array($section->data['cover'] ?? null) ? $section->data['cover'] : [];
+        $rawVariants = is_array($coverData['variants'] ?? null) ? $coverData['variants'] : [];
+
+        $maxWidth = isset($coverData['max_width']) ? (int) $coverData['max_width'] : null;
+        $maxHeight = isset($coverData['max_height']) ? (int) $coverData['max_height'] : null;
+        $variants = [];
+        foreach ($rawVariants as $variantKey => $variantCfg)
+        {
+            if (! is_string($variantKey) || ! is_array($variantCfg))
+            {
+                continue;
+            }
+
+            $variants[$variantKey] = [
+                'width' => isset($variantCfg['width']) ? (int) $variantCfg['width'] : null,
+                'height' => isset($variantCfg['height']) ? (int) $variantCfg['height'] : null,
+                'fit' => isset($variantCfg['fit']) && is_string($variantCfg['fit']) ? $variantCfg['fit'] : 'max',
+            ];
+        }
+
+        return [
+            'max_width' => $maxWidth ?: null,
+            'max_height' => $maxHeight ?: null,
+            'crop' => ! empty($coverData['crop']),
+            'variants' => $variants,
+        ];
+    }
+
+    /**
+     * @param  array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}  $settings
+     * @return array<string, mixed>
+     */
+    private function isSvgCoverUpload(UploadedFile $file): bool
+    {
+        if ($file->getMimeType() === 'image/svg+xml')
+        {
+            return true;
+        }
+
+        return strtolower($file->getClientOriginalExtension()) === 'svg';
+    }
+
+    private function storeCoverImage(UploadedFile $file, array $settings): array
+    {
+        $isSvg = $this->isSvgCoverUpload($file);
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $safeExtension = $extension !== '' ? $extension : 'jpg';
+        $filename = Str::uuid()->toString().'.'.$safeExtension;
+        $teamId = Auth::user()?->currentTeam?->id;
+        $teamHash = $teamId ? Team::generateTeamHash($teamId) : 'default';
+        $basePath = "contents/{$teamHash}/covers";
+        $relativePath = $basePath.'/'.$filename;
+        $absolutePath = Storage::disk('public')->path($relativePath);
+
+        if (! is_dir(dirname($absolutePath)))
+        {
+            mkdir(dirname($absolutePath), 0775, true);
+        }
+
+        $maxWidth = $settings['max_width'];
+        $maxHeight = $settings['max_height'];
+
+        $originalPathRelative = null;
+        if (! $isSvg)
+        {
+            // Always keep a private copy of raster uploads (reprocess / variants) — not only when max dimensions are set in the category.
+            Storage::disk('originals')->putFileAs($basePath, $file, $filename);
+            $originalPathRelative = $relativePath;
+        }
+
+        if (! $isSvg && ($maxWidth || $maxHeight))
+        {
+            $image = Image::load($file->getRealPath());
+
+            if ($maxWidth && $maxHeight)
+            {
+                $fit = $settings['crop'] ? Fit::Crop : Fit::Max;
+                $image->fit($fit, $maxWidth, $maxHeight);
+            } elseif ($maxWidth)
+            {
+                $image->width($maxWidth);
+            } elseif ($maxHeight)
+            {
+                $image->height($maxHeight);
+            }
+
+            $image->save($absolutePath);
+        } else
+        {
+            // No resize, or SVG: single file on public; SVG is not duplicated on originals (no raster pipeline).
+            Storage::disk('public')->putFileAs($basePath, $file, $filename);
+        }
+
+        [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);
+
+        $variantData = $this->storeCoverVariants($file, $settings, $basePath);
+
+        $coverPayload = [
+            'url' => asset('storage/'.$relativePath),
+            'path' => $relativePath,
+            'width' => $storedWidth,
+            'height' => $storedHeight,
+            'mime_type' => $file->getMimeType(),
+            'size' => Storage::disk('public')->size($relativePath),
+            'max_width' => $maxWidth,
+            'max_height' => $maxHeight,
+            'crop' => $settings['crop'],
+            'variants' => $variantData,
+        ];
+        if ($originalPathRelative !== null)
+        {
+            $coverPayload['original'] = [
+                'disk' => 'originals',
+                'path' => $originalPathRelative,
+            ];
+        }
+
+        return $coverPayload;
+    }
+
+    /**
+     * @param  array{max_width: int|null, max_height: int|null, crop: bool, variants: array<string, array{width: int|null, height: int|null, fit: string}>}  $settings
+     * @return array<string, array<string, mixed>>
+     */
+    private function storeCoverVariants(UploadedFile $file, array $settings, string $basePath): array
+    {
+        if ($this->isSvgCoverUpload($file))
+        {
+            return [];
+        }
+
+        $out = [];
+        $variants = $settings['variants'] ?? [];
+        foreach ($variants as $variantKey => $variantCfg)
+        {
+            $width = $variantCfg['width'] ?? null;
+            $height = $variantCfg['height'] ?? null;
+            if (! $width && ! $height)
+            {
+                continue;
+            }
+
+            $fit = is_string($variantCfg['fit'] ?? null) ? $variantCfg['fit'] : 'max';
+            $safeVariantKey = Str::slug((string) $variantKey, '_');
+            if ($safeVariantKey === '')
+            {
+                continue;
+            }
+
+            $filename = $safeVariantKey.'_'.Str::uuid().'.webp';
+            $relativePath = $basePath.'/variants/'.$filename;
+            $absolutePath = Storage::disk('public')->path($relativePath);
+            if (! is_dir(dirname($absolutePath)))
+            {
+                mkdir(dirname($absolutePath), 0775, true);
+            }
+
+            $image = Image::load($file->getRealPath());
+            $resolvedFit = match ($fit)
+            {
+                'crop' => Fit::Crop,
+                'contain' => Fit::Contain,
+                'stretch' => Fit::Stretch,
+                default => Fit::Max,
+            };
+
+            if ($width && $height)
+            {
+                $image->fit($resolvedFit, (int) $width, (int) $height);
+            } elseif ($width)
+            {
+                $image->width((int) $width);
+            } else
+            {
+                $image->height((int) $height);
+            }
+
+            $image->save($absolutePath);
+            [$storedWidth, $storedHeight] = $this->extractImageDimensions($absolutePath);
+
+            $out[$safeVariantKey] = [
+                'url' => asset('storage/'.$relativePath),
+                'path' => $relativePath,
+                'width' => $storedWidth,
+                'height' => $storedHeight,
+                'fit' => $fit,
+                'size' => Storage::disk('public')->size($relativePath),
+                'mime_type' => 'image/webp',
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataFields
+     */
+    private function deleteCoverFromData(array &$dataFields): void
+    {
+        $coverPath = is_array($dataFields['cover'] ?? null) ? ($dataFields['cover']['path'] ?? null) : null;
+        if (is_string($coverPath) && $coverPath !== '' && Storage::disk('public')->exists($coverPath))
+        {
+            Storage::disk('public')->delete($coverPath);
+        }
+
+        $variants = is_array($dataFields['cover']['variants'] ?? null) ? $dataFields['cover']['variants'] : [];
+        foreach ($variants as $variant)
+        {
+            $variantPath = is_array($variant) ? ($variant['path'] ?? null) : null;
+            if (is_string($variantPath) && $variantPath !== '' && Storage::disk('public')->exists($variantPath))
+            {
+                Storage::disk('public')->delete($variantPath);
+            }
+        }
+
+        $original = is_array($dataFields['cover']['original'] ?? null) ? $dataFields['cover']['original'] : null;
+        $originalPath = is_array($original) && is_string($original['path'] ?? null) ? $original['path'] : null;
+        if ($originalPath !== null && $originalPath !== '' && Storage::disk('originals')->exists($originalPath))
+        {
+            Storage::disk('originals')->delete($originalPath);
+        }
+
+        unset($dataFields['cover']);
+    }
+
+    /**
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function extractImageDimensions(string $absolutePath): array
+    {
+        if (str_ends_with(strtolower($absolutePath), '.svg'))
+        {
+            return $this->extractSvgDimensions($absolutePath);
+        }
+
+        $size = @getimagesize($absolutePath);
+        if (! is_array($size))
+        {
+            return [null, null];
+        }
+
+        return [
+            isset($size[0]) ? (int) $size[0] : null,
+            isset($size[1]) ? (int) $size[1] : null,
+        ];
+    }
+
+    /**
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function extractSvgDimensions(string $absolutePath): array
+    {
+        $head = @file_get_contents($absolutePath, false, null, 0, 96 * 1024);
+        if (! is_string($head) || $head === '')
+        {
+            return [null, null];
+        }
+
+        if (preg_match('/viewBox\s*=\s*["\']\s*[-\d.eE]+\s+[-\d.eE]+\s+([-\d.eE]+)\s+([-\d.eE]+)\s*["\']/i', $head, $m))
+        {
+            return [
+                (int) round((float) $m[1]),
+                (int) round((float) $m[2]),
+            ];
+        }
+
+        $w = null;
+        $h = null;
+        if (preg_match('/<svg[^>]*\bwidth\s*=\s*["\']?([\d.]+)/i', $head, $wm))
+        {
+            $w = (int) round((float) $wm[1]);
+        }
+        if (preg_match('/<svg[^>]*\bheight\s*=\s*["\']?([\d.]+)/i', $head, $hm))
+        {
+            $h = (int) round((float) $hm[1]);
+        }
+
+        if ($w !== null && $h !== null)
+        {
+            return [$w, $h];
+        }
+
+        return [null, null];
     }
 }

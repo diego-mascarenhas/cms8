@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\DataTables\ContactDataTable;
 use App\Http\Requests\UpdateContactRequest;
 use App\Jobs\SendMessageCampaignJob;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
+use App\Models\Enterprise;
+use App\Models\EnterpriseDepartment;
+use App\Models\EnterpriseStatus;
 use App\Models\MessageDelivery;
 use App\Models\Opportunity;
 use App\Models\Source;
@@ -72,10 +76,25 @@ class ContactController extends Controller
             $data->user_id = request()->input('link_user');
         }
 
-        $enterpriseStatuses = ContactStatus::getOptions();
-        $socialSources = Source::getOptions();
+        if (request()->filled('enterprise_id') && auth()->user()->currentTeam)
+        {
+            $prefillId = (int) request('enterprise_id');
+            if ($prefillId > 0 && Enterprise::query()
+                ->where('id', $prefillId)
+                ->where('team_id', auth()->user()->current_team_id)
+                ->exists())
+            {
+                $data->prefill_enterprise_id = $prefillId;
+            }
+        }
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources'));
+        $enterpriseStatuses = ContactStatus::getOptions();
+        $enterpriseClientStatuses = EnterpriseStatus::getOptions(1);
+        $socialSources = Source::getOptions();
+        $teamEnterprises = $this->teamEnterprisesForContactForm();
+        $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
+
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'enterpriseClientStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -111,9 +130,10 @@ class ContactController extends Controller
             $categoryIds[] = $defaultCategoryId;
         }
 
-        if (! empty($categoryIds))
+        $validCategoryIds = Category::onlyExistingIds(array_unique($categoryIds));
+        if ($validCategoryIds !== [])
         {
-            $contact->categories()->sync(array_unique($categoryIds));
+            $contact->categories()->sync($validCategoryIds);
         }
 
         // Sync software
@@ -121,6 +141,8 @@ class ContactController extends Controller
         {
             $contact->softwares()->sync($data['software_ids']);
         }
+
+        $this->syncContactEnterpriseFromForm($contact, $data['enterprise'] ?? []);
 
         $message = __('messages.success.created');
 
@@ -549,9 +571,12 @@ class ContactController extends Controller
         }
 
         $enterpriseStatuses = ContactStatus::getOptions();
+        $enterpriseClientStatuses = EnterpriseStatus::getOptions(1);
         $socialSources = Source::getOptions();
+        $teamEnterprises = $this->teamEnterprisesForContactForm();
+        $enterpriseDepartments = EnterpriseDepartment::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'enterpriseClientStatuses', 'socialSources', 'teamEnterprises', 'enterpriseDepartments'));
     }
 
     /**
@@ -599,7 +624,7 @@ class ContactController extends Controller
         // Sync categories
         if (isset($data['categories']))
         {
-            $contact->categories()->sync($data['categories']);
+            $contact->categories()->sync(Category::onlyExistingIds($data['categories']));
         }
 
         // Sync software
@@ -1104,7 +1129,7 @@ class ContactController extends Controller
                     'name' => $enterprise->name,
                     'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.($enterprise->created_at?->format('d-m-Y H:i:s') ?? '').' hs'),
                     // remove icon 'src' to simplify rendering
-                    'url' => '#',
+                    'url' => route('empresas.show', $enterprise->id),
                 ];
             })
             ->values()
@@ -1990,5 +2015,104 @@ class ContactController extends Controller
             'success' => true,
             'message' => 'Empresa actual actualizada correctamente.',
         ]);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\Enterprise>
+     */
+    private function teamEnterprisesForContactForm()
+    {
+        if (! auth()->user()?->currentTeam)
+        {
+            return collect();
+        }
+
+        return Enterprise::query()
+            ->where('team_id', auth()->user()->current_team_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $enterpriseInput
+     */
+    private function syncContactEnterpriseFromForm(Contact $contact, array $enterpriseInput): void
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return;
+        }
+
+        $teamId = $team->id;
+        $existingId = ! empty($enterpriseInput['enterprise_id']) ? (int) $enterpriseInput['enterprise_id'] : null;
+        $departmentId = ! empty($enterpriseInput['department_id']) ? (int) $enterpriseInput['department_id'] : null;
+
+        if ($existingId)
+        {
+            $enterprise = Enterprise::query()
+                ->where('id', $existingId)
+                ->where('team_id', $teamId)
+                ->first();
+
+            if ($enterprise)
+            {
+                $manualStatusId = ! empty($enterpriseInput['status_id']) ? (int) $enterpriseInput['status_id'] : null;
+                $enterprise->update([
+                    'name' => $enterpriseInput['name'] ?? $enterprise->name,
+                    'code' => $enterpriseInput['code'] ?? $enterprise->code,
+                    'website' => $enterpriseInput['website'] ?? $enterprise->website,
+                    'phone' => $enterpriseInput['phone'] ?? $enterprise->phone,
+                    'email' => $enterpriseInput['email'] ?? $enterprise->email,
+                    'whatsapp' => $enterpriseInput['whatsapp'] ?? $enterprise->whatsapp,
+                    'status_id' => $manualStatusId ?: $enterprise->status_id,
+                ]);
+
+                $contact->enterprises()->sync([
+                    $enterprise->id => [
+                        'department_id' => $departmentId,
+                    ],
+                ]);
+
+                if ((int) $contact->status_id === 5)
+                {
+                    $contact->update(['current_enterprise_id' => $enterprise->id]);
+                }
+            }
+
+            return;
+        }
+
+        if (empty($enterpriseInput['name']))
+        {
+            return;
+        }
+
+        $enterprise = Enterprise::create([
+            'team_id' => $teamId,
+            'name' => $enterpriseInput['name'],
+            'code' => $enterpriseInput['code'] ?? null,
+            'website' => $enterpriseInput['website'] ?? null,
+            'phone' => $enterpriseInput['phone'] ?? null,
+            'email' => $enterpriseInput['email'] ?? null,
+            'whatsapp' => $enterpriseInput['whatsapp'] ?? null,
+            'status_id' => ! empty($enterpriseInput['status_id'])
+                ? (int) $enterpriseInput['status_id']
+                : ((int) $contact->status_id === 5 ? 2 : 1),
+            'type_id' => 1,
+            'responsible_id' => $contact->responsible_id,
+            'creator_id' => auth()->id(),
+        ]);
+
+        $contact->enterprises()->sync([
+            $enterprise->id => [
+                'department_id' => $departmentId,
+            ],
+        ]);
+
+        if ((int) $contact->status_id === 5)
+        {
+            $contact->update(['current_enterprise_id' => $enterprise->id]);
+        }
     }
 }

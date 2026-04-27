@@ -27,8 +27,17 @@ class EnterpriseStatusSelect extends Component
     {
         $options = EnterpriseStatus::getOptions($this->enterpriseTypeId);
 
+        $selected = old($this->id);
+        if ($selected === null)
+        {
+            $selected = ($this->value !== null && $this->value !== '')
+                ? $this->value
+                : 1;
+        }
+
         return view('components.enterprise-status-select', [
             'options' => $options,
+            'selected' => (int) $selected,
         ]);
     }
 }

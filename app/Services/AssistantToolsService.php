@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\WhatsAppCartSessionKey;
+use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\GenerateTemplateHtmlJob;
+use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
@@ -45,6 +47,14 @@ class AssistantToolsService
     protected ?string $contextCustomerPhone = null;
 
     /**
+     * When true, only the first {@see sendWhatsAppMessage()} in this request actually sends; further calls are no-ops
+     * (stops duplicate customer messages when the model calls the tool twice, e.g. opening + meta confirmation).
+     */
+    protected bool $whatsappToolSingleCustomerSendPerTurn = false;
+
+    protected int $whatsappToolSendCount = 0;
+
+    /**
      * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
      */
     protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
@@ -69,6 +79,8 @@ class AssistantToolsService
         $this->contextUserId = null;
         $this->contextTeamId = null;
         $this->contextCustomerPhone = null;
+        $this->whatsappToolSingleCustomerSendPerTurn = false;
+        $this->whatsappToolSendCount = 0;
         $this->whatsAppGatewayOverride = null;
     }
 
@@ -83,6 +95,14 @@ class AssistantToolsService
         $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
             ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
+    }
+
+    /**
+     * Restrict {@see sendWhatsAppMessage()} to a single successful send per HTTP/tool turn (admin proactive opening).
+     */
+    public function setWhatsAppToolSingleCustomerSendPerTurn(bool $enabled): void
+    {
+        $this->whatsappToolSingleCustomerSendPerTurn = $enabled;
     }
 
     /**
@@ -886,7 +906,23 @@ class AssistantToolsService
             return 'WhatsApp is not configured for this team.';
         }
 
-        $gateway->sendMessage($phone, $message, null, $user->id);
+        $outbound = WhatsAppOutboundText::stripInternalQaMarkers(WhatsAppOutboundText::sanitize($message));
+        if ($outbound === '')
+        {
+            return 'Message text is empty after sanitization.';
+        }
+
+        if ($this->whatsappToolSingleCustomerSendPerTurn && $this->whatsappToolSendCount >= 1)
+        {
+            return 'Opening WhatsApp was already sent in this turn. Do not call send_whatsapp_message again; reply with a brief acknowledgement for the operator only (not a second customer message).';
+        }
+
+        $gateway->sendMessage($phone, $outbound, null, $user->id);
+
+        if ($this->whatsappToolSingleCustomerSendPerTurn)
+        {
+            $this->whatsappToolSendCount++;
+        }
 
         return $this->truncate("WhatsApp message sent to {$phone}.");
     }
@@ -1110,6 +1146,8 @@ class AssistantToolsService
             'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
 
+        PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+
         return $this->truncate(
             'Calendar event created: '.$event->title.' (id: '.$event->id.') from '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
         );
@@ -1248,6 +1286,7 @@ class AssistantToolsService
         if (! empty($updates))
         {
             $event->update($updates);
+            PushCalendarEventToGoogleJob::dispatch($event->id, 'updated');
         }
 
         return $this->truncate(

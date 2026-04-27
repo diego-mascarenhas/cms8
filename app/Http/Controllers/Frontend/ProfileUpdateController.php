@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
 use App\Models\Fare;
@@ -52,11 +53,12 @@ class ProfileUpdateController extends Controller
                 'data' => json_encode([]),
             ]);
 
-            // Attach default category if configured
+            // Attach default category if configured (must exist; config/env can be stale)
             $defaultCategoryId = config('custom.default_contact_category_id');
-            if ($defaultCategoryId)
+            $validDefaultIds = Category::onlyExistingIds([$defaultCategoryId]);
+            if ($validDefaultIds !== [])
             {
-                $contact->categories()->sync([$defaultCategoryId]);
+                $contact->categories()->sync($validDefaultIds);
             }
         }
 

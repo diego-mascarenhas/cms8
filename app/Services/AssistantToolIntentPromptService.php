@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Prompt;
+use App\Models\Team;
 
 /**
  * Picks an optional {@see Prompt} from module_prompts to merge into the tool-assistant system
@@ -10,14 +11,29 @@ use App\Models\Prompt;
  */
 class AssistantToolIntentPromptService
 {
-    public function keywordIntentRoutingEnabled(): bool
+    /**
+     * Per-team setting (Team settings → Chat / Asistente). When false (default), flows are chosen by the LLM
+     * (discovery + commit_assistant_flow), not by automatic keyword scoring.
+     */
+    public function keywordIntentRoutingEnabled(?int $teamId = null): bool
     {
         if (! config('assistant_tool_intent_prompts.enabled', true))
         {
             return false;
         }
 
-        return (bool) config('assistant_tool_intent_prompts.keyword_intent_routing', false);
+        if ($teamId === null || $teamId <= 0)
+        {
+            return false;
+        }
+
+        $team = Team::query()->find($teamId);
+        if ($team === null)
+        {
+            return false;
+        }
+
+        return filter_var($team->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOL);
     }
 
     /**
@@ -25,7 +41,7 @@ class AssistantToolIntentPromptService
      */
     protected function tryKeywordResolution(int $teamId, string $message): ?array
     {
-        if (! $this->keywordIntentRoutingEnabled())
+        if (! $this->keywordIntentRoutingEnabled($teamId))
         {
             return null;
         }
@@ -60,11 +76,62 @@ class AssistantToolIntentPromptService
             return null;
         }
 
-        $intentId = $this->detectBestIntentId($message);
-        if ($intentId === null)
+        if (! $this->keywordIntentRoutingEnabled($teamId))
         {
             return null;
         }
+
+        $fromSection = $this->findPromptBySectionKeyKeywords($teamId, $message);
+        $fromConfig = $this->tryResolvePromptFromConfigIntent($teamId, $message);
+
+        $sectionScore = (int) ($fromSection['match_score'] ?? 0);
+        $configScore = (int) ($fromConfig['intent_score'] ?? 0);
+
+        $picked = null;
+        if ($fromSection !== null && $fromConfig !== null)
+        {
+            $picked = $sectionScore > $configScore ? 'section_key' : 'config_intent';
+        } elseif ($fromSection !== null)
+        {
+            $picked = 'section_key';
+        } elseif ($fromConfig !== null)
+        {
+            $picked = 'config_intent';
+        }
+
+        if ($picked === 'section_key')
+        {
+            return [
+                'prompt' => $fromSection['prompt'],
+                'routing_key' => $fromSection['routing_key'],
+            ];
+        }
+
+        if ($picked === 'config_intent')
+        {
+            return [
+                'prompt' => $fromConfig['prompt'],
+                'routing_key' => $fromConfig['routing_key'],
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{prompt: Prompt, routing_key: string, intent_score: int}|null
+     */
+    protected function tryResolvePromptFromConfigIntent(int $teamId, string $message): ?array
+    {
+        $normalized = $this->normalizeMessage($message);
+        $bestIntent = $this->resolveBestConfigIntent($normalized);
+        if ($bestIntent === null)
+        {
+            return null;
+        }
+
+        $intentId = $bestIntent['id'];
+        $intentScore = $bestIntent['score'];
 
         $intentCfg = config('assistant_tool_intent_prompts.intents.'.$intentId);
         if (! is_array($intentCfg))
@@ -92,11 +159,185 @@ class AssistantToolIntentPromptService
                 return [
                     'prompt' => $prompt,
                     'routing_key' => $key,
+                    'intent_score' => $intentScore,
                 ];
             }
         }
 
         return null;
+    }
+
+    /**
+     * Scores the message against {@see Prompt::$section_key} and, when the label is long enough,
+     * against a normalized {@see Prompt::$section_label} so teams can express “intent” phrasing
+     * in the label without changing the stable routing key. Still deterministic text match (no LLM).
+     *
+     * @return array{prompt: Prompt, routing_key: string, match_score: int}|null
+     */
+    protected function findPromptBySectionKeyKeywords(int $teamId, string $message): ?array
+    {
+        $normalized = $this->normalizeMessage($message);
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
+        $prompts = Prompt::forTeam($teamId)
+            ->active()
+            ->with('module')
+            ->where('section_key', '!=', 'general')
+            ->orderBy('order')
+            ->get();
+
+        $best = null;
+        $bestScore = -1;
+
+        foreach ($prompts as $prompt)
+        {
+            $score = $this->scorePromptKeywordAttachment($normalized, $prompt);
+            if ($score > $bestScore)
+            {
+                $bestScore = $score;
+                $best = $prompt;
+            }
+        }
+
+        if ($best === null || $bestScore < $minScore)
+        {
+            return null;
+        }
+
+        $routingKey = $best->module
+            ? $best->module->key.':'.$best->section_key
+            : $best->section_key;
+
+        return [
+            'prompt' => $best,
+            'routing_key' => $routingKey,
+            'match_score' => $bestScore,
+        ];
+    }
+
+    /**
+     * Max of section_key score and (optional) section_label score — same substring / word rules as keys.
+     */
+    protected function scorePromptKeywordAttachment(string $normalized, Prompt $prompt): int
+    {
+        $keyScore = $this->scoreMessageAgainstSectionKey($normalized, (string) $prompt->section_key);
+        $labelPhrase = $this->normalizeSectionLabelForIntentScoring((string) $prompt->section_label);
+        if ($labelPhrase === '')
+        {
+            return $keyScore;
+        }
+
+        return max($keyScore, $this->scoreMessageAgainstSectionKey($normalized, $labelPhrase));
+    }
+
+    /**
+     * Strip punctuation from the section label so it can reuse {@see scoreMessageAgainstSectionKey}.
+     * Short labels are ignored to limit accidental matches on generic words.
+     */
+    protected function normalizeSectionLabelForIntentScoring(string $sectionLabel): string
+    {
+        $t = mb_strtolower(trim($sectionLabel));
+        if ($t === '')
+        {
+            return '';
+        }
+
+        $t = preg_replace('/[^\p{L}\p{N}\s\-_]+/u', ' ', $t) ?? $t;
+        $t = preg_replace('/\s+/u', ' ', trim($t)) ?? $t;
+
+        if (mb_strlen($t) < 12)
+        {
+            return '';
+        }
+
+        return $t;
+    }
+
+    /**
+     * @return array{id: string, score: int}|null
+     */
+    protected function resolveBestConfigIntent(string $normalized): ?array
+    {
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        $order = config('assistant_tool_intent_prompts.intents_order', []);
+        $intents = config('assistant_tool_intent_prompts.intents', []);
+        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
+
+        $bestId = null;
+        $bestScore = -1;
+
+        foreach ($order as $intentId)
+        {
+            if (! is_string($intentId) || ! isset($intents[$intentId]) || ! is_array($intents[$intentId]))
+            {
+                continue;
+            }
+
+            $score = $this->scoreIntent($normalized, $intents[$intentId]);
+            if ($score > $bestScore)
+            {
+                $bestScore = $score;
+                $bestId = $intentId;
+            }
+        }
+
+        if ($bestId === null || $bestScore < $minScore)
+        {
+            return null;
+        }
+
+        return [
+            'id' => $bestId,
+            'score' => $bestScore,
+        ];
+    }
+
+    /**
+     * Score how well the normalized message matches a routing phrase (underscores → spaces, word tokens).
+     * Used for {@see Prompt::$section_key} and for normalized {@see Prompt::$section_label} text.
+     */
+    protected function scoreMessageAgainstSectionKey(string $normalized, string $sectionKey): int
+    {
+        $sk = mb_strtolower(trim($sectionKey));
+        if ($sk === '' || $sk === 'general')
+        {
+            return 0;
+        }
+
+        $spaced = preg_replace('/[_\-]+/u', ' ', $sk) ?? $sk;
+        $spaced = preg_replace('/\s+/u', ' ', trim($spaced)) ?? $spaced;
+
+        if (mb_strlen($spaced) >= 2 && str_contains($normalized, $spaced))
+        {
+            return 3;
+        }
+
+        $score = 0;
+        $tokens = preg_split('/[_\s\-]+/u', $sk) ?: [];
+        foreach ($tokens as $token)
+        {
+            $t = mb_strtolower(trim((string) $token));
+            if (mb_strlen($t) < 2)
+            {
+                continue;
+            }
+
+            $pattern = '/(?<![\p{L}\p{N}_])'.preg_quote($t, '/').'(?![\p{L}\p{N}_])/u';
+            if (preg_match($pattern, $normalized) === 1)
+            {
+                $score += 1;
+            }
+        }
+
+        return min($score, 4);
     }
 
     public function matchesFlowReset(string $message): bool
@@ -148,7 +389,7 @@ class AssistantToolIntentPromptService
 
         if ($this->matchesFlowReset($message))
         {
-            $found = $this->keywordIntentRoutingEnabled()
+            $found = $this->keywordIntentRoutingEnabled($teamId)
                 ? $this->findPromptAndRoutingKeyForMessage($teamId, $message)
                 : null;
 
@@ -200,40 +441,9 @@ class AssistantToolIntentPromptService
 
     public function detectBestIntentId(string $message): ?string
     {
-        $normalized = $this->normalizeMessage($message);
-        if ($normalized === '')
-        {
-            return null;
-        }
+        $resolved = $this->resolveBestConfigIntent($this->normalizeMessage($message));
 
-        $order = config('assistant_tool_intent_prompts.intents_order', []);
-        $intents = config('assistant_tool_intent_prompts.intents', []);
-        $minScore = (int) config('assistant_tool_intent_prompts.minimum_score', 1);
-
-        $bestId = null;
-        $bestScore = -1;
-
-        foreach ($order as $intentId)
-        {
-            if (! is_string($intentId) || ! isset($intents[$intentId]) || ! is_array($intents[$intentId]))
-            {
-                continue;
-            }
-
-            $score = $this->scoreIntent($normalized, $intents[$intentId]);
-            if ($score > $bestScore)
-            {
-                $bestScore = $score;
-                $bestId = $intentId;
-            }
-        }
-
-        if ($bestId === null || $bestScore < $minScore)
-        {
-            return null;
-        }
-
-        return $bestId;
+        return $resolved['id'] ?? null;
     }
 
     /**

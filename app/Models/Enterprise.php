@@ -116,7 +116,9 @@ class Enterprise extends Model
 
     public function contacts()
     {
-        return $this->belongsToMany(Contact::class, 'contact_enterprise');
+        return $this->belongsToMany(Contact::class, 'contact_enterprise')
+            ->withPivot(['position', 'department_id', 'superior_id'])
+            ->withTimestamps();
     }
 
     public function getStatusLabelAttribute()

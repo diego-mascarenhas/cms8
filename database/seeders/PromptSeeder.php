@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Module;
 use App\Models\Prompt;
+use App\Models\Team;
+use App\Services\DefaultAssistantFlowPromptsService;
 use Illuminate\Database\Seeder;
 
 class PromptSeeder extends Seeder
@@ -36,6 +38,12 @@ class PromptSeeder extends Seeder
                 $data,
             );
         }
+
+        /** Default assistant flows (module_prompts), editable in /prompt/list; firstOrCreate per team, no overwrite. */
+        Team::query()->pluck('id')->each(function ($id)
+        {
+            DefaultAssistantFlowPromptsService::syncForTeam((int) $id);
+        });
 
         $this->command->info('Prompts creados/actualizados correctamente.');
     }

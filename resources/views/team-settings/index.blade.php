@@ -84,6 +84,17 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-lock mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Seguridad de contraseñas</h5>
+                            <p class="card-text">Configura y rota la clave maestra del equipo para el cofre de contraseñas</p>
+                            <a href="{{ route('team-settings.passwords', $team) }}" class="btn btn-primary">Configurar</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-language mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Custom Translations</h5>
                             <p class="card-text">Manage custom translations for your team</p>
@@ -130,7 +141,7 @@
                         <div class="card-body text-center">
                             <i class="ti ti-lifebuoy mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">{{ __('Chat / Asistente') }}</h5>
-                            <p class="card-text">{{ __('Modo prueba del asistente de chat (sin llamar a la IA)') }}</p>
+                            <p class="card-text">{{ __('Asistente: modo prueba, enrutado por palabras opcional') }}</p>
                             <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'chat']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
                         </div>
                     </div>
@@ -186,10 +197,43 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-users-group mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Google People & Calendar</h5>
+                            <p class="card-text">Connect one Google account per team to sync contacts and calendar events.</p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                @if ($googleExternalAccount)
+                                    <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">Reconnect</a>
+                                    <form method="POST" action="{{ route('integrations.google.disconnect') }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger">Disconnect</button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">Connect</a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-chart-line mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Google Analytics</h5>
                             <p class="card-text">Configure GA4 Property ID and service account for dashboard analytics</p>
                             <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'analytics']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-calendar-event mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Calendar Sync</h5>
+                            <p class="card-text">Choose which Google calendar ID is used for sync jobs.</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'calendar']) }}" class="btn btn-primary">Configure</a>
                         </div>
                     </div>
                 </div>

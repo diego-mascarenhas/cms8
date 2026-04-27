@@ -83,13 +83,12 @@
                             <label for="subscription_id" class="form-label">{{ __('Suscripción') }}</label>
                             <select id="subscription_id" name="subscription_id" class="form-select" data-allow-clear="true">
                                 <option value="" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') === '' ? 'selected' : '' }}>{{ __('Subscripción local') }}</option>
-                                @isset($stripeSubscriptions)
-                                    @foreach($stripeSubscriptions as $stripeSub)
-                                        <option value="{{ $stripeSub->id }}" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') == $stripeSub->id ? 'selected' : '' }}>
-                                            {{ $stripeSub->customer_name ?: $stripeSub->customer_email }} — {{ $stripeSub->plan_name ?: '—' }} ({{ $stripeSub->status ?? '—' }})
+                                @php($serviceSyncOptions = $serviceSyncs ?? $stripeSubscriptions ?? collect())
+                                @foreach($serviceSyncOptions as $serviceSync)
+                                        <option value="{{ $serviceSync->id }}" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') == $serviceSync->id ? 'selected' : '' }}>
+                                            {{ $serviceSync->customer_name ?: $serviceSync->customer_email }} — {{ $serviceSync->plan_name ?: '—' }} ({{ $serviceSync->status ?? '—' }})
                                         </option>
                                     @endforeach
-                                @endisset
                             </select>
                             <small class="text-muted">
                                 {{ __('Suscripciones de clientes en Stripe.') }}

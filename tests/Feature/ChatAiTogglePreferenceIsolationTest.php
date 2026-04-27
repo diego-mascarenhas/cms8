@@ -9,7 +9,6 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\LaravelSettings\Factories\SettingsRepositoryFactory;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -35,14 +34,13 @@ class ChatAiTogglePreferenceIsolationTest extends TestCase
 
         $team->refresh();
         $this->assertSame('0', (string) $team->getSetting('assistant_auto_respond', '0'));
-
-        $blockedExists = SettingsRepositoryFactory::create()
-            ->checkIfPropertyExists('user_'.$user->id, 'chat_ai_assistance_blocked');
-
-        $this->assertFalse($blockedExists, 'Allowing AI should not persist an opt-out row');
+        $this->assertFalse(
+            filter_var($team->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOL),
+            'Enabling AI should clear team opt-out (chat_ai_assistance_blocked).',
+        );
     }
 
-    public function test_ai_toggle_with_contact_id_stores_preference_on_contact_not_user_settings(): void
+    public function test_ai_toggle_with_contact_id_stores_preference_on_contact_not_team_settings(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
@@ -74,11 +72,11 @@ class ChatAiTogglePreferenceIsolationTest extends TestCase
         $this->assertFalse($contact->data->chat_assistant_ai_enabled);
         $this->assertSame('keep-me', $contact->data->notes);
 
-        $blockedExists = SettingsRepositoryFactory::create()
-            ->checkIfPropertyExists('user_'.$user->id, 'chat_ai_assistance_blocked');
-        $this->assertFalse($blockedExists, 'Contact-scoped toggle must not set user opt-out');
-
         $team->refresh();
         $this->assertSame('0', (string) $team->getSetting('assistant_auto_respond', '0'));
+        $this->assertFalse(
+            filter_var($team->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOL),
+            'Contact-scoped toggle must not set team opt-out.',
+        );
     }
 }

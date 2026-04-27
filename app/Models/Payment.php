@@ -21,11 +21,15 @@ class Payment extends Model
         'amount',
         'remarks',
         'status',
+        'source_provider',
+        'source_reference_id',
+        'source_synced_at',
     ];
 
     protected $casts = [
         'transaction_type' => TransactionType::class,
         'date' => 'date',
+        'source_synced_at' => 'datetime',
     ];
 
     protected $appends = ['transaction_type_label'];
@@ -38,11 +42,6 @@ class Payment extends Model
             {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
-        });
-
-        static::addGlobalScope('fromJuly2024', function ($builder)
-        {
-            $builder->where('date', '>=', '2024-07-01 00:00:00');
         });
     }
 

@@ -206,4 +206,67 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('WhatsApp message sent to 5491111223344', $allowed);
         $this->assertSame('5491111223344', $gateway->lastTo);
     }
+
+    public function test_send_whatsapp_message_second_call_skipped_in_single_send_mode(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $gateway = new class implements WhatsAppGateway
+        {
+            public int $sendCount = 0;
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                $this->sendCount++;
+
+                return ['ok' => true];
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        };
+
+        $this->actingAs($user);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setWhatsAppGatewayOverride($gateway);
+        $service->setRequestContext($user->id, $team->id, null);
+        $service->setWhatsAppToolSingleCustomerSendPerTurn(true);
+
+        $first = $service->execute('send_whatsapp_message', [
+            'phone' => '34111222333',
+            'message' => 'Primero [DEMO_FLOW:demo]',
+        ]);
+        $second = $service->execute('send_whatsapp_message', [
+            'phone' => '34111222333',
+            'message' => 'Segundo',
+        ]);
+
+        $this->assertStringContainsString('WhatsApp message sent to 34111222333', $first);
+        $this->assertStringContainsString('Opening WhatsApp was already sent in this turn', $second);
+        $this->assertSame(1, $gateway->sendCount);
+    }
 }

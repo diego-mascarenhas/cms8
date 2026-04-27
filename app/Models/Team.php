@@ -6,6 +6,8 @@ use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
@@ -71,6 +73,11 @@ class Team extends JetstreamTeam
         return $this->hasMany(TeamSetting::class);
     }
 
+    public function externalAccounts()
+    {
+        return $this->hasMany(ExternalAccount::class);
+    }
+
     /**
      * Team-scoped files (documents, brand assets) stored in team_files with Spatie media.
      */
@@ -131,20 +138,52 @@ class Team extends JetstreamTeam
 
         $setting = $this->settings()->firstOrNew(['key' => $key]);
 
+        if (! $setting->exists)
+        {
+            $this->syncTeamSettingsSequenceIfNeeded();
+        }
+
         $setting->fill([
             'type' => $options['type'],
             'group' => $options['group'],
             'is_encrypted' => $options['is_encrypted'],
         ]);
 
-        if (! $setting->exists)
-        {
-            $setting->save();
-        }
-
         $setting->value = $value;
 
         return $setting->save();
+    }
+
+    private function syncTeamSettingsSequenceIfNeeded(): void
+    {
+        if (DB::getDriverName() !== 'pgsql')
+        {
+            return;
+        }
+
+        DB::statement("
+            SELECT setval(
+                pg_get_serial_sequence('team_settings', 'id'),
+                COALESCE((SELECT MAX(id) FROM team_settings), 0) + 1,
+                false
+            )
+        ");
+    }
+
+    public function hasPasswordsMasterKey(): bool
+    {
+        return filled($this->getSetting('passwords_master_key_hash'));
+    }
+
+    public function verifyPasswordsMasterKey(string $plainMasterKey): bool
+    {
+        $hash = $this->getSetting('passwords_master_key_hash');
+        if (! is_string($hash) || $hash === '')
+        {
+            return false;
+        }
+
+        return Hash::check($plainMasterKey, $hash);
     }
 
     /**

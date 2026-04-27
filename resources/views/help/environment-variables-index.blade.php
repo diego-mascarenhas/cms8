@@ -41,6 +41,18 @@
                         <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                    {{ __('Google People y Calendar (OAuth)') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Sincronizar contactos y eventos del calendario de una cuenta Google por equipo. Credenciales OAuth en el servidor y conexión desde Team Settings.') }}</p>
+                                <a href="{{ route('help.environment-variables.google-people-calendar') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
                                     <i class="ti ti-brand-wordpress me-2 text-success"></i>
                                     {{ __('WooCommerce') }}
                                 </h6>

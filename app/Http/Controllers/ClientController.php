@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ClientDataTable;
+use App\Models\Contact;
 use App\Models\Enterprise;
+use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
+use App\Models\StripeSubscription;
+use App\Policies\ContactPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
 class ClientController extends Controller
@@ -37,6 +42,14 @@ class ClientController extends Controller
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
         $placeData = session('place_data', []);
+        $prefillData = array_filter([
+            'name' => request()->query('name', ''),
+            'email' => request()->query('email', ''),
+            'phone' => request()->query('phone', ''),
+            'website' => request()->query('website', ''),
+            'code' => request()->query('code', ''),
+        ], static fn ($value) => is_string($value) && trim($value) !== '');
+        $linkSubscriptionId = request()->query('link_subscription_id');
         $data = (object) array_merge([
             'name' => '',
             'email' => '',
@@ -52,7 +65,8 @@ class ClientController extends Controller
             'latitude' => '',
             'longitude' => '',
             'contact_person' => '',
-        ], $placeData);
+            'link_subscription_id' => $linkSubscriptionId,
+        ], $placeData, $prefillData);
         $trackingId = session('client_form_tracking_id');
 
         return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId'));
@@ -63,7 +77,73 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
+        $teamId = auth()->user()->currentTeam->id;
+
+        if ($request->filled('id'))
+        {
+            $enterprise = Enterprise::query()
+                ->where('id', $request->id)
+                ->where('team_id', $teamId)
+                ->firstOrFail();
+
+            $this->authorize('update', $enterprise);
+
+            $statusFormTypeId = EnterpriseStatus::resolveFormEnterpriseTypeId($enterprise->type_id);
+            $allowedStatusIds = EnterpriseStatus::getOptions($statusFormTypeId)->pluck('id')->all();
+
+            $request->validate([
+                'name' => 'required|string|min:3|max:75',
+                'status_id' => ['required', 'integer', Rule::in($allowedStatusIds)],
+                'email' => 'nullable|email',
+                'website' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'whatsapp' => 'nullable|string|max:20',
+                'address' => 'nullable|string|max:255',
+                'postal_code' => 'nullable|string|max:20',
+                'locality' => 'nullable|string|max:50',
+                'province' => 'nullable|string|max:50',
+                'country' => 'nullable|string|max:100',
+                'opening_hours' => 'nullable|string|max:2000',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
+                'contact_person' => 'nullable|string|max:255',
+                'code' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('enterprises', 'code')
+                        ->where(fn ($q) => $q->where('team_id', $teamId))
+                        ->ignore($enterprise->id),
+                ],
+            ]);
+
+            $enterprise->update([
+                'name' => $request->name,
+                'status_id' => (int) $request->status_id,
+                'email' => $request->email,
+                'website' => $request->website,
+                'phone' => $request->phone,
+                'whatsapp' => $request->whatsapp,
+                'address' => $request->address,
+                'postal_code' => $request->postal_code,
+                'locality' => $request->locality,
+                'province' => $request->province,
+                'country' => $request->country,
+                'code' => $request->filled('code') ? trim((string) $request->code) : null,
+                'data' => array_merge((array) ($enterprise->data ?? []), [
+                    'opening_hours' => $request->input('opening_hours'),
+                    'latitude' => $request->input('latitude'),
+                    'longitude' => $request->input('longitude'),
+                    'contact_person' => $request->input('contact_person'),
+                ]),
+            ]);
+
+            return redirect()->route('client-list')->with('success', 'Record saved successfully.');
+        }
+
         $this->authorize('create', Enterprise::class);
+
+        $allowedStatusIds = EnterpriseStatus::getOptions(1)->pluck('id')->all();
 
         $data = $request->except(['id', '_token']);
 
@@ -82,11 +162,35 @@ class ClientController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'contact_person' => 'nullable|string|max:255',
+            'code' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('enterprises', 'code')
+                    ->where(fn ($q) => $q->where('team_id', $teamId)),
+            ],
             'data' => 'nullable|array',
+            'status_id' => ['nullable', 'integer', Rule::in($allowedStatusIds)],
         ]);
 
-        $data['team_id'] = auth()->user()->currentTeam->id;
+        $data['team_id'] = $teamId;
         $data['status_id'] = $request->status_id ?? 1;
+        $data['code'] = $request->filled('code') ? trim((string) $request->code) : null;
+
+        $linkSubscriptionId = (int) $request->input('link_subscription_id', 0);
+        if ($linkSubscriptionId > 0)
+        {
+            $linkSubscription = StripeSubscription::query()
+                ->where('id', $linkSubscriptionId)
+                ->where('team_id', $teamId)
+                ->first();
+
+            if ($linkSubscription && blank($data['code']) && filled($linkSubscription->customer_id))
+            {
+                // Creating from Stripe link flow: enforce customer_id as enterprise code.
+                $data['code'] = (string) $linkSubscription->customer_id;
+            }
+        }
 
         $data['data'] = array_merge($data, [
             'opening_hours' => $request->input('opening_hours'),
@@ -95,10 +199,19 @@ class ClientController extends Controller
             'contact_person' => $request->input('contact_person'),
         ]);
 
-        Enterprise::updateOrCreate(
+        $createdEnterprise = Enterprise::updateOrCreate(
             ['id' => $request->id],
             $data,
         );
+
+        if ($linkSubscriptionId > 0)
+        {
+            return redirect()
+                ->route('subscription.index')
+                ->with('success', __('stripe_subscription.link.auto_link_success', [
+                    'client' => $createdEnterprise->name,
+                ]));
+        }
 
         return redirect()->route('client-list')->with('success', 'Record saved successfully.');
     }
@@ -111,18 +224,20 @@ class ClientController extends Controller
         $client = Enterprise::with([
             'responsible',
             'status',
+            'enterpriseBillingAddresses.taxStatusType',
+            'contacts' => function ($query)
+            {
+                $query->with(['status', 'user.roles']);
+            },
             'projects.responsible',
             'projects.status',
             'projects.category',
             'services.currency',
+            'services.serviceType',
             'invoices.billingAddress',
         ])->findOrFail($id);
 
-        // Ensure it's a client (type_id = 1)
-        if ($client->type_id != 1)
-        {
-            return redirect()->route('client-list')->with('error', 'Record not found.');
-        }
+        $this->authorize('view', $client);
 
         // Separate active and past projects
         // Past projects: FINISHED (10), INVOICED (12), NOT_APPROVED (13)
@@ -138,53 +253,38 @@ class ClientController extends Controller
             return in_array($project->status_id, $pastProjectStatuses);
         });
 
-        // Get services
-        $services = $client->services;
+        // Get services (relation; keep ordering stable for tables)
+        $services = $client->services->sortBy('id')->values();
 
-        // Get unique collaborators from projects
-        $collaborators = collect();
-        foreach ($client->projects as $project)
+        $billingAddresses = $client->enterpriseBillingAddresses->sortByDesc('status')->values();
+
+        $linkedContacts = $client->contacts->sortBy('name')->values();
+        $enterpriseDepartments = EnterpriseDepartment::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $invoices = $client->invoices->sortByDesc(function ($invoice)
         {
-            if ($project->responsible)
+            if (empty($invoice->date))
             {
-                $collaborators->push($project->responsible);
+                return 0;
             }
-        }
-        $collaborators = $collaborators->unique('id');
 
-        // Fix N+1: Load project counts for all collaborators at once
-        if ($collaborators->isNotEmpty())
-        {
-            $collaboratorIds = $collaborators->pluck('id')->toArray();
-            $projectCounts = \App\Models\User::whereIn('id', $collaboratorIds)
-                ->withCount('projects')
-                ->get()
-                ->keyBy('id');
+            return \Carbon\Carbon::parse($invoice->date)->timestamp;
+        })->values();
 
-            foreach ($collaborators as $collaborator)
-            {
-                $collaborator->projects_count = $projectCounts[$collaborator->id]->projects_count ?? 0;
-            }
-        }
-
-        // Get language combinations from projects
-        $languageCombinations = collect();
-        foreach ($client->projects as $project)
-        {
-            if (! empty($project->language_combination))
-            {
-                $languageCombinations->push($project->language_combination);
-            }
-        }
-        $languageCombinations = $languageCombinations->unique();
+        $invoiceBalanceTotal = $client->invoices->sum('balance');
 
         return view('client.show', compact(
             'client',
             'activeProjects',
             'pastProjects',
             'services',
-            'collaborators',
-            'languageCombinations',
+            'billingAddresses',
+            'linkedContacts',
+            'enterpriseDepartments',
+            'invoices',
+            'invoiceBalanceTotal',
         ));
     }
 
@@ -193,19 +293,22 @@ class ClientController extends Controller
      */
     public function edit(string $id)
     {
-        $row = Enterprise::find($id);
+        $row = Enterprise::query()
+            ->where('id', $id)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->first();
 
         if (! $row)
         {
             return redirect()->route('client-list')->with('error', 'Client not found.');
         }
 
+        $this->authorize('edit', $row);
+
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
 
-        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
-
-        return view('client.form', compact('data', 'enterpriseStatuses'));
+        return view('client.form', compact('data'));
     }
 
     /**
@@ -392,6 +495,156 @@ class ClientController extends Controller
         $header = preg_replace('/[^a-z0-9_]/', '_', $header);
 
         return $header;
+    }
+
+    /**
+     * JSON list of team contacts not yet linked to this client (for attach modal).
+     */
+    public function linkableContacts(Request $request, string $id)
+    {
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $linkedIds = $enterprise->contacts()->pluck('contacts.id');
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->when($linkedIds->isNotEmpty(), function ($q) use ($linkedIds)
+            {
+                $q->whereNotIn('id', $linkedIds);
+            });
+
+        (ContactPolicy::getQueryFilter(auth()->user()))($query);
+
+        if ($search !== '')
+        {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($q) use ($like)
+            {
+                $q->where('name', 'like', $like)
+                    ->orWhere('surname', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like);
+            });
+        }
+
+        $contacts = $query->orderBy('name')->orderBy('surname')->limit(50)->get(['id', 'name', 'surname', 'email', 'phone']);
+
+        return response()->json(['contacts' => $contacts]);
+    }
+
+    /**
+     * Attach an existing contact to this client (pivot contact_enterprise).
+     */
+    public function attachContact(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer',
+            'department_id' => 'nullable|integer|exists:enterprise_departments,id',
+        ]);
+
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $query = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->whereKey($validated['contact_id']);
+
+        (ContactPolicy::getQueryFilter(auth()->user()))($query);
+
+        $contact = $query->firstOrFail();
+
+        if ($contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este contacto ya está vinculado a este cliente.',
+            ], 422);
+        }
+
+        $contact->enterprises()->syncWithoutDetaching([
+            $enterprise->id => [
+                'department_id' => $validated['department_id'] ?? null,
+            ],
+        ]);
+
+        if ((int) $contact->status_id === 5 && ! $contact->current_enterprise_id)
+        {
+            $contact->update(['current_enterprise_id' => $enterprise->id]);
+        }
+
+        $contact->load(['user.roles']);
+
+        $displayName = trim($contact->name.' '.($contact->surname ?? ''));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contacto vinculado correctamente.',
+            'contact' => [
+                'id' => $contact->id,
+                'name' => $displayName,
+                'email' => $contact->email ?: '',
+                'phone' => $contact->phone ?: '',
+                'roles' => $contact->user && $contact->user->roles->isNotEmpty()
+                    ? $contact->user->roles->pluck('name')->join(', ')
+                    : '',
+            ],
+        ]);
+    }
+
+    /**
+     * Remove pivot link between this client and a contact.
+     */
+    public function detachContact(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer',
+        ]);
+
+        $enterprise = Enterprise::query()
+            ->where('id', $id)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->firstOrFail();
+
+        $this->authorize('update', $enterprise);
+
+        $contact = Contact::query()
+            ->where('team_id', $enterprise->team_id)
+            ->whereKey($validated['contact_id'])
+            ->firstOrFail();
+
+        if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este contacto no está vinculado a este cliente.',
+            ], 422);
+        }
+
+        $contact->enterprises()->detach($enterprise->id);
+        $contact->unsetRelation('enterprises');
+
+        if ((int) $contact->current_enterprise_id === (int) $enterprise->id)
+        {
+            $nextEnterprise = $contact->enterprises()->orderBy('enterprises.id')->first();
+            $contact->update([
+                'current_enterprise_id' => $nextEnterprise?->id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contacto desvinculado correctamente.',
+        ]);
     }
 
     public function showImportForm()

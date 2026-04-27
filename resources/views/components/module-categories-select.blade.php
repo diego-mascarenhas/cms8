@@ -1,4 +1,4 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true, 'listingFilter' => false])
+@props(['id', 'name' => null, 'errorKey' => null, 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'multiple' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true, 'listingFilter' => false])
 
 @php
     if ($listingFilter)
@@ -6,6 +6,14 @@
         $allowManageModal = false;
         $allowQuickCreate = false;
     }
+@endphp
+
+@php
+    $selectName = $name ?: ($multiple ? $id.'[]' : $id);
+    $errorField = $errorKey ?: $id;
+    $selectedValues = $multiple
+        ? collect(old($errorField, $selected ?? []))->map(fn ($value) => (string) $value)->all()
+        : [(string) old($errorField, $selected ?? '')];
 @endphp
 
 <div class="form-group">
@@ -23,12 +31,13 @@
     </div>
     <select
         id="{{ $id }}"
-        name="{{ $id }}"
-        class="form-control select2 @error($id) is-invalid @enderror"
+        name="{{ $selectName }}"
+        class="form-control select2 @error($errorField) is-invalid @enderror"
         data-placeholder="{{ $emptyText }}"
         data-allow-clear="true"
         @if($moduleKey) data-module-key="{{ $moduleKey }}" data-empty-text="{{ $emptyText }}" data-show-empty-option="{{ ($showNull || $allowEmpty) ? '1' : '0' }}" data-allow-empty-select="{{ $allowEmpty ? '1' : '0' }}" @endif
         {{ $allowEmpty ? '' : 'required' }}
+        @if($multiple) multiple @endif
         @if($disabled) disabled @endif
     >
         @if($showNull || $allowEmpty)
@@ -138,13 +147,13 @@
             @endphp
             @if(!$hasSubcategories)
                 {{-- Parent with no subcategories: make it selectable so user can choose it --}}
-                <option value="{{ $parentCategory->id }}" {{ $selected == $parentCategory->id ? 'selected' : '' }}>
+                <option value="{{ $parentCategory->id }}" {{ in_array((string) $parentCategory->id, $selectedValues, true) ? 'selected' : '' }}>
                     {{ $parentCategory->name }}
                 </option>
             @else
                 <optgroup label="{{ $parentCategory->name }}">
                     @foreach($allSubcategories[$parentCategory->id] as $subcategory)
-                        <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
+                        <option value="{{ $subcategory->id }}" {{ in_array((string) $subcategory->id, $selectedValues, true) ? 'selected' : '' }}>
                             {{ $subcategory->name }}
                         </option>
                     @endforeach
@@ -153,7 +162,7 @@
         @endforeach
     </select>
 
-    @error($id)
+    @error($errorField)
         <span class="invalid-feedback" role="alert">
             <strong>{{ $message }}</strong>
         </span>
@@ -164,11 +173,48 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if ($.fn.select2 && $('#{{ $id }}').length) {
-            $('#{{ $id }}').select2({
+            const $moduleCategorySelect = $('#{{ $id }}');
+            $moduleCategorySelect.select2({
                 placeholder: @json($emptyText),
                 allowClear: {{ $allowEmpty ? 'true' : 'false' }},
+                language: {
+                    noResults: function () {
+                        return '';
+                    }
+                },
+                escapeMarkup: function (markup) {
+                    return markup;
+                },
                 width: '100%',
             });
+            const $container = $moduleCategorySelect.next('.select2-container');
+            const isMultipleSelect = $moduleCategorySelect.prop('multiple');
+            if (isMultipleSelect) {
+                $container.find('.select2-selection--multiple').css({
+                    minHeight: 'calc(2.25rem + 2px)',
+                    padding: '0',
+                    borderColor: '#d9dee3',
+                    boxShadow: 'none'
+                });
+                $container.find('.select2-selection--multiple .select2-search--inline').css({
+                    margin: '0',
+                    width: '100%'
+                });
+                $container.find('.select2-selection--multiple .select2-selection__rendered').css({
+                    minHeight: 'calc(2.25rem + 2px)',
+                    padding: '.375rem .75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '.25rem'
+                });
+                $container.find('.select2-selection--multiple .select2-search--inline .select2-search__field').css({
+                    margin: '0',
+                    textIndent: '0',
+                    height: 'auto',
+                    minHeight: '1.5rem'
+                });
+            }
         }
     });
 </script>
@@ -176,7 +222,7 @@
     @include('components.partials.select2-module-category-quick-create', [
         'selectId' => $id,
         'moduleKey' => $moduleKey,
-        'multiple' => false,
+        'multiple' => $multiple,
     ])
 @endif
 @endpush
@@ -226,6 +272,14 @@
                     $s.select2({
                         placeholder: emptyText,
                         allowClear: allowClear,
+                        language: {
+                            noResults: function () {
+                                return '';
+                            }
+                        },
+                        escapeMarkup: function (markup) {
+                            return markup;
+                        },
                         width: '100%',
                     });
 

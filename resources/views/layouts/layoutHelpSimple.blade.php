@@ -63,6 +63,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.chat-assistant') ? 'active' : '' }}">
+          <a href="{{ route('help.chat-assistant') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-message-chatbot"></i>
+            <div>{{ __('Chat and Assistant') }}</div>
+          </a>
+        </li>
+
         <li class="menu-header small text-uppercase">
           <span class="menu-header-text">{{ __('Variables de Entorno') }}</span>
         </li>

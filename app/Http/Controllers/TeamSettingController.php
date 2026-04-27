@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ExternalProvider;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
@@ -9,9 +10,11 @@ use App\Models\Prompt;
 use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
+use App\Services\DefaultAssistantFlowPromptsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
 
@@ -29,7 +32,12 @@ class TeamSettingController extends Controller
             ->get()
             ->groupBy('group');
 
-        return view('team-settings.index', compact('team', 'groupedSettings'));
+        $googleExternalAccount = $team->externalAccounts()
+            ->where('provider', ExternalProvider::Google)
+            ->latest('id')
+            ->first();
+
+        return view('team-settings.index', compact('team', 'groupedSettings', 'googleExternalAccount'));
     }
 
     public function businessConfig(Team $team)
@@ -181,10 +189,37 @@ class TeamSettingController extends Controller
                 }
             }
 
-            // When group is chat, ensure assistant_chat_stub is persisted (unchecked = false)
+            // When group is chat, ensure boolean team settings are persisted (unchecked = false in POST)
+            if ($group === 'chat' && ! array_key_exists('assistant_auto_respond', $settings))
+            {
+                $team->setSetting('assistant_auto_respond', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
             if ($group === 'chat' && ! array_key_exists('assistant_chat_stub', $settings))
             {
                 $team->setSetting('assistant_chat_stub', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
+            if ($group === 'chat' && ! array_key_exists('assistant_keyword_intent_routing', $settings))
+            {
+                $team->setSetting('assistant_keyword_intent_routing', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
+            if ($group === 'chat' && ! array_key_exists('chat_ai_assistance_blocked', $settings))
+            {
+                $team->setSetting('chat_ai_assistance_blocked', false, [
                     'group' => 'chat',
                     'type' => 'boolean',
                     'is_encrypted' => false,
@@ -210,6 +245,28 @@ class TeamSettingController extends Controller
     }
 
     /**
+     * Create missing default assistant flow rows in module_prompts (editable in /prompt/list).
+     * Does not overwrite existing prompt_instruction text.
+     */
+    public function seedDefaultAssistantFlowPrompts(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        if ((int) $team->id !== (int) (auth()->user()->currentTeam?->id))
+        {
+            return redirect()
+                ->back()
+                ->with('error', __('Switch to this team in the app bar to run this action.'));
+        }
+
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+
+        return redirect()
+            ->back()
+            ->with('success', __('Default assistant flow prompts are ready. You can review and edit them in Prompts.'));
+    }
+
+    /**
      * Get the appropriate type for a setting
      */
     private function getSettingType(string $key): string
@@ -222,7 +279,10 @@ class TeamSettingController extends Controller
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
+            'assistant_auto_respond',
             'assistant_chat_stub',
+            'assistant_keyword_intent_routing',
+            'chat_ai_assistance_blocked',
             'public_catalog_enabled',
         ];
 
@@ -432,12 +492,37 @@ class TeamSettingController extends Controller
                 'title' => __('Chat / Asistente'),
                 'icon' => 'ti ti-lifebuoy',
                 'settings' => [
+                    'assistant_auto_respond' => [
+                        'label' => __('Humano Assistant replies'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_auto_respond', '1') ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('When enabled, the assistant can reply automatically. Turn off to pause (same as the chat sidebar).'),
+                    ],
                     'assistant_chat_stub' => [
-                        'label' => __('Modo prueba del asistente'),
+                        'label' => __('Predefined test responses'),
                         'type' => 'checkbox',
                         'value' => $team->getSetting('assistant_chat_stub', false) ? '1' : '0',
                         'is_encrypted' => false,
-                        'help' => __('Si está activo, el chat y WhatsApp no llaman a la IA real; devuelven una respuesta de prueba para poder probar el flujo sin consumir créditos.'),
+                        'help' => __('If enabled, chat and WhatsApp do not call the real AI; they return a test response (no credits, same as the chat sidebar).'),
+                    ],
+                    'assistant_keyword_intent_routing' => [
+                        'label' => __('Keyword routing'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_keyword_intent_routing', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'routing',
+                        'help' => __('Off means :default. On means :keyword, using module prompts and assistant tool intent. Same value as the “default flow” (inverted) switch in the chat sidebar.', [
+                            'default' => __('Default assistant flow (AI discovery)'),
+                            'keyword' => __('Keyword routing'),
+                        ]),
+                    ],
+                    'chat_ai_assistance_blocked' => [
+                        'label' => __('Block assistant AI button'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
                     ],
                 ],
             ],
@@ -800,7 +885,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('analytics_credentials_json'),
                         'is_encrypted' => true,
                         'placeholder' => 'Paste the full JSON key from Google Cloud Console...',
-                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API and Google Calendar API, download the JSON key. These credentials will be used for both Analytics and Calendar.',
+                        'help' => 'Create a service account in Google Cloud, enable Google Analytics Data API, and download the JSON key.',
                     ],
                     'analytics_property_id' => [
                         'label' => 'GA4 Property ID',
@@ -810,13 +895,19 @@ class TeamSettingController extends Controller
                         'placeholder' => '123456789',
                         'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
                     ],
+                ],
+            ],
+            'calendar' => [
+                'title' => 'Calendar',
+                'icon' => 'ti ti-calendar-event',
+                'settings' => [
                     'google_calendar_id' => [
                         'label' => 'Google Calendar ID (Optional)',
                         'type' => 'text',
                         'value' => $team->getSetting('google_calendar_id'),
                         'is_encrypted' => false,
                         'placeholder' => 'primary or your-calendar@group.calendar.google.com',
-                        'help' => 'Leave empty to use "primary" calendar. To use a specific calendar, share it with the service account email and paste the calendar ID here.',
+                        'help' => 'Leave empty to use "primary". To sync a specific calendar, paste its Calendar ID from Google Calendar settings.',
                     ],
                 ],
             ],
@@ -934,6 +1025,67 @@ class TeamSettingController extends Controller
         $tokenCreated = $team->getSetting('api_token_created_at');
 
         return view('team-settings.api-tokens', compact('team', 'currentToken', 'tokenName', 'tokenAbilities', 'tokenCreated'));
+    }
+
+    public function passwords(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $hasMasterKey = $team->hasPasswordsMasterKey();
+        $masterKeyHint = (string) $team->getSetting('passwords_master_key_hint', '');
+        $rotationAt = $team->getSetting('passwords_rotation_at');
+
+        return view('team-settings.passwords', compact('team', 'hasMasterKey', 'masterKeyHint', 'rotationAt'));
+    }
+
+    public function updatePasswordsMasterKey(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $rules = [
+            'new_master_key' => ['required', 'string', 'min:8', 'confirmed'],
+            'master_key_hint' => ['nullable', 'string', 'max:120'],
+        ];
+
+        if ($team->hasPasswordsMasterKey())
+        {
+            $rules['current_master_key'] = ['required', 'string'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($team->hasPasswordsMasterKey() && ! $team->verifyPasswordsMasterKey((string) $validated['current_master_key']))
+        {
+            return redirect()
+                ->back()
+                ->withErrors(['current_master_key' => __('The current master key is invalid.')])
+                ->withInput();
+        }
+
+        $team->setSetting('passwords_master_key_hash', Hash::make((string) $validated['new_master_key']), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => true,
+        ]);
+
+        $team->setSetting('passwords_master_key_hint', (string) ($validated['master_key_hint'] ?? ''), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('passwords_rotation_at', now()->toDateTimeString(), [
+            'group' => 'passwords',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+
+        $request->session()->forget("passwords_unlocked_team_{$team->id}");
+        $request->session()->forget("passwords_unlocked_until_team_{$team->id}");
+
+        return redirect()
+            ->route('team-settings.passwords', $team)
+            ->with('success', __('Master key saved successfully.'));
     }
 
     /**

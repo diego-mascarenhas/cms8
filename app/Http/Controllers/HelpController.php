@@ -56,8 +56,12 @@ class HelpController extends Controller
      */
     public function index()
     {
+        $registrationMode = strtolower((string) config('registration.mode', 'free'));
+        $showOnboardingRegistrationPaymentStep = in_array($registrationMode, ['checkout', 'gate'], true);
+
         return view('help.index', [
             'apiToken' => $this->getUserApiToken(),
+            'showOnboardingRegistrationPaymentStep' => $showOnboardingRegistrationPaymentStep,
         ]);
     }
 
@@ -187,6 +191,16 @@ class HelpController extends Controller
     public function environmentVariablesGoogleAnalytics()
     {
         return view('help.environment-variables-google-analytics', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Display Google People & Calendar (OAuth) sync configuration documentation
+     */
+    public function googlePeopleCalendarSync()
+    {
+        return view('help.environment-variables-google-people-calendar', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }

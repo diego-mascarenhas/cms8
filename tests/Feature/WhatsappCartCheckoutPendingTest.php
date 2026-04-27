@@ -165,4 +165,19 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $this->assertNull($result);
         $this->assertFalse($service->sendCalled);
     }
+
+    public function test_detect_whatsapp_intent_routes_agregar_cita_to_assistant(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+
+        $service = new WhatsAppMessageOrchestrator($team);
+
+        $method = (new ReflectionClass($service))->getMethod('detectWhatsAppIntent');
+        $method->setAccessible(true);
+
+        $intent = $method->invoke($service, 'Agregar cita para hoy a las 15 hs');
+
+        $this->assertSame('assistant', $intent);
+    }
 }

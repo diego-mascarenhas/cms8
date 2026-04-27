@@ -6,11 +6,15 @@ use App\Actions\Subscriptions\SyncStripeSubscriptions as SyncStripeSubscriptions
 use App\DataTables\StripeSubscriptionDataTable;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
+use App\Models\Enterprise;
+use App\Models\Service;
+use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
 use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamStripeCustomerService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Stripe\Stripe;
 use Stripe\StripeClient;
 
@@ -21,11 +25,53 @@ class SubscriptionController extends Controller
      */
     public function index(StripeSubscriptionDataTable $dataTable)
     {
-        return $dataTable->render('subscription.index');
+        $teamId = auth()->user()->currentTeam?->id;
+        $selectedStatus = strtolower(trim((string) request()->query('status', '')));
+        $statuses = [
+            'active',
+            'trialing',
+            'past_due',
+            'unpaid',
+            'incomplete',
+            'incomplete_expired',
+            'canceled',
+            'paused',
+        ];
+
+        $statusCounts = array_fill_keys($statuses, 0);
+
+        if ($teamId)
+        {
+            $counts = StripeSubscription::query()
+                ->where('team_id', $teamId)
+                ->selectRaw('LOWER(TRIM(status)) as normalized_status, COUNT(*) as total')
+                ->groupByRaw('LOWER(TRIM(status))')
+                ->pluck('total', 'normalized_status');
+
+            foreach ($counts as $status => $total)
+            {
+                $normalized = strtolower(trim((string) $status));
+                if (array_key_exists($normalized, $statusCounts))
+                {
+                    $statusCounts[$normalized] = (int) $total;
+                }
+            }
+        }
+
+        if (! in_array($selectedStatus, $statuses, true))
+        {
+            $selectedStatus = '';
+        }
+
+        return $dataTable->render('subscription.index', [
+            'statusCounts' => $statusCounts,
+            'subscriptionStatuses' => $statuses,
+            'selectedStatus' => $selectedStatus,
+        ]);
     }
 
     /**
-     * Sync client subscriptions from Stripe to local stripe_subscriptions table.
+     * Sync client subscriptions from Stripe to local service_syncs staging table.
      * Uses the current team's Stripe API key (test or live) from team settings.
      */
     public function syncFromStripe()
@@ -33,20 +79,143 @@ class SubscriptionController extends Controller
         $team = auth()->user()->currentTeam;
         if (! $team)
         {
-            return redirect()->route('subscription.index')->with('error', __('Equipo no seleccionado.'));
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.errors.no_team'));
         }
 
         $secret = $team->getSetting('stripe_secret');
         if (empty($secret))
         {
-            return redirect()->route('subscription.index')->with('error', __('Configura la clave secreta de Stripe en Ajustes del equipo para poder sincronizar. Puedes usar la API de test (claves que empiezan por sk_test_).'));
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.errors.no_stripe_secret'));
         }
 
         $stripeService = new StripeSubscriptionService(new StripeClient($secret));
         $sync = new SyncStripeSubscriptionsAction($stripeService);
         $count = $sync->handle($team);
 
-        return redirect()->route('subscription.index')->with('success', __('Suscripciones sincronizadas desde Stripe: :count procesadas.', ['count' => $count]));
+        return redirect()->route('subscription.index')->with('success', __('stripe_subscription.sync_success', ['count' => $count]));
+    }
+
+    /**
+     * Form: assign this subscription's Stripe customer id (cus_…) to a local client (enterprise) code.
+     */
+    public function linkClientForm(StripeSubscription $stripeSubscription)
+    {
+        $this->denyIfCannotLinkClient();
+        $this->ensureStripeSubscriptionInCurrentTeam($stripeSubscription);
+
+        if (! $stripeSubscription->customer_id)
+        {
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.link.errors.missing_stripe_customer'));
+        }
+
+        if ($this->isSubscriptionLinkedToEnterprise($stripeSubscription))
+        {
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.link.errors.already_linked'));
+        }
+
+        $enterprises = Enterprise::query()
+            ->clients()
+            ->orderBy('name')
+            ->get();
+
+        $linkedService = Service::withoutGlobalScopes()
+            ->with(['serviceType', 'currency', 'enterprise'])
+            ->where('subscription_id', $stripeSubscription->id)
+            ->whereNull('deleted_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $matchedEnterprise = Enterprise::query()
+            ->where('team_id', $stripeSubscription->team_id)
+            ->where('code', $stripeSubscription->customer_id)
+            ->whereNull('deleted_at')
+            ->with(['contacts' => fn ($q) => $q->select(['id', 'name', 'surname', 'email', 'phone', 'current_enterprise_id'])])
+            ->first();
+
+        return view('subscription.link-client', [
+            'subscription' => $stripeSubscription,
+            'enterprises' => $enterprises,
+            'linkedService' => $linkedService,
+            'matchedEnterprise' => $matchedEnterprise,
+        ]);
+    }
+
+    public function linkClient(Request $request, StripeSubscription $stripeSubscription)
+    {
+        $this->denyIfCannotLinkClient();
+        $this->ensureStripeSubscriptionInCurrentTeam($stripeSubscription);
+
+        if (! $stripeSubscription->customer_id)
+        {
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.link.errors.missing_stripe_customer'));
+        }
+
+        if ($this->isSubscriptionLinkedToEnterprise($stripeSubscription))
+        {
+            return redirect()->route('subscription.index')->with('error', __('stripe_subscription.link.errors.already_linked'));
+        }
+
+        $teamId = (int) auth()->user()->currentTeam->id;
+
+        $validated = $request->validate([
+            'enterprise_id' => [
+                'required',
+                'integer',
+                Rule::exists('enterprises', 'id')
+                    ->where(fn ($q) => $q->where('team_id', $teamId)->where('type_id', 1)->whereNull('deleted_at')),
+            ],
+        ]);
+
+        $enterprise = Enterprise::query()->findOrFail($validated['enterprise_id']);
+        $this->authorize('update', $enterprise);
+
+        $customerId = (string) $stripeSubscription->customer_id;
+        if (filled($enterprise->getAttribute('code')) && (string) $enterprise->getAttribute('code') !== $customerId)
+        {
+            return back()->withInput()->with('error', __('stripe_subscription.link.errors.client_has_different_code'));
+        }
+
+        $taken = Enterprise::query()
+            ->where('team_id', $teamId)
+            ->where('code', $customerId)
+            ->where('id', '!=', $enterprise->id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($taken)
+        {
+            return back()->withInput()->with('error', __('stripe_subscription.link.errors.stripe_customer_taken'));
+        }
+
+        $enterprise->update([
+            'code' => $customerId,
+        ]);
+
+        return redirect()->route('subscription.index')->with('success', __('stripe_subscription.link.success'));
+    }
+
+    private function denyIfCannotLinkClient(): void
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasAnyRole(['admin', 'collaborator']))
+        {
+            abort(403);
+        }
+    }
+
+    private function ensureStripeSubscriptionInCurrentTeam(StripeSubscription $stripeSubscription): void
+    {
+        $teamId = auth()->user()->currentTeam?->id;
+        abort_unless($teamId && (int) $stripeSubscription->team_id === (int) $teamId, 403);
+    }
+
+    private function isSubscriptionLinkedToEnterprise(StripeSubscription $subscription): bool
+    {
+        return Enterprise::query()
+            ->where('team_id', $subscription->team_id)
+            ->where('code', $subscription->customer_id)
+            ->whereNull('deleted_at')
+            ->exists();
     }
 
     /**

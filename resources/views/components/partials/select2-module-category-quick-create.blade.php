@@ -20,6 +20,26 @@
         const labelMinChars = @json(__('Please enter at least 2 characters to create a category.'));
         const labelError = @json(__('Could not create the category.'));
 
+        function getCurrentSearchTerm(select2Data) {
+            const dropdownSearch = select2Data?.dropdown?.$search ? String(select2Data.dropdown.$search.val() || '').trim() : '';
+            const dropdownField = select2Data?.$dropdown?.find('.select2-search__field').length
+                ? String(select2Data.$dropdown.find('.select2-search__field').first().val() || '').trim()
+                : '';
+            const containerSearch = select2Data?.$container?.find('.select2-search__field').length
+                ? String(select2Data.$container.find('.select2-search__field').first().val() || '').trim()
+                : '';
+            const openContainerSearch = $('.select2-container--open .select2-search__field').length
+                ? String($('.select2-container--open .select2-search__field').first().val() || '').trim()
+                : '';
+            return {
+                value: dropdownSearch || dropdownField || containerSearch || openContainerSearch,
+                fromDropdown: dropdownSearch.length > 0,
+                fromDropdownField: dropdownField.length > 0,
+                fromContainer: containerSearch.length > 0,
+                fromOpenContainer: openContainerSearch.length > 0,
+            };
+        }
+
         function escapeHtml(text) {
             return $('<div>').text(text).html();
         }
@@ -41,13 +61,14 @@
                 }
 
                 const dropdown = select2Data.$dropdown;
+                dropdown.find('.select2-results__message').css('display', 'none');
                 const results = dropdown.find('.select2-results__options');
                 if (!results.length) {
                     return;
                 }
 
-                const searchInput = select2Data.dropdown.$search;
-                const searchTerm = searchInput ? String(searchInput.val()).trim() : '';
+                const searchInfo = getCurrentSearchTerm(select2Data);
+                const searchTerm = searchInfo.value;
                 const minLen = 2;
 
                 if (searchTerm.length < minLen) {
@@ -64,7 +85,7 @@
                     }
                 });
 
-                if (hasMatchingOption) {
+                if (hasMatchingOption && !isMultiple) {
                     results.find('#' + btnId).closest('li').remove();
                     return;
                 }
@@ -89,6 +110,9 @@
                         }
                     });
                 }
+                if (noResultsMsg.length) {
+                    noResultsMsg.css('display', 'none');
+                }
 
                 const visibleRealOptions = results.find('li.select2-results__option:visible')
                     .not('.select2-results__message')
@@ -97,9 +121,17 @@
                         return $(this).find('#' + btnId).length === 0;
                     });
 
+                if (isMultiple && searchTerm.length === 0) {
+                    visibleRealOptions.hide();
+                } else {
+                    results.find('li.select2-results__option').show();
+                }
+
                 if (noResultsMsg.length) {
                     noResultsMsg.replaceWith(buildQuickAddRow(searchTerm));
                 } else if (!visibleRealOptions.length && !noResultsMsg.length) {
+                    results.append(buildQuickAddRow(searchTerm));
+                } else if (isMultiple && !results.find('#' + btnId).length) {
                     results.append(buildQuickAddRow(searchTerm));
                 }
             } catch (e) {
@@ -125,6 +157,15 @@
                         });
                     });
                 }
+                const openSearchInput = $('.select2-container--open .select2-search__field');
+                if (openSearchInput.length) {
+                    openSearchInput.off('input.moduleCatQuickOpen keyup.moduleCatQuickOpen');
+                    openSearchInput.on('input.moduleCatQuickOpen keyup.moduleCatQuickOpen', function () {
+                        [10, 50, 100, 200, 400].forEach(function (ms) {
+                            setTimeout(checkAndAddButton, ms);
+                        });
+                    });
+                }
             }, 100);
         });
 
@@ -132,6 +173,10 @@
             const searchInput = select.data('select2')?.dropdown?.$search;
             if (searchInput) {
                 searchInput.off('input.moduleCatQuick keyup.moduleCatQuick');
+            }
+            const openSearchInput = $('.select2-container--open .select2-search__field');
+            if (openSearchInput.length) {
+                openSearchInput.off('input.moduleCatQuickOpen keyup.moduleCatQuickOpen');
             }
         });
 
@@ -144,7 +189,8 @@
                 return;
             }
 
-            const searchTerm = select2Data.dropdown.$search ? String(select2Data.dropdown.$search.val()).trim() : '';
+            const searchInfo = getCurrentSearchTerm(select2Data);
+            const searchTerm = searchInfo.value;
             if (searchTerm.length < 2) {
                 alert(labelMinChars);
                 return;

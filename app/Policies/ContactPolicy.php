@@ -182,8 +182,8 @@ class ContactPolicy
     {
         return function ($query) use ($user)
         {
-            // Admin can see all contacts in their team
-            if ($user->hasRole('admin'))
+            // Admin and root can see all contacts in their team
+            if ($user->hasRole(['admin', 'root']))
             {
                 return $query->where('team_id', $user->currentTeam->id);
             }
