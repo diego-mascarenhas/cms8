@@ -14,9 +14,9 @@ class SystemOnboardingWhatsAppService
 {
     protected const ONBOARDING_TEXT = 'Hola, soy del equipo Humano 👋 Te comparto el onboarding para dar de alta tu cuenta paso a paso. Primero te envio un resumen breve y luego las capturas de cada paso.';
 
-    protected const STEP_PAUSE_MIN_MS = 900;
+    protected const STEP_PAUSE_MIN_MS = 2200;
 
-    protected const STEP_PAUSE_MAX_MS = 2400;
+    protected const STEP_PAUSE_MAX_MS = 5200;
 
     /**
      * @return array<int, array{image: string, message: string}>
@@ -133,7 +133,7 @@ class SystemOnboardingWhatsAppService
 
         $gateway->sendMessage(
             $digits,
-            'Listo, onboarding finalizado. Si necesitas ayuda, responde "representante" y dejanos tu mensaje para contactarte.',
+            'Listo, onboarding finalizado. Si necesitas ayuda, podemos derivarte con un representante para acompanarte.',
             ['source' => 'system_onboarding_finish'],
             $actor->id,
         );
@@ -269,7 +269,7 @@ class SystemOnboardingWhatsAppService
         if ($this->containsAny($normalized, ['no', 'problema', 'error', 'no pude', 'duda']))
         {
             return [
-                'message' => 'Gracias por avisar. Si quieres ayuda directa, escribe "representante". Si ya resolviste, responde "listo" y seguimos con el siguiente paso.',
+                'message' => 'Gracias por avisar. Si quieres ayuda directa, escribe "representante".',
                 'media_path' => null,
             ];
         }
@@ -277,7 +277,7 @@ class SystemOnboardingWhatsAppService
         if (! $this->containsAny($normalized, ['listo', 'hecho', 'ok', 'ya', 'si', 'pague', 'pague', 'ya pague', 'ya pague correctamente']))
         {
             return [
-                'message' => "Seguimos en el paso {$step}/".count($steps).'. Responde "listo" cuando lo completes o escribe "representante" para hablar con una persona.',
+                'message' => "Seguimos en el paso {$step}/".count($steps).'. Si necesitas ayuda, escribe "representante".',
                 'media_path' => null,
             ];
         }
@@ -365,13 +365,6 @@ class SystemOnboardingWhatsAppService
 
         $missingMedia = [];
         $sentMedia = 0;
-        $gateway->sendMessage(
-            $digits,
-            WhatsAppOutboundText::sanitize($payload['message']),
-            ['source' => 'system_onboarding_step_text', 'step' => $step],
-            $userId,
-        );
-        $this->sleepRandomPause();
 
         $normalizedPath = '/'.ltrim($payload['image'], '/');
         $absolute = public_path(ltrim($normalizedPath, '/'));
@@ -383,7 +376,7 @@ class SystemOnboardingWhatsAppService
         {
             try
             {
-                if ($gateway->sendMedia($digits, $normalizedPath, null))
+                if ($gateway->sendMedia($digits, $normalizedPath, WhatsAppOutboundText::sanitize($payload['message'])))
                 {
                     $sentMedia = 1;
                 } else
