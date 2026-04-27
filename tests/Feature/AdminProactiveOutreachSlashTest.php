@@ -267,6 +267,6 @@ class AdminProactiveOutreachSlashTest extends TestCase
             'success' => true,
             'action_performed' => 'system_onboarding_whatsapp',
         ]);
-        $this->assertSame(1, self::$systemOnboardingMediaCalls);
+        $this->assertSame(6, self::$systemOnboardingMediaCalls);
     }
 }

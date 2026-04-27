@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 
 class SystemOnboardingWhatsAppService
 {
-    protected const ONBOARDING_TEXT = 'Hola, soy del equipo Humano. Te acompano con el onboarding de venta paso a paso. Responde "listo" para avanzar y, si prefieres hablar con una persona, escribe "representante".';
+    protected const ONBOARDING_TEXT = 'Hola, soy del equipo Humano 👋 Te comparto el onboarding para dar de alta tu cuenta paso a paso. Primero te envio un resumen breve y luego las capturas de cada paso.';
+
+    protected const STEP_PAUSE_MS = 1200;
 
     /**
      * @return array<int, array{image: string, message: string}>
@@ -112,35 +114,56 @@ class SystemOnboardingWhatsAppService
         }
 
         $prospect = Prospect::captureFromWhatsApp($digits, (int) $team->id);
+        $steps = $this->onboardingSteps();
+        $sentMedia = 0;
+        $missingMedia = [];
+
+        foreach ($steps as $index => $step)
+        {
+            $result = $this->sendStep($gateway, $team, $digits, $index + 1, $actor->id);
+            $sentMedia += $result['sent_media_count'];
+            if ($result['missing_media'] !== [])
+            {
+                $missingMedia = array_merge($missingMedia, $result['missing_media']);
+            }
+            $this->sleepBetweenSteps($index + 1, count($steps));
+        }
+
+        $gateway->sendMessage(
+            $digits,
+            'Listo, onboarding finalizado. Si necesitas ayuda, responde "representante" y dejanos tu mensaje para contactarte.',
+            ['source' => 'system_onboarding_finish'],
+            $actor->id,
+        );
+
         $data = is_array($prospect->data) ? $prospect->data : [];
         $data['system_onboarding'] = [
             'active' => true,
-            'step' => 1,
+            'step' => count($steps),
             'awaiting_rep_message' => false,
             'source' => $source ?? 'unknown',
-            'started_at' => now()->toIso8601String(),
+            'started_at' => $data['system_onboarding']['started_at'] ?? now()->toIso8601String(),
             'last_message_at' => now()->toIso8601String(),
+            'sequence_mode' => 'auto_with_pause',
         ];
         $prospect->forceFill([
-            'onboarding_step' => 'system_onboarding_1',
+            'onboarding_step' => 'system_onboarding_sent',
             'data' => $data,
         ])->save();
-
-        $stepResult = $this->sendStep($gateway, $team, $digits, 1, $actor->id);
 
         Log::info('System onboarding WhatsApp sent', [
             'team_id' => $team->id,
             'actor_id' => $actor->id,
             'phone' => $digits,
-            'sent_media_count' => $stepResult['sent_media_count'],
-            'missing_media' => $stepResult['missing_media'],
+            'sent_media_count' => $sentMedia,
+            'missing_media' => $missingMedia,
             'source' => $source ?? 'unknown',
         ]);
 
-        $summary = "System onboarding started for {$digits}. Current step: 1/".count($this->onboardingSteps()).'.';
-        if ($stepResult['missing_media'] !== [])
+        $summary = "System onboarding sent to {$digits}. Media sent: {$sentMedia}.";
+        if ($missingMedia !== [])
         {
-            $summary .= ' Missing/unavailable: '.implode(', ', $stepResult['missing_media']).'.';
+            $summary .= ' Missing/unavailable: '.implode(', ', $missingMedia).'.';
         }
 
         return [
@@ -148,8 +171,8 @@ class SystemOnboardingWhatsAppService
             'response' => $summary,
             'action_performed' => 'system_onboarding_whatsapp',
             'phone' => $digits,
-            'sent_media_count' => $stepResult['sent_media_count'],
-            'missing_media' => $stepResult['missing_media'],
+            'sent_media_count' => $sentMedia,
+            'missing_media' => $missingMedia,
             '_http_status' => 200,
         ];
     }
@@ -350,7 +373,7 @@ class SystemOnboardingWhatsAppService
         {
             try
             {
-                if ($gateway->sendMedia($digits, $normalizedPath, null))
+                if ($gateway->sendMedia($digits, $normalizedPath, WhatsAppOutboundText::sanitize($payload['message'])))
                 {
                     $sentMedia = 1;
                 } else
@@ -372,7 +395,7 @@ class SystemOnboardingWhatsAppService
         $gateway->sendMessage(
             $digits,
             WhatsAppOutboundText::sanitize($payload['message']),
-            ['source' => 'system_onboarding_step', 'step' => $step],
+            ['source' => 'system_onboarding_step_text', 'step' => $step],
             $userId,
         );
 
@@ -380,6 +403,21 @@ class SystemOnboardingWhatsAppService
             'sent_media_count' => $sentMedia,
             'missing_media' => $missingMedia,
         ];
+    }
+
+    private function sleepBetweenSteps(int $currentStep, int $totalSteps): void
+    {
+        if ($currentStep >= $totalSteps)
+        {
+            return;
+        }
+
+        if (app()->environment('testing'))
+        {
+            return;
+        }
+
+        usleep(self::STEP_PAUSE_MS * 1000);
     }
 
     protected function gatewayForTeam(Team $team): WhatsAppGateway
