@@ -12,7 +12,9 @@ use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
 use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
+use App\Services\TaxIdentifierService;
 use App\Services\TeamStripeCustomerService;
+use App\Support\StripeErrorMessage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Stripe\Stripe;
@@ -600,23 +602,9 @@ class SubscriptionController extends Controller
                 'max:50',
                 function ($attribute, $value, $fail) use ($request)
                 {
-                    $country = $request->country;
-                    $taxId = preg_replace('/[^0-9A-Za-z]/', '', $value); // Remove special characters for validation
-
-                    // Validation rules by country
-                    $valid = match ($country)
-                    {
-                        'AR' => $this->validateCUIT($taxId), // Argentina: CUIT (11 digits)
-                        'ES' => $this->validateCIF_NIF($taxId), // Spain: CIF/NIF
-                        'MX' => $this->validateRFC($taxId), // Mexico: RFC (12-13 characters)
-                        'CL' => $this->validateRUT($taxId), // Chile: RUT
-                        'CO' => $this->validateNIT($taxId), // Colombia: NIT
-                        'PE' => $this->validateRUC($taxId), // Peru: RUC (11 digits)
-                        'UY' => $this->validateRUT_UY($taxId), // Uruguay: RUT
-                        default => strlen($taxId) >= 5, // Generic: at least 5 characters
-                    };
-
-                    if (! $valid)
+                    $taxIdentifierService = app(TaxIdentifierService::class);
+                    $taxId = $taxIdentifierService->normalize($value);
+                    if ($taxId === '' || ! $taxIdentifierService->isValidForCountry($request->country, $taxId))
                     {
                         $fail('El formato de la Identificación Fiscal no es válido para el país seleccionado.');
                     }
@@ -649,6 +637,9 @@ class SubscriptionController extends Controller
                 ->with('error', __('No se pudo crear el cliente de facturación. Asegúrate de tener un email de usuario.'));
         }
 
+        $taxIdentifierService = app(TaxIdentifierService::class);
+        $taxIdNormalized = $taxIdentifierService->normalize($request->tax_id);
+
         // Use business name if provided, otherwise use individual name
         $displayName = $request->business_name ?: $request->individual_name;
 
@@ -669,24 +660,13 @@ class SubscriptionController extends Controller
 
             try
             {
-                $taxIdType = match ($request->country)
-                {
-                    'AR' => 'ar_cuit',
-                    'ES' => in_array(strtoupper(substr($request->tax_id, 0, 1)), ['X', 'Y', 'Z']) ? 'es_cif' : 'eu_vat',
-                    'MX' => 'mx_rfc',
-                    'CL' => 'cl_tin',
-                    'CO' => 'co_nit',
-                    'PE' => 'pe_ruc',
-                    'UY' => 'uy_ruc',
-                    'US' => 'us_ein',
-                    default => 'unknown',
-                };
+                $taxIdType = $taxIdentifierService->resolveStripeTaxIdType($request->country, $taxIdNormalized);
 
-                if ($taxIdType !== 'unknown' && ! empty($request->tax_id))
+                if ($taxIdType !== null && $taxIdNormalized !== '')
                 {
                     $newTaxId = \Stripe\Customer::createTaxId($customerId, [
                         'type' => $taxIdType,
-                        'value' => $request->tax_id,
+                        'value' => $taxIdNormalized,
                     ]);
 
                     if ($newTaxId)
@@ -713,18 +693,18 @@ class SubscriptionController extends Controller
                 }
             } catch (\Exception $e)
             {
-                \Log::error('Error updating tax ID: '.$e->getMessage(), [
+                \Log::error('Error updating tax ID', array_merge([
                     'team_id' => $team->id,
                     'country' => $request->country,
-                    'tax_id' => $request->tax_id,
-                ]);
+                    'tax_id' => $taxIdNormalized,
+                ], StripeErrorMessage::logContext($e)));
             }
 
             \Stripe\Customer::update($customerId, [
                 'metadata' => [
                     'individual_name' => $request->individual_name,
                     'business_name' => $request->business_name,
-                    'tax_id' => $request->tax_id,
+                    'tax_id' => $taxIdNormalized,
                     'country' => $request->country,
                 ],
             ]);
@@ -732,15 +712,15 @@ class SubscriptionController extends Controller
             \Log::info('Stripe customer updated successfully', [
                 'customer_id' => $customerId,
                 'name' => $displayName,
-                'tax_id' => $request->tax_id,
+                'tax_id' => $taxIdNormalized,
             ]);
         } catch (\Exception $e)
         {
-            \Log::error('Error updating Stripe customer: '.$e->getMessage());
+            \Log::error('Error updating Stripe customer', StripeErrorMessage::logContext($e));
 
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Error al actualizar los datos en Stripe: '.$e->getMessage());
+                ->with('error', 'Error al actualizar los datos en Stripe: '.StripeErrorMessage::display($e));
         }
 
         // Redirect to checkout (preserve domain if provided)
@@ -801,7 +781,7 @@ class SubscriptionController extends Controller
                     'business_name' => $request->business_name ?? '',
                     'country' => $request->country,
                     'phone' => $phone ?? $request->phone,
-                    'tax_id' => $request->tax_id,
+                    'tax_id' => $taxIdNormalized,
                 ],
             ];
             if ($customerId)
@@ -822,69 +802,6 @@ class SubscriptionController extends Controller
         }
 
         return redirect()->route('subscription.checkout', $redirectParams);
-    }
-
-    /**
-     * Validate Argentina CUIT format
-     */
-    private function validateCUIT(string $taxId): bool
-    {
-        // CUIT: 11 digits
-        return strlen($taxId) === 11 && ctype_digit($taxId);
-    }
-
-    /**
-     * Validate Spain CIF/NIF format
-     */
-    private function validateCIF_NIF(string $taxId): bool
-    {
-        // CIF/NIF: 8-9 characters (letter + numbers or numbers + letter)
-        return preg_match('/^[A-Z0-9]{8,9}$/i', $taxId);
-    }
-
-    /**
-     * Validate Mexico RFC format
-     */
-    private function validateRFC(string $taxId): bool
-    {
-        // RFC: 12-13 characters
-        return strlen($taxId) >= 12 && strlen($taxId) <= 13 && preg_match('/^[A-Z0-9]+$/i', $taxId);
-    }
-
-    /**
-     * Validate Chile RUT format
-     */
-    private function validateRUT(string $taxId): bool
-    {
-        // RUT: 8-9 digits + verification digit
-        return strlen($taxId) >= 8 && strlen($taxId) <= 10 && preg_match('/^[0-9]{7,9}[0-9Kk]$/i', $taxId);
-    }
-
-    /**
-     * Validate Colombia NIT format
-     */
-    private function validateNIT(string $taxId): bool
-    {
-        // NIT: 9-10 digits
-        return strlen($taxId) >= 9 && strlen($taxId) <= 10 && ctype_digit($taxId);
-    }
-
-    /**
-     * Validate Peru RUC format
-     */
-    private function validateRUC(string $taxId): bool
-    {
-        // RUC: 11 digits
-        return strlen($taxId) === 11 && ctype_digit($taxId);
-    }
-
-    /**
-     * Validate Uruguay RUT format
-     */
-    private function validateRUT_UY(string $taxId): bool
-    {
-        // RUT Uruguay: 12 digits
-        return strlen($taxId) === 12 && ctype_digit($taxId);
     }
 
     /**
