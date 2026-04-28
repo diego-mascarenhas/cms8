@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AgentConversationMessage;
+use App\Models\DocumentIngestion;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -161,6 +162,52 @@ class AssistantActivityController extends Controller
 
                 return round(($totalTokens / 1000000) * $estimatedCostPerMillion, 6);
             })
+            ->toJson();
+    }
+
+    public function documents(Request $request): View
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+
+        $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
+        $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+
+        $query = DocumentIngestion::query()
+            ->where('team_id', (int) $team->id)
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        $totalDocuments = (int) $query->count();
+        $needsReview = (int) (clone $query)->where('classification_status', 'needs_review')->count();
+        $classified = (int) (clone $query)->where('classification_status', 'classified')->count();
+
+        return view('assistant.document-ingestions', compact(
+            'startDate',
+            'endDate',
+            'totalDocuments',
+            'needsReview',
+            'classified',
+        ));
+    }
+
+    public function documentsData(Request $request): JsonResponse
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+
+        $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
+        $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+
+        $query = DocumentIngestion::query()
+            ->with(['source:id,name'])
+            ->where('team_id', (int) $team->id)
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        return DataTables::eloquent($query)
+            ->addColumn('date_display', fn (DocumentIngestion $row) => optional($row->created_at)->format('Y-m-d H:i'))
+            ->addColumn('source_name', fn (DocumentIngestion $row) => $row->source?->name ?? 'Unknown')
+            ->addColumn('document_name', fn (DocumentIngestion $row) => $row->file_name ?: ($row->file_url ? basename(parse_url((string) $row->file_url, PHP_URL_PATH) ?: '') : ''))
+            ->addColumn('confidence_value', fn (DocumentIngestion $row) => (float) ($row->classification_confidence ?? 0))
             ->toJson();
     }
 }

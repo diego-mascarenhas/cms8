@@ -307,8 +307,11 @@
                         <small class="text-muted">Optimización de costos</small>
                     </div>
                     <div>
-                        <a href="{{ route('assistant.activity') }}" class="btn btn-sm btn-label-primary waves-effect">
-                            <i class="ti ti-activity me-1"></i>Ver actividad AI
+                        <a href="{{ route('assistant.activity') }}" class="btn btn-sm btn-label-primary waves-effect" title="Ver actividad AI" aria-label="Ver actividad AI">
+                            <i class="ti ti-activity"></i>
+                        </a>
+                        <a href="{{ route('assistant.documents') }}" class="btn btn-sm btn-label-info waves-effect" title="Ver documentos procesados" aria-label="Ver documentos procesados">
+                            <i class="ti ti-file-search"></i>
                         </a>
                     </div>
                 </div>

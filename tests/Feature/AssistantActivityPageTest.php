@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\DocumentIngestion;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -73,5 +75,48 @@ class AssistantActivityPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('assistant.activity'));
 
         $response->assertForbidden();
+    }
+
+    public function test_admin_can_view_team_document_ingestions_page(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->withPersonalTeam()->create();
+        $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+        $admin->assignRole('admin');
+
+        $source = Source::query()->create([
+            'name' => 'WhatsApp',
+            'base_url' => 'https://wa.me/',
+            'icon' => 'fa-whatsapp',
+            'color' => '#25D366',
+        ]);
+
+        DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'source_id' => $source->id,
+            'source_reference' => 'msg_123',
+            'file_name' => 'factura-test.pdf',
+            'file_url' => 'https://cdn.example.com/factura-test.pdf',
+            'mime_type' => 'application/pdf',
+            'document_type' => 'invoice',
+            'classification_status' => 'classified',
+            'classification_confidence' => 0.85,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('assistant.documents'));
+        $response->assertOk();
+        $response->assertSee('Documentos procesados');
+
+        $dataResponse = $this->actingAs($admin)->getJson(route('assistant.documents.data', [
+            'start_date' => now()->subDays(30)->toDateString(),
+            'end_date' => now()->toDateString(),
+        ]));
+
+        $dataResponse->assertOk();
+        $dataResponse->assertJsonFragment([
+            'document_type' => 'invoice',
+            'source_name' => 'WhatsApp',
+        ]);
     }
 }

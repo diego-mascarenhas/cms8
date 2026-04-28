@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DocumentIngestion;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ChatAssistantReplyService;
@@ -167,6 +168,36 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertNotNull($contact);
         $this->assertSame('María WhatsApp', $contact->name);
         $this->assertSame(34600000099, (int) $contact->phone);
+    }
+
+    public function test_webhook_creates_document_ingestion_for_incoming_media(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => 'adjunto',
+            'id' => 'msg_media_ingestion_1',
+            'mediaUrl' => 'https://cdn.example.com/factura-2026.pdf',
+            'mediaContentType' => 'application/pdf',
+        ]);
+
+        $response->assertStatus(200);
+        $conversation = Conversation::query()->where('message_sid', 'msg_media_ingestion_1')->first();
+        $this->assertNotNull($conversation);
+        $this->assertDatabaseHas('document_ingestions', [
+            'conversation_id' => $conversation->id,
+            'document_type' => 'invoice',
+            'classification_status' => 'classified',
+        ]);
+        $this->assertGreaterThan(0, DocumentIngestion::query()->count());
     }
 
     public function test_webhook_skips_auto_ai_when_contact_disables_assistant(): void

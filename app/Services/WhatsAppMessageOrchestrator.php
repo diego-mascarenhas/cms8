@@ -731,6 +731,16 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 ]);
             }
 
+            if (! empty($media))
+            {
+                app(DocumentIngestionService::class)->ingestFromConversationMedia(
+                    $conversation,
+                    'WhatsApp',
+                    ! empty($messageSid) ? (string) $messageSid : null,
+                    $this->team?->id,
+                );
+            }
+
             if ($channel === 'whatsapp' && $this->team)
             {
                 $waProfileName = $request->input('WaProfileName');
