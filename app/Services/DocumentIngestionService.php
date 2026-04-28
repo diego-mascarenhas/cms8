@@ -34,12 +34,11 @@ class DocumentIngestionService
 
             $fileUrl = trim((string) Arr::get($mediaItem, 'url', ''));
             $mimeType = trim((string) Arr::get($mediaItem, 'content_type', ''));
-            if ($fileUrl === '')
-            {
-                continue;
-            }
-
             $fileName = $this->extractFileName($fileUrl);
+            if ($fileName === '')
+            {
+                $fileName = 'attachment-'.($conversation->id ?? 'unknown').'-'.(count($records) + 1);
+            }
             $classification = $this->classifyDocument($mimeType, $fileName, $fileUrl);
             $hashMaterial = implode('|', [$sourceReference ?? '', $fileUrl, $mimeType, $fileName]);
 
@@ -49,7 +48,7 @@ class DocumentIngestionService
                 'conversation_id' => $conversation->id,
                 'source_reference' => $sourceReference,
                 'file_name' => $fileName,
-                'file_url' => $fileUrl,
+                'file_url' => $fileUrl !== '' ? $fileUrl : null,
                 'mime_type' => $mimeType !== '' ? Str::lower($mimeType) : null,
                 'file_hash' => hash('sha256', $hashMaterial),
                 'document_type' => $classification['document_type'],

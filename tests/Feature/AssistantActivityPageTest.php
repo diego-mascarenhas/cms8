@@ -117,6 +117,7 @@ class AssistantActivityPageTest extends TestCase
         $dataResponse->assertJsonFragment([
             'document_type' => 'invoice',
             'source_name' => 'WhatsApp',
+            'reception_note' => 'URL recibida correctamente',
         ]);
     }
 }

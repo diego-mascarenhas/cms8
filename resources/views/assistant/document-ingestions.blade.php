@@ -31,6 +31,9 @@
             const table = $('#document-ingestions-table').DataTable({
                 processing: true,
                 serverSide: true,
+                paging: false,
+                lengthChange: false,
+                info: false,
                 ajax: {
                     url: '{{ route('assistant.documents.data') }}',
                     data: function (d) {
@@ -47,6 +50,18 @@
                         render: function (value, type, row) {
                             const url = row.file_url ? '<small class="text-muted">' + row.file_url + '</small>' : '';
                             return '<div class="d-flex flex-column"><span>' + (value || 'Sin nombre') + '</span>' + url + '</div>';
+                        }
+                    },
+                    {
+                        data: 'reception_note',
+                        orderable: false,
+                        render: function (value) {
+                            const note = value || '';
+                            if (note.toLowerCase().includes('sin url')) {
+                                return '<span class="badge bg-label-warning">' + note + '</span>';
+                            }
+
+                            return '<span class="badge bg-label-success">' + note + '</span>';
                         }
                     },
                     {
@@ -80,7 +95,6 @@
                     }
                 ],
                 order: [[0, 'desc']],
-                pageLength: 25,
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
                     emptyTable: 'No se encontró actividad de documentos en este rango.'
@@ -132,26 +146,27 @@
 
 <div class="card">
     <div class="card-body">
-        <form id="document-ingestions-filters" method="GET" action="{{ route('assistant.documents') }}" class="row g-3 align-items-end">
-            <div class="col-sm-4 col-md-3">
+        <form id="document-ingestions-filters" method="GET" action="{{ route('assistant.documents') }}" class="d-flex flex-wrap align-items-end gap-2 mb-3">
+            <div>
                 <label for="start_date" class="form-label mb-1">Desde</label>
                 <input type="text" id="start_date" name="start_date" class="form-control input flatpickr-date-range" value="{{ $startDate }}" autocomplete="off">
             </div>
-            <div class="col-sm-4 col-md-3">
+            <div>
                 <label for="end_date" class="form-label mb-1">Hasta</label>
                 <input type="text" id="end_date" name="end_date" class="form-control input flatpickr-date-range" value="{{ $endDate }}" autocomplete="off">
             </div>
-            <div class="col-sm-4 col-md-2">
+            <div>
                 <button type="submit" class="btn btn-sm btn-primary waves-effect waves-light">Aplicar</button>
             </div>
         </form>
-        <div class="table-responsive mt-3">
+        <div class="table-responsive">
             <table id="document-ingestions-table" class="table table-hover border-top">
                 <thead>
                     <tr>
                         <th>Fecha</th>
                         <th>Origen</th>
                         <th>Documento</th>
+                        <th>Recepción</th>
                         <th>Tipo</th>
                         <th>Estado</th>
                         <th class="text-end">Confianza</th>

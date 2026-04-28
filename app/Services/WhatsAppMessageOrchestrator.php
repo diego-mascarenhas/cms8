@@ -733,12 +733,42 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             if (! empty($media))
             {
-                app(DocumentIngestionService::class)->ingestFromConversationMedia(
-                    $conversation,
-                    'WhatsApp',
-                    ! empty($messageSid) ? (string) $messageSid : null,
-                    $this->team?->id,
-                );
+                try
+                {
+                    app(DocumentIngestionService::class)->ingestFromConversationMedia(
+                        $conversation,
+                        'WhatsApp',
+                        ! empty($messageSid) ? (string) $messageSid : null,
+                        $this->team?->id,
+                    );
+                } catch (\Throwable $e)
+                {
+                    Log::warning('Document ingestion failed for inbound media', [
+                        'conversation_id' => $conversation->id,
+                        'message_sid' => $messageSid,
+                        'team_id' => $this->team?->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                if ($channel === 'whatsapp')
+                {
+                    try
+                    {
+                        $this->sendWhatsApp(
+                            $cleanFrom,
+                            'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                        );
+                    } catch (\Throwable $e)
+                    {
+                        Log::warning('Document ingestion acknowledgement send failed', [
+                            'conversation_id' => $conversation->id,
+                            'to' => $cleanFrom,
+                            'team_id' => $this->team?->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
 
             if ($channel === 'whatsapp' && $this->team)

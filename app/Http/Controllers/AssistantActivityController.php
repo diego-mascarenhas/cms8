@@ -208,6 +208,12 @@ class AssistantActivityController extends Controller
             ->addColumn('source_name', fn (DocumentIngestion $row) => $row->source?->name ?? 'Unknown')
             ->addColumn('document_name', fn (DocumentIngestion $row) => $row->file_name ?: ($row->file_url ? basename(parse_url((string) $row->file_url, PHP_URL_PATH) ?: '') : ''))
             ->addColumn('confidence_value', fn (DocumentIngestion $row) => (float) ($row->classification_confidence ?? 0))
+            ->addColumn('reception_note', function (DocumentIngestion $row): string
+            {
+                return blank($row->file_url)
+                    ? 'Recibido sin URL / pendiente de recuperacion'
+                    : 'URL recibida correctamente';
+            })
             ->toJson();
     }
 }

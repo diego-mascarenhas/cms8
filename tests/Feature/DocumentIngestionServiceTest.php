@@ -88,4 +88,35 @@ class DocumentIngestionServiceTest extends TestCase
         $this->assertSame('unknown', $record->document_type);
         $this->assertSame('needs_review', $record->classification_status);
     }
+
+    /**
+     * @test
+     */
+    public function it_stores_attachment_even_without_url_when_media_entry_exists(): void
+    {
+        $conversation = Conversation::create([
+            'message_sid' => 'wa-msg-3',
+            'channel' => 'whatsapp',
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'attachment without direct url',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => '',
+                    'content_type' => 'application/octet-stream',
+                ],
+            ],
+        ]);
+
+        $records = app(DocumentIngestionService::class)->ingestFromConversationMedia($conversation, 'WhatsApp', 'wa-msg-3', null);
+
+        $this->assertCount(1, $records);
+        $this->assertDatabaseHas('document_ingestions', [
+            'conversation_id' => $conversation->id,
+            'source_reference' => 'wa-msg-3',
+            'classification_status' => 'needs_review',
+        ]);
+    }
 }
