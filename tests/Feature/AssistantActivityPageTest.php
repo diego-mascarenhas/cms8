@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\Conversation;
 use App\Models\DocumentIngestion;
 use App\Models\Source;
 use App\Models\User;
@@ -23,6 +24,7 @@ class AssistantActivityPageTest extends TestCase
         $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
         $admin->forceFill(['current_team_id' => $team->id])->save();
         $admin->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34600000001');
 
         $conversation = AgentConversation::create([
             'id' => (string) Str::uuid(),
@@ -104,6 +106,29 @@ class AssistantActivityPageTest extends TestCase
             'classification_confidence' => 0.85,
         ]);
 
+        $conversation = Conversation::query()->create([
+            'message_sid' => 'msg-fallback-null-team',
+            'channel' => 'whatsapp',
+            'from' => '34600000099',
+            'to' => 'whatsapp:34600000001',
+            'body' => 'fallback ingestion',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        DocumentIngestion::query()->create([
+            'team_id' => null,
+            'source_id' => $source->id,
+            'conversation_id' => $conversation->id,
+            'source_reference' => 'msg-fallback-null-team',
+            'file_name' => 'fallback.pdf',
+            'file_url' => 'https://cdn.example.com/fallback.pdf',
+            'mime_type' => 'application/pdf',
+            'document_type' => 'unknown',
+            'classification_status' => 'failed',
+            'classification_confidence' => 0,
+        ]);
+
         $response = $this->actingAs($admin)->get(route('assistant.documents'));
         $response->assertOk();
         $response->assertSee('Documentos procesados');
@@ -118,6 +143,10 @@ class AssistantActivityPageTest extends TestCase
             'document_type' => 'invoice',
             'source_name' => 'WhatsApp',
             'reception_note' => 'URL recibida correctamente',
+        ]);
+        $dataResponse->assertJsonFragment([
+            'source_reference' => 'msg-fallback-null-team',
+            'classification_status' => 'failed',
         ]);
     }
 }

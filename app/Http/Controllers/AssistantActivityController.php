@@ -171,9 +171,29 @@ class AssistantActivityController extends Controller
 
         $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
         $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
 
         $query = DocumentIngestion::query()
-            ->where('team_id', (int) $team->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
             ->whereDate('created_at', '>=', $startDate)
             ->whereDate('created_at', '<=', $endDate);
 
@@ -196,10 +216,30 @@ class AssistantActivityController extends Controller
 
         $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
         $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
 
         $query = DocumentIngestion::query()
             ->with(['source:id,name'])
-            ->where('team_id', (int) $team->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
             ->whereDate('created_at', '>=', $startDate)
             ->whereDate('created_at', '<=', $endDate);
 

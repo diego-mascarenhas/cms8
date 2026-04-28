@@ -83,6 +83,7 @@ class DatabaseSeeder extends Seeder
             EnterpriseStatusSeeder::class,  // Enterprise statuses
             EnterpriseDepartmentSeeder::class,  // Departments
             ContactStatusSeeder::class,  // Contact statuses
+            SourceSeeder::class,  // Contact/document sources (Email, Phone, WhatsApp, etc)
             ContactSentimentSeeder::class,  // Sentiments
             ContactValorationSeeder::class,  // Valuations
             List60StatusesSeeder::class,  // List60 statuses

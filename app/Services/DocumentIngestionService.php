@@ -39,26 +39,52 @@ class DocumentIngestionService
             {
                 $fileName = 'attachment-'.($conversation->id ?? 'unknown').'-'.(count($records) + 1);
             }
-            $classification = $this->classifyDocument($mimeType, $fileName, $fileUrl);
+
             $hashMaterial = implode('|', [$sourceReference ?? '', $fileUrl, $mimeType, $fileName]);
 
-            $records[] = DocumentIngestion::create([
-                'team_id' => $teamId,
-                'source_id' => $resolvedSourceId,
-                'conversation_id' => $conversation->id,
-                'source_reference' => $sourceReference,
-                'file_name' => $fileName,
-                'file_url' => $fileUrl !== '' ? $fileUrl : null,
-                'mime_type' => $mimeType !== '' ? Str::lower($mimeType) : null,
-                'file_hash' => hash('sha256', $hashMaterial),
-                'document_type' => $classification['document_type'],
-                'classification_status' => $classification['classification_status'],
-                'classification_confidence' => $classification['classification_confidence'],
-                'classification_meta' => [
-                    'reason' => $classification['reason'],
-                    'channel' => Str::lower($sourceName),
-                ],
-            ]);
+            try
+            {
+                $classification = $this->classifyDocument($mimeType, $fileName, $fileUrl);
+
+                $records[] = DocumentIngestion::create([
+                    'team_id' => $teamId,
+                    'source_id' => $resolvedSourceId,
+                    'conversation_id' => $conversation->id,
+                    'source_reference' => $sourceReference,
+                    'file_name' => Str::limit($fileName, 255, ''),
+                    'file_url' => $fileUrl !== '' ? $fileUrl : null,
+                    'mime_type' => $mimeType !== '' ? Str::limit(Str::lower($mimeType), 191, '') : null,
+                    'file_hash' => hash('sha256', $hashMaterial),
+                    'document_type' => $classification['document_type'],
+                    'classification_status' => $classification['classification_status'],
+                    'classification_confidence' => $classification['classification_confidence'],
+                    'classification_meta' => [
+                        'reason' => $classification['reason'],
+                        'channel' => Str::lower($sourceName),
+                    ],
+                ]);
+            } catch (\Throwable $e)
+            {
+                $records[] = DocumentIngestion::create([
+                    'team_id' => $teamId,
+                    'source_id' => $resolvedSourceId,
+                    'conversation_id' => $conversation->id,
+                    'source_reference' => $sourceReference,
+                    'file_name' => Str::limit($fileName, 255, ''),
+                    'file_url' => $fileUrl !== '' ? $fileUrl : null,
+                    'mime_type' => $mimeType !== '' ? Str::limit(Str::lower($mimeType), 191, '') : null,
+                    'file_hash' => hash('sha256', $hashMaterial),
+                    'document_type' => 'unknown',
+                    'classification_status' => 'failed',
+                    'classification_confidence' => 0,
+                    'classification_meta' => [
+                        'channel' => Str::lower($sourceName),
+                        'failed_step' => 'ingestion',
+                    ],
+                    'processing_error' => Str::limit($e->getMessage(), 65535, ''),
+                    'processed_at' => now(),
+                ]);
+            }
         }
 
         return $records;
