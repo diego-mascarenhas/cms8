@@ -219,7 +219,7 @@ class AssistantActivityController extends Controller
         $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
 
         $query = DocumentIngestion::query()
-            ->with(['source:id,name'])
+            ->with(['source:id,name', 'conversation:id,channel'])
             ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
             {
                 $builder->where('team_id', (int) $team->id);
@@ -245,7 +245,37 @@ class AssistantActivityController extends Controller
 
         return DataTables::eloquent($query)
             ->addColumn('date_display', fn (DocumentIngestion $row) => optional($row->created_at)->format('Y-m-d H:i'))
-            ->addColumn('source_name', fn (DocumentIngestion $row) => $row->source?->name ?? 'Unknown')
+            ->addColumn('source_name', function (DocumentIngestion $row): string
+            {
+                if ($row->source?->name)
+                {
+                    return (string) $row->source->name;
+                }
+
+                $conversationChannel = (string) ($row->conversation?->channel ?? '');
+                if ($conversationChannel === 'chat')
+                {
+                    return 'Chat';
+                }
+
+                if ($conversationChannel === 'whatsapp')
+                {
+                    return 'WhatsApp';
+                }
+
+                $metaChannel = strtolower((string) (($row->classification_meta ?? [])['channel'] ?? ''));
+                if (str_contains($metaChannel, 'chat'))
+                {
+                    return 'Chat';
+                }
+
+                if (str_contains($metaChannel, 'whatsapp'))
+                {
+                    return 'WhatsApp';
+                }
+
+                return 'Unknown';
+            })
             ->addColumn('document_name', fn (DocumentIngestion $row) => $row->file_name ?: ($row->file_url ? basename(parse_url((string) $row->file_url, PHP_URL_PATH) ?: '') : ''))
             ->addColumn('confidence_value', fn (DocumentIngestion $row) => (float) ($row->classification_confidence ?? 0))
             ->addColumn('reception_note', function (DocumentIngestion $row): string

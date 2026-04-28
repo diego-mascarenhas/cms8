@@ -15,6 +15,8 @@
 @section('page-script')
     <script>
         $(function () {
+            const documentPreviewModal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+
             function initDatePickers() {
                 $('.flatpickr-date-range').flatpickr({
                     dateFormat: 'Y-m-d',
@@ -48,31 +50,37 @@
                         data: 'document_name',
                         orderable: false,
                         render: function (value, type, row) {
-                            const url = row.file_url ? '<small class="text-muted">' + row.file_url + '</small>' : '';
-                            return '<div class="d-flex flex-column"><span>' + (value || 'Sin nombre') + '</span>' + url + '</div>';
-                        }
-                    },
-                    {
-                        data: 'reception_note',
-                        orderable: false,
-                        render: function (value) {
-                            const note = value || '';
-                            if (note.toLowerCase().includes('sin url')) {
-                                return '<span class="badge bg-label-warning">' + note + '</span>';
+                            const name = value || 'Sin nombre';
+                            if (row.file_url) {
+                                const safeUrl = String(row.file_url).replace(/"/g, '&quot;');
+                                const safeName = String(name).replace(/"/g, '&quot;');
+                                const safeMime = String(row.mime_type || '').replace(/"/g, '&quot;');
+                                return '<div class="d-flex flex-column">' +
+                                    '<a href="#" class="document-preview-link" data-url="' + safeUrl + '" data-name="' + safeName + '" data-mime="' + safeMime + '">' + name + '</a>' +
+                                    '<small class="text-muted">' + row.file_url + '</small>' +
+                                    '</div>';
                             }
 
-                            return '<span class="badge bg-label-success">' + note + '</span>';
+                            return '<div class="d-flex flex-column"><span>' + name + '</span></div>';
                         }
                     },
                     {
                         data: 'document_type',
+                        className: 'text-center',
                         render: function (value) {
                             const safe = value || 'unknown';
-                            return '<span class="badge bg-label-primary text-uppercase">' + safe + '</span>';
+                            const labels = {
+                                business_card: 'Tarjeta',
+                                invoice: 'Factura',
+                                payment_proof: 'Comprobante de pago',
+                                unknown: 'No clasificado'
+                            };
+                            return '<span class="badge bg-label-primary">' + (labels[safe] || 'No clasificado') + '</span>';
                         }
                     },
                     {
                         data: 'classification_status',
+                        className: 'text-center',
                         render: function (value) {
                             const status = value || 'pending';
                             const map = {
@@ -82,13 +90,20 @@
                                 processed: 'info',
                                 failed: 'danger'
                             };
+                            const labels = {
+                                pending: 'Pendiente',
+                                classified: 'Clasificado',
+                                needs_review: 'Revisión',
+                                processed: 'Procesado',
+                                failed: 'Fallido'
+                            };
                             const color = map[status] || 'secondary';
-                            return '<span class="badge bg-label-' + color + ' text-uppercase">' + status + '</span>';
+                            return '<span class="badge bg-label-' + color + '">' + (labels[status] || 'Pendiente') + '</span>';
                         }
                     },
                     {
                         data: 'confidence_value',
-                        className: 'text-end',
+                        className: 'text-center',
                         render: function (value) {
                             return Number(value || 0).toFixed(2);
                         }
@@ -104,6 +119,30 @@
             $('#document-ingestions-filters').on('submit', function (event) {
                 event.preventDefault();
                 table.ajax.reload();
+            });
+
+            $('#document-ingestions-table').on('click', '.document-preview-link', function (event) {
+                event.preventDefault();
+                const url = this.getAttribute('data-url') || '';
+                const name = this.getAttribute('data-name') || 'Documento';
+                const mime = (this.getAttribute('data-mime') || '').toLowerCase();
+                if (!url) return;
+
+                const titleEl = document.getElementById('documentPreviewModalLabel');
+                const bodyEl = document.getElementById('documentPreviewModalBody');
+                const externalEl = document.getElementById('documentPreviewExternal');
+                titleEl.textContent = name;
+                externalEl.setAttribute('href', url);
+
+                if (mime.startsWith('image/')) {
+                    bodyEl.innerHTML = '<img src="' + url + '" alt="' + name + '" class="img-fluid rounded">';
+                } else if (mime.includes('pdf')) {
+                    bodyEl.innerHTML = '<iframe src="' + url + '" style="width:100%;height:70vh;border:0;"></iframe>';
+                } else {
+                    bodyEl.innerHTML = '<iframe src="' + url + '" style="width:100%;height:70vh;border:0;"></iframe>';
+                }
+
+                documentPreviewModal.show();
             });
         });
     </script>
@@ -166,14 +205,29 @@
                         <th>Fecha</th>
                         <th>Origen</th>
                         <th>Documento</th>
-                        <th>Recepción</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th class="text-end">Confianza</th>
+                        <th class="text-center">Tipo</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Confianza</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-labelledby="documentPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentPreviewModalLabel">Documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="documentPreviewModalBody"></div>
+            <div class="modal-footer">
+                <a href="#" target="_blank" rel="noopener" id="documentPreviewExternal" class="btn btn-label-primary">Abrir en nueva pestaña</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>

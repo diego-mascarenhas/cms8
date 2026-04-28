@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
+use App\Services\DocumentIngestionService;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -855,9 +856,12 @@ class ChatController extends Controller
     public function assistant(Request $request, UserResolverService $userResolver, AgentConversationContextService $contextService, ChatAssistantReplyService $replyService)
     {
         $hasAudio = $request->hasFile('audio');
+        $hasAttachments = $request->hasFile('attachments');
         $request->validate([
-            'message' => ['required_without:audio', 'nullable', 'string', 'max:16000'],
+            'message' => ['required_without_all:audio,attachments', 'nullable', 'string', 'max:16000'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'respond_with_audio' => 'nullable|boolean',
             'recipient' => 'nullable|string|max:50',
             'contact_id' => 'nullable|integer|exists:contacts,id',
@@ -888,7 +892,33 @@ class ChatController extends Controller
         }
         if ($message === '')
         {
-            return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+            if (! $hasAttachments)
+            {
+                return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+            }
+        }
+
+        if ($hasAttachments)
+        {
+            $teamId = auth()->user()?->currentTeam?->id;
+            $recipientDigits = $request->filled('recipient')
+                ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
+                : '';
+            $sourceName = $recipientDigits !== '' ? 'WhatsApp' : 'Chat';
+            $registered = $this->ingestUploadedDocumentsForAssistant(
+                $request,
+                (int) ($teamId ?? 0),
+                $sourceName,
+                $recipientDigits !== '' ? $recipientDigits : null,
+            );
+
+            return response()->json([
+                'success' => true,
+                'response' => 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                'action_performed' => 'document_ingestion',
+                'document_ingestion' => true,
+                'documents_registered' => $registered,
+            ]);
         }
 
         if ($request->filled('template_hashed_id'))
@@ -1089,6 +1119,62 @@ class ChatController extends Controller
         return response()->json($payload);
     }
 
+    private function ingestUploadedDocumentsForAssistant(
+        Request $request,
+        int $teamId,
+        string $sourceName,
+        ?string $recipientDigits = null,
+    ): int {
+        $uploadedFiles = $request->file('attachments', []);
+        if (! is_array($uploadedFiles) || $uploadedFiles === [])
+        {
+            return 0;
+        }
+
+        $media = [];
+        foreach ($uploadedFiles as $index => $uploadedFile)
+        {
+            if ($uploadedFile === null)
+            {
+                continue;
+            }
+
+            $storedPath = $uploadedFile->store('temp/chat-attachments', 'public');
+            $media[] = [
+                'url' => Storage::url($storedPath),
+                'content_type' => $uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType(),
+                'name' => $uploadedFile->getClientOriginalName() ?: ('attachment-'.$index),
+                'size' => $uploadedFile->getSize(),
+            ];
+        }
+
+        if ($media === [])
+        {
+            return 0;
+        }
+
+        $conversation = Conversation::create([
+            'message_sid' => 'chat_upload_'.uniqid('', true),
+            'channel' => $recipientDigits !== null && $recipientDigits !== '' ? 'whatsapp' : 'chat',
+            'from' => (string) (auth()->id() ?? '0'),
+            'to' => $recipientDigits !== null && $recipientDigits !== '' ? $recipientDigits : 'assistant',
+            'body' => '[Documento adjunto]',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => $media,
+            'metadata' => ['from_chat_footer' => true],
+        ]);
+
+        $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            $sourceName,
+            $conversation->message_sid,
+            $teamId > 0 ? $teamId : null,
+        );
+
+        return count($ingestions);
+    }
+
     /**
      * Keep preview modal focused on the exact text to send.
      * Remove assistant meta wrappers/instructions that should never be shown to operators.
@@ -1205,10 +1291,13 @@ class ChatController extends Controller
         }
 
         $hasAudio = $request->hasFile('audio');
+        $hasAttachments = $request->hasFile('attachments');
         $request->validate([
             'to' => 'required|string',
-            'message' => ['required_without:audio', 'nullable', 'string'],
+            'message' => ['required_without_all:audio,attachments', 'nullable', 'string'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
         ], [
@@ -1259,6 +1348,24 @@ class ChatController extends Controller
                 }
 
                 return response()->json(['success' => true, 'message' => __('Mensaje de voz enviado.')]);
+            }
+
+            if ($hasAttachments)
+            {
+                $recipientDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to', ''));
+                $registered = $this->ingestUploadedDocumentsForAssistant(
+                    $request,
+                    (int) (auth()->user()?->currentTeam?->id ?? 0),
+                    $recipientDigits !== '' ? 'WhatsApp' : 'Chat',
+                    $recipientDigits !== '' ? $recipientDigits : null,
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                    'document_ingestion' => true,
+                    'documents_registered' => $registered,
+                ]);
             }
 
             // Check if AI assistance was requested

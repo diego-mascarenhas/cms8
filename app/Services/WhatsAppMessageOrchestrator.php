@@ -769,6 +769,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         ]);
                     }
                 }
+
+                return response()->json([
+                    'status' => 'success',
+                    'conversation_id' => $conversation->id,
+                    'document_ingestion' => true,
+                    'auto_ai_skipped' => 'document_ingestion_pending',
+                ]);
             }
 
             if ($channel === 'whatsapp' && $this->team)

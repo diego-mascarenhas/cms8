@@ -190,6 +190,11 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
 
         $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+            'document_ingestion' => true,
+            'auto_ai_skipped' => 'document_ingestion_pending',
+        ]);
         $conversation = Conversation::query()->where('message_sid', 'msg_media_ingestion_1')->first();
         $this->assertNotNull($conversation);
         $this->assertDatabaseHas('document_ingestions', [

@@ -129,6 +129,8 @@
         const messageInput = document.querySelector('.message-input');
         const useAiToggle = document.getElementById('use-ai-toggle');
         const recipientInput = document.getElementById('recipient');
+        const attachmentInput = document.getElementById('chat-attachments');
+        const attachmentCount = document.getElementById('chat-attachment-count');
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
         var assistantUrl = '{{ route("chat.assistant") }}';
@@ -151,6 +153,28 @@
         function getChatAssistantFlowRoutingKey() {
             var sel = document.getElementById('chatAssistantFlowRoutingKey');
             return sel && sel.value ? String(sel.value).trim() : '';
+        }
+
+        function getSelectedAttachments() {
+            if (!attachmentInput || !attachmentInput.files) return [];
+            return Array.from(attachmentInput.files);
+        }
+
+        function updateAttachmentCount() {
+            if (!attachmentCount) return;
+            var selected = getSelectedAttachments();
+            attachmentCount.textContent = selected.length > 0 ? (selected.length + ' adjunto(s)') : '';
+        }
+
+        function appendAttachmentsToFormData(formData) {
+            var selected = getSelectedAttachments();
+            selected.forEach(function (file) {
+                formData.append('attachments[]', file);
+            });
+        }
+
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', updateAttachmentCount);
         }
 
         if (messageInput && formSendMessage) {
@@ -225,6 +249,8 @@
         let currentAiResponse = '';
         let currentAiAudioBase64 = '';
         let currentAiAudioMime = '';
+        let currentAttachmentPreviews = [];
+        let localDocumentEvents = [];
 
         function renderMarkdownForChat(text) {
             if (!text) return '';
@@ -269,15 +295,45 @@
                 });
             }
         }
-        function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime) {
+        function buildAttachmentPreviewHtml(attachments) {
+            if (!attachments || !attachments.length) return '';
+            var blocks = attachments.map(function(file) {
+                var safeName = (file.name || 'adjunto').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if ((file.type || '').indexOf('image/') === 0) {
+                    var tmpUrl = URL.createObjectURL(file);
+                    return '<a href="' + tmpUrl + '" target="_blank" rel="noopener"><img src="' + tmpUrl + '" alt="' + safeName + '" style="max-width:140px;max-height:140px;border-radius:8px;margin:4px;"></a>';
+                }
+                return '<div class="small text-muted">📎 ' + safeName + '</div>';
+            });
+            return '<div class="chat-media mt-2">' + blocks.join('') + '</div>';
+        }
+
+        function registerLocalDocumentEvents(userMsg, aiMsg, attachments) {
+            var names = (attachments || []).map(function(file) { return file.name || 'adjunto'; }).filter(Boolean);
+            var userText = (userMsg && userMsg.trim() !== '') ? userMsg : ('📎 Documento adjunto' + (names.length ? ': ' + names.join(', ') : ''));
+            var assistantText = (aiMsg && aiMsg.trim() !== '') ? aiMsg : 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+            var nowIso = new Date().toISOString();
+            localDocumentEvents.push(
+                { role: 'user', content: userText, created_at: nowIso, local_document_event: true },
+                { role: 'assistant', content: assistantText, created_at: nowIso, local_document_event: true }
+            );
+            if (localDocumentEvents.length > 20) {
+                localDocumentEvents = localDocumentEvents.slice(localDocumentEvents.length - 20);
+            }
+        }
+
+        function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime, attachments) {
             var list = document.getElementById('assistant-messages-list');
             if (!list) return;
             var empty = list.querySelector('.assistant-empty-state');
             if (empty) empty.remove();
             var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            var safeUserMsg = (userMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            var userTextHtml = safeUserMsg !== '' ? safeUserMsg : '📎 Documento adjunto';
+            var attachmentHtml = buildAttachmentPreviewHtml(attachments || []);
             var userLi = document.createElement('li');
             userLi.className = 'chat-message chat-message-right';
-            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (userMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + userTextHtml + '</p>' + attachmentHtml + '</div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
             list.appendChild(userLi);
             var audioHtml = (audioBase64 && audioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + audioMime + ';base64,' + audioBase64 + '" type="' + audioMime + '"></audio></div>' : '';
             var aiLi = document.createElement('li');
@@ -420,8 +476,10 @@
             e.stopImmediatePropagation();
             var form = e.target;
             var hasAudio = window.hasPendingRecordedAudio && window.hasPendingRecordedAudio();
+            var selectedAttachments = getSelectedAttachments();
+            var hasAttachments = selectedAttachments.length > 0;
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
-            if (!msg && !hasAudio) return;
+            if (!msg && !hasAudio && !hasAttachments) return;
             var sendBtn = form.querySelector('.send-msg-btn');
             if (sendBtn) sendBtn.disabled = true;
             function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
@@ -444,23 +502,45 @@
                     fd.append('message', msg || '');
                     fd.append('audio', audioBlob, 'recording.webm');
                     if (contactId) fd.append('contact_id', contactId);
+                    appendAttachmentsToFormData(fd);
                     fetch('{{ route("chat.send") }}', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': token } })
                         .then(function(r) { return r.json(); })
                         .then(function() {
                             messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
                             if (window.refreshAssistantHistory) window.refreshAssistantHistory();
                         }).catch(function() {}).finally(reenableSend);
                 } else {
-                    var body = { to: toVal, message: msg, use_ai: false };
-                    if (contactId) body.contact_id = contactId;
-                    fetch('{{ route("chat.send") }}', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                        body: JSON.stringify(body)
-                    }).then(function(r) { return r.json(); }).then(function() {
-                        messageInput.value = '';
-                        if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                    }).catch(function() {}).finally(reenableSend);
+                    if (hasAttachments) {
+                        var fdNoAi = new FormData();
+                        fdNoAi.append('_token', token);
+                        fdNoAi.append('to', toVal);
+                        fdNoAi.append('message', msg || '');
+                        if (contactId) fdNoAi.append('contact_id', contactId);
+                        appendAttachmentsToFormData(fdNoAi);
+                        fetch('{{ route("chat.send") }}', {
+                            method: 'POST',
+                            body: fdNoAi,
+                            headers: { 'X-CSRF-TOKEN': token }
+                        }).then(function(r) { return r.json(); }).then(function() {
+                            messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        }).catch(function() {}).finally(reenableSend);
+                    } else {
+                        var body = { to: toVal, message: msg, use_ai: false };
+                        if (contactId) body.contact_id = contactId;
+                        fetch('{{ route("chat.send") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify(body)
+                        }).then(function(r) { return r.json(); }).then(function() {
+                            messageInput.value = '';
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        }).catch(function() {}).finally(reenableSend);
+                    }
                 }
                 return;
             }
@@ -469,6 +549,7 @@
             /** Vista previa modal: no envío real; el backend desactiva send_whatsapp_message y evita relatos de fallo de envío */
             var previewOnlyAi = !isAssistantView;
             currentUserMessage = msg || (hasAudio ? '{{ __("[Mensaje de voz]") }}' : '');
+            currentAttachmentPreviews = selectedAttachments;
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
 
@@ -492,16 +573,18 @@
 
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
 
-            if (hasAudio) {
+            if (hasAudio || hasAttachments) {
                 var audioBlob = window.getPendingRecordedAudio && window.getPendingRecordedAudio();
-                if (!audioBlob) { reenableSend(); return; }
                 var formData = new FormData();
                 formData.append('_token', token);
                 formData.append('message', msg);
-                formData.append('audio', audioBlob, 'recording.webm');
+                if (audioBlob) {
+                    formData.append('audio', audioBlob, 'recording.webm');
+                }
                 if (respondWithAudio) formData.append('respond_with_audio', '1');
                 if (toVal) formData.append('recipient', toVal);
                 if (contactId) formData.append('contact_id', contactId);
+                appendAttachmentsToFormData(formData);
                 var flowKeyAudio = getChatAssistantFlowRoutingKey();
                 if (flowKeyAudio) formData.append('flow_routing_key', flowKeyAudio);
                 if (previewOnlyAi) formData.append('preview_only', '1');
@@ -544,14 +627,20 @@
                                 }
                             }
                             if (isAssistantView) {
-                                appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                                appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime, currentAttachmentPreviews);
+                                if (data.action_performed === 'document_ingestion') {
+                                    registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
+                                }
                                 syncSidebarAssistantAutoRespondFromResponse(data);
                                 messageInput.value = '';
+                                if (attachmentInput) attachmentInput.value = '';
+                                updateAttachmentCount();
                                 currentUserMessage = '';
                                 currentAiResponse = '';
                                 currentAiAudioBase64 = '';
                                 currentAiAudioMime = '';
-                                if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                                currentAttachmentPreviews = [];
+                                if (window.refreshAssistantHistory && data.action_performed !== 'document_ingestion') window.refreshAssistantHistory();
                             }
                         } else {
                             currentAiResponse = '';
@@ -634,14 +723,20 @@
                             }
                         }
                         if (isAssistantView) {
-                            appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                            appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime, currentAttachmentPreviews);
+                            if (data.action_performed === 'document_ingestion') {
+                                registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
+                            }
                             syncSidebarAssistantAutoRespondFromResponse(data);
                             messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
                             currentUserMessage = '';
                             currentAiResponse = '';
                             currentAiAudioBase64 = '';
                             currentAiAudioMime = '';
-                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                            currentAttachmentPreviews = [];
+                            if (window.refreshAssistantHistory && data.action_performed !== 'document_ingestion') window.refreshAssistantHistory();
                         }
                     } else {
                         currentAiResponse = '';
@@ -866,7 +961,12 @@
                 return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             }
             function renderMessages(messages) {
-                if (!messages || messages.length === 0) {
+                var mergedMessages = (messages || []).slice();
+                if (localDocumentEvents.length > 0) {
+                    mergedMessages = mergedMessages.concat(localDocumentEvents);
+                }
+
+                if (!mergedMessages || mergedMessages.length === 0) {
                     var src = document.getElementById('assistant-suggestions-source');
                     var inner = src ? src.innerHTML : '';
                     var extra = assistantUserId ? '' : '<p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? "" }}) para ver la misma conversación.</p>';
@@ -874,7 +974,7 @@
                         '<div class="text-start">' + inner + '</div>' + extra + '</li>';
                     return;
                 }
-                var html = messages.map(function(m) {
+                var html = mergedMessages.map(function(m) {
                     var isAssistant = m.role === 'assistant';
                     var content = isAssistant && typeof renderMarkdownForChat === 'function'
                         ? renderMarkdownForChat(m.content || '')
@@ -893,7 +993,7 @@
                 var body = document.querySelector('.chat-history-body');
                 var wasPinned = chatHistoryIsPinnedToBottom(body);
                 var distBottom = chatHistoryDistanceFromBottom(body);
-                var msgs = messages || [];
+                var msgs = mergedMessages || [];
                 var forceFirstBottom = !assistantHistoryInitialSyncDone && msgs.length > 0;
                 if (forceFirstBottom) {
                     assistantHistoryInitialSyncDone = true;
@@ -2099,24 +2199,7 @@
                                 @endforeach
                             @endif
                         </ul>
-                        @if(($whatsappDriver ?? 'twilio') === 'local' && !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl))
-                            <div id="chat-history-wa-connect-panel" class="border-top pt-3 pb-3 mt-2 px-3 bg-label-secondary bg-opacity-10">
-                                <p class="small text-muted text-uppercase mb-2">{{ __('WhatsApp connection') }}</p>
-                                <p class="small text-muted mb-3 mb-md-2">{{ __('Scan this QR code with WhatsApp to link this team number.') }}</p>
-                                <div class="d-flex justify-content-center">
-                                    <div class="d-inline-block text-center" id="chat-history-qr-container">
-                                        <img id="chat-whatsapp-qr-img-history" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
-                                        <div id="chat-history-qr-fallback" class="mb-2 d-none">
-                                            <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
-                                                <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
-                                                <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p id="chat-history-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
-                            </div>
-                        @endif
+                        {{-- WhatsApp QR panel intentionally hidden in chat history view --}}
                     </div>
                     <!-- Chat message form -->
                     <div class="chat-history-footer">
@@ -2145,7 +2228,7 @@
                             <div class="d-flex align-items-center w-100 flex-grow-1">
                                 @if($viewAssistant ?? false)
                                 <div class="d-flex align-items-center me-2">
-                                    <div class="form-check form-switch mb-0">
+                                    <div class="form-check form-switch mb-0 d-none">
                                         <input type="checkbox" class="form-check-input" id="respond-with-audio" title="{{ __('Respuesta por voz') }}">
                                         <label class="form-check-label text-muted" for="respond-with-audio" title="{{ __('Respuesta por voz') }}">
                                             <i class="ti ti-speakerphone ti-sm"></i>
@@ -2156,6 +2239,10 @@
                                 <button type="button" class="btn btn-icon flex-shrink-0 me-2" id="chat-mic-btn" title="{{ __('Grabar mensaje de voz') }}" aria-label="{{ __('Grabar mensaje de voz') }}">
                                     <i class="ti ti-microphone ti-sm" id="chat-mic-icon"></i>
                                 </button>
+                                <button type="button" class="btn btn-icon flex-shrink-0 me-2" id="chat-attach-btn" title="{{ __('Adjuntar archivo') }}" aria-label="{{ __('Adjuntar archivo') }}" onclick="document.getElementById('chat-attachments').click();">
+                                    <i class="ti ti-paperclip ti-sm"></i>
+                                </button>
+                                <input type="file" id="chat-attachments" class="d-none" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.csv,.txt,.doc,.docx,.xls,.xlsx" multiple>
                                 <div id="chat-record-status" class="d-none align-items-center me-2 small text-danger flex-shrink-0">
                                     <span class="recording-dot me-1"></span>
                                     <span id="chat-record-status-text">{{ __('Grabando...') }}</span>
@@ -2164,12 +2251,13 @@
                                     <span id="chat-recorded-duration"></span>
                                     <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger" id="chat-record-cancel">{{ __('Cancelar') }}</button>
                                 </div>
+                                <div id="chat-attachment-count" class="small text-muted me-2"></div>
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
 
                                 @if(!($viewAssistant ?? false))
                                 <div class="d-flex align-items-center me-3">
-                                    <div class="form-check form-switch mb-0">
+                                    <div class="form-check form-switch mb-0 d-none">
                                         <input type="checkbox" class="form-check-input" id="use-ai-toggle">
                                         <label class="form-check-label" for="use-ai-toggle">
                                             <i class="ti ti-robot me-1"></i>
