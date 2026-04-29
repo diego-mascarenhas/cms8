@@ -219,14 +219,14 @@
             var flowPairKey = 'assistant_keyword_intent_routing';
             var elDefaultFlow = document.getElementById('sidebar-default-assistant-flow-toggle');
             var elKeywordRouting = document.getElementById('sidebar-assistant-keyword-routing-toggle');
-            var assistantSection = document.getElementById('assistant-conversations-section');
+            var assistantExtraClientsSection = document.getElementById('assistant-conversations-extra-section');
             var whatsappSection = document.getElementById('whatsapp-conversations-section');
 
             function syncSidebarConversationsVisibility() {
-                var showAssistantToggle = document.getElementById('sidebar-show-assistant-conversations-toggle');
+                var showAssistantClientsToggle = document.getElementById('sidebar-show-assistant-conversations-toggle');
                 var showWhatsAppToggle = document.getElementById('sidebar-show-whatsapp-conversations-toggle');
-                if (assistantSection && showAssistantToggle) {
-                    assistantSection.classList.toggle('d-none', !showAssistantToggle.checked);
+                if (assistantExtraClientsSection && showAssistantClientsToggle) {
+                    assistantExtraClientsSection.classList.toggle('d-none', !showAssistantClientsToggle.checked);
                 }
                 if (whatsappSection && showWhatsAppToggle) {
                     whatsappSection.classList.toggle('d-none', !showWhatsAppToggle.checked);
@@ -1743,24 +1743,9 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Block assistant AI button') }}">
-                                    <i class="ti ti-message-off me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Block assistant AI button') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-chat-ai-blocked-toggle"
-                                        data-team-setting-key="chat_ai_assistance_blocked"
-                                        @checked($chatAiAssistanceBlockedTeam ?? false) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Mostrar sección de conversaciones del asistente en la lista de chats') }}">
+                                <div class="pe-1 text-truncate" title="{{ __('Oculta solo la lista de asistente con otros clientes. Tu chat con el asistente sigue visible.') }}">
                                     <i class="ti ti-layout-list me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Mostrar conversaciones del asistente') }}</span>
+                                    <span class="align-middle small">{{ __('Asistencia en usuarios') }}</span>
                                 </div>
                                 <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
                                     <input type="checkbox" class="switch-input" id="sidebar-show-assistant-conversations-toggle"
@@ -1773,9 +1758,9 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Mostrar sección de conversaciones de WhatsApp en la lista de chats') }}">
+                                <div class="pe-1 text-truncate" title="{{ __('Sección de conversaciones de WhatsApp en la lista de chats') }}">
                                     <i class="ti ti-brand-whatsapp me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Mostrar conversaciones de WhatsApp') }}</span>
+                                    <span class="align-middle small">{{ __('Conversaciones de WhatsApp') }}</span>
                                 </div>
                                 <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
                                     <input type="checkbox" class="switch-input" id="sidebar-show-whatsapp-conversations-toggle"
@@ -1823,12 +1808,12 @@
                         <h5 class="text-primary mb-0 px-4 pt-3 pb-2">{{ __('Chats') }}</h5>
                     </div>
                     <!-- Chats -->
-                    <div id="assistant-conversations-section" class="@if(!($showAssistantConversations ?? false)) d-none @endif">
+                    <div id="assistant-conversations-section">
                         <div class="chat-contact-list-item-title">
                             <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('Asistente') }}</h6>
                         </div>
-                        <ul class="list-unstyled chat-contact-list" id="chat-list">
-                            @auth
+                        @auth
+                        <ul class="list-unstyled chat-contact-list mb-0" id="chat-list">
                             <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
                                 <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="d-flex align-items-center">
                                     <div class="flex-shrink-0 avatar">
@@ -1840,27 +1825,31 @@
                                     </div>
                                 </a>
                             </li>
-                            @foreach($assistantClients as $client)
-                                @if($client->id !== auth()->id())
-                                <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
-                                    <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 avatar">
-                                            <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
-                                        </div>
-                                        <div class="chat-contact-info flex-grow-1 ms-2">
-                                            <h6 class="chat-contact-name text-truncate m-0">{{ $client->name ?? $client->email }}</h6>
-                                            <p class="chat-contact-status text-muted text-truncate mb-0">{{ $client->phone ?? $client->email }}</p>
-                                        </div>
-                                    </a>
-                                </li>
-                                @endif
-                            @endforeach
-                            @endauth
                         </ul>
+                        <div id="assistant-conversations-extra-section" class="@if(!($showAssistantConversations ?? false)) d-none @endif">
+                            <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-assistant-clients">
+                                @foreach($assistantClients as $client)
+                                    @if($client->id !== auth()->id())
+                                    <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
+                                        <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 avatar">
+                                                <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
+                                            </div>
+                                            <div class="chat-contact-info flex-grow-1 ms-2">
+                                                <h6 class="chat-contact-name text-truncate m-0">{{ $client->name ?? $client->email }}</h6>
+                                                <p class="chat-contact-status text-muted text-truncate mb-0">{{ $client->phone ?? $client->email }}</p>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </div>
+                        @endauth
                     </div>
-                    <div id="whatsapp-conversations-section" class="@if(!($showWhatsAppConversations ?? true)) d-none @endif">
+                    <div id="whatsapp-conversations-section" class="@if(!($showWhatsAppConversations ?? true)) d-none @endif mt-4">
                         <div class="chat-contact-list-item-title">
-                            <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('WhatsApp') }}</h6>
+                            <h6 class="text-muted text-uppercase mb-0 px-4 pt-1 pb-2">{{ __('WhatsApp') }}</h6>
                         </div>
                         <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
                         @if ($contacts->isEmpty())

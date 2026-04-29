@@ -413,8 +413,6 @@ class ChatController extends Controller
             && filter_var($currentTeam->getSetting('assistant_chat_stub', false), FILTER_VALIDATE_BOOLEAN);
         $assistantKeywordIntentRouting = $currentTeam
             && filter_var($currentTeam->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOLEAN);
-        $chatAiAssistanceBlockedTeam = $currentTeam
-            && filter_var($currentTeam->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOLEAN);
         $showAssistantConversations = $currentTeam
             ? filter_var($currentTeam->getSetting('chat_show_assistant_conversations', false), FILTER_VALIDATE_BOOLEAN)
             : false;
@@ -442,7 +440,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
     }
 
     /**
