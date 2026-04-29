@@ -7,6 +7,7 @@ use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\Prompt;
@@ -24,6 +25,7 @@ use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -179,9 +181,11 @@ class ChatController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, unread_count: int, user_name?: string, user_photo?: string, user_id?: int}>
+     * Filters WhatsApp sidebar rows using query param {@see request()} keys: `crm_status` empty=all, `none`=no CRM profile for that phone, or contact_status id (see {@see ContactStatus}).
+     *
+     * @return Collection<int, object>
      */
-    private function getWhatsAppContacts(): \Illuminate\Support\Collection
+    private function getWhatsAppContacts(?Request $request = null): Collection
     {
         $team = auth()->check() ? auth()->user()->currentTeam : null;
         if (! $team || ! $team->getWhatsAppFrom())
@@ -261,8 +265,17 @@ class ChatController extends Controller
                 $contact->user_photo = $userData->profile_photo_path;
                 $contact->user_id = $userData->id;
             }
+            $crmProfile = $this->findContactForTeamByChatPhone((int) $team->id, $digitsOnly);
+            $contact->crm_has_contact = $crmProfile !== null;
+            $contact->crm_status_id = $crmProfile?->status_id;
             $contacts->push($contact);
         }
+
+        $effectiveRequest = $request ?? request();
+        $contacts = $this->applyWhatsAppCrmConversationFilter(
+            $contacts,
+            $effectiveRequest instanceof Request ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest) : ['mode' => 'all'],
+        );
 
         return $contacts->sortByDesc(function ($c)
         {
@@ -270,11 +283,52 @@ class ChatController extends Controller
         })->values();
     }
 
+    /**
+     * @return array{mode: string, status_id?: int}
+     */
+    private function resolveWhatsAppListCrmStatusFilter(Request $request): array
+    {
+        if (! $request->filled('crm_status'))
+        {
+            return ['mode' => 'all'];
+        }
+        $raw = $request->query('crm_status');
+        if ($raw === 'none')
+        {
+            return ['mode' => 'no_crm'];
+        }
+        $id = (int) $raw;
+
+        return $id > 0 ? ['mode' => 'status_id', 'status_id' => $id] : ['mode' => 'all'];
+    }
+
+    /**
+     * @param  array{mode: string, status_id?: int}  $spec
+     */
+    private function applyWhatsAppCrmConversationFilter(Collection $contacts, array $spec): Collection
+    {
+        return match ($spec['mode'])
+        {
+            'no_crm' => $contacts->filter(fn ($c) => isset($c->crm_has_contact) && $c->crm_has_contact === false)->values(),
+            'status_id' => $contacts->filter(function ($c) use ($spec): bool
+            {
+                if (! isset($c->crm_has_contact, $spec['status_id']))
+                {
+                    return false;
+                }
+
+                return $c->crm_has_contact === true
+                    && (int) ($c->crm_status_id ?? 0) === (int) $spec['status_id'];
+            })->values(),
+            default => $contacts,
+        };
+    }
+
     public function index()
     {
         $viewAssistant = request('view') === 'assistant';
         $assistantUserId = request()->integer('user_id', 0) ?: null;
-        $contacts = $this->getWhatsAppContacts();
+        $contacts = $this->getWhatsAppContacts(request());
 
         // If a contact is selected, get their messages (normalize to digits so list dedupe and active state match)
         $selectedPhone = request('phone') ? preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) request('phone'))) : null;
@@ -440,7 +494,11 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
+        $contactStatuses = auth()->check()
+            ? ContactStatus::query()->orderBy('id')->get(['id', 'name'])
+            : collect();
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses'));
     }
 
     /**
@@ -666,9 +724,9 @@ class ChatController extends Controller
     /**
      * Get WhatsApp conversation list as JSON for sidebar polling (live update without page refresh).
      */
-    public function getChatList()
+    public function getChatList(Request $request)
     {
-        $contacts = $this->getWhatsAppContacts();
+        $contacts = $this->getWhatsAppContacts($request);
         $list = $contacts->map(function ($c)
         {
             $item = [

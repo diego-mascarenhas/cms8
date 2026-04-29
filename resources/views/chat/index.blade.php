@@ -1135,6 +1135,20 @@
             var chatUrl = listEl.getAttribute('data-chat-url') || '{{ route("chat.index") }}';
             var listUrl = '{{ route("chat.list") }}';
 
+            function chatListFetchUrl() {
+                var sel = document.getElementById('chat-contact-status-filter');
+                if (!sel || !sel.value) return listUrl;
+                return listUrl + (listUrl.indexOf('?') >= 0 ? '&' : '?') + 'crm_status=' + encodeURIComponent(sel.value);
+            }
+            function buildChatIndexHrefWithPhone(fromDigits) {
+                var qs = [];
+                var sel = document.getElementById('chat-contact-status-filter');
+                if (sel && sel.value) qs.push('crm_status=' + encodeURIComponent(sel.value));
+                qs.push('phone=' + encodeURIComponent(fromDigits));
+                var sep = chatUrl.indexOf('?') >= 0 ? '&' : '?';
+                return chatUrl + sep + qs.join('&');
+            }
+
             function escapeHtml(s) {
                 if (s == null) return '';
                 var div = document.createElement('div');
@@ -1168,7 +1182,7 @@
                     var avatar = c.user_photo
                         ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
                         : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
-                    var href = chatUrl + (chatUrl.indexOf('?') >= 0 ? '&' : '?') + 'phone=' + encodeURIComponent(c.from);
+                    var href = buildChatIndexHrefWithPhone(c.from);
                     var rightCol = '<div class="d-flex flex-column align-items-end flex-shrink-0 gap-1"><small class="text-muted">' + time + '</small>' + (badge ? badge : '') + '</div>';
                     return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
                 }).join('');
@@ -1177,7 +1191,7 @@
             function fetchChatList() {
                 var body = document.getElementById('chat-history-body');
                 var isAssistantView = body && body.getAttribute('data-view-assistant') === '1';
-                fetch(listUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                fetch(chatListFetchUrl(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         var selected = listEl.getAttribute('data-selected-phone') || '';
@@ -1191,6 +1205,20 @@
             }
             setInterval(fetchChatList, 5000);
             window.addEventListener('focus', fetchChatList);
+
+            var crmStatusFilterSel = document.getElementById('chat-contact-status-filter');
+            if (crmStatusFilterSel) {
+                crmStatusFilterSel.addEventListener('change', function () {
+                    var nextUrl = new URL(window.location.href);
+                    if (!crmStatusFilterSel.value) {
+                        nextUrl.searchParams.delete('crm_status');
+                    } else {
+                        nextUrl.searchParams.set('crm_status', crmStatusFilterSel.value);
+                    }
+                    window.history.replaceState({}, '', nextUrl.toString());
+                    fetchChatList();
+                });
+            }
         })();
 
         // Generate new QR: submit via AJAX so sidebar stays open
@@ -1808,18 +1836,33 @@
                 <hr class="container-m-nx m-0">
                 <div class="sidebar-body">
 
-                    <div class="chat-contact-list-item-title">
-                        <h5 class="text-primary mb-0 px-4 pt-3 pb-2">{{ __('Chats') }}</h5>
+                    @auth
+                    <div class="chat-contact-list-item-title px-4 pt-3 pb-2">
+                        <label for="chat-contact-status-filter" class="visually-hidden">{{ __('Filter by contact status') }}</label>
+                        <div class="flex-grow-1 input-group input-group-merge rounded-pill">
+                            <span class="input-group-text" id="chat-crm-status-addon"><i class="ti ti-filter"></i></span>
+                            <select id="chat-contact-status-filter" name="crm_status"
+                                class="form-select"
+                                title="{{ __('Filter WhatsApp chats by CRM contact status') }}"
+                                aria-describedby="chat-crm-status-addon">
+                                <option value="" @selected(!request()->filled('crm_status'))>{{ __('All statuses') }}</option>
+                                <option value="none" @selected(request('crm_status') === 'none')>{{ __('Sin ficha CRM') }}</option>
+                                @foreach(($contactStatuses ?? []) as $st)
+                                    <option value="{{ $st->id }}" @selected(request('crm_status') == (string) $st->id)>{{ $st->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
+                    @endauth
                     <!-- Chats -->
                     <div id="assistant-conversations-section">
-                        <div class="chat-contact-list-item-title">
+                        <div class="chat-contact-list-item-title mt-3">
                             <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('Asistente') }}</h6>
                         </div>
                         @auth
                         <ul class="list-unstyled chat-contact-list mb-0" id="chat-list">
                             <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
-                                <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="d-flex align-items-center">
+                                <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['view' => 'assistant'])) }}" class="d-flex align-items-center">
                                     <div class="flex-shrink-0 avatar">
                                         <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
                                     </div>
@@ -1835,7 +1878,7 @@
                                 @foreach($assistantClients as $client)
                                     @if($client->id !== auth()->id())
                                     <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
-                                        <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
+                                        <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['view' => 'assistant', 'user_id' => $client->id])) }}" class="d-flex align-items-center">
                                             <div class="flex-shrink-0 avatar">
                                                 <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
                                             </div>
@@ -1872,7 +1915,7 @@
                             @foreach ($contacts as $contact)
                                 <li class="chat-contact-list-item {{ $selectedPhone == $contact->from ? 'active' : '' }}"
                                     data-phone="{{ $contact->from }}">
-                                    <a href="{{ route('chat.index', ['phone' => $contact->from]) }}"
+                                    <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['phone' => $contact->from])) }}"
                                         class="d-flex align-items-center">
                                         <div class="flex-shrink-0 avatar">
                                             @if (isset($contact->user_photo))
