@@ -1758,9 +1758,9 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Show assistant conversations section in chat list') }}">
+                                <div class="pe-1 text-truncate" title="{{ __('Mostrar sección de conversaciones del asistente en la lista de chats') }}">
                                     <i class="ti ti-layout-list me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Show assistant conversations') }}</span>
+                                    <span class="align-middle small">{{ __('Mostrar conversaciones del asistente') }}</span>
                                 </div>
                                 <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
                                     <input type="checkbox" class="switch-input" id="sidebar-show-assistant-conversations-toggle"
@@ -1773,9 +1773,9 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Show WhatsApp conversations section in chat list') }}">
+                                <div class="pe-1 text-truncate" title="{{ __('Mostrar sección de conversaciones de WhatsApp en la lista de chats') }}">
                                     <i class="ti ti-brand-whatsapp me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Show WhatsApp conversations') }}</span>
+                                    <span class="align-middle small">{{ __('Mostrar conversaciones de WhatsApp') }}</span>
                                 </div>
                                 <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
                                     <input type="checkbox" class="switch-input" id="sidebar-show-whatsapp-conversations-toggle"
@@ -1825,7 +1825,7 @@
                     <!-- Chats -->
                     <div id="assistant-conversations-section" class="@if(!($showAssistantConversations ?? false)) d-none @endif">
                         <div class="chat-contact-list-item-title">
-                            <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('Assistant') }}</h6>
+                            <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('Asistente') }}</h6>
                         </div>
                         <ul class="list-unstyled chat-contact-list" id="chat-list">
                             @auth
