@@ -143,11 +143,15 @@ class WhatsAppLocalWebhookController extends Controller
             'NumMedia' => $payload['numMedia'] ?? $payload['hasMedia'] ?? 0,
         ];
 
-        if (! empty($payload['mediaUrl']))
+        $mediaEntries = $this->extractMediaEntries($payload);
+        if ($mediaEntries !== [])
         {
-            $normalized['MediaUrl0'] = $payload['mediaUrl'];
-            $normalized['MediaContentType0'] = $payload['mediaContentType'] ?? 'application/octet-stream';
-            $normalized['NumMedia'] = 1;
+            $normalized['NumMedia'] = count($mediaEntries);
+            foreach ($mediaEntries as $index => $entry)
+            {
+                $normalized['MediaUrl'.$index] = $entry['url'];
+                $normalized['MediaContentType'.$index] = $entry['content_type'] ?? 'application/octet-stream';
+            }
         }
 
         $profileKeys = ['push_name', 'pushName', 'profile_name'];
@@ -163,6 +167,68 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return $normalized;
+    }
+
+    /**
+     * @return array<int, array{url: string, content_type: string}>
+     */
+    private function extractMediaEntries(array $payload): array
+    {
+        $entries = [];
+
+        $addEntry = function (?string $url, ?string $contentType = null) use (&$entries): void
+        {
+            $cleanUrl = is_string($url) ? trim($url) : '';
+            if ($cleanUrl === '')
+            {
+                return;
+            }
+            $entries[] = [
+                'url' => $cleanUrl,
+                'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
+            ];
+        };
+
+        $addEntry($payload['mediaUrl'] ?? null, $payload['mediaContentType'] ?? null);
+        $addEntry($payload['imageUrl'] ?? null, $payload['imageContentType'] ?? 'image/jpeg');
+        $addEntry($payload['documentUrl'] ?? null, $payload['documentContentType'] ?? 'application/pdf');
+        $addEntry($payload['fileUrl'] ?? null, $payload['fileContentType'] ?? null);
+
+        if (isset($payload['media']) && is_array($payload['media']))
+        {
+            foreach ($payload['media'] as $mediaItem)
+            {
+                if (! is_array($mediaItem))
+                {
+                    continue;
+                }
+                $addEntry(
+                    $mediaItem['url'] ?? $mediaItem['mediaUrl'] ?? $mediaItem['link'] ?? null,
+                    $mediaItem['content_type'] ?? $mediaItem['contentType'] ?? $mediaItem['mimetype'] ?? null,
+                );
+            }
+        }
+
+        foreach (['image', 'document', 'file', 'attachment'] as $nestedKey)
+        {
+            $nested = $payload[$nestedKey] ?? null;
+            if (! is_array($nested))
+            {
+                continue;
+            }
+            $addEntry(
+                $nested['url'] ?? $nested['link'] ?? null,
+                $nested['content_type'] ?? $nested['contentType'] ?? $nested['mimetype'] ?? null,
+            );
+        }
+
+        $unique = [];
+        foreach ($entries as $entry)
+        {
+            $unique[$entry['url']] = $entry;
+        }
+
+        return array_values($unique);
     }
 
     /**
