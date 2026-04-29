@@ -1150,7 +1150,11 @@
                 if (!contacts || contacts.length === 0) {
                     var hasWa = listEl.getAttribute('data-team-has-wa-number') === '1';
                     var msg = hasWa ? '{{ __("No WhatsApp conversations") }}' : '{{ __("Link a WhatsApp number in the sidebar to see conversations here.") }}';
-                    listEl.innerHTML = '<li class="chat-contact-list-item chat-list-item-0"><h6 class="text-muted mb-0">' + msg + '</h6></li>';
+                    listEl.innerHTML =
+                        '<li class="chat-contact-list-item chat-list-item-0">' +
+                        '<a href="#" class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer" role="button" onclick="event.preventDefault();" data-bs-toggle="sidebar" data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">' +
+                        '<h6 class="text-muted mb-0">' + escapeHtml(msg) + '</h6>' +
+                        '</a></li>';
                     return;
                 }
                 var html = contacts.map(function (c) {
@@ -1854,7 +1858,15 @@
                         <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
-                                <h6 class="text-muted mb-0">{{ !empty($teamWhatsAppNumber) ? __('No WhatsApp conversations') : __('Link a WhatsApp number in the sidebar to see conversations here.') }}</h6>
+                                <a href="#"
+                                   class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer"
+                                   role="button"
+                                   onclick="event.preventDefault();"
+                                   data-bs-toggle="sidebar"
+                                   data-overlay="app-overlay-ex"
+                                   data-target="#app-chat-sidebar-left">
+                                    <h6 class="text-muted mb-0">{{ !empty($teamWhatsAppNumber) ? __('No WhatsApp conversations') : __('Link a WhatsApp number in the sidebar to see conversations here.') }}</h6>
+                                </a>
                             </li>
                         @else
                             @foreach ($contacts as $contact)
