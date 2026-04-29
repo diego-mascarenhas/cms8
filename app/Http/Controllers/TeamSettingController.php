@@ -526,6 +526,24 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
+            'documents' => [
+                'title' => __('Document OCR'),
+                'icon' => 'ti ti-scan',
+                'settings' => [
+                    'documents_ocr_mode' => [
+                        'label' => __('OCR engine mode'),
+                        'type' => 'select',
+                        'options' => [
+                            'local' => __('Local (Tesseract)'),
+                            'ai' => __('AI (vision model)'),
+                            'hybrid' => __('Hybrid (runs both, picks best)'),
+                        ],
+                        'value' => $team->getSetting('documents_ocr_mode', 'local'),
+                        'is_encrypted' => false,
+                        'help' => __('Choose how documents are read for OCR in the ingestion pipeline (chat, WhatsApp, uploads).'),
+                    ],
+                ],
+            ],
             'public_shop' => [
                 'title' => __('Public assistant shop'),
                 'icon' => 'ti ti-shopping-bag',

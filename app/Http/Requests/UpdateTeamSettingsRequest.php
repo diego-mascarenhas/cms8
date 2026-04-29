@@ -35,6 +35,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
             'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
+            'documents.documents_ocr_mode' => 'nullable|string|in:local,ai,hybrid',
 
             // Twilio settings
             'twilio.twilio_sid' => 'nullable|string|max:255',

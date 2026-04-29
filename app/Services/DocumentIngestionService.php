@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
 
 class DocumentIngestionService
 {
-    public function __construct(private readonly DocumentOcrService $ocrService) {}
+    public function __construct(
+        private readonly DocumentOcrService $ocrService,
+        private readonly DocumentAiOcrService $aiOcrService,
+    ) {}
 
     public function ingestFromConversationMedia(
         Conversation $conversation,
@@ -49,7 +52,8 @@ class DocumentIngestionService
             try
             {
                 $classification = $this->classifyDocument($mimeType, $fileName, $fileUrl);
-                $ocrText = $this->extractOcrText($fileUrl, $mimeType);
+                $ocrResult = $this->extractOcrText($fileUrl, $mimeType, $teamId);
+                $ocrText = $ocrResult['text'];
                 $extractedData = $this->extractStructuredDataFromText($ocrText);
                 $classification = $this->refineClassificationWithExtractedData($classification, $extractedData, $mimeType, $fileName);
 
@@ -71,6 +75,9 @@ class DocumentIngestionService
                         'reason' => $classification['reason'],
                         'channel' => Str::lower($sourceName),
                         'ocr_applied' => $ocrText !== null,
+                        'ocr_mode' => $ocrResult['mode'],
+                        'ocr_engine_used' => $ocrResult['engine_used'],
+                        'ocr_engines_ran' => $ocrResult['engines_ran'],
                     ],
                 ]);
 
@@ -130,7 +137,8 @@ class DocumentIngestionService
         try
         {
             $classification = $this->classifyDocument($mimeType, $fileName, $fileUrl);
-            $ocrText = $this->extractOcrText($fileUrl, $mimeType);
+            $ocrResult = $this->extractOcrText($fileUrl, $mimeType, $documentIngestion->team_id);
+            $ocrText = $ocrResult['text'];
             $extractedData = $this->extractStructuredDataFromText($ocrText);
             $classification = $this->refineClassificationWithExtractedData($classification, $extractedData, $mimeType, $fileName);
 
@@ -145,6 +153,9 @@ class DocumentIngestionService
                 'classification_meta' => array_merge((array) ($documentIngestion->classification_meta ?? []), [
                     'reason' => $classification['reason'],
                     'ocr_applied' => $ocrText !== null,
+                    'ocr_mode' => $ocrResult['mode'],
+                    'ocr_engine_used' => $ocrResult['engine_used'],
+                    'ocr_engines_ran' => $ocrResult['engines_ran'],
                     'reprocessed_at' => now()->toIso8601String(),
                 ]),
                 'processing_error' => null,
@@ -287,7 +298,10 @@ class DocumentIngestionService
         return $fileName === '/' || $fileName === '.' ? '' : urldecode($fileName);
     }
 
-    private function extractOcrText(string $fileUrl, string $mimeType): ?string
+    /**
+     * @return array{text:?string,mode:string,engine_used:?string,engines_ran:array<int,string>}
+     */
+    private function extractOcrText(string $fileUrl, string $mimeType, ?int $teamId): array
     {
         $lowerMime = Str::lower($mimeType);
         $lowerPath = Str::lower((string) parse_url($fileUrl, PHP_URL_PATH));
@@ -300,16 +314,95 @@ class DocumentIngestionService
         $isPdf = Str::contains($lowerMime, 'pdf') || Str::endsWith($lowerPath, '.pdf');
         if ($fileUrl === '' || (! $isImage && ! $isPdf))
         {
-            return null;
+            return [
+                'text' => null,
+                'mode' => $this->resolveOcrMode($teamId),
+                'engine_used' => null,
+                'engines_ran' => [],
+            ];
         }
 
         $localPath = $this->resolveLocalPathFromUrl($fileUrl);
         if ($localPath === null)
         {
-            return null;
+            return [
+                'text' => null,
+                'mode' => $this->resolveOcrMode($teamId),
+                'engine_used' => null,
+                'engines_ran' => [],
+            ];
         }
 
-        return $this->ocrService->extractTextFromLocalFile($localPath);
+        $mode = $this->resolveOcrMode($teamId);
+        $localText = null;
+        $aiText = null;
+        $enginesRan = [];
+
+        if ($mode === 'local' || $mode === 'hybrid')
+        {
+            $localText = $this->ocrService->extractTextFromLocalFile($localPath);
+            $enginesRan[] = 'local';
+        }
+
+        if ($mode === 'ai' || $mode === 'hybrid')
+        {
+            $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath);
+            $enginesRan[] = 'ai';
+        }
+
+        if ($mode === 'ai' && $aiText === null)
+        {
+            $localText = $this->ocrService->extractTextFromLocalFile($localPath);
+            $enginesRan[] = 'local_fallback';
+        }
+
+        $chosenText = null;
+        $engineUsed = null;
+        if ($mode === 'local')
+        {
+            $chosenText = $localText;
+            $engineUsed = $localText !== null ? 'local' : null;
+        } elseif ($mode === 'ai')
+        {
+            $chosenText = $aiText ?? $localText;
+            $engineUsed = $aiText !== null ? 'ai' : ($localText !== null ? 'local_fallback' : null);
+        } else
+        {
+            $localLen = mb_strlen((string) ($localText ?? ''));
+            $aiLen = mb_strlen((string) ($aiText ?? ''));
+            if ($aiLen > $localLen)
+            {
+                $chosenText = $aiText;
+                $engineUsed = $aiText !== null ? 'ai' : null;
+            } else
+            {
+                $chosenText = $localText ?? $aiText;
+                $engineUsed = $localText !== null ? 'local' : ($aiText !== null ? 'ai' : null);
+            }
+        }
+
+        return [
+            'text' => $chosenText,
+            'mode' => $mode,
+            'engine_used' => $engineUsed,
+            'engines_ran' => $enginesRan,
+        ];
+    }
+
+    private function resolveOcrMode(?int $teamId): string
+    {
+        if ($teamId === null)
+        {
+            return 'local';
+        }
+
+        $mode = Str::lower((string) Team::withoutGlobalScopes()->find($teamId)?->getSetting('documents_ocr_mode', 'local'));
+        if (! in_array($mode, ['local', 'ai', 'hybrid'], true))
+        {
+            return 'local';
+        }
+
+        return $mode;
     }
 
     private function resolveLocalPathFromUrl(string $fileUrl): ?string
@@ -356,6 +449,10 @@ class DocumentIngestionService
         $name = $this->extractLikelyName($text, $emails, $website);
         $title = $this->extractLikelyTitle($text);
         $company = $this->extractLikelyCompany($text, $name, $title);
+        if ($company === null && $website !== null)
+        {
+            $company = $this->extractCompanyFromWebsite($website);
+        }
 
         return [
             'phones' => $phones,
@@ -551,6 +648,31 @@ class DocumentIngestionService
         }
 
         return null;
+    }
+
+    private function extractCompanyFromWebsite(string $website): ?string
+    {
+        $host = (string) (parse_url($website, PHP_URL_HOST) ?: '');
+        if ($host === '')
+        {
+            return null;
+        }
+
+        $host = Str::lower($host);
+        if (str_starts_with($host, 'www.'))
+        {
+            $host = substr($host, 4);
+        }
+
+        $segments = explode('.', $host);
+        if (count($segments) < 2)
+        {
+            return Str::title($host);
+        }
+
+        $base = $segments[count($segments) - 2];
+
+        return $base !== '' ? Str::title(str_replace(['-', '_'], ' ', $base)) : null;
     }
 
     /**

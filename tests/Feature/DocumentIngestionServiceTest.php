@@ -25,7 +25,6 @@ class DocumentIngestionServiceTest extends TestCase
             ->andReturn(implode("\n", [
                 'Jorge Martinez',
                 'Sales Director',
-                'ClickDefense LLC',
                 'www.clickdefense.io',
                 '+34 624 159 557',
                 'jorge@clickdefense.io',
@@ -85,7 +84,7 @@ class DocumentIngestionServiceTest extends TestCase
         $this->assertContains('jorge@clickdefense.io', $cardRecord->extracted_data['emails'] ?? []);
         $this->assertSame('Jorge Martinez', $cardRecord->extracted_data['name'] ?? null);
         $this->assertSame('Sales Director', $cardRecord->extracted_data['title'] ?? null);
-        $this->assertSame('ClickDefense LLC', $cardRecord->extracted_data['company'] ?? null);
+        $this->assertSame('Clickdefense', $cardRecord->extracted_data['company'] ?? null);
         $this->assertSame('https://www.clickdefense.io', $cardRecord->extracted_data['website'] ?? null);
     }
 
