@@ -64,7 +64,7 @@
     {
       "url": "opportunity/list",
       "name": "Opportunities",
-      "icon": "menu-icon tf-icons ti ti-chart-line",
+      "icon": "menu-icon tf-icons ti ti-chart-donut",
       "slug": "opportunity-list",
       "module_key": "opportunities"
     },

@@ -28,7 +28,7 @@ class ModuleSeeder extends Seeder
         ],
         'contacts' => [
             'name' => 'Contacts',
-            'icon' => 'users',
+            'icon' => 'address-book',
             'description' => 'Contact management module',
             'is_enabled' => true,  // On by default
         ],
@@ -58,7 +58,7 @@ class ModuleSeeder extends Seeder
         ],
         'opportunities' => [
             'name' => 'Opportunities',
-            'icon' => 'chart-line',
+            'icon' => 'chart-donut',
             'description' => 'CRM opportunities and pipeline',
             'is_enabled' => true,
         ],
@@ -124,14 +124,14 @@ class ModuleSeeder extends Seeder
         ],
         'incomes' => [
             'name' => 'Incomes',
-            'icon' => 'coin',
+            'icon' => 'trending-up',
             'description' => 'Incomes management module',
             'group' => 'billing',
             'order' => 5,
         ],
         'expenses' => [
             'name' => 'Expenses',
-            'icon' => 'receipt',
+            'icon' => 'trending-down',
             'description' => 'Expenses management module',
             'group' => 'billing',
             'order' => 6,
@@ -323,7 +323,7 @@ class ModuleSeeder extends Seeder
         ],
         'events' => [
             'name' => 'Events',
-            'icon' => 'calendar',
+            'icon' => 'calendar-event',
             'description' => 'Events management module',
             'order' => 2,
         ],
@@ -354,7 +354,7 @@ class ModuleSeeder extends Seeder
         ],
         'departments' => [
             'name' => 'Departments',
-            'icon' => 'users-group',
+            'icon' => 'hierarchy',
             'description' => 'Department management module',
             'order' => 7,
         ],
@@ -403,7 +403,7 @@ class ModuleSeeder extends Seeder
         // LEARNING & DEVELOPMENT
         'languages' => [
             'name' => 'Languages',
-            'icon' => 'globe',
+            'icon' => 'language',
             'description' => 'Languages management module',
             'group' => 'learning',
             'order' => 1,
@@ -438,7 +438,7 @@ class ModuleSeeder extends Seeder
         ],
         'stylebooks' => [
             'name' => 'Stylebooks',
-            'icon' => 'book',
+            'icon' => 'palette',
             'description' => 'Stylebooks management module',
             'group' => 'learning',
             'order' => 6,
