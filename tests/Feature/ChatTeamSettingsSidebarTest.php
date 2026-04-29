@@ -62,4 +62,28 @@ class ChatTeamSettingsSidebarTest extends TestCase
             'on' => true,
         ])->assertOk();
     }
+
+    public function test_admin_can_toggle_chat_conversation_visibility_sections(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $this->actingAs($user)->patchJson(route('chat.team-settings-sidebar'), [
+            'key' => 'chat_show_assistant_conversations',
+            'on' => true,
+        ])->assertOk()->assertJson(['success' => true]);
+
+        $this->actingAs($user)->patchJson(route('chat.team-settings-sidebar'), [
+            'key' => 'chat_show_whatsapp_conversations',
+            'on' => false,
+        ])->assertOk()->assertJson(['success' => true]);
+
+        $team->refresh();
+        $this->assertTrue((bool) $team->getSetting('chat_show_assistant_conversations', false));
+        $this->assertFalse((bool) $team->getSetting('chat_show_whatsapp_conversations', true));
+    }
 }

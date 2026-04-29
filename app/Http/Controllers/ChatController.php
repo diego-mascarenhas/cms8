@@ -415,6 +415,12 @@ class ChatController extends Controller
             && filter_var($currentTeam->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOLEAN);
         $chatAiAssistanceBlockedTeam = $currentTeam
             && filter_var($currentTeam->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOLEAN);
+        $showAssistantConversations = $currentTeam
+            ? filter_var($currentTeam->getSetting('chat_show_assistant_conversations', false), FILTER_VALIDATE_BOOLEAN)
+            : false;
+        $showWhatsAppConversations = $currentTeam
+            ? filter_var($currentTeam->getSetting('chat_show_whatsapp_conversations', true), FILTER_VALIDATE_BOOLEAN)
+            : true;
         $canManageChatTeamSidebarSettings = auth()->check()
             && $currentTeam
             && auth()->user()->hasAnyRole(['admin', 'root']);
@@ -436,7 +442,7 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
     }
 
     /**
@@ -775,7 +781,7 @@ class ChatController extends Controller
     public function updateChatTeamSettingsSidebar(Request $request)
     {
         $request->validate([
-            'key' => ['required', 'string', 'in:assistant_auto_respond,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked'],
+            'key' => ['required', 'string', 'in:assistant_auto_respond,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations'],
             'on' => ['required', 'boolean'],
         ]);
 
@@ -839,7 +845,7 @@ class ChatController extends Controller
             return;
         }
 
-        if (in_array($key, ['assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked'], true))
+        if (in_array($key, ['assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations'], true))
         {
             $team->setSetting($key, $on, [
                 'group' => 'chat',
