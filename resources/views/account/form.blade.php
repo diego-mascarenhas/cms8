@@ -97,7 +97,7 @@
                             @foreach($additionalModules as $groupKey => $modules)
                                 @if($groupKey !== '' && isset($groupLabels[$groupKey]))
                                     @php
-                                        $useEnglishGroupLabel = in_array($groupKey, ['billing', 'security', 'support'], true);
+                                        $useEnglishGroupLabel = in_array($groupKey, ['automation', 'billing', 'security', 'support'], true);
                                     @endphp
                                     <div class="mb-4">
                                         <h6 class="text-primary mb-3">

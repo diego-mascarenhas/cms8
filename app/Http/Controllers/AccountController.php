@@ -26,7 +26,7 @@ class AccountController extends Controller
      */
     protected function moduleKeysHiddenFromAccountForm(): array
     {
-        return ['accounting'];
+        return ['accounting', 'events'];
     }
 
     public function index(AccountDataTable $dataTable)

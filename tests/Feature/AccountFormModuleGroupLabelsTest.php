@@ -34,19 +34,23 @@ class AccountFormModuleGroupLabelsTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('id="module_accounting"', false);
+        $response->assertDontSee('id="module_events"', false);
         $response->assertDontSee('Stripe billing', false);
+        $response->assertDontSee('Events management module', false);
         $response->assertSee('<i class="ti ti-calculator me-2"></i>', false);
         $response->assertSee('Additional Modules', false);
         $response->assertSee('Accounting', false);
         $response->assertSee('Subscriptions, invoices, payments and financial modules', false);
         $response->assertSee('Security', false);
         $response->assertSee('Support', false);
+        $response->assertSee('Automation', false);
+        $response->assertSee('Assistant instructions, funnel and API.', false);
         $response->assertDontSee('Módulos adicionales', false);
         $response->assertDontSee('Seguridad', false);
         $response->assertDontSee('Soporte', false);
     }
 
-    public function test_account_update_preserves_accounting_when_hidden_from_form(): void
+    public function test_account_update_preserves_hidden_modules_when_not_in_request(): void
     {
         $this->seed(ModuleSeeder::class);
 
@@ -61,6 +65,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $user->assignRole($role);
 
         $team->enableModule('accounting');
+        $team->enableModule('events');
         $team->enableModule('invoices');
 
         $coreKeys = Module::query()->where('is_core', true)->pluck('key')->all();
@@ -72,6 +77,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
 
         $team->refresh();
         $this->assertTrue($team->hasModule('accounting'));
+        $this->assertTrue($team->hasModule('events'));
         $this->assertTrue($team->hasModule('invoices'));
     }
 }
