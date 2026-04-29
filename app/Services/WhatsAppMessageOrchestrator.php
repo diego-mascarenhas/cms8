@@ -600,6 +600,16 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
             $cleanFrom = preg_replace('/[^0-9]/', '', (string) $from);
             $cleanTo = preg_replace('/[^0-9]/', '', (string) $to);
+            $resolvedInboundTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
+            Log::info('WhatsApp inbound resolved context', [
+                'message_sid' => $messageSid,
+                'channel_hint_from' => $from,
+                'channel_hint_to' => $to,
+                'from_digits' => $cleanFrom,
+                'to_digits' => $cleanTo,
+                'route_team_id' => $this->team?->id,
+                'resolved_team_id' => $resolvedInboundTeamId,
+            ]);
 
             if ($cleanFrom === '' && (strpos((string) $from, 'whatsapp') !== false || strpos((string) $to, 'whatsapp') !== false))
             {
@@ -630,9 +640,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            if ($channel === 'whatsapp' && $this->team && strlen($cleanFrom) >= 8)
+            if ($channel === 'whatsapp' && $resolvedInboundTeamId !== null && strlen($cleanFrom) >= 8)
             {
-                \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $this->team->id);
+                \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $resolvedInboundTeamId);
             }
 
             if (! empty($messageSid))
@@ -647,7 +657,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         'conversation_id' => $existingConversation->id,
                         'from' => $cleanFrom,
                         'to' => $cleanTo,
-                        'team_id' => $this->team?->id,
+                        'team_id' => $resolvedInboundTeamId,
                     ]);
 
                     return response()->json([
@@ -670,12 +680,39 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 {
                     $mediaUrl = $request->input("MediaUrl{$i}");
                     $contentType = $request->input("MediaContentType{$i}");
+                    if (is_string($mediaUrl) && trim($mediaUrl) !== '')
+                    {
+                        $media[] = [
+                            'url' => trim($mediaUrl),
+                            'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
+                        ];
+                    }
+                }
+            }
+
+            if ($media === [])
+            {
+                // Defensive fallback for non-standard providers that send MediaUrlN without NumMedia.
+                foreach (range(0, 9) as $i)
+                {
+                    $mediaUrl = $request->input("MediaUrl{$i}");
+                    if (! is_string($mediaUrl) || trim($mediaUrl) === '')
+                    {
+                        continue;
+                    }
+                    $contentType = $request->input("MediaContentType{$i}");
                     $media[] = [
-                        'url' => $mediaUrl,
-                        'content_type' => $contentType,
+                        'url' => trim($mediaUrl),
+                        'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
                     ];
                 }
             }
+            Log::info('WhatsApp inbound media detection', [
+                'message_sid' => $messageSid,
+                'num_media_input' => $numMedia,
+                'media_detected_count' => count($media),
+                'media_urls' => array_values(array_filter(array_map(static fn ($item) => $item['url'] ?? null, $media))),
+            ]);
 
             // Save incoming message to database (idempotent by message_sid when provided).
             $conversationPayload = [
@@ -689,9 +726,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'metadata' => $request->except(['_token']),
             ];
 
-            if ($this->team)
+            if ($resolvedInboundTeamId !== null)
             {
-                $conversationPayload['team_id'] = $this->team->id;
+                $conversationPayload['team_id'] = $resolvedInboundTeamId;
             }
 
             try
@@ -740,14 +777,24 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $conversation,
                         'WhatsApp',
                         ! empty($messageSid) ? (string) $messageSid : null,
-                        $this->team?->id,
+                        $resolvedInboundTeamId,
                     );
+                    Log::info('WhatsApp document ingestion completed', [
+                        'message_sid' => $messageSid,
+                        'conversation_id' => $conversation->id,
+                        'team_id' => $resolvedInboundTeamId,
+                        'ingestions_count' => count($ingestions),
+                        'ingestion_ids' => array_values(array_filter(array_map(
+                            static fn ($item) => is_object($item) ? (int) ($item->id ?? 0) : 0,
+                            $ingestions,
+                        ))),
+                    ]);
                 } catch (\Throwable $e)
                 {
                     Log::warning('Document ingestion failed for inbound media', [
                         'conversation_id' => $conversation->id,
                         'message_sid' => $messageSid,
-                        'team_id' => $this->team?->id,
+                        'team_id' => $resolvedInboundTeamId,
                         'error' => $e->getMessage(),
                     ]);
                 }
@@ -765,7 +812,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         Log::warning('Document ingestion acknowledgement send failed', [
                             'conversation_id' => $conversation->id,
                             'to' => $cleanFrom,
-                            'team_id' => $this->team?->id,
+                            'team_id' => $resolvedInboundTeamId,
                             'error' => $e->getMessage(),
                         ]);
                     }
@@ -778,6 +825,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     'auto_ai_skipped' => 'document_ingestion_pending',
                 ]);
             }
+
+            Log::info('WhatsApp inbound without media, continuing text pipeline', [
+                'message_sid' => $messageSid,
+                'conversation_id' => $conversation->id ?? null,
+                'team_id' => $resolvedInboundTeamId,
+                'body_preview' => mb_substr((string) $body, 0, 120),
+            ]);
 
             if ($channel === 'whatsapp' && $this->team)
             {
