@@ -110,6 +110,8 @@
   "Calendar": "Calendario",
   "Cancelled": "Cancelado",
   "Campaigns": "Campañas",
+  "Marketing": "Marketing",
+  "Email templates, Mailer sends and marketing automation.": "Plantillas de correo, envíos con Mailer y automatización de marketing.",
   "Templates, email campaigns and marketing automation": "Plantillas, campañas por correo y automatización de marketing",
   "Cancel": "Cancelar",
   "Charged Back": "Contracargo",
@@ -744,7 +746,6 @@
   "Your email address is unverified.": "Su dirección de correo electrónico no está verificada.",
   "Web Site": "Sitio Web",
   "Landing Page": "Landing Page",
-  "Marketing": "Marketing",
   "New Project": "Nuevo Proyecto",
   "New language variant": "Nueva variable de idioma",
   "Language Variants": "Variantes de Idioma",
@@ -1522,5 +1523,7 @@
   "Help section MCP Cursor lead": "Cursor MCP (Idoneo)",
   "Help section MCP Cursor body": "El protocolo MCP (Model Context Protocol) permite conectar Cursor con servidores externos para ampliar el contexto y las acciones disponibles al asistente. Humano documenta aquí cómo registrar el endpoint público de Idoneo en tu entorno de desarrollo.",
   "keyword «onboarding» + destination number; active Chat prompt section_key onboarding.": "palabra clave «onboarding» + número de destino; requiere un prompt activo del módulo Chat con section_key onboarding.",
-  "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).": "Opcional: --keyword=cobrar o --keyword=onboarding (debe coincidir con un prompt activo del equipo: section key, clave de ruteo o etiqueta)."
+  "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).": "Opcional: --keyword=cobrar o --keyword=onboarding (debe coincidir con un prompt activo del equipo: section key, clave de ruteo o etiqueta).",
+  "Additional Modules": "Módulos adicionales",
+  "These are optional modules that can be enabled based on your needs.": "Opcionales según tus necesidades; activalos cuando los quieras usar."
 }

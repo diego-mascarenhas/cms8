@@ -180,6 +180,38 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(50, $stats['totalTokensWithoutToon']);
     }
 
+    public function test_by_module_shows_ocr_module_name_for_document_ai_ocr_logs(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $ocrModule = Module::query()->firstOrCreate(
+            ['key' => 'ocr'],
+            ['name' => 'OCR', 'is_core' => false, 'order' => 8, 'status' => 1],
+        );
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $ocrModule->id,
+            'service' => 'DocumentAiOcrService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 120,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+
+        $this->assertSame(1, count($stats['byModule']));
+        $row = reset($stats['byModule']);
+        $this->assertSame('OCR', $row['module_name']);
+        $this->assertSame(120, $row['tokens_used']);
+    }
+
     public function test_does_not_include_other_teams_data(): void
     {
         $userA = User::factory()->withPersonalTeam()->create();

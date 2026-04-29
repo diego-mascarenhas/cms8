@@ -61,6 +61,9 @@
 
                     <div class="row">
                         <div class="col-12 mb-3">
+                            <label class="form-label">{{ __('Additional Modules') }}</label>
+                            <p class="text-muted small">{{ __('These are optional modules that can be enabled based on your needs.') }}</p>
+
                             @if(isset($additionalModules['']) && isset($groupLabels['']))
                                 <div class="mb-4">
                                     <h6 class="text-primary mb-3">
@@ -91,8 +94,6 @@
                                 </div>
                             @endif
 
-                            <label class="form-label">Additional Modules</label>
-                            <p class="text-muted small">These are optional modules that can be enabled based on your needs.</p>
                             @foreach($additionalModules as $groupKey => $modules)
                                 @if($groupKey !== '' && isset($groupLabels[$groupKey]))
                                     <div class="mb-4">

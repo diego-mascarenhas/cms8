@@ -55,6 +55,7 @@ return [
         'documentation' => false,
         'departments' => false,
         // Additional modules (campaigns)
+        'campaigns' => true,
         'mailer' => true,
         // Additional modules (automation)
         'prompts' => true,

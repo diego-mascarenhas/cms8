@@ -180,10 +180,17 @@
     },
     {
       "url": "message/list",
-      "name": "Messages",
-      "icon": "menu-icon tf-icons ti ti-send",
+      "name": "Campaigns",
+      "icon": "menu-icon tf-icons ti ti-broadcast",
       "slug": "message.index",
-      "module_key": "mailer"
+      "module_key": "campaigns"
+    },
+    {
+      "url": "chat",
+      "name": "Messages",
+      "icon": "menu-icon tf-icons ti ti-messages",
+      "slug": "chat.index",
+      "module_key": "chat"
     },
     {
       "url": "template/list",
@@ -226,7 +233,7 @@
     {
       "url": "notification/list",
       "name": "Notificaciones",
-      "icon": "menu-icon tf-icons ti ti-speakerphone",
+      "icon": "menu-icon tf-icons ti ti-bell-ringing",
       "slug": "notification-list",
       "module_key": "notifications"
     },

@@ -76,7 +76,7 @@ class ModuleSeeder extends Seeder
         ],
         'notifications' => [
             'name' => 'Notifications',
-            'icon' => 'speakerphone',
+            'icon' => 'bell-ringing',
             'description' => 'Notifications and alerts module',
             'is_enabled' => true,  // On by default
         ],
@@ -185,11 +185,11 @@ class ModuleSeeder extends Seeder
             'description' => 'Communications management module',
             'order' => 8,
         ],
-        // CAMPAIGNS GROUP
-        'templates' => [
-            'name' => 'Templates',
-            'icon' => 'template',
-            'description' => 'Templates management module',
+        // CAMPAIGNS GROUP (Marketing)
+        'campaigns' => [
+            'name' => 'Campaigns',
+            'icon' => 'broadcast',
+            'description' => 'Campaign messages and scheduled sends (email, WhatsApp, etc.)',
             'group' => 'campaigns',
             'order' => 0,
         ],
@@ -199,6 +199,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Email campaigns and marketing automation',
             'group' => 'campaigns',
             'order' => 1,
+        ],
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
+            'group' => 'campaigns',
+            'order' => 2,
         ],
         // AUTOMATION GROUP
         'funnel' => [
@@ -221,6 +228,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Instructions for the assistant.',
             'group' => 'automation',
             'order' => 1,
+        ],
+        'ocr' => [
+            'name' => 'OCR',
+            'icon' => 'scan',
+            'description' => 'AI text extraction from PDFs and images',
+            'group' => 'automation',
+            'order' => 4,
         ],
         // CONTENT GROUP
         'multimedia' => [
@@ -264,6 +278,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Team company files and brand assets',
             'group' => 'content',
             'order' => 6,
+        ],
+        'blog' => [
+            'name' => 'Blog',
+            'icon' => 'article',
+            'description' => 'Blog articles and posts management',
+            'group' => 'content',
+            'order' => 7,
         ],
         // SUPPORT & TICKETS
         'tickets' => [
@@ -359,7 +380,7 @@ class ModuleSeeder extends Seeder
         ],
         'challenges' => [
             'name' => 'Challenges',
-            'icon' => 'trophy',
+            'icon' => 'puzzle',
             'description' => 'Innovation challenges management module',
             'group' => 'innovation',
             'order' => 2,
@@ -382,14 +403,14 @@ class ModuleSeeder extends Seeder
         // LEARNING & DEVELOPMENT
         'languages' => [
             'name' => 'Languages',
-            'icon' => 'language',
+            'icon' => 'globe',
             'description' => 'Languages management module',
             'group' => 'learning',
             'order' => 1,
         ],
         'language-variants' => [
             'name' => 'Language Variants',
-            'icon' => 'language',
+            'icon' => 'letter-case-upper',
             'description' => 'Language variants management module',
             'group' => 'learning',
             'order' => 2,
@@ -432,7 +453,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'website', 'campaigns', 'templates', 'mailer', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()
