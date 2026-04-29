@@ -94,7 +94,7 @@ class AssistantActivityPageTest extends TestCase
             'color' => '#25D366',
         ]);
 
-        DocumentIngestion::query()->create([
+        $primaryIngestion = DocumentIngestion::query()->create([
             'team_id' => $team->id,
             'source_id' => $source->id,
             'source_reference' => 'msg_123',
@@ -148,5 +148,9 @@ class AssistantActivityPageTest extends TestCase
             'source_reference' => 'msg-fallback-null-team',
             'classification_status' => 'failed',
         ]);
+
+        $detailResponse = $this->actingAs($admin)->get(route('assistant.documents.show', $primaryIngestion->id));
+        $detailResponse->assertOk();
+        $detailResponse->assertSee('Detalle de interpretación');
     }
 }

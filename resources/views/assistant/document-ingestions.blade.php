@@ -16,6 +16,7 @@
     <script>
         $(function () {
             const documentPreviewModal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+            const interpretationRouteTemplate = @json(route('assistant.documents.show', ['documentIngestion' => '__ID__']));
 
             function initDatePickers() {
                 $('.flatpickr-date-range').flatpickr({
@@ -55,8 +56,9 @@
                                 const safeUrl = String(row.file_url).replace(/"/g, '&quot;');
                                 const safeName = String(name).replace(/"/g, '&quot;');
                                 const safeMime = String(row.mime_type || '').replace(/"/g, '&quot;');
+                                const safeId = String(row.id || '');
                                 return '<div class="d-flex flex-column">' +
-                                    '<a href="#" class="document-preview-link" data-url="' + safeUrl + '" data-name="' + safeName + '" data-mime="' + safeMime + '">' + name + '</a>' +
+                                    '<a href="#" class="document-preview-link" data-id="' + safeId + '" data-url="' + safeUrl + '" data-name="' + safeName + '" data-mime="' + safeMime + '">' + name + '</a>' +
                                     '<small class="text-muted">' + row.file_url + '</small>' +
                                     '</div>';
                             }
@@ -126,13 +128,18 @@
                 const url = this.getAttribute('data-url') || '';
                 const name = this.getAttribute('data-name') || 'Documento';
                 const mime = (this.getAttribute('data-mime') || '').toLowerCase();
+                const id = this.getAttribute('data-id') || '';
                 if (!url) return;
 
                 const titleEl = document.getElementById('documentPreviewModalLabel');
                 const bodyEl = document.getElementById('documentPreviewModalBody');
                 const externalEl = document.getElementById('documentPreviewExternal');
                 titleEl.textContent = name;
-                externalEl.setAttribute('href', url);
+                if (id !== '') {
+                    externalEl.setAttribute('href', interpretationRouteTemplate.replace('__ID__', id));
+                } else {
+                    externalEl.setAttribute('href', url);
+                }
 
                 if (mime.startsWith('image/')) {
                     bodyEl.innerHTML = '<img src="' + url + '" alt="' + name + '" class="img-fluid rounded">';
@@ -225,7 +232,7 @@
             </div>
             <div class="modal-body" id="documentPreviewModalBody"></div>
             <div class="modal-footer">
-                <a href="#" target="_blank" rel="noopener" id="documentPreviewExternal" class="btn btn-label-primary">Abrir en nueva pestaña</a>
+                <a href="#" target="_blank" rel="noopener" id="documentPreviewExternal" class="btn btn-label-primary">Ver interpretación</a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>

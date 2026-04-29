@@ -286,4 +286,42 @@ class AssistantActivityController extends Controller
             })
             ->toJson();
     }
+
+    public function documentShow(DocumentIngestion $documentIngestion): View
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+
+        $documentIngestion->loadMissing(['source:id,name', 'conversation:id,channel,from,to,created_at']);
+
+        return view('assistant.document-ingestion-show', [
+            'data' => $documentIngestion,
+        ]);
+    }
 }
