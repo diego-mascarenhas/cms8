@@ -719,7 +719,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 Log::warning('WhatsApp inbound media placeholder without retrievable media URL', [
                     'message_sid' => $messageSid,
-                    'conversation_id' => $conversation->id ?? null,
                     'team_id' => $resolvedInboundTeamId,
                     'body' => (string) $body,
                     'payload_keys' => array_keys($request->all()),
@@ -742,7 +741,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
                 return response()->json([
                     'status' => 'success',
-                    'conversation_id' => $conversation->id,
                     'missing_media_url' => true,
                 ]);
             }
