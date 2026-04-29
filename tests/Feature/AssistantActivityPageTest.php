@@ -153,4 +153,35 @@ class AssistantActivityPageTest extends TestCase
         $detailResponse->assertOk();
         $detailResponse->assertSee('Detalle de interpretación');
     }
+
+    public function test_admin_can_mark_document_as_ingested_from_detail(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->withPersonalTeam()->create();
+        $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+        $admin->assignRole('admin');
+
+        $document = DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'source_reference' => 'manual_001',
+            'file_name' => 'card.png',
+            'file_url' => 'https://cdn.example.com/card.png',
+            'mime_type' => 'image/png',
+            'document_type' => 'business_card',
+            'classification_status' => 'classified',
+            'classification_confidence' => 0.92,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('assistant.documents.mark-ingested', $document->id));
+
+        $response
+            ->assertRedirect(route('assistant.documents.show', $document->id))
+            ->assertSessionHas('success', 'Documento marcado como ingresado.');
+
+        $this->assertDatabaseHas('document_ingestions', [
+            'id' => $document->id,
+            'classification_status' => 'processed',
+        ]);
+    }
 }

@@ -135,6 +135,7 @@ Route::get('/assistant/documents', [AssistantActivityController::class, 'documen
 Route::get('/assistant/documents/data', [AssistantActivityController::class, 'documentsData'])->name('assistant.documents.data')->middleware('auth');
 Route::get('/assistant/documents/{documentIngestion}', [AssistantActivityController::class, 'documentShow'])->name('assistant.documents.show')->middleware('auth');
 Route::post('/assistant/documents/{documentIngestion}/reprocess', [AssistantActivityController::class, 'documentReprocess'])->name('assistant.documents.reprocess')->middleware('auth');
+Route::post('/assistant/documents/{documentIngestion}/mark-ingested', [AssistantActivityController::class, 'documentMarkIngested'])->name('assistant.documents.mark-ingested')->middleware('auth');
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 

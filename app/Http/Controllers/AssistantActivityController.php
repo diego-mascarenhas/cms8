@@ -362,4 +362,46 @@ class AssistantActivityController extends Controller
             ->route('assistant.documents.show', $documentIngestion->id)
             ->with('success', 'Documento reprocesado correctamente.');
     }
+
+    public function documentMarkIngested(DocumentIngestion $documentIngestion)
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+
+        $documentIngestion->forceFill([
+            'classification_status' => 'processed',
+            'processed_at' => now(),
+            'processing_error' => null,
+        ])->save();
+
+        return redirect()
+            ->route('assistant.documents.show', $documentIngestion->id)
+            ->with('success', 'Documento marcado como ingresado.');
+    }
 }

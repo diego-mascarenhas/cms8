@@ -538,7 +538,7 @@ class TeamSettingController extends Controller
                             'ai' => __('AI (vision model)'),
                             'hybrid' => __('Hybrid (runs both, picks best)'),
                         ],
-                        'value' => $team->getSetting('documents_ocr_mode', 'local'),
+                        'value' => $team->getSetting('documents_ocr_mode', 'ai'),
                         'is_encrypted' => false,
                         'help' => __('Choose how documents are read for OCR in the ingestion pipeline (chat, WhatsApp, uploads).'),
                     ],

@@ -9,6 +9,12 @@
         <p class="text-muted">Campos detectados y texto leído del documento</p>
     </div>
     <div>
+        @if(($data->classification_status ?? '') !== 'processed')
+            <form action="{{ route('assistant.documents.mark-ingested', $data->id) }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-success">Ingresar documento</button>
+            </form>
+        @endif
         <form action="{{ route('assistant.documents.reprocess', $data->id) }}" method="POST" class="d-inline">
             @csrf
             <button type="submit" class="btn btn-primary">Procesar ahora</button>
@@ -58,7 +64,8 @@
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block">Estado</small>
-                        <strong>{{ $data->classification_status ?? 'pending' }}</strong>
+                        @php($statusValue = (string) ($data->classification_status ?? 'pending'))
+                        <strong>{{ $statusValue === 'processed' ? 'ingresado' : $statusValue }}</strong>
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block">Tipo detectado</small>

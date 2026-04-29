@@ -733,9 +733,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             if (! empty($media))
             {
+                $ingestions = [];
                 try
                 {
-                    app(DocumentIngestionService::class)->ingestFromConversationMedia(
+                    $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
                         $conversation,
                         'WhatsApp',
                         ! empty($messageSid) ? (string) $messageSid : null,
@@ -757,7 +758,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     {
                         $this->sendWhatsApp(
                             $cleanFrom,
-                            'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                            $this->buildDocumentIngestionWhatsAppReply($ingestions),
                         );
                     } catch (\Throwable $e)
                     {
@@ -1114,6 +1115,82 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $this->sendingGateway = null;
         }
+    }
+
+    /**
+     * @param  array<int, mixed>  $ingestions
+     */
+    private function buildDocumentIngestionWhatsAppReply(array $ingestions): string
+    {
+        if ($ingestions === [])
+        {
+            return 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+        }
+
+        $lines = [
+            'Recibi tu documento y ya lo procesé. Esto detecté:',
+            '',
+        ];
+
+        foreach ($ingestions as $index => $ingestion)
+        {
+            if (! is_object($ingestion))
+            {
+                continue;
+            }
+
+            $extracted = is_array($ingestion->extracted_data ?? null) ? $ingestion->extracted_data : [];
+            $name = trim((string) ($extracted['name'] ?? ''));
+            $title = trim((string) ($extracted['title'] ?? ''));
+            $company = trim((string) ($extracted['company'] ?? ''));
+            $website = trim((string) ($extracted['website'] ?? ''));
+            $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
+            $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+
+            $lines[] = ($index + 1).') '.((string) ($ingestion->file_name ?: 'Documento'));
+            $lines[] = '   - Tipo: '.((string) ($ingestion->document_type ?? 'unknown'));
+            if ($name !== '')
+            {
+                $lines[] = '   - Nombre: '.$name;
+            }
+            if ($title !== '')
+            {
+                $lines[] = '   - Cargo: '.$title;
+            }
+            if ($company !== '')
+            {
+                $lines[] = '   - Empresa: '.$company;
+            }
+            if ($website !== '')
+            {
+                $lines[] = '   - Web: '.$website;
+            }
+            if ($email !== '')
+            {
+                $lines[] = '   - Email: '.$email;
+            }
+            if ($phone !== '')
+            {
+                $lines[] = '   - Teléfono: '.$phone;
+            }
+            $lines[] = '';
+        }
+
+        $hasBusinessCard = collect($ingestions)->contains(function ($ingestion)
+        {
+            return is_object($ingestion) && ($ingestion->document_type ?? null) === 'business_card';
+        });
+
+        if ($hasBusinessCard)
+        {
+            $lines[] = 'Si queres, lo ingreso ahora como contacto y te pregunto la categoría.';
+            $lines[] = 'Responde: "Sí, crear contacto en categoría <nombre>".';
+        } else
+        {
+            $lines[] = 'Si queres, te muestro también el texto OCR completo para revisar antes de ingresar.';
+        }
+
+        return implode("\n", $lines);
     }
 
     /**

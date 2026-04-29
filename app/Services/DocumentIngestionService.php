@@ -346,7 +346,7 @@ class DocumentIngestionService
 
         if ($mode === 'ai' || $mode === 'hybrid')
         {
-            $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath);
+            $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath, $teamId);
             $enginesRan[] = 'ai';
         }
 
@@ -393,13 +393,13 @@ class DocumentIngestionService
     {
         if ($teamId === null)
         {
-            return 'local';
+            return 'ai';
         }
 
-        $mode = Str::lower((string) Team::withoutGlobalScopes()->find($teamId)?->getSetting('documents_ocr_mode', 'local'));
+        $mode = Str::lower((string) Team::withoutGlobalScopes()->find($teamId)?->getSetting('documents_ocr_mode', 'ai'));
         if (! in_array($mode, ['local', 'ai', 'hybrid'], true))
         {
-            return 'local';
+            return 'ai';
         }
 
         return $mode;

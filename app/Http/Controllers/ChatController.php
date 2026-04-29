@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DocumentIngestion;
+use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
@@ -905,19 +908,64 @@ class ChatController extends Controller
                 ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
                 : '';
             $sourceName = $recipientDigits !== '' ? 'WhatsApp' : 'Chat';
-            $registered = $this->ingestUploadedDocumentsForAssistant(
+            $ingestionResult = $this->ingestUploadedDocumentsForAssistant(
                 $request,
                 (int) ($teamId ?? 0),
                 $sourceName,
                 $recipientDigits !== '' ? $recipientDigits : null,
             );
+            $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
+            $this->storePendingDocumentDecisionContext($ingestionResult['ingestions'], (int) ($teamId ?? 0));
+
+            $contextUser = null;
+            if ($request->filled('recipient'))
+            {
+                $contextUser = $userResolver->resolveUserForConversation($request->input('recipient'), $request->input('contact_id'));
+            }
+            if ($contextUser === null && $request->filled('contact_id'))
+            {
+                $contextUser = $userResolver->resolveUserForConversation(null, (int) $request->input('contact_id'));
+            }
+            if ($contextUser === null)
+            {
+                $contextUser = auth()->user();
+            }
+
+            if ($contextUser && $teamId !== null)
+            {
+                $attachmentNames = collect($request->file('attachments', []))
+                    ->filter()
+                    ->map(fn ($file) => method_exists($file, 'getClientOriginalName') ? (string) $file->getClientOriginalName() : '')
+                    ->filter()
+                    ->values()
+                    ->all();
+                $userMessageForContext = trim($message);
+                if ($userMessageForContext === '')
+                {
+                    $userMessageForContext = '📎 Documento adjunto'.($attachmentNames !== [] ? ': '.implode(', ', $attachmentNames) : '');
+                }
+
+                $contextService->persistMessages(
+                    $contextUser->id,
+                    $userMessageForContext,
+                    $assistantSummary,
+                    null,
+                    [],
+                    [],
+                    [],
+                    [],
+                    (int) $teamId,
+                    false,
+                    null,
+                );
+            }
 
             return response()->json([
                 'success' => true,
-                'response' => 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                'response' => $assistantSummary,
                 'action_performed' => 'document_ingestion',
                 'document_ingestion' => true,
-                'documents_registered' => $registered,
+                'documents_registered' => $ingestionResult['count'],
             ]);
         }
 
@@ -961,8 +1009,20 @@ class ChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Could not resolve user for conversation'], 400);
         }
 
-        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
+        $pendingDecisionResponse = $this->tryHandlePendingDocumentDecision(
+            $message,
+            $contextUser,
+            $contextService,
+            $teamId,
+            $hasAudio,
+        );
+        if ($pendingDecisionResponse !== null)
+        {
+            return response()->json($pendingDecisionResponse);
+        }
+
+        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
 
         if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
         {
@@ -1124,11 +1184,11 @@ class ChatController extends Controller
         int $teamId,
         string $sourceName,
         ?string $recipientDigits = null,
-    ): int {
+    ): array {
         $uploadedFiles = $request->file('attachments', []);
         if (! is_array($uploadedFiles) || $uploadedFiles === [])
         {
-            return 0;
+            return ['count' => 0, 'ingestions' => []];
         }
 
         $media = [];
@@ -1150,7 +1210,7 @@ class ChatController extends Controller
 
         if ($media === [])
         {
-            return 0;
+            return ['count' => 0, 'ingestions' => []];
         }
 
         $conversation = Conversation::create([
@@ -1172,7 +1232,288 @@ class ChatController extends Controller
             $teamId > 0 ? $teamId : null,
         );
 
-        return count($ingestions);
+        return [
+            'count' => count($ingestions),
+            'ingestions' => $ingestions,
+        ];
+    }
+
+    private function buildDocumentIngestionAssistantResponse(array $ingestions): string
+    {
+        if ($ingestions === [])
+        {
+            return 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+        }
+
+        $lines = [
+            'Recibi tu documento y ya lo procesé. Esto detecté:',
+            '',
+        ];
+
+        foreach ($ingestions as $index => $ingestion)
+        {
+            if (! is_object($ingestion))
+            {
+                continue;
+            }
+
+            $extracted = is_array($ingestion->extracted_data ?? null) ? $ingestion->extracted_data : [];
+            $name = trim((string) ($extracted['name'] ?? ''));
+            $title = trim((string) ($extracted['title'] ?? ''));
+            $company = trim((string) ($extracted['company'] ?? ''));
+            $website = trim((string) ($extracted['website'] ?? ''));
+            $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
+            $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+
+            $lines[] = ($index + 1).') '.((string) ($ingestion->file_name ?: 'Documento'));
+            $lines[] = '   - Tipo: '.((string) ($ingestion->document_type ?? 'unknown'));
+            if ($name !== '')
+            {
+                $lines[] = '   - Nombre: '.$name;
+            }
+            if ($title !== '')
+            {
+                $lines[] = '   - Cargo: '.$title;
+            }
+            if ($company !== '')
+            {
+                $lines[] = '   - Empresa: '.$company;
+            }
+            if ($website !== '')
+            {
+                $lines[] = '   - Web: '.$website;
+            }
+            if ($email !== '')
+            {
+                $lines[] = '   - Email: '.$email;
+            }
+            if ($phone !== '')
+            {
+                $lines[] = '   - Teléfono: '.$phone;
+            }
+            $lines[] = '';
+        }
+
+        $hasBusinessCard = collect($ingestions)->contains(function ($ingestion)
+        {
+            return is_object($ingestion) && ($ingestion->document_type ?? null) === 'business_card';
+        });
+
+        if ($hasBusinessCard)
+        {
+            $lines[] = 'Si queres, lo ingreso ahora como contacto y te pregunto la categoría.';
+            $lines[] = 'Responde: "Sí, crear contacto en categoría <nombre>".';
+        } else
+        {
+            $lines[] = 'Si queres, te muestro también el texto OCR completo para revisar antes de ingresar.';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<int, mixed>  $ingestions
+     */
+    private function storePendingDocumentDecisionContext(array $ingestions, int $teamId): void
+    {
+        $ids = collect($ingestions)
+            ->filter(fn ($item) => is_object($item) && isset($item->id))
+            ->map(fn ($item) => (int) $item->id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
+
+        if ($ids === [] || $teamId <= 0)
+        {
+            return;
+        }
+
+        session([
+            'assistant_pending_document_action' => [
+                'team_id' => $teamId,
+                'ingestion_ids' => $ids,
+                'created_at' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
+    private function tryHandlePendingDocumentDecision(
+        string $message,
+        User $contextUser,
+        AgentConversationContextService $contextService,
+        ?int $teamId,
+        bool $hasAudio,
+    ): ?array {
+        if ($teamId === null || trim($message) === '')
+        {
+            return null;
+        }
+
+        $pending = session('assistant_pending_document_action');
+        if (! is_array($pending) || (int) ($pending['team_id'] ?? 0) !== (int) $teamId)
+        {
+            return null;
+        }
+
+        $normalized = $this->normalizeIntentText($message);
+        $isNegative = preg_match('/\b(no|cancel|omiti|despues|luego|nada)\b/u', $normalized) === 1;
+        $isAffirmative = preg_match('/\b(si|ok|dale|confirm|confirmado|crear|ingresar)\b/u', $normalized) === 1;
+        $categoryName = $this->extractCategoryNameFromMessage($message);
+
+        if (! $isNegative && ! $isAffirmative && $categoryName === null)
+        {
+            return null;
+        }
+
+        if ($isNegative)
+        {
+            session()->forget('assistant_pending_document_action');
+            $reply = 'Perfecto, no lo ingreso por ahora. Si queres, despues lo hacemos con "crear contacto".';
+            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
+
+            return [
+                'success' => true,
+                'response' => $reply,
+                'action_performed' => 'document_ingestion_confirmation',
+            ];
+        }
+
+        $ingestionIds = collect($pending['ingestion_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
+        if ($ingestionIds === [])
+        {
+            session()->forget('assistant_pending_document_action');
+
+            return null;
+        }
+
+        $contactIds = DocumentIngestion::query()
+            ->whereIn('id', $ingestionIds)
+            ->where('entity_type', Contact::class)
+            ->whereNotNull('entity_id')
+            ->pluck('entity_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($contactIds->isEmpty())
+        {
+            session()->forget('assistant_pending_document_action');
+            $reply = 'No encontré un contacto listo para guardar desde este documento. Revisemos el OCR y lo creamos manualmente si queres.';
+            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
+
+            return [
+                'success' => true,
+                'response' => $reply,
+                'action_performed' => 'document_ingestion_confirmation',
+            ];
+        }
+
+        if ($categoryName === null)
+        {
+            $reply = 'Confirmado. Decime en qué categoría lo queres guardar (ejemplo: "confirmado en categoría Leads").';
+            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
+
+            return [
+                'success' => true,
+                'response' => $reply,
+                'action_performed' => 'document_ingestion_confirmation',
+            ];
+        }
+
+        $category = $this->resolveTeamContactCategoryByName($teamId, $categoryName);
+        if ($category === null)
+        {
+            $reply = 'No encontré la categoría "'.$categoryName.'". Probá con otro nombre de categoría.';
+            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
+
+            return [
+                'success' => true,
+                'response' => $reply,
+                'action_performed' => 'document_ingestion_confirmation',
+            ];
+        }
+
+        $contacts = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('id', $contactIds->all())
+            ->get();
+
+        foreach ($contacts as $contact)
+        {
+            if (! $contact instanceof Contact)
+            {
+                continue;
+            }
+            $contact->categories()->syncWithoutDetaching([$category->id]);
+        }
+
+        session()->forget('assistant_pending_document_action');
+        $reply = 'Listo, confirmado. Guardé el contacto en la categoría '.$category->name.'.';
+        $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
+
+        return [
+            'success' => true,
+            'response' => $reply,
+            'action_performed' => 'document_ingestion_confirmation',
+        ];
+    }
+
+    private function normalizeIntentText(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, [
+            'á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a',
+            'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+            'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u',
+            'ñ' => 'n',
+        ]);
+
+        return preg_replace('/\s+/u', ' ', $value) ?? $value;
+    }
+
+    private function extractCategoryNameFromMessage(string $message): ?string
+    {
+        if (preg_match('/categor[ií]a\s+["“]?([^"\n\r]+?)["”]?(?:\s*$|[\.!,])/iu', $message, $matches) === 1)
+        {
+            $name = trim((string) ($matches[1] ?? ''));
+
+            return $name !== '' ? $name : null;
+        }
+
+        return null;
+    }
+
+    private function resolveTeamContactCategoryByName(int $teamId, string $categoryName): ?Category
+    {
+        $contactsModuleId = Module::query()->where('key', 'contacts')->value('id');
+        $query = Category::query()
+            ->where('team_id', $teamId);
+
+        if ($contactsModuleId !== null)
+        {
+            $query->where('module_id', (int) $contactsModuleId);
+        }
+
+        $normalized = mb_strtolower(trim($categoryName));
+        $exact = (clone $query)
+            ->whereRaw('LOWER(name) = ?', [$normalized])
+            ->first();
+        if ($exact !== null)
+        {
+            return $exact;
+        }
+
+        return (clone $query)
+            ->whereRaw('LOWER(name) LIKE ?', ['%'.$normalized.'%'])
+            ->orderBy('name')
+            ->first();
     }
 
     /**
@@ -1353,18 +1694,19 @@ class ChatController extends Controller
             if ($hasAttachments)
             {
                 $recipientDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to', ''));
-                $registered = $this->ingestUploadedDocumentsForAssistant(
+                $ingestionResult = $this->ingestUploadedDocumentsForAssistant(
                     $request,
                     (int) (auth()->user()?->currentTeam?->id ?? 0),
                     $recipientDigits !== '' ? 'WhatsApp' : 'Chat',
                     $recipientDigits !== '' ? $recipientDigits : null,
                 );
+                $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.',
+                    'message' => $assistantSummary,
                     'document_ingestion' => true,
-                    'documents_registered' => $registered,
+                    'documents_registered' => $ingestionResult['count'],
                 ]);
             }
 

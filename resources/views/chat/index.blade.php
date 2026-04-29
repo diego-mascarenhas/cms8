@@ -2255,13 +2255,16 @@
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
 
-                                @if(!($viewAssistant ?? false))
+                                @if(!($viewAssistant ?? false) || ($selectedAssistantUser ?? null))
                                 <div class="d-flex align-items-center me-3">
-                                    <div class="form-check form-switch mb-0 d-none">
-                                        <input type="checkbox" class="form-check-input" id="use-ai-toggle">
-                                        <label class="form-check-label" for="use-ai-toggle">
-                                            <i class="ti ti-robot me-1"></i>
-                                        </label>
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="form-check form-switch mb-0">
+                                            <input type="checkbox" class="form-check-input" id="use-ai-toggle">
+                                            </div>
+                                            <i class="ti ti-robot ms-2"></i>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">{{ __('Asistente') }}</small>
                                     </div>
                                 </div>
                                 @endif
