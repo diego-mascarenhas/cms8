@@ -8,7 +8,6 @@ use App\Helpers\WhatsAppOutboundText;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Conversation;
-use App\Models\DocumentIngestion;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
@@ -915,7 +914,7 @@ class ChatController extends Controller
                 $recipientDigits !== '' ? $recipientDigits : null,
             );
             $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
-            $this->storePendingDocumentDecisionContext($ingestionResult['ingestions'], (int) ($teamId ?? 0));
+            session()->forget('assistant_pending_document_action');
 
             $contextUser = null;
             if ($request->filled('recipient'))
@@ -1264,9 +1263,10 @@ class ChatController extends Controller
             $website = trim((string) ($extracted['website'] ?? ''));
             $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
             $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+            $typeLabel = $this->translateDocumentTypeLabel((string) ($ingestion->document_type ?? 'unknown'));
 
-            $lines[] = ($index + 1).') '.((string) ($ingestion->file_name ?: 'Documento'));
-            $lines[] = '   - Tipo: '.((string) ($ingestion->document_type ?? 'unknown'));
+            $lines[] = ($index + 1).') Documento';
+            $lines[] = '   - Tipo: '.$typeLabel;
             if ($name !== '')
             {
                 $lines[] = '   - Nombre: '.$name;
@@ -1291,24 +1291,59 @@ class ChatController extends Controller
             {
                 $lines[] = '   - Teléfono: '.$phone;
             }
+            $createdRecordLink = $this->resolveCreatedRecordMarkdownLink($ingestion);
+            if ($createdRecordLink !== null)
+            {
+                $lines[] = '   - Registro creado: '.$createdRecordLink;
+            }
             $lines[] = '';
         }
 
-        $hasBusinessCard = collect($ingestions)->contains(function ($ingestion)
-        {
-            return is_object($ingestion) && ($ingestion->document_type ?? null) === 'business_card';
-        });
+        return implode("\n", $lines);
+    }
 
-        if ($hasBusinessCard)
+    private function translateDocumentTypeLabel(string $documentType): string
+    {
+        return match ($documentType)
         {
-            $lines[] = 'Si queres, lo ingreso ahora como contacto y te pregunto la categoría.';
-            $lines[] = 'Responde: "Sí, crear contacto en categoría <nombre>".';
-        } else
+            'business_card' => 'Tarjeta personal',
+            'invoice' => 'Factura',
+            'payment_proof' => 'Comprobante de pago',
+            default => 'Sin clasificar',
+        };
+    }
+
+    private function resolveCreatedRecordMarkdownLink(object $ingestion): ?string
+    {
+        $entityType = (string) ($ingestion->entity_type ?? '');
+        $entityId = (int) ($ingestion->entity_id ?? 0);
+        if ($entityType === '' || $entityId <= 0)
         {
-            $lines[] = 'Si queres, te muestro también el texto OCR completo para revisar antes de ingresar.';
+            return null;
         }
 
-        return implode("\n", $lines);
+        if ($entityType === Contact::class)
+        {
+            $url = route('contact.show', $entityId);
+
+            return '[Contacto #'.$entityId.']('.$url.')';
+        }
+
+        if ($entityType === \App\Models\Invoice::class)
+        {
+            $url = route('invoice.show', $entityId);
+
+            return '[Factura #'.$entityId.']('.$url.')';
+        }
+
+        if ($entityType === \App\Models\Payment::class)
+        {
+            $url = route('payments.show', $entityId);
+
+            return '[Pago #'.$entityId.']('.$url.')';
+        }
+
+        return null;
     }
 
     /**
@@ -1344,123 +1379,9 @@ class ChatController extends Controller
         ?int $teamId,
         bool $hasAudio,
     ): ?array {
-        if ($teamId === null || trim($message) === '')
-        {
-            return null;
-        }
-
-        $pending = session('assistant_pending_document_action');
-        if (! is_array($pending) || (int) ($pending['team_id'] ?? 0) !== (int) $teamId)
-        {
-            return null;
-        }
-
-        $normalized = $this->normalizeIntentText($message);
-        $isNegative = preg_match('/\b(no|cancel|omiti|despues|luego|nada)\b/u', $normalized) === 1;
-        $isAffirmative = preg_match('/\b(si|ok|dale|confirm|confirmado|crear|ingresar)\b/u', $normalized) === 1;
-        $categoryName = $this->extractCategoryNameFromMessage($message);
-
-        if (! $isNegative && ! $isAffirmative && $categoryName === null)
-        {
-            return null;
-        }
-
-        if ($isNegative)
-        {
-            session()->forget('assistant_pending_document_action');
-            $reply = 'Perfecto, no lo ingreso por ahora. Si queres, despues lo hacemos con "crear contacto".';
-            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
-
-            return [
-                'success' => true,
-                'response' => $reply,
-                'action_performed' => 'document_ingestion_confirmation',
-            ];
-        }
-
-        $ingestionIds = collect($pending['ingestion_ids'] ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->values()
-            ->all();
-        if ($ingestionIds === [])
-        {
-            session()->forget('assistant_pending_document_action');
-
-            return null;
-        }
-
-        $contactIds = DocumentIngestion::query()
-            ->whereIn('id', $ingestionIds)
-            ->where('entity_type', Contact::class)
-            ->whereNotNull('entity_id')
-            ->pluck('entity_id')
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->unique()
-            ->values();
-
-        if ($contactIds->isEmpty())
-        {
-            session()->forget('assistant_pending_document_action');
-            $reply = 'No encontré un contacto listo para guardar desde este documento. Revisemos el OCR y lo creamos manualmente si queres.';
-            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
-
-            return [
-                'success' => true,
-                'response' => $reply,
-                'action_performed' => 'document_ingestion_confirmation',
-            ];
-        }
-
-        if ($categoryName === null)
-        {
-            $reply = 'Confirmado. Decime en qué categoría lo queres guardar (ejemplo: "confirmado en categoría Leads").';
-            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
-
-            return [
-                'success' => true,
-                'response' => $reply,
-                'action_performed' => 'document_ingestion_confirmation',
-            ];
-        }
-
-        $category = $this->resolveTeamContactCategoryByName($teamId, $categoryName);
-        if ($category === null)
-        {
-            $reply = 'No encontré la categoría "'.$categoryName.'". Probá con otro nombre de categoría.';
-            $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
-
-            return [
-                'success' => true,
-                'response' => $reply,
-                'action_performed' => 'document_ingestion_confirmation',
-            ];
-        }
-
-        $contacts = Contact::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->whereIn('id', $contactIds->all())
-            ->get();
-
-        foreach ($contacts as $contact)
-        {
-            if (! $contact instanceof Contact)
-            {
-                continue;
-            }
-            $contact->categories()->syncWithoutDetaching([$category->id]);
-        }
-
         session()->forget('assistant_pending_document_action');
-        $reply = 'Listo, confirmado. Guardé el contacto en la categoría '.$category->name.'.';
-        $contextService->persistMessages($contextUser->id, $message, $reply, null, [], [], [], [], $teamId, false, null);
 
-        return [
-            'success' => true,
-            'response' => $reply,
-            'action_performed' => 'document_ingestion_confirmation',
-        ];
+        return null;
     }
 
     private function normalizeIntentText(string $value): string

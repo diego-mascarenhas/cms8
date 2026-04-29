@@ -1146,9 +1146,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $website = trim((string) ($extracted['website'] ?? ''));
             $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
             $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+            $typeLabel = $this->translateDocumentTypeLabel((string) ($ingestion->document_type ?? 'unknown'));
 
-            $lines[] = ($index + 1).') '.((string) ($ingestion->file_name ?: 'Documento'));
-            $lines[] = '   - Tipo: '.((string) ($ingestion->document_type ?? 'unknown'));
+            $lines[] = ($index + 1).') Documento';
+            $lines[] = '   - Tipo: '.$typeLabel;
             if ($name !== '')
             {
                 $lines[] = '   - Nombre: '.$name;
@@ -1173,24 +1174,53 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $lines[] = '   - Teléfono: '.$phone;
             }
+            $createdRecordUrl = $this->resolveCreatedRecordUrl($ingestion);
+            if ($createdRecordUrl !== null)
+            {
+                $lines[] = '   - Registro creado: '.$createdRecordUrl;
+            }
             $lines[] = '';
         }
 
-        $hasBusinessCard = collect($ingestions)->contains(function ($ingestion)
-        {
-            return is_object($ingestion) && ($ingestion->document_type ?? null) === 'business_card';
-        });
+        return implode("\n", $lines);
+    }
 
-        if ($hasBusinessCard)
+    private function translateDocumentTypeLabel(string $documentType): string
+    {
+        return match ($documentType)
         {
-            $lines[] = 'Si queres, lo ingreso ahora como contacto y te pregunto la categoría.';
-            $lines[] = 'Responde: "Sí, crear contacto en categoría <nombre>".';
-        } else
+            'business_card' => 'Tarjeta personal',
+            'invoice' => 'Factura',
+            'payment_proof' => 'Comprobante de pago',
+            default => 'Sin clasificar',
+        };
+    }
+
+    private function resolveCreatedRecordUrl(object $ingestion): ?string
+    {
+        $entityType = (string) ($ingestion->entity_type ?? '');
+        $entityId = (int) ($ingestion->entity_id ?? 0);
+        if ($entityType === '' || $entityId <= 0)
         {
-            $lines[] = 'Si queres, te muestro también el texto OCR completo para revisar antes de ingresar.';
+            return null;
         }
 
-        return implode("\n", $lines);
+        if ($entityType === Contact::class)
+        {
+            return route('contact.show', $entityId);
+        }
+
+        if ($entityType === \App\Models\Invoice::class)
+        {
+            return route('invoice.show', $entityId);
+        }
+
+        if ($entityType === \App\Models\Payment::class)
+        {
+            return route('payments.show', $entityId);
+        }
+
+        return null;
     }
 
     /**
