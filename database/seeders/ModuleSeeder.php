@@ -109,9 +109,9 @@ class ModuleSeeder extends Seeder
             'is_enabled' => true,  // On by default
         ],
         'accounting' => [
-            'name' => 'Accounting',
+            'name' => 'Stripe billing',
             'icon' => 'calculator',
-            'description' => 'Accounting management module',
+            'description' => 'Stripe invoices, PDF downloads and quarterly CSV exports',
             'group' => 'billing',
             'order' => 3,
         ],
@@ -135,6 +135,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Expenses management module',
             'group' => 'billing',
             'order' => 6,
+        ],
+        'enterprises' => [
+            'name' => 'Enterprises',
+            'icon' => 'building',
+            'description' => 'Enterprise management module',
+            'group' => 'billing',
+            'order' => 7,
         ],
         // ECOMMERCE GROUP
         'stores' => [
@@ -309,17 +316,11 @@ class ModuleSeeder extends Seeder
             'order' => 3,
         ],
         // GENERAL MANAGEMENT
-        'enterprises' => [
-            'name' => 'Enterprises',
-            'icon' => 'building',
-            'description' => 'Enterprise management module',
-            'order' => 1,
-        ],
         'prospecting' => [
             'name' => 'Prospecting',
             'icon' => 'target',
             'description' => 'Prospect search and contact acquisition',
-            'order' => 2,
+            'order' => 1,
         ],
         'events' => [
             'name' => 'Events',

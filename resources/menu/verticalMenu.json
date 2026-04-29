@@ -176,7 +176,7 @@
       "module_key": "departments"
     },
     {
-      "menuHeader": "Campaigns"
+      "menuHeader": "Marketing"
     },
     {
       "url": "message/list",
@@ -188,7 +188,7 @@
     {
       "url": "chat",
       "name": "Messages",
-      "icon": "menu-icon tf-icons ti ti-messages",
+      "icon": "menu-icon tf-icons ti ti-send",
       "slug": "chat.index",
       "module_key": "chat"
     },
