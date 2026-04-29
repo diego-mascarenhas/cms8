@@ -10,6 +10,8 @@ use App\Services\WhatsApp\WhatsAppInboundMessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Transcription;
 
@@ -135,6 +137,25 @@ class WhatsAppLocalWebhookController extends Controller
             $body = ' '; // allow media-only messages so conversation appears in chat list
         }
 
+        $incomingMediaBase64 = $payload['media_base64'] ?? null;
+        $incomingMediaContentType = $payload['media_content_type'] ?? null;
+        $incomingMediaFileName = $payload['media_file_name'] ?? null;
+        if (is_string($incomingMediaBase64) && trim($incomingMediaBase64) !== '')
+        {
+            $storedMediaUrl = $this->persistInboundMediaAsPublicUrl(
+                $incomingMediaBase64,
+                is_string($incomingMediaContentType) ? $incomingMediaContentType : null,
+                is_string($incomingMediaFileName) ? $incomingMediaFileName : null,
+            );
+            if ($storedMediaUrl !== null)
+            {
+                $payload['mediaUrl'] = $storedMediaUrl;
+                $payload['mediaContentType'] = is_string($incomingMediaContentType) && trim($incomingMediaContentType) !== ''
+                    ? trim($incomingMediaContentType)
+                    : 'application/octet-stream';
+            }
+        }
+
         $normalized = [
             'MessageSid' => is_string($messageId) ? $messageId : json_encode($messageId),
             'From' => 'whatsapp:'.$cleanFrom,
@@ -167,6 +188,34 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function persistInboundMediaAsPublicUrl(string $mediaBase64, ?string $contentType = null, ?string $originalFileName = null): ?string
+    {
+        $decoded = base64_decode($mediaBase64, true);
+        if ($decoded === false || $decoded === '')
+        {
+            return null;
+        }
+
+        $contentType = is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream';
+        $extension = match ($contentType)
+        {
+            'image/jpeg', 'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'application/pdf' => 'pdf',
+            default => pathinfo((string) ($originalFileName ?? ''), PATHINFO_EXTENSION) ?: 'bin',
+        };
+
+        $safeExtension = preg_replace('/[^a-z0-9]/i', '', strtolower((string) $extension));
+        $safeExtension = $safeExtension !== '' ? $safeExtension : 'bin';
+
+        $relativePath = 'whatsapp-inbound/'.now()->format('Y/m/d').'/'.Str::uuid().'.'.$safeExtension;
+        Storage::disk('public')->put($relativePath, $decoded);
+
+        return url('storage/'.$relativePath);
     }
 
     /**

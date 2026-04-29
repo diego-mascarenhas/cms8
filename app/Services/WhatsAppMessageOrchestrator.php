@@ -714,6 +714,39 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'media_urls' => array_values(array_filter(array_map(static fn ($item) => $item['url'] ?? null, $media))),
             ]);
 
+            $isMediaPlaceholderBody = preg_match('/^\s*\[(image|imagen|photo|foto|document|documento|video|sticker)\]\s*$/iu', (string) $body) === 1;
+            if ($channel === 'whatsapp' && $media === [] && $isMediaPlaceholderBody)
+            {
+                Log::warning('WhatsApp inbound media placeholder without retrievable media URL', [
+                    'message_sid' => $messageSid,
+                    'conversation_id' => $conversation->id ?? null,
+                    'team_id' => $resolvedInboundTeamId,
+                    'body' => (string) $body,
+                    'payload_keys' => array_keys($request->all()),
+                ]);
+
+                try
+                {
+                    $this->sendWhatsApp(
+                        $cleanFrom,
+                        'Recibí un adjunto, pero no llegó el enlace del archivo para procesarlo. Reenviámelo como foto/documento para poder cargarlo automáticamente.',
+                    );
+                } catch (\Throwable $e)
+                {
+                    Log::warning('WhatsApp missing-media notice send failed', [
+                        'message_sid' => $messageSid,
+                        'to' => $cleanFrom,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'conversation_id' => $conversation->id,
+                    'missing_media_url' => true,
+                ]);
+            }
+
             // Save incoming message to database (idempotent by message_sid when provided).
             $conversationPayload = [
                 'channel' => $channel,
