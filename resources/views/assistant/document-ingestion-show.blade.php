@@ -9,9 +9,17 @@
         <p class="text-muted">Campos detectados y texto leído del documento</p>
     </div>
     <div>
+        <form action="{{ route('assistant.documents.reprocess', $data->id) }}" method="POST" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-primary">Procesar ahora</button>
+        </form>
         <a href="{{ route('assistant.documents') }}" class="btn btn-label-secondary">Volver</a>
     </div>
 </div>
+
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
 
 <div class="row g-4">
     <div class="col-lg-5">
@@ -46,7 +54,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <small class="text-muted d-block">Origen</small>
-                        <strong>{{ $data->source?->name ?? 'Unknown' }}</strong>
+                        <strong>{{ $data->source?->name ?: (((string) ($data->conversation?->channel ?? '')) === 'whatsapp' ? 'WhatsApp' : 'Chat') }}</strong>
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block">Estado</small>
@@ -59,14 +67,6 @@
                     <div class="col-md-6">
                         <small class="text-muted d-block">Confianza</small>
                         <strong>{{ number_format((float) ($data->classification_confidence ?? 0), 2) }}</strong>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Nombre de archivo</small>
-                        <strong>{{ $data->file_name ?: 'Sin nombre' }}</strong>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Referencia origen</small>
-                        <strong>{{ $data->source_reference ?: '—' }}</strong>
                     </div>
                 </div>
             </div>

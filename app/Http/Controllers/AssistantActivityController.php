@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AgentConversationMessage;
 use App\Models\DocumentIngestion;
+use App\Services\DocumentIngestionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -274,7 +275,7 @@ class AssistantActivityController extends Controller
                     return 'WhatsApp';
                 }
 
-                return 'Unknown';
+                return 'Chat';
             })
             ->addColumn('document_name', fn (DocumentIngestion $row) => $row->file_name ?: ($row->file_url ? basename(parse_url((string) $row->file_url, PHP_URL_PATH) ?: '') : ''))
             ->addColumn('confidence_value', fn (DocumentIngestion $row) => (float) ($row->classification_confidence ?? 0))
@@ -323,5 +324,42 @@ class AssistantActivityController extends Controller
         return view('assistant.document-ingestion-show', [
             'data' => $documentIngestion,
         ]);
+    }
+
+    public function documentReprocess(DocumentIngestion $documentIngestion, DocumentIngestionService $documentIngestionService)
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+        $documentIngestionService->reprocessDocument($documentIngestion);
+
+        return redirect()
+            ->route('assistant.documents.show', $documentIngestion->id)
+            ->with('success', 'Documento reprocesado correctamente.');
     }
 }

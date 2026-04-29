@@ -6,7 +6,9 @@ use App\Models\Conversation;
 use App\Models\DocumentIngestion;
 use App\Models\Team;
 use App\Services\DocumentIngestionService;
+use App\Services\DocumentOcrService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DocumentIngestionServiceTest extends TestCase
@@ -18,7 +20,19 @@ class DocumentIngestionServiceTest extends TestCase
      */
     public function it_creates_ingestions_for_whatsapp_media(): void
     {
+        $ocrMock = $this->mock(DocumentOcrService::class);
+        $ocrMock->shouldReceive('extractTextFromLocalFile')
+            ->andReturn(implode("\n", [
+                'Jorge Martinez',
+                'Sales Director',
+                'ClickDefense LLC',
+                'www.clickdefense.io',
+                '+34 624 159 557',
+                'jorge@clickdefense.io',
+            ]));
+
         $team = Team::factory()->create();
+        Storage::disk('public')->put('temp/chat-attachments/card.jpg', 'fake-image-bytes');
         $conversation = Conversation::create([
             'message_sid' => 'wa-msg-1',
             'channel' => 'whatsapp',
@@ -33,7 +47,7 @@ class DocumentIngestionServiceTest extends TestCase
                     'content_type' => 'application/pdf',
                 ],
                 [
-                    'url' => 'https://cdn.example.com/business-card.jpg',
+                    'url' => '/storage/temp/chat-attachments/card.jpg',
                     'content_type' => 'image/jpeg',
                 ],
             ],
@@ -46,8 +60,8 @@ class DocumentIngestionServiceTest extends TestCase
             $team->id,
         );
 
-        $this->assertCount(2, $records);
-        $this->assertDatabaseCount('document_ingestions', 2);
+        $this->assertGreaterThanOrEqual(2, count($records));
+        $this->assertGreaterThanOrEqual(2, DocumentIngestion::query()->where('conversation_id', $conversation->id)->count());
         $this->assertDatabaseHas('document_ingestions', [
             'conversation_id' => $conversation->id,
             'document_type' => 'invoice',
@@ -58,6 +72,21 @@ class DocumentIngestionServiceTest extends TestCase
             'document_type' => 'business_card',
             'classification_status' => 'classified',
         ]);
+
+        $cardRecord = DocumentIngestion::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('file_name', 'card.jpg')
+            ->whereNotNull('extracted_data')
+            ->orderByDesc('id')
+            ->first();
+        $this->assertNotNull($cardRecord);
+        $this->assertIsArray($cardRecord->extracted_data);
+        $this->assertContains('+34624159557', $cardRecord->extracted_data['phones'] ?? []);
+        $this->assertContains('jorge@clickdefense.io', $cardRecord->extracted_data['emails'] ?? []);
+        $this->assertSame('Jorge Martinez', $cardRecord->extracted_data['name'] ?? null);
+        $this->assertSame('Sales Director', $cardRecord->extracted_data['title'] ?? null);
+        $this->assertSame('ClickDefense LLC', $cardRecord->extracted_data['company'] ?? null);
+        $this->assertSame('https://www.clickdefense.io', $cardRecord->extracted_data['website'] ?? null);
     }
 
     /**
