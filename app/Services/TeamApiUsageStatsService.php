@@ -42,16 +42,16 @@ final class TeamApiUsageStatsService
             : 0.0;
 
         $byModule = self::callsByModuleFromNonChatLogs($teamId);
+
         if ($conversationStats['tokens_used'] > 0 || $conversationStats['calls'] > 0)
         {
-            $chatLabel = Module::query()->where('key', 'chat')->value('name') ?? 'Chat';
-            $byModule['chat_conversations'] = [
-                'module_name' => $chatLabel,
-                'count' => $conversationStats['calls'],
-                'tokens_used' => $conversationStats['tokens_used'],
-                'tokens_saved' => 0,
-            ];
+            self::mergeAssistantChatConversationUsageIntoByModule(
+                $byModule,
+                $conversationStats,
+            );
         }
+
+        $byModule = self::mergeByModuleName($byModule);
 
         return [
             'totalCalls' => $totalCalls,
@@ -154,5 +154,75 @@ final class TeamApiUsageStatsService
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Prefer merging assistant conversation totals into TokenUsage slices for the team's {@see Module}
+     * with {@code key} {@code chat} so the donut chart legend does not show the label twice.
+     *
+     * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule  Mutated.
+     * @param  array{calls: int, tokens_used: int}  $conversationStats
+     */
+    private static function mergeAssistantChatConversationUsageIntoByModule(array &$byModule, array $conversationStats): void
+    {
+        $chatLabel = Module::query()->where('key', 'chat')->value('name') ?? 'Chat';
+        $chatModuleId = Module::query()->where('key', 'chat')->value('id');
+
+        $incoming = [
+            'module_name' => $chatLabel,
+            'count' => $conversationStats['calls'],
+            'tokens_used' => $conversationStats['tokens_used'],
+            'tokens_saved' => 0,
+        ];
+
+        if ($chatModuleId !== null)
+        {
+            foreach ($byModule as $key => $row)
+            {
+                if ((string) $key === (string) $chatModuleId)
+                {
+                    $byModule[$key]['count'] += $incoming['count'];
+                    $byModule[$key]['tokens_used'] += $incoming['tokens_used'];
+                    $byModule[$key]['tokens_saved'] = ($byModule[$key]['tokens_saved'] ?? 0) + $incoming['tokens_saved'];
+
+                    return;
+                }
+            }
+        }
+
+        $byModule['chat_conversations'] = $incoming;
+    }
+
+    /**
+     * Collapses duplicate {@code module_name} buckets (same label, distinct keys).
+     *
+     * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule
+     * @return array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>
+     */
+    private static function mergeByModuleName(array $byModule): array
+    {
+        $merged = [];
+
+        foreach ($byModule as $entry)
+        {
+            $name = (string) ($entry['module_name'] ?? '');
+            if ($name === '')
+            {
+                continue;
+            }
+
+            if (! isset($merged[$name]))
+            {
+                $merged[$name] = $entry;
+
+                continue;
+            }
+
+            $merged[$name]['count'] = ($merged[$name]['count'] ?? 0) + ($entry['count'] ?? 0);
+            $merged[$name]['tokens_used'] = ($merged[$name]['tokens_used'] ?? 0) + ($entry['tokens_used'] ?? 0);
+            $merged[$name]['tokens_saved'] = ($merged[$name]['tokens_saved'] ?? 0) + ($entry['tokens_saved'] ?? 0);
+        }
+
+        return $merged;
     }
 }

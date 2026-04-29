@@ -67,10 +67,11 @@ class DocumentAiOcrService
 
         try
         {
-            $documentsModuleId = Module::query()->where('key', 'documents')->value('id');
+            $documentationModuleId = Module::query()->where('key', 'documentation')->value('id');
+
             TokenUsageLog::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
-                'module_id' => $documentsModuleId ?? TokenUsageLog::inferModuleId(),
+                'module_id' => $documentationModuleId ?? TokenUsageLog::inferModuleId(),
                 'service' => 'DocumentAiOcrService',
                 'json_size' => strlen($input),
                 'toon_size' => strlen($output),
