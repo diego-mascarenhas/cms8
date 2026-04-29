@@ -1846,9 +1846,8 @@
                                 title="{{ __('Filter WhatsApp chats by CRM contact status') }}"
                                 aria-describedby="chat-crm-status-addon">
                                 <option value="" @selected(!request()->filled('crm_status'))>{{ __('All statuses') }}</option>
-                                <option value="none" @selected(request('crm_status') === 'none')>{{ __('Sin ficha CRM') }}</option>
                                 @foreach(($contactStatuses ?? []) as $st)
-                                    <option value="{{ $st->id }}" @selected(request('crm_status') == (string) $st->id)>{{ $st->name }}</option>
+                                    <option value="{{ $st->id }}" @selected(request('crm_status') == (string) $st->id || (request('crm_status') === 'none' && isset($leadContactStatusId) && (int) $st->id === (int) $leadContactStatusId))>{{ $st->name }}</option>
                                 @endforeach
                             </select>
                         </div>

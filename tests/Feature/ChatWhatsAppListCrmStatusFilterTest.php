@@ -89,27 +89,45 @@ class ChatWhatsAppListCrmStatusFilterTest extends TestCase
         $this->assertSame($expected, $froms);
     }
 
-    public function test_chat_list_filters_by_status_id(): void
+    public function test_chat_list_lead_includes_explicit_lead_and_chats_without_crm_contact(): void
     {
         $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
 
         $res = $this->actingAs($this->user)->getJson(route('chat.list', ['crm_status' => (string) $leadId]));
         $res->assertOk();
 
-        $froms = collect($res->json('contacts'))->pluck('from')->all();
+        $froms = collect($res->json('contacts'))->pluck('from')->map(fn ($f) => (string) $f)->sort()->values()->all();
         $digitsA = preg_replace('/[^0-9]/', '', $this->phoneA);
+        $digitsC = preg_replace('/[^0-9]/', '', $this->phoneC);
+        $expected = [$digitsA, $digitsC];
+        sort($expected);
 
-        $this->assertSame([$digitsA], $froms);
+        $this->assertSame($expected, $froms);
     }
 
-    public function test_chat_list_none_shows_only_chats_without_crm_contact(): void
+    public function test_chat_list_filters_legacy_crm_status_none_same_as_lead(): void
     {
-        $digitsC = preg_replace('/[^0-9]/', '', $this->phoneC);
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
 
-        $res = $this->actingAs($this->user)->getJson(route('chat.list', ['crm_status' => 'none']));
+        $resNone = $this->actingAs($this->user)->getJson(route('chat.list', ['crm_status' => 'none']));
+        $resLead = $this->actingAs($this->user)->getJson(route('chat.list', ['crm_status' => (string) $leadId]));
+        $resNone->assertOk();
+        $resLead->assertOk();
+
+        $fromsNone = collect($resNone->json('contacts'))->pluck('from')->sort()->values()->all();
+        $fromsLead = collect($resLead->json('contacts'))->pluck('from')->sort()->values()->all();
+        $this->assertSame($fromsLead, $fromsNone);
+    }
+
+    public function test_chat_list_filters_other_status_without_including_uncategorized(): void
+    {
+        $clienteId = ContactStatus::where('name', 'Cliente')->firstOrFail()->id;
+
+        $res = $this->actingAs($this->user)->getJson(route('chat.list', ['crm_status' => (string) $clienteId]));
         $res->assertOk();
 
-        $froms = collect($res->json('contacts'))->pluck('from')->all();
-        $this->assertSame([$digitsC], $froms);
+        $digitsB = preg_replace('/[^0-9]/', '', $this->phoneB);
+
+        $this->assertSame([$digitsB], collect($res->json('contacts'))->pluck('from')->all());
     }
 }

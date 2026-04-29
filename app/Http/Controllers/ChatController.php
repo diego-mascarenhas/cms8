@@ -181,7 +181,7 @@ class ChatController extends Controller
     }
 
     /**
-     * Filters WhatsApp sidebar rows using query param {@see request()} keys: `crm_status` empty=all, `none`=no CRM profile for that phone, or contact_status id (see {@see ContactStatus}).
+     * Filters WhatsApp sidebar rows using {@see ContactStatus} id via `crm_status`. Chats with no CRM contact ({@see findContactForTeamByChatPhone} null) match the Lead status filter. Legacy `crm_status=none` is treated as Lead.
      *
      * @return Collection<int, object>
      */
@@ -275,6 +275,7 @@ class ChatController extends Controller
         $contacts = $this->applyWhatsAppCrmConversationFilter(
             $contacts,
             $effectiveRequest instanceof Request ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest) : ['mode' => 'all'],
+            $this->resolveLeadContactStatusId(),
         );
 
         return $contacts->sortByDesc(function ($c)
@@ -295,33 +296,58 @@ class ChatController extends Controller
         $raw = $request->query('crm_status');
         if ($raw === 'none')
         {
-            return ['mode' => 'no_crm'];
+            $leadId = $this->resolveLeadContactStatusId();
+
+            return $leadId !== null ? ['mode' => 'status_id', 'status_id' => $leadId] : ['mode' => 'all'];
         }
         $id = (int) $raw;
 
         return $id > 0 ? ['mode' => 'status_id', 'status_id' => $id] : ['mode' => 'all'];
     }
 
+    private function resolveLeadContactStatusId(): ?int
+    {
+        $id = ContactStatus::query()->where('name', 'Lead')->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
     /**
      * @param  array{mode: string, status_id?: int}  $spec
      */
-    private function applyWhatsAppCrmConversationFilter(Collection $contacts, array $spec): Collection
+    private function applyWhatsAppCrmConversationFilter(Collection $contacts, array $spec, ?int $leadStatusId): Collection
     {
         return match ($spec['mode'])
         {
-            'no_crm' => $contacts->filter(fn ($c) => isset($c->crm_has_contact) && $c->crm_has_contact === false)->values(),
-            'status_id' => $contacts->filter(function ($c) use ($spec): bool
+            'status_id' => $contacts->filter(function ($c) use ($spec, $leadStatusId): bool
             {
-                if (! isset($c->crm_has_contact, $spec['status_id']))
+                if (! isset($spec['status_id']))
                 {
                     return false;
                 }
+                $targetId = (int) $spec['status_id'];
 
-                return $c->crm_has_contact === true
-                    && (int) ($c->crm_status_id ?? 0) === (int) $spec['status_id'];
+                return $this->contactRowMatchesCrmStatusFilter($c, $targetId, $leadStatusId);
             })->values(),
             default => $contacts,
         };
+    }
+
+    /**
+     * @param  object  $conversationRow  Row from {@see getWhatsAppContacts} with CRM fields.
+     */
+    private function contactRowMatchesCrmStatusFilter(object $conversationRow, int $targetStatusId, ?int $leadStatusId): bool
+    {
+        $hasContact = isset($conversationRow->crm_has_contact)
+            ? (bool) $conversationRow->crm_has_contact
+            : false;
+
+        if (! $hasContact)
+        {
+            return $leadStatusId !== null && $targetStatusId === $leadStatusId;
+        }
+
+        return (int) ($conversationRow->crm_status_id ?? 0) === $targetStatusId;
     }
 
     public function index()
@@ -498,7 +524,11 @@ class ChatController extends Controller
             ? ContactStatus::query()->orderBy('id')->get(['id', 'name'])
             : collect();
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses'));
+        $leadContactStatusId = auth()->check()
+            ? $this->resolveLeadContactStatusId()
+            : null;
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId'));
     }
 
     /**
