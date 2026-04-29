@@ -28,7 +28,7 @@ class ModuleSeeder extends Seeder
         ],
         'contacts' => [
             'name' => 'Contacts',
-            'icon' => 'address-book',
+            'icon' => 'users',
             'description' => 'Contact management module',
             'is_enabled' => true,  // On by default
         ],

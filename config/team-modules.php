@@ -34,12 +34,12 @@ return [
         'payments' => false,
         'incomes' => false,
         'expenses' => false,
-        'financial' => false,
+        'financial' => true,
         'accounting' => false,
         // Additional modules (ecommerce)
-        'products' => true,
-        'orders' => true,
-        'stores' => true,
+        'products' => false,
+        'orders' => false,
+        'stores' => false,
         // Additional modules (infrastructure)
         'servers' => false,
         'hosting' => false,

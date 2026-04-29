@@ -147,4 +147,32 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertTrue($team->fresh()->hasModule('invoices'));
         $this->assertFalse($team->fresh()->hasModule('expenses'));
     }
+
+    public function test_new_team_enables_financial_and_skips_ecommerce_modules_per_defaults(): void
+    {
+        foreach (['financial', 'products', 'orders', 'stores'] as $key)
+        {
+            Module::query()->create([
+                'name' => ucfirst($key),
+                'key' => $key,
+                'icon' => 'package',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ]);
+        }
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'personal_team' => true,
+        ]);
+
+        $team = $team->fresh();
+
+        $this->assertTrue($team->hasModule('financial'));
+        $this->assertFalse($team->hasModule('products'));
+        $this->assertFalse($team->hasModule('orders'));
+        $this->assertFalse($team->hasModule('stores'));
+    }
 }

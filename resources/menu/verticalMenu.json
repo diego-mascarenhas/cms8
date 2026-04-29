@@ -179,18 +179,18 @@
       "menuHeader": "Marketing"
     },
     {
-      "url": "message/list",
+      "url": "campaigns",
       "name": "Campaigns",
       "icon": "menu-icon tf-icons ti ti-broadcast",
-      "slug": "message.index",
+      "slug": "campaigns",
       "module_key": "campaigns"
     },
     {
-      "url": "chat",
+      "url": "message/list",
       "name": "Messages",
       "icon": "menu-icon tf-icons ti ti-send",
-      "slug": "chat.index",
-      "module_key": "chat"
+      "slug": "message.index",
+      "module_key": "mailer"
     },
     {
       "url": "template/list",

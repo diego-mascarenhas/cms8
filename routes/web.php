@@ -8,6 +8,7 @@ use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
+use App\Http\Controllers\CampaignsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
@@ -849,6 +850,9 @@ Route::middleware(['auth'])->group(function ()
     // Accounting Routes
     // NOTE: These routes are now handled by the humano-billing package
     // See: packages/humano-billing/routes/web.php
+
+    // Campaigns (placeholder — mailer message list remains at message/list)
+    Route::get('/campaigns', [CampaignsController::class, 'index'])->name('campaigns.index');
 
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
