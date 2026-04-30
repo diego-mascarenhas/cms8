@@ -7,6 +7,7 @@ use App\Enums\CampaignType;
 use App\Http\Requests\UpdateCampaignRequest;
 use App\Models\Campaign;
 use App\Models\Message;
+use App\Models\MessageType;
 use App\Models\Template;
 use App\Services\CampaignClassicEditorPersistence;
 use Illuminate\Contracts\View\View;
@@ -41,7 +42,28 @@ class CampaignsController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        return view('campaigns.edit', ['campaign' => $campaign]);
+        $campaign->load(['messages.type']);
+
+        $messageTypes = MessageType::query()->where('status', 1)->orderBy('id')->get();
+        $automationMessages = Message::query()->with('type')->orderBy('name')->get();
+
+        return view('campaigns.edit', [
+            'campaign' => $campaign,
+            'messageTypes' => $messageTypes,
+            'automationMessages' => $automationMessages,
+            'sequenceRows' => $this->buildSequenceRowsForEdit($campaign),
+            'storedTimezone' => old('send_time_zone', data_get($campaign->settings, 'send_time_zone', 'Europe/Madrid')),
+            'storedAutomations' => old('automations', data_get($campaign->settings, 'automations', [])),
+            'messageTypesJson' => $messageTypes->map(fn (MessageType $t): array => [
+                'id' => $t->id,
+                'name' => $t->name,
+            ])->values(),
+            'automationMessagesJson' => $automationMessages->map(fn (Message $m): array => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'type_name' => $m->type?->name ?? '—',
+            ])->values(),
+        ]);
     }
 
     public function update(UpdateCampaignRequest $request, Campaign $campaign): RedirectResponse
@@ -51,9 +73,32 @@ class CampaignsController extends Controller
             return redirect()->route('error-without-team');
         }
 
+        $validated = $request->validated();
+
+        $settings = $campaign->settings ?? [];
+        if (! empty($validated['send_time_zone']))
+        {
+            $settings['send_time_zone'] = $validated['send_time_zone'];
+        }
+        $settings['automations'] = $this->normalizedAutomationsFromValidated($validated['automations'] ?? []);
+
         $campaign->update([
-            'name' => $request->validated('title'),
+            'name' => $validated['title'],
+            'settings' => $settings,
         ]);
+
+        if (! empty($validated['sequence']))
+        {
+            foreach ($validated['sequence'] as $row)
+            {
+                $delay = $row['delay_minutes_after_previous'] ?? null;
+                $campaign->messages()->updateExistingPivot((int) $row['message_id'], [
+                    'sort_order' => (int) $row['sort_order'],
+                    'delay_minutes_after_previous' => $delay === null || $delay === '' ? null : (int) $delay,
+                    'conditions' => $this->conditionPresetToPivotConditions($row['condition_preset'] ?? 'none'),
+                ]);
+            }
+        }
 
         return redirect()
             ->route('campaigns.show', $campaign)
@@ -70,7 +115,9 @@ class CampaignsController extends Controller
         $campaign->load([
             'messages' => function ($q): void
             {
-                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails')
+                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails', 'messages.type_id')
+                    ->with('type')
+                    ->orderBy('campaign_message.sort_order')
                     ->orderBy('campaign_message.id');
             },
         ]);
@@ -548,5 +595,97 @@ HTML;
         }
 
         return $this->defaultEmailCanvasInnerHtml();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildSequenceRowsForEdit(Campaign $campaign): array
+    {
+        $old = old('sequence');
+        if (is_array($old))
+        {
+            return array_values($old);
+        }
+
+        return $campaign->messages->map(function (Message $message): array
+        {
+            $preset = 'none';
+            $conditions = $message->pivot->conditions;
+            if (is_array($conditions))
+            {
+                $require = $conditions['require_previous'] ?? '';
+                if ($require === 'opened')
+                {
+                    $preset = 'opened';
+                } elseif ($require === 'clicked')
+                {
+                    $preset = 'clicked';
+                }
+            }
+
+            $delay = $message->pivot->delay_minutes_after_previous;
+
+            return [
+                'message_id' => $message->id,
+                'sort_order' => (int) $message->pivot->sort_order,
+                'delay_minutes_after_previous' => $delay !== null ? (int) $delay : null,
+                'condition_preset' => $preset,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizedAutomationsFromValidated(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+            $trigger = $row['trigger'] ?? null;
+            $channelTypeId = $row['channel_type_id'] ?? null;
+            if (! filled($trigger) || ! filled($channelTypeId))
+            {
+                continue;
+            }
+            $item = [
+                'trigger' => (string) $trigger,
+                'channel_type_id' => (int) $channelTypeId,
+            ];
+            if (filled($row['delay_hours'] ?? null))
+            {
+                $item['delay_hours'] = (int) $row['delay_hours'];
+            }
+            if (filled($row['message_id'] ?? null))
+            {
+                $item['message_id'] = (int) $row['message_id'];
+            }
+            if (filled($row['notes'] ?? null))
+            {
+                $item['notes'] = (string) $row['notes'];
+            }
+            $out[] = $item;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function conditionPresetToPivotConditions(string $preset): ?array
+    {
+        return match ($preset)
+        {
+            'opened' => ['require_previous' => 'opened'],
+            'clicked' => ['require_previous' => 'clicked'],
+            default => null,
+        };
     }
 }

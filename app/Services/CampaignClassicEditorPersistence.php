@@ -141,7 +141,20 @@ class CampaignClassicEditorPersistence
                 ]);
             }
 
-            $campaign->messages()->syncWithoutDetaching([$message->id]);
+            $alreadyLinked = $campaign->messages()->where('messages.id', $message->id)->exists();
+            if ($alreadyLinked)
+            {
+                $campaign->messages()->syncWithoutDetaching([$message->id]);
+            } else
+            {
+                $maxSort = DB::table('campaign_message')
+                    ->where('campaign_id', $campaign->id)
+                    ->max('sort_order');
+                $nextSort = $maxSort === null ? 0 : (int) $maxSort + 1;
+                $campaign->messages()->syncWithoutDetaching([
+                    $message->id => ['sort_order' => $nextSort],
+                ]);
+            }
 
             return [
                 'campaign_id' => (int) $campaign->id,

@@ -29,6 +29,7 @@ class Campaign extends Model
         'unsubscribed_rate',
         'scheduled_at',
         'sent_at',
+        'settings',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class Campaign extends Model
         'opened_rate' => 'decimal:2',
         'clicked_rate' => 'decimal:2',
         'unsubscribed_rate' => 'decimal:2',
+        'settings' => 'array',
     ];
 
     protected static function booted(): void
@@ -66,7 +68,11 @@ class Campaign extends Model
     public function messages(): BelongsToMany
     {
         return $this->belongsToMany(Message::class, 'campaign_message')
-            ->withTimestamps();
+            ->using(CampaignMessagePivot::class)
+            ->withPivot(['sort_order', 'delay_minutes_after_previous', 'conditions'])
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderByPivot('id');
     }
 
     public function deliveries(): HasMany

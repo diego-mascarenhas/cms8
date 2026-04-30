@@ -13,9 +13,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('campaign_id')->constrained('campaigns')->cascadeOnDelete();
             $table->foreignId('message_id')->constrained('messages')->cascadeOnDelete();
+            $table->unsignedInteger('sort_order')->default(0);
+            $table->unsignedInteger('delay_minutes_after_previous')->nullable();
+            $table->json('conditions')->nullable();
             $table->timestamps();
 
             $table->unique(['campaign_id', 'message_id']);
+            $table->index(['campaign_id', 'sort_order']);
         });
     }
 

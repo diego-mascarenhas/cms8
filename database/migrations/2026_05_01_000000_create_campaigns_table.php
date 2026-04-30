@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('unsubscribed_rate', 5, 2)->nullable();
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('sent_at')->nullable();
+            $table->json('settings')->nullable();
             $table->timestamps();
 
             $table->index(['team_id', 'type']);
