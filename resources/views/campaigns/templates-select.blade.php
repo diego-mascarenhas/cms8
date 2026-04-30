@@ -7,7 +7,6 @@
     $(function ()
     {
         const templateCards = $('[data-template-card]');
-        const createButton = $('#template-step-create-btn');
         const selectedTemplateInput = $('#selected-template-id');
 
         templateCards.on('click', function ()
@@ -16,12 +15,6 @@
             selectedTemplateInput.val(templateId);
             templateCards.removeClass('border-primary border-2');
             $(this).addClass('border-primary border-2');
-            const createUrl = new URL(@json(route('campaigns.classic-editor')), window.location.origin);
-            createUrl.searchParams.set('type', @json($selectedType));
-            createUrl.searchParams.set('title', @json($selectedTitle));
-            createUrl.searchParams.set('template_id', templateId);
-
-            createButton.removeClass('disabled').attr('aria-disabled', 'false').attr('href', createUrl.toString());
         });
     });
 </script>
@@ -89,8 +82,4 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-between">
-    <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary">{{ __('Volver') }}</a>
-    <a id="template-step-create-btn" href="#" class="btn btn-primary disabled" aria-disabled="true">{{ __('Crear') }}</a>
-</div>
 @endsection
