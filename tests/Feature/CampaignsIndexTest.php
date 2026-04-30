@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EmailCampaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,9 +11,18 @@ class CampaignsIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_campaigns_page_shows_campaign_manager_sections_when_authenticated(): void
+    private function userWithPersonalTeamResolved(): User
     {
         $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        return $user->fresh();
+    }
+
+    public function test_campaigns_page_shows_campaign_manager_sections_when_authenticated(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
 
         $response = $this->actingAs($user)->get(route('campaigns.index'));
 
@@ -30,13 +40,19 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Nueva campaña de correo'),
         );
+        $this->assertTrue(
+            str_contains($html, 'email-campaigns-table'),
+        );
     }
 
     public function test_campaign_edit_page_shows_sequence_settings_sections(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->userWithPersonalTeamResolved();
+        $campaign = EmailCampaign::factory()->sequenceSummary()->create([
+            'team_id' => $user->current_team_id,
+        ]);
 
-        $response = $this->actingAs($user)->get(route('campaigns.edit', ['campaign' => 'teacher-onboarding-flow']));
+        $response = $this->actingAs($user)->get(route('campaigns.edit', ['campaign' => $campaign]));
 
         $response->assertOk();
         $html = $response->getContent() ?? '';

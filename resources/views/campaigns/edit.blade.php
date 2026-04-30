@@ -39,7 +39,7 @@
                         name="title"
                         type="text"
                         class="form-control mb-2"
-                        value="{{ str_replace('-', ' ', $campaign) }}"
+                        value="{{ $campaign->name }}"
                     />
                     <small class="text-muted">
                         {{ __('Este título es interno para reportes y no se muestra a los destinatarios.') }}

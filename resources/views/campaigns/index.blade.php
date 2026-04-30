@@ -3,10 +3,15 @@
 @section('title', __('Campañas'))
 
 @section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 @endsection
 
 @section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 @endsection
 
@@ -123,60 +128,6 @@
 @endsection
 
 @section('content')
-@php
-    $campaigns = [
-        [
-            'name' => 'Flujo de bienvenida para docentes',
-            'type' => __('Secuencias'),
-            'summary' => __('7 correos en 150 días'),
-            'sends' => 0,
-            'opened' => null,
-            'clicked' => null,
-            'unsubscribed' => null,
-            'status' => __('Activo'),
-            'status_class' => 'bg-label-success',
-            'status_text' => 'text-success',
-        ],
-        [
-            'name' => 'Por qué tus alumnos no progresan',
-            'type' => __('Difusiones'),
-            'summary' => __('Programado para 07 mayo 2026 19:00'),
-            'sends' => null,
-            'opened' => null,
-            'clicked' => null,
-            'unsubscribed' => null,
-            'status' => __('Programado'),
-            'status_class' => 'bg-label-warning',
-            'status_text' => 'text-warning',
-        ],
-        [
-            'name' => 'Lo que aprendí de los nuevos alumnos',
-            'type' => __('Difusiones'),
-            'summary' => __('Enviado el 23 abril 2026 19:03'),
-            'sends' => 2381,
-            'opened' => '20%',
-            'clicked' => '0%',
-            'unsubscribed' => '0%',
-            'status' => __('Enviado'),
-            'status_class' => 'bg-label-info',
-            'status_text' => 'text-info',
-        ],
-        [
-            'name' => 'Errores al activar el core',
-            'type' => __('Difusiones'),
-            'summary' => __('Enviado el 15 abril 2026 18:03'),
-            'sends' => 2399,
-            'opened' => '40%',
-            'clicked' => '3%',
-            'unsubscribed' => '0%',
-            'status' => __('Enviado'),
-            'status_class' => 'bg-label-info',
-            'status_text' => 'text-info',
-        ],
-    ];
-
-@endphp
-
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Campañas de correo') }}</h4>
@@ -210,85 +161,17 @@
             </select>
             <div class="input-group input-group-merge ms-lg-auto" style="max-width: 360px; width: 100%;">
                 <span class="input-group-text"><i class="ti ti-search"></i></span>
-                <input type="text" class="form-control" placeholder="{{ __('Buscar...') }}" />
+                <input
+                    id="campaign-search-filter"
+                    type="search"
+                    class="form-control"
+                    placeholder="{{ __('Buscar...') }}"
+                    autocomplete="off"
+                />
             </div>
         </div>
 
-        <div class="table-responsive text-nowrap">
-            <table class="table border-top">
-                <thead>
-                    <tr>
-                        <th>{{ __('Campaña') }}</th>
-                        <th>{{ __('Rendimiento') }}</th>
-                        <th class="text-center">{{ __('Estado') }}</th>
-                        <th class="text-center">{{ __('Acciones') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($campaigns as $campaign)
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-start gap-3">
-                                    <div>
-                                        <div class="fw-semibold">{{ $campaign['name'] }}</div>
-                                        <small class="text-muted d-block">{{ $campaign['type'] }} - {{ $campaign['summary'] }}</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <div>
-                                        <small class="text-muted d-block">{{ __('Envíos') }}</small>
-                                        <span class="fw-medium">{{ $campaign['sends'] ?? '-' }}</span>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted d-block">{{ __('Abiertos') }}</small>
-                                        <span class="fw-medium">{{ $campaign['opened'] ?? '-' }}</span>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted d-block">{{ __('Clics') }}</small>
-                                        <span class="fw-medium">{{ $campaign['clicked'] ?? '-' }}</span>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted d-block">{{ __('Desuscritos') }}</small>
-                                        <span class="fw-medium">{{ $campaign['unsubscribed'] ?? '-' }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge {{ $campaign['status_class'] }} {{ $campaign['status_text'] }}">{{ $campaign['status'] }}</span>
-                            </td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center align-items-center gap-3">
-                                    <a class="d-inline-flex align-items-center text-body" href="{{ route('campaigns.edit', ['campaign' => \Illuminate\Support\Str::slug($campaign['name'])]) }}" aria-label="{{ __('Editar') }}">
-                                        <i class="ti ti-edit ti-sm"></i>
-                                    </a>
-                                    <a class="d-inline-flex align-items-center text-body" href="javascript:;" aria-label="{{ __('Reporte') }}">
-                                        <i class="ti ti-chart-bar"></i>
-                                    </a>
-                                    <a class="d-inline-flex align-items-center text-body" href="javascript:;" aria-label="{{ __('Duplicar') }}">
-                                        <i class="ti ti-copy"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <div class="d-flex justify-content-center mt-4">
-            <nav aria-label="Paginación de campañas">
-                <ul class="pagination mb-0">
-                    <li class="page-item disabled"><span class="page-link">{{ __('Atrás') }}</span></li>
-                    <li class="page-item active"><span class="page-link">1</span></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item"><a class="page-link" href="#">4</a></li>
-                    <li class="page-item"><a class="page-link" href="#">{{ __('Siguiente') }}</a></li>
-                </ul>
-            </nav>
-        </div>
+        {{ $dataTable->table() }}
     </div>
 </div>
 
@@ -351,5 +234,8 @@
         </div>
     </div>
 </div>
-
 @endsection
+
+@push('scripts')
+    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+@endpush

@@ -1,0 +1,201 @@
+<?php
+
+namespace App\DataTables;
+
+use App\Models\EmailCampaign;
+use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
+use Yajra\DataTables\EloquentDataTable;
+use Yajra\DataTables\Html\Builder as HtmlBuilder;
+use Yajra\DataTables\Html\Column;
+use Yajra\DataTables\Services\DataTable;
+
+class EmailCampaignDataTable extends DataTable
+{
+    /**
+     * @param  QueryBuilder<EmailCampaign>  $query
+     */
+    public function dataTable(QueryBuilder $query): EloquentDataTable
+    {
+        return (new EloquentDataTable($query))
+            ->addColumn('campaign_display', fn (EmailCampaign $row): string => $this->campaignCell($row))
+            ->addColumn('performance_display', fn (EmailCampaign $row): string => $this->performanceCell($row))
+            ->editColumn('status', fn (EmailCampaign $row): string => $this->statusCell($row))
+            ->addColumn('action', fn (EmailCampaign $row): string => view('campaigns.datatable-actions', ['campaign' => $row])->render())
+            ->rawColumns(['campaign_display', 'performance_display', 'status', 'action'])
+            ->setRowId('id');
+    }
+
+    /**
+     * @param  Builder<EmailCampaign>  $model
+     * @return QueryBuilder<EmailCampaign>
+     */
+    public function query(EmailCampaign $model): QueryBuilder
+    {
+        $user = Auth::user();
+        abort_unless($user && $user->currentTeam, 403);
+
+        $request = request();
+
+        $query = $model->newQuery()
+            ->where('team_id', $user->current_team_id)
+            ->orderByDesc('email_campaigns.created_at');
+
+        $searchKeywordRaw = $request->input('search.value');
+        if (is_string($searchKeywordRaw) && trim($searchKeywordRaw) !== '')
+        {
+            $keyword = trim($searchKeywordRaw);
+            $query->where(function (QueryBuilder $sub) use ($keyword): void
+            {
+                $sub->where('name', 'like', '%'.$keyword.'%')
+                    ->orWhere('summary', 'like', '%'.$keyword.'%');
+            });
+        }
+
+        if ($request->filled('campaign_type_filter'))
+        {
+            $query->where('type', $request->string('campaign_type_filter')->toString());
+        }
+
+        if ($request->filled('campaign_status_filter'))
+        {
+            $query->where('status', $request->string('campaign_status_filter')->toString());
+        }
+
+        return $query;
+    }
+
+    public function html(): HtmlBuilder
+    {
+        $locale = session()->get('locale', app()->getLocale());
+
+        return $this->builder()
+            ->setTableId('email-campaigns-table')
+            ->columns($this->getColumns())
+            ->ajax([
+                'url' => route('campaigns.index'),
+                'type' => 'GET',
+                'data' => 'function (d) {
+                    d.campaign_type_filter = $("#campaign-type-filter").val() || "";
+                    d.campaign_status_filter = $("#campaign-status-filter").val() || "";
+                }',
+            ])
+            ->dom('rtilp')
+            ->orderBy(1, 'asc')
+            ->pageLength(10)
+            ->lengthMenu([[10, 25, 50, 100], [10, 25, 50, 100]])
+            ->responsive(true)
+            ->processing(false)
+            ->language(['url' => '/js/datatables/'.$locale.'.json'])
+            ->parameters($this->tableDomParameters());
+    }
+
+    /**
+     * @return array<int, Column>
+     */
+    public function getColumns(): array
+    {
+        return [
+            Column::computed('campaign_display')
+                ->title(__('Campaña'))
+                ->addClass('align-top')
+                ->orderable(false)
+                ->exportable(false)
+                ->printable(false),
+            Column::computed('performance_display')
+                ->title(__('Rendimiento'))
+                ->addClass('align-top')
+                ->exportable(false)
+                ->printable(false),
+            Column::make('status')
+                ->title(__('Estado'))
+                ->className('text-center align-middle')
+                ->width(140)
+                ->orderable(false)
+                ->searchable(false)
+                ->exportable(false),
+            Column::computed('action')
+                ->title(__('Acciones'))
+                ->className('text-center align-middle')
+                ->orderable(false)
+                ->searchable(false)
+                ->width(140)
+                ->exportable(false)
+                ->printable(false),
+        ];
+    }
+
+    protected function filename(): string
+    {
+        return 'Campaigns_'.date('YmdHis');
+    }
+
+    private function campaignCell(EmailCampaign $row): string
+    {
+        $name = e($row->name);
+        $type = e($row->typeLabel());
+        $summary = $row->summary ? e($row->summary) : '&mdash;';
+
+        return <<<HTML
+<div class="d-flex align-items-start gap-3">
+    <div>
+        <div class="fw-semibold">{$name}</div>
+        <small class="text-muted d-block">{$type}</small>
+        <small class="text-muted d-block mt-75">{$summary}</small>
+    </div>
+</div>
+HTML;
+    }
+
+    private function performanceCell(EmailCampaign $row): string
+    {
+        return '<div class="d-flex flex-wrap gap-3">'
+            .$this->metricBlock(__('Envíos'), $row->sends_count !== null ? (string) $row->sends_count : '—')
+            .$this->metricBlock(__('Abiertos'), $this->formatPercent($row->opened_rate))
+            .$this->metricBlock(__('Clics'), $this->formatPercent($row->clicked_rate))
+            .$this->metricBlock(__('Desuscritos'), $this->formatPercent($row->unsubscribed_rate))
+            .'</div>';
+    }
+
+    private function metricBlock(string $label, string $value): string
+    {
+        $labelEscaped = e($label);
+
+        return <<<HTML
+<div>
+    <small class="text-muted d-block">{$labelEscaped}</small>
+    <span class="fw-medium">{$value}</span>
+</div>
+HTML;
+    }
+
+    private function formatPercent(mixed $value): string
+    {
+        if ($value === null)
+        {
+            return '—';
+        }
+
+        return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.').'%';
+    }
+
+    private function statusCell(EmailCampaign $row): string
+    {
+        $badge = e($row->statusBadgeClasses());
+        $label = e($row->statusLabel());
+
+        return '<span class="badge '.$badge.'">'.$label.'</span>';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function tableDomParameters(): array
+    {
+        return [
+            'select' => false,
+            'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.emailCampaignDt\').on(\'keyup.emailCampaignDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.emailCampaignDt select2:select\').on(\'change.emailCampaignDt select2:select\', function () { api.ajax.reload(); }); }',
+            'drawCallback' => 'function () { $("#email-campaigns-table tbody tr").css({"user-select": "none","-webkit-user-select": "none","-moz-user-select": "none","-ms-user-select": "none"}); }',
+        ];
+    }
+}

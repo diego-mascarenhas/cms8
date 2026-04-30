@@ -2,21 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\EmailCampaignDataTable;
 use App\Enums\CampaignType;
+use App\Models\EmailCampaign;
 use App\Models\Template;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class CampaignsController extends Controller
 {
-    public function index(): View
+    public function index(EmailCampaignDataTable $dataTable): View|RedirectResponse
     {
-        return view('campaigns.index', [
+        if (! auth()->user()?->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        return $dataTable->render('campaigns.index', [
             'campaignTypes' => CampaignType::cases(),
         ]);
     }
 
-    public function edit(string $campaign): View
+    public function edit(EmailCampaign $campaign): View
     {
         return view('campaigns.edit', ['campaign' => $campaign]);
     }
