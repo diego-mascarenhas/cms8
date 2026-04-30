@@ -100,7 +100,7 @@ class CampaignsIndexTest extends TestCase
         $response->assertNotFound();
     }
 
-    public function test_campaign_update_persists_name_and_redirects_to_edit(): void
+    public function test_campaign_update_persists_name_and_redirects_to_show(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $campaign = Campaign::factory()->create([
@@ -113,7 +113,8 @@ class CampaignsIndexTest extends TestCase
             'send_time_zone' => 'Europe/Madrid',
         ]);
 
-        $response->assertRedirect(route('campaigns.edit', $campaign));
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $response->assertSessionHas('success');
         $campaign->refresh();
         $this->assertSame('Título actualizado', $campaign->name);
     }

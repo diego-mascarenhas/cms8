@@ -6,6 +6,12 @@
 @php
     /** @var array<string, int|float> $deliveryStats */
 @endphp
+@if (session('success'))
+    <div class="alert alert-success alert-dismissible mb-4" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Cerrar') }}"></button>
+    </div>
+@endif
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
@@ -247,7 +253,7 @@
 
 @if ($campaign->messages->isNotEmpty())
     <div class="card mb-4">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
                 @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
                     {{ __('Secuencia de mensajes') }}
@@ -255,6 +261,9 @@
                     {{ __('Mensajes vinculados') }}
                 @endif
             </h5>
+            <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-sm btn-label-primary waves-effect waves-light flex-shrink-0">
+                <i class="ti ti-edit me-1"></i>{{ __('Editar campaña') }}
+            </a>
         </div>
         <div class="card-body">
             @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)

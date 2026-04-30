@@ -56,7 +56,7 @@ class CampaignsController extends Controller
         ]);
 
         return redirect()
-            ->route('campaigns.edit', $campaign)
+            ->route('campaigns.show', $campaign)
             ->with('success', __('Cambios guardados.'));
     }
 
