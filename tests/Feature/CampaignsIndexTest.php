@@ -19,17 +19,16 @@ class CampaignsIndexTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertTrue(
-            str_contains($html, 'Campaigns')
-            || str_contains($html, 'Campañas'),
+            str_contains($html, 'Campañas'),
         );
         $this->assertTrue(
-            str_contains($html, 'Email Campaigns'),
+            str_contains($html, 'Campañas de correo'),
         );
         $this->assertTrue(
-            str_contains($html, 'Manage Templates'),
+            str_contains($html, 'Gestionar plantillas'),
         );
         $this->assertTrue(
-            str_contains($html, 'New Email Campaign'),
+            str_contains($html, 'Nueva campaña de correo'),
         );
     }
 
@@ -42,17 +41,38 @@ class CampaignsIndexTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertTrue(
-            str_contains($html, 'Email Sequence Settings'),
+            str_contains($html, 'Configuración de secuencia de correo'),
         );
         $this->assertTrue(
-            str_contains($html, 'Email Sequence Details'),
+            str_contains($html, 'Detalles de la secuencia'),
         );
         $this->assertTrue(
-            str_contains($html, 'Automations'),
+            str_contains($html, 'Automatizaciones'),
         );
         $this->assertTrue(
-            str_contains($html, 'Save')
-            || str_contains($html, 'Guardar'),
+            str_contains($html, 'Guardar'),
+        );
+    }
+
+    public function test_template_selection_page_is_reachable_when_authenticated(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $response = $this->actingAs($user)->get(route('campaigns.templates.select', [
+            'type' => 'broadcasts',
+            'title' => 'Mi campaña',
+        ]));
+
+        $response->assertOk();
+        $html = $response->getContent() ?? '';
+        $this->assertTrue(
+            str_contains($html, 'Selecciona una plantilla'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'Plantillas personalizadas guardadas'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'Plantillas Kajabi'),
         );
     }
 }

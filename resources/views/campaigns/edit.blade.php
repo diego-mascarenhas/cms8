@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Edit Campaign'))
+@section('title', __('Editar campaña'))
 
 @php
     $timezones = [
@@ -17,23 +17,23 @@
 <form action="#" method="POST">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ __('Email Sequence Settings') }}</h4>
-            <p class="text-muted">{{ __('Edit and configure the selected campaign sequence.') }}</p>
+            <h4 class="mb-1 mt-3">{{ __('Configuración de secuencia de correo') }}</h4>
+            <p class="text-muted">{{ __('Edita y configura la secuencia de campaña seleccionada.') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
-            <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+            <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
         </div>
     </div>
 
     <div class="row g-4 mb-4">
         <div class="col-lg-4">
-            <h5 class="mb-1">{{ __('Email Sequence Details') }}</h5>
-            <p class="text-muted mb-0">{{ __('Edit email sequence details.') }}</p>
+            <h5 class="mb-1">{{ __('Detalles de la secuencia') }}</h5>
+            <p class="text-muted mb-0">{{ __('Edita los detalles de la secuencia de correos.') }}</p>
         </div>
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
-                    <label class="form-label" for="internal-title">{{ __('Internal Title') }}</label>
+                    <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>
                     <input
                         id="internal-title"
                         name="title"
@@ -42,7 +42,7 @@
                         value="{{ str_replace('-', ' ', $campaign) }}"
                     />
                     <small class="text-muted">
-                        {{ __('This title is internal for reports and is not shown to recipients.') }}
+                        {{ __('Este título es interno para reportes y no se muestra a los destinatarios.') }}
                     </small>
                 </div>
             </div>
@@ -51,26 +51,26 @@
 
     <div class="row g-4 mb-4">
         <div class="col-lg-4">
-            <h5 class="mb-1">{{ __('Email Sequence Exclude') }}</h5>
-            <p class="text-muted mb-0">{{ __('Stop emailing subscribers when one of these rules is met.') }}</p>
+            <h5 class="mb-1">{{ __('Exclusiones de la secuencia') }}</h5>
+            <p class="text-muted mb-0">{{ __('Deja de enviar correos cuando se cumpla una de estas reglas.') }}</p>
         </div>
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label" for="exclude-offers">{{ __("Don't email subscribers who purchased these offers") }}</label>
+                        <label class="form-label" for="exclude-offers">{{ __('No enviar correos a suscriptores que compraron estas ofertas') }}</label>
                         <select id="exclude-offers" class="form-select" multiple>
-                            <option>{{ __('Annual Plan') }}</option>
-                            <option>{{ __('Premium Course') }}</option>
-                            <option>{{ __('Coaching Pack') }}</option>
+                            <option>{{ __('Plan anual') }}</option>
+                            <option>{{ __('Curso premium') }}</option>
+                            <option>{{ __('Paquete de coaching') }}</option>
                         </select>
                     </div>
                     <div>
-                        <label class="form-label" for="exclude-forms">{{ __("Don't email subscribers who submitted these forms") }}</label>
+                        <label class="form-label" for="exclude-forms">{{ __('No enviar correos a suscriptores que completaron estos formularios') }}</label>
                         <select id="exclude-forms" class="form-select" multiple>
-                            <option>{{ __('Webinar Registration') }}</option>
-                            <option>{{ __('Upsell Checkout') }}</option>
-                            <option>{{ __('Feedback Form') }}</option>
+                            <option>{{ __('Registro de webinar') }}</option>
+                            <option>{{ __('Checkout de upsell') }}</option>
+                            <option>{{ __('Formulario de feedback') }}</option>
                         </select>
                     </div>
                 </div>
@@ -80,13 +80,13 @@
 
     <div class="row g-4 mb-4">
         <div class="col-lg-4">
-            <h5 class="mb-1">{{ __('Sending Time') }}</h5>
-            <p class="text-muted mb-0">{{ __('Configure the default time zone used by this sequence.') }}</p>
+            <h5 class="mb-1">{{ __('Horario de envío') }}</h5>
+            <p class="text-muted mb-0">{{ __('Configura la zona horaria predeterminada usada por esta secuencia.') }}</p>
         </div>
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
-                    <label class="form-label" for="send-time-zone">{{ __('Default time zone') }}</label>
+                    <label class="form-label" for="send-time-zone">{{ __('Zona horaria predeterminada') }}</label>
                     <select id="send-time-zone" name="send_time_zone" class="form-select">
                         @foreach ($timezones as $value => $label)
                             <option value="{{ $value }}" @selected($value === 'Europe/Madrid')>{{ $label }}</option>
@@ -99,23 +99,23 @@
 
     <div class="row g-4 mb-4">
         <div class="col-lg-4">
-            <h5 class="mb-1">{{ __('Automations') }}</h5>
-            <p class="text-muted mb-0">{{ __('Configure automations for this email sequence.') }}</p>
+            <h5 class="mb-1">{{ __('Automatizaciones') }}</h5>
+            <p class="text-muted mb-0">{{ __('Configura automatizaciones para esta secuencia de correos.') }}</p>
         </div>
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0">{{ __('Automations') }}</h5>
+                    <h5 class="mb-0">{{ __('Automatizaciones') }}</h5>
                     <a href="https://help.kajabi.com/hc/en-us/articles/360036990514" target="_blank" rel="noopener noreferrer" class="text-muted">
                         <i class="ti ti-help-circle"></i>
                     </a>
                 </div>
                 <div class="card-body">
                     <p class="text-muted">
-                        {{ __('Automations help you set repeating tasks and streamline your workflow with a few clicks.') }}
+                        {{ __('Las automatizaciones te ayudan a configurar tareas repetitivas y optimizar tu flujo de trabajo con pocos clics.') }}
                     </p>
                     <a href="#" class="btn btn-label-primary">
-                        <i class="ti ti-plus me-1"></i>{{ __('Add Automation') }}
+                        <i class="ti ti-plus me-1"></i>{{ __('Agregar automatización') }}
                     </a>
                 </div>
             </div>
@@ -125,7 +125,7 @@
     <hr class="my-4" />
 
     <div class="d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+        <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
     </div>
 </form>
 @endsection

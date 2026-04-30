@@ -13,10 +13,10 @@ enum CampaignType: string
     {
         return match ($this)
         {
-            self::Broadcasts => 'Broadcasts',
-            self::Sequences => 'Sequences',
-            self::Events => 'Events',
-            self::ABTests => 'A/B Tests',
+            self::Broadcasts => 'Difusiones',
+            self::Sequences => 'Secuencias',
+            self::Events => 'Eventos',
+            self::ABTests => 'Pruebas A/B',
         };
     }
 }
