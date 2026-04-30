@@ -39,7 +39,7 @@
 		</a>
 		@if ($isMailerMessage && $message->template)
 			<a href="{{ route('message.edit', $message->id) }}" class="btn btn-label-secondary waves-effect waves-light">
-				<i class="ti ti-settings me-1"></i>{{ __('Ajustes del mensaje') }}
+				<i class="ti ti-settings me-1"></i>{{ __('Configuración') }}
 			</a>
 		@endif
 
