@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CampaignDataTable;
 use App\Enums\CampaignType;
+use App\Http\Requests\UpdateCampaignRequest;
 use App\Models\Campaign;
 use App\Models\Message;
 use App\Models\Template;
@@ -33,9 +34,50 @@ class CampaignsController extends Controller
         ]);
     }
 
-    public function edit(Campaign $campaign): View
+    public function edit(Campaign $campaign): View|RedirectResponse
     {
+        if (! auth()->user()?->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
         return view('campaigns.edit', ['campaign' => $campaign]);
+    }
+
+    public function update(UpdateCampaignRequest $request, Campaign $campaign): RedirectResponse
+    {
+        if (! auth()->user()?->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $campaign->update([
+            'name' => $request->validated('title'),
+        ]);
+
+        return redirect()
+            ->route('campaigns.edit', $campaign)
+            ->with('success', __('Cambios guardados.'));
+    }
+
+    public function show(Campaign $campaign): View|RedirectResponse
+    {
+        if (! auth()->user()?->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $campaign->load([
+            'messages' => function ($q): void
+            {
+                $q->select('messages.id', 'messages.name', 'messages.team_id')->orderBy('messages.id');
+            },
+        ]);
+
+        return view('campaigns.show', [
+            'campaign' => $campaign,
+            'deliveryStats' => $campaign->deliveryStatistics(),
+        ]);
     }
 
     public function selectTemplate(Request $request): View

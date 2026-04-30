@@ -91,6 +91,33 @@ class CampaignsIndexTest extends TestCase
         );
     }
 
+    public function test_campaigns_edit_literal_path_is_not_matched_as_numeric_id(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+
+        $response = $this->actingAs($user)->get('/campaigns/edit');
+
+        $response->assertNotFound();
+    }
+
+    public function test_campaign_update_persists_name_and_redirects_to_edit(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $campaign = Campaign::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Nombre inicial',
+        ]);
+
+        $response = $this->actingAs($user)->put(route('campaigns.update', $campaign), [
+            'title' => 'Título actualizado',
+            'send_time_zone' => 'Europe/Madrid',
+        ]);
+
+        $response->assertRedirect(route('campaigns.edit', $campaign));
+        $campaign->refresh();
+        $this->assertSame('Título actualizado', $campaign->name);
+    }
+
     public function test_campaign_edit_page_shows_sequence_settings_sections(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -113,6 +140,12 @@ class CampaignsIndexTest extends TestCase
         );
         $this->assertTrue(
             str_contains($html, 'Guardar'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'Volver'),
+        );
+        $this->assertTrue(
+            str_contains($html, route('campaigns.index')),
         );
     }
 

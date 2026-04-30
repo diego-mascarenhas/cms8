@@ -14,13 +14,24 @@
 @endphp
 
 @section('content')
-<form action="#" method="POST">
+@if (session('success'))
+    <div class="alert alert-success alert-dismissible mb-4" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Cerrar') }}"></button>
+    </div>
+@endif
+<form action="{{ route('campaigns.update', $campaign) }}" method="POST">
+    @csrf
+    @method('PUT')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ __('Configuración de secuencia de correo') }}</h4>
             <p class="text-muted">{{ __('Edita y configura la secuencia de campaña seleccionada.') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
+            <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary waves-effect waves-light">
+                <i class="ti ti-arrow-left me-1"></i>{{ __('Volver') }}
+            </a>
             <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
         </div>
     </div>
@@ -114,8 +125,8 @@
                     <p class="text-muted">
                         {{ __('Las automatizaciones te ayudan a configurar tareas repetitivas y optimizar tu flujo de trabajo con pocos clics.') }}
                     </p>
-                    <a href="#" class="btn btn-label-primary">
-                        <i class="ti ti-plus me-1"></i>{{ __('Agregar automatización') }}
+                    <a href="#" class="btn btn-sm btn-label-primary waves-effect waves-light">
+                        <i class="ti ti-plus ti-sm me-1"></i>{{ __('Agregar automatización') }}
                     </a>
                 </div>
             </div>

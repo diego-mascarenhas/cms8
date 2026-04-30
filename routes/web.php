@@ -857,7 +857,15 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/campaigns/classic-editor', [CampaignsController::class, 'classicEditor'])->name('campaigns.classic-editor');
     Route::post('/campaigns/classic-editor', [CampaignsController::class, 'storeClassicEditor'])->name('campaigns.classic-editor.store');
     Route::get('/campaigns/classic-editor/grapes', [CampaignsController::class, 'classicEditorGrapes'])->name('campaigns.classic-editor.grapes');
-    Route::get('/campaigns/{campaign}/edit', [CampaignsController::class, 'edit'])->name('campaigns.edit');
+    Route::get('/campaigns/{campaign}/edit', [CampaignsController::class, 'edit'])
+        ->whereNumber('campaign')
+        ->name('campaigns.edit');
+    Route::get('/campaigns/{campaign}', [CampaignsController::class, 'show'])
+        ->whereNumber('campaign')
+        ->name('campaigns.show');
+    Route::put('/campaigns/{campaign}', [CampaignsController::class, 'update'])
+        ->whereNumber('campaign')
+        ->name('campaigns.update');
 
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
