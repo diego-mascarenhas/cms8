@@ -20,6 +20,52 @@ class CampaignsIndexTest extends TestCase
         return $user->fresh();
     }
 
+    public function test_campaigns_datatables_ajax_returns_json_when_accept_json(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        Campaign::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Ajax Test Campaign',
+        ]);
+
+        $columnDefs = [
+            ['campaign_display', false],
+            ['performance_display', false],
+            ['status', false],
+            ['action', false],
+        ];
+        $columns = [];
+        foreach ($columnDefs as [$data, $orderable])
+        {
+            $columns[] = [
+                'data' => $data,
+                'name' => $data,
+                'searchable' => 'false',
+                'orderable' => $orderable ? 'true' : 'false',
+                'search' => ['value' => '', 'regex' => 'false'],
+            ];
+        }
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('campaigns.index'), [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 10,
+            'search' => ['value' => '', 'regex' => 'false'],
+            'columns' => $columns,
+        ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'application/json',
+            (string) $response->headers->get('content-type'),
+        );
+        $response->assertJsonStructure(['draw', 'recordsTotal', 'recordsFiltered', 'data']);
+        $this->assertGreaterThanOrEqual(1, (int) $response->json('recordsFiltered'));
+    }
+
     public function test_campaigns_page_shows_campaign_manager_sections_when_authenticated(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -35,10 +81,10 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Campañas de correo'),
         );
         $this->assertTrue(
-            str_contains($html, 'Gestionar plantillas'),
+            str_contains($html, 'Plantillas'),
         );
         $this->assertTrue(
-            str_contains($html, 'Nueva campaña de correo'),
+            str_contains($html, 'Nueva campaña'),
         );
         $this->assertTrue(
             str_contains($html, 'campaigns-table'),

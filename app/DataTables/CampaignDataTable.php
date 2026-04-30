@@ -74,15 +74,16 @@ class CampaignDataTable extends DataTable
             ->ajax([
                 'url' => route('campaigns.index'),
                 'type' => 'GET',
+                'headers' => [
+                    'Accept' => 'application/json',
+                ],
                 'data' => 'function (d) {
                     d.campaign_type_filter = $("#campaign-type-filter").val() || "";
                     d.campaign_status_filter = $("#campaign-status-filter").val() || "";
                 }',
             ])
-            ->dom('rtilp')
-            ->orderBy(1, 'asc')
+            ->dom('t<"row mt-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6 d-flex justify-content-md-end"p>>')
             ->pageLength(10)
-            ->lengthMenu([[10, 25, 50, 100], [10, 25, 50, 100]])
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.$locale.'.json'])

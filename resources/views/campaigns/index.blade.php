@@ -27,7 +27,7 @@
             campaignTypeFilter.select2({
                 placeholder: @json(__('Tipo')),
                 minimumResultsForSearch: Infinity,
-                width: '170px',
+                width: '100%',
             });
         }
 
@@ -36,7 +36,7 @@
             campaignStatusFilter.select2({
                 placeholder: @json(__('Estado')),
                 minimumResultsForSearch: Infinity,
-                width: '170px',
+                width: '100%',
             });
         }
 
@@ -135,42 +135,49 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
         <a href="{{ route('campaigns.templates.select') }}" class="btn btn-label-secondary">
-            <i class="ti ti-template me-1"></i>{{ __('Gestionar plantillas') }}
+            <i class="ti ti-template me-1"></i>{{ __('Plantillas') }}
         </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newCampaignModal">
-            <i class="ti ti-plus me-1"></i>{{ __('Nueva campaña de correo') }}
+            <i class="ti ti-plus me-1"></i>{{ __('Nueva campaña') }}
         </button>
     </div>
 </div>
 
 <div class="card mb-4">
-    <div class="card-body">
-        <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mb-4">
-            <select id="campaign-type-filter" class="form-select">
-                <option value="">{{ __('Tipo') }}</option>
-                @foreach ($campaignTypes as $campaignType)
-                    <option value="{{ $campaignType->value }}">{{ $campaignType->label() }}</option>
-                @endforeach
-            </select>
-            <select id="campaign-status-filter" class="form-select">
-                <option value="">{{ __('Estado') }}</option>
-                <option value="active">{{ __('Activo') }}</option>
-                <option value="scheduled">{{ __('Programado') }}</option>
-                <option value="sent">{{ __('Enviado') }}</option>
-                <option value="paused">{{ __('Pausado') }}</option>
-            </select>
-            <div class="input-group input-group-merge ms-lg-auto" style="max-width: 360px; width: 100%;">
-                <span class="input-group-text"><i class="ti ti-search"></i></span>
-                <input
-                    id="campaign-search-filter"
-                    type="search"
-                    class="form-control"
-                    placeholder="{{ __('Buscar...') }}"
-                    autocomplete="off"
-                />
+    <div class="card-body border-bottom">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <select id="campaign-type-filter" class="form-select">
+                    <option value="">{{ __('Tipo') }}</option>
+                    @foreach ($campaignTypes as $campaignType)
+                        <option value="{{ $campaignType->value }}">{{ $campaignType->label() }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <select id="campaign-status-filter" class="form-select">
+                    <option value="">{{ __('Estado') }}</option>
+                    <option value="active">{{ __('Activo') }}</option>
+                    <option value="scheduled">{{ __('Programado') }}</option>
+                    <option value="sent">{{ __('Enviado') }}</option>
+                    <option value="paused">{{ __('Pausado') }}</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="input-group input-group-merge">
+                    <span class="input-group-text"><i class="ti ti-search"></i></span>
+                    <input
+                        id="campaign-search-filter"
+                        type="search"
+                        class="form-control"
+                        placeholder="{{ __('Buscar...') }}"
+                        autocomplete="off"
+                    />
+                </div>
             </div>
         </div>
-
+    </div>
+    <div class="card-datatable table-responsive">
         {{ $dataTable->table() }}
     </div>
 </div>
@@ -184,7 +191,7 @@
                 <div id="new-campaign-step-1">
                     <div class="modal-header border-0 pb-1">
                         <div>
-                            <h4 class="modal-title mb-1">{{ __('Nueva campaña de correo') }}</h4>
+                            <h4 class="modal-title mb-1">{{ __('Nueva campaña') }}</h4>
                             <p class="text-muted mb-0">{{ __('Selecciona el tipo de campaña que deseas crear y agrega un título.') }}</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>

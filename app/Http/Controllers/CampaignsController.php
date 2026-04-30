@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Template;
 use App\Services\CampaignClassicEditorPersistence;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,7 +21,7 @@ class CampaignsController extends Controller
         private readonly CampaignClassicEditorPersistence $classicEditorPersistence,
     ) {}
 
-    public function index(CampaignDataTable $dataTable): View|RedirectResponse
+    public function index(CampaignDataTable $dataTable): View|RedirectResponse|JsonResponse
     {
         if (! auth()->user()?->currentTeam)
         {
