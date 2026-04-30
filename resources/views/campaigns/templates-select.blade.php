@@ -8,13 +8,65 @@
     {
         const templateCards = $('[data-template-card]');
         const selectedTemplateInput = $('#selected-template-id');
+        const templatePreviewModal = $('#templatePreviewModal');
+        const modalTemplateImage = $('#modal-template-image');
+        const modalTemplateName = $('#modal-template-name');
+        const modalTemplateDescription = $('#modal-template-description');
+        const modalTemplateIdInput = $('#modal-template-id');
+        const templateCtaView = $('#template-cta-view');
+        const templateFormView = $('#template-form-view');
+        const modalTemplateTitleInput = $('#modal-template-title');
+        const modalCreateButton = $('#modal-create-btn');
+
+        const resetModalForm = function ()
+        {
+            templateCtaView.removeClass('d-none');
+            templateFormView.addClass('d-none');
+            modalTemplateTitleInput.val('');
+            modalCreateButton.prop('disabled', true);
+        };
 
         templateCards.on('click', function ()
         {
             const templateId = $(this).data('template-card');
+            const templateName = $(this).data('template-name');
+            const templateDescription = $(this).data('template-description');
+            const templatePreview = $(this).data('template-preview');
+            const templateFullPreview = $(this).data('template-full-preview') || templatePreview;
+
             selectedTemplateInput.val(templateId);
             templateCards.removeClass('border-primary border-2');
             $(this).addClass('border-primary border-2');
+
+            modalTemplateIdInput.val(templateId);
+            modalTemplateName.text(templateName);
+            modalTemplateDescription.text(templateDescription);
+            modalTemplateImage.attr('src', templateFullPreview).attr('alt', templateName);
+            resetModalForm();
+            templatePreviewModal.modal('show');
+        });
+
+        $('#template-get-started-btn').on('click', function ()
+        {
+            templateCtaView.addClass('d-none');
+            templateFormView.removeClass('d-none');
+            modalTemplateTitleInput.trigger('focus');
+        });
+
+        $('#template-keep-browsing-btn, #template-cancel-btn').on('click', function ()
+        {
+            templatePreviewModal.modal('hide');
+        });
+
+        modalTemplateTitleInput.on('input', function ()
+        {
+            modalCreateButton.prop('disabled', $(this).val().trim() === '');
+        });
+
+        $('#template-create-form').on('submit', function (event)
+        {
+            event.preventDefault();
+            templatePreviewModal.modal('hide');
         });
     });
 </script>
@@ -43,7 +95,14 @@
 <div class="row g-3 mb-4">
     @foreach ($customTemplates as $template)
         <div class="col-12 col-md-6 col-xl-4">
-            <div class="card h-100 cursor-pointer border" data-template-card="{{ $template['id'] }}">
+            <div
+                class="card h-100 cursor-pointer border"
+                data-template-card="{{ $template['id'] }}"
+                data-template-name="{{ $template['name'] }}"
+                data-template-description="{{ $template['description'] }}"
+                data-template-preview="{{ $template['preview'] }}"
+                data-template-full-preview="{{ $template['full_preview'] ?? $template['preview'] }}"
+            >
                 <img src="{{ $template['preview'] }}" alt="{{ $template['name'] }}" class="card-img-top">
                 <div class="card-body">
                     <h6 class="mb-1">{{ $template['name'] }}</h6>
@@ -58,7 +117,14 @@
 <div class="row g-3 mb-4">
     @foreach ($kajabiTemplates as $template)
         <div class="col-12 col-md-6 col-xl-4">
-            <div class="card h-100 cursor-pointer border" data-template-card="{{ $template['id'] }}">
+            <div
+                class="card h-100 cursor-pointer border"
+                data-template-card="{{ $template['id'] }}"
+                data-template-name="{{ $template['name'] }}"
+                data-template-description="{{ $template['description'] }}"
+                data-template-preview="{{ $template['preview'] }}"
+                data-template-full-preview="{{ $template['full_preview'] ?? $template['preview'] }}"
+            >
                 <img src="{{ $template['preview'] }}" alt="{{ $template['name'] }}" class="card-img-top">
                 <div class="card-body">
                     <h6 class="mb-1">{{ $template['name'] }}</h6>
@@ -79,6 +145,45 @@
         >
             {{ __('Usar el editor clásico') }}
         </a>
+    </div>
+</div>
+
+<div class="modal fade" id="templatePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body p-4">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-lg-7">
+                        <div class="border rounded overflow-hidden">
+                            <img id="modal-template-image" class="img-fluid w-100" src="" alt="">
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-5">
+                        <h4 id="modal-template-name" class="mb-2"></h4>
+                        <p id="modal-template-description" class="text-muted mb-3"></p>
+
+                        <div id="template-cta-view">
+                            <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+                                <button id="template-get-started-btn" type="button" class="btn btn-primary">{{ __('Get Started') }}</button>
+                                <a id="template-keep-browsing-btn" href="javascript:;" class="text-secondary">{{ __('Keep Browsing') }}</a>
+                            </div>
+                        </div>
+
+                        <form id="template-create-form" class="mt-3">
+                            <input id="modal-template-id" type="hidden" name="template_id" value="">
+                            <div id="template-form-view" class="d-none">
+                                <label class="form-label" for="modal-template-title">{{ __('Title for This Email') }}</label>
+                                <input id="modal-template-title" type="text" class="form-control mb-3" required>
+                                <div class="d-flex flex-wrap align-items-center gap-3">
+                                    <button id="modal-create-btn" type="submit" class="btn btn-primary" disabled>{{ __('Create') }}</button>
+                                    <a id="template-cancel-btn" href="javascript:;" class="text-secondary">{{ __('Cancel') }}</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
