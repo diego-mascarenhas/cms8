@@ -165,7 +165,7 @@
                         <div id="template-cta-view">
                             <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
                                 <button id="template-get-started-btn" type="button" class="btn btn-primary">{{ __('Get Started') }}</button>
-                                <a id="template-keep-browsing-btn" href="javascript:;" class="text-secondary">{{ __('Keep Browsing') }}</a>
+                                <a id="template-keep-browsing-btn" href="javascript:;" class="text-secondary">{{ __('Seguir explorando') }}</a>
                             </div>
                         </div>
 
