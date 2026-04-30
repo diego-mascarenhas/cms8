@@ -66,7 +66,20 @@
         $('#template-create-form').on('submit', function (event)
         {
             event.preventDefault();
-            templatePreviewModal.modal('hide');
+            const templateId = modalTemplateIdInput.val();
+            const emailTitle = modalTemplateTitleInput.val().trim();
+
+            if (emailTitle === '' || templateId === '')
+            {
+                return;
+            }
+
+            const redirectUrl = new URL(@json(route('campaigns.classic-editor')));
+            redirectUrl.searchParams.set('type', @json($selectedType));
+            redirectUrl.searchParams.set('title', emailTitle);
+            redirectUrl.searchParams.set('template_id', templateId);
+
+            window.location.href = redirectUrl.toString();
         });
     });
 </script>
