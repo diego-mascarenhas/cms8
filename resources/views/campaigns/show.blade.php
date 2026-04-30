@@ -252,18 +252,22 @@
 </div>
 
 @if ($campaign->messages->isNotEmpty())
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="mb-0">
-                @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
-                    {{ __('Secuencia de mensajes') }}
-                @else
-                    {{ __('Mensajes vinculados') }}
-                @endif
-            </h5>
-            <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-sm btn-label-primary waves-effect waves-light flex-shrink-0">
-                <i class="ti ti-edit me-1"></i>{{ __('Editar campaña') }}
-            </a>
+    <div class="card card-action mb-4">
+        <div class="card-header">
+            <div class="card-action-title">
+                <h5 class="mb-0">
+                    @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
+                        {{ __('Secuencia de mensajes') }}
+                    @else
+                        {{ __('Mensajes vinculados') }}
+                    @endif
+                </h5>
+            </div>
+            <div class="card-action-element">
+                <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-sm btn-label-primary waves-effect waves-light">
+                    <i class="ti ti-edit me-1"></i>{{ __('Editar campaña') }}
+                </a>
+            </div>
         </div>
         <div class="card-body">
             @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)

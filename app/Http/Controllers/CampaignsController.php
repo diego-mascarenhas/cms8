@@ -164,6 +164,15 @@ class CampaignsController extends Controller
                 ->withInput();
         }
 
+        if (($validated['intent'] ?? '') === 'save')
+        {
+            $campaign = Campaign::query()->findOrFail($ids['campaign_id']);
+
+            return redirect()
+                ->route('campaigns.show', $campaign)
+                ->with('success', __('Borrador guardado.'));
+        }
+
         $query = array_filter(
             [
                 'type' => $validated['type'] ?? null,
@@ -176,13 +185,6 @@ class CampaignsController extends Controller
             fn ($value) => $value !== null && $value !== '',
         );
 
-        if (($validated['intent'] ?? '') === 'save_next')
-        {
-            return redirect()
-                ->route('campaigns.classic-editor', $query)
-                ->with('status', __('Paso guardado. Puedes configurar el siguiente correo de la secuencia.'));
-        }
-
         $query['message_id'] = $ids['message_id'];
 
         $prefill = [
@@ -193,7 +195,7 @@ class CampaignsController extends Controller
 
         return redirect()
             ->route('campaigns.classic-editor', $query)
-            ->with('status', __('Borrador guardado.'))
+            ->with('status', __('Paso guardado. Sigues en este correo; puedes añadir el siguiente cuando quieras.'))
             ->with('classic_editor_prefill', $prefill);
     }
 

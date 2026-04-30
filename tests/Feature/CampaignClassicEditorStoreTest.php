@@ -46,9 +46,13 @@ class CampaignClassicEditorStoreTest extends TestCase
         $campaign = Campaign::withoutGlobalScopes()->where('team_id', $user->current_team_id)->where('name', 'Mi secuencia')->first();
         $this->assertNotNull($campaign);
 
+        $message = Message::withoutGlobalScopes()->where('team_id', $user->current_team_id)->where('name', 'Paso 1')->first();
+        $this->assertNotNull($message);
+
         $location = (string) $response->headers->get('Location');
         $this->assertStringContainsString('campaign_id='.$campaign->id, $location);
         $this->assertStringContainsString('type=sequences', $location);
+        $this->assertStringContainsString('message_id='.$message->id, $location);
 
         $this->assertDatabaseHas('messages', [
             'team_id' => $user->current_team_id,
@@ -72,7 +76,7 @@ class CampaignClassicEditorStoreTest extends TestCase
             ],
         ]);
 
-        $this->actingAs($user)->post(route('campaigns.classic-editor.store'), [
+        $response = $this->actingAs($user)->post(route('campaigns.classic-editor.store'), [
             'intent' => 'save',
             'type' => 'broadcasts',
             'title' => 'Promo',
@@ -80,7 +84,12 @@ class CampaignClassicEditorStoreTest extends TestCase
             'subject' => 'Asunto',
             'internal_title' => 'Mail 1',
             'body' => '<table><tr><td>NEW</td></tr></table>',
-        ])->assertSessionHas('status');
+        ]);
+
+        $campaign = Campaign::withoutGlobalScopes()->where('team_id', $user->current_team_id)->where('name', 'Promo')->first();
+        $this->assertNotNull($campaign);
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $response->assertSessionHas('success');
 
         $template->refresh();
         $this->assertStringContainsString('NEW', (string) ($template->gjs_data['html'] ?? ''));
@@ -97,7 +106,7 @@ class CampaignClassicEditorStoreTest extends TestCase
         $response->assertSessionHasErrors('intent');
     }
 
-    public function test_store_classic_editor_save_redirect_includes_message_id(): void
+    public function test_store_classic_editor_save_redirects_to_campaign_show(): void
     {
         $user = $this->userWithPersonalTeamResolved();
 
@@ -113,7 +122,10 @@ class CampaignClassicEditorStoreTest extends TestCase
         $message = Message::withoutGlobalScopes()->where('team_id', $user->current_team_id)->where('name', 'M1')->first();
         $this->assertNotNull($message);
 
-        $location = (string) $response->headers->get('Location');
-        $this->assertStringContainsString('message_id='.$message->id, $location);
+        $campaign = Campaign::withoutGlobalScopes()->where('team_id', $user->current_team_id)->where('name', 'Secuencia B')->first();
+        $this->assertNotNull($campaign);
+
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $response->assertSessionHas('success');
     }
 }

@@ -175,7 +175,9 @@ class MessageController extends Controller
     public function show(string $id)
     {
         // Obtener el mensaje con relaciones necesarias
-        $message = Message::with(['category', 'deliveries', 'team.settings'])->findOrFail($id);
+        $message = Message::with(['category', 'deliveries', 'team.settings', 'template'])
+            ->withExists('campaigns')
+            ->findOrFail($id);
 
         // Obtener configuración de correo saliente del team con settings cargados
         $team = auth()->user()->currentTeam;
@@ -330,7 +332,7 @@ class MessageController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Message::with(['deliveries', 'team.settings'])->find($id);
+        $data = Message::with(['deliveries', 'team.settings', 'template'])->find($id);
 
         if (! $data)
         {

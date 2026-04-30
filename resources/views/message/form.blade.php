@@ -210,6 +210,13 @@ document.querySelector('form').addEventListener('submit', function() {
 					¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
 				</div>
 			</div>
+			@if (isset($data->id) && (int) ($data->type_id ?? 0) === 1 && $data->template_id && $data->template)
+				<div class="col-md-6 d-flex flex-column flex-md-row align-items-md-end justify-content-md-end gap-2 mt-2 mt-md-0">
+					<a href="{{ route('template.editor', $data->template->getHashedId()) }}" class="btn btn-primary waves-effect waves-light">
+						<i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
+					</a>
+				</div>
+			@endif
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="{{ __('Texto alternativo') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">

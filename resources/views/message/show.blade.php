@@ -24,10 +24,24 @@
 			<i class="ti ti-eye me-1"></i>Vista previa
 		</button>
 
-		<!-- Edit Button -->
-		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
-			<i class="ti ti-edit me-1"></i>Editar
+		@php
+			$isMailerMessage = (int) $message->type_id === 1;
+			$visualEditorUrl = ($isMailerMessage && $message->template)
+				? route('template.editor', $message->template->getHashedId())
+				: route('message.edit', $message->id);
+		@endphp
+		<a href="{{ $visualEditorUrl }}" class="btn btn-primary waves-effect waves-light">
+			@if ($isMailerMessage && $message->template)
+				<i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
+			@else
+				<i class="ti ti-edit me-1"></i>{{ __('Editar') }}
+			@endif
 		</a>
+		@if ($isMailerMessage && $message->template)
+			<a href="{{ route('message.edit', $message->id) }}" class="btn btn-label-secondary waves-effect waves-light">
+				<i class="ti ti-settings me-1"></i>{{ __('Ajustes del mensaje') }}
+			</a>
+		@endif
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
 		@php
@@ -56,11 +70,13 @@
 			</button>
 		@endif
 		@else
-			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
-					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
-					{{ !$canSend ? 'disabled' : '' }}>
-				<i class="ti ti-send me-1"></i>Enviar ahora
-			</button>
+			@if (! $message->campaigns_exists)
+				<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
+						onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
+						{{ !$canSend ? 'disabled' : '' }}>
+					<i class="ti ti-send me-1"></i>Enviar ahora
+				</button>
+			@endif
 		@endif
 
 		<a href="{{ route('message.index') }}" class="btn btn-label-secondary">

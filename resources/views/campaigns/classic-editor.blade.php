@@ -109,7 +109,7 @@
                 <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor') }}
             </a>
             <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
-            <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
+            <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar para después') }}</button>
         </div>
     </div>
 
@@ -238,7 +238,7 @@
     <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-label-danger">{{ __('Eliminar') }}</button>
         <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
-        <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
+        <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar para después') }}</button>
     </div>
 </form>
 @endsection
