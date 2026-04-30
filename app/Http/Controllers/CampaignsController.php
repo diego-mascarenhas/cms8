@@ -143,6 +143,16 @@ class CampaignsController extends Controller
 
     public function classicEditor(Request $request): View
     {
+        return view('campaigns.classic-editor', $this->buildClassicEditorData($request));
+    }
+
+    public function classicEditorGrapes(Request $request): View
+    {
+        return view('campaigns.classic-editor-grapes', $this->buildClassicEditorData($request));
+    }
+
+    private function buildClassicEditorData(Request $request): array
+    {
         $selectedType = $request->string('type')->toString();
         $selectedTitle = $request->string('title')->toString();
         $selectedTemplateId = $request->integer('template_id');
@@ -207,10 +217,12 @@ HTML;
 
         $defaultBody = str_replace('__EMAIL_BODY__', $defaultBodyContent, $defaultBodyTemplate);
 
-        return view('campaigns.classic-editor', [
+        return [
+            'selectedType' => $selectedType,
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
             'selectedTemplateId' => $selectedTemplateId,
+            'grapesEditorUrl' => 'https://humano.test/template/eyJpdiI6Im1vQld3OGVIU20vbW1ENGhRSkxvWFE9PSIsInZhbHVlIjoiaFZVcnI2NWUyUXNLWk1PZHlUOWdXQT09IiwibWFjIjoiMDkwMWMzN2UxZjY3MDE1NzczN2Y0YjFiZTExNDBmMWEyMWY5NzFkNjIyODgyNWNlNDFhMDg4NjI3MzYxMzE4MSIsInRhZyI6IiJ9/editor',
             'defaultInternalTitle' => $defaultInternalTitle,
             'defaultSubject' => $defaultSubject,
             'defaultPreviewText' => $defaultPreviewText,
@@ -243,6 +255,6 @@ HTML;
                 '1320' => '10:00 PM',
                 '1380' => '11:00 PM',
             ],
-        ]);
+        ];
     }
 }

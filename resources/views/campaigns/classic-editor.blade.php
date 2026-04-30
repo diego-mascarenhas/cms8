@@ -28,9 +28,6 @@
         const bodyPreviewFrame = $('#body-preview-frame');
         const bodyPreviewCard = $('#body-preview-card');
         const bodyPreviewOverlay = $('#body-preview-overlay');
-        const bodyEditTrigger = $('#body-edit-trigger');
-        const bodyEditorContainer = $('#body-editor-container');
-        const bodyDoneButton = $('#body-editor-done');
 
         const syncBodyContent = function ()
         {
@@ -56,19 +53,6 @@
             bodyPreviewOverlay.addClass('d-none');
         });
 
-        bodyEditTrigger.on('click', function (event)
-        {
-            event.preventDefault();
-            bodyEditorContainer.removeClass('d-none');
-            bodyPreviewOverlay.addClass('d-none');
-            editor.trigger('focus');
-        });
-
-        bodyDoneButton.on('click', function ()
-        {
-            bodyEditorContainer.addClass('d-none');
-        });
-
         syncBodyContent();
         updateCounter('#subject', '#subject-char-count');
         updateCounter('#preview_text', '#preview-char-count');
@@ -88,7 +72,10 @@
             @endif
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
-            <a href="javascript:;" class="btn btn-label-secondary">
+            <a
+                href="{{ $grapesEditorUrl }}"
+                class="btn btn-label-secondary"
+            >
                 <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor') }}
             </a>
             <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
@@ -165,7 +152,10 @@
                     <a href="javascript:;" class="btn btn-label-secondary">
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </a>
-                    <a href="javascript:;" class="btn btn-primary">
+                    <a
+                        href="{{ $grapesEditorUrl }}"
+                        class="btn btn-primary"
+                    >
                         <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
                     </a>
                 </div>
@@ -186,7 +176,11 @@
                         class="position-absolute top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center"
                         style="background: rgba(33, 37, 41, 0.55);"
                     >
-                        <a id="body-edit-trigger" href="javascript:;" class="btn btn-dark">
+                        <a
+                            id="body-edit-trigger"
+                            href="{{ $grapesEditorUrl }}"
+                            class="btn btn-dark"
+                        >
                             {{ __('Editar contenido') }}
                         </a>
                     </div>

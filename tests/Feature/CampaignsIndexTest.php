@@ -98,4 +98,24 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Asunto'),
         );
     }
+
+    public function test_grapes_editor_page_is_reachable_when_authenticated(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $response = $this->actingAs($user)->get(route('campaigns.classic-editor.grapes', [
+            'type' => 'sequences',
+            'title' => 'Mi secuencia',
+            'template_id' => 2,
+        ]));
+
+        $response->assertOk();
+        $html = $response->getContent() ?? '';
+        $this->assertTrue(
+            str_contains($html, 'Editor visual de correo'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'gjs-editor'),
+        );
+    }
 }
