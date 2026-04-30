@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CampaignType;
+use App\Models\Template;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -24,120 +25,37 @@ class CampaignsController extends Controller
     {
         $selectedType = $request->string('type')->toString();
         $selectedTitle = $request->string('title')->toString();
+        $templateDefinitions = $this->getCampaignTemplateDefinitions();
+        $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
 
         return view('campaigns.templates-select', [
             'selectedType' => $selectedType,
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
-            'customTemplates' => [
-                [
-                    'id' => 1,
-                    'name' => 'PRUEBA',
-                    'description' => 'BOH BOH',
-                    'preview' => 'https://placehold.co/700x900/f8f9fa/adb5bd?text=Plantilla+Personalizada',
-                    'full_preview' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Personalizada',
-                ],
-                [
-                    'id' => 2,
-                    'name' => 'PRUEBA SANDRA',
-                    'description' => 'Plantilla base para secuencias.',
-                    'preview' => 'https://placehold.co/700x900/f8f9fa/adb5bd?text=Plantilla+Sandra',
-                    'full_preview' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Sandra',
-                ],
-            ],
-            'kajabiTemplates' => [
-                [
-                    'id' => 101,
-                    'name' => 'Squiggle',
-                    'description' => 'Let your copy shine with this uncomplicated template.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_squiggle/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_squiggle/full.jpg',
-                ],
-                [
-                    'id' => 102,
-                    'name' => 'Slice',
-                    'description' => "Who says templates can't be playful? Use this one when you want to welcome new subscribers with a fun twist.",
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_slice/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_slice/full.jpg',
-                ],
-                [
-                    'id' => 103,
-                    'name' => 'Timber',
-                    'description' => 'A minimal, earthy template perfect for newsletter updates.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_timber/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_timber/full.jpg',
-                ],
-                [
-                    'id' => 104,
-                    'name' => 'Brush',
-                    'description' => "This template's prominent header helps you showcase your message with style.",
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_brush/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_brush/full.jpg',
-                ],
-                [
-                    'id' => 105,
-                    'name' => 'Mocha',
-                    'description' => "Make a splash with this clean, simple email template that's perfect for sending content updates.",
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_mocha/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_mocha/full.jpg',
-                ],
-                [
-                    'id' => 106,
-                    'name' => 'Strum',
-                    'description' => 'This minimal, image-focused template is perfect for sending promotions.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_strum/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_strum/full.jpg',
-                ],
-                [
-                    'id' => 107,
-                    'name' => 'Bridge',
-                    'description' => 'Give your audience a warm welcome with this simple yet refined signup confirmation template.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_bridge/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_bridge/full.jpg',
-                ],
-                [
-                    'id' => 108,
-                    'name' => 'Boardwell',
-                    'description' => 'Send your latest interviews, courses, blog posts and other content in a beautiful, attractive template.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_boardwell/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_boardwell/full.jpg',
-                ],
-                [
-                    'id' => 109,
-                    'name' => 'Ballast',
-                    'description' => 'A great template to use when you need to grab attention with striking visuals and video.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_ballast/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_ballast/full.jpg',
-                ],
-                [
-                    'id' => 110,
-                    'name' => 'Stem',
-                    'description' => 'Use this lively, image-based template to keep your fans in the loop.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_stem/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_stem/full.jpg',
-                ],
-                [
-                    'id' => 111,
-                    'name' => 'Myriad',
-                    'description' => 'A quick and bright template that you can craft to fit any purpose.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_myriad/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_myriad/full.jpg',
-                ],
-                [
-                    'id' => 112,
-                    'name' => 'Climb',
-                    'description' => 'Customize this highly-versatile template to suit any need for your growing business.',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_climb/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_climb/full.jpg',
-                ],
-                [
-                    'id' => 113,
-                    'name' => 'Make a Referral',
-                    'description' => 'For Kajabi Partners, making referrals is as easy as personalize, add affiliate link, and send!',
-                    'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_referral/thumbnail.jpg',
-                    'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_referral/full.jpg',
-                ],
-            ],
+            'customTemplates' => array_values(array_map(function (array $definition) use ($templatesByLegacyId): array
+            {
+                $template = $templatesByLegacyId[$definition['legacy_id']] ?? null;
+
+                return [
+                    'id' => $template?->id,
+                    'name' => $definition['name'],
+                    'description' => $definition['description'],
+                    'preview' => $definition['preview'],
+                    'full_preview' => $definition['full_preview'],
+                ];
+            }, array_filter($templateDefinitions, fn (array $item): bool => $item['group'] === 'custom'))),
+            'kajabiTemplates' => array_values(array_map(function (array $definition) use ($templatesByLegacyId): array
+            {
+                $template = $templatesByLegacyId[$definition['legacy_id']] ?? null;
+
+                return [
+                    'id' => $template?->id,
+                    'name' => $definition['name'],
+                    'description' => $definition['description'],
+                    'preview' => $definition['preview'],
+                    'full_preview' => $definition['full_preview'],
+                ];
+            }, array_filter($templateDefinitions, fn (array $item): bool => $item['group'] === 'kajabi'))),
         ]);
     }
 
@@ -157,72 +75,60 @@ class CampaignsController extends Controller
         $selectedTitle = $request->string('title')->toString();
         $selectedTemplateId = $request->integer('template_id');
         $defaultInternalTitle = $selectedTitle !== '' ? $selectedTitle : 'Correo de secuencia';
-        $templatesById = [
-            1 => ['name' => 'PRUEBA', 'hero' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Personalizada'],
-            2 => ['name' => 'PRUEBA SANDRA', 'hero' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Sandra'],
-            101 => ['name' => 'Squiggle', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_squiggle/full.jpg'],
-            102 => ['name' => 'Slice', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_slice/full.jpg'],
-            103 => ['name' => 'Timber', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_timber/full.jpg'],
-            104 => ['name' => 'Brush', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_brush/full.jpg'],
-            105 => ['name' => 'Mocha', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_mocha/full.jpg'],
-            106 => ['name' => 'Strum', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_strum/full.jpg'],
-            107 => ['name' => 'Bridge', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_bridge/full.jpg'],
-            108 => ['name' => 'Boardwell', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_boardwell/full.jpg'],
-            109 => ['name' => 'Ballast', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_ballast/full.jpg'],
-            110 => ['name' => 'Stem', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_stem/full.jpg'],
-            111 => ['name' => 'Myriad', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_myriad/full.jpg'],
-            112 => ['name' => 'Climb', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_climb/full.jpg'],
-            113 => ['name' => 'Make a Referral', 'hero' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_referral/full.jpg'],
-        ];
-
-        $template = $templatesById[$selectedTemplateId] ?? [
-            'name' => 'Plantilla personalizada',
-            'hero' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Email',
-        ];
+        $templateDefinitions = $this->getCampaignTemplateDefinitions();
+        $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
+        $selectedTemplate = Template::withoutGlobalScopes()->find($selectedTemplateId);
+        $selectedDefinition = collect($templateDefinitions)->first(function (array $definition) use ($selectedTemplate): bool
+        {
+            return $selectedTemplate instanceof Template && $definition['name'] === $selectedTemplate->name;
+        });
+        if (! is_array($selectedDefinition))
+        {
+            $selectedDefinition = [
+                'name' => $selectedTemplate?->name ?? 'Plantilla personalizada',
+                'full_preview' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Email',
+            ];
+        }
 
         $campaignHeadline = $selectedTitle !== '' ? $selectedTitle : 'Tu próxima campaña';
         $defaultSubject = $selectedTitle !== '' ? 'Actualización: '.$selectedTitle : 'Asunto';
         $defaultPreviewText = 'Descubre los detalles y próximos pasos de esta campaña.';
-        $defaultBodyContent = <<<HTML
-<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Hola {{first_name}},</p>
-<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Gracias por estar aquí. Este correo se creó con la plantilla <strong>{$template['name']}</strong> para que puedas comenzar a personalizarlo de inmediato.</p>
-<p style="margin:0 0 22px;color:#4b5563;font-size:16px;line-height:1.6;">Reemplaza este contenido por tu mensaje, agrega enlaces y deja listo tu envío.</p>
-<a href="#" style="display:inline-block;background:#7367f0;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">Ver más</a>
-HTML;
-
-        $defaultBodyTemplate = <<<HTML
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb;padding:24px 0;font-family:Arial,sans-serif;">
-  <tr>
-    <td align="center">
-      <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;">
-        <tr>
-          <td>
-            <img src="{$template['hero']}" alt="{$template['name']}" width="640" style="display:block;width:100%;height:auto;">
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <p style="margin:0 0 12px;color:#6c757d;font-size:14px;">{$template['name']}</p>
-            <h1 style="margin:0 0 16px;color:#1f2430;font-size:28px;line-height:1.2;">{$campaignHeadline}</h1>
-            __EMAIL_BODY__
-            <hr style="border:none;border-top:1px solid #eceef2;margin:26px 0;">
-            <p style="margin:0;color:#6c757d;font-size:13px;">Equipo Humano</p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-HTML;
-
+        $defaultBodyTemplate = $this->buildTemplateHtmlFromDefinition($selectedDefinition, $campaignHeadline);
+        $defaultBodyContent = $this->extractBodyContent($defaultBodyTemplate);
         $defaultBody = str_replace('__EMAIL_BODY__', $defaultBodyContent, $defaultBodyTemplate);
+        if ($selectedTemplate instanceof Template)
+        {
+            $selectedTemplate = $this->ensureTemplateHasGjsStructure($selectedTemplate, $defaultBody);
+        }
+        $storedBody = is_array($selectedTemplate?->gjs_data) ? ($selectedTemplate->gjs_data['html'] ?? null) : null;
+        if (is_string($storedBody) && $storedBody !== '')
+        {
+            $defaultBody = $storedBody;
+            $defaultBodyContent = $this->extractBodyContent($storedBody);
+        }
+
+        $grapesEditorUrl = '#';
+        if ($selectedTemplate instanceof Template)
+        {
+            $grapesEditorUrl = route('template.editor', $selectedTemplate->getHashedId());
+        } elseif ($selectedTemplateId > 0)
+        {
+            foreach ($templatesByLegacyId as $legacyTemplate)
+            {
+                if ($legacyTemplate->id === $selectedTemplateId)
+                {
+                    $grapesEditorUrl = route('template.editor', $legacyTemplate->getHashedId());
+                    break;
+                }
+            }
+        }
 
         return [
             'selectedType' => $selectedType,
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
             'selectedTemplateId' => $selectedTemplateId,
-            'grapesEditorUrl' => 'https://humano.test/template/eyJpdiI6Im1vQld3OGVIU20vbW1ENGhRSkxvWFE9PSIsInZhbHVlIjoiaFZVcnI2NWUyUXNLWk1PZHlUOWdXQT09IiwibWFjIjoiMDkwMWMzN2UxZjY3MDE1NzczN2Y0YjFiZTExNDBmMWEyMWY5NzFkNjIyODgyNWNlNDFhMDg4NjI3MzYxMzE4MSIsInRhZyI6IiJ9/editor',
+            'grapesEditorUrl' => $grapesEditorUrl,
             'defaultInternalTitle' => $defaultInternalTitle,
             'defaultSubject' => $defaultSubject,
             'defaultPreviewText' => $defaultPreviewText,
@@ -256,5 +162,196 @@ HTML;
                 '1380' => '11:00 PM',
             ],
         ];
+    }
+
+    private function getCampaignTemplateDefinitions(): array
+    {
+        return [
+            ['legacy_id' => 1, 'group' => 'custom', 'name' => 'PRUEBA', 'description' => 'BOH BOH', 'preview' => 'https://placehold.co/700x900/f8f9fa/adb5bd?text=Plantilla+Personalizada', 'full_preview' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Personalizada'],
+            ['legacy_id' => 2, 'group' => 'custom', 'name' => 'PRUEBA SANDRA', 'description' => 'Plantilla base para secuencias.', 'preview' => 'https://placehold.co/700x900/f8f9fa/adb5bd?text=Plantilla+Sandra', 'full_preview' => 'https://placehold.co/1300x1800/f8f9fa/adb5bd?text=Plantilla+Sandra'],
+            ['legacy_id' => 101, 'group' => 'kajabi', 'name' => 'Squiggle', 'description' => 'Let your copy shine with this uncomplicated template.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_squiggle/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_squiggle/full.jpg'],
+            ['legacy_id' => 102, 'group' => 'kajabi', 'name' => 'Slice', 'description' => "Who says templates can't be playful? Use this one when you want to welcome new subscribers with a fun twist.", 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_slice/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_slice/full.jpg'],
+            ['legacy_id' => 103, 'group' => 'kajabi', 'name' => 'Timber', 'description' => 'A minimal, earthy template perfect for newsletter updates.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_timber/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_timber/full.jpg'],
+            ['legacy_id' => 104, 'group' => 'kajabi', 'name' => 'Brush', 'description' => "This template's prominent header helps you showcase your message with style.", 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_brush/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_brush/full.jpg'],
+            ['legacy_id' => 105, 'group' => 'kajabi', 'name' => 'Mocha', 'description' => "Make a splash with this clean, simple email template that's perfect for sending content updates.", 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_mocha/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_mocha/full.jpg'],
+            ['legacy_id' => 106, 'group' => 'kajabi', 'name' => 'Strum', 'description' => 'This minimal, image-focused template is perfect for sending promotions.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_strum/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_strum/full.jpg'],
+            ['legacy_id' => 107, 'group' => 'kajabi', 'name' => 'Bridge', 'description' => 'Give your audience a warm welcome with this simple yet refined signup confirmation template.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_bridge/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_bridge/full.jpg'],
+            ['legacy_id' => 108, 'group' => 'kajabi', 'name' => 'Boardwell', 'description' => 'Send your latest interviews, courses, blog posts and other content in a beautiful, attractive template.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_boardwell/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_boardwell/full.jpg'],
+            ['legacy_id' => 109, 'group' => 'kajabi', 'name' => 'Ballast', 'description' => 'A great template to use when you need to grab attention with striking visuals and video.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_ballast/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_ballast/full.jpg'],
+            ['legacy_id' => 110, 'group' => 'kajabi', 'name' => 'Stem', 'description' => 'Use this lively, image-based template to keep your fans in the loop.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_stem/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_stem/full.jpg'],
+            ['legacy_id' => 111, 'group' => 'kajabi', 'name' => 'Myriad', 'description' => 'A quick and bright template that you can craft to fit any purpose.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_myriad/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_myriad/full.jpg'],
+            ['legacy_id' => 112, 'group' => 'kajabi', 'name' => 'Climb', 'description' => 'Customize this highly-versatile template to suit any need for your growing business.', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_climb/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_climb/full.jpg'],
+            ['legacy_id' => 113, 'group' => 'kajabi', 'name' => 'Make a Referral', 'description' => 'For Kajabi Partners, making referrals is as easy as personalize, add affiliate link, and send!', 'preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_referral/thumbnail.jpg', 'full_preview' => 'https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/canonical_themes/presets/encore_email_referral/full.jpg'],
+        ];
+    }
+
+    private function syncCampaignTemplatesToDatabase(array $definitions): array
+    {
+        $templatesByLegacyId = [];
+
+        foreach ($definitions as $definition)
+        {
+            $initialHtml = $this->buildTemplateHtmlFromDefinition($definition, 'Tu próxima campaña');
+            $teamId = auth()->check() ? auth()->user()?->currentTeam?->id : null;
+            $template = Template::withoutGlobalScopes()->where('name', $definition['name'])->first();
+            if (! $template)
+            {
+                $template = Template::withoutEvents(function () use ($definition, $teamId, $initialHtml)
+                {
+                    return Template::withoutGlobalScopes()->create([
+                        'name' => $definition['name'],
+                        'team_id' => $teamId,
+                        'status_id' => 1,
+                        'gjs_data' => $this->buildDefaultGjsData($initialHtml),
+                    ]);
+                });
+            }
+
+            $template = $this->ensureTemplateHasGjsStructure($template, $initialHtml);
+
+            $templatesByLegacyId[$definition['legacy_id']] = $template;
+        }
+
+        return $templatesByLegacyId;
+    }
+
+    private function buildTemplateHtmlFromDefinition(array $definition, string $headline): string
+    {
+        $bodyContent = <<<HTML
+<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Hola {{first_name}},</p>
+<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Gracias por estar aquí. Este correo se creó con la plantilla <strong>{$definition['name']}</strong> para que puedas comenzar a personalizarlo de inmediato.</p>
+<p style="margin:0 0 22px;color:#4b5563;font-size:16px;line-height:1.6;">Reemplaza este contenido por tu mensaje, agrega enlaces y deja listo tu envío.</p>
+<a href="#" style="display:inline-block;background:#7367f0;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">Ver más</a>
+HTML;
+
+        $bodyTemplate = <<<HTML
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb;padding:24px 0;font-family:Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;">
+        <tr>
+          <td>
+            <img src="{$definition['full_preview']}" alt="{$definition['name']}" width="640" style="display:block;width:100%;height:auto;">
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px;">
+            <p style="margin:0 0 12px;color:#6c757d;font-size:14px;">{$definition['name']}</p>
+            <h1 style="margin:0 0 16px;color:#1f2430;font-size:28px;line-height:1.2;">{$headline}</h1>
+            __EMAIL_BODY__
+            <hr style="border:none;border-top:1px solid #eceef2;margin:26px 0;">
+            <p style="margin:0;color:#6c757d;font-size:13px;">Equipo Humano</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+HTML;
+
+        return str_replace('__EMAIL_BODY__', $bodyContent, $bodyTemplate);
+    }
+
+    private function buildDefaultGjsData(string $html): array
+    {
+        return [
+            'components' => $this->htmlToGrapesComponents($html),
+            'styles' => '[]',
+            'css' => '* { box-sizing: border-box; } body { margin: 0; }',
+            'html' => $html,
+        ];
+    }
+
+    private function ensureTemplateHasGjsStructure(Template $template, string $fallbackHtml): Template
+    {
+        $current = is_array($template->gjs_data) ? $template->gjs_data : [];
+        $currentHtml = $current['html'] ?? $fallbackHtml;
+        $components = $current['components'] ?? null;
+        $styles = $current['styles'] ?? null;
+        $css = $current['css'] ?? null;
+
+        $isTriviallyEmptyHtml = is_string($currentHtml)
+            && (str_contains($currentHtml, '<body></body>') || str_contains($currentHtml, '<body> </body>'));
+        $isTriviallyEmptyComponents = is_string($components)
+            && (str_contains($components, '<body></body>') || str_contains($components, '<body> </body>'));
+        $isHtmlInsteadOfComponents = is_string($components) && str_contains($components, '<table');
+
+        $needsUpdate = ! is_string($components) || trim($components) === '' || trim($components) === '[]';
+        $needsUpdate = $needsUpdate || ! is_string($currentHtml) || trim($currentHtml) === '';
+        $needsUpdate = $needsUpdate || ! is_string($styles) || trim($styles) === '';
+        $needsUpdate = $needsUpdate || ! is_string($css) || trim($css) === '';
+        $needsUpdate = $needsUpdate || $isTriviallyEmptyHtml || $isTriviallyEmptyComponents;
+        $needsUpdate = $needsUpdate || $isHtmlInsteadOfComponents;
+
+        if (! $needsUpdate)
+        {
+            return $template;
+        }
+
+        $normalizedHtml = $isTriviallyEmptyHtml ? $fallbackHtml : $currentHtml;
+        $normalizedComponents = $isTriviallyEmptyComponents ? $fallbackHtml : $components;
+
+        $template->update([
+            'gjs_data' => [
+                'components' => $this->normalizeComponentsValue($normalizedComponents, $normalizedHtml),
+                'styles' => is_string($styles) && trim($styles) !== '' ? $styles : '[]',
+                'css' => is_string($css) && trim($css) !== '' ? $css : '* { box-sizing: border-box; } body { margin: 0; }',
+                'html' => $normalizedHtml,
+            ],
+        ]);
+
+        return $template->fresh();
+    }
+
+    private function normalizeComponentsValue(mixed $components, string $fallbackHtml): string
+    {
+        if (is_string($components) && trim($components) !== '')
+        {
+            $decoded = json_decode($components, true);
+            if (is_array($decoded))
+            {
+                return $components;
+            }
+        }
+
+        if (is_array($components))
+        {
+            return json_encode($components) ?: '[]';
+        }
+
+        return $this->htmlToGrapesComponents($fallbackHtml);
+    }
+
+    private function htmlToGrapesComponents(string $html): string
+    {
+        $normalizedHtml = trim($html) !== '' ? $html : '<table><tr><td></td></tr></table>';
+        $components = [
+            [
+                'type' => 'wrapper',
+                'components' => [
+                    [
+                        'type' => 'text',
+                        'content' => $normalizedHtml,
+                    ],
+                ],
+            ],
+        ];
+
+        return json_encode($components) ?: '[]';
+    }
+
+    private function extractBodyContent(string $html): string
+    {
+        if (! str_contains($html, '<h1'))
+        {
+            return '<p style="margin:0;color:#4b5563;font-size:16px;line-height:1.6;">Edita este contenido desde GrapesJS.</p>';
+        }
+
+        return <<<'HTML'
+<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Hola {{first_name}},</p>
+<p style="margin:0 0 12px;color:#4b5563;font-size:16px;line-height:1.6;">Gracias por estar aquí. Puedes editar este bloque en el editor visual.</p>
+<p style="margin:0 0 22px;color:#4b5563;font-size:16px;line-height:1.6;">Reemplaza este contenido por tu mensaje final.</p>
+<a href="#" style="display:inline-block;background:#7367f0;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">Ver más</a>
+HTML;
     }
 }

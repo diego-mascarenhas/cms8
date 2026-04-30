@@ -112,4 +112,51 @@ class Template extends Model implements Editable
     {
         return auth()->user()->currentTeam->id ?? null;
     }
+
+    public function getComponentsAttribute(): array
+    {
+        $value = $this->gjs_data['components'] ?? [];
+
+        return $this->normalizeArrayValue($value);
+    }
+
+    public function getStylesAttribute(): array
+    {
+        $value = $this->gjs_data['styles'] ?? [];
+
+        return $this->normalizeArrayValue($value);
+    }
+
+    public function getCssAttribute(): string
+    {
+        $value = $this->gjs_data['css'] ?? '';
+
+        return is_string($value) ? $value : '';
+    }
+
+    public function getHtmlAttribute(): string
+    {
+        $value = $this->gjs_data['html'] ?? '';
+
+        return is_string($value) ? $value : '';
+    }
+
+    private function normalizeArrayValue(mixed $value): array
+    {
+        if (is_array($value))
+        {
+            return $value;
+        }
+
+        if (is_string($value) && trim($value) !== '')
+        {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded))
+            {
+                return $decoded;
+            }
+        }
+
+        return [];
+    }
 }

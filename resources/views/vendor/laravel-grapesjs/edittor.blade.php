@@ -78,7 +78,8 @@
 </head>
 
 <body>
-    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+    {{-- Temporarily hidden: AI assistant bar above GrapesJS editor --}}
+    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="display: none; padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
       <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
         <img src="{{ asset('assets/logo-dark.svg') }}" alt="Humano" style="height: 36px; width: auto; min-width: 100px; object-fit: contain;" />
         <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Cambiar el color del botón, renombrar la plantilla, o describir contenido para generar"
