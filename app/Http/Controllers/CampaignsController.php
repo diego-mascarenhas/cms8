@@ -70,7 +70,8 @@ class CampaignsController extends Controller
         $campaign->load([
             'messages' => function ($q): void
             {
-                $q->select('messages.id', 'messages.name', 'messages.team_id')->orderBy('messages.id');
+                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails')
+                    ->orderBy('campaign_message.id');
             },
         ]);
 

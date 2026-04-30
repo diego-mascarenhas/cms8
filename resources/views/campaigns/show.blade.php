@@ -248,17 +248,63 @@
 @if ($campaign->messages->isNotEmpty())
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">{{ __('Mensajes vinculados') }}</h5>
+            <h5 class="mb-0">
+                @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
+                    {{ __('Secuencia de mensajes') }}
+                @else
+                    {{ __('Mensajes vinculados') }}
+                @endif
+            </h5>
         </div>
         <div class="card-body">
-            <ul class="list-unstyled mb-0">
+            @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
+                <p class="text-muted small mb-5">
+                    {{ __('La secuencia inicial se arma al crear o editar cada correo en el editor; esta pantalla resume el orden. Los ajustes generales (título, exclusiones, zona horaria) están en') }}
+                    <a href="{{ route('campaigns.edit', $campaign) }}">{{ __('Editar campaña') }}</a>.
+                    {{ __('Entre pasos no guardamos aún condiciones propias (p. ej. “si abrió”): el orden es el de la vinculación; si el mensaje siguiente tiene “horas mínimas entre correos”, se muestra entre pasos.') }}
+                </p>
+            @endif
+            <ul class="timeline mb-0 ms-1">
                 @foreach ($campaign->messages as $message)
-                    <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="fw-medium">{{ $message->name }}</span>
-                        <a href="{{ route('message.show', $message->id) }}" class="btn btn-sm btn-label-primary">
-                            <i class="ti ti-external-link me-1"></i>{{ __('Ver mensaje') }}
-                        </a>
+                    <li class="timeline-item timeline-item-transparent pb-3">
+                        <span class="timeline-point timeline-point-primary"></span>
+                        <div class="timeline-event w-100">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div class="me-2">
+                                    <h6 class="mb-0">{{ __('Paso :n', ['n' => $loop->iteration]) }}</h6>
+                                    <span class="text-muted small">{{ $message->name }}</span>
+                                </div>
+                                <a href="{{ route('message.show', $message->id) }}" class="btn btn-xs btn-label-primary flex-shrink-0">
+                                    <i class="ti ti-external-link ti-sm me-1"></i>{{ __('Ver mensaje') }}
+                                </a>
+                            </div>
+                        </div>
                     </li>
+                    @if (! $loop->last)
+                        @php
+                            $nextMessage = $campaign->messages[$loop->index + 1];
+                        @endphp
+                        <li class="timeline-item timeline-item-transparent pb-3 pt-0">
+                            <span class="timeline-point timeline-point-secondary"></span>
+                            <div class="timeline-event py-0">
+                                <small class="text-muted d-flex align-items-center gap-1 flex-wrap">
+                                    <i class="ti ti-arrow-down"></i>
+                                    {{ __('Transición al siguiente paso') }}
+                                </small>
+                                @if ((int) ($nextMessage->min_hours_between_emails ?? 0) > 0)
+                                    <small class="d-block text-muted mt-1 mb-0">
+                                        {{ __('Espera mínima en el mensaje siguiente') }}:
+                                        <strong>{{ (int) $nextMessage->min_hours_between_emails }}</strong>
+                                        {{ __('h entre correos') }}.
+                                    </small>
+                                @else
+                                    <small class="d-block text-muted mt-1 mb-0">
+                                        {{ __('Sin espera mínima definida en el mensaje siguiente; condiciones finas entre pasos serían una ampliación futura.') }}
+                                    </small>
+                                @endif
+                            </div>
+                        </li>
+                    @endif
                 @endforeach
             </ul>
         </div>
