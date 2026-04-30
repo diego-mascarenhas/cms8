@@ -16,7 +16,12 @@
             selectedTemplateInput.val(templateId);
             templateCards.removeClass('border-primary border-2');
             $(this).addClass('border-primary border-2');
-            createButton.prop('disabled', false);
+            const createUrl = new URL(@json(route('campaigns.classic-editor')), window.location.origin);
+            createUrl.searchParams.set('type', @json($selectedType));
+            createUrl.searchParams.set('title', @json($selectedTitle));
+            createUrl.searchParams.set('template_id', templateId);
+
+            createButton.removeClass('disabled').attr('aria-disabled', 'false').attr('href', createUrl.toString());
         });
     });
 </script>
@@ -31,7 +36,12 @@
             <p class="text-muted mb-0">{{ __('Título:') }} <span class="fw-semibold">{{ $selectedTitle }}</span></p>
         @endif
     </div>
-    <a href="#" class="btn btn-primary">{{ __('Usar el editor clásico') }}</a>
+    <a
+        href="{{ route('campaigns.classic-editor', ['type' => $selectedType, 'title' => $selectedTitle]) }}"
+        class="btn btn-primary"
+    >
+        {{ __('Usar el editor clásico') }}
+    </a>
 </div>
 
 <input id="selected-template-id" type="hidden" value="">
@@ -70,12 +80,17 @@
     <div class="card-body">
         <h4 class="mb-2">{{ __('Prefieres lo clásico? El editor clásico sigue disponible.') }}</h4>
         <p class="text-muted mb-3">{{ __('Porque a veces solo necesitas algo simple, limpio y familiar.') }}</p>
-        <a href="#" class="btn btn-label-secondary">{{ __('Usar el editor clásico') }}</a>
+        <a
+            href="{{ route('campaigns.classic-editor', ['type' => $selectedType, 'title' => $selectedTitle]) }}"
+            class="btn btn-label-secondary"
+        >
+            {{ __('Usar el editor clásico') }}
+        </a>
     </div>
 </div>
 
 <div class="d-flex justify-content-between">
     <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary">{{ __('Volver') }}</a>
-    <button id="template-step-create-btn" type="button" class="btn btn-primary" disabled>{{ __('Crear') }}</button>
+    <a id="template-step-create-btn" href="#" class="btn btn-primary disabled" aria-disabled="true">{{ __('Crear') }}</a>
 </div>
 @endsection
