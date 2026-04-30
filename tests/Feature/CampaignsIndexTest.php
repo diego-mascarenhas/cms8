@@ -10,7 +10,7 @@ class CampaignsIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_campaigns_placeholder_page_is_reachable_when_authenticated(): void
+    public function test_campaigns_page_shows_campaign_manager_sections_when_authenticated(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
 
@@ -23,8 +23,13 @@ class CampaignsIndexTest extends TestCase
             || str_contains($html, 'Campañas'),
         );
         $this->assertTrue(
-            str_contains($html, 'Coming Soon')
-            || str_contains($html, 'Próximamente'),
+            str_contains($html, 'Email Campaigns'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'Manage Templates'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'New Email Campaign'),
         );
     }
 }
