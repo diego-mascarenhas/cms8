@@ -10,4 +10,9 @@ class CampaignsController extends Controller
     {
         return view('campaigns.index');
     }
+
+    public function edit(string $campaign): View
+    {
+        return view('campaigns.edit', ['campaign' => $campaign]);
+    }
 }

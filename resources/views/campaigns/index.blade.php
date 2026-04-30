@@ -151,7 +151,7 @@
                             <td>
                                 <div class="d-flex justify-content-center align-items-center">
                                     <a href="javascript:;" class="text-body me-2"><i class="ti ti-eye ti-sm"></i></a>
-                                    <a href="javascript:;" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
+                                    <a href="{{ route('campaigns.edit', ['campaign' => \Illuminate\Support\Str::slug($campaign['name'])]) }}" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
                                     <a href="javascript:;" class="text-body"><i class="ti ti-dots-vertical ti-sm"></i></a>
                                 </div>
                             </td>

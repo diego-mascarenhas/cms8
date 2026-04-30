@@ -853,6 +853,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Campaigns (placeholder — mailer message list remains at message/list)
     Route::get('/campaigns', [CampaignsController::class, 'index'])->name('campaigns.index');
+    Route::get('/campaigns/{campaign}/edit', [CampaignsController::class, 'edit'])->name('campaigns.edit');
 
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
