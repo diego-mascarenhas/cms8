@@ -104,7 +104,8 @@
 
 <input id="selected-template-id" type="hidden" value="">
 
-<h5 class="mb-3">{{ __('Plantillas personalizadas guardadas') }}</h5>
+<h5 class="mb-3">{{ __('Colección Humano') }}</h5>
+<p class="text-muted small mb-3">{{ __('Plantillas con estilos propios, listas para campañas y secuencias.') }}</p>
 <div class="row g-3 mb-4">
     @foreach ($customTemplates as $template)
         <div class="col-12 col-md-6 col-xl-4">
@@ -126,7 +127,7 @@
     @endforeach
 </div>
 
-<h5 class="mb-3">{{ __('Plantillas Kajabi') }}</h5>
+<h5 class="mb-3">{{ __('Plantillas destacadas') }}</h5>
 <div class="row g-3 mb-4">
     @foreach ($kajabiTemplates as $template)
         <div class="col-12 col-md-6 col-xl-4">

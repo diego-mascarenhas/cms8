@@ -69,10 +69,10 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Selecciona una plantilla'),
         );
         $this->assertTrue(
-            str_contains($html, 'Plantillas personalizadas guardadas'),
+            str_contains($html, 'Colección Humano'),
         );
         $this->assertTrue(
-            str_contains($html, 'Plantillas Kajabi'),
+            str_contains($html, 'Plantillas destacadas'),
         );
     }
 
