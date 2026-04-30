@@ -2,12 +2,48 @@
 
 @section('title', __('Campaigns'))
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+@endsection
+
+@section('page-script')
+<script>
+    $(function ()
+    {
+        const campaignTypeFilter = $('#campaign-type-filter');
+        const campaignStatusFilter = $('#campaign-status-filter');
+
+        if (campaignTypeFilter.length && $.fn.select2)
+        {
+            campaignTypeFilter.select2({
+                placeholder: @json(__('Type')),
+                minimumResultsForSearch: Infinity,
+                width: '170px',
+            });
+        }
+
+        if (campaignStatusFilter.length && $.fn.select2)
+        {
+            campaignStatusFilter.select2({
+                placeholder: @json(__('Status')),
+                minimumResultsForSearch: Infinity,
+                width: '170px',
+            });
+        }
+    });
+</script>
+@endsection
+
 @section('content')
 @php
     $campaigns = [
         [
             'name' => 'Teacher onboarding flow',
-            'type' => __('Sequence'),
+            'type' => __('Sequences'),
             'summary' => __('7 emails over 150 days'),
             'sends' => 0,
             'opened' => null,
@@ -19,7 +55,7 @@
         ],
         [
             'name' => 'Why your students do not progress',
-            'type' => __('Broadcast'),
+            'type' => __('Broadcasts'),
             'summary' => __('Scheduled for May 07, 2026 07:00 PM'),
             'sends' => null,
             'opened' => null,
@@ -31,7 +67,7 @@
         ],
         [
             'name' => 'What I learned from new students',
-            'type' => __('Broadcast'),
+            'type' => __('Broadcasts'),
             'summary' => __('Sent April 23, 2026 07:03 PM'),
             'sends' => 2381,
             'opened' => '20%',
@@ -43,7 +79,7 @@
         ],
         [
             'name' => 'Core activation mistakes',
-            'type' => __('Broadcast'),
+            'type' => __('Broadcasts'),
             'summary' => __('Sent April 15, 2026 06:03 PM'),
             'sends' => 2399,
             'opened' => '40%',
@@ -73,31 +109,23 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        <ul class="nav nav-pills mb-3" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button">{{ __('All emails') }}</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button">{{ __('Folders') }}</button>
-            </li>
-        </ul>
-
-        <div class="row g-3 align-items-center mb-4">
-            <div class="col-12 col-lg-8">
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-secondary">
-                        <i class="ti ti-filter me-1"></i>{{ __('Type') }}
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary">
-                        <i class="ti ti-filter me-1"></i>{{ __('Status') }}
-                    </button>
-                </div>
-            </div>
-            <div class="col-12 col-lg-4">
-                <div class="input-group input-group-merge">
-                    <span class="input-group-text"><i class="ti ti-search"></i></span>
-                    <input type="text" class="form-control" placeholder="{{ __('Search...') }}" />
-                </div>
+        <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mb-4">
+            <select id="campaign-type-filter" class="form-select">
+                <option value="">{{ __('Type') }}</option>
+                @foreach ($campaignTypes as $campaignType)
+                    <option value="{{ $campaignType->value }}">{{ $campaignType->label() }}</option>
+                @endforeach
+            </select>
+            <select id="campaign-status-filter" class="form-select">
+                <option value="">{{ __('Status') }}</option>
+                <option value="active">{{ __('Active') }}</option>
+                <option value="scheduled">{{ __('Scheduled') }}</option>
+                <option value="sent">{{ __('Sent') }}</option>
+                <option value="paused">{{ __('Paused') }}</option>
+            </select>
+            <div class="input-group input-group-merge ms-lg-auto" style="max-width: 360px; width: 100%;">
+                <span class="input-group-text"><i class="ti ti-search"></i></span>
+                <input type="text" class="form-control" placeholder="{{ __('Search...') }}" />
             </div>
         </div>
 
@@ -107,7 +135,7 @@
                     <tr>
                         <th>{{ __('Campaign') }}</th>
                         <th>{{ __('Performance') }}</th>
-                        <th>{{ __('Status') }}</th>
+                        <th class="text-center">{{ __('Status') }}</th>
                         <th class="text-center">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
@@ -116,9 +144,6 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-start gap-3">
-                                    <div class="form-check mt-1">
-                                        <input class="form-check-input" type="checkbox" />
-                                    </div>
                                     <div>
                                         <div class="fw-semibold">{{ $campaign['name'] }}</div>
                                         <small class="text-muted d-block">{{ $campaign['type'] }} - {{ $campaign['summary'] }}</small>
@@ -145,14 +170,20 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <span class="badge {{ $campaign['status_class'] }} {{ $campaign['status_text'] }}">{{ $campaign['status'] }}</span>
                             </td>
-                            <td>
-                                <div class="d-flex justify-content-center align-items-center">
-                                    <a href="javascript:;" class="text-body me-2"><i class="ti ti-eye ti-sm"></i></a>
-                                    <a href="{{ route('campaigns.edit', ['campaign' => \Illuminate\Support\Str::slug($campaign['name'])]) }}" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
-                                    <a href="javascript:;" class="text-body"><i class="ti ti-dots-vertical ti-sm"></i></a>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center align-items-center gap-3">
+                                    <a class="d-inline-flex align-items-center text-body" href="{{ route('campaigns.edit', ['campaign' => \Illuminate\Support\Str::slug($campaign['name'])]) }}" aria-label="{{ __('Edit') }}">
+                                        <i class="ti ti-pencil"></i>
+                                    </a>
+                                    <a class="d-inline-flex align-items-center text-body" href="javascript:;" aria-label="{{ __('Report') }}">
+                                        <i class="ti ti-chart-bar"></i>
+                                    </a>
+                                    <a class="d-inline-flex align-items-center text-body" href="javascript:;" aria-label="{{ __('Duplicate') }}">
+                                        <i class="ti ti-copy"></i>
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -176,12 +207,4 @@
     </div>
 </div>
 
-<div class="text-center">
-    <a href="https://help.kajabi.com/hc/en-us/articles/360036990014" class="text-primary" target="_blank" rel="noopener noreferrer">
-        {{ __('Learn more about Email Campaigns') }} <i class="ti ti-external-link"></i>
-    </a>
-    <div class="card-body">
-        <p class="text-muted mb-0">{{ __('Inspired by Kajabi campaign manager layout adapted to Vuexy.') }}</p>
-    </div>
-</div>
 @endsection
