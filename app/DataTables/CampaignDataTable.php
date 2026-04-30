@@ -193,6 +193,7 @@ HTML;
     {
         return [
             'select' => false,
+            'stateSave' => true,
             'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.campaignsDt\').on(\'keyup.campaignsDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.campaignsDt select2:select\').on(\'change.campaignsDt select2:select\', function () { api.ajax.reload(); }); }',
             'drawCallback' => 'function () { $("#campaigns-table tbody tr").css({"user-select": "none","-webkit-user-select": "none","-moz-user-select": "none","-ms-user-select": "none"}); }',
         ];

@@ -6,6 +6,24 @@
 <script>
     $(function ()
     {
+        const syncBodyBeforeSubmit = function ()
+        {
+            const editor = $('#body-editor');
+            const bodyInput = $('#body');
+            const bodyTemplate = $('#body-template');
+            if (editor.length && bodyInput.length && bodyTemplate.length)
+            {
+                const bodyContent = editor.html();
+                const fullHtml = bodyTemplate.val().replace('__EMAIL_BODY__', bodyContent);
+                bodyInput.val(fullHtml);
+            }
+        };
+
+        $('form.campaign-classic-editor-form').on('submit', function ()
+        {
+            syncBodyBeforeSubmit();
+        });
+
         const updateCounter = function (inputSelector, counterSelector)
         {
             const currentLength = $(inputSelector).val().length;
@@ -61,7 +79,19 @@
 @endsection
 
 @section('content')
-<form action="#" method="POST" class="mb-4">
+@if (session('status'))
+    <div class="alert alert-success alert-dismissible mb-4" role="alert">
+        {{ session('status') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Cerrar') }}"></button>
+    </div>
+@endif
+<form action="{{ route('campaigns.classic-editor.store') }}" method="POST" class="mb-4 campaign-classic-editor-form">
+    @csrf
+    <input type="hidden" name="type" value="{{ $selectedType }}">
+    <input type="hidden" name="title" value="{{ $selectedTitle }}">
+    <input type="hidden" name="template_id" value="{{ $selectedTemplateId }}">
+    <input type="hidden" name="campaign_id" value="{{ $campaignId }}">
+    <input type="hidden" name="message_id" value="{{ $messageId }}">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ __('Editar correo de secuencia') }}</h4>
@@ -78,8 +108,8 @@
             >
                 <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor') }}
             </a>
-            <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
-            <button type="submit" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
+            <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
+            <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
         </div>
     </div>
 
@@ -118,7 +148,7 @@
 
             <div class="mb-3">
                 <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>
-                <input id="internal-title" type="text" class="form-control" value="{{ $defaultInternalTitle }}" />
+                <input id="internal-title" name="internal_title" type="text" class="form-control" value="{{ $defaultInternalTitle }}" />
                 <small class="text-muted">{{ __('Este título se usa en reportes y no se muestra a los destinatarios.') }}</small>
             </div>
 
@@ -127,7 +157,7 @@
                     <label class="form-label mb-0" for="subject">{{ __('Asunto') }}</label>
                     <small class="text-muted"><span id="subject-char-count">0</span>/140 {{ __('caracteres') }}</small>
                 </div>
-                <input id="subject" type="text" maxlength="140" class="form-control" value="{{ $defaultSubject }}" />
+                <input id="subject" name="subject" type="text" maxlength="140" class="form-control" value="{{ $defaultSubject }}" />
             </div>
 
             <div class="mb-4">
@@ -135,7 +165,7 @@
                     <label class="form-label mb-0" for="preview_text">{{ __('Texto de vista previa') }}</label>
                     <small class="text-muted"><span id="preview-char-count">0</span>/140 {{ __('caracteres') }}</small>
                 </div>
-                <input id="preview_text" type="text" maxlength="140" class="form-control" value="{{ $defaultPreviewText }}" />
+                <input id="preview_text" name="preview_text" type="text" maxlength="140" class="form-control" value="{{ $defaultPreviewText }}" />
                 <small class="text-muted">{{ __('Texto que aparece después del asunto en la bandeja de entrada del destinatario.') }}</small>
             </div>
         </div>
@@ -173,13 +203,13 @@
                     ></iframe>
                     <div
                         id="body-preview-overlay"
-                        class="position-absolute top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center"
+                        class="position-absolute top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center pe-none"
                         style="background: rgba(33, 37, 41, 0.55);"
                     >
                         <a
                             id="body-edit-trigger"
                             href="{{ $grapesEditorUrl }}"
-                            class="btn btn-dark"
+                            class="btn btn-dark pe-auto"
                         >
                             {{ __('Editar contenido') }}
                         </a>
@@ -207,8 +237,8 @@
 
     <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-label-danger">{{ __('Eliminar') }}</button>
-        <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
-        <button type="submit" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
+        <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
+        <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar y agregar siguiente correo') }}</button>
     </div>
 </form>
 @endsection

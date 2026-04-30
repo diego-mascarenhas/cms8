@@ -5,13 +5,21 @@ namespace App\Http\Controllers;
 use App\DataTables\CampaignDataTable;
 use App\Enums\CampaignType;
 use App\Models\Campaign;
+use App\Models\Message;
 use App\Models\Template;
+use App\Services\CampaignClassicEditorPersistence;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CampaignsController extends Controller
 {
+    public function __construct(
+        private readonly CampaignClassicEditorPersistence $classicEditorPersistence,
+    ) {}
+
     public function index(CampaignDataTable $dataTable): View|RedirectResponse
     {
         if (! auth()->user()?->currentTeam)
@@ -77,12 +85,86 @@ class CampaignsController extends Controller
         return view('campaigns.classic-editor-grapes', $this->buildClassicEditorData($request));
     }
 
+    public function storeClassicEditor(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+        if (! $user?->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $validated = [];
+        $ids = ['campaign_id' => 0, 'message_id' => 0];
+
+        try
+        {
+            $validated = $request->validate([
+                'intent' => ['required', 'string', 'in:save,save_next'],
+                'type' => ['nullable', 'string', 'max:40'],
+                'title' => ['nullable', 'string', 'max:500'],
+                'template_id' => ['nullable', 'integer', 'min:0'],
+                'campaign_id' => ['nullable', 'integer', 'min:0'],
+                'message_id' => ['nullable', 'integer', 'min:0'],
+                'subject' => ['nullable', 'string', 'max:140'],
+                'preview_text' => ['nullable', 'string', 'max:140'],
+                'internal_title' => ['nullable', 'string', 'max:255'],
+                'body' => ['nullable', 'string'],
+            ]);
+
+            $ids = $this->classicEditorPersistence->persist($user, $validated);
+        } catch (ValidationException $e)
+        {
+            return redirect()
+                ->route('campaigns.classic-editor', $request->only(['type', 'title', 'template_id', 'campaign_id', 'message_id']))
+                ->withErrors($e->errors())
+                ->withInput();
+        }
+
+        $query = array_filter(
+            [
+                'type' => $validated['type'] ?? null,
+                'title' => $validated['title'] ?? null,
+                'template_id' => isset($validated['template_id']) && (int) $validated['template_id'] > 0
+                    ? (int) $validated['template_id']
+                    : null,
+                'campaign_id' => $ids['campaign_id'] > 0 ? $ids['campaign_id'] : null,
+            ],
+            fn ($value) => $value !== null && $value !== '',
+        );
+
+        if (($validated['intent'] ?? '') === 'save_next')
+        {
+            return redirect()
+                ->route('campaigns.classic-editor', $query)
+                ->with('status', __('Paso guardado. Puedes configurar el siguiente correo de la secuencia.'));
+        }
+
+        $query['message_id'] = $ids['message_id'];
+
+        $prefill = [
+            'internal_title' => (string) ($validated['internal_title'] ?? ''),
+            'subject' => (string) ($validated['subject'] ?? ''),
+            'preview_text' => (string) ($validated['preview_text'] ?? ''),
+        ];
+
+        return redirect()
+            ->route('campaigns.classic-editor', $query)
+            ->with('status', __('Borrador guardado.'))
+            ->with('classic_editor_prefill', $prefill);
+    }
+
     private function buildClassicEditorData(Request $request): array
     {
         $selectedType = $request->string('type')->toString();
         $selectedTitle = $request->string('title')->toString();
         $selectedTemplateId = $request->integer('template_id');
-        $defaultInternalTitle = $selectedTitle !== '' ? $selectedTitle : 'Correo de secuencia';
+        $campaignId = $request->integer('campaign_id');
+        $messageId = $request->integer('message_id');
+        $prefill = $request->session()->get('classic_editor_prefill', []);
+
+        $defaultInternalTitle = $prefill['internal_title'] ?? ($selectedTitle !== '' ? $selectedTitle : 'Correo de secuencia');
+        $defaultSubject = $prefill['subject'] ?? ($selectedTitle !== '' ? 'Actualización: '.$selectedTitle : 'Asunto');
+        $defaultPreviewText = $prefill['preview_text'] ?? 'Descubre los detalles y próximos pasos de esta campaña.';
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
         $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
         $selectedTemplate = Template::withoutGlobalScopes()->find($selectedTemplateId);
@@ -98,8 +180,6 @@ class CampaignsController extends Controller
             ];
         }
 
-        $defaultSubject = $selectedTitle !== '' ? 'Actualización: '.$selectedTitle : 'Asunto';
-        $defaultPreviewText = 'Descubre los detalles y próximos pasos de esta campaña.';
         $defaultBodyShell = $this->buildTemplateHtmlShell($selectedDefinition);
         $defaultBodyContent = $this->defaultEmailCanvasInnerHtml();
         $defaultBodyTemplate = $defaultBodyShell;
@@ -113,6 +193,26 @@ class CampaignsController extends Controller
         {
             $defaultBody = $storedBody;
             $defaultBodyContent = $this->extractEditableRegionFromMergedTemplate($storedBody);
+        }
+
+        if ($messageId > 0 && auth()->user()?->current_team_id)
+        {
+            $existingMessage = Message::withoutGlobalScopes()
+                ->where('team_id', auth()->user()->current_team_id)
+                ->where('id', $messageId)
+                ->first();
+            if ($existingMessage)
+            {
+                if (($prefill['internal_title'] ?? '') === '')
+                {
+                    $defaultInternalTitle = $existingMessage->name;
+                }
+                $trimmedText = trim($existingMessage->text);
+                if (($prefill['preview_text'] ?? '') === '' && $trimmedText !== '')
+                {
+                    $defaultPreviewText = Str::limit($trimmedText, 140, '');
+                }
+            }
         }
 
         $grapesEditorUrl = '#';
@@ -136,6 +236,8 @@ class CampaignsController extends Controller
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
             'selectedTemplateId' => $selectedTemplateId,
+            'campaignId' => $campaignId,
+            'messageId' => $messageId,
             'grapesEditorUrl' => $grapesEditorUrl,
             'defaultInternalTitle' => $defaultInternalTitle,
             'defaultSubject' => $defaultSubject,
