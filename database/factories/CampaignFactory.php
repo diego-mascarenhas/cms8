@@ -4,16 +4,16 @@ namespace Database\Factories;
 
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignType;
-use App\Models\EmailCampaign;
+use App\Models\Campaign;
 use App\Models\Team;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<EmailCampaign>
+ * @extends Factory<Campaign>
  */
-class EmailCampaignFactory extends Factory
+class CampaignFactory extends Factory
 {
-    protected $model = EmailCampaign::class;
+    protected $model = Campaign::class;
 
     /**
      * @return array<string, mixed>

@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class EmailCampaign extends Model
+class Campaign extends Model
 {
     use HasFactory;
 
-    protected $table = 'email_campaigns';
+    protected $table = 'campaigns';
 
     protected $fillable = [
         'team_id',
@@ -47,7 +49,7 @@ class EmailCampaign extends Model
             }
         });
 
-        static::creating(function (EmailCampaign $model)
+        static::creating(function (Campaign $model)
         {
             if (! $model->team_id && auth()->check())
             {
@@ -59,6 +61,17 @@ class EmailCampaign extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function messages(): BelongsToMany
+    {
+        return $this->belongsToMany(Message::class, 'campaign_message')
+            ->withTimestamps();
+    }
+
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(MessageDelivery::class, 'campaign_id');
     }
 
     public function typeLabel(): string

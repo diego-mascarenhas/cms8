@@ -221,6 +221,7 @@ class DeliveryStats extends Component
 
         // Get existing deliveries for comparison
         $existingDeliveryIds = \App\Models\MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
             ->pluck('contact_id')
             ->toArray();
 

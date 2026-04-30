@@ -104,6 +104,7 @@ class DatabaseSeeder extends Seeder
         // - TeamDemoSeeder: Creates demo team with sample data
         // - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
         // - TeamHumanoSeeder: Creates Humano team and users
+        // - CampaignSeeder: Demo rows for /campaigns (php artisan db:seed --class=CampaignSeeder)
         // ============================================
         $this->getCommand()->info('');
         $this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');

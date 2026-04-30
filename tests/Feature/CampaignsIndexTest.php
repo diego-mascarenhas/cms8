@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\EmailCampaign;
+use App\Models\Campaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -41,14 +41,14 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Nueva campaña de correo'),
         );
         $this->assertTrue(
-            str_contains($html, 'email-campaigns-table'),
+            str_contains($html, 'campaigns-table'),
         );
     }
 
     public function test_campaign_edit_page_shows_sequence_settings_sections(): void
     {
         $user = $this->userWithPersonalTeamResolved();
-        $campaign = EmailCampaign::factory()->sequenceSummary()->create([
+        $campaign = Campaign::factory()->sequenceSummary()->create([
             'team_id' => $user->current_team_id,
         ]);
 

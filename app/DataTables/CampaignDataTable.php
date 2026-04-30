@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\EmailCampaign;
+use App\Models\Campaign;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
@@ -10,27 +10,26 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-class EmailCampaignDataTable extends DataTable
+class CampaignDataTable extends DataTable
 {
     /**
-     * @param  QueryBuilder<EmailCampaign>  $query
+     * @param  QueryBuilder<Campaign>  $query
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('campaign_display', fn (EmailCampaign $row): string => $this->campaignCell($row))
-            ->addColumn('performance_display', fn (EmailCampaign $row): string => $this->performanceCell($row))
-            ->editColumn('status', fn (EmailCampaign $row): string => $this->statusCell($row))
-            ->addColumn('action', fn (EmailCampaign $row): string => view('campaigns.datatable-actions', ['campaign' => $row])->render())
+            ->addColumn('campaign_display', fn (Campaign $row): string => $this->campaignCell($row))
+            ->addColumn('performance_display', fn (Campaign $row): string => $this->performanceCell($row))
+            ->editColumn('status', fn (Campaign $row): string => $this->statusCell($row))
+            ->addColumn('action', fn (Campaign $row): string => view('campaigns.datatable-actions', ['campaign' => $row])->render())
             ->rawColumns(['campaign_display', 'performance_display', 'status', 'action'])
             ->setRowId('id');
     }
 
     /**
-     * @param  Builder<EmailCampaign>  $model
-     * @return QueryBuilder<EmailCampaign>
+     * @return QueryBuilder<Campaign>
      */
-    public function query(EmailCampaign $model): QueryBuilder
+    public function query(Campaign $model): QueryBuilder
     {
         $user = Auth::user();
         abort_unless($user && $user->currentTeam, 403);
@@ -39,7 +38,7 @@ class EmailCampaignDataTable extends DataTable
 
         $query = $model->newQuery()
             ->where('team_id', $user->current_team_id)
-            ->orderByDesc('email_campaigns.created_at');
+            ->orderByDesc('campaigns.created_at');
 
         $searchKeywordRaw = $request->input('search.value');
         if (is_string($searchKeywordRaw) && trim($searchKeywordRaw) !== '')
@@ -70,7 +69,7 @@ class EmailCampaignDataTable extends DataTable
         $locale = session()->get('locale', app()->getLocale());
 
         return $this->builder()
-            ->setTableId('email-campaigns-table')
+            ->setTableId('campaigns-table')
             ->columns($this->getColumns())
             ->ajax([
                 'url' => route('campaigns.index'),
@@ -130,7 +129,7 @@ class EmailCampaignDataTable extends DataTable
         return 'Campaigns_'.date('YmdHis');
     }
 
-    private function campaignCell(EmailCampaign $row): string
+    private function campaignCell(Campaign $row): string
     {
         $name = e($row->name);
         $type = e($row->typeLabel());
@@ -147,7 +146,7 @@ class EmailCampaignDataTable extends DataTable
 HTML;
     }
 
-    private function performanceCell(EmailCampaign $row): string
+    private function performanceCell(Campaign $row): string
     {
         return '<div class="d-flex flex-wrap gap-3">'
             .$this->metricBlock(__('Envíos'), $row->sends_count !== null ? (string) $row->sends_count : '—')
@@ -179,7 +178,7 @@ HTML;
         return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.').'%';
     }
 
-    private function statusCell(EmailCampaign $row): string
+    private function statusCell(Campaign $row): string
     {
         $badge = e($row->statusBadgeClasses());
         $label = e($row->statusLabel());
@@ -194,8 +193,8 @@ HTML;
     {
         return [
             'select' => false,
-            'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.emailCampaignDt\').on(\'keyup.emailCampaignDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.emailCampaignDt select2:select\').on(\'change.emailCampaignDt select2:select\', function () { api.ajax.reload(); }); }',
-            'drawCallback' => 'function () { $("#email-campaigns-table tbody tr").css({"user-select": "none","-webkit-user-select": "none","-moz-user-select": "none","-ms-user-select": "none"}); }',
+            'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.campaignsDt\').on(\'keyup.campaignsDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.campaignsDt select2:select\').on(\'change.campaignsDt select2:select\', function () { api.ajax.reload(); }); }',
+            'drawCallback' => 'function () { $("#campaigns-table tbody tr").css({"user-select": "none","-webkit-user-select": "none","-moz-user-select": "none","-ms-user-select": "none"}); }',
         ];
     }
 }

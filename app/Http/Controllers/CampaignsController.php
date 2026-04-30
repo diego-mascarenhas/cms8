@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTables\EmailCampaignDataTable;
+use App\DataTables\CampaignDataTable;
 use App\Enums\CampaignType;
-use App\Models\EmailCampaign;
+use App\Models\Campaign;
 use App\Models\Template;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 class CampaignsController extends Controller
 {
-    public function index(EmailCampaignDataTable $dataTable): View|RedirectResponse
+    public function index(CampaignDataTable $dataTable): View|RedirectResponse
     {
         if (! auth()->user()?->currentTeam)
         {
@@ -24,7 +24,7 @@ class CampaignsController extends Controller
         ]);
     }
 
-    public function edit(EmailCampaign $campaign): View
+    public function edit(Campaign $campaign): View
     {
         return view('campaigns.edit', ['campaign' => $campaign]);
     }

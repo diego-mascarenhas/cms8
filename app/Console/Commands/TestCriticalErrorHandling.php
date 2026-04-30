@@ -52,21 +52,22 @@ class TestCriticalErrorHandling extends Command
         if ($message->deliveries->count() < 3)
         {
             $this->info('Creating test deliveries...');
-            $contact = Contact::first();
+            $contacts = Contact::where('team_id', $message->team_id)->limit(3)->get();
 
-            if (! $contact)
+            if ($contacts->count() < 3)
             {
-                $this->error('No contacts available for testing');
+                $this->error('Need at least three contacts on this message\'s team for testing');
 
                 return 1;
             }
 
-            for ($i = 0; $i < 3; $i++)
+            foreach ($contacts->values() as $i => $contact)
             {
                 MessageDelivery::create([
                     'team_id' => $message->team_id,
                     'message_id' => $message->id,
                     'contact_id' => $contact->id,
+                    'campaign_id' => null,
                     'status_id' => 1, // pending
                     'sent_at' => now()->addMinutes($i),
                 ]);

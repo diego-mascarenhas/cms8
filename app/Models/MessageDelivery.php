@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MessageDelivery extends Model
 {
@@ -13,6 +14,7 @@ class MessageDelivery extends Model
         'team_id',
         'message_id',
         'contact_id',
+        'campaign_id',
         'smtp_id',
         'sent_at',
         'delivered_at',
@@ -58,6 +60,11 @@ class MessageDelivery extends Model
     public function contact()
     {
         return $this->belongsTo(\App\Models\Contact::class);
+    }
+
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class, 'campaign_id');
     }
 
     public function links()
