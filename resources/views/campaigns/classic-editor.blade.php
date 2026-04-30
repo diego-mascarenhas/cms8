@@ -22,6 +22,54 @@
             updateCounter('#preview_text', '#preview-char-count');
         });
 
+        const editor = $('#body-editor');
+        const bodyInput = $('#body');
+        const bodyTemplate = $('#body-template');
+        const bodyPreviewFrame = $('#body-preview-frame');
+        const bodyPreviewCard = $('#body-preview-card');
+        const bodyPreviewOverlay = $('#body-preview-overlay');
+        const bodyEditTrigger = $('#body-edit-trigger');
+        const bodyEditorContainer = $('#body-editor-container');
+        const bodyDoneButton = $('#body-editor-done');
+
+        const syncBodyContent = function ()
+        {
+            const bodyContent = editor.html();
+            const fullHtml = bodyTemplate.val().replace('__EMAIL_BODY__', bodyContent);
+
+            bodyInput.val(fullHtml);
+            bodyPreviewFrame.attr('srcdoc', fullHtml);
+        };
+
+        editor.on('input', function ()
+        {
+            syncBodyContent();
+        });
+
+        bodyPreviewCard.on('mouseenter', function ()
+        {
+            bodyPreviewOverlay.removeClass('d-none');
+        });
+
+        bodyPreviewCard.on('mouseleave', function ()
+        {
+            bodyPreviewOverlay.addClass('d-none');
+        });
+
+        bodyEditTrigger.on('click', function (event)
+        {
+            event.preventDefault();
+            bodyEditorContainer.removeClass('d-none');
+            bodyPreviewOverlay.addClass('d-none');
+            editor.trigger('focus');
+        });
+
+        bodyDoneButton.on('click', function ()
+        {
+            bodyEditorContainer.addClass('d-none');
+        });
+
+        syncBodyContent();
         updateCounter('#subject', '#subject-char-count');
         updateCounter('#preview_text', '#preview-char-count');
     });
@@ -49,9 +97,7 @@
     </div>
 
     <div class="alert alert-warning d-flex mb-4" role="alert">
-        <span class="alert-icon text-warning me-2">
-            <i class="ti ti-alert-triangle"></i>
-        </span>
+        <i class="ti ti-alert-triangle text-warning me-2 mt-1"></i>
         <div>
             <h6 class="alert-heading mb-1">{{ __('Edición incompleta') }}</h6>
             <p class="mb-0">{{ __('Este correo todavía no se está enviando a suscriptores de la secuencia. Termina la edición o presiona Guardar para habilitar el envío.') }}</p>
@@ -85,7 +131,7 @@
 
             <div class="mb-3">
                 <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>
-                <input id="internal-title" type="text" class="form-control" value="{{ $selectedTitle }}" />
+                <input id="internal-title" type="text" class="form-control" value="{{ $defaultInternalTitle }}" />
                 <small class="text-muted">{{ __('Este título se usa en reportes y no se muestra a los destinatarios.') }}</small>
             </div>
 
@@ -94,7 +140,7 @@
                     <label class="form-label mb-0" for="subject">{{ __('Asunto') }}</label>
                     <small class="text-muted"><span id="subject-char-count">0</span>/140 {{ __('caracteres') }}</small>
                 </div>
-                <input id="subject" type="text" maxlength="140" class="form-control" value="{{ __('Asunto') }}" />
+                <input id="subject" type="text" maxlength="140" class="form-control" value="{{ $defaultSubject }}" />
             </div>
 
             <div class="mb-4">
@@ -102,7 +148,7 @@
                     <label class="form-label mb-0" for="preview_text">{{ __('Texto de vista previa') }}</label>
                     <small class="text-muted"><span id="preview-char-count">0</span>/140 {{ __('caracteres') }}</small>
                 </div>
-                <input id="preview_text" type="text" maxlength="140" class="form-control" />
+                <input id="preview_text" type="text" maxlength="140" class="form-control" value="{{ $defaultPreviewText }}" />
                 <small class="text-muted">{{ __('Texto que aparece después del asunto en la bandeja de entrada del destinatario.') }}</small>
             </div>
         </div>
@@ -126,13 +172,41 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="body">{{ __('Cuerpo') }}</label>
-                <textarea id="body" class="form-control" rows="14" placeholder="{{ __('Escribe aquí el contenido del correo...') }}"></textarea>
-            </div>
+                <label class="form-label" for="body-editor">{{ __('Cuerpo') }}</label>
+                <div id="body-preview-card" class="position-relative border rounded overflow-hidden">
+                    <iframe
+                        id="body-preview-frame"
+                        title="{{ __('Vista previa del contenido del correo') }}"
+                        class="w-100 border-0"
+                        style="min-height: 560px; background: #fff;"
+                        srcdoc="{{ e($defaultBody) }}"
+                    ></iframe>
+                    <div
+                        id="body-preview-overlay"
+                        class="position-absolute top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center"
+                        style="background: rgba(33, 37, 41, 0.55);"
+                    >
+                        <a id="body-edit-trigger" href="javascript:;" class="btn btn-dark">
+                            {{ __('Editar contenido') }}
+                        </a>
+                    </div>
+                </div>
 
-            <div class="border rounded p-3 bg-lighter">
-                <h6 class="mb-2">{{ __('Vista previa') }}</h6>
-                <p class="text-muted mb-0">{{ __('Aquí se mostrará la vista previa del correo una vez que se conecte el editor visual.') }}</p>
+                <div id="body-editor-container" class="d-none mt-3">
+                    <div
+                        id="body-editor"
+                        class="form-control overflow-auto"
+                        contenteditable="true"
+                        style="min-height: 330px;"
+                    >{!! $defaultBodyContent !!}</div>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button id="body-editor-done" type="button" class="btn btn-label-secondary">{{ __('Listo') }}</button>
+                    </div>
+                </div>
+
+                <small class="text-muted d-block mt-2">{{ __('Pasa el cursor sobre el contenido para editarlo.') }}</small>
+                <textarea id="body" name="body" class="d-none"></textarea>
+                <textarea id="body-template" class="d-none">{{ $defaultBodyTemplate }}</textarea>
             </div>
         </div>
     </div>
