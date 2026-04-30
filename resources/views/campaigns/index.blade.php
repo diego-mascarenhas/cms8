@@ -176,7 +176,7 @@
                             <td class="text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-3">
                                     <a class="d-inline-flex align-items-center text-body" href="{{ route('campaigns.edit', ['campaign' => \Illuminate\Support\Str::slug($campaign['name'])]) }}" aria-label="{{ __('Edit') }}">
-                                        <i class="ti ti-pencil"></i>
+                                        <i class="ti ti-edit ti-sm"></i>
                                     </a>
                                     <a class="d-inline-flex align-items-center text-body" href="javascript:;" aria-label="{{ __('Report') }}">
                                         <i class="ti ti-chart-bar"></i>
