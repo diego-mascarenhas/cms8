@@ -82,7 +82,7 @@ class CampaignDataTable extends DataTable
                     d.campaign_status_filter = $("#campaign-status-filter").val() || "";
                 }',
             ])
-            ->dom('t<"d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3"ip>')
+            ->dom('t<"row mt-3 align-items-center"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6 d-flex justify-content-md-end"p>>')
             ->pageLength(10)
             ->responsive(true)
             ->processing(false)
