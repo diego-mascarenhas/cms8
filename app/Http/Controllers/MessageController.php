@@ -862,26 +862,7 @@ class MessageController extends Controller
             ]);
 
             // Get email config (will use system defaults if not configured)
-            $emailConfig = $team->getOutgoingEmailConfig();
-
-            Log::info('🔍 TEST SEND: Email config retrieved', [
-                'smtp_host' => $emailConfig['host'],
-                'smtp_port' => $emailConfig['port'],
-                'smtp_username' => $emailConfig['username'],
-                'from_address' => $emailConfig['from_address'],
-                'from_name' => $emailConfig['from_name'],
-                'password_configured' => ! empty($emailConfig['password']),
-            ]);
-
-            // ✨ IMPORTANTE: Configurar SMTP igual que en el Job
             $this->configureMailForTeam($team);
-
-            Log::info('✅ TEST SEND: SMTP configured, ready to send', [
-                'after_config_host' => config('mail.mailers.smtp.host'),
-                'after_config_username' => config('mail.mailers.smtp.username'),
-                'after_config_from_address' => config('mail.from.address'),
-                'after_config_from_name' => config('mail.from.name'),
-            ]);
 
             // Create test contact data
             $testContact = new stdClass;
@@ -895,11 +876,6 @@ class MessageController extends Controller
 
             // Send test email using configured provider
             $emailProvider = config('services.email.provider', 'smtp');
-
-            Log::info('🔧 TEST SEND: Using email provider', [
-                'email_provider' => $emailProvider,
-                'user_email' => $user->email,
-            ]);
 
             switch ($emailProvider)
             {
@@ -920,11 +896,8 @@ class MessageController extends Controller
                     break;
             }
 
-            Log::info('✅ TEST SEND: Email sent successfully', [
+            Log::info('Test message sent', [
                 'message_id' => $message->id,
-                'user_email' => $user->email,
-                'smtp_host_used' => config('mail.mailers.smtp.host'),
-                'from_address_used' => config('mail.from.address'),
             ]);
 
             return response()->json([
@@ -934,17 +907,11 @@ class MessageController extends Controller
             ]);
         } catch (\Exception $e)
         {
-            // Log detailed error for debugging
-            Log::error('❌ TEST SEND: Failed to send test email', [
+            Log::error('Test message send failed', [
                 'message_id' => $id,
-                'user_email' => $user->email ?? 'unknown',
-                'team_id' => $team->id ?? 'unknown',
+                'team_id' => $team->id ?? null,
                 'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
                 'exception_class' => get_class($e),
-                'smtp_host_at_error' => config('mail.mailers.smtp.host'),
-                'smtp_username_at_error' => config('mail.mailers.smtp.username'),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             // Determine user-friendly error message based on error type
@@ -1193,9 +1160,8 @@ class MessageController extends Controller
                 'bounce_reason' => null,
             ]);
 
-            Log::info('📧 Delivery resend requested', [
+            Log::info('Delivery resend requested', [
                 'delivery_id' => $delivery->id,
-                'contact_email' => $delivery->contact->email ?? 'unknown',
                 'user_id' => auth()->id(),
             ]);
 
@@ -1211,7 +1177,7 @@ class MessageController extends Controller
             ]);
         } catch (\Exception $e)
         {
-            Log::error('❌ Failed to resend delivery', [
+            Log::error('Failed to resend delivery', [
                 'delivery_id' => $deliveryId,
                 'error' => $e->getMessage(),
             ]);

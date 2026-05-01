@@ -64,7 +64,7 @@ class ProcessActiveCampaigns extends Command
 
         $this->info("🎉 Processed {$totalProcessed} campaigns, created {$totalCreated} deliveries");
 
-        Log::info('📊 ProcessActiveCampaigns completed', [
+        Log::info('ProcessActiveCampaigns completed', [
             'campaigns_processed' => $totalProcessed,
             'deliveries_created' => $totalCreated,
         ]);
@@ -156,7 +156,7 @@ class ProcessActiveCampaigns extends Command
                 $createdCount++;
                 $deliveryIndex++;
 
-                Log::info('📧 New delivery created dynamically', [
+                Log::info('New delivery created dynamically', [
                     'message_id' => $message->id,
                     'contact_id' => $contact->id,
                     'contact_email' => $contact->email,

@@ -58,45 +58,24 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         try
         {
-            Log::info('🚀 SendMessageCampaignJob: Starting job execution', [
-                'delivery_id' => $this->messageDelivery->id,
-                'job_queue' => $this->queue ?? 'default',
-                'job_attempts' => $this->attempts(),
-            ]);
-
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
 
-            // Check if it's time to send (respect scheduled time)
             if ($this->messageDelivery->scheduled_for && $this->messageDelivery->scheduled_for->isFuture())
             {
-                Log::info('⏰ Message delivery not yet time to send, releasing job', [
-                    'delivery_id' => $this->messageDelivery->id,
-                    'scheduled_time' => $this->messageDelivery->scheduled_for,
-                    'current_time' => now(),
-                ]);
-
                 $delay = $this->messageDelivery->scheduled_for->diffInSeconds(now());
                 $this->release($delay);
 
                 return;
             }
 
-            // Validation checks
             if (! $this->validateDelivery())
             {
                 return;
             }
 
-            // Mark as sending
-            $this->messageDelivery->update(['status_id' => 2]); // 2 = sending
+            $this->messageDelivery->update(['status_id' => 2]);
 
-            // Determine email provider
             $this->sendEmail();
-
-            Log::info('✅ Message delivery sent successfully', [
-                'delivery_id' => $this->messageDelivery->id,
-                'contact_email' => $this->messageDelivery->contact->email,
-            ]);
         } catch (\Exception $e)
         {
             $this->handleError($e);
@@ -109,7 +88,6 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function validateDelivery(): bool
     {
-        // Check if contact exists and has email
         if (! $this->messageDelivery->contact || ! $this->messageDelivery->contact->email)
         {
             Log::warning('Message delivery skipped: No contact or email', [
@@ -120,27 +98,16 @@ class SendMessageCampaignJob implements ShouldQueue
             return false;
         }
 
-        // Check if message is still active
         if (! $this->messageDelivery->message || $this->messageDelivery->message->status_id != 1)
         {
-            Log::info('Message delivery cancelled: Message not active', [
-                'delivery_id' => $this->messageDelivery->id,
-            ]);
-
             return false;
         }
 
-        // Check if already delivered
         if ($this->messageDelivery->delivered_at)
         {
-            Log::info('Message delivery already sent, skipping', [
-                'delivery_id' => $this->messageDelivery->id,
-            ]);
-
             return false;
         }
 
-        // Validate email format
         if (! filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL))
         {
             Log::warning('Message delivery skipped: Invalid email address', [
@@ -163,12 +130,6 @@ class SendMessageCampaignJob implements ShouldQueue
         $mailBabyEnabled = config('services.mailbaby.enabled', false);
         $fallbackToSmtp = config('services.email.fallback_to_smtp', true);
 
-        Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
-            'delivery_id' => $this->messageDelivery->id,
-            'mailbaby_enabled' => $mailBabyEnabled,
-            'fallback_to_smtp' => $fallbackToSmtp,
-        ]);
-
         if ($mailBabyEnabled && config('services.mailbaby.api_key'))
         {
             try
@@ -178,7 +139,7 @@ class SendMessageCampaignJob implements ShouldQueue
                 return;
             } catch (\Exception $e)
             {
-                Log::warning('⚠️  MailBaby API failed, falling back to SMTP', [
+                Log::warning('MailBaby API failed, falling back to SMTP', [
                     'delivery_id' => $this->messageDelivery->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -201,30 +162,21 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaMailBabyApi()
     {
-        Log::info('📧 SendMessageCampaignJob: Using MailBaby API', [
-            'delivery_id' => $this->messageDelivery->id,
-            'contact_email' => $this->messageDelivery->contact->email,
-        ]);
-
         $mailBabyService = app(\App\Services\MailBabyService::class);
 
-        // Get email content
         $htmlContent = $this->messageDelivery->getHtmlForContact();
 
-        // Use team's configured email settings (already set by configureMailForTeam)
         $fromName = config('mail.from.name');
         $fromEmail = config('mail.from.address');
 
-        // Prepare email data for MailBaby API
         $emailData = [
             'to' => $this->messageDelivery->contact->email,
             'from' => $fromName.' <'.$fromEmail.'>',
             'subject' => $this->messageDelivery->message->name,
             'body' => $htmlContent,
-            'message_id' => $this->messageDelivery->id, // For logging purposes
+            'message_id' => $this->messageDelivery->id,
         ];
 
-        // Send via MailBaby API
         $result = $mailBabyService->sendEmail($emailData);
 
         if (! $result['success'])
@@ -232,24 +184,15 @@ class SendMessageCampaignJob implements ShouldQueue
             throw new \Exception('MailBaby API request failed: '.($result['error'] ?? 'Unknown error'));
         }
 
-        Log::info('✅ SendMessageCampaignJob: Email sent via MailBaby API', [
-            'delivery_id' => $this->messageDelivery->id,
-            'mailbaby_message_id' => $result['message_id'] ?? null,
-            'contact_email' => $this->messageDelivery->contact->email,
-            'from' => $fromEmail,
-        ]);
-
-        // Mark as sent (not delivered yet - wait for webhook)
         $this->messageDelivery->update([
             'email_provider' => 'mailbaby',
             'provider_message_id' => $result['message_id'] ?? null,
             'sent_at' => now(),
             'delivery_status' => 'sent',
-            'status_id' => 2, // sent (waiting for delivery confirmation)
+            'status_id' => 2,
             'provider_data' => $result['data'] ?? null,
         ]);
 
-        // Increment team email usage
         $this->messageDelivery->team->incrementEmailUsage();
     }
 
@@ -258,25 +201,8 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaSmtp()
     {
-        Log::info('📧 SendMessageCampaignJob: Using SMTP', [
-            'delivery_id' => $this->messageDelivery->id,
-            'team_id' => $this->messageDelivery->team_id,
-            'team_name' => $this->messageDelivery->team->name ?? 'Unknown',
-        ]);
-
-        // IMPORTANT: Configure mail settings for this team BEFORE creating the Mailable
         $this->configureMailForTeam($this->messageDelivery->team);
 
-        // Log the configuration that will be used
-        Log::info('📧 Mail configuration after team setup', [
-            'delivery_id' => $this->messageDelivery->id,
-            'config_from_address' => config('mail.from.address'),
-            'config_from_name' => config('mail.from.name'),
-            'smtp_host' => config('mail.mailers.smtp.host'),
-            'smtp_username' => config('mail.mailers.smtp.username'),
-        ]);
-
-        // Create mailable class name - this should be configurable
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
 
         if (! class_exists($mailableClass))
@@ -284,26 +210,16 @@ class SendMessageCampaignJob implements ShouldQueue
             throw new \Exception("Mailable class {$mailableClass} not found");
         }
 
-        // Create the mailable AFTER configuring the team settings
         $mailable = new $mailableClass($this->messageDelivery);
 
-        // Send the email
         Mail::to($this->messageDelivery->contact->email)->send($mailable);
 
-        Log::info('✅ Email sent via SMTP', [
-            'delivery_id' => $this->messageDelivery->id,
-            'sent_to' => $this->messageDelivery->contact->email,
-            'from_address' => config('mail.from.address'),
-            'from_name' => config('mail.from.name'),
-        ]);
-
-        // Mark as sent and delivered
         $this->messageDelivery->update([
             'email_provider' => 'smtp',
             'sent_at' => now(),
             'delivered_at' => now(),
             'delivery_status' => 'delivered',
-            'status_id' => 3, // delivered
+            'status_id' => 3,
         ]);
     }
 
@@ -314,7 +230,7 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         $errorMessage = $e->getMessage();
 
-        Log::error('❌ SendMessageCampaignJob: Failed to send message delivery', [
+        Log::error('SendMessageCampaignJob failed', [
             'delivery_id' => $this->messageDelivery->id,
             'error_message' => $errorMessage,
             'error_code' => $e->getCode(),
@@ -328,7 +244,7 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     public function failed(\Exception $exception)
     {
-        Log::error('Message delivery job failed permanently', [
+        Log::error('SendMessageCampaignJob failed permanently', [
             'delivery_id' => $this->messageDelivery->id,
             'error' => $exception->getMessage(),
         ]);
