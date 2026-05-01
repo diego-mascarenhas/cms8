@@ -146,12 +146,12 @@ document.querySelector('form').addEventListener('submit', function() {
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }} News</h4>
-        <p class="text-muted">{{ __('Create a newsletter/campaign: associate a category, contact status, channel (WhatsApp or email), template, alternative text, and confirm if active.') }}</p>
+        <p class="text-muted small mb-0">{{ __('Channel, template and audience.') }}</p>
     </div>
     @if(isset($data->id))
     <div class="d-flex align-content-center flex-wrap gap-3">
         <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
-            <i class="ti ti-trash me-1"></i>{{ __('Delete Message') }}
+            <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
         </button>
     </div>
     @endif
