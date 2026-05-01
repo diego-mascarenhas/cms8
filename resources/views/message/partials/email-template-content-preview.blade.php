@@ -20,11 +20,12 @@
                     @php
                         $emailTestSendModalDomId = 'email-test-send-modal-'.$messageId;
                     @endphp
-                    {{-- Waves.js binds btn-label-* and blocks data-bs-toggle modals — open via Bootstrap JS --}}
                     <button
                         type="button"
                         class="btn btn-label-secondary"
-                        onclick='openEmailTestSendModal(@json($emailTestSendModalDomId))'
+                        data-bs-toggle="modal"
+                        data-bs-target="#{{ $emailTestSendModalDomId }}"
+                        aria-controls="{{ $emailTestSendModalDomId }}"
                     >
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </button>

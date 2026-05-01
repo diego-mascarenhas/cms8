@@ -7,60 +7,51 @@
     $testSendUrl = route('message.test', $messageId);
 @endphp
 
-<div
-    class="modal fade"
-    id="{{ $testSendModalId }}"
-    tabindex="-1"
-    aria-labelledby="{{ $testSendModalId }}-title"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="{{ $testSendModalId }}-title">{{ __('Enviar correo de prueba') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert d-none mb-3" role="alert" data-email-test-send-alert></div>
-                <p class="mb-2">
-                    {{ __('Se enviará un correo de prueba usando la configuración del equipo a la cuenta con la que iniciaste sesión:') }}
-                </p>
-                <p class="mb-0 fw-semibold">{{ auth()->user()?->email ?? '—' }}</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                    {{ __('Cancel') }}
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-primary waves-effect waves-light"
-                    data-email-test-send-submit
-                    data-submit-url="{{ $testSendUrl }}"
-                    data-submit-label="{{ __('Enviar') }}"
-                >
-                    {{ __('Enviar') }}
-                </button>
+@push('modals')
+    <div
+        class="modal fade"
+        id="{{ $testSendModalId }}"
+        tabindex="-1"
+        aria-labelledby="{{ $testSendModalId }}-title"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="{{ $testSendModalId }}-title">{{ __('Enviar correo de prueba') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert d-none mb-3" role="alert" data-email-test-send-alert></div>
+                    <p class="mb-2">
+                        {{ __('Se enviará un correo de prueba usando la configuración del equipo a la cuenta con la que iniciaste sesión:') }}
+                    </p>
+                    <p class="mb-0 fw-semibold">{{ auth()->user()?->email ?? '—' }}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
+                        {{ __('Cancel') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary waves-effect waves-light"
+                        data-email-test-send-submit
+                        data-submit-url="{{ $testSendUrl }}"
+                        data-submit-label="{{ __('Enviar') }}"
+                    >
+                        {{ __('Enviar') }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+@endpush
 
 @once('message-email-test-send-modal-script')
     @push('scripts')
         <script>
             (function ()
             {
-                window.openEmailTestSendModal = function (modalId)
-                {
-                    var el = document.getElementById(modalId);
-                    if (! el || typeof bootstrap === 'undefined')
-                    {
-                        return;
-                    }
-
-                    bootstrap.Modal.getOrCreateInstance(el).show();
-                };
-
                 function csrfHeader()
                 {
                     var m = document.querySelector('meta[name="csrf-token"]');
@@ -95,20 +86,48 @@
                     a.classList.add(variant === 'success' ? 'alert-success' : 'alert-danger');
                 }
 
-                document.querySelectorAll('[id^="email-test-send-modal-"]').forEach(function (modalEl)
+                function bindTestSendModals()
                 {
-                    modalEl.addEventListener('show.bs.modal', function ()
+                    document.querySelectorAll('[id^="email-test-send-modal-"]').forEach(function (modalEl)
                     {
-                        hideAlert(modalEl);
-                        var submitBtn = modalEl.querySelector('[data-email-test-send-submit]');
-                        if (submitBtn)
+                        if (modalEl.dataset.emailTestSendBound === '1')
                         {
-                            submitBtn.disabled = false;
-                            var label = submitBtn.getAttribute('data-submit-label') || @json(__('Enviar'));
-                            submitBtn.textContent = label;
+                            return;
                         }
+                        modalEl.dataset.emailTestSendBound = '1';
+
+                        modalEl.addEventListener('show.bs.modal', function ()
+                        {
+                            hideAlert(modalEl);
+                            var submitBtn = modalEl.querySelector('[data-email-test-send-submit]');
+                            if (submitBtn)
+                            {
+                                submitBtn.disabled = false;
+                                var label = submitBtn.getAttribute('data-submit-label') || @json(__('Enviar'));
+                                submitBtn.textContent = label;
+                            }
+                        });
                     });
-                });
+                }
+
+                window.openEmailTestSendModal = function (modalId)
+                {
+                    var el = document.getElementById(modalId);
+                    if (! el || typeof bootstrap === 'undefined')
+                    {
+                        return;
+                    }
+
+                    bootstrap.Modal.getOrCreateInstance(el).show();
+                };
+
+                if (document.readyState === 'loading')
+                {
+                    document.addEventListener('DOMContentLoaded', bindTestSendModals);
+                } else
+                {
+                    bindTestSendModals();
+                }
 
                 document.addEventListener('click', function (e)
                 {
