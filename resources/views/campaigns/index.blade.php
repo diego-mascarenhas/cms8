@@ -202,14 +202,10 @@
                                 <div class="card h-100 cursor-pointer border" role="button" tabindex="0" data-campaign-option="broadcasts">
                                     <div class="card-body text-center p-4">
                                         <div class="avatar avatar-lg bg-label-primary mb-3 rounded d-flex align-items-center justify-content-center mx-auto">
-                                            <i class="ti ti-mail fs-3 text-primary"></i>
+                                            <i class="ti ti-send fs-3 text-primary"></i>
                                         </div>
                                         <h4 class="mb-2">{{ __('Difusión por correo') }}</h4>
-                                        <p class="text-muted mb-3">{{ __('Envía un único correo para promocionar un producto, compartir novedades o mantener el contacto.') }}</p>
-                                        <div class="d-flex align-items-center justify-content-center text-body">
-                                            <i class="ti ti-test-pipe me-1"></i>
-                                            <span class="fw-medium">{{ __('Prueba A/B disponible') }}</span>
-                                        </div>
+                                        <p class="text-muted mb-0">{{ __('Envía un único correo para promocionar un producto o compartir novedades.') }}</p>
                                     </div>
                                 </div>
                             </div>
