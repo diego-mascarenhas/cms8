@@ -290,7 +290,7 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Selecciona una plantilla'),
         );
         $this->assertTrue(
-            str_contains($html, 'Colección Humano'),
+            str_contains($html, 'Plantillas personalizadas'),
         );
         $this->assertTrue(
             str_contains($html, 'Plantillas destacadas'),

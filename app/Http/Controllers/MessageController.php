@@ -84,8 +84,7 @@ class MessageController extends Controller
 
         $templateId = $data['template_id'] ?? null;
 
-        // Set status_id based on checkbox presence
-        $status_id = $request->has('status_id') ? 1 : 0;  // 1 = active, 0 = inactive
+        $status_id = $request->boolean('status_id') ? 1 : 0;
 
         // Set boolean fields based on checkbox presence
         $show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
@@ -346,15 +345,6 @@ class MessageController extends Controller
             }
         }
 
-        $emailTemplatePreviewHtml = null;
-        $emailTemplateGrapesUrl = null;
-
-        if ((int) $message->type_id === 1 && $message->template)
-        {
-            $emailTemplatePreviewHtml = $this->buildMessagePreviewHtml($message);
-            $emailTemplateGrapesUrl = route('template.editor', $message->template->getHashedId());
-        }
-
         return view('message.show', [
             'message' => $message,
             'stats' => $stats,
@@ -365,8 +355,6 @@ class MessageController extends Controller
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
             'apiUser' => $apiUser,
-            'emailTemplatePreviewHtml' => $emailTemplatePreviewHtml,
-            'emailTemplateGrapesUrl' => $emailTemplateGrapesUrl,
         ]);
     }
 

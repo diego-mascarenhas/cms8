@@ -82,7 +82,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertSee(e($template->name), false);
     }
 
-    public function test_message_show_renders_email_content_preview_for_mailer_with_template(): void
+    public function test_message_show_does_not_render_email_content_preview_card_for_mailer_with_template(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -111,6 +111,6 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response = $this->actingAs($user)->get(route('message.show', $message->id));
 
         $response->assertOk();
-        $response->assertSee(__('Contenido del correo'), false);
+        $response->assertDontSee(__('Contenido del correo'));
     }
 }

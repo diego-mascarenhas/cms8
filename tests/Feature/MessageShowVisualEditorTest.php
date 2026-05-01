@@ -34,7 +34,7 @@ class MessageShowVisualEditorTest extends TestCase
         return $user->fresh();
     }
 
-    public function test_message_show_links_primary_action_to_template_editor_for_mailer_with_template(): void
+    public function test_message_show_links_primary_action_to_edit_form_for_mailer_with_template(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -64,9 +64,8 @@ class MessageShowVisualEditorTest extends TestCase
 
         $response->assertOk();
         $html = $response->getContent() ?? '';
-        $this->assertStringContainsString('/template/', $html);
-        $this->assertStringContainsString('/editor', $html);
-        $this->assertStringContainsString(__('Abrir editor visual'), $html);
+        $this->assertStringContainsString(__('Editar'), $html);
         $this->assertStringContainsString(route('message.edit', $message->id), $html);
+        $this->assertStringNotContainsString(__('Abrir editor visual'), $html);
     }
 }

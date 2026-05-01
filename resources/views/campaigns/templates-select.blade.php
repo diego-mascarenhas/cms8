@@ -133,14 +133,14 @@
             href="{{ $classicEditorHref }}"
             class="btn btn-primary"
         >
-            {{ $isMessageTemplateFlow ? __('Formulario clásico (sin galería)') : __('Usar el editor clásico') }}
+            {{ $isMessageTemplateFlow ? __('Formulario clásico') : __('Usar el editor clásico') }}
         </a>
     </div>
 </div>
 
 <input id="selected-template-id" type="hidden" value="">
 
-<h5 class="mb-3">{{ __('Colección Humano') }}</h5>
+<h5 class="mb-3">{{ __('Plantillas personalizadas') }}</h5>
 <p class="text-muted small mb-3">{{ __('Plantillas con estilos propios, listas para campañas y secuencias.') }}</p>
 <div class="row g-3 mb-4">
     @foreach ($customTemplates as $template)
@@ -193,7 +193,7 @@
             href="{{ $classicEditorHref }}"
             class="btn btn-label-secondary"
         >
-            {{ $isMessageTemplateFlow ? __('Formulario clásico (sin galería)') : __('Usar el editor clásico') }}
+            {{ $isMessageTemplateFlow ? __('Formulario clásico') : __('Usar el editor clásico') }}
         </a>
     </div>
 </div>

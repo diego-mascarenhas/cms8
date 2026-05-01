@@ -84,7 +84,7 @@ function setTimePreset(value, unit) {
     select.value = 'hours';
 
     // Update button states
-    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+    document.querySelectorAll('#message-time-presets .btn').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
@@ -173,7 +173,7 @@ document.querySelector('form').addEventListener('submit', function() {
 				<x-input-general id="name" label="{{ __('Name') }} (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="type_id" label="{{ __('Canal (WhatsApp o Email)') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select id="type_id" label="{{ __('Canal') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
 			<div class="col-md-6">
 				<x-module-categories-select
@@ -237,81 +237,87 @@ document.querySelector('form').addEventListener('submit', function() {
 				@endif
 			@endif
 			<div class="col-md-6">
-				<label for="min_hours_between_emails" class="form-label">{{ __('Minimum Time Between Emails') }}</label>
-				<div class="input-group">
-					<input
-						type="number"
-						class="form-control"
-						id="min_hours_between_emails"
-						name="min_hours_between_emails"
-						min="0"
-						step="1"
-						value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
-					>
-					<select class="form-select" id="time_unit" name="time_unit" style="max-width: 120px;">
-						<option value="hours" selected>{{ __('Hours') }}</option>
-						<option value="days">{{ __('Days') }}</option>
-						<option value="weeks">{{ __('Weeks') }}</option>
-					</select>
-				</div>
-				<div class="form-text mt-1">
-					{{ __('Time to wait before sending another email to the same contact') }}
+				<div class="form-group mb-0">
+					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
+						<label for="min_hours_between_emails" class="form-label mb-0">{{ __('Minimum Time Between Emails') }}</label>
+					</div>
+					<div class="input-group input-group-merge">
+						<input
+							type="number"
+							class="form-control"
+							id="min_hours_between_emails"
+							name="min_hours_between_emails"
+							min="0"
+							step="1"
+							value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
+						>
+						<select class="form-select" id="time_unit" name="time_unit" style="max-width: 120px;">
+							<option value="hours" selected>{{ __('Hours') }}</option>
+							<option value="days">{{ __('Days') }}</option>
+							<option value="weeks">{{ __('Weeks') }}</option>
+						</select>
+					</div>
+					<div class="form-text mt-1">
+						{{ __('Time to wait before sending another email to the same contact') }}
+					</div>
 				</div>
 			</div>
 			<div class="col-md-6">
-				<label class="form-label">{{ __('Quick Presets') }}</label>
-				<div class="btn-group d-flex" role="group">
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(0, 'hours')">{{ __('Immediate') }}</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(24, 'hours')">{{ __('1 Day') }}</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(48, 'hours')">{{ __('2 Days') }}</button>
-					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(1, 'weeks')">{{ __('1 Week') }}</button>
+				<div class="form-group mb-0">
+					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
+						<span class="form-label mb-0">{{ __('Quick Presets') }}</span>
+					</div>
+					<div class="d-flex flex-nowrap w-100 rounded overflow-hidden border shadow-none" id="message-time-presets" role="group" aria-label="{{ __('Quick Presets') }}">
+						<button type="button" class="btn btn-outline-secondary border-0 border-end rounded-0 flex-grow-1 text-nowrap px-2 py-2 shadow-none" onclick="setTimePreset(0, 'hours')">{{ __('Immediate') }}</button>
+						<button type="button" class="btn btn-outline-secondary border-0 border-end rounded-0 flex-grow-1 text-nowrap px-2 py-2 shadow-none" onclick="setTimePreset(24, 'hours')">{{ __('1 Day') }}</button>
+						<button type="button" class="btn btn-outline-secondary border-0 border-end rounded-0 flex-grow-1 text-nowrap px-2 py-2 shadow-none" onclick="setTimePreset(48, 'hours')">{{ __('2 Days') }}</button>
+						<button type="button" class="btn btn-outline-secondary border-0 rounded-0 flex-grow-1 text-nowrap px-2 py-2 shadow-none" onclick="setTimePreset(1, 'weeks')">{{ __('1 Week') }}</button>
+					</div>
+					<div class="form-text mt-1">
+						{{ __('Aplica un valor sugerido al tiempo mínimo entre correos.') }}
+					</div>
 				</div>
 			</div>
 		</div>
 
 		<div class="row g-3 mt-3">
-			<div class="col-md-6">
+			<div class="col-12">
 				<div class="card">
 					<div class="card-header">
-						<h6 class="card-title mb-0">{{ __('Opciones generales / Activo') }}</h6>
+						<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
 					</div>
 					<div class="card-body">
-						<div class="form-check form-switch mb-3">
-							<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="status_id">
-								<strong>{{ __('¿Activo?') }}</strong>
-								<div class="text-muted small">{{ __('Confirmar si quiero activar esta campaña (enviar a los contactos). Si no lo marcas, la News quedará inactiva hasta que la actives.') }}</div>
-							</label>
-						</div>
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="show_unsubscribe">
-								<strong>{{ __('Show Unsubscribe Link') }}</strong>
-								<div class="text-muted small">{{ __('Include unsubscribe option in emails') }}</div>
-							</label>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="col-md-6">
-				<div class="card">
-					<div class="card-header">
-						<h6 class="card-title mb-0">{{ __('Tracking Options') }}</h6>
-					</div>
-					<div class="card-body">
-						<div class="form-check form-switch mb-3">
-							<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="enable_open_tracking">
-								<strong>{{ __('Enable Open Tracking') }}</strong>
-								<div class="text-muted small">{{ __('Track when emails are opened') }}</div>
-							</label>
-						</div>
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="enable_click_tracking">
-								<strong>{{ __('Enable Click Tracking') }}</strong>
-								<div class="text-muted small">{{ __('Track clicks on email links') }}</div>
-							</label>
+						@if (isset($data->id))
+							<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
+						@endif
+						<div class="row g-4 align-items-start">
+							<div class="col-lg-6 align-self-start">
+								<div class="form-check form-switch">
+									<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
+									<label class="form-check-label" for="show_unsubscribe">
+										<strong>{{ __('Mostrar enlace de baja') }}</strong>
+										<div class="text-muted small">{{ __('Incluye la opción para darse de baja en los correos.') }}</div>
+									</label>
+								</div>
+							</div>
+							<div class="col-lg-6 align-self-start mt-4 mt-lg-0 pt-4 pt-lg-0">
+								<div class="d-flex flex-column gap-4">
+									<div class="form-check form-switch">
+										<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
+										<label class="form-check-label" for="enable_open_tracking">
+											<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
+											<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
+										</label>
+									</div>
+									<div class="form-check form-switch mb-0">
+										<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
+										<label class="form-check-label" for="enable_click_tracking">
+											<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
+											<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
+										</label>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

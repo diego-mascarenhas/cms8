@@ -24,24 +24,9 @@
 			<i class="ti ti-eye me-1"></i>Vista previa
 		</button>
 
-		@php
-			$isMailerMessage = (int) $message->type_id === 1;
-			$visualEditorUrl = ($isMailerMessage && $message->template)
-				? route('template.editor', $message->template->getHashedId())
-				: route('message.edit', $message->id);
-		@endphp
-		<a href="{{ $visualEditorUrl }}" class="btn btn-primary waves-effect waves-light">
-			@if ($isMailerMessage && $message->template)
-				<i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-			@else
-				<i class="ti ti-edit me-1"></i>{{ __('Editar') }}
-			@endif
+		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-edit me-1"></i>{{ __('Editar') }}
 		</a>
-		@if ($isMailerMessage && $message->template)
-			<a href="{{ route('message.edit', $message->id) }}" class="btn btn-label-secondary waves-effect waves-light">
-				<i class="ti ti-settings me-1"></i>{{ __('Configuración') }}
-			</a>
-		@endif
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
 		@php
@@ -114,19 +99,6 @@
 	</div>
 </div>
 @endif
-@endif
-
-@if (filled($emailTemplatePreviewHtml ?? null) && filled($emailTemplateGrapesUrl ?? null) && $message->template)
-	<div class="row mb-1">
-		<div class="col-12">
-			@include('message.partials.email-template-content-preview', [
-				'previewHtml' => $emailTemplatePreviewHtml,
-				'grapesEditorUrl' => $emailTemplateGrapesUrl,
-				'templateLabel' => $message->template->name,
-				'messageId' => $message->id,
-			])
-		</div>
-	</div>
 @endif
 
 <div class="row">
