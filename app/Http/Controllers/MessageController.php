@@ -326,24 +326,11 @@ class MessageController extends Controller
             ->sortByDesc('total_clicks')
             ->values();
 
-        // Verificar configuración DNS para el dominio del remitente
-        $dnsStatus = null;
-        $apiUser = null;
+        $dnsStatus = class_exists(\App\Helpers\DnsHelper::class)
+            ? \App\Helpers\DnsHelper::outgoingDnsStatusForAuthUser(auth()->user())
+            : null;
 
-        if (! empty($emailConfig['from_address']))
-        {
-            // Obtener configuración de API de email
-            $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
-
-            // Verificar configuración DNS
-            if (class_exists(\App\Helpers\DnsHelper::class))
-            {
-                $dnsStatus = \App\Helpers\DnsHelper::checkEmailDomainConfiguration(
-                    $emailConfig['from_address'],
-                    $apiUser,
-                );
-            }
-        }
+        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
 
         return view('message.show', [
             'message' => $message,
@@ -968,18 +955,15 @@ class MessageController extends Controller
         try
         {
             $message = Message::with(['template', 'category'])->findOrFail($id);
-            $sampleContact = $this->resolvePreviewSampleContact($message);
 
             return view('message.preview', [
                 'message' => $message,
-                'sampleContact' => $sampleContact,
                 'iframeSrc' => route('message.preview.html', $message->id),
             ]);
         } catch (\Exception $e)
         {
             return view('message.preview', [
                 'message' => null,
-                'sampleContact' => null,
                 'iframeSrc' => null,
                 'previewError' => $e->getMessage(),
             ]);

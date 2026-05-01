@@ -247,4 +247,44 @@ class DnsHelper
             'mailbaby_auth' => self::checkMailBabyAuth($domain, $expectedMailBabyUser),
         ];
     }
+
+    /**
+     * DNS / MailBaby checks for the current team's outgoing-from address (same logic as message detail).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function outgoingDnsStatusForAuthUser(?\Illuminate\Contracts\Auth\Authenticatable $user): ?array
+    {
+        if ($user === null || ! method_exists($user, 'currentTeam'))
+        {
+            return null;
+        }
+
+        /** @var \App\Models\User $user */
+        $team = $user->currentTeam;
+
+        if ($team === null)
+        {
+            return null;
+        }
+
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $emailConfig = $team->getOutgoingEmailConfig();
+
+        if (empty($emailConfig['from_address']))
+        {
+            return null;
+        }
+
+        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
+
+        return self::checkEmailDomainConfiguration(
+            $emailConfig['from_address'],
+            $apiUser,
+        );
+    }
 }

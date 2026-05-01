@@ -108,6 +108,7 @@ class CampaignShowTest extends TestCase
         $response = $this->actingAs($user)->get(route('campaigns.show', $campaign));
 
         $response->assertOk();
+        $response->assertViewHas('dnsStatus');
         $response->assertViewHas('deliveryStats', function (array $stats): bool
         {
             return $stats['total'] === 2

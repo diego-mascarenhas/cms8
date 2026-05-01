@@ -79,13 +79,11 @@
         <button type="button" class="btn-close-preview" onclick="window.close()">{{ __('Cerrar') }}</button>
     </div>
 
-    @if ($message && $sampleContact)
+    @if ($message)
         @php
             $emailConfig = auth()->user()?->currentTeam?->getOutgoingEmailConfig() ?? [];
         @endphp
         <div class="preview-meta">
-            <strong>{{ __('Para') }}:</strong> {{ $sampleContact->email ?? 'sample@example.com' }}
-            <span class="text-muted"> · </span>
             <strong>{{ __('De') }}:</strong>
             {{ $emailConfig['from_name'] ?? __('Remitente') }}
             &lt;{{ $emailConfig['from_address'] ?? 'sender@example.com' }}&gt;

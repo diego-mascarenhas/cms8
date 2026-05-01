@@ -17,9 +17,15 @@
             <label class="form-label mb-0">{{ __('Contenido del correo') }}</label>
             <div class="d-flex flex-wrap gap-2">
                 @if ($messageId)
-                    <button type="button" class="btn btn-label-secondary" onclick="testSend({{ $messageId }})">
+                    <button
+                        type="button"
+                        class="btn btn-label-secondary waves-effect"
+                        data-bs-toggle="modal"
+                        data-bs-target="#email-test-send-modal-{{ $messageId }}"
+                    >
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </button>
+                    @include('message.partials.email-test-send-modal', ['messageId' => $messageId])
                 @else
                     <span class="btn btn-label-secondary disabled" title="{{ __('Disponible después de guardar el mensaje') }}">
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}

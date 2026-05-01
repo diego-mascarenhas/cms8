@@ -36,6 +36,8 @@
     </div>
 </div>
 
+@include('partials.email-smtp-dns-alerts')
+
 <div class="row g-4 mb-4">
     <div class="col-lg-4">
         <div class="card h-100">

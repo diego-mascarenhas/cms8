@@ -113,4 +113,37 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertOk();
         $response->assertDontSee(__('Contenido del correo'));
     }
+
+    public function test_message_edit_renders_email_test_send_modal_when_mailer_template_preview_shown(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Edit tpl',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<html><body><p>Edit</p></body></html>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Edit me',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('message.edit', $message->id));
+
+        $response->assertOk();
+        $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
+        $response->assertSee('data-bs-target="#email-test-send-modal-'.$message->id.'"', false);
+    }
 }

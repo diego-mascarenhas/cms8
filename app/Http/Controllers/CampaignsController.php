@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CampaignDataTable;
 use App\Enums\CampaignType;
+use App\Helpers\DnsHelper;
 use App\Http\Requests\UpdateCampaignRequest;
 use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
@@ -129,6 +130,10 @@ class CampaignsController extends Controller
         $messageTypes = MessageType::query()->where('status', 1)->orderBy('id')->get();
         $automationMessages = Message::query()->with('type')->orderBy('name')->get();
 
+        $dnsStatus = class_exists(DnsHelper::class)
+            ? DnsHelper::outgoingDnsStatusForAuthUser(auth()->user())
+            : null;
+
         return view('campaigns.show', [
             'campaign' => $campaign,
             'deliveryStats' => $campaign->deliveryStatistics(),
@@ -138,6 +143,7 @@ class CampaignsController extends Controller
             ),
             'messageTypes' => $messageTypes,
             'automationMessages' => $automationMessages,
+            'dnsStatus' => $dnsStatus,
         ]);
     }
 
