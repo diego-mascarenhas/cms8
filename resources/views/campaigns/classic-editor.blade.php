@@ -44,8 +44,6 @@
         const bodyInput = $('#body');
         const bodyTemplate = $('#body-template');
         const bodyPreviewFrame = $('#body-preview-frame');
-        const bodyPreviewCard = $('#body-preview-card');
-        const bodyPreviewOverlay = $('#body-preview-overlay');
 
         const syncBodyContent = function ()
         {
@@ -59,16 +57,6 @@
         editor.on('input', function ()
         {
             syncBodyContent();
-        });
-
-        bodyPreviewCard.on('mouseenter', function ()
-        {
-            bodyPreviewOverlay.removeClass('d-none');
-        });
-
-        bodyPreviewCard.on('mouseleave', function ()
-        {
-            bodyPreviewOverlay.addClass('d-none');
         });
 
         syncBodyContent();
@@ -171,68 +159,30 @@
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
-                <label class="form-label mb-0">{{ __('Contenido del correo') }}</label>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="javascript:;" class="btn btn-label-secondary">
-                        <i class="ti ti-folder me-1"></i>{{ __('Guardar como plantilla') }}
-                    </a>
-                    <a href="javascript:;" class="btn btn-label-secondary">
-                        <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
-                    </a>
-                    <a
-                        href="{{ $grapesEditorUrl }}"
-                        class="btn btn-primary"
-                    >
-                        <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-                    </a>
-                </div>
-            </div>
+    @include('message.partials.email-template-content-preview', [
+        'previewHtml' => $defaultBody,
+        'grapesEditorUrl' => $grapesEditorUrl,
+        'templateLabel' => ($selectedTemplateName ?? '') !== '' ? $selectedTemplateName : null,
+        'messageId' => null,
+        'previewFrameId' => 'body-preview-frame',
+        'parentSyncsPreview' => true,
+    ])
 
-            <div class="mb-3">
-                <label class="form-label" for="body-editor">{{ __('Cuerpo') }}</label>
-                <div id="body-preview-card" class="position-relative border rounded overflow-hidden">
-                    <iframe
-                        id="body-preview-frame"
-                        title="{{ __('Vista previa del contenido del correo') }}"
-                        class="w-100 border-0"
-                        style="min-height: 560px; background: #fff;"
-                        srcdoc="{{ e($defaultBody) }}"
-                    ></iframe>
-                    <div
-                        id="body-preview-overlay"
-                        class="position-absolute top-0 start-0 w-100 h-100 d-none d-flex align-items-center justify-content-center pe-none"
-                        style="background: rgba(33, 37, 41, 0.55);"
-                    >
-                        <a
-                            id="body-edit-trigger"
-                            href="{{ $grapesEditorUrl }}"
-                            class="btn btn-dark pe-auto"
-                        >
-                            {{ __('Editar contenido') }}
-                        </a>
-                    </div>
-                </div>
-
-                <div id="body-editor-container" class="d-none mt-3">
-                    <div
-                        id="body-editor"
-                        class="form-control overflow-auto"
-                        contenteditable="true"
-                        style="min-height: 330px;"
-                    >{!! $defaultBodyContent !!}</div>
-                    <div class="d-flex justify-content-end mt-2">
-                        <button id="body-editor-done" type="button" class="btn btn-label-secondary">{{ __('Listo') }}</button>
-                    </div>
-                </div>
-
-                <small class="text-muted d-block mt-2">{{ __('Pasa el cursor sobre el contenido para editarlo.') }}</small>
-                <textarea id="body" name="body" class="d-none"></textarea>
-                <textarea id="body-template" class="d-none">{{ $defaultBodyTemplate }}</textarea>
+    <div class="mb-4">
+        <label class="form-label visually-hidden" for="body-editor">{{ __('Cuerpo') }}</label>
+        <div id="body-editor-container" class="d-none">
+            <div
+                id="body-editor"
+                class="form-control overflow-auto"
+                contenteditable="true"
+                style="min-height: 330px;"
+            >{!! $defaultBodyContent !!}</div>
+            <div class="d-flex justify-content-end mt-2">
+                <button id="body-editor-done" type="button" class="btn btn-label-secondary">{{ __('Listo') }}</button>
             </div>
         </div>
+        <textarea id="body" name="body" class="d-none"></textarea>
+        <textarea id="body-template" class="d-none">{{ $defaultBodyTemplate }}</textarea>
     </div>
 
     <div class="d-flex justify-content-end gap-2">

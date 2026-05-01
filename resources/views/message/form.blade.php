@@ -157,17 +157,22 @@ document.querySelector('form').addEventListener('submit', function() {
     @endif
 </div>
 
-<div class="card mb-4">
-	<h5 class="card-header">{{ __('Messages') }}</h5>
-	<form class="card-body" action="{{ route('message.store') }}" method="POST">
-		@csrf
-		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+<form action="{{ route('message.store') }}" method="POST">
+	@csrf
+	<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
-		@php
-			$useLegacyTemplatePicker = $data->useLegacyTemplatePicker ?? false;
-			$showEmailTemplatePreview = ! $useLegacyTemplatePicker && isset($data->template, $data->emailTemplatePreviewHtml, $data->templateGrapesEditorUrl) && $data->template && (int) ($data->type_id ?? 0) === 1;
-		@endphp
+	@php
+		$useLegacyTemplatePicker = $data->useLegacyTemplatePicker ?? false;
+		$showEmailTemplatePreview = ! $useLegacyTemplatePicker && isset($data->template, $data->emailTemplatePreviewHtml, $data->templateGrapesEditorUrl) && $data->template && (int) ($data->type_id ?? 0) === 1;
+	@endphp
 
+	@if ($showEmailTemplatePreview)
+		<input type="hidden" name="template_id" value="{{ $data->template_id }}">
+	@endif
+
+	<div class="card mb-4">
+		<h5 class="card-header">{{ __('Messages') }}</h5>
+		<div class="card-body">
 		<div class="row g-3">
 			<div class="col-md-6">
 				<x-input-general id="name" label="{{ __('Name') }} (*)" value="{{ old('name', $data->name?? '') }}" />
@@ -211,17 +216,7 @@ document.querySelector('form').addEventListener('submit', function() {
 					{{ __('Para WhatsApp o para clientes de correo sin HTML. Si usas plantilla, este texto sirve como fallback o versión corta.') }}
 				</div>
 			</div>
-			@if ($showEmailTemplatePreview)
-				<input type="hidden" name="template_id" value="{{ $data->template_id }}">
-				<div class="col-12">
-					@include('message.partials.email-template-content-preview', [
-						'previewHtml' => $data->emailTemplatePreviewHtml,
-						'grapesEditorUrl' => $data->templateGrapesEditorUrl,
-						'templateLabel' => $data->template->name,
-						'messageId' => $data->id ?? null,
-					])
-				</div>
-			@else
+			@unless ($showEmailTemplatePreview)
 				<div class="col-md-6">
 					<x-input-select id="template_id" label="{{ __('Plantilla') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
 					<div class="form-text mt-1">
@@ -235,7 +230,7 @@ document.querySelector('form').addEventListener('submit', function() {
 						</a>
 					</div>
 				@endif
-			@endif
+			@endunless
 			<div class="col-md-6">
 				<div class="form-group mb-0">
 					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
@@ -279,55 +274,61 @@ document.querySelector('form').addEventListener('submit', function() {
 				</div>
 			</div>
 		</div>
+		</div>
+	</div>
 
-		<div class="row g-3 mt-3">
-			<div class="col-12">
-				<div class="card">
-					<div class="card-header">
-						<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
+	@if ($showEmailTemplatePreview)
+		@include('message.partials.email-template-content-preview', [
+			'previewHtml' => $data->emailTemplatePreviewHtml,
+			'grapesEditorUrl' => $data->templateGrapesEditorUrl,
+			'templateLabel' => $data->template->name,
+			'messageId' => $data->id ?? null,
+		])
+	@endif
+
+	<div class="card mb-4">
+		<div class="card-header">
+			<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
+		</div>
+		<div class="card-body">
+			@if (isset($data->id))
+				<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
+			@endif
+			<div class="row g-4 align-items-start">
+				<div class="col-lg-6 align-self-start">
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="show_unsubscribe">
+							<strong>{{ __('Mostrar enlace de baja') }}</strong>
+							<div class="text-muted small">{{ __('Incluye la opción para darse de baja en los correos.') }}</div>
+						</label>
 					</div>
-					<div class="card-body">
-						@if (isset($data->id))
-							<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
-						@endif
-						<div class="row g-4 align-items-start">
-							<div class="col-lg-6 align-self-start">
-								<div class="form-check form-switch">
-									<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
-									<label class="form-check-label" for="show_unsubscribe">
-										<strong>{{ __('Mostrar enlace de baja') }}</strong>
-										<div class="text-muted small">{{ __('Incluye la opción para darse de baja en los correos.') }}</div>
-									</label>
-								</div>
-							</div>
-							<div class="col-lg-6 align-self-start mt-4 mt-lg-0 pt-4 pt-lg-0">
-								<div class="d-flex flex-column gap-4">
-									<div class="form-check form-switch">
-										<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
-										<label class="form-check-label" for="enable_open_tracking">
-											<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
-											<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
-										</label>
-									</div>
-									<div class="form-check form-switch mb-0">
-										<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
-										<label class="form-check-label" for="enable_click_tracking">
-											<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
-											<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
-										</label>
-									</div>
-								</div>
-							</div>
+				</div>
+				<div class="col-lg-6 align-self-start mt-4 mt-lg-0 pt-4 pt-lg-0">
+					<div class="d-flex flex-column gap-4">
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="enable_open_tracking">
+								<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
+								<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
+							</label>
+						</div>
+						<div class="form-check form-switch mb-0">
+							<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="enable_click_tracking">
+								<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
+								<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
+							</label>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
+	</div>
 
-		<div class="pt-4">
-			<button type="submit" class="btn btn-primary me-sm-3 me-1">{{ __('Save') }}</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
-		</div>
-	</form>
-</div>
+	<div class="d-flex flex-wrap align-items-center gap-2 pt-2">
+		<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+		<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
+	</div>
+</form>
 @endsection

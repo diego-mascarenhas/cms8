@@ -3,10 +3,12 @@
     'grapesEditorUrl',
     'templateLabel' => null,
     'messageId' => null,
+    'previewFrameId' => null,
+    'parentSyncsPreview' => false,
 ])
 
 @php
-    $previewFrameId = 'email-template-preview-'.\Illuminate\Support\Str::random(10);
+    $iframeId = $previewFrameId ?: 'email-template-preview-'.\Illuminate\Support\Str::random(10);
 @endphp
 
 <div class="card mb-4 email-template-content-preview">
@@ -36,16 +38,17 @@
         <div class="mb-3">
             <div class="border rounded overflow-hidden">
                 <iframe
-                    id="{{ $previewFrameId }}"
+                    id="{{ $iframeId }}"
                     title="{{ __('Vista previa del contenido del correo') }}"
                     class="w-100 border-0"
                     style="min-height: 560px; background: #fff;"
                     src="about:blank"
                 ></iframe>
+                @unless ($parentSyncsPreview)
                 <script>
                     (function ()
                     {
-                        var frame = document.getElementById(@json($previewFrameId));
+                        var frame = document.getElementById(@json($iframeId));
                         if (! frame)
                         {
                             return;
@@ -53,6 +56,7 @@
                         frame.srcdoc = @json($previewHtml);
                     })();
                 </script>
+                @endunless
             </div>
         </div>
     </div>

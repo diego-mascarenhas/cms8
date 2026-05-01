@@ -342,6 +342,13 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Asunto'),
         );
+        $this->assertTrue(
+            str_contains($html, 'email-template-content-preview'),
+        );
+        $this->assertTrue(
+            str_contains($html, 'Contenido del correo'),
+        );
+        $this->assertSame(1, substr_count($html, 'Contenido del correo'), 'Expected a single mail content toolbar block.');
     }
 
     public function test_grapes_editor_page_is_reachable_when_authenticated(): void

@@ -357,6 +357,7 @@ class CampaignsController extends Controller
             'selectedType' => $selectedType,
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
+            'selectedTemplateName' => $selectedDefinition['name'] ?? '',
             'selectedTemplateId' => $selectedTemplateId,
             'campaignId' => $campaignId,
             'messageId' => $messageId,
