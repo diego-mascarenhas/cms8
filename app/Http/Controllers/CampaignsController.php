@@ -132,7 +132,7 @@ class CampaignsController extends Controller
         return view('campaigns.show', [
             'campaign' => $campaign,
             'deliveryStats' => $campaign->deliveryStatistics(),
-            'automationsByStepMessageId' => $this->automationsKeyedByStepMessageId(
+            'automationsGroupedByStepMessageId' => $this->automationsGroupedByStepMessageId(
                 data_get($campaign->settings, 'automations'),
                 $campaign->messages,
             ),
@@ -633,41 +633,71 @@ HTML;
                 continue;
             }
             $stepMessageId = (int) ($seqRow['message_id'] ?? 0);
-            $auto = $seqRow['automation'] ?? null;
-            if (! is_array($auto) || $stepMessageId < 1)
+            if ($stepMessageId < 1)
             {
                 continue;
             }
-            $row = $auto;
-            $row['step_message_id'] = $stepMessageId;
-            if (array_key_exists('linked_message_id', $row))
+
+            $automationsList = $seqRow['automations'] ?? null;
+            if ($automationsList === null && isset($seqRow['automation']) && is_array($seqRow['automation']))
             {
-                if (filled($row['linked_message_id']))
-                {
-                    $row['message_id'] = (int) $row['linked_message_id'];
-                }
-                unset($row['linked_message_id']);
+                $legacy = $seqRow['automation'];
+                $automationsList = $this->stepAutomationRowHasPayload($legacy) ? [$legacy] : [];
+            }
+            if (! is_array($automationsList))
+            {
+                $automationsList = [];
             }
 
-            $rows[] = $row;
+            foreach ($automationsList as $auto)
+            {
+                if (! is_array($auto) || ! $this->stepAutomationRowHasPayload($auto))
+                {
+                    continue;
+                }
+                $row = $auto;
+                $row['step_message_id'] = $stepMessageId;
+                if (array_key_exists('linked_message_id', $row))
+                {
+                    if (filled($row['linked_message_id']))
+                    {
+                        $row['message_id'] = (int) $row['linked_message_id'];
+                    }
+                    unset($row['linked_message_id']);
+                }
+
+                $rows[] = $row;
+            }
         }
 
         return $rows;
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Message>  $orderedMessages
-     * @return array<int, array<string, mixed>>
+     * @param  array<string, mixed>  $row
      */
-    private function automationsKeyedByStepMessageId(mixed $stored, $orderedMessages): array
+    private function stepAutomationRowHasPayload(array $row): bool
     {
-        $map = [];
+        return filled($row['trigger'] ?? null)
+            || filled($row['channel_type_id'] ?? null)
+            || filled($row['linked_message_id'] ?? null)
+            || filled($row['notes'] ?? null)
+            || filled($row['delay_hours'] ?? null);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Message>  $orderedMessages
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function automationsGroupedByStepMessageId(mixed $stored, $orderedMessages): array
+    {
+        $groups = [];
         if (! is_array($stored))
         {
-            return $map;
+            return $groups;
         }
 
-        $legacyRows = [];
+        $legacyFlat = [];
         foreach ($stored as $row)
         {
             if (! is_array($row))
@@ -679,14 +709,18 @@ HTML;
             {
                 $payload = $row;
                 unset($payload['step_message_id']);
-                $map[$sid] = $payload;
+                if (! isset($groups[$sid]))
+                {
+                    $groups[$sid] = [];
+                }
+                $groups[$sid][] = $payload;
 
                 continue;
             }
-            $legacyRows[] = $row;
+            $legacyFlat[] = $row;
         }
 
-        foreach ($legacyRows as $i => $row)
+        foreach ($legacyFlat as $i => $row)
         {
             $message = $orderedMessages->get($i);
             if ($message === null)
@@ -694,15 +728,16 @@ HTML;
                 break;
             }
             $mid = (int) $message->id;
-            if (! isset($map[$mid]))
+            if (! isset($groups[$mid]))
             {
-                $clean = $row;
-                unset($clean['step_message_id']);
-                $map[$mid] = $clean;
+                $groups[$mid] = [];
             }
+            $clean = $row;
+            unset($clean['step_message_id']);
+            $groups[$mid][] = $clean;
         }
 
-        return $map;
+        return $groups;
     }
 
     /**

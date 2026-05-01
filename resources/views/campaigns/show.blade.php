@@ -5,7 +5,7 @@
 @section('content')
 @php
     /** @var array<string, int|float> $deliveryStats */
-    /** @var array<int, array<string, mixed>> $automationsByStepMessageId */
+    /** @var array<int, array<int, array<string, mixed>>> $automationsGroupedByStepMessageId */
     $addMessageTemplateSelectQuery = array_filter([
         'type' => $campaign->type,
         'title' => $campaign->name,
@@ -349,20 +349,19 @@
                             $sortOld = old('sequence.'.$idx.'.sort_order', $seqMessage->pivot->sort_order);
                             $delayOld = old('sequence.'.$idx.'.delay_minutes_after_previous', $pivotDelay !== null ? $pivotDelay : '');
                             $presetOld = old('sequence.'.$idx.'.condition_preset', $preset);
-                            $storedStepAuto = $automationsByStepMessageId[$seqMessage->id] ?? [];
-                            $autoTrigOld = old('sequence.'.$idx.'.automation.trigger', $storedStepAuto['trigger'] ?? '');
-                            $autoDelayHoursOld = old('sequence.'.$idx.'.automation.delay_hours', $storedStepAuto['delay_hours'] ?? '');
-                            $autoChannelOld = old('sequence.'.$idx.'.automation.channel_type_id', $storedStepAuto['channel_type_id'] ?? '');
-                            $autoLinkedOld = old('sequence.'.$idx.'.automation.linked_message_id', $storedStepAuto['message_id'] ?? '');
-                            $autoNotesOld = old('sequence.'.$idx.'.automation.notes', $storedStepAuto['notes'] ?? '');
+                            $storedRules = $automationsGroupedByStepMessageId[$seqMessage->id] ?? [];
+                            $ruleRows = count($storedRules) > 0 ? $storedRules : [[]];
                             $seqStepHasError = $errors->has('sequence.'.$idx.'.sort_order')
                                 || $errors->has('sequence.'.$idx.'.delay_minutes_after_previous')
-                                || $errors->has('sequence.'.$idx.'.condition_preset')
-                                || $errors->has('sequence.'.$idx.'.automation.trigger')
-                                || $errors->has('sequence.'.$idx.'.automation.delay_hours')
-                                || $errors->has('sequence.'.$idx.'.automation.channel_type_id')
-                                || $errors->has('sequence.'.$idx.'.automation.linked_message_id')
-                                || $errors->has('sequence.'.$idx.'.automation.notes');
+                                || $errors->has('sequence.'.$idx.'.condition_preset');
+                            foreach ($errors->keys() as $errKey)
+                            {
+                                if (str_starts_with((string) $errKey, 'sequence.'.$idx.'.automations'))
+                                {
+                                    $seqStepHasError = true;
+                                    break;
+                                }
+                            }
                         @endphp
                         <li class="timeline-item timeline-item-transparent pb-3">
                             <span class="timeline-point timeline-point-primary"></span>
@@ -397,146 +396,72 @@
                                     id="seq-step-settings-{{ $seqMessage->id }}"
                                     class="collapse {{ $seqStepHasError ? 'show' : '' }}"
                                 >
-                                    <div class="row g-2 align-items-end pt-2 mt-1 border-top">
-                                        <div class="col-6 col-sm-auto">
-                                            <label class="form-label small mb-0" for="seq-sort-{{ $seqMessage->id }}">{{ __('Orden') }}</label>
-                                            <input
-                                                id="seq-sort-{{ $seqMessage->id }}"
-                                                type="number"
-                                                name="sequence[{{ $idx }}][sort_order]"
-                                                class="form-control form-control-sm @error('sequence.'.$idx.'.sort_order') is-invalid @enderror"
-                                                min="0"
-                                                max="10000"
-                                                style="min-width: 4.5rem;"
-                                                value="{{ $sortOld }}"
-                                            >
-                                            @error('sequence.'.$idx.'.sort_order')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.sort_order') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-6 col-sm-auto">
-                                            <label class="form-label small mb-0" for="seq-delay-{{ $seqMessage->id }}">{{ __('Espera') }} ({{ __('min') }})</label>
-                                            <input
-                                                id="seq-delay-{{ $seqMessage->id }}"
-                                                type="number"
-                                                name="sequence[{{ $idx }}][delay_minutes_after_previous]"
-                                                class="form-control form-control-sm @error('sequence.'.$idx.'.delay_minutes_after_previous') is-invalid @enderror"
-                                                min="0"
-                                                placeholder="—"
-                                                style="min-width: 5rem;"
-                                                value="{{ $delayOld }}"
-                                            >
-                                            @error('sequence.'.$idx.'.delay_minutes_after_previous')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.delay_minutes_after_previous') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-12 col-sm">
-                                            <label class="form-label small mb-0" for="seq-cond-{{ $seqMessage->id }}">{{ __('Condición') }}</label>
-                                            <select
-                                                id="seq-cond-{{ $seqMessage->id }}"
-                                                name="sequence[{{ $idx }}][condition_preset]"
-                                                class="form-select form-select-sm @error('sequence.'.$idx.'.condition_preset') is-invalid @enderror"
-                                            >
-                                                <option value="none" @selected($presetOld === 'none')>{{ __('Sin condición (tras la espera)') }}</option>
-                                                <option value="opened" @selected($presetOld === 'opened')>{{ __('Solo si abrió el anterior') }}</option>
-                                                <option value="clicked" @selected($presetOld === 'clicked')>{{ __('Solo si hizo clic en el anterior') }}</option>
-                                            </select>
-                                            @error('sequence.'.$idx.'.condition_preset')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.condition_preset') }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
+                                    <input type="hidden" name="sequence[{{ $idx }}][sort_order]" value="{{ $sortOld }}">
                                     @if ($loop->first)
-                                        <p class="text-muted small mt-2 mb-0">{{ __('En el primer paso, la espera y la condición suelen usarse poco; aplican sobre todo a partir del segundo.') }}</p>
+                                        <input type="hidden" name="sequence[{{ $idx }}][delay_minutes_after_previous]" value="{{ $delayOld }}">
+                                        <input type="hidden" name="sequence[{{ $idx }}][condition_preset]" value="none">
                                     @else
-                                        <p class="text-muted small mt-2 mb-0">{{ __('Orden, espera y condición: cuándo entra este correo respecto al anterior. El resumen entre pasos repite estos datos.') }}</p>
+                                        <div class="row g-2 align-items-end pt-2 mt-1 border-top">
+                                            <div class="col-6 col-sm-auto">
+                                                <label class="form-label small mb-0" for="seq-delay-{{ $seqMessage->id }}">{{ __('Espera') }} ({{ __('min') }})</label>
+                                                <input
+                                                    id="seq-delay-{{ $seqMessage->id }}"
+                                                    type="number"
+                                                    name="sequence[{{ $idx }}][delay_minutes_after_previous]"
+                                                    class="form-control form-control-sm @error('sequence.'.$idx.'.delay_minutes_after_previous') is-invalid @enderror"
+                                                    min="0"
+                                                    placeholder="—"
+                                                    style="min-width: 5rem;"
+                                                    value="{{ $delayOld }}"
+                                                >
+                                                @error('sequence.'.$idx.'.delay_minutes_after_previous')
+                                                    <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.delay_minutes_after_previous') }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-12 col-sm">
+                                                <label class="form-label small mb-0" for="seq-cond-{{ $seqMessage->id }}">{{ __('Condición') }}</label>
+                                                <select
+                                                    id="seq-cond-{{ $seqMessage->id }}"
+                                                    name="sequence[{{ $idx }}][condition_preset]"
+                                                    class="form-select form-select-sm @error('sequence.'.$idx.'.condition_preset') is-invalid @enderror"
+                                                >
+                                                    <option value="none" @selected($presetOld === 'none')>{{ __('Sin condición (tras la espera)') }}</option>
+                                                    <option value="opened" @selected($presetOld === 'opened')>{{ __('Solo si abrió el anterior') }}</option>
+                                                    <option value="clicked" @selected($presetOld === 'clicked')>{{ __('Solo si hizo clic en el anterior') }}</option>
+                                                </select>
+                                                @error('sequence.'.$idx.'.condition_preset')
+                                                    <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.condition_preset') }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mt-2 mb-0">{{ __('El resumen entre pasos en la línea de tiempo repite la espera y la condición.') }}</p>
+                                        <p class="text-muted small mt-1 mb-0">{{ __('Si eliges condición sobre el paso anterior, quien no la cumpla no recibe este envío: para ese contacto la secuencia puede «saltarse» este paso. No es un desvío automático al siguiente mensaje; para caminos distintos (p. ej. otro canal si no abrió) define reglas en la sección de ramificación.') }}</p>
                                     @endif
 
                                     <hr class="my-3">
-                                    <p class="small fw-semibold text-muted mb-1">{{ __('Automatización (opcional)') }}</p>
-                                    <p class="text-muted small mb-2">{{ __('Disparador y canal adicionales para este paso en la campaña. Las horas mínimas entre envíos del mensaje en su ficha son independientes y aplican también fuera de la secuencia.') }}</p>
-                                    <div class="row g-2 align-items-end">
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-0" for="seq-auto-trig-{{ $seqMessage->id }}">{{ __('Disparador') }}</label>
-                                            <select
-                                                id="seq-auto-trig-{{ $seqMessage->id }}"
-                                                name="sequence[{{ $idx }}][automation][trigger]"
-                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.trigger') is-invalid @enderror"
-                                            >
-                                                <option value="" @selected($autoTrigOld === '' || $autoTrigOld === null)>{{ __('Selecciona…') }}</option>
-                                                <option value="after_previous_sent" @selected($autoTrigOld === 'after_previous_sent')>{{ __('Tras enviar el paso anterior') }}</option>
-                                                <option value="if_opened_previous" @selected($autoTrigOld === 'if_opened_previous')>{{ __('Si abrió el paso anterior') }}</option>
-                                                <option value="if_not_opened_previous" @selected($autoTrigOld === 'if_not_opened_previous')>{{ __('Si no abrió el paso anterior') }}</option>
-                                                <option value="delay_after_enrollment" @selected($autoTrigOld === 'delay_after_enrollment')>{{ __('Tras el alta en la secuencia') }}</option>
-                                            </select>
-                                            @error('sequence.'.$idx.'.automation.trigger')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.trigger') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label small mb-0" for="seq-auto-delay-{{ $seqMessage->id }}">{{ __('Espera (h)') }}</label>
-                                            <input
-                                                id="seq-auto-delay-{{ $seqMessage->id }}"
-                                                type="number"
-                                                name="sequence[{{ $idx }}][automation][delay_hours]"
-                                                class="form-control form-control-sm @error('sequence.'.$idx.'.automation.delay_hours') is-invalid @enderror"
-                                                min="0"
-                                                max="8760"
-                                                placeholder="0"
-                                                value="{{ $autoDelayHoursOld !== '' && $autoDelayHoursOld !== null ? $autoDelayHoursOld : '' }}"
-                                            >
-                                            @error('sequence.'.$idx.'.automation.delay_hours')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.delay_hours') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label small mb-0" for="seq-auto-ch-{{ $seqMessage->id }}">{{ __('Canal (tipo)') }}</label>
-                                            <select
-                                                id="seq-auto-ch-{{ $seqMessage->id }}"
-                                                name="sequence[{{ $idx }}][automation][channel_type_id]"
-                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.channel_type_id') is-invalid @enderror"
-                                            >
-                                                <option value="" @selected($autoChannelOld === '' || $autoChannelOld === null)>{{ __('Selecciona…') }}</option>
-                                                @foreach ($messageTypes as $mt)
-                                                    <option value="{{ $mt->id }}" @selected((string) $autoChannelOld === (string) $mt->id)>{{ $mt->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('sequence.'.$idx.'.automation.channel_type_id')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.channel_type_id') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-0" for="seq-auto-msg-{{ $seqMessage->id }}">{{ __('Mensaje (opcional)') }}</label>
-                                            <select
-                                                id="seq-auto-msg-{{ $seqMessage->id }}"
-                                                name="sequence[{{ $idx }}][automation][linked_message_id]"
-                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.linked_message_id') is-invalid @enderror"
-                                            >
-                                                <option value="" @selected($autoLinkedOld === '' || $autoLinkedOld === null)>{{ __('Ninguno') }}</option>
-                                                @foreach ($automationMessages as $am)
-                                                    <option value="{{ $am->id }}" @selected((string) $autoLinkedOld === (string) $am->id)>{{ $am->name }} ({{ $am->type?->name ?? '—' }})</option>
-                                                @endforeach
-                                            </select>
-                                            @error('sequence.'.$idx.'.automation.linked_message_id')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.linked_message_id') }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-0" for="seq-auto-notes-{{ $seqMessage->id }}">{{ __('Notas') }}</label>
-                                            <input
-                                                id="seq-auto-notes-{{ $seqMessage->id }}"
-                                                type="text"
-                                                name="sequence[{{ $idx }}][automation][notes]"
-                                                class="form-control form-control-sm @error('sequence.'.$idx.'.automation.notes') is-invalid @enderror"
-                                                maxlength="500"
-                                                placeholder="{{ __('Uso interno') }}"
-                                                value="{{ $autoNotesOld }}"
-                                            >
-                                            @error('sequence.'.$idx.'.automation.notes')
-                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.notes') }}</div>
-                                            @enderror
-                                        </div>
+                                    <p class="small fw-semibold text-muted mb-1">{{ __('Ramificaciones / automatización (opcional)') }}</p>
+                                    <p class="text-muted small mb-2">{{ __('Aquí defines disparadores y mensajes alternativos (varias reglas por paso). Complementa la condición del bloque anterior: esa condición solo incluye o excluye este correo de la secuencia; las reglas de abajo permiten envíos adicionales según abrir, clics o el alta. Las horas mínimas entre envíos en la ficha del mensaje son independientes y aplican también fuera de la secuencia.') }}</p>
+                                    <div
+                                        class="step-automations-list mb-2"
+                                        data-step-index="{{ $idx }}"
+                                    >
+                                        @foreach ($ruleRows as $ridx => $ruleRow)
+                                            @include('campaigns.partials.sequence-step-automation-rule', [
+                                                'stepIndex' => $idx,
+                                                'ruleIndex' => $ridx,
+                                                'defaults' => is_array($ruleRow) ? $ruleRow : [],
+                                                'messageTypes' => $messageTypes,
+                                                'automationMessages' => $automationMessages,
+                                            ])
+                                        @endforeach
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-label-primary seq-add-automation-rule mb-1"
+                                        data-step-index="{{ $idx }}"
+                                    >
+                                        <i class="ti ti-plus ti-sm me-1"></i>{{ __('Añadir regla') }}
+                                    </button>
                                 </div>
                             </div>
                         </li>
@@ -559,11 +484,11 @@
                                         $nextPreset = 'clicked';
                                     }
                                 }
-                                $nextConditionLabel = match ($nextPreset)
+                                $nextConditionSummaryLabel = match ($nextPreset)
                                 {
-                                    'opened' => __('Solo si abrió el anterior'),
-                                    'clicked' => __('Solo si hizo clic en el anterior'),
-                                    default => __('Sin condición (tras la espera)'),
+                                    'opened' => __('Solo si el contacto abrió el correo anterior'),
+                                    'clicked' => __('Solo si el contacto hizo clic en el correo anterior'),
+                                    default => __('Sin exigir abrir ni clic: tras la espera se puede enviar'),
                                 };
                             @endphp
                             <li class="timeline-item timeline-item-transparent pb-3 pt-0">
@@ -575,14 +500,11 @@
                                         <span class="text-body-secondary fw-semibold">{{ $nextMessage->name }}</span>
                                     </small>
                                     <div class="mt-2 ps-1 border-start border-2 border-primary ms-1">
-                                        <p class="text-muted small mb-1 fw-semibold">{{ __('Reglas de campaña para este paso') }}</p>
+                                        <p class="text-muted small mb-1 fw-semibold">{{ __('Parámetros del paso destino (este mensaje)') }}</p>
+                                        <p class="text-muted small mb-2 mb-md-1">{{ __('La espera y el requisito se guardan en la configuración de «:name», no en el paso de arriba. Ahí decides si ese envío se hace y con qué condiciones respecto al correo previo.', ['name' => $nextMessage->name]) }}</p>
                                         <ul class="small text-muted mb-0 ps-3">
                                             <li>
-                                                {{ __('Orden') }}:
-                                                <span class="text-body-secondary">{{ $nextPivot->sort_order }}</span>
-                                            </li>
-                                            <li>
-                                                {{ __('Espera tras el paso anterior') }}:
+                                                {{ __('Espera mínima tras el correo anterior') }}:
                                                 <span class="text-body-secondary">
                                                     @if ($nextDelayMins !== null && $nextDelayMins !== '')
                                                         {{ (int) $nextDelayMins }} {{ __('min') }}
@@ -592,8 +514,8 @@
                                                 </span>
                                             </li>
                                             <li>
-                                                {{ __('Condición') }}:
-                                                <span class="text-body-secondary">{{ $nextConditionLabel }}</span>
+                                                {{ __('Requisito sobre el correo anterior') }}:
+                                                <span class="text-body-secondary">{{ $nextConditionSummaryLabel }}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -620,3 +542,79 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    function reindexStepRules(listEl) {
+        listEl.querySelectorAll('.step-automation-rule').forEach(function (row, i) {
+            row.querySelectorAll('[name]').forEach(function (el) {
+                var n = el.getAttribute('name');
+                if (!n) {
+                    return;
+                }
+                el.setAttribute('name', n.replace(/\[automations\]\[\d+\]/, '[automations][' + i + ']'));
+            });
+            var lbl = row.querySelector('[data-rule-label]');
+            if (lbl) {
+                lbl.textContent = i + 1;
+            }
+        });
+    }
+
+    function clearAutomationRow(row) {
+        row.querySelectorAll('select').forEach(function (sel) {
+            sel.selectedIndex = 0;
+        });
+        row.querySelectorAll('input[type="number"]').forEach(function (inp) {
+            inp.value = '';
+        });
+        row.querySelectorAll('input[type="text"]').forEach(function (inp) {
+            inp.value = '';
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        var addBtn = e.target.closest('.seq-add-automation-rule');
+        if (addBtn) {
+            var stepIdx = addBtn.getAttribute('data-step-index');
+            var list = document.querySelector('.step-automations-list[data-step-index="' + stepIdx + '"]');
+            if (!list) {
+                return;
+            }
+            var rows = list.querySelectorAll('.step-automation-rule');
+            var last = rows[rows.length - 1];
+            if (!last) {
+                return;
+            }
+            var clone = last.cloneNode(true);
+            clearAutomationRow(clone);
+            clone.querySelectorAll('.is-invalid').forEach(function (el) {
+                el.classList.remove('is-invalid');
+            });
+            clone.querySelectorAll('.invalid-feedback').forEach(function (el) {
+                el.remove();
+            });
+            list.appendChild(clone);
+            reindexStepRules(list);
+            return;
+        }
+        var rmBtn = e.target.closest('.step-automation-remove');
+        if (rmBtn) {
+            var row = rmBtn.closest('.step-automation-rule');
+            var list = rmBtn.closest('.step-automations-list');
+            if (!row || !list) {
+                return;
+            }
+            var allRows = list.querySelectorAll('.step-automation-rule');
+            if (allRows.length > 1) {
+                row.remove();
+                reindexStepRules(list);
+            } else {
+                clearAutomationRow(row);
+            }
+        }
+    });
+})();
+</script>
+@endpush

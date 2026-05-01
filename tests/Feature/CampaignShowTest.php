@@ -122,8 +122,8 @@ class CampaignShowTest extends TestCase
         $response->assertSee('Actualización', false);
         $response->assertSee('Mailing linked', false);
         $response->assertSee('Segundo paso', false);
-        $response->assertSee('Reglas de campaña para este paso', false);
-        $response->assertSee('Espera tras el paso anterior', false);
+        $response->assertSee('Parámetros del paso destino (este mensaje)', false);
+        $response->assertSee('Espera mínima tras el correo anterior', false);
         $response->assertSee(route('message.show', $message->id), false);
         $response->assertSee('Añadir mensaje', false);
         $response->assertSee(e(route('campaigns.templates.select', [

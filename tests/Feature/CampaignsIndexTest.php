@@ -196,19 +196,28 @@ class CampaignsIndexTest extends TestCase
                     'sort_order' => 1,
                     'delay_minutes_after_previous' => 60,
                     'condition_preset' => 'none',
-                    'automation' => [],
+                    'automations' => [],
                 ],
                 [
                     'message_id' => $messageB->id,
                     'sort_order' => 2,
                     'delay_minutes_after_previous' => '',
                     'condition_preset' => 'opened',
-                    'automation' => [
-                        'trigger' => 'if_opened_previous',
-                        'delay_hours' => 24,
-                        'channel_type_id' => 2,
-                        'linked_message_id' => $messageB->id,
-                        'notes' => 'WA follow-up',
+                    'automations' => [
+                        [
+                            'trigger' => 'if_opened_previous',
+                            'delay_hours' => 24,
+                            'channel_type_id' => 2,
+                            'linked_message_id' => $messageB->id,
+                            'notes' => 'WA follow-up',
+                        ],
+                        [
+                            'trigger' => 'if_not_opened_previous',
+                            'delay_hours' => 48,
+                            'channel_type_id' => 1,
+                            'linked_message_id' => $messageA->id,
+                            'notes' => 'Mail nudge',
+                        ],
                     ],
                 ],
             ],
@@ -217,12 +226,17 @@ class CampaignsIndexTest extends TestCase
         $campaign->refresh();
         $autos = data_get($campaign->settings, 'automations');
         $this->assertIsArray($autos);
-        $this->assertCount(1, $autos);
+        $this->assertCount(2, $autos);
         $this->assertSame('if_opened_previous', $autos[0]['trigger']);
         $this->assertSame(2, $autos[0]['channel_type_id']);
         $this->assertSame(24, $autos[0]['delay_hours']);
         $this->assertSame($messageB->id, $autos[0]['message_id']);
         $this->assertSame($messageB->id, $autos[0]['step_message_id']);
+        $this->assertSame('if_not_opened_previous', $autos[1]['trigger']);
+        $this->assertSame(1, $autos[1]['channel_type_id']);
+        $this->assertSame(48, $autos[1]['delay_hours']);
+        $this->assertSame($messageA->id, $autos[1]['message_id']);
+        $this->assertSame($messageB->id, $autos[1]['step_message_id']);
 
         $rowB = DB::table('campaign_message')
             ->where('campaign_id', $campaign->id)

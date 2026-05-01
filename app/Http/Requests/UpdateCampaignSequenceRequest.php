@@ -13,6 +13,29 @@ class UpdateCampaignSequenceRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $sequence = $this->input('sequence');
+        if (! is_array($sequence))
+        {
+            return;
+        }
+        foreach ($sequence as $i => $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+            $autos = $row['automations'] ?? null;
+            $hasAutomationsList = is_array($autos) && count($autos) > 0;
+            if (! $hasAutomationsList && isset($row['automation']) && is_array($row['automation']))
+            {
+                $sequence[$i]['automations'] = [$row['automation']];
+            }
+        }
+        $this->merge(['sequence' => $sequence]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -38,25 +61,25 @@ class UpdateCampaignSequenceRequest extends FormRequest
         if ($this->boolean('manage_automations'))
         {
             $sequenceRules = array_merge($sequenceRules, [
-                'sequence.*.automation' => ['nullable', 'array'],
-                'sequence.*.automation.trigger' => ['nullable', 'string', Rule::in([
+                'sequence.*.automations' => ['nullable', 'array'],
+                'sequence.*.automations.*.trigger' => ['nullable', 'string', Rule::in([
                     'after_previous_sent',
                     'if_opened_previous',
                     'if_not_opened_previous',
                     'delay_after_enrollment',
                 ])],
-                'sequence.*.automation.delay_hours' => ['nullable', 'integer', 'min:0', 'max:8760'],
-                'sequence.*.automation.channel_type_id' => [
+                'sequence.*.automations.*.delay_hours' => ['nullable', 'integer', 'min:0', 'max:8760'],
+                'sequence.*.automations.*.channel_type_id' => [
                     'nullable',
                     'integer',
                     Rule::exists('message_type', 'id'),
                 ],
-                'sequence.*.automation.linked_message_id' => [
+                'sequence.*.automations.*.linked_message_id' => [
                     'nullable',
                     'integer',
                     Rule::exists('messages', 'id')->where('team_id', $teamId),
                 ],
-                'sequence.*.automation.notes' => ['nullable', 'string', 'max:500'],
+                'sequence.*.automations.*.notes' => ['nullable', 'string', 'max:500'],
             ]);
         }
 
@@ -77,19 +100,26 @@ class UpdateCampaignSequenceRequest extends FormRequest
                 {
                     continue;
                 }
-                $auto = $seqRow['automation'] ?? [];
-                if (! is_array($auto))
+                $autos = $seqRow['automations'] ?? [];
+                if (! is_array($autos))
                 {
                     continue;
                 }
-                $hasTrigger = filled($auto['trigger'] ?? null);
-                $hasChannel = filled($auto['channel_type_id'] ?? null);
-                if ($hasTrigger xor $hasChannel)
+                foreach ($autos as $ridx => $auto)
                 {
-                    $validator->errors()->add(
-                        "sequence.{$index}.automation.trigger",
-                        __('Completa disparador y canal en la automatización de este paso, o déjalos vacíos.'),
-                    );
+                    if (! is_array($auto))
+                    {
+                        continue;
+                    }
+                    $hasTrigger = filled($auto['trigger'] ?? null);
+                    $hasChannel = filled($auto['channel_type_id'] ?? null);
+                    if ($hasTrigger xor $hasChannel)
+                    {
+                        $validator->errors()->add(
+                            "sequence.{$index}.automations.{$ridx}.trigger",
+                            __('Completa disparador y canal en esta regla, o déjalos vacíos.'),
+                        );
+                    }
                 }
             }
         });
