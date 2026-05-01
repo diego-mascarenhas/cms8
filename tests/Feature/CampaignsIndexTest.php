@@ -3,7 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Campaign;
+use App\Models\Category;
+use App\Models\Content;
+use App\Models\Currency;
 use App\Models\Message;
+use App\Models\Product;
+use App\Models\SubscriptionProduct;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -141,6 +146,129 @@ class CampaignsIndexTest extends TestCase
         $this->assertSame('Título actualizado', $campaign->name);
         $this->assertSame('Europe/Madrid', data_get($campaign->settings, 'send_time_zone'));
         $this->assertNull(data_get($campaign->settings, 'automations'));
+        $this->assertNull(data_get($campaign->settings, 'sequence_exclusions'));
+    }
+
+    public function test_campaign_update_without_exclusions_flag_preserves_sequence_exclusions(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $campaign = Campaign::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Nombre inicial',
+            'settings' => [
+                'sequence_exclusions' => [
+                    'product_ids' => [101],
+                    'subscription_product_ids' => [202],
+                    'content_ids' => [303],
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->put(route('campaigns.update', $campaign), [
+            'title' => 'Solo título',
+            'send_time_zone' => 'UTC',
+        ]);
+
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $campaign->refresh();
+        $this->assertSame([101], data_get($campaign->settings, 'sequence_exclusions.product_ids'));
+        $this->assertSame([202], data_get($campaign->settings, 'sequence_exclusions.subscription_product_ids'));
+        $this->assertSame([303], data_get($campaign->settings, 'sequence_exclusions.content_ids'));
+    }
+
+    public function test_campaign_edit_page_lists_catalog_products_and_subscription_products(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = $user->current_team_id;
+
+        $currency = Currency::query()->firstOrCreate(
+            ['code' => 'USD'],
+            ['name' => 'US Dollar', 'symbol' => '$', 'status' => true],
+        );
+        $productCategory = Category::factory()->create(['team_id' => $teamId]);
+        $product = Product::factory()->create([
+            'team_id' => $teamId,
+            'category_id' => $productCategory->id,
+            'currency_id' => $currency->id,
+            'name' => 'Catalog Item Alpha',
+            'status' => true,
+        ]);
+
+        $subscriptionProduct = SubscriptionProduct::create([
+            'name' => 'Plan Stripe Beta',
+            'active' => true,
+            'currency' => 'usd',
+        ]);
+
+        $campaign = Campaign::factory()->sequenceSummary()->create([
+            'team_id' => $teamId,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('campaigns.edit', $campaign));
+
+        $response->assertOk();
+        $response->assertSee('Catalog Item Alpha', false);
+        $response->assertSee('Plan Stripe Beta', false);
+        $response->assertSee('value="product:'.$product->id.'"', false);
+        $response->assertSee('value="subscription:'.$subscriptionProduct->id.'"', false);
+    }
+
+    public function test_campaign_update_with_sequence_exclusions_saves_settings(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = $user->current_team_id;
+
+        $currency = Currency::query()->firstOrCreate(
+            ['code' => 'USD'],
+            ['name' => 'US Dollar', 'symbol' => '$', 'status' => true],
+        );
+        $category = Category::factory()->create(['team_id' => $teamId]);
+        $product = Product::factory()->create([
+            'team_id' => $teamId,
+            'category_id' => $category->id,
+            'currency_id' => $currency->id,
+            'status' => true,
+        ]);
+
+        $subscriptionProduct = SubscriptionProduct::create([
+            'name' => 'Sub Plan',
+            'active' => true,
+            'currency' => 'usd',
+        ]);
+        $content = Content::create([
+            'team_id' => $teamId,
+            'section_category_id' => $category->id,
+            'category_id' => null,
+            'template' => 'default',
+            'order' => 0,
+            'status' => 1,
+            'title' => ['es' => 'Formulario webinar'],
+            'content' => ['es' => ''],
+            'data' => [],
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $campaign = Campaign::factory()->create([
+            'team_id' => $teamId,
+            'name' => 'Camp',
+        ]);
+
+        $this->actingAs($user)->put(route('campaigns.update', $campaign), [
+            'title' => 'Camp',
+            'send_time_zone' => 'Europe/Madrid',
+            'sequence_exclusions_present' => '1',
+            'exclude_offer_refs' => [
+                'product:'.$product->id,
+                'subscription:'.$subscriptionProduct->id,
+            ],
+            'exclude_content_ids' => [(string) $content->id],
+        ]);
+
+        $campaign->refresh();
+        $this->assertSame([$product->id], data_get($campaign->settings, 'sequence_exclusions.product_ids'));
+        $this->assertSame([$subscriptionProduct->id], data_get($campaign->settings, 'sequence_exclusions.subscription_product_ids'));
+        $this->assertSame([$content->id], data_get($campaign->settings, 'sequence_exclusions.content_ids'));
     }
 
     public function test_campaign_put_update_preserves_automations_configured_on_show(): void
@@ -368,7 +496,7 @@ class CampaignsIndexTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertTrue(
-            str_contains($html, 'Nuevo correo de secuencia'),
+            str_contains($html, 'Editar correo de secuencia'),
         );
         $this->assertTrue(
             str_contains($html, 'Título interno'),

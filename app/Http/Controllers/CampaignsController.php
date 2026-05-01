@@ -8,8 +8,11 @@ use App\Helpers\DnsHelper;
 use App\Http\Requests\UpdateCampaignRequest;
 use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
+use App\Models\Content;
 use App\Models\Message;
 use App\Models\MessageType;
+use App\Models\Product;
+use App\Models\SubscriptionProduct;
 use App\Models\Template;
 use App\Services\CampaignClassicEditorPersistence;
 use Illuminate\Contracts\View\View;
@@ -44,9 +47,28 @@ class CampaignsController extends Controller
             return redirect()->route('error-without-team');
         }
 
+        $catalogProducts = Product::query()->active()->orderBy('name')->get(['id', 'name']);
+        $subscriptionProducts = SubscriptionProduct::query()->active()->orderBy('name')->limit(500)->get(['id', 'name', 'recurring_interval']);
+        $formContents = Content::query()
+            ->where('status', 1)
+            ->orderBy('order')
+            ->orderBy('id')
+            ->limit(500)
+            ->get(['id', 'title']);
+
+        $formContentsForSelect = $formContents->map(fn (Content $c): array => [
+            'id' => $c->id,
+            'label' => $this->contentPrimaryTitle($c),
+        ]);
+
         return view('campaigns.edit', [
             'campaign' => $campaign,
             'storedTimezone' => old('send_time_zone', data_get($campaign->settings, 'send_time_zone', 'Europe/Madrid')),
+            'catalogProducts' => $catalogProducts,
+            'subscriptionProducts' => $subscriptionProducts,
+            'formContentsForSelect' => $formContentsForSelect,
+            'selectedOfferRefs' => old('exclude_offer_refs', $this->selectedOfferRefsFromCampaign($campaign)),
+            'selectedContentIds' => array_map('intval', old('exclude_content_ids', data_get($campaign->settings, 'sequence_exclusions.content_ids', []) ?: [])),
         ]);
     }
 
@@ -63,6 +85,16 @@ class CampaignsController extends Controller
         if (! empty($validated['send_time_zone']))
         {
             $settings['send_time_zone'] = $validated['send_time_zone'];
+        }
+
+        if ($request->boolean('sequence_exclusions_present'))
+        {
+            $splitRefs = $this->splitSequenceExclusionRefs($validated['exclude_offer_refs'] ?? []);
+            $settings['sequence_exclusions'] = [
+                'product_ids' => $splitRefs['product_ids'],
+                'subscription_product_ids' => $splitRefs['subscription_product_ids'],
+                'content_ids' => array_values(array_map('intval', $validated['exclude_content_ids'] ?? [])),
+            ];
         }
 
         $campaign->update([
@@ -785,5 +817,85 @@ HTML;
             'clicked' => ['require_previous' => 'clicked'],
             default => null,
         };
+    }
+
+    /**
+     * @return array{product_ids: array<int, int>, subscription_product_ids: array<int, int>}
+     */
+    private function splitSequenceExclusionRefs(array $refs): array
+    {
+        $productIds = [];
+        $subscriptionIds = [];
+
+        foreach ($refs as $ref)
+        {
+            if (! is_string($ref))
+            {
+                continue;
+            }
+            if (preg_match('/^product:(\d+)$/', $ref, $m))
+            {
+                $productIds[] = (int) $m[1];
+
+                continue;
+            }
+            if (preg_match('/^subscription:(\d+)$/', $ref, $m))
+            {
+                $subscriptionIds[] = (int) $m[1];
+            }
+        }
+
+        return [
+            'product_ids' => array_values(array_unique($productIds)),
+            'subscription_product_ids' => array_values(array_unique($subscriptionIds)),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function selectedOfferRefsFromCampaign(Campaign $campaign): array
+    {
+        $refs = [];
+        $productIds = data_get($campaign->settings, 'sequence_exclusions.product_ids', []);
+        $subscriptionIds = data_get($campaign->settings, 'sequence_exclusions.subscription_product_ids', []);
+
+        if (is_array($productIds))
+        {
+            foreach ($productIds as $id)
+            {
+                $refs[] = 'product:'.(int) $id;
+            }
+        }
+        if (is_array($subscriptionIds))
+        {
+            foreach ($subscriptionIds as $id)
+            {
+                $refs[] = 'subscription:'.(int) $id;
+            }
+        }
+
+        return $refs;
+    }
+
+    private function contentPrimaryTitle(Content $content): string
+    {
+        $title = $content->title;
+        if (! is_array($title))
+        {
+            $s = trim((string) $title);
+
+            return $s !== '' ? $s : '—';
+        }
+
+        foreach ($title as $value)
+        {
+            if (is_string($value) && trim($value) !== '')
+            {
+                return $value;
+            }
+        }
+
+        return '—';
     }
 }

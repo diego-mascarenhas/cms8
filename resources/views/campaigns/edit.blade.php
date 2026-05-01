@@ -70,21 +70,66 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
+                    <input type="hidden" name="sequence_exclusions_present" value="1">
                     <div class="mb-3">
                         <label class="form-label" for="exclude-offers">{{ __('No enviar correos a suscriptores que compraron estas ofertas') }}</label>
-                        <select id="exclude-offers" class="form-select" multiple>
-                            <option>{{ __('Plan anual') }}</option>
-                            <option>{{ __('Curso premium') }}</option>
-                            <option>{{ __('Paquete de coaching') }}</option>
+                        <select
+                            id="exclude-offers"
+                            name="exclude_offer_refs[]"
+                            class="form-select @error('exclude_offer_refs') is-invalid @enderror"
+                            multiple
+                            size="{{ max(4, min(12, 2 + $catalogProducts->count() + $subscriptionProducts->count())) }}"
+                        >
+                            @if ($catalogProducts->isNotEmpty())
+                                <optgroup label="{{ __('Productos') }}">
+                                    @foreach ($catalogProducts as $product)
+                                        <option
+                                            value="product:{{ $product->id }}"
+                                            @selected(in_array('product:'.$product->id, $selectedOfferRefs, true))
+                                        >{{ $product->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+                            @if ($subscriptionProducts->isNotEmpty())
+                                <optgroup label="{{ __('Suscripciones') }}">
+                                    @foreach ($subscriptionProducts as $subscriptionProduct)
+                                        <option
+                                            value="subscription:{{ $subscriptionProduct->id }}"
+                                            @selected(in_array('subscription:'.$subscriptionProduct->id, $selectedOfferRefs, true))
+                                        >{{ $subscriptionProduct->name }}@if ($subscriptionProduct->recurring_interval) ({{ $subscriptionProduct->recurring_interval }}) @endif</option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
                         </select>
+                        @error('exclude_offer_refs')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        @if ($catalogProducts->isEmpty() && $subscriptionProducts->isEmpty())
+                            <small class="text-muted">{{ __('No hay productos ni planes activos en el catálogo.') }}</small>
+                        @endif
                     </div>
                     <div>
                         <label class="form-label" for="exclude-forms">{{ __('No enviar correos a suscriptores que completaron estos formularios') }}</label>
-                        <select id="exclude-forms" class="form-select" multiple>
-                            <option>{{ __('Registro de webinar') }}</option>
-                            <option>{{ __('Checkout de upsell') }}</option>
-                            <option>{{ __('Formulario de feedback') }}</option>
+                        <select
+                            id="exclude-forms"
+                            name="exclude_content_ids[]"
+                            class="form-select @error('exclude_content_ids') is-invalid @enderror"
+                            multiple
+                            size="{{ max(4, min(12, 2 + $formContentsForSelect->count())) }}"
+                        >
+                            @foreach ($formContentsForSelect as $row)
+                                <option
+                                    value="{{ $row['id'] }}"
+                                    @selected(in_array((int) $row['id'], $selectedContentIds, true))
+                                >{{ $row['label'] }}</option>
+                            @endforeach
                         </select>
+                        @error('exclude_content_ids')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        @if ($formContentsForSelect->isEmpty())
+                            <small class="text-muted">{{ __('No hay contenidos publicados disponibles.') }}</small>
+                        @endif
                     </div>
                 </div>
             </div>
