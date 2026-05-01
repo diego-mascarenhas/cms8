@@ -78,6 +78,9 @@
             redirectUrl.searchParams.set('type', @json($selectedType));
             redirectUrl.searchParams.set('title', emailTitle);
             redirectUrl.searchParams.set('template_id', templateId);
+            @if (($selectedCampaignId ?? 0) > 0)
+            redirectUrl.searchParams.set('campaign_id', @json((string) $selectedCampaignId));
+            @endif
 
             window.location.href = redirectUrl.toString();
         });
@@ -86,6 +89,13 @@
 @endsection
 
 @section('content')
+@php
+    $classicEditorLinkQuery = array_filter([
+        'type' => $selectedType,
+        'title' => $selectedTitle,
+        'campaign_id' => ($selectedCampaignId ?? 0) > 0 ? $selectedCampaignId : null,
+    ], fn ($value): bool => $value !== null && $value !== '');
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
     <div>
         <h4 class="mb-1">{{ __('Selecciona una plantilla') }}</h4>
@@ -93,13 +103,23 @@
         @if ($selectedTitle !== '')
             <p class="text-muted mb-0">{{ __('Título:') }} <span class="fw-semibold">{{ $selectedTitle }}</span></p>
         @endif
+        @if (($selectedCampaignId ?? 0) > 0 && filled($contextCampaignName ?? null))
+            <p class="text-muted mb-0">{{ __('Campaña:') }} <span class="fw-semibold">{{ $contextCampaignName }}</span></p>
+        @endif
     </div>
-    <a
-        href="{{ route('campaigns.classic-editor', ['type' => $selectedType, 'title' => $selectedTitle]) }}"
-        class="btn btn-primary"
-    >
-        {{ __('Usar el editor clásico') }}
-    </a>
+    <div class="d-flex flex-wrap align-items-center gap-2 justify-content-end">
+        @if (($selectedCampaignId ?? 0) > 0)
+            <a href="{{ route('campaigns.show', $selectedCampaignId) }}" class="btn btn-label-secondary">
+                <i class="ti ti-arrow-left me-1"></i>{{ __('Volver a la campaña') }}
+            </a>
+        @endif
+        <a
+            href="{{ route('campaigns.classic-editor', $classicEditorLinkQuery) }}"
+            class="btn btn-primary"
+        >
+            {{ __('Usar el editor clásico') }}
+        </a>
+    </div>
 </div>
 
 <input id="selected-template-id" type="hidden" value="">
@@ -154,7 +174,7 @@
         <h4 class="mb-2">{{ __('Prefieres lo clásico? El editor clásico sigue disponible.') }}</h4>
         <p class="text-muted mb-3">{{ __('Porque a veces solo necesitas algo simple, limpio y familiar.') }}</p>
         <a
-            href="{{ route('campaigns.classic-editor', ['type' => $selectedType, 'title' => $selectedTitle]) }}"
+            href="{{ route('campaigns.classic-editor', $classicEditorLinkQuery) }}"
             class="btn btn-label-secondary"
         >
             {{ __('Usar el editor clásico') }}

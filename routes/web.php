@@ -866,6 +866,9 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/campaigns/{campaign}', [CampaignsController::class, 'update'])
         ->whereNumber('campaign')
         ->name('campaigns.update');
+    Route::patch('/campaigns/{campaign}/sequence', [CampaignsController::class, 'updateSequence'])
+        ->whereNumber('campaign')
+        ->name('campaigns.sequence.update');
 
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\CampaignDataTable;
 use App\Enums\CampaignType;
 use App\Http\Requests\UpdateCampaignRequest;
+use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
 use App\Models\Message;
 use App\Models\MessageType;
@@ -42,27 +43,9 @@ class CampaignsController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        $campaign->load(['messages.type']);
-
-        $messageTypes = MessageType::query()->where('status', 1)->orderBy('id')->get();
-        $automationMessages = Message::query()->with('type')->orderBy('name')->get();
-
         return view('campaigns.edit', [
             'campaign' => $campaign,
-            'messageTypes' => $messageTypes,
-            'automationMessages' => $automationMessages,
-            'sequenceRows' => $this->buildSequenceRowsForEdit($campaign),
             'storedTimezone' => old('send_time_zone', data_get($campaign->settings, 'send_time_zone', 'Europe/Madrid')),
-            'storedAutomations' => old('automations', data_get($campaign->settings, 'automations', [])),
-            'messageTypesJson' => $messageTypes->map(fn (MessageType $t): array => [
-                'id' => $t->id,
-                'name' => $t->name,
-            ])->values(),
-            'automationMessagesJson' => $automationMessages->map(fn (Message $m): array => [
-                'id' => $m->id,
-                'name' => $m->name,
-                'type_name' => $m->type?->name ?? '—',
-            ])->values(),
         ]);
     }
 
@@ -80,29 +63,53 @@ class CampaignsController extends Controller
         {
             $settings['send_time_zone'] = $validated['send_time_zone'];
         }
-        $settings['automations'] = $this->normalizedAutomationsFromValidated($validated['automations'] ?? []);
 
         $campaign->update([
             'name' => $validated['title'],
             'settings' => $settings,
         ]);
 
-        if (! empty($validated['sequence']))
+        return redirect()
+            ->route('campaigns.show', $campaign)
+            ->with('success', __('Cambios guardados.'));
+    }
+
+    public function updateSequence(UpdateCampaignSequenceRequest $request, Campaign $campaign): RedirectResponse
+    {
+        if (! auth()->user()?->currentTeam)
         {
-            foreach ($validated['sequence'] as $row)
-            {
-                $delay = $row['delay_minutes_after_previous'] ?? null;
-                $campaign->messages()->updateExistingPivot((int) $row['message_id'], [
-                    'sort_order' => (int) $row['sort_order'],
-                    'delay_minutes_after_previous' => $delay === null || $delay === '' ? null : (int) $delay,
-                    'conditions' => $this->conditionPresetToPivotConditions($row['condition_preset'] ?? 'none'),
-                ]);
-            }
+            return redirect()->route('error-without-team');
+        }
+
+        foreach ($request->validated('sequence') as $row)
+        {
+            $delay = $row['delay_minutes_after_previous'] ?? null;
+            $campaign->messages()->updateExistingPivot((int) $row['message_id'], [
+                'sort_order' => (int) $row['sort_order'],
+                'delay_minutes_after_previous' => $delay === null || $delay === '' ? null : (int) $delay,
+                'conditions' => $this->conditionPresetToPivotConditions($row['condition_preset'] ?? 'none'),
+            ]);
+        }
+
+        if ($request->boolean('manage_automations'))
+        {
+            $validatedAll = $request->validated();
+            $automationsInput = isset($validatedAll['automations']) && is_array($validatedAll['automations'])
+                ? $validatedAll['automations']
+                : [];
+            $settings = $campaign->settings ?? [];
+            $settings['automations'] = $this->normalizedAutomationsFromValidated($automationsInput);
+
+            $campaign->update([
+                'settings' => $settings,
+            ]);
         }
 
         return redirect()
             ->route('campaigns.show', $campaign)
-            ->with('success', __('Cambios guardados.'));
+            ->with('success', $request->boolean('manage_automations')
+                ? __('Secuencia y automatizaciones guardadas.')
+                : __('Secuencia actualizada.'));
     }
 
     public function show(Campaign $campaign): View|RedirectResponse
@@ -122,9 +129,22 @@ class CampaignsController extends Controller
             },
         ]);
 
+        $messageTypes = MessageType::query()->where('status', 1)->orderBy('id')->get();
+        $automationMessages = Message::query()->with('type')->orderBy('name')->get();
+
         return view('campaigns.show', [
             'campaign' => $campaign,
             'deliveryStats' => $campaign->deliveryStatistics(),
+            'storedAutomations' => old('automations', data_get($campaign->settings, 'automations', [])),
+            'messageTypesJson' => $messageTypes->map(fn (MessageType $t): array => [
+                'id' => $t->id,
+                'name' => $t->name,
+            ])->values(),
+            'automationMessagesJson' => $automationMessages->map(fn (Message $m): array => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'type_name' => $m->type?->name ?? '—',
+            ])->values(),
         ]);
     }
 
@@ -132,6 +152,13 @@ class CampaignsController extends Controller
     {
         $selectedType = $request->string('type')->toString();
         $selectedTitle = $request->string('title')->toString();
+        $campaignForContext = null;
+        $campaignIdParam = $request->integer('campaign_id');
+        if ($campaignIdParam > 0)
+        {
+            $campaignForContext = Campaign::query()->whereKey($campaignIdParam)->first();
+        }
+
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
         $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
 
@@ -139,6 +166,8 @@ class CampaignsController extends Controller
             'selectedType' => $selectedType,
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
+            'selectedCampaignId' => $campaignForContext?->id ?? 0,
+            'contextCampaignName' => $campaignForContext?->name,
             'customTemplates' => array_values(array_map(function (array $definition) use ($templatesByLegacyId): array
             {
                 $template = $templatesByLegacyId[$definition['legacy_id']] ?? null;
@@ -595,44 +624,6 @@ HTML;
         }
 
         return $this->defaultEmailCanvasInnerHtml();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildSequenceRowsForEdit(Campaign $campaign): array
-    {
-        $old = old('sequence');
-        if (is_array($old))
-        {
-            return array_values($old);
-        }
-
-        return $campaign->messages->map(function (Message $message): array
-        {
-            $preset = 'none';
-            $conditions = $message->pivot->conditions;
-            if (is_array($conditions))
-            {
-                $require = $conditions['require_previous'] ?? '';
-                if ($require === 'opened')
-                {
-                    $preset = 'opened';
-                } elseif ($require === 'clicked')
-                {
-                    $preset = 'clicked';
-                }
-            }
-
-            $delay = $message->pivot->delay_minutes_after_previous;
-
-            return [
-                'message_id' => $message->id,
-                'sort_order' => (int) $message->pivot->sort_order,
-                'delay_minutes_after_previous' => $delay !== null ? (int) $delay : null,
-                'condition_preset' => $preset,
-            ];
-        })->values()->all();
     }
 
     /**

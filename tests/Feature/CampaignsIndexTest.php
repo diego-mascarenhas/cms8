@@ -120,10 +120,38 @@ class CampaignsIndexTest extends TestCase
         $campaign->refresh();
         $this->assertSame('Título actualizado', $campaign->name);
         $this->assertSame('Europe/Madrid', data_get($campaign->settings, 'send_time_zone'));
-        $this->assertSame([], data_get($campaign->settings, 'automations', []));
+        $this->assertNull(data_get($campaign->settings, 'automations'));
     }
 
-    public function test_campaign_update_persists_sequence_pivot_and_automations(): void
+    public function test_campaign_put_update_preserves_automations_configured_on_show(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $campaign = Campaign::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Con automatizaciones',
+            'settings' => [
+                'send_time_zone' => 'UTC',
+                'automations' => [
+                    ['trigger' => 'delay_after_enrollment', 'channel_type_id' => 1],
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->put(route('campaigns.update', $campaign), [
+            'title' => 'Título solo editor',
+            'send_time_zone' => 'Europe/Madrid',
+        ]);
+
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $campaign->refresh();
+        $this->assertSame('Título solo editor', $campaign->name);
+        $this->assertSame('Europe/Madrid', data_get($campaign->settings, 'send_time_zone'));
+        $autos = data_get($campaign->settings, 'automations');
+        $this->assertIsArray($autos);
+        $this->assertSame('delay_after_enrollment', $autos[0]['trigger']);
+    }
+
+    public function test_campaign_sequence_and_automations_persist_via_detail_patch_routes(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -160,9 +188,8 @@ class CampaignsIndexTest extends TestCase
             $messageB->id => ['sort_order' => 1, 'delay_minutes_after_previous' => null, 'conditions' => null],
         ]);
 
-        $response = $this->actingAs($user)->put(route('campaigns.update', $campaign), [
-            'title' => 'Secuencia test',
-            'send_time_zone' => 'America/New_York',
+        $this->actingAs($user)->patch(route('campaigns.sequence.update', $campaign), [
+            'manage_automations' => true,
             'sequence' => [
                 [
                     'message_id' => $messageA->id,
@@ -186,13 +213,9 @@ class CampaignsIndexTest extends TestCase
                     'notes' => 'WA follow-up',
                 ],
             ],
-        ]);
-
-        $response->assertRedirect(route('campaigns.show', $campaign));
-        $response->assertSessionHasNoErrors();
+        ])->assertRedirect(route('campaigns.show', $campaign));
 
         $campaign->refresh();
-        $this->assertSame('America/New_York', data_get($campaign->settings, 'send_time_zone'));
         $autos = data_get($campaign->settings, 'automations');
         $this->assertIsArray($autos);
         $this->assertCount(1, $autos);
@@ -207,7 +230,7 @@ class CampaignsIndexTest extends TestCase
             ->first();
         $this->assertNotNull($rowB);
         $this->assertSame(2, (int) $rowB->sort_order);
-        $this->assertSame('{"require_previous":"opened"}', $rowB->conditions);
+        $this->assertSame(['require_previous' => 'opened'], json_decode((string) $rowB->conditions, true));
     }
 
     public function test_campaign_edit_page_shows_sequence_settings_sections(): void
@@ -226,15 +249,6 @@ class CampaignsIndexTest extends TestCase
         );
         $this->assertTrue(
             str_contains($html, 'Detalles de la secuencia'),
-        );
-        $this->assertTrue(
-            str_contains($html, 'Automatizaciones'),
-        );
-        $this->assertTrue(
-            str_contains($html, 'Orden y condiciones de envío'),
-        );
-        $this->assertTrue(
-            str_contains($html, 'Agregar automatización'),
         );
         $this->assertTrue(
             str_contains($html, 'Guardar'),
@@ -267,6 +281,30 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Plantillas destacadas'),
         );
+    }
+
+    public function test_template_selection_with_campaign_id_shows_back_link_and_context(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $campaign = Campaign::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Context campaign',
+        ]);
+
+        $response = $this->actingAs($user->fresh())->get(route('campaigns.templates.select', [
+            'type' => 'sequences',
+            'title' => $campaign->name,
+            'campaign_id' => $campaign->id,
+        ]));
+
+        $response->assertOk();
+        $html = $response->getContent() ?? '';
+        $this->assertTrue(str_contains($html, 'Volver a la campaña'));
+        $this->assertTrue(str_contains($html, 'Context campaign'));
+        $this->assertTrue(str_contains($html, 'campaign_id'));
     }
 
     public function test_classic_editor_page_is_reachable_when_authenticated(): void
