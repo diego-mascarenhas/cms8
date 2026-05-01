@@ -877,6 +877,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
+    Route::get('message/{id}/preview-html', [MessageController::class, 'previewHtml'])->name('message.preview.html');
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
     Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
     Route::post('message/{id}/send-pending-now', [MessageController::class, 'sendPendingNow'])->name('message.send-pending-now');

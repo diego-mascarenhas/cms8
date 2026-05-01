@@ -38,25 +38,25 @@ class UpdateCampaignSequenceRequest extends FormRequest
         if ($this->boolean('manage_automations'))
         {
             $sequenceRules = array_merge($sequenceRules, [
-                'automations' => ['nullable', 'array'],
-                'automations.*.trigger' => ['nullable', 'string', Rule::in([
+                'sequence.*.automation' => ['nullable', 'array'],
+                'sequence.*.automation.trigger' => ['nullable', 'string', Rule::in([
                     'after_previous_sent',
                     'if_opened_previous',
                     'if_not_opened_previous',
                     'delay_after_enrollment',
                 ])],
-                'automations.*.delay_hours' => ['nullable', 'integer', 'min:0', 'max:8760'],
-                'automations.*.channel_type_id' => [
+                'sequence.*.automation.delay_hours' => ['nullable', 'integer', 'min:0', 'max:8760'],
+                'sequence.*.automation.channel_type_id' => [
                     'nullable',
                     'integer',
                     Rule::exists('message_type', 'id'),
                 ],
-                'automations.*.message_id' => [
+                'sequence.*.automation.linked_message_id' => [
                     'nullable',
                     'integer',
                     Rule::exists('messages', 'id')->where('team_id', $teamId),
                 ],
-                'automations.*.notes' => ['nullable', 'string', 'max:500'],
+                'sequence.*.automation.notes' => ['nullable', 'string', 'max:500'],
             ]);
         }
 
@@ -71,20 +71,24 @@ class UpdateCampaignSequenceRequest extends FormRequest
             {
                 return;
             }
-            $automations = $this->input('automations', []);
-            foreach ($automations as $index => $row)
+            foreach ($this->input('sequence', []) as $index => $seqRow)
             {
-                if (! is_array($row))
+                if (! is_array($seqRow))
                 {
                     continue;
                 }
-                $hasTrigger = filled($row['trigger'] ?? null);
-                $hasChannel = filled($row['channel_type_id'] ?? null);
+                $auto = $seqRow['automation'] ?? [];
+                if (! is_array($auto))
+                {
+                    continue;
+                }
+                $hasTrigger = filled($auto['trigger'] ?? null);
+                $hasChannel = filled($auto['channel_type_id'] ?? null);
                 if ($hasTrigger xor $hasChannel)
                 {
                     $validator->errors()->add(
-                        "automations.{$index}.trigger",
-                        __('Completa disparador y canal para cada automatización, o deja la fila vacía.'),
+                        "sequence.{$index}.automation.trigger",
+                        __('Completa disparador y canal en la automatización de este paso, o déjalos vacíos.'),
                     );
                 }
             }
@@ -98,7 +102,6 @@ class UpdateCampaignSequenceRequest extends FormRequest
     {
         return [
             'sequence' => __('Secuencia'),
-            'automations' => __('Automatizaciones'),
         ];
     }
 }

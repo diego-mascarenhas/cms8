@@ -93,12 +93,9 @@ class CampaignsController extends Controller
 
         if ($request->boolean('manage_automations'))
         {
-            $validatedAll = $request->validated();
-            $automationsInput = isset($validatedAll['automations']) && is_array($validatedAll['automations'])
-                ? $validatedAll['automations']
-                : [];
+            $automationRows = $this->automationRowsFromSequenceInput($request->validated('sequence') ?? []);
             $settings = $campaign->settings ?? [];
-            $settings['automations'] = $this->normalizedAutomationsFromValidated($automationsInput);
+            $settings['automations'] = $this->normalizedAutomationsFromValidated($automationRows);
 
             $campaign->update([
                 'settings' => $settings,
@@ -135,16 +132,12 @@ class CampaignsController extends Controller
         return view('campaigns.show', [
             'campaign' => $campaign,
             'deliveryStats' => $campaign->deliveryStatistics(),
-            'storedAutomations' => old('automations', data_get($campaign->settings, 'automations', [])),
-            'messageTypesJson' => $messageTypes->map(fn (MessageType $t): array => [
-                'id' => $t->id,
-                'name' => $t->name,
-            ])->values(),
-            'automationMessagesJson' => $automationMessages->map(fn (Message $m): array => [
-                'id' => $m->id,
-                'name' => $m->name,
-                'type_name' => $m->type?->name ?? '—',
-            ])->values(),
+            'automationsByStepMessageId' => $this->automationsKeyedByStepMessageId(
+                data_get($campaign->settings, 'automations'),
+                $campaign->messages,
+            ),
+            'messageTypes' => $messageTypes,
+            'automationMessages' => $automationMessages,
         ]);
     }
 
@@ -627,6 +620,92 @@ HTML;
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $sequenceRows
+     * @return array<int, array<string, mixed>>
+     */
+    private function automationRowsFromSequenceInput(array $sequenceRows): array
+    {
+        $rows = [];
+        foreach ($sequenceRows as $seqRow)
+        {
+            if (! is_array($seqRow))
+            {
+                continue;
+            }
+            $stepMessageId = (int) ($seqRow['message_id'] ?? 0);
+            $auto = $seqRow['automation'] ?? null;
+            if (! is_array($auto) || $stepMessageId < 1)
+            {
+                continue;
+            }
+            $row = $auto;
+            $row['step_message_id'] = $stepMessageId;
+            if (array_key_exists('linked_message_id', $row))
+            {
+                if (filled($row['linked_message_id']))
+                {
+                    $row['message_id'] = (int) $row['linked_message_id'];
+                }
+                unset($row['linked_message_id']);
+            }
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Message>  $orderedMessages
+     * @return array<int, array<string, mixed>>
+     */
+    private function automationsKeyedByStepMessageId(mixed $stored, $orderedMessages): array
+    {
+        $map = [];
+        if (! is_array($stored))
+        {
+            return $map;
+        }
+
+        $legacyRows = [];
+        foreach ($stored as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+            $sid = (int) ($row['step_message_id'] ?? 0);
+            if ($sid > 0)
+            {
+                $payload = $row;
+                unset($payload['step_message_id']);
+                $map[$sid] = $payload;
+
+                continue;
+            }
+            $legacyRows[] = $row;
+        }
+
+        foreach ($legacyRows as $i => $row)
+        {
+            $message = $orderedMessages->get($i);
+            if ($message === null)
+            {
+                break;
+            }
+            $mid = (int) $message->id;
+            if (! isset($map[$mid]))
+            {
+                $clean = $row;
+                unset($clean['step_message_id']);
+                $map[$mid] = $clean;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * @param  array<int, mixed>  $rows
      * @return array<int, array<string, mixed>>
      */
@@ -660,6 +739,10 @@ HTML;
             if (filled($row['notes'] ?? null))
             {
                 $item['notes'] = (string) $row['notes'];
+            }
+            if (filled($row['step_message_id'] ?? null))
+            {
+                $item['step_message_id'] = (int) $row['step_message_id'];
             }
             $out[] = $item;
         }

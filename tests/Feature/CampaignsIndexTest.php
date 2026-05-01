@@ -196,21 +196,20 @@ class CampaignsIndexTest extends TestCase
                     'sort_order' => 1,
                     'delay_minutes_after_previous' => 60,
                     'condition_preset' => 'none',
+                    'automation' => [],
                 ],
                 [
                     'message_id' => $messageB->id,
                     'sort_order' => 2,
                     'delay_minutes_after_previous' => '',
                     'condition_preset' => 'opened',
-                ],
-            ],
-            'automations' => [
-                [
-                    'trigger' => 'if_opened_previous',
-                    'delay_hours' => 24,
-                    'channel_type_id' => 2,
-                    'message_id' => $messageB->id,
-                    'notes' => 'WA follow-up',
+                    'automation' => [
+                        'trigger' => 'if_opened_previous',
+                        'delay_hours' => 24,
+                        'channel_type_id' => 2,
+                        'linked_message_id' => $messageB->id,
+                        'notes' => 'WA follow-up',
+                    ],
                 ],
             ],
         ])->assertRedirect(route('campaigns.show', $campaign));
@@ -223,6 +222,7 @@ class CampaignsIndexTest extends TestCase
         $this->assertSame(2, $autos[0]['channel_type_id']);
         $this->assertSame(24, $autos[0]['delay_hours']);
         $this->assertSame($messageB->id, $autos[0]['message_id']);
+        $this->assertSame($messageB->id, $autos[0]['step_message_id']);
 
         $rowB = DB::table('campaign_message')
             ->where('campaign_id', $campaign->id)

@@ -5,13 +5,13 @@
 @section('content')
 @php
     /** @var array<string, int|float> $deliveryStats */
+    /** @var array<int, array<string, mixed>> $automationsByStepMessageId */
     $addMessageTemplateSelectQuery = array_filter([
         'type' => $campaign->type,
         'title' => $campaign->name,
         'campaign_id' => $campaign->id,
     ], fn ($value): bool => $value !== null && $value !== '');
     $classicEditorNewMessageUrl = route('campaigns.templates.select', $addMessageTemplateSelectQuery);
-    $automationsList = array_values(is_array($storedAutomations ?? null) ? $storedAutomations : []);
 @endphp
 @if (session('success'))
     <div class="alert alert-success alert-dismissible mb-4" role="alert">
@@ -291,7 +291,7 @@
     <div class="card-body">
         @if ($campaign->type === \App\Enums\CampaignType::Sequences->value)
             <p class="text-muted small mb-4">
-                {{ __('Los mensajes se crean en el editor; aquí ajustas la línea de tiempo (orden, esperas, condiciones y automatizaciones adicionales). Para título y zona horaria usa') }}
+                {{ __('Define en cada paso el orden, la espera, la condición y, si aplica, una automatización en otro canal. Título y zona horaria:') }}
                 <a href="{{ route('campaigns.edit', $campaign) }}">{{ __('Editar campaña') }}</a>.
             </p>
         @endif
@@ -312,11 +312,6 @@
                     $sequenceFormErrorMessages = [];
                     foreach ($errors->keys() as $errorKey) {
                         if ($errorKey === 'sequence' || str_starts_with((string) $errorKey, 'sequence.')) {
-                            foreach ($errors->get($errorKey) as $msg) {
-                                $sequenceFormErrorMessages[] = $msg;
-                            }
-                        }
-                        if ($errorKey === 'automations' || str_starts_with((string) $errorKey, 'automations.')) {
                             foreach ($errors->get($errorKey) as $msg) {
                                 $sequenceFormErrorMessages[] = $msg;
                             }
@@ -354,9 +349,20 @@
                             $sortOld = old('sequence.'.$idx.'.sort_order', $seqMessage->pivot->sort_order);
                             $delayOld = old('sequence.'.$idx.'.delay_minutes_after_previous', $pivotDelay !== null ? $pivotDelay : '');
                             $presetOld = old('sequence.'.$idx.'.condition_preset', $preset);
+                            $storedStepAuto = $automationsByStepMessageId[$seqMessage->id] ?? [];
+                            $autoTrigOld = old('sequence.'.$idx.'.automation.trigger', $storedStepAuto['trigger'] ?? '');
+                            $autoDelayHoursOld = old('sequence.'.$idx.'.automation.delay_hours', $storedStepAuto['delay_hours'] ?? '');
+                            $autoChannelOld = old('sequence.'.$idx.'.automation.channel_type_id', $storedStepAuto['channel_type_id'] ?? '');
+                            $autoLinkedOld = old('sequence.'.$idx.'.automation.linked_message_id', $storedStepAuto['message_id'] ?? '');
+                            $autoNotesOld = old('sequence.'.$idx.'.automation.notes', $storedStepAuto['notes'] ?? '');
                             $seqStepHasError = $errors->has('sequence.'.$idx.'.sort_order')
                                 || $errors->has('sequence.'.$idx.'.delay_minutes_after_previous')
-                                || $errors->has('sequence.'.$idx.'.condition_preset');
+                                || $errors->has('sequence.'.$idx.'.condition_preset')
+                                || $errors->has('sequence.'.$idx.'.automation.trigger')
+                                || $errors->has('sequence.'.$idx.'.automation.delay_hours')
+                                || $errors->has('sequence.'.$idx.'.automation.channel_type_id')
+                                || $errors->has('sequence.'.$idx.'.automation.linked_message_id')
+                                || $errors->has('sequence.'.$idx.'.automation.notes');
                         @endphp
                         <li class="timeline-item timeline-item-transparent pb-3">
                             <span class="timeline-point timeline-point-primary"></span>
@@ -381,7 +387,7 @@
                                             data-bs-target="#seq-step-settings-{{ $seqMessage->id }}"
                                             aria-expanded="{{ $seqStepHasError ? 'true' : 'false' }}"
                                             aria-controls="seq-step-settings-{{ $seqMessage->id }}"
-                                            title="{{ __('Orden, espera y condición') }}"
+                                            title="{{ __('Configuración del paso') }}"
                                         >
                                             <i class="ti ti-settings ti-sm"></i>
                                         </button>
@@ -443,8 +449,94 @@
                                     @if ($loop->first)
                                         <p class="text-muted small mt-2 mb-0">{{ __('En el primer paso, la espera y la condición suelen usarse poco; aplican sobre todo a partir del segundo.') }}</p>
                                     @else
-                                        <p class="text-muted small mt-2 mb-0">{{ __('Estos valores definen cuándo se envía este paso respecto al anterior. Entre pasos verás un resumen con la misma información.') }}</p>
+                                        <p class="text-muted small mt-2 mb-0">{{ __('Orden, espera y condición: cuándo entra este correo respecto al anterior. El resumen entre pasos repite estos datos.') }}</p>
                                     @endif
+
+                                    <hr class="my-3">
+                                    <p class="small fw-semibold text-muted mb-1">{{ __('Automatización (opcional)') }}</p>
+                                    <p class="text-muted small mb-2">{{ __('Disparador y canal adicionales para este paso en la campaña. Las horas mínimas entre envíos del mensaje en su ficha son independientes y aplican también fuera de la secuencia.') }}</p>
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-6">
+                                            <label class="form-label small mb-0" for="seq-auto-trig-{{ $seqMessage->id }}">{{ __('Disparador') }}</label>
+                                            <select
+                                                id="seq-auto-trig-{{ $seqMessage->id }}"
+                                                name="sequence[{{ $idx }}][automation][trigger]"
+                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.trigger') is-invalid @enderror"
+                                            >
+                                                <option value="" @selected($autoTrigOld === '' || $autoTrigOld === null)>{{ __('Selecciona…') }}</option>
+                                                <option value="after_previous_sent" @selected($autoTrigOld === 'after_previous_sent')>{{ __('Tras enviar el paso anterior') }}</option>
+                                                <option value="if_opened_previous" @selected($autoTrigOld === 'if_opened_previous')>{{ __('Si abrió el paso anterior') }}</option>
+                                                <option value="if_not_opened_previous" @selected($autoTrigOld === 'if_not_opened_previous')>{{ __('Si no abrió el paso anterior') }}</option>
+                                                <option value="delay_after_enrollment" @selected($autoTrigOld === 'delay_after_enrollment')>{{ __('Tras el alta en la secuencia') }}</option>
+                                            </select>
+                                            @error('sequence.'.$idx.'.automation.trigger')
+                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.trigger') }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-0" for="seq-auto-delay-{{ $seqMessage->id }}">{{ __('Espera (h)') }}</label>
+                                            <input
+                                                id="seq-auto-delay-{{ $seqMessage->id }}"
+                                                type="number"
+                                                name="sequence[{{ $idx }}][automation][delay_hours]"
+                                                class="form-control form-control-sm @error('sequence.'.$idx.'.automation.delay_hours') is-invalid @enderror"
+                                                min="0"
+                                                max="8760"
+                                                placeholder="0"
+                                                value="{{ $autoDelayHoursOld !== '' && $autoDelayHoursOld !== null ? $autoDelayHoursOld : '' }}"
+                                            >
+                                            @error('sequence.'.$idx.'.automation.delay_hours')
+                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.delay_hours') }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-0" for="seq-auto-ch-{{ $seqMessage->id }}">{{ __('Canal (tipo)') }}</label>
+                                            <select
+                                                id="seq-auto-ch-{{ $seqMessage->id }}"
+                                                name="sequence[{{ $idx }}][automation][channel_type_id]"
+                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.channel_type_id') is-invalid @enderror"
+                                            >
+                                                <option value="" @selected($autoChannelOld === '' || $autoChannelOld === null)>{{ __('Selecciona…') }}</option>
+                                                @foreach ($messageTypes as $mt)
+                                                    <option value="{{ $mt->id }}" @selected((string) $autoChannelOld === (string) $mt->id)>{{ $mt->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('sequence.'.$idx.'.automation.channel_type_id')
+                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.channel_type_id') }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small mb-0" for="seq-auto-msg-{{ $seqMessage->id }}">{{ __('Mensaje (opcional)') }}</label>
+                                            <select
+                                                id="seq-auto-msg-{{ $seqMessage->id }}"
+                                                name="sequence[{{ $idx }}][automation][linked_message_id]"
+                                                class="form-select form-select-sm @error('sequence.'.$idx.'.automation.linked_message_id') is-invalid @enderror"
+                                            >
+                                                <option value="" @selected($autoLinkedOld === '' || $autoLinkedOld === null)>{{ __('Ninguno') }}</option>
+                                                @foreach ($automationMessages as $am)
+                                                    <option value="{{ $am->id }}" @selected((string) $autoLinkedOld === (string) $am->id)>{{ $am->name }} ({{ $am->type?->name ?? '—' }})</option>
+                                                @endforeach
+                                            </select>
+                                            @error('sequence.'.$idx.'.automation.linked_message_id')
+                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.linked_message_id') }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small mb-0" for="seq-auto-notes-{{ $seqMessage->id }}">{{ __('Notas') }}</label>
+                                            <input
+                                                id="seq-auto-notes-{{ $seqMessage->id }}"
+                                                type="text"
+                                                name="sequence[{{ $idx }}][automation][notes]"
+                                                class="form-control form-control-sm @error('sequence.'.$idx.'.automation.notes') is-invalid @enderror"
+                                                maxlength="500"
+                                                placeholder="{{ __('Uso interno') }}"
+                                                value="{{ $autoNotesOld }}"
+                                            >
+                                            @error('sequence.'.$idx.'.automation.notes')
+                                                <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$idx.'.automation.notes') }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </li>
@@ -517,151 +609,14 @@
                     @endforeach
                 </ul>
 
-                <h6 class="mt-4 pt-3 border-top mb-2">{{ __('Automatizaciones adicionales') }}</h6>
-                <p class="text-muted small mb-3">
-                    {{ __('Disparadores y canal (tipo de mensaje); opcionalmente un mensaje ya creado en tu equipo. Se guardan junto con la secuencia al pulsar guardar.') }}
-                </p>
-                <div id="automations-rows" class="mb-3"></div>
-                <button type="button" class="btn btn-sm btn-label-primary waves-effect waves-light mb-3" id="btn-add-automation">
-                    <i class="ti ti-plus ti-sm me-1"></i>{{ __('Agregar automatización') }}
-                </button>
-
                 <div class="mt-4 pt-3 border-top">
                     <button type="submit" class="btn btn-primary waves-effect waves-light">
                         <i class="ti ti-device-floppy me-1"></i>{{ __('Guardar cambios') }}
                     </button>
                 </div>
             </form>
-
-            <template id="automation-row-template">
-    <div class="automation-row border rounded p-3 mb-3" data-automation-row>
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="text-muted small">{{ __('Automatización') }} <span data-automation-index></span></span>
-            <button
-                type="button"
-                class="btn btn-link text-danger automation-remove p-0 m-0 border-0 shadow-none lh-1 text-decoration-none"
-                title="{{ __('Quitar') }}"
-            >
-                <i class="ti ti-trash ti-sm"></i>
-            </button>
-        </div>
-        <div class="row g-2">
-            <div class="col-md-6">
-                <label class="form-label small mb-0">{{ __('Disparador') }}</label>
-                <select class="form-select form-select-sm" data-field="trigger" name="">
-                    <option value="">{{ __('Selecciona…') }}</option>
-                    <option value="after_previous_sent">{{ __('Tras enviar el paso anterior') }}</option>
-                    <option value="if_opened_previous">{{ __('Si abrió el paso anterior') }}</option>
-                    <option value="if_not_opened_previous">{{ __('Si no abrió el paso anterior') }}</option>
-                    <option value="delay_after_enrollment">{{ __('Tras el alta en la secuencia') }}</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-0">{{ __('Espera (h)') }}</label>
-                <input type="number" class="form-control form-control-sm" data-field="delay_hours" name="" min="0" max="8760" placeholder="0">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-0">{{ __('Canal (tipo)') }}</label>
-                <select class="form-select form-select-sm" data-field="channel_type_id" name="">
-                    <option value="">{{ __('Selecciona…') }}</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small mb-0">{{ __('Mensaje (opcional)') }}</label>
-                <select class="form-select form-select-sm" data-field="message_id" name="">
-                    <option value="">{{ __('Ninguno') }}</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small mb-0">{{ __('Notas') }}</label>
-                <input type="text" class="form-control form-control-sm" data-field="notes" name="" maxlength="500" placeholder="{{ __('Uso interno') }}">
-            </div>
-        </div>
-    </div>
-</template>
         @endif
     </div>
 </div>
 
-@endsection
-
-@section('page-script')
-<script>
-(function () {
-    var container = document.getElementById('automations-rows');
-    var template = document.getElementById('automation-row-template');
-    var btnAdd = document.getElementById('btn-add-automation');
-    if (!container || !template || !btnAdd) return;
-
-    var messageTypes = @json($messageTypesJson);
-    var automationMessages = @json($automationMessagesJson);
-    var initialRows = @json($automationsList);
-
-    function fillChannelOptions(select) {
-        messageTypes.forEach(function (t) {
-            var opt = document.createElement('option');
-            opt.value = String(t.id);
-            opt.textContent = t.name;
-            select.appendChild(opt);
-        });
-    }
-
-    function fillMessageOptions(select) {
-        automationMessages.forEach(function (m) {
-            var opt = document.createElement('option');
-            opt.value = String(m.id);
-            opt.textContent = m.name + ' (' + m.type_name + ')';
-            select.appendChild(opt);
-        });
-    }
-
-    function wireRow(row) {
-        row.querySelector('.automation-remove').addEventListener('click', function () {
-            row.remove();
-            renumberRows();
-        });
-    }
-
-    function renumberRows() {
-        var rows = container.querySelectorAll('[data-automation-row]');
-        rows.forEach(function (row, i) {
-            var label = row.querySelector('[data-automation-index]');
-            if (label) label.textContent = String(i + 1);
-            row.querySelectorAll('[data-field]').forEach(function (el) {
-                var field = el.getAttribute('data-field');
-                el.name = 'automations[' + i + '][' + field + ']';
-            });
-        });
-    }
-
-    function addRow(data) {
-        data = data || {};
-        var frag = template.content.cloneNode(true);
-        var row = frag.querySelector('[data-automation-row]');
-        var trig = row.querySelector('[data-field="trigger"]');
-        var delay = row.querySelector('[data-field="delay_hours"]');
-        var chan = row.querySelector('[data-field="channel_type_id"]');
-        var msg = row.querySelector('[data-field="message_id"]');
-        var notes = row.querySelector('[data-field="notes"]');
-        fillChannelOptions(chan);
-        fillMessageOptions(msg);
-        if (data.trigger) trig.value = data.trigger;
-        if (data.delay_hours !== undefined && data.delay_hours !== null) delay.value = String(data.delay_hours);
-        if (data.channel_type_id) chan.value = String(data.channel_type_id);
-        if (data.message_id) msg.value = String(data.message_id);
-        if (data.notes) notes.value = data.notes;
-        container.appendChild(row);
-        wireRow(row);
-        renumberRows();
-    }
-
-    btnAdd.addEventListener('click', function () {
-        addRow({});
-    });
-
-    if (initialRows.length > 0) {
-        initialRows.forEach(function (r) { addRow(r); });
-    }
-})();
-</script>
 @endsection

@@ -35,6 +35,8 @@
         .preview-frame-wrap {
             padding: 0;
             background: #f5f5f9;
+            flex: 1;
+            min-height: 0;
         }
         iframe.preview-email-frame {
             display: block;
@@ -54,6 +56,15 @@
         }
         .btn-close-preview:hover {
             background: #f5f5f9;
+        }
+        .preview-error {
+            padding: 1rem;
+            color: #697a8d;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
     </style>
 </head>
@@ -81,12 +92,20 @@
         </div>
     @endif
 
-    <div class="preview-frame-wrap">
-        <iframe
-            class="preview-email-frame"
-            title="{{ __('Vista previa del contenido del correo') }}"
-            srcdoc="{{ htmlspecialchars($htmlContent ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false) }}"
-        ></iframe>
-    </div>
+    @if (! empty($previewError ?? null))
+        <div class="preview-error" role="alert">
+            {{ $previewError }}
+        </div>
+    @elseif (! empty($iframeSrc ?? null))
+        <div class="preview-frame-wrap">
+            <iframe
+                class="preview-email-frame"
+                title="{{ __('Vista previa del contenido del correo') }}"
+                src="{{ $iframeSrc }}"
+                referrerpolicy="no-referrer"
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation allow-downloads"
+            ></iframe>
+        </div>
+    @endif
 </body>
 </html>

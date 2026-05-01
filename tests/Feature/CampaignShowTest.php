@@ -205,7 +205,7 @@ class CampaignShowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Crear el primer mensaje', false);
-        $response->assertSee('línea de tiempo', false);
+        $response->assertSee('Define en cada paso', false);
         $response->assertSee('campaign_id='.$campaign->id, false);
     }
 }

@@ -63,6 +63,11 @@ class MessagePreviewTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('preview-email-frame', false);
-        $response->assertSee('UNIQUE_BODY_MARK', false);
+        $response->assertSee('message/'.$message->id.'/preview-html', false);
+
+        $frame = $this->actingAs($user)->get(route('message.preview.html', $message->id));
+        $frame->assertOk();
+        $frame->assertHeader('Content-Type', 'text/html; charset=UTF-8');
+        $frame->assertSee('UNIQUE_BODY_MARK', false);
     }
 }

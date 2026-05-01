@@ -923,76 +923,114 @@ class MessageController extends Controller
     }
 
     /**
-     * Preview a message
+     * Full-window preview chrome; email HTML is loaded in an iframe from {@see previewHtml()}.
      */
     public function preview($id)
     {
         try
         {
-            $message = Message::with('template')->findOrFail($id);
-
-            // Get a sample contact for variable replacement
-            $sampleContact = null;
-            if ($message->category)
-            {
-                $sampleContact = $message->category->contacts()->first();
-            }
-
-            if (! $sampleContact)
-            {
-                // Create a sample contact for preview
-                $sampleContact = (object) [
-                    'name' => 'John',
-                    'surname' => 'Doe',
-                    'email' => 'john.doe@example.com',
-                ];
-            }
-
-            // Get template HTML
-            $htmlContent = '';
-            if ($message->template && $message->template->gjs_data)
-            {
-                $gjsData = is_array($message->template->gjs_data)
-                    ? $message->template->gjs_data
-                    : json_decode($message->template->gjs_data, true);
-
-                $htmlContent = $gjsData['html'] ?? '';
-
-                // Replace variables
-                $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
-            } else
-            {
-                $htmlContent = '<p>'.$message->text.'</p>';
-            }
-
-            // Add advertising footer if team is using system SMTP
-            $team = auth()->user()->currentTeam;
-            $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
-
-            if ($advertisingFooter)
-            {
-                if (stripos($htmlContent, '</body>') !== false)
-                {
-                    $htmlContent = str_ireplace('</body>', $advertisingFooter.'</body>', $htmlContent);
-                } else
-                {
-                    $htmlContent .= $advertisingFooter;
-                }
-            }
+            $message = Message::with(['template', 'category'])->findOrFail($id);
+            $sampleContact = $this->resolvePreviewSampleContact($message);
 
             return view('message.preview', [
                 'message' => $message,
-                'htmlContent' => $htmlContent,
                 'sampleContact' => $sampleContact,
+                'iframeSrc' => route('message.preview.html', $message->id),
             ]);
         } catch (\Exception $e)
         {
             return view('message.preview', [
                 'message' => null,
-                'htmlContent' => '<p>Error loading preview: '.$e->getMessage().'</p>',
                 'sampleContact' => null,
+                'iframeSrc' => null,
+                'previewError' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Raw HTML document for the email body (iframe source). Renders the online-style preview.
+     */
+    public function previewHtml($id): \Illuminate\Http\Response
+    {
+        try
+        {
+            $message = Message::with(['template', 'category'])->findOrFail($id);
+            $html = $this->buildMessagePreviewHtml($message);
+
+            return response($html, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        } catch (\Throwable $e)
+        {
+            $safe = e($e->getMessage());
+
+            return response(
+                '<!DOCTYPE html><html lang="'.e(str_replace('_', '-', app()->getLocale())).'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'.e(__('Error')).'</title></head><body><p>'.e(__('Error al cargar la vista previa.')).'</p><p>'.$safe.'</p></body></html>',
+                500,
+                [
+                    'Content-Type' => 'text/html; charset=UTF-8',
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return object{name?: string, surname?: string, email?: string}
+     */
+    private function resolvePreviewSampleContact(Message $message): object
+    {
+        if ($message->category)
+        {
+            $contact = $message->category->contacts()->first();
+            if ($contact !== null)
+            {
+                return $contact;
+            }
+        }
+
+        return (object) [
+            'name' => 'John',
+            'surname' => 'Doe',
+            'email' => 'john.doe@example.com',
+        ];
+    }
+
+    private function buildMessagePreviewHtml(Message $message): string
+    {
+        $sampleContact = $this->resolvePreviewSampleContact($message);
+
+        $htmlContent = '';
+        if ($message->template && $message->template->gjs_data)
+        {
+            $gjsData = is_array($message->template->gjs_data)
+                ? $message->template->gjs_data
+                : json_decode($message->template->gjs_data, true);
+
+            $htmlContent = $gjsData['html'] ?? '';
+
+            $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
+        } else
+        {
+            $htmlContent = '<p>'.e($message->text).'</p>';
+        }
+
+        $team = auth()->user()->currentTeam;
+        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+
+        if ($advertisingFooter)
+        {
+            if (stripos($htmlContent, '</body>') !== false)
+            {
+                $htmlContent = str_ireplace('</body>', $advertisingFooter.'</body>', $htmlContent);
+            } else
+            {
+                $htmlContent .= $advertisingFooter;
+            }
+        }
+
+        return $htmlContent;
     }
 
     /**
