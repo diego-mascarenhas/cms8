@@ -211,6 +211,10 @@ class CampaignsIndexTest extends TestCase
         $response->assertSee('Plan Stripe Beta', false);
         $response->assertSee('value="product:'.$product->id.'"', false);
         $response->assertSee('value="subscription:'.$subscriptionProduct->id.'"', false);
+        $response->assertSee('id="exclude-offers"', false);
+        $html = $response->getContent() ?? '';
+        $this->assertStringContainsString('form-control select2', $html);
+        $this->assertStringContainsString('Selecciona productos, planes o suscripciones', $html);
     }
 
     public function test_campaign_update_with_sequence_exclusions_saves_settings(): void
@@ -499,7 +503,7 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Editar correo de secuencia'),
         );
         $this->assertTrue(
-            str_contains($html, 'Título interno'),
+            str_contains($html, 'Nombre de la campaña'),
         );
         $this->assertTrue(
             str_contains($html, 'Asunto'),

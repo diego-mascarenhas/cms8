@@ -2,6 +2,41 @@
 
 @section('title', __('Editar campaña'))
 
+@section('page-script')
+<script>
+    $(function ()
+    {
+        var select2Common = function ($el)
+        {
+            var placeholder = $el.data('placeholder') || '';
+
+            return {
+                placeholder: placeholder,
+                allowClear: true,
+                dropdownParent: $el.parent(),
+                multiple: true,
+                closeOnSelect: false,
+                width: '100%'
+            };
+        };
+
+        $('#exclude-offers').each(function ()
+        {
+            var $this = $(this);
+            $this.wrap('<div class="position-relative"></div>');
+            $this.select2(select2Common($this));
+        });
+
+        $('#exclude-forms').each(function ()
+        {
+            var $this = $(this);
+            $this.wrap('<div class="position-relative"></div>');
+            $this.select2(select2Common($this));
+        });
+    });
+</script>
+@endsection
+
 @php
     $timezones = [
         'UTC' => '(GMT+0:00) UTC',
@@ -43,7 +78,7 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
-                    <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>
+                    <label class="form-label" for="internal-title">{{ __('Nombre de la campaña') }}</label>
                     <input
                         id="internal-title"
                         name="title"
@@ -55,7 +90,7 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                     <small class="text-muted">
-                        {{ __('Este título es interno para reportes y no se muestra a los destinatarios.') }}
+                        {{ __('Este nombre es solo para tu panel y reportes; no lo ven los destinatarios.') }}
                     </small>
                 </div>
             </div>
@@ -76,9 +111,10 @@
                         <select
                             id="exclude-offers"
                             name="exclude_offer_refs[]"
-                            class="form-select @error('exclude_offer_refs') is-invalid @enderror"
+                            class="form-control select2 @error('exclude_offer_refs') is-invalid @enderror"
                             multiple
-                            size="{{ max(4, min(12, 2 + $catalogProducts->count() + $subscriptionProducts->count())) }}"
+                            data-placeholder="{{ __('Selecciona productos, planes o suscripciones') }}"
+                            data-allow-clear="true"
                         >
                             @if ($catalogProducts->isNotEmpty())
                                 <optgroup label="{{ __('Productos') }}">
@@ -113,9 +149,10 @@
                         <select
                             id="exclude-forms"
                             name="exclude_content_ids[]"
-                            class="form-select @error('exclude_content_ids') is-invalid @enderror"
+                            class="form-control select2 @error('exclude_content_ids') is-invalid @enderror"
                             multiple
-                            size="{{ max(4, min(12, 2 + $formContentsForSelect->count())) }}"
+                            data-placeholder="{{ __('Selecciona contenidos o formularios') }}"
+                            data-allow-clear="true"
                         >
                             @foreach ($formContentsForSelect as $row)
                                 <option

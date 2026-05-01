@@ -142,9 +142,9 @@
             @endif
 
             <div class="mb-3">
-                <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>
+                <label class="form-label" for="internal-title">{{ __('Nombre de la campaña') }}</label>
                 <input id="internal-title" name="internal_title" type="text" class="form-control" value="{{ $defaultInternalTitle }}" />
-                <small class="text-muted">{{ __('Este título se usa en reportes y no se muestra a los destinatarios.') }}</small>
+                <small class="text-muted">{{ __('Este nombre se usa en reportes y no se muestra a los destinatarios.') }}</small>
             </div>
 
             <div class="mb-3">

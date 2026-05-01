@@ -111,7 +111,7 @@ class UpdateCampaignRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'title' => __('Título interno'),
+            'title' => __('Nombre de la campaña'),
             'send_time_zone' => __('Zona horaria predeterminada'),
             'exclude_offer_refs' => __('Exclusiones por producto o suscripción'),
             'exclude_content_ids' => __('Exclusiones por contenido'),
