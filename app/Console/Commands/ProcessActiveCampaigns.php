@@ -143,6 +143,8 @@ class ProcessActiveCampaigns extends Command
                     $scheduledTime = $nextAvailableTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
                 }
 
+                $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime);
+
                 MessageDelivery::create([
                     'team_id' => $message->team_id,
                     'message_id' => $message->id,

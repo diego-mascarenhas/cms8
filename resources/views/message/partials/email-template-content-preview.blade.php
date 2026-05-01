@@ -24,7 +24,7 @@
                     <button
                         type="button"
                         class="btn btn-label-secondary"
-                        onclick="openEmailTestSendModal(@json($emailTestSendModalDomId))"
+                        onclick='openEmailTestSendModal(@json($emailTestSendModalDomId))'
                     >
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </button>
@@ -33,9 +33,25 @@
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </span>
                 @endif
-                <a href="{{ $grapesEditorUrl }}" class="btn btn-primary">
-                    <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-                </a>
+                @if (filled($grapesEditorUrl) && $grapesEditorUrl !== '#')
+                    <a
+                        href="{{ $grapesEditorUrl }}"
+                        class="btn btn-primary"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
+                    </a>
+                @else
+                    <span
+                        class="btn btn-primary disabled"
+                        role="button"
+                        tabindex="-1"
+                        title="{{ __('Select a template with a visual editor to open it.') }}"
+                    >
+                        <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
+                    </span>
+                @endif
             </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'team_id', 'started_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -25,6 +26,7 @@ class Message extends Model
         'enable_open_tracking' => 'boolean',
         'enable_click_tracking' => 'boolean',
         'min_hours_between_emails' => 'integer',
+        'send_allowed_weekdays' => 'array',
         'started_at' => 'datetime',
     ];
 
@@ -140,6 +142,126 @@ class Message extends Model
 
         // Calculate next available time
         return $lastDelivery->sent_at->addHours($this->min_hours_between_emails);
+    }
+
+    /**
+     * Whether this message restricts sending days or intra-day sending hours.
+     */
+    public function hasSendingScheduleConstraints(): bool
+    {
+        return $this->send_allowed_weekdays !== null
+            || ($this->send_window_start !== null && $this->send_window_end !== null);
+    }
+
+    /**
+     * Normalize allowed ISO weekdays (Monday=1 … Sunday=7). Null in storage means unrestricted (all weekdays).
+     *
+     * @return array<int, int>
+     */
+    public function normalizedAllowedWeekdayIsos(): array
+    {
+        if ($this->send_allowed_weekdays === null || $this->send_allowed_weekdays === [])
+        {
+            return range(1, 7);
+        }
+
+        return array_values(array_unique(array_map('intval', $this->send_allowed_weekdays)));
+    }
+
+    public function sendingWindowConfigured(): bool
+    {
+        return $this->send_window_start !== null
+            && $this->send_window_start !== ''
+            && $this->send_window_end !== null
+            && $this->send_window_end !== '';
+    }
+
+    public function minuteOfDay(Carbon $moment): int
+    {
+        return ($moment->hour * 60) + $moment->minute;
+    }
+
+    public function parseTimeToMinutes(string $time): int
+    {
+        [$h, $m] = array_pad(explode(':', $time), 2, 0);
+
+        return ((int) $h * 60) + (int) $m;
+    }
+
+    public function momentIsWithinSendingWindow(Carbon $moment): bool
+    {
+        if (! $this->sendingWindowConfigured())
+        {
+            return true;
+        }
+
+        $nowM = $this->minuteOfDay($moment);
+        $startM = $this->parseTimeToMinutes($this->send_window_start);
+        $endM = $this->parseTimeToMinutes($this->send_window_end);
+
+        return $nowM >= $startM && $nowM <= $endM;
+    }
+
+    /**
+     * Adjust a candidate send time so it falls on an allowed weekday and within the optional daily time window (app timezone).
+     */
+    public function alignScheduledTimeWithSendingSchedule(Carbon $candidate): Carbon
+    {
+        $t = $candidate->copy()->timezone((string) config('app.timezone'));
+
+        if (! $this->hasSendingScheduleConstraints())
+        {
+            return $t;
+        }
+
+        $allowed = $this->normalizedAllowedWeekdayIsos();
+        $usesWindow = $this->sendingWindowConfigured();
+
+        for ($i = 0; $i < 21; $i++)
+        {
+            if (! in_array((int) $t->isoWeekday(), $allowed, true))
+            {
+                $t->addDay();
+
+                continue;
+            }
+
+            if (! $usesWindow)
+            {
+                return $t;
+            }
+
+            if ($this->momentIsWithinSendingWindow($t))
+            {
+                return $t;
+            }
+
+            $startM = $this->parseTimeToMinutes((string) $this->send_window_start);
+            $m = $this->minuteOfDay($t);
+
+            if ($m < $startM)
+            {
+                $this->applyWindowStartToMoment($t);
+
+                return $t;
+            }
+
+            // Past end-of-window → try next day's window opening
+            $t->addDay()->startOfDay();
+            $this->applyWindowStartToMoment($t);
+        }
+
+        return $t;
+    }
+
+    private function applyWindowStartToMoment(Carbon $t): void
+    {
+        if (! $this->sendingWindowConfigured())
+        {
+            return;
+        }
+
+        $t->setTimeFromTimeString($this->send_window_start);
     }
 
     /**

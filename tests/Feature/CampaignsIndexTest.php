@@ -29,9 +29,14 @@ class CampaignsIndexTest extends TestCase
             'team_id' => $user->current_team_id,
             'name' => 'Ajax Test Campaign',
         ]);
+        Campaign::factory()->sequenceSummary()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Ajax Sequence Campaign',
+        ]);
 
         $columnDefs = [
             ['campaign_display', false],
+            ['type_display', false],
             ['performance_display', false],
             ['status', false],
             ['action', false],
@@ -65,7 +70,22 @@ class CampaignsIndexTest extends TestCase
             (string) $response->headers->get('content-type'),
         );
         $response->assertJsonStructure(['draw', 'recordsTotal', 'recordsFiltered', 'data']);
-        $this->assertGreaterThanOrEqual(1, (int) $response->json('recordsFiltered'));
+        $this->assertGreaterThanOrEqual(2, (int) $response->json('recordsFiltered'));
+
+        $htmlFromTypes = implode(' ', array_map(function ($row): string
+        {
+            return (string) ($row['type_display'] ?? '');
+        }, $response->json('data') ?? []));
+        $this->assertStringContainsString('Difusión', $htmlFromTypes);
+        $this->assertStringContainsString('Secuencia', $htmlFromTypes);
+
+        foreach ($response->json('data') ?? [] as $row)
+        {
+            $this->assertStringNotContainsString(
+                'ti-copy',
+                (string) ($row['action'] ?? ''),
+            );
+        }
     }
 
     public function test_campaigns_page_shows_campaign_manager_sections_when_authenticated(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Http\Requests\StoreMessageRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -73,14 +74,29 @@ class MessageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreMessageRequest $request)
     {
-        $data = $request->except(['id', '_token']);
-
-        $request->validate([
-            'name' => 'required|string|min:3|max:50',
-            'text' => 'required|string|min:3|max:255',
+        $validated = $request->validated();
+        $data = $request->except([
+            'id',
+            '_token',
+            'send_allowed_weekdays',
+            'send_window_start',
+            'send_window_end',
         ]);
+
+        $weekdaysSorted = array_values(array_unique(array_map('intval', $validated['send_allowed_weekdays'])));
+        sort($weekdaysSorted);
+        $sendAllowedWeekdays = $weekdaysSorted === range(1, 7)
+            ? null
+            : $weekdaysSorted;
+
+        $sendWindowStart = filled($validated['send_window_start'] ?? null)
+            ? $validated['send_window_start']
+            : null;
+        $sendWindowEnd = filled($validated['send_window_end'] ?? null)
+            ? $validated['send_window_end']
+            : null;
 
         $templateId = $data['template_id'] ?? null;
 
@@ -91,20 +107,29 @@ class MessageController extends Controller
         $enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
         $enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
 
+        $rawMinHours = isset($validated['min_hours_between_emails'])
+            ? $validated['min_hours_between_emails']
+            : $request->input('min_hours_between_emails', 48);
+
+        $minHours = max(0, (int) round((float) $rawMinHours));
+
         Message::updateOrCreate(
             ['id' => $request->id],
             [
-                'name' => $data['name'],
+                'name' => $validated['name'],
                 'type_id' => $data['type_id'],
                 'category_id' => $data['category_id'] ?: null,  // Convert empty string to null
                 'contact_status_id' => $data['contact_status_id'] ?? null,
                 'template_id' => $templateId,
-                'text' => $data['text'],
+                'text' => $validated['text'],
                 'status_id' => $status_id,
                 'show_unsubscribe' => $show_unsubscribe,
                 'enable_open_tracking' => $enable_open_tracking,
                 'enable_click_tracking' => $enable_click_tracking,
-                'min_hours_between_emails' => $data['min_hours_between_emails'] ?? 48,
+                'min_hours_between_emails' => max(0, $minHours),
+                'send_allowed_weekdays' => $sendAllowedWeekdays,
+                'send_window_start' => $sendWindowStart,
+                'send_window_end' => $sendWindowEnd,
             ],
         );
 

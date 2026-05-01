@@ -19,4 +19,16 @@ enum CampaignType: string
             self::ABTests => 'Pruebas A/B',
         };
     }
+
+    /** Singular label for tables and summaries (campaign row type). */
+    public function singularLabel(): string
+    {
+        return match ($this)
+        {
+            self::Broadcasts => 'Difusión',
+            self::Sequences => 'Secuencia',
+            self::Events => 'Evento',
+            self::ABTests => 'Prueba A/B',
+        };
+    }
 }

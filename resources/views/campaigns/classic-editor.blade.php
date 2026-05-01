@@ -170,7 +170,7 @@
         'previewHtml' => $defaultBody,
         'grapesEditorUrl' => $grapesEditorUrl,
         'templateLabel' => ($selectedTemplateName ?? '') !== '' ? $selectedTemplateName : null,
-        'messageId' => null,
+        'messageId' => ($messageId ?? 0) > 0 ? $messageId : null,
         'previewFrameId' => 'body-preview-frame',
         'parentSyncsPreview' => true,
     ])

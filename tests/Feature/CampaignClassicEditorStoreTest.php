@@ -7,6 +7,7 @@ use App\Models\Message;
 use App\Models\Template;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class CampaignClassicEditorStoreTest extends TestCase
@@ -127,5 +128,52 @@ class CampaignClassicEditorStoreTest extends TestCase
 
         $response->assertRedirect(route('campaigns.show', $campaign));
         $response->assertSessionHas('success');
+    }
+
+    public function test_classic_editor_includes_test_send_modal_and_editor_link_when_message_id_is_present(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        DB::table('message_type')->updateOrInsert(
+            ['id' => 1],
+            ['name' => 'Mailer', 'status' => 1],
+        );
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Classic editor modal tpl',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<html><body>x</body></html>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Classic body',
+            'type_id' => 1,
+            'text' => 'Preview',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('campaigns.classic-editor', [
+            'type' => 'broadcasts',
+            'title' => 'Promo',
+            'template_id' => $template->id,
+            'message_id' => $message->id,
+        ]));
+
+        $response->assertOk();
+        $html = (string) $response->getContent();
+        $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
+        $response->assertSee('openEmailTestSendModal', false);
+        $this->assertMatchesRegularExpression('#/template/[^"\s]+/editor#', $html);
+        $this->assertStringContainsString('Abrir editor visual', $html);
+        $this->assertStringContainsString('target="_blank"', $html);
     }
 }

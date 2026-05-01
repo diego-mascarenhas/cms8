@@ -55,6 +55,24 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_message_create_legacy_form_defaults_minimum_interval_unit_to_days(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+
+        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
+
+        $response->assertOk();
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<option[^>]+value=["\']days["\'][^>]*selected/s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]+id=["\']min_hours_between_emails["\'][^>]+value=["\']2["\']/s',
+            $html,
+        );
+    }
+
     public function test_message_create_with_template_shows_email_content_preview(): void
     {
         $user = $this->userWithPersonalTeamResolved();

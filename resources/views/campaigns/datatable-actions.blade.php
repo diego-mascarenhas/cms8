@@ -14,9 +14,6 @@
         aria-label="{{ __('Estadísticas') }}"
         title="{{ __('Estadísticas') }}"
     >
-        <i class="ti ti-chart-bar ti-sm me-2"></i>
-    </a>
-    <a href="javascript:;" class="text-body" aria-label="{{ __('Duplicar') }}" title="{{ __('Duplicar') }}">
-        <i class="ti ti-copy ti-sm"></i>
+        <i class="ti ti-chart-bar ti-sm"></i>
     </a>
 </div>

@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Enums\CampaignType;
 use App\Models\Campaign;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
@@ -19,10 +20,11 @@ class CampaignDataTable extends DataTable
     {
         return (new EloquentDataTable($query))
             ->addColumn('campaign_display', fn (Campaign $row): string => $this->campaignCell($row))
+            ->addColumn('type_display', fn (Campaign $row): string => $this->typeCell($row))
             ->addColumn('performance_display', fn (Campaign $row): string => $this->performanceCell($row))
             ->editColumn('status', fn (Campaign $row): string => $this->statusCell($row))
             ->addColumn('action', fn (Campaign $row): string => view('campaigns.datatable-actions', ['campaign' => $row])->render())
-            ->rawColumns(['campaign_display', 'performance_display', 'status', 'action'])
+            ->rawColumns(['campaign_display', 'type_display', 'performance_display', 'status', 'action'])
             ->setRowId('id');
     }
 
@@ -102,6 +104,14 @@ class CampaignDataTable extends DataTable
                 ->orderable(false)
                 ->exportable(false)
                 ->printable(false),
+            Column::computed('type_display')
+                ->title(__('Type'))
+                ->className('text-center align-middle')
+                ->width(120)
+                ->orderable(false)
+                ->searchable(false)
+                ->exportable(false)
+                ->printable(false),
             Column::computed('performance_display')
                 ->title(__('Rendimiento'))
                 ->addClass('align-top')
@@ -133,18 +143,32 @@ class CampaignDataTable extends DataTable
     private function campaignCell(Campaign $row): string
     {
         $name = e($row->name);
-        $type = e($row->typeLabel());
         $summary = $row->summary ? e($row->summary) : '&mdash;';
 
         return <<<HTML
 <div class="d-flex align-items-start gap-3">
     <div>
         <div class="fw-semibold">{$name}</div>
-        <small class="text-muted d-block">{$type}</small>
         <small class="text-muted d-block mt-75">{$summary}</small>
     </div>
 </div>
 HTML;
+    }
+
+    private function typeCell(Campaign $row): string
+    {
+        $case = CampaignType::tryFrom((string) $row->type);
+        $label = e($case ? $case->singularLabel() : $row->type);
+        $badgeClass = match ($case)
+        {
+            CampaignType::Broadcasts => 'bg-label-primary',
+            CampaignType::Sequences => 'bg-label-success',
+            CampaignType::Events => 'bg-label-info',
+            CampaignType::ABTests => 'bg-label-warning',
+            null => 'bg-label-secondary',
+        };
+
+        return '<span class="badge '.$badgeClass.'">'.$label.'</span>';
     }
 
     private function performanceCell(Campaign $row): string
