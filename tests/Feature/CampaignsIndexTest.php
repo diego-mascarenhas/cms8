@@ -502,8 +502,9 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Editar correo de secuencia'),
         );
-        $this->assertTrue(
-            str_contains($html, 'Nombre de la campaña'),
+        $this->assertMatchesRegularExpression(
+            '/<label[^>]*for="internal-title"[^>]*>\s*Nombre\s*<\/label>/',
+            $html,
         );
         $this->assertTrue(
             str_contains($html, 'Asunto'),

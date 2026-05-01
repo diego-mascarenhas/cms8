@@ -390,7 +390,7 @@
                                             aria-controls="seq-step-settings-{{ $seqMessage->id }}"
                                             title="{{ __('Configuración del paso') }}"
                                         >
-                                            <i class="ti ti-settings ti-sm"></i>
+                                            <i class="ti ti-settings ti-sm me-1"></i>{{ __('Configuración') }}
                                         </button>
                                     </div>
                                 </div>
@@ -459,10 +459,10 @@
                                     </div>
                                     <button
                                         type="button"
-                                        class="btn btn-sm btn-label-primary seq-add-automation-rule mb-1"
+                                        class="btn btn-xs btn-label-primary seq-add-automation-rule mb-1 waves-effect waves-light"
                                         data-step-index="{{ $idx }}"
                                     >
-                                        <i class="ti ti-plus ti-sm me-1"></i>{{ __('Añadir regla') }}
+                                        <i class="ti ti-plus ti-xs me-1"></i>{{ __('Añadir regla') }}
                                     </button>
                                 </div>
                             </div>
