@@ -120,7 +120,7 @@ class CampaignsController extends Controller
         $campaign->load([
             'messages' => function ($q): void
             {
-                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails', 'messages.type_id')
+                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails', 'messages.type_id', 'messages.template_id')
                     ->with('type')
                     ->orderBy('campaign_message.sort_order')
                     ->orderBy('campaign_message.id');
@@ -290,7 +290,7 @@ class CampaignsController extends Controller
         $messageId = $request->integer('message_id');
         $prefill = $request->session()->get('classic_editor_prefill', []);
 
-        $defaultInternalTitle = $prefill['internal_title'] ?? ($selectedTitle !== '' ? $selectedTitle : 'Correo de secuencia');
+        $defaultInternalTitle = $prefill['internal_title'] ?? ($selectedTitle !== '' ? $selectedTitle : ($selectedType === 'sequences' ? 'Correo de secuencia' : 'Correo de difusión'));
         $defaultSubject = $prefill['subject'] ?? ($selectedTitle !== '' ? 'Actualización: '.$selectedTitle : 'Asunto');
         $defaultPreviewText = $prefill['preview_text'] ?? 'Descubre los detalles y próximos pasos de esta campaña.';
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
@@ -361,6 +361,7 @@ class CampaignsController extends Controller
 
         return [
             'selectedType' => $selectedType,
+            'isSequenceCampaign' => $selectedType === 'sequences',
             'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
             'selectedTitle' => $selectedTitle,
             'selectedTemplateName' => $selectedDefinition['name'] ?? '',
@@ -374,32 +375,6 @@ class CampaignsController extends Controller
             'defaultBodyContent' => $defaultBodyContent,
             'defaultBodyTemplate' => $defaultBodyTemplate,
             'defaultBody' => $defaultBody,
-            'sendTimes' => [
-                '0' => '12:00 AM',
-                '60' => '01:00 AM',
-                '120' => '02:00 AM',
-                '180' => '03:00 AM',
-                '240' => '04:00 AM',
-                '300' => '05:00 AM',
-                '360' => '06:00 AM',
-                '420' => '07:00 AM',
-                '480' => '08:00 AM',
-                '540' => '09:00 AM',
-                '600' => '10:00 AM',
-                '660' => '11:00 AM',
-                '720' => '12:00 PM',
-                '780' => '01:00 PM',
-                '840' => '02:00 PM',
-                '900' => '03:00 PM',
-                '960' => '04:00 PM',
-                '1020' => '05:00 PM',
-                '1080' => '06:00 PM',
-                '1140' => '07:00 PM',
-                '1200' => '08:00 PM',
-                '1260' => '09:00 PM',
-                '1320' => '10:00 PM',
-                '1380' => '11:00 PM',
-            ],
         ];
     }
 

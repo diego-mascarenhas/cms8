@@ -89,8 +89,12 @@
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ __('Editar correo de secuencia') }}</h4>
-            <p class="text-muted mb-0">{{ __('Nuevo correo de secuencia') }}</p>
+            <h4 class="mb-1 mt-3">
+                {{ $isSequenceCampaign ? __('Editar correo de secuencia') : __('Editar correo de la difusión') }}
+            </h4>
+            <p class="text-muted mb-0">
+                {{ $isSequenceCampaign ? __('Nuevo paso o borrador de secuencia.') : __('Contenido del envío masivo (un correo o varios vinculados a la campaña).') }}
+            </p>
             <p class="text-muted mb-0">{{ __('Tipo:') }} <span class="fw-semibold">{{ $selectedTypeLabel }}</span></p>
             @if ($selectedTitle !== '')
                 <p class="text-muted mb-0">{{ __('Título de campaña:') }} <span class="fw-semibold">{{ $selectedTitle }}</span></p>
@@ -105,13 +109,23 @@
         </div>
     </div>
 
-    <div class="alert alert-warning d-flex mb-4" role="alert">
-        <i class="ti ti-alert-triangle text-warning me-2 mt-1"></i>
-        <div>
-            <h6 class="alert-heading mb-1">{{ __('Edición incompleta') }}</h6>
-            <p class="mb-0">{{ __('Este correo todavía no se está enviando a suscriptores de la secuencia. Termina la edición o presiona Guardar para habilitar el envío.') }}</p>
+    @if ($isSequenceCampaign)
+        <div class="alert alert-warning d-flex mb-4" role="alert">
+            <i class="ti ti-alert-triangle text-warning me-2 mt-1"></i>
+            <div>
+                <h6 class="alert-heading mb-1">{{ __('Edición incompleta') }}</h6>
+                <p class="mb-0">{{ __('Este correo todavía no se está enviando a suscriptores de la secuencia. Termina la edición o presiona Guardar para habilitar el envío.') }}</p>
+            </div>
         </div>
-    </div>
+    @else
+        <div class="alert alert-primary d-flex mb-4" role="alert">
+            <i class="ti ti-info-circle text-primary me-2 mt-1"></i>
+            <div>
+                <h6 class="alert-heading mb-1">{{ __('Programación del envío masivo') }}</h6>
+                <p class="mb-0">{{ __('El día y la hora del envío masivo no se definen en esta pantalla: configúralos al activar o programar el mensaje desde Mailer (ficha del mensaje y campaña). Esta vista es solo para redactar el correo.') }}</p>
+            </div>
+        </div>
+    @endif
 
     <div class="card mb-4">
         <div class="card-body">
@@ -121,22 +135,11 @@
                 </div>
             @endif
 
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label class="form-label" for="email-day">{{ __('Día') }}</label>
-                    <input id="email-day" type="number" min="1" step="1" class="form-control" value="1" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="email-time">{{ __('Hora') }}</label>
-                    <select id="email-time" class="form-select">
-                        @foreach ($sendTimes as $value => $label)
-                            <option value="{{ $value }}" @selected($value === '840')>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-
-            <p class="text-muted mb-4">{{ __('Este correo se enviará a la hora seleccionada, 1 día después de que alguien se suscriba a esta secuencia.') }}</p>
+            @if ($isSequenceCampaign)
+                <p class="text-muted small mb-4">
+                    {{ __('El orden de pasos, esperas entre correos y condiciones (abrir/clic) se configuran en la línea de tiempo de la campaña, no con los campos de “día/hora” aquí. Este editor solo guarda el contenido del mensaje.') }}
+                </p>
+            @endif
 
             <div class="mb-3">
                 <label class="form-label" for="internal-title">{{ __('Título interno') }}</label>

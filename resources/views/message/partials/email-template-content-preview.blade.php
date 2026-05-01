@@ -17,15 +17,17 @@
             <label class="form-label mb-0">{{ __('Contenido del correo') }}</label>
             <div class="d-flex flex-wrap gap-2">
                 @if ($messageId)
+                    @php
+                        $emailTestSendModalDomId = 'email-test-send-modal-'.$messageId;
+                    @endphp
+                    {{-- Waves.js binds btn-label-* and blocks data-bs-toggle modals — open via Bootstrap JS --}}
                     <button
                         type="button"
-                        class="btn btn-label-secondary waves-effect"
-                        data-bs-toggle="modal"
-                        data-bs-target="#email-test-send-modal-{{ $messageId }}"
+                        class="btn btn-label-secondary"
+                        onclick="openEmailTestSendModal(@json($emailTestSendModalDomId))"
                     >
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
                     </button>
-                    @include('message.partials.email-test-send-modal', ['messageId' => $messageId])
                 @else
                     <span class="btn btn-label-secondary disabled" title="{{ __('Disponible después de guardar el mensaje') }}">
                         <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
@@ -36,6 +38,10 @@
                 </a>
             </div>
         </div>
+
+        @if ($messageId)
+            @include('message.partials.email-test-send-modal', ['messageId' => $messageId])
+        @endif
 
         @if ($templateLabel)
             <p class="text-muted small mb-3">{{ __('Plantilla:') }} <span class="fw-semibold">{{ $templateLabel }}</span></p>

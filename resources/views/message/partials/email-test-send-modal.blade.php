@@ -7,51 +7,60 @@
     $testSendUrl = route('message.test', $messageId);
 @endphp
 
-@push('modals')
-    <div
-        class="modal fade"
-        id="{{ $testSendModalId }}"
-        tabindex="-1"
-        aria-labelledby="{{ $testSendModalId }}-title"
-        aria-hidden="true"
-    >
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="{{ $testSendModalId }}-title">{{ __('Enviar correo de prueba') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert d-none mb-3" role="alert" data-email-test-send-alert></div>
-                    <p class="mb-2">
-                        {{ __('Se enviará un correo de prueba usando la configuración del equipo a la cuenta con la que iniciaste sesión:') }}
-                    </p>
-                    <p class="mb-0 fw-semibold">{{ auth()->user()?->email ?? '—' }}</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                        {{ __('Cancel') }}
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary waves-effect waves-light"
-                        data-email-test-send-submit
-                        data-submit-url="{{ $testSendUrl }}"
-                        data-submit-label="{{ __('Enviar') }}"
-                    >
-                        {{ __('Enviar') }}
-                    </button>
-                </div>
+<div
+    class="modal fade"
+    id="{{ $testSendModalId }}"
+    tabindex="-1"
+    aria-labelledby="{{ $testSendModalId }}-title"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $testSendModalId }}-title">{{ __('Enviar correo de prueba') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert d-none mb-3" role="alert" data-email-test-send-alert></div>
+                <p class="mb-2">
+                    {{ __('Se enviará un correo de prueba usando la configuración del equipo a la cuenta con la que iniciaste sesión:') }}
+                </p>
+                <p class="mb-0 fw-semibold">{{ auth()->user()?->email ?? '—' }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
+                    {{ __('Cancel') }}
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-primary waves-effect waves-light"
+                    data-email-test-send-submit
+                    data-submit-url="{{ $testSendUrl }}"
+                    data-submit-label="{{ __('Enviar') }}"
+                >
+                    {{ __('Enviar') }}
+                </button>
             </div>
         </div>
     </div>
-@endpush
+</div>
 
 @once('message-email-test-send-modal-script')
     @push('scripts')
         <script>
             (function ()
             {
+                window.openEmailTestSendModal = function (modalId)
+                {
+                    var el = document.getElementById(modalId);
+                    if (! el || typeof bootstrap === 'undefined')
+                    {
+                        return;
+                    }
+
+                    bootstrap.Modal.getOrCreateInstance(el).show();
+                };
+
                 function csrfHeader()
                 {
                     var m = document.querySelector('meta[name="csrf-token"]');

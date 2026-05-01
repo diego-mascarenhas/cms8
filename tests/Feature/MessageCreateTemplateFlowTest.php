@@ -144,6 +144,6 @@ class MessageCreateTemplateFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
-        $response->assertSee('data-bs-target="#email-test-send-modal-'.$message->id.'"', false);
+        $response->assertSee('openEmailTestSendModal', false);
     }
 }

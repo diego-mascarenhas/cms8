@@ -280,7 +280,7 @@
             </h5>
         </div>
         <div class="card-action-element d-flex flex-wrap gap-2 justify-content-end">
-            @if ($campaign->messages->isNotEmpty())
+            @if ($campaign->type === \App\Enums\CampaignType::Sequences->value && $campaign->messages->isNotEmpty())
                 <a href="{{ $classicEditorNewMessageUrl }}" class="btn btn-sm btn-label-primary waves-effect waves-light fw-semibold">
                     <i class="ti ti-plus me-1"></i>{{ __('Añadir mensaje') }}
                 </a>
@@ -305,7 +305,7 @@
                     <i class="ti ti-plus me-1"></i>{{ __('Crear el primer mensaje') }}
                 </a>
             </div>
-        @else
+        @elseif ($campaign->type === \App\Enums\CampaignType::Sequences->value)
             <form action="{{ route('campaigns.sequence.update', $campaign) }}" method="POST" class="mb-0">
                 @csrf
                 @method('PATCH')
@@ -539,6 +539,41 @@
                     </button>
                 </div>
             </form>
+        @else
+            <p class="text-muted small mb-4">
+                {{ __('En una difusión, cada ítem es un mensaje Mailer en sí mismo: la programación y el envío masivo se gestionan desde la ficha del mensaje; aquí solo ves la campaña y el contenido vinculado.') }}
+            </p>
+            <ul class="list-unstyled mb-0">
+                @foreach ($campaign->messages as $broadcastMessage)
+                    @php
+                        $editBroadcastContentUrl = route('campaigns.classic-editor', [
+                            'type' => $campaign->type,
+                            'title' => $campaign->name,
+                            'campaign_id' => $campaign->id,
+                            'message_id' => $broadcastMessage->id,
+                            'template_id' => (int) ($broadcastMessage->template_id ?? 0),
+                        ]);
+                    @endphp
+                    <li class="border rounded p-3 mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <h6 class="mb-1">{{ $broadcastMessage->name }}</h6>
+                                @if ($broadcastMessage->type)
+                                    <span class="text-muted small">{{ $broadcastMessage->type->name }}</span>
+                                @endif
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('message.show', $broadcastMessage->id) }}" class="btn btn-sm btn-label-primary waves-effect waves-light">
+                                    <i class="ti ti-external-link ti-sm me-1"></i>{{ __('Ver mensaje') }}
+                                </a>
+                                <a href="{{ $editBroadcastContentUrl }}" class="btn btn-sm btn-label-secondary waves-effect waves-light">
+                                    <i class="ti ti-edit ti-sm me-1"></i>{{ __('Editar contenido') }}
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
         @endif
     </div>
 </div>

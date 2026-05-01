@@ -294,8 +294,8 @@ document.querySelector('form').addEventListener('submit', function() {
 			@if (isset($data->id))
 				<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
 			@endif
-			<div class="row g-4 align-items-start">
-				<div class="col-lg-6 align-self-start">
+			<div class="row gy-4 gx-lg-4 align-items-start">
+				<div class="col-12 col-lg-6 align-self-start">
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
 						<label class="form-check-label" for="show_unsubscribe">
@@ -304,22 +304,22 @@ document.querySelector('form').addEventListener('submit', function() {
 						</label>
 					</div>
 				</div>
-				<div class="col-lg-6 align-self-start mt-4 mt-lg-0 pt-4 pt-lg-0">
-					<div class="d-flex flex-column gap-4">
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="enable_open_tracking">
-								<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
-								<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
-							</label>
-						</div>
-						<div class="form-check form-switch mb-0">
-							<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
-							<label class="form-check-label" for="enable_click_tracking">
-								<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
-								<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
-							</label>
-						</div>
+				<div class="col-12 col-lg-6 align-self-start">
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="enable_open_tracking">
+							<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
+							<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
+						</label>
+					</div>
+				</div>
+				<div class="col-12 col-lg-6 offset-lg-6 align-self-start">
+					<div class="form-check form-switch mb-lg-0">
+						<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="enable_click_tracking">
+							<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
+							<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
+						</label>
 					</div>
 				</div>
 			</div>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CampaignType;
 use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\Message;
@@ -72,6 +73,7 @@ class CampaignShowTest extends TestCase
         $campaign = Campaign::factory()->create([
             'team_id' => $teamId,
             'name' => 'Show Stats Campaign',
+            'type' => CampaignType::Sequences->value,
         ]);
 
         $campaign->messages()->syncWithoutDetaching([
@@ -157,6 +159,7 @@ class CampaignShowTest extends TestCase
         $campaign = Campaign::factory()->create([
             'team_id' => $teamId,
             'name' => 'Patch sequence',
+            'type' => CampaignType::Sequences->value,
         ]);
 
         $campaign->messages()->syncWithoutDetaching([
@@ -208,5 +211,39 @@ class CampaignShowTest extends TestCase
         $response->assertSee('Crear el primer mensaje', false);
         $response->assertSee('Define en cada paso', false);
         $response->assertSee('campaign_id='.$campaign->id, false);
+    }
+
+    public function test_broadcast_campaign_show_lists_messages_without_sequence_timeline_form(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Newsletter marzo',
+            'type_id' => 1,
+            'text' => 'Preview',
+            'team_id' => $teamId,
+            'template_id' => 0,
+        ]);
+
+        $campaign = Campaign::factory()->create([
+            'team_id' => $teamId,
+            'name' => 'Difusión Q1',
+            'type' => CampaignType::Broadcasts->value,
+        ]);
+
+        $campaign->messages()->syncWithoutDetaching([
+            $message->id => ['sort_order' => 0],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('campaigns.show', $campaign));
+
+        $response->assertOk();
+        $response->assertSee('Newsletter marzo', false);
+        $response->assertSee('Editar contenido', false);
+        $response->assertSee('En una difusión', false);
+        $response->assertDontSee(route('campaigns.sequence.update', $campaign), false);
+        $response->assertDontSee('Parámetros del paso destino', false);
+        $response->assertDontSee('Añadir mensaje', false);
     }
 }
