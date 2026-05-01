@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\StoreMessageRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -10,6 +11,7 @@ use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
 use App\Models\Template;
+use App\Services\MessageDeliveryDispatcher;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -701,10 +703,10 @@ class MessageController extends Controller
                 ->get();
 
             $queued = 0;
+            $dispatcher = app(MessageDeliveryDispatcher::class);
             foreach ($deliveries as $delivery)
             {
-                // Dispatch immediately without delay
-                \App\Jobs\SendMessageCampaignJob::dispatch($delivery)->onQueue('mailer');
+                $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);
                 $queued++;
             }
 
@@ -1197,8 +1199,11 @@ class MessageController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Dispatch the job to send immediately
-            \App\Jobs\SendMessageCampaignJob::dispatch($delivery);
+            app(MessageDeliveryDispatcher::class)->enqueue(
+                delivery: $delivery,
+                profile: MessageDeliverySendProfile::Message,
+                withEnqueueJitter: false,
+            );
 
             return response()->json([
                 'success' => true,

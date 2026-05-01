@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendMessageCampaignJob;
 use App\Models\MessageDelivery;
+use App\Services\MessageDeliveryDispatcher;
 use Illuminate\Console\Command;
 
 class SendPendingMessages extends Command
@@ -14,10 +14,11 @@ class SendPendingMessages extends Command
 
     public function handle()
     {
+        $dispatcher = app(MessageDeliveryDispatcher::class);
+
         $pendings = MessageDelivery::whereNull('sent_at')->with(['contact', 'message.template', 'team'])->get();
         $sent = 0;
         $errors = 0;
-        $delay = 0;
 
         foreach ($pendings as $delivery)
         {
@@ -49,15 +50,10 @@ class SendPendingMessages extends Command
 
             try
             {
-                // 🚀 Use the Job instead of Mailable directly
-                // Small random delay (1-3 seconds) to avoid spam flags
-                $randomDelay = rand(1, 3);
+                // Cola/jitter derivados del perfil (campaña vs mensaje): App\Services\MessageDeliveryDispatcher
+                $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: true);
 
-                SendMessageCampaignJob::dispatch($delivery)
-                    ->onQueue('mailer')
-                    ->delay(now()->addSeconds($randomDelay));
-
-                $this->info('Queued job for: '.$delivery->contact->email.' (delay: '.$randomDelay.'s, team: '.$delivery->team->name.')');
+                $this->info('Queued job for: '.$delivery->contact->email.' (profile-based jitter & queue, team: '.$delivery->team->name.')');
                 $sent++;
             } catch (\Exception $e)
             {

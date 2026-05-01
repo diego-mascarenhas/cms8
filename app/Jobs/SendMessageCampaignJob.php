@@ -43,7 +43,12 @@ class SendMessageCampaignJob implements ShouldQueue
     public function __construct(MessageDelivery $messageDelivery)
     {
         $this->messageDelivery = $messageDelivery;
-        $this->onQueue('mailer');
+
+        $fallback = config('message_delivery_dispatch.fallback_queue');
+        if (is_string($fallback) && $fallback !== '')
+        {
+            $this->onQueue($fallback);
+        }
     }
 
     /**

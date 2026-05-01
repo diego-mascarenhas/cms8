@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendMessageCampaignJob;
 use App\Models\MessageDelivery;
+use App\Services\MessageDeliveryDispatcher;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -50,13 +50,13 @@ class SendScheduledDeliveries extends Command
 
         $successCount = 0;
         $errorCount = 0;
+        $dispatcher = app(MessageDeliveryDispatcher::class);
 
         foreach ($dueDeliveries as $delivery)
         {
             try
             {
-                // Dispatch the job to send the email
-                SendMessageCampaignJob::dispatch($delivery);
+                $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);
 
                 $this->info("   ✅ Queued delivery {$delivery->id} to {$delivery->contact->email}");
                 $successCount++;

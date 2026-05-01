@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ContactDataTable;
+use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\UpdateContactRequest;
-use App\Jobs\SendMessageCampaignJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
@@ -19,6 +19,7 @@ use App\Models\MessageDelivery;
 use App\Models\Opportunity;
 use App\Models\Source;
 use App\Services\AstralChartService;
+use App\Services\MessageDeliveryDispatcher;
 use App\Support\CollectionMessagingGuide;
 use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
@@ -1963,8 +1964,11 @@ class ContactController extends Controller
                 'provider_message_id' => null,  // Reset provider message ID
             ]);
 
-            // Dispatch the job to send the email immediately
-            SendMessageCampaignJob::dispatch($delivery);
+            app(MessageDeliveryDispatcher::class)->enqueue(
+                delivery: $delivery,
+                profile: MessageDeliverySendProfile::Message,
+                withEnqueueJitter: false,
+            );
 
             return response()->json([
                 'success' => true,

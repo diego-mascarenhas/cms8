@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendMessageCampaignJob;
+use App\Enums\MessageDeliverySendProfile;
 use App\Models\MessageDelivery;
+use App\Services\MessageDeliveryDispatcher;
 use Illuminate\Console\Command;
 
 class SendTrackedTestMail extends Command
@@ -38,8 +39,11 @@ class SendTrackedTestMail extends Command
             return 1;
         }
 
-        // 🚀 Use the Job instead of sending directly
-        SendMessageCampaignJob::dispatch($delivery);
+        app(MessageDeliveryDispatcher::class)->enqueue(
+            delivery: $delivery,
+            profile: MessageDeliverySendProfile::Message,
+            withEnqueueJitter: false,
+        );
 
         $this->info('Job de envío despachado para: '.$delivery->contact->email.' (Team: '.$delivery->team->name.')');
         $this->info('El correo se enviará usando la configuración del equipo y el proveedor configurado.');
