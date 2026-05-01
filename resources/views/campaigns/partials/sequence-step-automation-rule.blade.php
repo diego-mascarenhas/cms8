@@ -6,17 +6,19 @@
     $lm = old('sequence.'.$stepIndex.'.automations.'.$ruleIndex.'.linked_message_id', $defaults['message_id'] ?? '');
     $nt = old('sequence.'.$stepIndex.'.automations.'.$ruleIndex.'.notes', $defaults['notes'] ?? '');
 @endphp
-<div class="step-automation-rule border rounded p-3 mb-2" data-step-rule-row data-step-index="{{ $stepIndex }}">
+<div class="step-automation-rule mb-2" data-step-rule-row data-step-index="{{ $stepIndex }}">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="text-muted small">{{ __('Regla') }} <span data-rule-label>{{ $ruleIndex + 1 }}</span></span>
         <button
             type="button"
-            class="btn btn-link text-danger p-0 small step-automation-remove"
+            class="step-automation-remove cursor-pointer shadow-none text-danger bg-transparent border-0 p-0 lh-1 d-inline-flex align-items-center justify-content-center"
             title="{{ __('Quitar regla') }}"
+            aria-label="{{ __('Quitar regla') }}"
         >
             <i class="ti ti-trash ti-sm"></i>
         </button>
     </div>
+    <div class="border rounded p-3">
     <div class="row g-2 align-items-end">
         <div class="col-md-6">
             <label class="form-label small mb-0">{{ __('Disparador') }}</label>
@@ -93,5 +95,6 @@
                 <div class="invalid-feedback d-block">{{ $errors->first('sequence.'.$stepIndex.'.automations.'.$ruleIndex.'.notes') }}</div>
             @enderror
         </div>
+    </div>
     </div>
 </div>

@@ -267,11 +267,25 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Guardar'),
         );
+        $this->assertSame(
+            1,
+            substr_count($html, 'type="submit"'),
+            'Expected a single submit control in the campaign edit form.',
+        );
+        $this->assertTrue(
+            str_contains($html, 'btn-primary'),
+        );
         $this->assertTrue(
             str_contains($html, 'Volver'),
         );
+        $this->assertGreaterThanOrEqual(
+            2,
+            substr_count($html, route('campaigns.index')),
+            'Expected Volver header link and Cancel footer action to reference the campaigns list.',
+        );
         $this->assertTrue(
-            str_contains($html, route('campaigns.index')),
+            str_contains($html, 'btn-label-secondary'),
+            'Expected a secondary Cancel button alongside Guardar.',
         );
     }
 
@@ -349,6 +363,7 @@ class CampaignsIndexTest extends TestCase
             str_contains($html, 'Contenido del correo'),
         );
         $this->assertSame(1, substr_count($html, 'Contenido del correo'), 'Expected a single mail content toolbar block.');
+        $this->assertSame(1, substr_count($html, 'Guardar para después'), 'Expected a single save-for-later submit control.');
     }
 
     public function test_grapes_editor_page_is_reachable_when_authenticated(): void

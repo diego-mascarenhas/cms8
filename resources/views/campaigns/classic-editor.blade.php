@@ -80,6 +80,13 @@
     <input type="hidden" name="template_id" value="{{ $selectedTemplateId }}">
     <input type="hidden" name="campaign_id" value="{{ $campaignId }}">
     <input type="hidden" name="message_id" value="{{ $messageId }}">
+
+    @php
+        $classicEditorCancelUrl = ($campaignId > 0)
+            ? route('campaigns.show', $campaignId)
+            : route('campaigns.index');
+    @endphp
+
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">{{ __('Editar correo de secuencia') }}</h4>
@@ -90,14 +97,11 @@
             @endif
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
-            <a
-                href="{{ $grapesEditorUrl }}"
-                class="btn btn-label-secondary"
-            >
+            <a href="{{ $grapesEditorUrl }}" class="btn btn-label-secondary waves-effect">
                 <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor') }}
             </a>
-            <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
-            <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar para después') }}</button>
+            <button type="button" class="btn btn-label-danger waves-effect">{{ __('Eliminar') }}</button>
+            <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary waves-effect">{{ __('Guardar para después') }}</button>
         </div>
     </div>
 
@@ -185,10 +189,9 @@
         <textarea id="body-template" class="d-none">{{ $defaultBodyTemplate }}</textarea>
     </div>
 
-    <div class="d-flex justify-content-end gap-2">
-        <button type="button" class="btn btn-label-danger">{{ __('Eliminar') }}</button>
-        <button type="submit" name="intent" value="save" class="btn btn-primary">{{ __('Guardar') }}</button>
-        <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary">{{ __('Guardar para después') }}</button>
+    <div class="d-flex flex-wrap justify-content-end align-items-center gap-2 pt-2">
+        <button type="submit" name="intent" value="save" class="btn btn-primary waves-effect waves-light">{{ __('Guardar') }}</button>
+        <button type="button" class="btn btn-label-secondary waves-effect" onclick="location.href='{{ $classicEditorCancelUrl }}'">{{ __('Cancel') }}</button>
     </div>
 </form>
 @endsection

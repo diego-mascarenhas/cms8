@@ -32,7 +32,6 @@
             <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary waves-effect waves-light">
                 <i class="ti ti-arrow-left me-1"></i>{{ __('Volver') }}
             </a>
-            <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
         </div>
     </div>
 
@@ -114,10 +113,13 @@
         </div>
     </div>
 
-    <hr class="my-4" />
-
-    <div class="d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary">{{ __('Guardar') }}</button>
+    <div class="row g-4">
+        <div class="col-12 col-lg-8 offset-lg-4">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="submit" class="btn btn-primary waves-effect waves-light">{{ __('Guardar') }}</button>
+                <button type="button" class="btn btn-label-secondary waves-effect waves-light" onclick="location.href='{{ route('campaigns.index') }}'">{{ __('Cancel') }}</button>
+            </div>
+        </div>
     </div>
 </form>
 @endsection
