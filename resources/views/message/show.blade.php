@@ -116,6 +116,19 @@
 @endif
 @endif
 
+@if (filled($emailTemplatePreviewHtml ?? null) && filled($emailTemplateGrapesUrl ?? null) && $message->template)
+	<div class="row mb-1">
+		<div class="col-12">
+			@include('message.partials.email-template-content-preview', [
+				'previewHtml' => $emailTemplatePreviewHtml,
+				'grapesEditorUrl' => $emailTemplateGrapesUrl,
+				'templateLabel' => $message->template->name,
+				'messageId' => $message->id,
+			])
+		</div>
+	</div>
+@endif
+
 <div class="row">
 	<!-- Left Column: Stats + General Info -->
 	<div class="col-lg-4 col-md-5">

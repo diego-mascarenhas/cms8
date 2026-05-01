@@ -8,6 +8,7 @@ use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
+use App\Models\Template;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -28,12 +29,43 @@ class MessageController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
+        $legacyForm = $request->boolean('legacy_form');
+
+        if (! $legacyForm && (! $request->filled('template_id') || $request->integer('template_id') <= 0))
+        {
+            return redirect()->route('campaigns.templates.select', [
+                'type' => 'messages',
+                'title' => $request->string('title')->toString(),
+            ]);
+        }
+
         $data = new stdClass;
         $data->types = MessageType::getOptions();
-        $data->templates = \App\Models\Template::getOptions();
+        $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
+        $data->useLegacyTemplatePicker = $legacyForm;
+
+        if (! $legacyForm && $request->integer('template_id') > 0)
+        {
+            $template = Template::query()->whereKey($request->integer('template_id'))->first();
+
+            if (! $template)
+            {
+                return redirect()
+                    ->route('campaigns.templates.select', ['type' => 'messages', 'title' => ''])
+                    ->with('error', __('La plantilla seleccionada no está disponible.'));
+            }
+
+            $data->template_id = $template->id;
+            $data->template = $template;
+            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($template);
+            $data->templateGrapesEditorUrl = route('template.editor', $template->getHashedId());
+            $data->name = old('name', $request->string('name')->toString());
+            $data->type_id = old('type_id', 1);
+            $data->text = old('text', __('Boletín por correo'));
+        }
 
         return view('message.form', compact('data'));
     }
@@ -314,6 +346,15 @@ class MessageController extends Controller
             }
         }
 
+        $emailTemplatePreviewHtml = null;
+        $emailTemplateGrapesUrl = null;
+
+        if ((int) $message->type_id === 1 && $message->template)
+        {
+            $emailTemplatePreviewHtml = $this->buildMessagePreviewHtml($message);
+            $emailTemplateGrapesUrl = route('template.editor', $message->template->getHashedId());
+        }
+
         return view('message.show', [
             'message' => $message,
             'stats' => $stats,
@@ -324,6 +365,8 @@ class MessageController extends Controller
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
             'apiUser' => $apiUser,
+            'emailTemplatePreviewHtml' => $emailTemplatePreviewHtml,
+            'emailTemplateGrapesUrl' => $emailTemplateGrapesUrl,
         ]);
     }
 
@@ -340,8 +383,15 @@ class MessageController extends Controller
         }
 
         $data->types = MessageType::getOptions();
-        $data->templates = \App\Models\Template::getOptions();
+        $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
+        $data->useLegacyTemplatePicker = false;
+
+        if ($data->template_id && $data->template && (int) $data->type_id === 1)
+        {
+            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($data->template);
+            $data->templateGrapesEditorUrl = route('template.editor', $data->template->getHashedId());
+        }
 
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
@@ -1080,6 +1130,23 @@ class MessageController extends Controller
     /**
      * Replace email template variables with actual values
      */
+    private function iframePreviewHtmlForTemplate(Template $template): string
+    {
+        $htmlContent = '';
+        if ($template->gjs_data && isset($template->gjs_data['html']))
+        {
+            $htmlContent = $template->gjs_data['html'];
+        }
+
+        $sampleContact = (object) [
+            'name' => 'John',
+            'surname' => 'Doe',
+            'email' => 'john.doe@example.com',
+        ];
+
+        return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+    }
+
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
     {
         // Basic contact variables

@@ -74,12 +74,18 @@
                 return;
             }
 
+            @if (($selectedType ?? '') === 'messages')
+            const redirectUrl = new URL(@json(route('message.create')));
+            redirectUrl.searchParams.set('template_id', templateId);
+            redirectUrl.searchParams.set('name', emailTitle);
+            @else
             const redirectUrl = new URL(@json(route('campaigns.classic-editor')));
             redirectUrl.searchParams.set('type', @json($selectedType));
             redirectUrl.searchParams.set('title', emailTitle);
             redirectUrl.searchParams.set('template_id', templateId);
             @if (($selectedCampaignId ?? 0) > 0)
             redirectUrl.searchParams.set('campaign_id', @json((string) $selectedCampaignId));
+            @endif
             @endif
 
             window.location.href = redirectUrl.toString();
@@ -89,12 +95,22 @@
 @endsection
 
 @section('content')
+@if (session('error'))
+    <div class="alert alert-danger alert-dismissible mb-4" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Cerrar') }}"></button>
+    </div>
+@endif
 @php
     $classicEditorLinkQuery = array_filter([
         'type' => $selectedType,
         'title' => $selectedTitle,
         'campaign_id' => ($selectedCampaignId ?? 0) > 0 ? $selectedCampaignId : null,
     ], fn ($value): bool => $value !== null && $value !== '');
+    $isMessageTemplateFlow = ($selectedType ?? '') === 'messages';
+    $classicEditorHref = $isMessageTemplateFlow
+        ? route('message.create', ['legacy_form' => 1])
+        : route('campaigns.classic-editor', $classicEditorLinkQuery);
 @endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
     <div>
@@ -114,10 +130,10 @@
             </a>
         @endif
         <a
-            href="{{ route('campaigns.classic-editor', $classicEditorLinkQuery) }}"
+            href="{{ $classicEditorHref }}"
             class="btn btn-primary"
         >
-            {{ __('Usar el editor clásico') }}
+            {{ $isMessageTemplateFlow ? __('Formulario clásico (sin galería)') : __('Usar el editor clásico') }}
         </a>
     </div>
 </div>
@@ -174,10 +190,10 @@
         <h4 class="mb-2">{{ __('Prefieres lo clásico? El editor clásico sigue disponible.') }}</h4>
         <p class="text-muted mb-3">{{ __('Porque a veces solo necesitas algo simple, limpio y familiar.') }}</p>
         <a
-            href="{{ route('campaigns.classic-editor', $classicEditorLinkQuery) }}"
+            href="{{ $classicEditorHref }}"
             class="btn btn-label-secondary"
         >
-            {{ __('Usar el editor clásico') }}
+            {{ $isMessageTemplateFlow ? __('Formulario clásico (sin galería)') : __('Usar el editor clásico') }}
         </a>
     </div>
 </div>
@@ -206,7 +222,7 @@
                         <form id="template-create-form" class="mt-3">
                             <input id="modal-template-id" type="hidden" name="template_id" value="">
                             <div id="template-form-view" class="d-none">
-                                <label class="form-label" for="modal-template-title">{{ __('Title for This Email') }}</label>
+                                <label class="form-label" for="modal-template-title">{{ __('Título de este correo') }}</label>
                                 <input id="modal-template-title" type="text" class="form-control mb-3" required>
                                 <div class="d-flex flex-wrap align-items-center gap-3">
                                     <button id="modal-create-btn" type="submit" class="btn btn-primary" disabled>{{ __('Create') }}</button>

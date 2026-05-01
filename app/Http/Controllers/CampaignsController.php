@@ -155,9 +155,16 @@ class CampaignsController extends Controller
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
         $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
 
+        $selectedTypeLabel = match ($selectedType)
+        {
+            'sequences' => __('Secuencia de correo'),
+            'messages' => __('Mensaje / newsletter'),
+            default => __('Difusión por correo'),
+        };
+
         return view('campaigns.templates-select', [
             'selectedType' => $selectedType,
-            'selectedTypeLabel' => $selectedType === 'sequences' ? 'Secuencia de correo' : 'Difusión por correo',
+            'selectedTypeLabel' => $selectedTypeLabel,
             'selectedTitle' => $selectedTitle,
             'selectedCampaignId' => $campaignForContext?->id ?? 0,
             'contextCampaignName' => $campaignForContext?->name,

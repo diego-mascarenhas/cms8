@@ -163,11 +163,19 @@ document.querySelector('form').addEventListener('submit', function() {
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
+		@php
+			$useLegacyTemplatePicker = $data->useLegacyTemplatePicker ?? false;
+			$showEmailTemplatePreview = ! $useLegacyTemplatePicker && isset($data->template, $data->emailTemplatePreviewHtml, $data->templateGrapesEditorUrl) && $data->template && (int) ($data->type_id ?? 0) === 1;
+		@endphp
+
 		<div class="row g-3">
 			<div class="col-md-6">
 				<x-input-general id="name" label="{{ __('Name') }} (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
-			<div class="col-md-4">
+			<div class="col-md-6">
+				<x-input-select id="type_id" label="{{ __('Canal (WhatsApp o Email)') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+			</div>
+			<div class="col-md-6">
 				<x-module-categories-select
 					id="category_id"
 					label="Categoría"
@@ -181,13 +189,9 @@ document.querySelector('form').addEventListener('submit', function() {
 					<div class="form-text text-warning mt-1">
 						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar la categoría porque el mensaje ya tiene entregas creadas.
 					</div>
-				@else
-					<div class="form-text mt-1">
-						¿No encuentras la categoría que buscas? <a href="{{ route('categories.index') }}">Administrar categorías</a>
-					</div>
 				@endif
 			</div>
-			<div class="col-md-2">
+			<div class="col-md-6">
 				<x-input-select
 					id="contact_status_id"
 					label="{{ __('Estado del contacto') }}"
@@ -201,29 +205,38 @@ document.querySelector('form').addEventListener('submit', function() {
 					</div>
 				@endif
 			</div>
-			<div class="col-md-6">
-				<x-input-select id="type_id" label="{{ __('Canal (WhatsApp o Email)') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
-			</div>
-			<div class="col-md-6">
-				<x-input-select id="template_id" label="{{ __('Plantilla') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
-				<div class="form-text mt-1">
-					¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
-				</div>
-			</div>
-			@if (isset($data->id) && (int) ($data->type_id ?? 0) === 1 && $data->template_id && $data->template)
-				<div class="col-md-6 d-flex flex-column flex-md-row align-items-md-end justify-content-md-end gap-2 mt-2 mt-md-0">
-					<a href="{{ route('template.editor', $data->template->getHashedId()) }}" class="btn btn-primary waves-effect waves-light">
-						<i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-					</a>
-				</div>
-			@endif
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="{{ __('Texto alternativo') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">
 					{{ __('Para WhatsApp o para clientes de correo sin HTML. Si usas plantilla, este texto sirve como fallback o versión corta.') }}
 				</div>
 			</div>
-						<div class="col-md-6">
+			@if ($showEmailTemplatePreview)
+				<input type="hidden" name="template_id" value="{{ $data->template_id }}">
+				<div class="col-12">
+					@include('message.partials.email-template-content-preview', [
+						'previewHtml' => $data->emailTemplatePreviewHtml,
+						'grapesEditorUrl' => $data->templateGrapesEditorUrl,
+						'templateLabel' => $data->template->name,
+						'messageId' => $data->id ?? null,
+					])
+				</div>
+			@else
+				<div class="col-md-6">
+					<x-input-select id="template_id" label="{{ __('Plantilla') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
+					<div class="form-text mt-1">
+						¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
+					</div>
+				</div>
+				@if (isset($data->id) && (int) ($data->type_id ?? 0) === 1 && $data->template_id && $data->template)
+					<div class="col-md-6 d-flex flex-column flex-md-row align-items-md-end justify-content-md-end gap-2 mt-2 mt-md-0">
+						<a href="{{ route('template.editor', $data->template->getHashedId()) }}" class="btn btn-primary waves-effect waves-light">
+							<i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
+						</a>
+					</div>
+				@endif
+			@endif
+			<div class="col-md-6">
 				<label for="min_hours_between_emails" class="form-label">{{ __('Minimum Time Between Emails') }}</label>
 				<div class="input-group">
 					<input
