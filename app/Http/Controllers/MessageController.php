@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Enums\CampaignStatus;
 use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\StoreMessageRequest;
 use App\Models\Message;
@@ -537,6 +538,16 @@ class MessageController extends Controller
             }
 
             $message->update($updateData);
+
+            $message->load('campaigns');
+            foreach ($message->campaigns as $campaign)
+            {
+                $campaignStatus = CampaignStatus::tryFrom($campaign->status);
+                if ($campaignStatus !== CampaignStatus::Sent && $campaignStatus !== CampaignStatus::Scheduled)
+                {
+                    $campaign->update(['status' => CampaignStatus::Active->value]);
+                }
+            }
 
             // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();

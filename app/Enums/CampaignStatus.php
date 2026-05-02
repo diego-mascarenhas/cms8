@@ -5,6 +5,8 @@ namespace App\Enums;
 enum CampaignStatus: string
 {
     case Active = 'active';
+    /** Mensaje(s) activado(s) pero aún sin envíos ni ventana pausable (coincide con botón «Enviar ahora»). */
+    case PendingLaunch = 'pending_launch';
     case Scheduled = 'scheduled';
     case Sent = 'sent';
     case Paused = 'paused';
@@ -14,6 +16,7 @@ enum CampaignStatus: string
         return match ($this)
         {
             self::Active => 'Activo',
+            self::PendingLaunch => 'Listo para enviar',
             self::Scheduled => 'Programado',
             self::Sent => 'Enviado',
             self::Paused => 'Pausado',
@@ -25,6 +28,7 @@ enum CampaignStatus: string
         return match ($this)
         {
             self::Active => 'bg-label-success text-success',
+            self::PendingLaunch => 'bg-label-primary text-primary',
             self::Scheduled => 'bg-label-warning text-warning',
             self::Sent => 'bg-label-info text-info',
             self::Paused => 'bg-label-secondary text-secondary',

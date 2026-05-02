@@ -34,7 +34,7 @@ class MessageShowSendButtonTest extends TestCase
         return $user->fresh();
     }
 
-    public function test_send_now_hidden_when_message_linked_to_campaign(): void
+    public function test_send_now_visible_when_message_linked_to_campaign_and_not_operational(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -53,7 +53,7 @@ class MessageShowSendButtonTest extends TestCase
         $response = $this->actingAs($user)->get(route('message.show', $message->id));
 
         $response->assertOk();
-        $response->assertDontSee('Enviar ahora', false);
+        $response->assertSee('Enviar ahora', false);
     }
 
     public function test_send_now_visible_when_message_not_linked_to_campaign(): void

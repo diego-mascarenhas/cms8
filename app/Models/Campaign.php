@@ -87,18 +87,85 @@ class Campaign extends Model
         return $case ? $case->label() : $this->type;
     }
 
+    /**
+     * Estado alineado con la barra Enviar/Pausar: "Activo" solo si hay envío en curso
+     * (mensaje activo y con entregas o fecha de inicio); "Listo para enviar" si está activado
+     * pero aún sin ese contexto (mismo caso que el botón Enviar ahora).
+     */
+    public function effectiveStatus(): CampaignStatus
+    {
+        $stored = CampaignStatus::tryFrom($this->status);
+
+        if ($stored === CampaignStatus::Sent || $stored === CampaignStatus::Scheduled)
+        {
+            return $stored;
+        }
+
+        if (! $this->relationLoaded('messages'))
+        {
+            $this->load([
+                'messages' => function ($q): void
+                {
+                    $q->select('messages.id', 'messages.team_id', 'messages.status_id', 'messages.started_at');
+                },
+            ]);
+        }
+
+        if ($this->messages->isEmpty())
+        {
+            return $stored ?? CampaignStatus::Active;
+        }
+
+        $messageIds = $this->messages->pluck('id');
+
+        foreach ($this->messages as $message)
+        {
+            if (self::messageIsOperationalForToolbar($message))
+            {
+                return CampaignStatus::Active;
+            }
+        }
+
+        $anyStatusTrue = $this->messages->contains(fn ($m): bool => (bool) $m->status_id);
+
+        if ($anyStatusTrue)
+        {
+            return CampaignStatus::PendingLaunch;
+        }
+
+        $anyStarted = $this->messages->contains(fn ($m): bool => $m->started_at !== null);
+
+        $hasDeliveries = MessageDelivery::query()
+            ->whereIn('message_id', $messageIds)
+            ->exists();
+
+        if ($anyStarted || $hasDeliveries)
+        {
+            return CampaignStatus::Paused;
+        }
+
+        return CampaignStatus::Active;
+    }
+
+    /**
+     * Misma regla que Pausar / Activo en listado y ficha de campaña (envío en curso).
+     */
+    public static function messageIsOperationalForToolbar(Message $message): bool
+    {
+        $totalDeliveries = MessageDelivery::where('message_id', $message->id)->count();
+
+        return (bool) $message->status_id
+            && ($totalDeliveries > 0 || $message->started_at !== null);
+    }
+
     public function statusLabel(): string
     {
-        $case = CampaignStatus::tryFrom($this->status);
-
-        return $case ? $case->label() : $this->status;
+        return $this->effectiveStatus()->label();
     }
 
     public function statusBadgeClasses(): string
     {
-        $case = CampaignStatus::tryFrom($this->status);
-
-        return $case ? $case->badgeClasses() : 'bg-label-secondary text-secondary';
+        return $this->effectiveStatus()->badgeClasses();
     }
 
     /**

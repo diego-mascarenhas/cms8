@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\CampaignDataTable;
+use App\Enums\CampaignStatus;
 use App\Enums\CampaignType;
 use App\Helpers\DnsHelper;
 use App\Http\Requests\UpdateCampaignRequest;
@@ -207,6 +208,12 @@ class CampaignsController extends Controller
                 }
             }
 
+            $stored = CampaignStatus::tryFrom($campaign->status);
+            if ($stored !== CampaignStatus::Sent && $stored !== CampaignStatus::Scheduled)
+            {
+                $campaign->update(['status' => CampaignStatus::Paused->value]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => __('Campaña pausada exitosamente.'),
@@ -250,10 +257,7 @@ class CampaignsController extends Controller
                 $hasDeliveriesPending = true;
             }
 
-            $campaignIsActive = (bool) $message->status_id;
-            $campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
-
-            if ($campaignCanBePaused)
+            if (Campaign::messageIsOperationalForToolbar($message))
             {
                 $showPause = true;
             }

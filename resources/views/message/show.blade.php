@@ -35,13 +35,10 @@
 		@endphp
 
 		@php
-			// Check if campaign is active and has deliveries pending or in progress
 			$totalDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->count();
 			$deliveredCount = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
-			// Show "Send Now" button if there are deliveries not yet delivered (regardless of sent_at)
 			$hasDeliveriesPending = $totalDeliveries > $deliveredCount;
-			$campaignIsActive = $message->status_id == 1;
-			$campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
+			$campaignCanBePaused = \App\Models\Campaign::messageIsOperationalForToolbar($message);
 		@endphp
 
 		@if($campaignCanBePaused)
@@ -54,13 +51,11 @@
 			</button>
 		@endif
 		@else
-			@if (! $message->campaigns_exists)
-				<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
-						onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
-						{{ !$canSend ? 'disabled' : '' }}>
-					<i class="ti ti-send me-1"></i>Enviar ahora
-				</button>
-			@endif
+			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
+					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
+					{{ !$canSend ? 'disabled' : '' }}>
+				<i class="ti ti-send me-1"></i>Enviar ahora
+			</button>
 		@endif
 
 		<a href="{{ route('message.index') }}" class="btn btn-label-secondary">

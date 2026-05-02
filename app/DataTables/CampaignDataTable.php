@@ -40,6 +40,12 @@ class CampaignDataTable extends DataTable
 
         $query = $model->newQuery()
             ->where('team_id', $user->current_team_id)
+            ->with([
+                'messages' => function ($q): void
+                {
+                    $q->select('messages.id', 'messages.team_id', 'messages.status_id', 'messages.started_at');
+                },
+            ])
             ->orderByDesc('campaigns.created_at');
 
         $searchKeywordRaw = $request->input('search.value');
