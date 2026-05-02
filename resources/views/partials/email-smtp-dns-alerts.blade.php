@@ -3,7 +3,9 @@
     @php
         $isAuthorized = $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
         $usingSystemSmtp = auth()->user()?->currentTeam?->isUsingSystemSmtp() ?? false;
-        $hasConfigIssues = $usingSystemSmtp && (! $dnsStatus['spf']['has_mailbaby'] || ! $isAuthorized);
+        $hasConfigIssues = ! app()->isLocal()
+            && $usingSystemSmtp
+            && (! $dnsStatus['spf']['has_mailbaby'] || ! $isAuthorized);
     @endphp
 
     @if ($hasConfigIssues)

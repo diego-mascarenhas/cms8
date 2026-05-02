@@ -30,9 +30,8 @@
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
 		@php
-			$isAuthorized = isset($dnsStatus) && $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
 			$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
-			$canSend = !$usingSystemSmtp || $isAuthorized;
+			$canSend = \App\Helpers\DnsHelper::canSendBroadcastFromUi($dnsStatus ?? null, $usingSystemSmtp);
 		@endphp
 
 		@php

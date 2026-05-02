@@ -287,4 +287,24 @@ class DnsHelper
             $apiUser,
         );
     }
+
+    /**
+     * Whether the broadcast "Send now" UI may proceed: own SMTP, or MailBaby domain authorized.
+     * In the local environment, MailBaby/SPF checks are skipped so dev mail (e.g. Mailpit) works.
+     *
+     * @param  bool|null  $treatAsLocal  For tests: force local bypass; null uses {@see \Illuminate\Foundation\Application::isLocal()}.
+     */
+    public static function canSendBroadcastFromUi(?array $dnsStatus, bool $usingSystemSmtp, ?bool $treatAsLocal = null): bool
+    {
+        if ($treatAsLocal ?? app()->isLocal())
+        {
+            return true;
+        }
+
+        $isAuthorized = is_array($dnsStatus)
+            && ($dnsStatus['spf']['has_mailbaby'] ?? false)
+            && ($dnsStatus['mailbaby_auth']['authorized'] ?? false);
+
+        return ! $usingSystemSmtp || $isAuthorized;
+    }
 }

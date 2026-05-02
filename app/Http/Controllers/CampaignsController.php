@@ -234,11 +234,8 @@ class CampaignsController extends Controller
     {
         $firstMessage = $campaign->messages->first();
 
-        $isAuthorized = is_array($dnsStatus)
-            && ($dnsStatus['spf']['has_mailbaby'] ?? false)
-            && ($dnsStatus['mailbaby_auth']['authorized'] ?? false);
         $usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
-        $canSend = ! $usingSystemSmtp || $isAuthorized;
+        $canSend = DnsHelper::canSendBroadcastFromUi($dnsStatus, $usingSystemSmtp);
 
         $showPause = false;
         $hasDeliveriesPending = false;
