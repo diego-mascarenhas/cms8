@@ -25,7 +25,8 @@
         if (campaignTypeFilter.length && $.fn.select2)
         {
             campaignTypeFilter.select2({
-                placeholder: @json(__('Tipo')),
+                placeholder: @json(__('Todos los tipos')),
+                allowClear: true,
                 minimumResultsForSearch: Infinity,
                 width: '100%',
             });
@@ -34,7 +35,8 @@
         if (campaignStatusFilter.length && $.fn.select2)
         {
             campaignStatusFilter.select2({
-                placeholder: @json(__('Estado')),
+                placeholder: @json(__('Todos los estados')),
+                allowClear: true,
                 minimumResultsForSearch: Infinity,
                 width: '100%',
             });
@@ -147,16 +149,16 @@
     <div class="card-body border-bottom">
         <div class="row g-3 align-items-end">
             <div class="col-12 col-md-4">
-                <select id="campaign-type-filter" class="form-select">
-                    <option value="">{{ __('Tipo') }}</option>
+                <select id="campaign-type-filter" class="form-select" data-placeholder="{{ __('Todos los tipos') }}">
+                    <option value=""></option>
                     @foreach ($campaignTypes as $campaignType)
                         <option value="{{ $campaignType->value }}">{{ $campaignType->label() }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-12 col-md-4">
-                <select id="campaign-status-filter" class="form-select">
-                    <option value="">{{ __('Estado') }}</option>
+                <select id="campaign-status-filter" class="form-select" data-placeholder="{{ __('Todos los estados') }}">
+                    <option value=""></option>
                     <option value="active">{{ __('Activo') }}</option>
                     <option value="scheduled">{{ __('Programado') }}</option>
                     <option value="sent">{{ __('Enviado') }}</option>

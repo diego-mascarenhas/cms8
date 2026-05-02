@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Team;
 use App\Services\DemoDataService;
+use Database\Seeders\DemoMailCampaignData;
 use Illuminate\Console\Command;
 
 class StartCommand extends Command
@@ -184,17 +185,18 @@ class StartCommand extends Command
     {
         $this->info('Loading demo data...');
         $team = Team::withoutGlobalScopes()
-            ->where('name', "REVISION ALPHA's Team")
+            ->where('name', 'Demo')
             ->first();
 
         if (! $team)
         {
-            $this->warn("Revision Alpha team not found. Run 'Run database seed' first (or: php artisan db:seed).");
+            $this->warn('Demo team not found. Run database seed first (or: php artisan db:seed).');
 
             return self::FAILURE;
         }
 
         DemoDataService::createClientsAndProjects($team->id, $this);
+        DemoMailCampaignData::seed($team, $this);
 
         return self::SUCCESS;
     }

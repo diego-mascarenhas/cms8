@@ -8,8 +8,9 @@ use Illuminate\Database\Seeder;
 
 /**
  * Demo seed — complementary to the main deploy seed.
- * Run after deploy (or after db:seed) to create demo clients and projects for testing.
- * Does not run inside DatabaseSeeder; use: php artisan db:seed --class=DemoSeeder
+ * Run after deploy (or after db:seed) to create demo clients, projects, and mail demo data on Team "Demo".
+ * Fresh install: same data runs from {@see TeamDemoSeeder} (after mail settings).
+ * Standalone: php artisan db:seed --class=DemoSeeder (requires Team "Demo" from the main seed).
  */
 class DemoSeeder extends Seeder
 {
@@ -19,16 +20,18 @@ class DemoSeeder extends Seeder
     public function run(): void
     {
         $team = Team::withoutGlobalScopes()
-            ->where('name', "REVISION ALPHA's Team")
+            ->where('name', 'Demo')
             ->first();
 
         if (! $team)
         {
-            $this->command->warn('Revision Alpha team not found. Run the main seed first: php artisan db:seed');
+            $this->command->warn('Demo team not found. Run the main seed first: php artisan db:seed');
 
             return;
         }
 
         DemoDataService::createClientsAndProjects($team->id, $this->command);
+
+        DemoMailCampaignData::seed($team, $this->command);
     }
 }

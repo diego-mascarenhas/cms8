@@ -23,7 +23,10 @@ class DemoDataForTimeReportingSeeder extends Seeder
 {
     public function run(): void
     {
-        $team = Team::where('personal_team', false)->first();
+        $team = Team::query()
+            ->where('name', 'Demo')
+            ->first()
+            ?? Team::where('personal_team', false)->orderBy('id')->first();
         if (! $team)
         {
             $this->command->warn('No hay equipo. Ejecuta antes DatabaseSeeder o crea un team.');

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Campaign extends Model
 {
@@ -188,23 +189,35 @@ class Campaign extends Model
      */
     public function deliveryStatistics(): array
     {
-        $base = MessageDelivery::query()->where('campaign_id', $this->id);
+        $now = now();
 
-        $total = (clone $base)->count();
-        $uniqueRecipients = (int) (clone $base)->selectRaw('count(distinct contact_id) as aggregate')->value('aggregate');
+        $row = DB::table('message_deliveries')
+            ->where('campaign_id', $this->id)
+            ->selectRaw(
+                'COUNT(*) as total_deliveries,
+                COUNT(DISTINCT contact_id) as unique_recipients_raw,
+                SUM(CASE WHEN sent_at IS NOT NULL AND sent_at <= ? THEN 1 ELSE 0 END) as sent_raw,
+                SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered_raw,
+                SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened_raw,
+                SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked_raw,
+                SUM(CASE WHEN bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced_raw,
+                SUM(CASE WHEN complained_at IS NOT NULL THEN 1 ELSE 0 END) as complained_raw,
+                SUM(CASE WHEN status_id = 4 THEN 1 ELSE 0 END) as failed_raw,
+                SUM(CASE WHEN sent_at IS NULL OR sent_at > ? THEN 1 ELSE 0 END) as pending_raw',
+                [$now, $now],
+            )
+            ->first();
 
-        $sent = (clone $base)->whereNotNull('sent_at')->where('sent_at', '<=', now())->count();
-        $delivered = (clone $base)->whereNotNull('delivered_at')->count();
-        $opened = (clone $base)->whereNotNull('opened_at')->count();
-        $clicked = (clone $base)->whereNotNull('clicked_at')->count();
-        $bounced = (clone $base)->whereNotNull('bounced_at')->count();
-        $complained = (clone $base)->whereNotNull('complained_at')->count();
-        $failed = (clone $base)->where('status_id', 4)->count();
-        $pending = (clone $base)->where(function (Builder $q): void
-        {
-            $q->whereNull('sent_at')
-                ->orWhere('sent_at', '>', now());
-        })->count();
+        $total = (int) ($row->total_deliveries ?? 0);
+        $uniqueRecipients = (int) ($row->unique_recipients_raw ?? 0);
+        $sent = (int) ($row->sent_raw ?? 0);
+        $delivered = (int) ($row->delivered_raw ?? 0);
+        $opened = (int) ($row->opened_raw ?? 0);
+        $clicked = (int) ($row->clicked_raw ?? 0);
+        $bounced = (int) ($row->bounced_raw ?? 0);
+        $complained = (int) ($row->complained_raw ?? 0);
+        $failed = (int) ($row->failed_raw ?? 0);
+        $pending = (int) ($row->pending_raw ?? 0);
 
         $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
         $clickRate = $delivered > 0 ? round(($clicked / $delivered) * 100, 2) : 0.0;

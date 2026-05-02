@@ -179,10 +179,16 @@ HTML;
 
     private function performanceCell(Campaign $row): string
     {
+        $live = $row->deliveryStatistics();
+
+        $sends = $row->sends_count ?? $live['total'];
+        $openRate = $row->opened_rate !== null ? (float) $row->opened_rate : $live['open_rate'];
+        $clickRate = $row->clicked_rate !== null ? (float) $row->clicked_rate : $live['click_rate'];
+
         return '<div class="d-flex flex-wrap gap-3">'
-            .$this->metricBlock(__('Envíos'), $row->sends_count !== null ? (string) $row->sends_count : '—')
-            .$this->metricBlock(__('Abiertos'), $this->formatPercent($row->opened_rate))
-            .$this->metricBlock(__('Clics'), $this->formatPercent($row->clicked_rate))
+            .$this->metricBlock(__('Envíos'), (string) $sends)
+            .$this->metricBlock(__('Abiertos'), $this->formatPercent($openRate))
+            .$this->metricBlock(__('Clics'), $this->formatPercent($clickRate))
             .$this->metricBlock(__('Desuscritos'), $this->formatPercent($row->unsubscribed_rate))
             .'</div>';
     }
@@ -225,7 +231,7 @@ HTML;
         return [
             'select' => false,
             'stateSave' => true,
-            'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.campaignsDt\').on(\'keyup.campaignsDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.campaignsDt select2:select\').on(\'change.campaignsDt select2:select\', function () { api.ajax.reload(); }); }',
+            'initComplete' => 'function () { var api = this.api(); var debTimer; $("#campaign-search-filter").off(\'keyup.campaignsDt\').on(\'keyup.campaignsDt\', function () { clearTimeout(debTimer); var el = this; debTimer = setTimeout(function () { api.search(el.value || \'\').draw(); }, 275); }); $("#campaign-type-filter, #campaign-status-filter").off(\'change.campaignsDt select2:select select2:clear\').on(\'change.campaignsDt select2:select select2:clear\', function () { api.ajax.reload(); }); }',
             'drawCallback' => 'function () { $("#campaigns-table tbody tr").css({"user-select": "none","-webkit-user-select": "none","-moz-user-select": "none","-ms-user-select": "none"}); }',
         ];
     }

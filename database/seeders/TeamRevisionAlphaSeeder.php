@@ -11,7 +11,6 @@ use App\Models\ServiceType;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
-use App\Services\DemoDataService;
 use App\Support\CollectionMessagingGuide;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -110,10 +109,7 @@ class TeamRevisionAlphaSeeder extends Seeder
             $this->getCommand()->info('✅ Prompt de cobranzas hosting (module_prompts) sincronizado para Revision Alpha');
         }
 
-        // 9. Create demo clients (REVISION ALPHA, IDONEO) and their projects
-        $this->createDemoClientsAndProjects();
-
-        // 10. Configure team shortcuts
+        // 9. Configure team shortcuts
         $this->configureTeamShortcuts($team);
 
         $this->getCommand()->info('✅ REVISION ALPHA setup completed successfully');
@@ -953,14 +949,6 @@ class TeamRevisionAlphaSeeder extends Seeder
         }
 
         $this->getCommand()->info('✅ Message types ensured');
-    }
-
-    /**
-     * Create demo clients (REVISION ALPHA, IDONEO) and 2-3 projects each for testing the full circuit.
-     */
-    private function createDemoClientsAndProjects(): void
-    {
-        DemoDataService::createClientsAndProjects($this->teamId, $this->getCommand());
     }
 
     /**

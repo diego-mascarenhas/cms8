@@ -26,6 +26,8 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
+use App\Services\DemoDataService;
+use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -67,6 +69,9 @@ class TeamDemoSeeder extends Seeder
 
         // 8. Configure email settings and Mailer credits
         $this->configureDemoEmailSettings($team);
+
+        // 8.1. Demo clients (REVISION ALPHA, IDONEO) + mail campaigns / secuencias / contactos Tester (equipo Demo)
+        $this->seedDemoClientsProjectsAndMail($team);
 
         // 9. Configure prospect credits for testing
         $this->configureDemoProspectCredits($team);
@@ -143,6 +148,16 @@ class TeamDemoSeeder extends Seeder
         $user->update(['current_team_id' => $team->id]);
 
         return $team;
+    }
+
+    /**
+     * Shared demo circuit: client enterprises + projects and mailer fixtures (see {@see DemoSeeder}).
+     */
+    private function seedDemoClientsProjectsAndMail(Team $team): void
+    {
+        DemoDataService::createClientsAndProjects($team->id, $this->command);
+        $console = $this->command instanceof Command ? $this->command : null;
+        DemoMailCampaignData::seed($team, $console);
     }
 
     private function assignCoreModules(Team $team): void
