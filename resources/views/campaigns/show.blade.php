@@ -2,6 +2,14 @@
 
 @section('title', __('Campaña'))
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+@endsection
+
 @section('content')
 @php
     /** @var array<string, int|float> $deliveryStats */
@@ -27,16 +35,256 @@
         <p class="text-muted">{{ __('Envíos, entregas y engagement de esta campaña.') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
-        <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary waves-effect waves-light">
-            <i class="ti ti-arrow-left me-1"></i>{{ __('Volver') }}
-        </a>
+        @php
+            /** @var array{first_message_id: int|null, can_send: bool, show_pause: bool, show_send_now: bool, show_recalculate: bool} $campaignSendToolbar */
+            $tb = $campaignSendToolbar;
+            $firstMessageId = $tb['first_message_id'];
+        @endphp
+
+        @if ($firstMessageId)
+            @if ($tb['show_pause'])
+                <button type="button" class="btn btn-warning waves-effect waves-light" data-campaign-toolbar="pause" onclick="pauseCampaignMail()">
+                    <i class="ti ti-player-pause me-1"></i>{{ __('Pausar') }}
+                </button>
+                @if ($tb['show_recalculate'])
+                    <button type="button" class="btn btn-info waves-effect waves-light" data-campaign-toolbar="recalculate" onclick="sendPendingNowCampaign({{ $firstMessageId }})">
+                        <i class="ti ti-refresh me-1"></i>{{ __('Recalcular envíos') }}
+                    </button>
+                @endif
+            @else
+                <button type="button"
+                    class="btn btn-success waves-effect waves-light {{ ! $tb['can_send'] ? 'disabled' : '' }}"
+                    data-campaign-toolbar="send-now"
+                    onclick="{{ $tb['can_send'] ? 'startCampaignFromCampaign('.$firstMessageId.')' : 'showCampaignMailAuthorizationError()' }}"
+                    @if (! $tb['can_send']) disabled @endif>
+                    <i class="ti ti-send me-1"></i>{{ __('Enviar ahora') }}
+                </button>
+            @endif
+        @endif
+
         <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i>{{ __('Editar') }}
+        </a>
+        <a href="{{ route('campaigns.index') }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-arrow-left me-1"></i>{{ __('Volver') }}
         </a>
     </div>
 </div>
 
 @include('partials.email-smtp-dns-alerts')
+
+@if ($campaignSendToolbar['first_message_id'])
+@push('scripts')
+<script>
+function showCampaignMailAuthorizationError() {
+    Swal.fire({
+        title: '{{ __('Dominio no autorizado') }}',
+        text: '{{ __('Tu dominio no está autorizado para enviar correos. Por favor, contacta con el soporte técnico para autorizar el envío de correos desde tu dominio.') }}',
+        icon: 'warning',
+        confirmButtonText: '{{ __('Entendido') }}',
+        customClass: {
+            confirmButton: 'btn btn-primary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    });
+}
+
+function pauseCampaignMail() {
+    Swal.fire({
+        title: '{{ __('¿Pausar campaña?') }}',
+        text: '{{ __('¿Estás seguro de que deseas pausar esta campaña?') }}',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '{{ __('Sí, pausar') }}',
+        cancelButtonText: '{{ __('Cancelar') }}',
+        customClass: {
+            confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(@json(route('campaigns.pause-messages', $campaign)), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: '{{ __('¡Pausada!') }}',
+                            text: data.message,
+                            icon: 'success',
+                            customClass: {
+                                confirmButton: 'btn btn-success waves-effect waves-light'
+                            },
+                            buttonsStyling: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: '{{ __('Error') }}',
+                            text: data.message,
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-danger waves-effect waves-light'
+                            },
+                            buttonsStyling: false
+                        });
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        title: '{{ __('Error') }}',
+                        text: '{{ __('Ha ocurrido un error al pausar la campaña') }}',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                });
+        }
+    });
+}
+
+function sendPendingNowCampaign(messageId) {
+    Swal.fire({
+        title: '{{ __('¿Recalcular envíos?') }}',
+        text: '{{ __('Esto reprogramará todos los correos pendientes y encolará los primeros 100 para envío inmediato') }}',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '{{ __('Sí, recalcular') }}',
+        cancelButtonText: '{{ __('Cancelar') }}',
+        customClass: {
+            confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false,
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch(`/message/${messageId}/send-pending-now`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+                .then(response => {
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return data;
+                    });
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`${error.message || error}`);
+                });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            if (result.value.success) {
+                let msg = result.value.message;
+                if (result.value.remaining > 0) {
+                    msg += `\n\n{{ __('Los restantes') }} ${result.value.remaining} {{ __('serán enviados automáticamente por el programador cada minuto.') }}`;
+                }
+                Swal.fire({
+                    title: '{{ __('¡Proceso completado!') }}',
+                    text: msg,
+                    icon: 'success',
+                    customClass: {
+                        confirmButton: 'btn btn-success waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    title: '{{ __('Error') }}',
+                    text: result.value.message,
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
+            }
+        }
+    });
+}
+
+function startCampaignFromCampaign(messageId) {
+    Swal.fire({
+        title: '{{ __('¿Iniciar campaña?') }}',
+        text: '{{ __('¿Estás seguro de que deseas iniciar esta campaña?') }}',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '{{ __('Sí, iniciar') }}',
+        cancelButtonText: '{{ __('Cancelar') }}',
+        customClass: {
+            confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/message/${messageId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: '{{ __('¡Iniciada!') }}',
+                            text: data.message,
+                            icon: 'success',
+                            customClass: {
+                                confirmButton: 'btn btn-success waves-effect waves-light'
+                            },
+                            buttonsStyling: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: '{{ __('Error') }}',
+                            text: data.message,
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-danger waves-effect waves-light'
+                            },
+                            buttonsStyling: false
+                        });
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({
+                        title: '{{ __('Error') }}',
+                        text: '{{ __('Ha ocurrido un error al iniciar la campaña') }}',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                });
+        }
+    });
+}
+</script>
+@endpush
+@endif
 
 <div class="row g-4 mb-4">
     <div class="col-lg-4">

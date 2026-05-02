@@ -863,6 +863,9 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/campaigns/{campaign}', [CampaignsController::class, 'show'])
         ->whereNumber('campaign')
         ->name('campaigns.show');
+    Route::post('/campaigns/{campaign}/pause-messages', [CampaignsController::class, 'pauseMessages'])
+        ->whereNumber('campaign')
+        ->name('campaigns.pause-messages');
     Route::put('/campaigns/{campaign}', [CampaignsController::class, 'update'])
         ->whereNumber('campaign')
         ->name('campaigns.update');

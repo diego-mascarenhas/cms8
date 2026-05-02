@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
 use App\Models\Content;
 use App\Models\Message;
+use App\Models\MessageDelivery;
 use App\Models\MessageType;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
@@ -152,7 +153,16 @@ class CampaignsController extends Controller
         $campaign->load([
             'messages' => function ($q): void
             {
-                $q->select('messages.id', 'messages.name', 'messages.team_id', 'messages.min_hours_between_emails', 'messages.type_id', 'messages.template_id')
+                $q->select(
+                    'messages.id',
+                    'messages.name',
+                    'messages.team_id',
+                    'messages.min_hours_between_emails',
+                    'messages.type_id',
+                    'messages.template_id',
+                    'messages.status_id',
+                    'messages.started_at',
+                )
                     ->with('type')
                     ->orderBy('campaign_message.sort_order')
                     ->orderBy('campaign_message.id');
@@ -176,7 +186,89 @@ class CampaignsController extends Controller
             'messageTypes' => $messageTypes,
             'automationMessages' => $automationMessages,
             'dnsStatus' => $dnsStatus,
+            'campaignSendToolbar' => $this->campaignSendToolbarContext($campaign, $dnsStatus),
         ]);
+    }
+
+    /**
+     * Pause all linked messages for this campaign (same effect as pausing each message).
+     */
+    public function pauseMessages(Campaign $campaign): JsonResponse
+    {
+        try
+        {
+            $campaign->load('messages');
+
+            foreach ($campaign->messages as $message)
+            {
+                if ($message->status_id)
+                {
+                    $message->update(['status_id' => 0]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => __('Campaña pausada exitosamente.'),
+            ]);
+        } catch (\Throwable $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Error al pausar la campaña: :error', ['error' => $e->getMessage()]),
+            ], 500);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $dnsStatus
+     * @return array{
+     *     first_message_id: int|null,
+     *     can_send: bool,
+     *     show_pause: bool,
+     *     show_send_now: bool,
+     *     show_recalculate: bool
+     * }
+     */
+    private function campaignSendToolbarContext(Campaign $campaign, ?array $dnsStatus): array
+    {
+        $firstMessage = $campaign->messages->first();
+
+        $isAuthorized = is_array($dnsStatus)
+            && ($dnsStatus['spf']['has_mailbaby'] ?? false)
+            && ($dnsStatus['mailbaby_auth']['authorized'] ?? false);
+        $usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
+        $canSend = ! $usingSystemSmtp || $isAuthorized;
+
+        $showPause = false;
+        $hasDeliveriesPending = false;
+
+        foreach ($campaign->messages as $message)
+        {
+            $totalDeliveries = MessageDelivery::where('message_id', $message->id)->count();
+            $deliveredCount = MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
+
+            if ($totalDeliveries > $deliveredCount)
+            {
+                $hasDeliveriesPending = true;
+            }
+
+            $campaignIsActive = (bool) $message->status_id;
+            $campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
+
+            if ($campaignCanBePaused)
+            {
+                $showPause = true;
+            }
+        }
+
+        return [
+            'first_message_id' => $firstMessage?->id,
+            'can_send' => $canSend,
+            'show_pause' => $showPause,
+            'show_send_now' => $firstMessage !== null && ! $showPause,
+            'show_recalculate' => $showPause && $hasDeliveriesPending,
+        ];
     }
 
     public function selectTemplate(Request $request): View
