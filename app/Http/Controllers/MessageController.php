@@ -699,9 +699,10 @@ class MessageController extends Controller
 
             foreach ($allPending as $index => $delivery)
             {
-                // Add small delay (3 seconds) between each to avoid spam
+                // Stagger via scheduled_for so SendMessageCampaignJob can release(); do not set sent_at until mail is sent
                 $delivery->update([
-                    'sent_at' => $baseTime->copy()->addSeconds($index * 3),
+                    'scheduled_for' => $baseTime->copy()->addSeconds($index * 3),
+                    'sent_at' => null,
                 ]);
             }
 

@@ -58,6 +58,7 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         try
         {
+            $this->messageDelivery->refresh();
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
 
             if ($this->messageDelivery->scheduled_for && $this->messageDelivery->scheduled_for->isFuture())
@@ -98,8 +99,22 @@ class SendMessageCampaignJob implements ShouldQueue
             return false;
         }
 
-        if (! $this->messageDelivery->message || $this->messageDelivery->message->status_id != 1)
+        if (! $this->messageDelivery->message)
         {
+            Log::info('Message delivery skipped: message missing', [
+                'delivery_id' => $this->messageDelivery->id,
+            ]);
+
+            return false;
+        }
+
+        if (! $this->messageDelivery->message->status_id)
+        {
+            Log::info('Message delivery skipped: message is paused or inactive', [
+                'delivery_id' => $this->messageDelivery->id,
+                'message_id' => $this->messageDelivery->message->id,
+            ]);
+
             return false;
         }
 
@@ -129,6 +144,15 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         $mailBabyEnabled = config('services.mailbaby.enabled', false);
         $fallbackToSmtp = config('services.email.fallback_to_smtp', true);
+
+        // #region agent log
+        $this->agentDebugNdjson('SendMessageCampaignJob::sendEmail', 'send_email_branch', [
+            'hypothesisId' => 'H5',
+            'delivery_id' => (int) $this->messageDelivery->id,
+            'mailbaby_enabled' => (bool) $mailBabyEnabled,
+            'mailbaby_has_api_key' => (bool) config('services.mailbaby.api_key'),
+        ]);
+        // #endregion
 
         if ($mailBabyEnabled && config('services.mailbaby.api_key'))
         {
@@ -203,6 +227,21 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         $this->configureMailForTeam($this->messageDelivery->team);
 
+        // #region agent log
+        $toEmail = (string) ($this->messageDelivery->contact->email ?? '');
+        $toDomain = str_contains($toEmail, '@') ? (string) substr(strrchr($toEmail, '@'), 1) : '';
+        $this->agentDebugNdjson('SendMessageCampaignJob::sendViaSmtp', 'resolved_mail_config', [
+            'hypothesisId' => 'H1',
+            'delivery_id' => (int) $this->messageDelivery->id,
+            'default_mailer' => (string) config('mail.default'),
+            'smtp_host' => (string) config('mail.mailers.smtp.host'),
+            'smtp_port' => (int) config('mail.mailers.smtp.port'),
+            'smtp_encryption' => config('mail.mailers.smtp.encryption'),
+            'team_has_custom_outgoing' => $this->messageDelivery->team->hasOutgoingEmailConfig(),
+            'to_domain' => $toDomain,
+        ]);
+        // #endregion
+
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
 
         if (! class_exists($mailableClass))
@@ -212,7 +251,15 @@ class SendMessageCampaignJob implements ShouldQueue
 
         $mailable = new $mailableClass($this->messageDelivery);
 
-        Mail::to($this->messageDelivery->contact->email)->send($mailable);
+        Mail::to($this->messageDelivery->contact->email)->sendNow($mailable);
+
+        // #region agent log
+        $this->agentDebugNdjson('SendMessageCampaignJob::sendViaSmtp', 'after_mail_send', [
+            'hypothesisId' => 'H3',
+            'delivery_id' => (int) $this->messageDelivery->id,
+            'mail_send_returned' => true,
+        ]);
+        // #endregion
 
         $this->messageDelivery->update([
             'email_provider' => 'smtp',
@@ -250,5 +297,20 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->markAsError($exception->getMessage());
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function agentDebugNdjson(string $location, string $message, array $data): void
+    {
+        $path = base_path('.cursor/debug-ca54fc.log');
+        $payload = array_merge([
+            'sessionId' => 'ca54fc',
+            'timestamp' => (int) round(microtime(true) * 1000),
+            'location' => $location,
+            'message' => $message,
+        ], $data);
+        @file_put_contents($path, json_encode($payload)."\n", FILE_APPEND | LOCK_EX);
     }
 }

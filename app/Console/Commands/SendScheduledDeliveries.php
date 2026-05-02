@@ -42,6 +42,7 @@ class SendScheduledDeliveries extends Command
         if ($dueDeliveries->isEmpty())
         {
             $this->info('📭 No deliveries due for sending.');
+            $this->comment('Si esperabas envíos: status_id=1 (pendiente), scheduled_for ≤ ahora, mensaje activo; encola con este comando o `php artisan schedule:work` + `queue:work`.');
 
             return 0;
         }

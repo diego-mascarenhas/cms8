@@ -4,12 +4,16 @@ namespace App\Mail;
 
 use App\Models\MessageDelivery;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
-class MessageDeliveryMail extends Mailable implements ShouldQueue
+/**
+ * Sent synchronously from {@see \App\Jobs\SendMessageCampaignJob} (that job is already queued).
+ * Do not implement ShouldQueue or Mail::send() would double-queue to the default queue and never
+ * run under workers that only listen to mailer/campaign.
+ */
+class MessageDeliveryMail extends Mailable
 {
     use Queueable, SerializesModels;
 

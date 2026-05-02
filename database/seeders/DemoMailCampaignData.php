@@ -93,7 +93,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => false,
+                'status_id' => true,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -112,7 +112,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => false,
+                'status_id' => true,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -131,7 +131,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => false,
+                'status_id' => true,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -150,10 +150,20 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => false,
+                'status_id' => true,
                 'min_hours_between_emails' => 0,
             ],
         );
+
+        Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('name', [
+                '[Demo] Mensaje suelto (newsletter)',
+                '[Demo] Difusión — cuerpo del mail',
+                '[Demo] Secuencia — Paso 1 bienvenida',
+                '[Demo] Secuencia — Paso 2 seguimiento',
+            ])
+            ->update(['status_id' => true]);
 
         $campaignBroadcast = Campaign::withoutGlobalScopes()->firstOrCreate(
             [
@@ -294,10 +304,12 @@ final class DemoMailCampaignData
             return;
         }
 
+        // status_id 1 = pending (see SendScheduledDeliveries, MessageController). Messages must be active (status_id true)
+        // so SendMessageCampaignJob::validateDelivery() allows SMTP/Mailpit sends.
         $pendingPayload = [
             'team_id' => $teamId,
-            'status_id' => 0,
-            'scheduled_for' => now()->addMinutes(5),
+            'status_id' => 1,
+            'scheduled_for' => now(),
             'sent_at' => null,
             'delivered_at' => null,
             'opened_at' => null,
