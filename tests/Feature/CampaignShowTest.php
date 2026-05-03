@@ -247,4 +247,56 @@ class CampaignShowTest extends TestCase
         $response->assertDontSee('Parámetros del paso destino', false);
         $response->assertDontSee('Añadir mensaje', false);
     }
+
+    public function test_campaign_show_counts_stats_for_deliveries_without_campaign_id_when_message_is_linked(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Mailing vía programador',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 4,
+        ]);
+
+        $campaign = Campaign::factory()->create([
+            'team_id' => $teamId,
+            'name' => 'Campaña con envíos legacy',
+            'type' => CampaignType::Sequences->value,
+        ]);
+
+        $campaign->messages()->syncWithoutDetaching([
+            $message->id => ['sort_order' => 0],
+        ]);
+
+        MessageDelivery::create([
+            'team_id' => $teamId,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'campaign_id' => null,
+            'status_id' => 1,
+            'sent_at' => now()->subHour(),
+            'delivered_at' => now()->subHour(),
+            'clicked_at' => now()->subMinutes(2),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('campaigns.show', $campaign));
+
+        $response->assertOk();
+        $response->assertViewHas('deliveryStats', function (array $stats): bool
+        {
+            return $stats['total'] === 1
+                && $stats['clicked'] === 1
+                && $stats['unsubscribed'] === 1;
+        });
+        $response->assertSee('Desuscritos', false);
+    }
 }

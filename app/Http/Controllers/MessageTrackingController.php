@@ -161,6 +161,35 @@ class MessageTrackingController extends Controller
             }
 
             $delivery->markAsClicked();
+            $delivery->refresh();
+
+            // #region agent log
+            file_put_contents(base_path('.cursor/debug-ca54fc.log'), json_encode([
+                'sessionId' => 'ca54fc',
+                'hypothesisId' => 'H1',
+                'location' => 'MessageTrackingController.php:trackClick',
+                'message' => 'click tracked',
+                'data' => [
+                    'deliveryId' => $delivery->id,
+                    'campaignId' => $delivery->campaign_id,
+                    'clickTrackingEnabled' => (bool) ($delivery->message?->enable_click_tracking),
+                    'clickedAtSet' => $delivery->clicked_at !== null,
+                ],
+                'timestamp' => (int) (microtime(true) * 1000),
+            ])."\n", FILE_APPEND | LOCK_EX);
+            // #endregion
+        } else
+        {
+            // #region agent log
+            file_put_contents(base_path('.cursor/debug-ca54fc.log'), json_encode([
+                'sessionId' => 'ca54fc',
+                'hypothesisId' => 'H1',
+                'location' => 'MessageTrackingController.php:trackClick',
+                'message' => 'no delivery for token',
+                'data' => ['tokenPrefix' => substr((string) $token, 0, 8)],
+                'timestamp' => (int) (microtime(true) * 1000),
+            ])."\n", FILE_APPEND | LOCK_EX);
+            // #endregion
         }
 
         $url = $request->query('url', '/');

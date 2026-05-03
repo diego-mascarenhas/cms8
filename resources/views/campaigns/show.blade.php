@@ -448,13 +448,13 @@ function startCampaignFromCampaign(messageId) {
                     <div class="col-6 col-md-4 col-lg-3">
                         <div class="d-flex align-items-center">
                             <div class="avatar avatar-sm me-2">
-                                <span class="avatar-initial bg-label-danger rounded">
-                                    <i class="ti ti-flag"></i>
+                                <span class="avatar-initial bg-label-secondary rounded">
+                                    <i class="ti ti-user-minus"></i>
                                 </span>
                             </div>
                             <div>
-                                <h6 class="mb-0">{{ number_format($deliveryStats['complained']) }}</h6>
-                                <small class="text-muted">{{ __('Quejas') }}</small>
+                                <h6 class="mb-0">{{ number_format($deliveryStats['unsubscribed']) }}</h6>
+                                <small class="text-muted">{{ __('Desuscritos') }}</small>
                             </div>
                         </div>
                     </div>

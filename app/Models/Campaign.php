@@ -181,6 +181,7 @@ class Campaign extends Model
      *     clicked: int,
      *     bounced: int,
      *     complained: int,
+     *     unsubscribed: int,
      *     failed: int,
      *     pending: int,
      *     open_rate: float,
@@ -190,21 +191,39 @@ class Campaign extends Model
     public function deliveryStatistics(): array
     {
         $now = now();
+        $campaignId = (int) $this->id;
+        $teamId = (int) $this->team_id;
+        /** @var list<int> $messageIds */
+        $messageIds = $this->messages()->pluck('messages.id')->map(fn ($id): int => (int) $id)->unique()->values()->all();
 
         $row = DB::table('message_deliveries')
-            ->where('campaign_id', $this->id)
+            ->leftJoin('contacts', 'contacts.id', '=', 'message_deliveries.contact_id')
+            ->where('message_deliveries.team_id', $teamId)
+            ->where(function ($q) use ($campaignId, $messageIds): void
+            {
+                $q->where('message_deliveries.campaign_id', $campaignId);
+                if ($messageIds !== [])
+                {
+                    $q->orWhere(function ($q2) use ($messageIds): void
+                    {
+                        $q2->whereNull('message_deliveries.campaign_id')
+                            ->whereIn('message_deliveries.message_id', $messageIds);
+                    });
+                }
+            })
             ->selectRaw(
-                'COUNT(*) as total_deliveries,
-                COUNT(DISTINCT contact_id) as unique_recipients_raw,
-                SUM(CASE WHEN sent_at IS NOT NULL AND sent_at <= ? THEN 1 ELSE 0 END) as sent_raw,
-                SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered_raw,
-                SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened_raw,
-                SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked_raw,
-                SUM(CASE WHEN bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced_raw,
-                SUM(CASE WHEN complained_at IS NOT NULL THEN 1 ELSE 0 END) as complained_raw,
-                SUM(CASE WHEN status_id = 4 THEN 1 ELSE 0 END) as failed_raw,
-                SUM(CASE WHEN sent_at IS NULL OR sent_at > ? THEN 1 ELSE 0 END) as pending_raw',
-                [$now, $now],
+                'COUNT(message_deliveries.id) as total_deliveries,
+                COUNT(DISTINCT message_deliveries.contact_id) as unique_recipients_raw,
+                SUM(CASE WHEN message_deliveries.sent_at IS NOT NULL AND message_deliveries.sent_at <= ? THEN 1 ELSE 0 END) as sent_raw,
+                SUM(CASE WHEN message_deliveries.delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered_raw,
+                SUM(CASE WHEN message_deliveries.opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened_raw,
+                SUM(CASE WHEN message_deliveries.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked_raw,
+                SUM(CASE WHEN message_deliveries.bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced_raw,
+                SUM(CASE WHEN message_deliveries.complained_at IS NOT NULL THEN 1 ELSE 0 END) as complained_raw,
+                COUNT(DISTINCT CASE WHEN contacts.status_id = ? THEN message_deliveries.contact_id END) as unsubscribed_raw,
+                SUM(CASE WHEN message_deliveries.status_id = 4 THEN 1 ELSE 0 END) as failed_raw,
+                SUM(CASE WHEN message_deliveries.sent_at IS NULL OR message_deliveries.sent_at > ? THEN 1 ELSE 0 END) as pending_raw',
+                [$now, 4, $now],
             )
             ->first();
 
@@ -216,11 +235,28 @@ class Campaign extends Model
         $clicked = (int) ($row->clicked_raw ?? 0);
         $bounced = (int) ($row->bounced_raw ?? 0);
         $complained = (int) ($row->complained_raw ?? 0);
+        $unsubscribed = (int) ($row->unsubscribed_raw ?? 0);
         $failed = (int) ($row->failed_raw ?? 0);
         $pending = (int) ($row->pending_raw ?? 0);
 
         $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
         $clickRate = $delivered > 0 ? round(($clicked / $delivered) * 100, 2) : 0.0;
+
+        // #region agent log
+        file_put_contents(base_path('.cursor/debug-ca54fc.log'), json_encode([
+            'sessionId' => 'ca54fc',
+            'hypothesisId' => 'H4',
+            'location' => 'Campaign.php:deliveryStatistics',
+            'message' => 'campaign delivery stats aggregate',
+            'data' => [
+                'campaignId' => $campaignId,
+                'messageIdsCount' => count($messageIds),
+                'clicked' => $clicked,
+                'total' => $total,
+            ],
+            'timestamp' => (int) (microtime(true) * 1000),
+        ])."\n", FILE_APPEND | LOCK_EX);
+        // #endregion
 
         return [
             'total' => $total,
@@ -231,6 +267,7 @@ class Campaign extends Model
             'clicked' => $clicked,
             'bounced' => $bounced,
             'complained' => $complained,
+            'unsubscribed' => $unsubscribed,
             'failed' => $failed,
             'pending' => $pending,
             'open_rate' => $openRate,
