@@ -525,6 +525,7 @@ Route::middleware('auth:sanctum')->group(function ()
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
+    Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
 
     // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
     Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');

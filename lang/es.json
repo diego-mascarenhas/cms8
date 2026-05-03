@@ -1548,5 +1548,7 @@
   "whatsapp.send.error.local_unreachable": "No hay conexión con el servicio de WhatsApp local. Arrancá el proyecto «whatsapp-service» (por ejemplo con npm start) en el puerto configurado y volvé a intentar.",
   "whatsapp.send.error.local_timeout": "El servicio de WhatsApp local tardó demasiado en responder. Comprobá que esté en marcha y que la red sea estable.",
   "whatsapp.send.error.local_http_rejected": "El servicio de WhatsApp local respondió con error. Revisá su consola o el estado de la conexión en el chat.",
-  "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor."
+  "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor.",
+  "Invalid phone number.": "Número de teléfono no válido.",
+  "No CRM contact is linked to this number. Create or link a contact in Humano to use this option.": "No hay un contacto CRM vinculado a este número. Creá o vinculá un contacto en Humano para usar esta opción."
 }

@@ -269,6 +269,11 @@ class ChatController extends Controller
             $crmProfile = $this->findContactForTeamByChatPhone((int) $team->id, $digitsOnly);
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
+            $contact->contact_id = $crmProfile?->id;
+            $contact->assistant_toggle_available = $crmProfile !== null;
+            $contact->assistant_inbound_enabled = $crmProfile !== null
+                ? $crmProfile->allowsInboundChatAssistant()
+                : true;
             $contacts->push($contact);
         }
 
@@ -749,7 +754,105 @@ class ChatController extends Controller
             Cache::forget('inbound_received_count_team_'.$team->id);
         }
 
-        return response()->json(['messages' => $messages]);
+        return response()->json([
+            'messages' => $messages,
+            'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone),
+        ]);
+    }
+
+    /**
+     * Per-contact inbound WhatsApp assistant (same flag as web chat CRM / {@see Contact::allowsInboundChatAssistant}).
+     */
+    public function updateWhatsAppContactAssistant(Request $request)
+    {
+        $request->validate([
+            'phone' => ['required', 'string'],
+            'on' => ['required', 'boolean'],
+        ]);
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $digits = preg_replace('/[^0-9]/', '', $request->string('phone')->toString());
+        if ($digits === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid phone number.'),
+            ], 422);
+        }
+        if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+        {
+            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $contact = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $contact)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $contact);
+        $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
+        $contact->refresh();
+
+        return response()->json([
+            'success' => true,
+            'assistant_inbound_enabled' => $contact->allowsInboundChatAssistant(),
+            'assistant_toggle_available' => true,
+        ]);
+    }
+
+    /**
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool}
+     */
+    private function whatsAppThreadAssistantMetaForDigits(string $digits): array
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team || $digits === '')
+        {
+            return [
+                'contact_id' => null,
+                'assistant_inbound_enabled' => true,
+                'assistant_toggle_available' => false,
+            ];
+        }
+
+        $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $crm)
+        {
+            return [
+                'contact_id' => null,
+                'assistant_inbound_enabled' => true,
+                'assistant_toggle_available' => false,
+            ];
+        }
+
+        return [
+            'contact_id' => (int) $crm->id,
+            'assistant_inbound_enabled' => $crm->allowsInboundChatAssistant(),
+            'assistant_toggle_available' => true,
+        ];
+    }
+
+    private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
+    {
+        $payload = json_encode($contact->data ?? new \stdClass);
+        $data = json_decode($payload ?: '{}', true);
+        if (! is_array($data))
+        {
+            $data = [];
+        }
+        $data['chat_assistant_ai_enabled'] = $on;
+        $contact->data = $data;
+        $contact->save();
     }
 
     /**
@@ -774,6 +877,12 @@ class ChatController extends Controller
             {
                 $item['user_photo'] = Storage::url($c->user_photo);
             }
+            if (isset($c->contact_id) && $c->contact_id !== null)
+            {
+                $item['contact_id'] = (int) $c->contact_id;
+            }
+            $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
+            $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
 
             return $item;
         })->values()->all();
@@ -835,15 +944,7 @@ class ChatController extends Controller
 
             $this->authorize('update', $contact);
 
-            $payload = json_encode($contact->data ?? new \stdClass);
-            $data = json_decode($payload ?: '{}', true);
-            if (! is_array($data))
-            {
-                $data = [];
-            }
-            $data['chat_assistant_ai_enabled'] = $request->boolean('on');
-            $contact->data = $data;
-            $contact->save();
+            $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
 
             return response()->json(['success' => true]);
         }
