@@ -24,6 +24,7 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -1782,7 +1783,17 @@ class ChatController extends Controller
                 return $this->sendWithTemplate($request);
             }
 
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            Log::warning('Chat sendMessage failed', [
+                'user_id' => auth()->id(),
+                'team_id' => auth()->user()?->current_team_id,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => WhatsAppSendExceptionPresenter::messageForUser($e),
+            ], 500);
         }
     }
 

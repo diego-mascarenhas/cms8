@@ -732,5 +732,10 @@
   "Help section MCP Cursor lead": "Cursor MCP (Idoneo)",
   "Help section MCP Cursor body": "The Model Context Protocol (MCP) lets Cursor connect to external servers to extend context and assistant capabilities. This section explains how to register Idoneo’s public MCP endpoint in your development setup.",
   "keyword «onboarding» + destination number; active Chat prompt section_key onboarding.": "keyword «onboarding» + destination number; requires an active Chat prompt with section_key onboarding.",
-  "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).": "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label)."
+  "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).": "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).",
+  "whatsapp.send.error.local_not_configured": "Local WhatsApp is not configured. Set WHATSAPP_LOCAL_BASE_URL in .env or switch to the Twilio driver.",
+  "whatsapp.send.error.local_unreachable": "Cannot reach the local WhatsApp service. Start the whatsapp-service project (for example npm start) on the configured port and try again.",
+  "whatsapp.send.error.local_timeout": "The local WhatsApp service took too long to respond. Check that it is running and your network is stable.",
+  "whatsapp.send.error.local_http_rejected": "The local WhatsApp service returned an error. Check its console or your WhatsApp connection status in Chat.",
+  "whatsapp.send.error.generic": "Could not send the WhatsApp message. Try again; if it keeps failing, check your provider configuration."
 }

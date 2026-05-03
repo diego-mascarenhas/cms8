@@ -1543,5 +1543,10 @@
   "keyword «onboarding» + destination number; active Chat prompt section_key onboarding.": "palabra clave «onboarding» + número de destino; requiere un prompt activo del módulo Chat con section_key onboarding.",
   "Optional: --keyword=cobrar or --keyword=onboarding (must match an active team prompt: section key, routing key, or label).": "Opcional: --keyword=cobrar o --keyword=onboarding (debe coincidir con un prompt activo del equipo: section key, clave de ruteo o etiqueta).",
   "Additional Modules": "Módulos adicionales",
-  "These are optional modules that can be enabled based on your needs.": "Opcionales según tus necesidades; activalos cuando los quieras usar."
+  "These are optional modules that can be enabled based on your needs.": "Opcionales según tus necesidades; activalos cuando los quieras usar.",
+  "whatsapp.send.error.local_not_configured": "WhatsApp local no está configurado. Revisá WHATSAPP_LOCAL_BASE_URL en .env o usá el driver Twilio.",
+  "whatsapp.send.error.local_unreachable": "No hay conexión con el servicio de WhatsApp local. Arrancá el proyecto «whatsapp-service» (por ejemplo con npm start) en el puerto configurado y volvé a intentar.",
+  "whatsapp.send.error.local_timeout": "El servicio de WhatsApp local tardó demasiado en responder. Comprobá que esté en marcha y que la red sea estable.",
+  "whatsapp.send.error.local_http_rejected": "El servicio de WhatsApp local respondió con error. Revisá su consola o el estado de la conexión en el chat.",
+  "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor."
 }

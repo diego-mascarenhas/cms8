@@ -104,6 +104,9 @@
             max-height: min(420px, 58vh);
             overflow-y: auto;
         }
+        #chat-send-error-bar {
+            flex-shrink: 0;
+        }
     </style>
 @endsection
 
@@ -128,6 +131,54 @@
         const formSendMessage = document.getElementById('chat-form');
         const messageInput = document.querySelector('.message-input');
         const useAiToggle = document.getElementById('use-ai-toggle');
+
+        function showChatSendErrorBar(text) {
+            var bar = document.getElementById('chat-send-error-bar');
+            if (!bar) return;
+            bar.textContent = text || '';
+            bar.classList.remove('d-none');
+        }
+        function hideChatSendErrorBar() {
+            var bar = document.getElementById('chat-send-error-bar');
+            if (!bar) return;
+            bar.textContent = '';
+            bar.classList.add('d-none');
+        }
+        function humChatParseSendFetchResponse(r) {
+            return r.text().then(function(t) {
+                var data = {};
+                try {
+                    data = t ? JSON.parse(t) : {};
+                } catch (e) {
+                    data = {};
+                }
+                return { ok: r.ok, status: r.status, data: data };
+            });
+        }
+        function humChatSendSucceeded(res) {
+            return res.ok && (!res.data || res.data.success !== false);
+        }
+        function humChatSendErrorFromResult(res) {
+            if (res.data && res.data.error) {
+                return String(res.data.error);
+            }
+            if (res.data && res.data.success === false && res.data.message) {
+                return String(res.data.message);
+            }
+            if (res.data && res.data.errors && typeof res.data.errors === 'object') {
+                var keys = Object.keys(res.data.errors);
+                if (keys.length && res.data.errors[keys[0]] && res.data.errors[keys[0]][0]) {
+                    return String(res.data.errors[keys[0]][0]);
+                }
+            }
+            if (res.status === 419) {
+                return '{{ __("Sesión caducada. Recarga la página.") }}';
+            }
+            if (!res.ok) {
+                return '{{ __("whatsapp.send.error.generic") }}';
+            }
+            return '{{ __("whatsapp.send.error.generic") }}';
+        }
         const recipientInput = document.getElementById('recipient');
         const attachmentInput = document.getElementById('chat-attachments');
         const attachmentCount = document.getElementById('chat-attachment-count');
@@ -498,6 +549,7 @@
             var hasAttachments = selectedAttachments.length > 0;
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
             if (!msg && !hasAudio && !hasAttachments) return;
+            hideChatSendErrorBar();
             var sendBtn = form.querySelector('.send-msg-btn');
             if (sendBtn) sendBtn.disabled = true;
             function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
@@ -522,13 +574,21 @@
                     if (contactId) fd.append('contact_id', contactId);
                     appendAttachmentsToFormData(fd);
                     fetch('{{ route("chat.send") }}', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': token } })
-                        .then(function(r) { return r.json(); })
-                        .then(function() {
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
                             messageInput.value = '';
                             if (attachmentInput) attachmentInput.value = '';
                             updateAttachmentCount();
                             if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                        }).catch(function() {}).finally(reenableSend);
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
                 } else {
                     if (hasAttachments) {
                         var fdNoAi = new FormData();
@@ -541,12 +601,22 @@
                             method: 'POST',
                             body: fdNoAi,
                             headers: { 'X-CSRF-TOKEN': token }
-                        }).then(function(r) { return r.json(); }).then(function() {
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
                             messageInput.value = '';
                             if (attachmentInput) attachmentInput.value = '';
                             updateAttachmentCount();
                             if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                        }).catch(function() {}).finally(reenableSend);
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
                     } else {
                         var body = { to: toVal, message: msg, use_ai: false };
                         if (contactId) body.contact_id = contactId;
@@ -554,10 +624,20 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                             body: JSON.stringify(body)
-                        }).then(function(r) { return r.json(); }).then(function() {
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
                             messageInput.value = '';
                             if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                        }).catch(function() {}).finally(reenableSend);
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
                     }
                 }
                 return;
@@ -846,7 +926,18 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                             body: JSON.stringify({ to: cleanTo, message: currentAiResponse, use_ai: false })
-                        }).then(function(r) { return r.json(); }).catch(function(err) { console.error('Error sending AI message:', err); });
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Error sending AI message:', err);
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        });
                     }
                 }
 
@@ -2303,7 +2394,11 @@
                         {{-- WhatsApp QR panel intentionally hidden in chat history view --}}
                     </div>
                     <!-- Chat message form -->
-                    <div class="chat-history-footer">
+                    <div class="chat-history-footer d-flex flex-column">
+                        <div id="chat-send-error-bar"
+                            class="alert alert-danger py-2 px-3 mb-2 d-none w-100 small"
+                            role="alert"
+                            aria-live="assertive"></div>
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center" @if($viewAssistant ?? false) data-view-assistant="1" @endif>
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">
