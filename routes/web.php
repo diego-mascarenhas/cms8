@@ -77,6 +77,7 @@ use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamPasswordController;
 use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\TeamSocialConnectionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TimeController;
@@ -273,6 +274,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
+    Route::get('/team/{team}/settings/social', [TeamSocialConnectionController::class, 'index'])->name('team-settings.social');
     Route::get('/team/{team}/settings/business-config', [TeamSettingController::class, 'businessConfig'])->name('team-settings.business-config');
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
@@ -1289,6 +1291,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
+    Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
 });
 

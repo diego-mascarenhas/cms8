@@ -78,6 +78,11 @@ class Team extends JetstreamTeam
         return $this->hasMany(ExternalAccount::class);
     }
 
+    public function teamSocialConnections()
+    {
+        return $this->hasMany(TeamSocialConnection::class);
+    }
+
     /**
      * Team-scoped files (documents, brand assets) stored in team_files with Spatie media.
      */

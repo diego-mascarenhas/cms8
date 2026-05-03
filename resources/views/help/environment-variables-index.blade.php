@@ -53,6 +53,18 @@
                         <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-share me-2 text-body"></i>
+                                    {{ __('Team social networks') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Claves OAuth de la aplicación (Meta, LinkedIn) en el servidor frente a tokens por equipo. Pantalla Social networks en Team Settings.') }}</p>
+                                <a href="{{ route('help.team-social-networks') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
                                     <i class="ti ti-brand-wordpress me-2 text-success"></i>
                                     {{ __('WooCommerce') }}
                                 </h6>

@@ -111,6 +111,17 @@
                                 </div>
 
                                 <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-dark">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-share display-4 text-body mb-3"></i>
+                                            <h5 class="card-title">{{ __('Team social networks') }}</h5>
+                                            <p class="card-text">{{ __('Meta / LinkedIn app keys in .env vs per-team OAuth tokens. Where admins connect accounts.') }}</p>
+                                            <a href="{{ route('help.team-social-networks') }}" class="btn btn-dark">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-success">
                                         <div class="card-body text-center">
                                             <i class="ti ti-brand-wordpress display-4 text-success mb-3"></i>

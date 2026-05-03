@@ -206,6 +206,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display team social networks (OAuth) documentation
+     */
+    public function teamSocialNetworks()
+    {
+        return view('help.team-social-networks', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display WooCommerce configuration documentation
      */
     public function woocommerceConfiguration()
