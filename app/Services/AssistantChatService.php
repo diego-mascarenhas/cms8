@@ -20,13 +20,18 @@ class AssistantChatService
 
     /**
      * Run the assistant chat: route the user message through the general router, then run the target prompt.
-     * If $promptKey is provided, skip the router and use that prompt directly.
+     * If $promptKey is a non-empty string, skip the router and use that prompt directly.
+     * Blank or whitespace-only values use the default router flow (same as null).
      * Optionally accept image and audio uploads, and return TTS audio when requested.
      *
      * @return array{response: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}
      */
     public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false, ?string $promptKey = null): array
     {
+        $forcedPromptKey = ($promptKey !== null && trim($promptKey) !== '')
+            ? trim($promptKey)
+            : null;
+
         $content = trim($userMessage);
         if ($content === '' && ($image || $audio))
         {
@@ -54,14 +59,14 @@ class AssistantChatService
             }
         }
 
-        // When a promptKey is specified, skip the router and use that prompt directly.
-        if ($promptKey !== null)
+        // When a non-empty prompt key is specified, skip the router and use that prompt directly.
+        if ($forcedPromptKey !== null)
         {
-            $prompt = Prompt::findByRoutingKey($promptKey, $teamId);
+            $prompt = Prompt::findByRoutingKey($forcedPromptKey, $teamId);
             if (! $prompt)
             {
                 return [
-                    'response' => __('No se encontró el prompt con la clave: ').$promptKey,
+                    'response' => __('No se encontró el prompt con la clave: ').$forcedPromptKey,
                     'routed_to' => null,
                     'usage' => [],
                     'tool_calls' => [],

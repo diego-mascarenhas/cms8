@@ -28,8 +28,10 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
+use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -516,6 +518,16 @@ Route::middleware('auth:sanctum')->group(function ()
         'update' => 'api.contents.update',
         'destroy' => 'api.contents.destroy',
     ]);
+
+    // WhatsApp conversation list and thread messages (same handlers as web /chat/list, /chat/messages, /chat/send).
+    Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
+    Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
+        ->where('phone', '[0-9]+')
+        ->name('api.chat.whatsapp-messages');
+    Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
+
+    // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
+    Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);

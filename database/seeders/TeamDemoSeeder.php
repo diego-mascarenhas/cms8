@@ -64,6 +64,9 @@ class TeamDemoSeeder extends Seeder
         // 6. Create Staff category and contacts
         $this->createStaffCategoryAndContacts();
 
+        // 6.1. Demo WhatsApp threads (chat list / mobile API) — fictitious line, see DemoWhatsAppConversationsSeeder
+        $this->call(DemoWhatsAppConversationsSeeder::class);
+
         // 7. Create demo message
         $this->createDemoMessage();
 

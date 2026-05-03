@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Team;
 use App\Services\AssistantChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class TeamAssistantController extends Controller
+/**
+ * Team assistant chat for mobile/API clients authenticated with Sanctum.
+ * Uses the authenticated user's {@see User::$current_team_id} (same context as the web app).
+ */
+class UserAssistantController extends Controller
 {
     /**
-     * Chat with the assistant (router + flows). Uses team token auth.
+     * Chat with the assistant (router + flows). Uses Sanctum user auth.
      */
     public function chat(Request $request, AssistantChatService $assistant): JsonResponse
     {
@@ -19,10 +24,25 @@ class TeamAssistantController extends Controller
             'prompt_key' => 'nullable|string|max:255',
         ]);
 
-        $teamId = $request->get('team_id');
+        $user = $request->user();
+        $teamId = $user->current_team_id;
+
         if (! $teamId)
         {
-            return response()->json(['success' => false, 'message' => 'Team not found'], 401);
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual. Selecciona un equipo en Humano.'),
+            ], 422);
+        }
+
+        $team = Team::query()->find($teamId);
+
+        if ($team === null || ! $user->belongsToTeam($team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tenés acceso a este equipo.'),
+            ], 403);
         }
 
         $promptKeyRaw = $request->input('prompt_key');
