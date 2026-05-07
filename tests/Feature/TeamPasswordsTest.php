@@ -119,13 +119,57 @@ class TeamPasswordsTest extends TestCase
         $url = $response->json('url');
         $this->assertNotNull($url);
 
-        $firstView = $this->get($url);
-        $firstView->assertOk();
-        $firstView->assertSee('top-secret');
+        $path = parse_url($url, PHP_URL_PATH);
+        $this->assertIsString($path);
+        $plainToken = basename($path);
 
-        $secondView = $this->get($url);
-        $secondView->assertStatus(410);
-        $secondView->assertSee('ya fue usado');
+        $firstGet = $this->get($url);
+        $firstGet->assertOk();
+        $firstGet->assertSee('Mostrar contraseña');
+
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+        $firstPost = $this->post(route('passwords.share.reveal', ['token' => $plainToken]));
+        $firstPost->assertOk();
+        $firstPost->assertSee('top-secret');
+
+        $secondPost = $this->post(route('passwords.share.reveal', ['token' => $plainToken]));
+        $secondPost->assertStatus(410);
+        $secondPost->assertSee('ya fue usado');
+    }
+
+    public function test_share_link_get_requests_do_not_consume_the_secret(): void
+    {
+        $user = $this->createUserWithPasswordsModule();
+        $team = $user->currentTeam;
+        $team->setSetting('passwords_master_key_hash', Hash::make('secret-master-key'), [
+            'group' => 'passwords',
+            'is_encrypted' => true,
+        ]);
+
+        $password = TeamPassword::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Server root',
+            'username' => 'root',
+            'password_encrypted' => Crypt::encryptString('top-secret'),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession($this->unlockVault($user, 'secret-master-key'))
+            ->postJson(route('passwords.share', $password));
+
+        $url = $response->json('url');
+        $path = parse_url((string) $url, PHP_URL_PATH);
+        $plainToken = basename((string) $path);
+
+        $this->get($url)->assertOk()->assertSee('Mostrar contraseña');
+        $this->get($url)->assertOk()->assertSee('Mostrar contraseña');
+
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+        $this->post(route('passwords.share.reveal', ['token' => $plainToken]))
+            ->assertOk()
+            ->assertSee('top-secret');
     }
 
     public function test_share_link_expires_after_deadline(): void

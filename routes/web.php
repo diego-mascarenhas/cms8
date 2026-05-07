@@ -107,7 +107,8 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
     ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
-Route::get('/password/share/{token}', [TeamPasswordController::class, 'consumeShare'])->name('passwords.share.consume');
+Route::get('/password/share/{token}', [TeamPasswordController::class, 'showPasswordShare'])->name('passwords.share.consume');
+Route::post('/password/share/{token}', [TeamPasswordController::class, 'revealPasswordShare'])->name('passwords.share.reveal');
 
 Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::class, 'show'])
     ->name('public-shop.show');
