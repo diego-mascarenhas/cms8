@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landing estática — demo widgets</title>
+  <!-- Opción A: copia landing-widget/styles.css junto a este HTML. Opción B: URL absoluta a tu app -->
+  <link rel="stylesheet" href="YOUR_APP_URL/landing-widget/styles.css">
+</head>
+<body>
+  <div class="landing-widget">
+    <section class="humano-embed-demo card">
+      <h2>Widgets en tiempo real (copia estática)</h2>
+      <p class="description">
+        Sustituye YOUR_APP_URL en los dos scripts de abajo. Sube este archivo a cPanel y abre el dominio.
+      </p>
+      <div class="humano-embed-grid">
+        <div data-humano-widget="calendar" data-site="demo"></div>
+        <div data-humano-widget="assistant" data-site="demo"></div>
+      </div>
+    </section>
+  </div>
+  <script>
+    window.HUMANO_WIDGETS_API_BASE = 'YOUR_APP_URL/api/embed/demo';
+  </script>
+  <script src="YOUR_APP_URL/js/humano-widgets.js" async></script>
+</body>
+</html>

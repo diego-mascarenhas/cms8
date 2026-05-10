@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MenuController;
@@ -54,6 +55,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request)
 {
     return $request->user();
+});
+
+Route::prefix('embed/demo')->middleware('throttle:60,1')->group(function ()
+{
+    Route::get('calendar', [LandingEmbedDemoController::class, 'calendar']);
+    Route::post('assistant', [LandingEmbedDemoController::class, 'assistant']);
 });
 
 // Prospect Search (public, for React frontend / prospection)
