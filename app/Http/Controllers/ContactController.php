@@ -21,6 +21,7 @@ use App\Models\Source;
 use App\Services\AstralChartService;
 use App\Services\MessageDeliveryDispatcher;
 use App\Support\CollectionMessagingGuide;
+use App\Support\SearchNormalizer;
 use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
@@ -1068,15 +1069,7 @@ class ContactController extends Controller
 
             if (! $isInitialLoad)
             {
-                // Optimized search with better performance
-                $contactsQuery->where(function ($q) use ($query)
-                {
-                    $q
-                        ->where('name', 'like', "%{$query}%")
-                        ->orWhere('surname', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%")
-                        ->orWhereRaw("CONCAT(phone, '') LIKE ?", ["%{$query}%"]);
-                });
+                SearchNormalizer::applyContactNavbarConditions($contactsQuery, $query);
             }
 
             $data['members'] = $contactsQuery
@@ -1106,18 +1099,12 @@ class ContactController extends Controller
 
         // Search enterprises unconditionally (team scope still applies)
 
+        /** @var \Illuminate\Database\Eloquent\Builder<\App\Models\Enterprise> $enterprisesQuery */
         $enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
 
         if (! $isInitialLoad)
         {
-            $enterprisesQuery->where(function ($q) use ($query)
-            {
-                $q
-                    ->where('name', 'like', "%{$query}%")
-                    ->orWhere('code', 'like', "%{$query}%")
-                    ->orWhereRaw("CONCAT(phone, '') LIKE ?", ["%{$query}%"])
-                    ->orWhere('email', 'like', "%{$query}%");
-            });
+            SearchNormalizer::applyEnterpriseNavbarConditions($enterprisesQuery, $query);
         }
 
         $data['enterprises'] = $enterprisesQuery
@@ -1139,18 +1126,13 @@ class ContactController extends Controller
         // Only search services if the services module is active
         if ($team && $team->hasModule('services'))
         {
+            /** @var \Illuminate\Database\Eloquent\Builder<\App\Models\Service> $servicesQuery */
             $servicesQuery = \App\Models\Service::select('id', 'enterprise_id', 'description', 'data', 'status', 'created_at')
                 ->where('status', 1);  // Only active services
 
             if (! $isInitialLoad)
             {
-                $servicesQuery->where(function ($q) use ($query)
-                {
-                    $q
-                        ->where('description', 'like', "%{$query}%")
-                        // Engine-agnostic JSON text search (MySQL/PostgreSQL).
-                        ->orWhereRaw("CONCAT(data, '') LIKE ?", ["%{$query}%"]);
-                });
+                SearchNormalizer::applyServiceNavbarConditions($servicesQuery, $query);
             }
 
             $data['services'] = $servicesQuery
@@ -1181,12 +1163,7 @@ class ContactController extends Controller
 
             if (! $isInitialLoad)
             {
-                $projectsQuery->where(function ($q) use ($query)
-                {
-                    $q
-                        ->where('name', 'like', "%{$query}%")
-                        ->orWhere('description', 'like', "%{$query}%");
-                });
+                SearchNormalizer::applyProjectNavbarConditions($projectsQuery, $query);
             }
 
             $data['projects'] = $projectsQuery
@@ -1218,10 +1195,20 @@ class ContactController extends Controller
         // Only search collaborators if the collaborators module is active
         if ($team && $team->hasModule('collaborators'))
         {
-            $data['collaborators'] = Contact::where('name', 'like', "%{$query}%")
+            $collaboratorsQuery = Contact::query()
                 ->whereHas('languageVariants')  // Only contacts with language variants (collaborators)
                 ->whereHas('fares')  // Only contacts with services/fares
-                ->select('id', 'name', 'created_at')
+                ->select('id', 'name', 'created_at');
+
+            if (! $isInitialLoad)
+            {
+                $collaboratorsQuery->where(function ($q) use ($query)
+                {
+                    SearchNormalizer::applyCollaboratorNameCondition($q, $query);
+                });
+            }
+
+            $data['collaborators'] = $collaboratorsQuery
                 ->get()
                 ->map(function ($contact)
                 {
@@ -1251,7 +1238,7 @@ class ContactController extends Controller
 
             if (! $isInitialLoad)
             {
-                $invoicesQuery->where('number', 'like', "%{$query}%");
+                SearchNormalizer::applyColumnsNavbarConditions($invoicesQuery, ['number'], $query, null);
             }
 
             $data['invoices'] = $invoicesQuery
@@ -1287,12 +1274,7 @@ class ContactController extends Controller
 
             if (! $isInitialLoad)
             {
-                $billingAddressesQuery->where(function ($q) use ($query)
-                {
-                    $q
-                        ->where('name', 'like', "%{$query}%")
-                        ->orWhere('identification_number', 'like', "%{$query}%");
-                });
+                SearchNormalizer::applyColumnsNavbarConditions($billingAddressesQuery, ['name', 'identification_number'], $query, null);
             }
 
             $billingAddresses = $billingAddressesQuery

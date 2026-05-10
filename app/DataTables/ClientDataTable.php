@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Enterprise;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -41,11 +42,29 @@ class ClientDataTable extends DataTable
 
                 return '<span class="text-muted">-</span>';
             })
+            ->filterColumn('name', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                SearchNormalizer::applyClientDataTableNameColumnConditions($query, $keyword);
+            })
             ->filterColumn('responsible_name', function ($query, $keyword)
             {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
                 $query->whereHas('responsible', function ($q) use ($keyword)
                 {
-                    $q->where('name', 'like', "%{$keyword}%");
+                    SearchNormalizer::applyCollaboratorNameCondition($q, $keyword);
                 });
             })
             ->editColumn('status_id', function ($row)
@@ -113,7 +132,7 @@ class ClientDataTable extends DataTable
     public function getColumns(): array
     {
         return [
-            Column::make('id')->hidden(),
+            Column::make('id')->hidden()->searchable(false),
             Column::make('name')
                 ->title(__('Client'))
                 ->addClass('all'),

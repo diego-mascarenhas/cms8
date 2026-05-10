@@ -74,6 +74,18 @@
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-database me-2 text-danger"></i>
+                                    {{ __('PostgreSQL: unaccent y búsqueda') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Instalar y comprobar la extensión unaccent para búsquedas insensibles a acentos. Cache PHP tras CREATE EXTENSION y notas para Ubuntu/contrib.') }}</p>
+                                <a href="{{ route('help.postgresql-search-unaccent') }}" class="btn btn-sm btn-label-danger">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <div class="card border h-100 opacity-75">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">

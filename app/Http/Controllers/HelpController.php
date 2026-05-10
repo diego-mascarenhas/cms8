@@ -226,6 +226,16 @@ class HelpController extends Controller
     }
 
     /**
+     * PostgreSQL unaccent extension and SearchNormalizer (accent-insensitive search).
+     */
+    public function postgresqlSearchUnaccent()
+    {
+        return view('help.postgresql-search-unaccent', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display tasks API documentation
      */
     public function apiTasks()

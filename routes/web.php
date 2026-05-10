@@ -1294,6 +1294,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
+    Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
 });
 
 // Fallback route for 404 errors - must be at the end

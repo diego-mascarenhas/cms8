@@ -111,6 +111,17 @@
                                 </div>
 
                                 <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-danger">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-database display-4 text-danger mb-3"></i>
+                                            <h5 class="card-title">{{ __('PostgreSQL: búsqueda y unaccent') }}</h5>
+                                            <p class="card-text">{{ __('Extensión unaccent, comprobación y notas para Ubuntu. Relacionado con SearchNormalizer.') }}</p>
+                                            <a href="{{ route('help.postgresql-search-unaccent') }}" class="btn btn-danger">{{ __('Ver documentación') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-dark">
                                         <div class="card-body text-center">
                                             <i class="ti ti-share display-4 text-body mb-3"></i>
