@@ -52,15 +52,14 @@ return [
     | Matched via stripe_product_id on the subscription vs plans below.
     | Each plan lists every module key to enable (business repeats assistant + extras).
     | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
-    | Keys must match modules.key (see ModuleSeeder). settings + subscriptions keep
-    | team settings and Stripe billing usable after paid signup.
+    | Keys must match modules.key (see ModuleSeeder). Include settings so team
+    | settings stay usable after paid signup.
     |
     */
 
     'plan_team_modules' => [
         'assistant' => [
             'settings',
-            'subscriptions',
             'dashboard',
             'calendar',
             'clients',
@@ -75,7 +74,6 @@ return [
         ],
         'business' => [
             'settings',
-            'subscriptions',
             'dashboard',
             'calendar',
             'clients',
