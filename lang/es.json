@@ -434,7 +434,7 @@
   "No WhatsApp conversations": "No hay conversaciones de WhatsApp",
   "Link a WhatsApp number in the sidebar to see conversations here.": "Vincula un número de WhatsApp en el panel lateral para ver conversaciones aquí.",
   "Humano Assistant replies": "Respuestas del Asistente",
-  "Assistant replies only for admins (when assistant off)": "Solo administradores",
+  "Assistant replies only for admins (when assistant off)": "Respuesta solo a administradores",
   "When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).": "Si las respuestas del asistente están apagadas: solo admins y editores.",
   "Predefined test responses": "Prueba con textos predefinidos",
   "When ON, the assistant does not call the real AI model (dev/test).": "Sin llamar a la IA; respuesta de prueba. (No es el “flujo por defecto”.)",

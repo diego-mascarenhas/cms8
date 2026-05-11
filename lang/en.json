@@ -578,7 +578,7 @@
   "The code is required.": "The code is required.",
   "The code has already been used in this team.": "The code has already been used in this team.",
   "Your message": "Your message",
-  "Assistant replies only for admins (when assistant off)": "Admin-only replies",
+  "Assistant replies only for admins (when assistant off)": "Replies to admins only",
   "When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).": "If assistant replies are off: auto-reply only for admins and editors.",
   "Assistant flow prompt": "Assistant flow prompt",
   "Automatic (detect from message)": "Automatic (detect from message)",
