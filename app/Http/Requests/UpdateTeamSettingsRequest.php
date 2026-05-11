@@ -79,6 +79,9 @@ class UpdateTeamSettingsRequest extends FormRequest
 
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
+
+            // Affiliates (admin-only save enforced in TeamSettingController)
+            'affiliates.affiliate_commission_percent' => 'nullable|numeric|min:0|max:100',
         ];
     }
 }

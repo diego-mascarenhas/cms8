@@ -44,5 +44,21 @@ class VerticalMenuMessagesMailerTest extends TestCase
             static fn (array $item): bool => ($item['name'] ?? null) === 'Chat',
         );
         $this->assertCount(0, $chatMenuItems);
+
+        $affiliates = null;
+        foreach ($data['menu'] as $item)
+        {
+            if (($item['name'] ?? null) === 'Affiliates')
+            {
+                $affiliates = $item;
+                break;
+            }
+        }
+
+        $this->assertNotNull($affiliates);
+        $this->assertSame('billing', $affiliates['url']);
+        $this->assertSame('billing.index', $affiliates['slug']);
+        $this->assertSame('affiliates', $affiliates['module_key']);
+        $this->assertStringContainsString('ti-affiliate', (string) ($affiliates['icon'] ?? ''));
     }
 }

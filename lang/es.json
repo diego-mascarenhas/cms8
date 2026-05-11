@@ -1550,5 +1550,13 @@
   "whatsapp.send.error.local_http_rejected": "El servicio de WhatsApp local respondió con error. Revisá su consola o el estado de la conexión en el chat.",
   "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor.",
   "Invalid phone number.": "Número de teléfono no válido.",
-  "No CRM contact is linked to this number. Create or link a contact in Humano to use this option.": "No hay un contacto CRM vinculado a este número. Creá o vinculá un contacto en Humano para usar esta opción."
+  "No CRM contact is linked to this number. Create or link a contact in Humano to use this option.": "No hay un contacto CRM vinculado a este número. Creá o vinculá un contacto en Humano para usar esta opción.",
+  "Affiliates": "Afiliados",
+  "Referrer enterprise": "Empresa referente",
+  "No referrer": "Sin referido",
+  "External referrer code": "Código de referido externo",
+  "Referrer select help": "Elegí un cliente del equipo como referente: se guarda el ID de esa empresa. Si el referente es de otro equipo, usá su código público de facturación en la ficha del cliente.",
+  "Client enterprise ID": "ID empresa",
+  "External referrer value": "Referente externo",
+  "No client code (add Stripe / customer ID on that company)": "Sin código de cliente — agregá el id. de Stripe / cliente en esa empresa"
 }

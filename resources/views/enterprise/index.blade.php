@@ -82,7 +82,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <p class="text-muted">{{ __('Manage enterprises and billing addresses') }}</p>
         </div>
         @can('create', \App\Models\Enterprise::class)
-        <div class="d-flex gap-2 mt-3 mt-md-0">
+        <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+            <a href="{{ route('client.create') }}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i> {{ __('Create enterprise') }}
+            </a>
             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#placesSearchModal">
                 <i class="ti ti-brand-google me-1"></i> {{ __('Search business') }}
             </button>

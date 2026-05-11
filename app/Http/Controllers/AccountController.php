@@ -83,18 +83,31 @@ class AccountController extends Controller
 
         // Define group labels for better UI
         $groupLabels = [
-            'billing' => ['name' => 'Accounting', 'icon' => 'calculator', 'description' => 'Subscriptions, invoices, payments and financial modules'],
+            'billing' => ['name' => 'Accounting', 'icon' => 'calculator', 'description' => 'Subscriptions, invoices, payments, affiliates and financial modules'],
             'ecommerce' => ['name' => 'E-commerce', 'icon' => 'shopping-cart', 'description' => 'E-commerce module (stores, products, orders)'],
             'infrastructure' => ['name' => 'Infrastructure', 'icon' => 'server', 'description' => 'Infrastructure management (servers, hosting)'],
-            'campaigns' => ['name' => 'Marketing', 'icon' => 'mail-forward', 'description' => 'Email templates, Mailer sends and marketing automation.'],
+            'campaigns' => ['name' => 'Marketing', 'icon' => 'broadcast', 'description' => 'Campaign messages, Mailer, templates and scheduled sends (email, WhatsApp, etc.)'],
             'automation' => ['name' => 'Automation', 'icon' => 'robot', 'description' => 'Assistant instructions, funnel and API.'],
             'innovation' => ['name' => 'Innovation', 'icon' => 'bulb', 'description' => 'Ideas, proposals and innovation challenges'],
             'security' => ['name' => 'Security', 'icon' => 'shield-lock', 'description' => 'Passwords and canary token security tools'],
-            'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, academy and landing pages'],
+            'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, blog, e-books, academy and landing pages'],
             'support' => ['name' => 'Support', 'icon' => 'headset', 'description' => 'Customer support (tickets, mailbox, chat)'],
             'learning' => ['name' => 'Learning & Development', 'icon' => 'book', 'description' => 'Languages, certifications and training'],
             '' => ['name' => 'General Management', 'icon' => 'briefcase', 'description' => 'General management modules'],
         ];
+
+        foreach ($additionalModules->keys() as $groupKey)
+        {
+            if ($groupKey === '' || isset($groupLabels[$groupKey]))
+            {
+                continue;
+            }
+            $groupLabels[$groupKey] = [
+                'name' => ucfirst(str_replace('_', ' ', (string) $groupKey)),
+                'icon' => 'layout-grid',
+                'description' => '',
+            ];
+        }
 
         return view('account.form', compact('team', 'coreModules', 'additionalModules', 'groupLabels'));
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
 use App\Models\Team;
+use App\Services\AffiliateCommissionRecorder;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
 
 class StripeWebhookController extends CashierController
@@ -53,6 +54,8 @@ class StripeWebhookController extends CashierController
                 }
             }
         }
+
+        app(AffiliateCommissionRecorder::class)->recordFromInvoice($team, $invoice);
     }
 
     /**

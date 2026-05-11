@@ -91,6 +91,16 @@ class Team extends JetstreamTeam
         return $this->hasMany(TeamFile::class);
     }
 
+    public function billingAffiliateCommissionsAsReferrer()
+    {
+        return $this->hasMany(BillingAffiliateCommission::class, 'referrer_team_id');
+    }
+
+    public function billingAffiliateCommissionsAsPayer()
+    {
+        return $this->hasMany(BillingAffiliateCommission::class, 'paying_team_id');
+    }
+
     /**
      * Find a team by any of its Stripe customer IDs (main stripe_id or per-category settings).
      */

@@ -14,7 +14,14 @@
             <option value="">{{ $placeholder }}</option>
         @endif
         @foreach ($options as $optionKey => $option)
-            @if(is_array($option))
+            @if(is_array($option) && isset($option['label']))
+                {{-- Format: [['value' => 'x', 'label' => 'Shown', 'disabled' => true]] --}}
+                <option value="{{ $option['value'] ?? '' }}"
+                    {{ (string) old($id, $value) === (string) ($option['value'] ?? '') ? 'selected' : '' }}
+                    @if(! empty($option['disabled'])) disabled @endif>
+                    {{ $option['label'] }}
+                </option>
+            @elseif(is_array($option) && isset($option['id'], $option['name']))
                 {{-- Format: [['id' => 1, 'name' => 'Lead']] --}}
                 <option value="{{ $option['id'] }}"
                     {{ old($id, $value) == $option['id'] ? 'selected' : '' }}>

@@ -173,6 +173,11 @@ class TeamSettingController extends Controller
                 $settings = array_intersect_key($settings, array_flip($allowedKeys));
             }
 
+            if ($group === 'affiliates' && ! auth()->user()->hasRole('admin'))
+            {
+                $settings = [];
+            }
+
             foreach ($settings as $key => $value)
             {
                 $type = $this->getSettingType($key);
@@ -926,6 +931,19 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'placeholder' => 'primary or your-calendar@group.calendar.google.com',
                         'help' => 'Leave empty to use "primary". To sync a specific calendar, paste its Calendar ID from Google Calendar settings.',
+                    ],
+                ],
+            ],
+            'affiliates' => [
+                'title' => 'Affiliates (billing)',
+                'icon' => 'ti ti-affiliate',
+                'settings' => [
+                    'affiliate_commission_percent' => [
+                        'label' => 'Global commission % (this team as referrer)',
+                        'type' => 'text',
+                        'value' => $team->getSetting('affiliate_commission_percent', '0'),
+                        'is_encrypted' => false,
+                        'help' => 'Applies to referred client enterprises (referred_by = same-team referrer enterprise id, or legacy / external public code). 0 disables. Example: 10 = 10% of the paid invoice amount.',
                     ],
                 ],
             ],

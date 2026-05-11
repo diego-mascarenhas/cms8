@@ -159,6 +159,13 @@
       "module_key": "financial"
     },
     {
+      "url": "billing",
+      "name": "Affiliates",
+      "icon": "menu-icon tf-icons ti ti-affiliate",
+      "slug": "billing.index",
+      "module_key": "affiliates"
+    },
+    {
       "menuHeader": "Team"
     },
     {

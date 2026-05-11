@@ -40,14 +40,14 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $response->assertSee('<i class="ti ti-calculator me-2"></i>', false);
         $response->assertSee('Additional Modules', false);
         $response->assertSee('Accounting', false);
-        $response->assertSee('Subscriptions, invoices, payments and financial modules', false);
+        $response->assertSee('Subscriptions, invoices, payments, affiliates and financial modules', false);
         $response->assertSee('Security', false);
         $response->assertSee('Support', false);
         $response->assertSee('Automation', false);
         $response->assertSee('Assistant instructions, funnel and API.', false);
+        $response->assertSee('Marketing', false);
         $response->assertDontSee('Módulos adicionales', false);
         $response->assertDontSee('Seguridad', false);
-        $response->assertDontSee('Soporte', false);
     }
 
     public function test_account_update_preserves_hidden_modules_when_not_in_request(): void

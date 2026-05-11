@@ -143,6 +143,13 @@ class ModuleSeeder extends Seeder
             'group' => 'billing',
             'order' => 7,
         ],
+        'affiliates' => [
+            'name' => 'Affiliates',
+            'icon' => 'affiliate',
+            'description' => 'Referral commissions on billing (enterprise referred_by and team commission %)',
+            'group' => 'billing',
+            'order' => 8,
+        ],
         // ECOMMERCE GROUP
         'stores' => [
             'name' => 'Stores',
@@ -292,6 +299,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Blog articles and posts management',
             'group' => 'content',
             'order' => 7,
+        ],
+        'ebooks' => [
+            'name' => 'E-books',
+            'icon' => 'book-2',
+            'description' => 'Digital books and downloadable publications',
+            'group' => 'content',
+            'order' => 8,
         ],
         // SUPPORT & TICKETS
         'tickets' => [
@@ -454,7 +468,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'website', 'campaigns', 'templates', 'mailer', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()

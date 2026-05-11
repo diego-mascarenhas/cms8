@@ -23,5 +23,13 @@ class ModuleSeederAccountingModuleTest extends TestCase
             'Stripe invoices, PDF downloads and quarterly CSV exports',
             $accounting->description,
         );
+
+        $affiliates = Module::query()->where('key', 'affiliates')->first();
+        $this->assertNotNull($affiliates);
+        $this->assertSame('billing', $affiliates->group);
+
+        $ebooks = Module::query()->where('key', 'ebooks')->first();
+        $this->assertNotNull($ebooks);
+        $this->assertSame('content', $ebooks->group);
     }
 }

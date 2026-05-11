@@ -48,6 +48,7 @@ return [
         'collaborators' => false,
         'communications' => false,
         'enterprises' => false,
+        'affiliates' => false,
         'events' => false,
         'today' => false,
         'times' => false,
@@ -69,6 +70,8 @@ return [
         'website' => false,
         'academy' => false,
         'landings' => false,
+        'blog' => false,
+        'ebooks' => false,
         // Additional modules (support)
         'tickets' => false,
         'mailbox' => false,
