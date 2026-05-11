@@ -28,7 +28,61 @@ return [
 
     'post_checkout_stripe_category' => strtolower((string) env('HUMANO_PRICING_POST_CHECKOUT_CATEGORY', 'mailer')),
 
+    /*
+    | Referral / friend promotion code label (e.g. for copy in UI or translations).
+    | Not appended to Payment Link URLs — users enter it in Stripe checkout if they have it.
+    */
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Team modules after checkout (by plan id: assistant, business, foundation)
+    |--------------------------------------------------------------------------
+    |
+    | Matched via stripe_product_id on the subscription vs plans below.
+    | Each plan lists every module key to enable (business repeats assistant + extras).
+    | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
+    | Keys must match modules.key (see ModuleSeeder). settings + subscriptions keep
+    | team settings and Stripe billing usable after paid signup.
+    |
+    */
+
+    'plan_team_modules' => [
+        'assistant' => [
+            'settings',
+            'subscriptions',
+            'dashboard',
+            'calendar',
+            'clients',
+            'contacts',
+            'tasks',
+            'prospecting',
+            'prompts',
+            'campaigns',
+            'mailer',
+            'landings',
+            'chat',
+        ],
+        'business' => [
+            'settings',
+            'subscriptions',
+            'dashboard',
+            'calendar',
+            'clients',
+            'contacts',
+            'tasks',
+            'prospecting',
+            'prompts',
+            'campaigns',
+            'mailer',
+            'landings',
+            'chat',
+            'funnel',
+            'invoices',
+            'payments',
+            'financial',
+        ],
+    ],
 
     'plans' => [
         [

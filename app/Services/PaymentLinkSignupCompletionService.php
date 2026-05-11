@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\CheckoutSessionRetriever;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Stripe\StripeCheckoutSessionLogFormatter;
 use App\Support\PaymentLinkSignupOutcome;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,11 @@ class PaymentLinkSignupCompletionService
 
         if ($session->status !== 'complete')
         {
+            Log::warning('Payment link signup: Stripe session not complete', array_merge(
+                ['category' => $category, 'reason' => 'session_status'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
                     ->with('error', __('humano_pricing.checkout_complete_not_paid')),
@@ -53,6 +59,11 @@ class PaymentLinkSignupCompletionService
 
         if ($session->payment_status !== 'paid')
         {
+            Log::warning('Payment link signup: Stripe session payment not paid', array_merge(
+                ['category' => $category, 'reason' => 'payment_status'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
                     ->with('error', __('humano_pricing.checkout_complete_not_paid')),
@@ -61,6 +72,11 @@ class PaymentLinkSignupCompletionService
 
         if (! in_array($session->mode, ['subscription', 'payment'], true))
         {
+            Log::warning('Payment link signup: unsupported Stripe checkout mode', array_merge(
+                ['category' => $category, 'reason' => 'unsupported_mode'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
                     ->with('error', __('humano_pricing.checkout_complete_unsupported_mode')),
@@ -70,6 +86,11 @@ class PaymentLinkSignupCompletionService
         $email = $this->resolvePayerEmail($session);
         if ($email === null || $email === '')
         {
+            Log::warning('Payment link signup: no payer email on Stripe session', array_merge(
+                ['category' => $category, 'reason' => 'no_email'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
                     ->with('error', __('humano_pricing.checkout_complete_no_email')),
@@ -79,6 +100,11 @@ class PaymentLinkSignupCompletionService
         $sessionCustomerId = $this->extractSessionCustomerId($session);
         if ($sessionCustomerId === null || $sessionCustomerId === '')
         {
+            Log::warning('Payment link signup: no Stripe customer on session', array_merge(
+                ['category' => $category, 'reason' => 'no_customer'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
                     ->with('error', __('humano_pricing.checkout_complete_no_customer')),
@@ -104,7 +130,10 @@ class PaymentLinkSignupCompletionService
         $team = $this->resolveTeamForUser($user);
         if (! $team)
         {
-            Log::error('Payment link signup: user has no team after signup flow', ['user_id' => $user->id]);
+            Log::error('Payment link signup: user has no team after signup flow', array_merge(
+                ['category' => $category, 'user_id' => $user->id, 'reason' => 'no_team'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
 
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
@@ -121,6 +150,18 @@ class PaymentLinkSignupCompletionService
 
         if (($sessionCustomerId ?? '') !== ($teamCustomerId ?? ''))
         {
+            Log::warning('Payment link signup: Stripe customer id mismatch vs team', array_merge(
+                [
+                    'category' => $category,
+                    'reason' => 'customer_mismatch',
+                    'user_id' => $user->id,
+                    'team_id' => $team->id,
+                    'session_customer' => $sessionCustomerId,
+                    'team_customer' => $teamCustomerId,
+                ],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('login')
                     ->with('error', __('humano_pricing.checkout_complete_customer_mismatch')),
@@ -129,6 +170,17 @@ class PaymentLinkSignupCompletionService
 
         $team->refresh();
         $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id, true);
+
+        Log::info('Payment link signup: Stripe checkout applied to Humano user', array_merge(
+            [
+                'category' => $category,
+                'user_id' => $user->id,
+                'team_id' => $team->id,
+                'is_new_user' => $isNewUser,
+                'resolved_email' => $email,
+            ],
+            StripeCheckoutSessionLogFormatter::toLogContext($session),
+        ));
 
         return PaymentLinkSignupOutcome::login($user, $isNewUser);
     }

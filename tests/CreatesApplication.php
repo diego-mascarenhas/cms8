@@ -14,6 +14,12 @@ trait CreatesApplication
     {
         $this->enforceSqliteInMemoryForTests();
 
+        $cachedConfig = dirname(__DIR__).'/bootstrap/cache/config.php';
+        if (is_file($cachedConfig))
+        {
+            @unlink($cachedConfig);
+        }
+
         $app = require __DIR__.'/../bootstrap/app.php';
 
         $app->make(Kernel::class)->bootstrap();

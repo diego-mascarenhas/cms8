@@ -16,7 +16,7 @@ class PublicHumanoPricingPageTest extends TestCase
         }
     }
 
-    public function test_pricing_page_renders_staging_stripe_links_and_prefilled_coupon(): void
+    public function test_pricing_page_renders_staging_stripe_links_without_prefilled_promo_in_url(): void
     {
         $response = $this->get('/pricing');
 
@@ -26,7 +26,7 @@ class PublicHumanoPricingPageTest extends TestCase
         $response->assertSee('Humano.app Business', false);
         $response->assertSee('Humano.app Foundation', false);
         $response->assertSee('3cIeVd98VabI07cgPb43S03', false);
-        $response->assertSee('prefilled_promo_code=SOYAMIGO', false);
+        $response->assertDontSee('prefilled_promo_code=', false);
         $response->assertSee(__('humano_pricing.prices_plus_vat'), false);
         $response->assertSee('ti ti-point', false);
         $response->assertDontSee('Subscribe to newsletter', false);

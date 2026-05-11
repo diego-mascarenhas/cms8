@@ -16,7 +16,12 @@ class StripeCheckoutSessionRetriever implements CheckoutSessionRetriever
 
         try
         {
-            $session = Session::retrieve($sessionId);
+            $session = Session::retrieve([
+                'id' => $sessionId,
+                'expand' => [
+                    'line_items.data.price',
+                ],
+            ]);
             Log::info('Stripe Checkout Session retrieved', array_merge(
                 ['category' => $category],
                 StripeCheckoutSessionLogFormatter::toLogContext($session),

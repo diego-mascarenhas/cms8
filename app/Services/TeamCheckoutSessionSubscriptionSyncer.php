@@ -125,6 +125,12 @@ class TeamCheckoutSessionSubscriptionSyncer
                 }
             }
 
+            $planSlug = app(HumanoPricingPlanResolver::class)->resolvePlanSlugFromStripeProductId($productId);
+            if ($planSlug !== null)
+            {
+                app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
+            }
+
             if ($subscriptionType === 'mailer')
             {
                 $plan = EmailPlan::tryFromStripeProductId($productId);
