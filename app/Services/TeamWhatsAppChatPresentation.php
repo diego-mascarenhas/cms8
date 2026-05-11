@@ -63,12 +63,11 @@ final class TeamWhatsAppChatPresentation
                     ? PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
                     : null;
                 $gatewayNumber = is_array($whatsappStatus) ? ($whatsappStatus['number'] ?? null) : null;
-                $teamNumNorm = $teamWhatsAppNumber ? preg_replace('/[^0-9]/', '', (string) $teamWhatsAppNumber) : '';
-                $gatewayNumNorm = $gatewayNumber ? preg_replace('/[^0-9]/', '', (string) $gatewayNumber) : '';
                 $teamWhatsAppIsConnected = ($whatsappStatus['status'] ?? '') === 'connected'
-                    && $teamNumNorm !== ''
-                    && $gatewayNumNorm !== ''
-                    && $teamNumNorm === $gatewayNumNorm;
+                    && PhoneHelper::digitsBelongToSameLine(
+                        $teamWhatsAppNumber !== null && $teamWhatsAppNumber !== '' ? (string) $teamWhatsAppNumber : null,
+                        $gatewayNumber !== null && $gatewayNumber !== '' ? (string) $gatewayNumber : null,
+                    );
             }
         }
 
