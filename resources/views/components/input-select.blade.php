@@ -2,7 +2,9 @@
 
 <div class="form-group">
     @if($label)
-        <label for="{{ $id }}" class="form-label">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
+            <label for="{{ $id }}" class="form-label mb-0">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
+        </div>
     @endif
     <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" 
         data-placeholder="{{ $placeholder ?? 'Seleccionar' }}"
@@ -12,7 +14,14 @@
             <option value="">{{ $placeholder }}</option>
         @endif
         @foreach ($options as $optionKey => $option)
-            @if(is_array($option))
+            @if(is_array($option) && isset($option['label']))
+                {{-- Format: [['value' => 'x', 'label' => 'Shown', 'disabled' => true]] --}}
+                <option value="{{ $option['value'] ?? '' }}"
+                    {{ (string) old($id, $value) === (string) ($option['value'] ?? '') ? 'selected' : '' }}
+                    @if(! empty($option['disabled'])) disabled @endif>
+                    {{ $option['label'] }}
+                </option>
+            @elseif(is_array($option) && isset($option['id'], $option['name']))
                 {{-- Format: [['id' => 1, 'name' => 'Lead']] --}}
                 <option value="{{ $option['id'] }}"
                     {{ old($id, $value) == $option['id'] ? 'selected' : '' }}>

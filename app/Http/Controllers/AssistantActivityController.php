@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AgentConversationMessage;
+use App\Models\DocumentIngestion;
+use App\Services\DocumentIngestionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -162,5 +164,244 @@ class AssistantActivityController extends Controller
                 return round(($totalTokens / 1000000) * $estimatedCostPerMillion, 6);
             })
             ->toJson();
+    }
+
+    public function documents(Request $request): View
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+
+        $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
+        $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $query = DocumentIngestion::query()
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        $totalDocuments = (int) $query->count();
+        $needsReview = (int) (clone $query)->where('classification_status', 'needs_review')->count();
+        $classified = (int) (clone $query)->where('classification_status', 'classified')->count();
+
+        return view('assistant.document-ingestions', compact(
+            'startDate',
+            'endDate',
+            'totalDocuments',
+            'needsReview',
+            'classified',
+        ));
+    }
+
+    public function documentsData(Request $request): JsonResponse
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+
+        $startDate = (string) ($request->input('start_date') ?: now()->subDays(30)->toDateString());
+        $endDate = (string) ($request->input('end_date') ?: now()->toDateString());
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $query = DocumentIngestion::query()
+            ->with(['source:id,name', 'conversation:id,channel'])
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        return DataTables::eloquent($query)
+            ->addColumn('date_display', fn (DocumentIngestion $row) => optional($row->created_at)->format('Y-m-d H:i'))
+            ->addColumn('source_name', function (DocumentIngestion $row): string
+            {
+                if ($row->source?->name)
+                {
+                    return (string) $row->source->name;
+                }
+
+                $conversationChannel = (string) ($row->conversation?->channel ?? '');
+                if ($conversationChannel === 'chat')
+                {
+                    return 'Chat';
+                }
+
+                if ($conversationChannel === 'whatsapp')
+                {
+                    return 'WhatsApp';
+                }
+
+                $metaChannel = strtolower((string) (($row->classification_meta ?? [])['channel'] ?? ''));
+                if (str_contains($metaChannel, 'chat'))
+                {
+                    return 'Chat';
+                }
+
+                if (str_contains($metaChannel, 'whatsapp'))
+                {
+                    return 'WhatsApp';
+                }
+
+                return 'Chat';
+            })
+            ->addColumn('document_name', fn (DocumentIngestion $row) => $row->file_name ?: ($row->file_url ? basename(parse_url((string) $row->file_url, PHP_URL_PATH) ?: '') : ''))
+            ->addColumn('confidence_value', fn (DocumentIngestion $row) => (float) ($row->classification_confidence ?? 0))
+            ->addColumn('reception_note', function (DocumentIngestion $row): string
+            {
+                return blank($row->file_url)
+                    ? 'Recibido sin URL / pendiente de recuperacion'
+                    : 'URL recibida correctamente';
+            })
+            ->toJson();
+    }
+
+    public function documentShow(DocumentIngestion $documentIngestion): View
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+
+        $documentIngestion->loadMissing(['source:id,name', 'conversation:id,channel,from,to,created_at']);
+
+        return view('assistant.document-ingestion-show', [
+            'data' => $documentIngestion,
+        ]);
+    }
+
+    public function documentReprocess(DocumentIngestion $documentIngestion, DocumentIngestionService $documentIngestionService)
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+        $documentIngestionService->reprocessDocument($documentIngestion);
+
+        return redirect()
+            ->route('assistant.documents.show', $documentIngestion->id)
+            ->with('success', 'Documento reprocesado correctamente.');
+    }
+
+    public function documentMarkIngested(DocumentIngestion $documentIngestion)
+    {
+        [, $team] = $this->authorizeAdminInCurrentTeam();
+        $teamWhatsappDigits = preg_replace('/[^0-9]/', '', (string) $team->getSetting('whatsapp_from', ''));
+
+        $isVisibleForTeam = DocumentIngestion::query()
+            ->whereKey($documentIngestion->id)
+            ->where(function (Builder $builder) use ($team, $teamWhatsappDigits)
+            {
+                $builder->where('team_id', (int) $team->id);
+                $builder->orWhere(function (Builder $subQuery) use ($teamWhatsappDigits)
+                {
+                    $subQuery->whereNull('team_id');
+                    if ($teamWhatsappDigits !== '' && strlen($teamWhatsappDigits) >= 8)
+                    {
+                        $subQuery->where(function (Builder $fallbackScope) use ($teamWhatsappDigits)
+                        {
+                            $fallbackScope
+                                ->whereNull('conversation_id')
+                                ->orWhereHas('conversation', function (Builder $conversationQuery) use ($teamWhatsappDigits)
+                                {
+                                    $conversationQuery->where('to', 'like', '%'.$teamWhatsappDigits.'%');
+                                });
+                        });
+                    }
+                });
+            })
+            ->exists();
+
+        abort_unless($isVisibleForTeam, 404);
+
+        $documentIngestion->forceFill([
+            'classification_status' => 'processed',
+            'processed_at' => now(),
+            'processing_error' => null,
+        ])->save();
+
+        return redirect()
+            ->route('assistant.documents.show', $documentIngestion->id)
+            ->with('success', 'Documento marcado como ingresado.');
     }
 }

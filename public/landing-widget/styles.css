@@ -172,3 +172,111 @@ body {
   font-size: 0.9rem;
   margin-top: 8px;
 }
+
+/* Embedded widgets demo (humano-widgets.js) */
+.humano-embed-demo h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.humano-embed-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+@media (min-width: 640px) {
+  .humano-embed-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.humano-widget-root {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+  min-height: 120px;
+}
+.humano-widget-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.humano-widget-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.humano-widget-slot {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.humano-widget-slot:hover:not(:disabled) {
+  border-color: #696cff;
+}
+.humano-widget-slot-active {
+  border-color: #696cff;
+  box-shadow: 0 0 0 2px rgba(105, 108, 255, 0.2);
+}
+.humano-widget-slot-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.humano-widget-chat-log {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+.humano-widget-msg {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.humano-widget-msg-bot {
+  background: #eef2ff;
+}
+.humano-widget-msg-user {
+  background: #f1f5f9;
+  margin-left: 12px;
+}
+.humano-widget-chat-row {
+  display: flex;
+  gap: 8px;
+}
+.humano-widget-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+}
+.humano-widget-send {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #696cff;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.humano-widget-send:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.humano-widget-loading,
+.humano-widget-error {
+  font-size: 0.875rem;
+  margin: 0;
+}
+.humano-widget-error {
+  color: #dc2626;
+}

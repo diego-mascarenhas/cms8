@@ -1,0 +1,214 @@
+/**
+ * Minimal embed loader for static landings: mounts widgets into [data-humano-widget] nodes.
+ * Set window.HUMANO_WIDGETS_API_BASE to your app origin + /api/embed/demo (no trailing slash).
+ */
+(function ()
+{
+    'use strict';
+
+    function apiBase()
+    {
+        var base = typeof window.HUMANO_WIDGETS_API_BASE === 'string' ? window.HUMANO_WIDGETS_API_BASE : '';
+
+        return base.replace(/\/$/, '');
+    }
+
+    function el(tag, attrs, text)
+    {
+        var node = document.createElement(tag);
+
+        if (attrs)
+        {
+            Object.keys(attrs).forEach(function (k)
+            {
+                if (attrs[k] === null || attrs[k] === undefined)
+                {
+                    return;
+                }
+
+                node.setAttribute(k, attrs[k]);
+            });
+        }
+
+        if (text !== undefined && text !== null)
+        {
+            node.textContent = text;
+        }
+
+        return node;
+    }
+
+    function mountCalendar(container)
+    {
+        var base = apiBase();
+
+        if (! base)
+        {
+            container.appendChild(el('p', { class: 'humano-widget-error' }, 'HUMANO_WIDGETS_API_BASE is not set.'));
+
+            return;
+        }
+
+        container.appendChild(el('p', { class: 'humano-widget-loading' }, 'Loading calendar…'));
+
+        fetch(base + '/calendar', { credentials: 'omit' })
+            .then(function (r)
+            {
+                if (! r.ok)
+                {
+                    throw new Error('HTTP ' + r.status);
+                }
+
+                return r.json();
+            })
+            .then(function (data)
+            {
+                container.innerHTML = '';
+                var title = el('h3', { class: 'humano-widget-title' }, data.title || 'Calendar');
+                container.appendChild(title);
+
+                var list = el('div', { class: 'humano-widget-slots' });
+                (data.slots || []).forEach(function (slot)
+                {
+                    var btn = el('button', {
+                        type: 'button',
+                        class: 'humano-widget-slot' + (slot.available ? '' : ' humano-widget-slot-disabled'),
+                        disabled: slot.available ? null : 'disabled',
+                        'data-slot-id': slot.id,
+                    }, slot.label || slot.id);
+                    list.appendChild(btn);
+                });
+                container.appendChild(list);
+
+                list.addEventListener('click', function (e)
+                {
+                    var t = e.target;
+
+                    if (t && t.getAttribute && t.getAttribute('data-slot-id'))
+                    {
+                        container.querySelectorAll('.humano-widget-slot').forEach(function (b)
+                        {
+                            b.classList.remove('humano-widget-slot-active');
+                        });
+                        t.classList.add('humano-widget-slot-active');
+                    }
+                });
+            })
+            .catch(function (err)
+            {
+                container.innerHTML = '';
+                container.appendChild(el('p', { class: 'humano-widget-error' }, 'Could not load calendar: ' + err.message));
+            });
+    }
+
+    function mountAssistant(container)
+    {
+        var base = apiBase();
+
+        if (! base)
+        {
+            container.appendChild(el('p', { class: 'humano-widget-error' }, 'HUMANO_WIDGETS_API_BASE is not set.'));
+
+            return;
+        }
+
+        var title = el('h3', { class: 'humano-widget-title' }, 'Assistant (demo)');
+        var log = el('div', { class: 'humano-widget-chat-log' });
+        var row = el('div', { class: 'humano-widget-chat-row' });
+        var input = el('input', { type: 'text', class: 'humano-widget-input', placeholder: 'Type a message…', maxlength: '2000' });
+        var send = el('button', { type: 'button', class: 'humano-widget-send' }, 'Send');
+
+        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, 'Hi — this is a demo assistant. Say anything.'));
+
+        send.addEventListener('click', function ()
+        {
+            var text = (input.value || '').trim();
+
+            if (! text)
+            {
+                return;
+            }
+
+            log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-user' }, text));
+            input.value = '';
+            send.disabled = true;
+
+            fetch(base + '/assistant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                credentials: 'omit',
+                body: JSON.stringify({ message: text }),
+            })
+                .then(function (r)
+                {
+                    if (! r.ok)
+                    {
+                        throw new Error('HTTP ' + r.status);
+                    }
+
+                    return r.json();
+                })
+                .then(function (data)
+                {
+                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, data.reply || ''));
+                    log.scrollTop = log.scrollHeight;
+                })
+                .catch(function (err)
+                {
+                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-error' }, err.message));
+                })
+                .finally(function ()
+                {
+                    send.disabled = false;
+                });
+        });
+
+        input.addEventListener('keydown', function (e)
+        {
+            if (e.key === 'Enter')
+            {
+                send.click();
+            }
+        });
+
+        container.appendChild(title);
+        container.appendChild(log);
+        row.appendChild(input);
+        row.appendChild(send);
+        container.appendChild(row);
+    }
+
+    function mount(container)
+    {
+        var type = container.getAttribute('data-humano-widget');
+
+        container.classList.add('humano-widget-root');
+
+        if (type === 'calendar')
+        {
+            mountCalendar(container);
+        }
+        else if (type === 'assistant')
+        {
+            mountAssistant(container);
+        }
+        else
+        {
+            container.appendChild(el('p', { class: 'humano-widget-error' }, 'Unknown widget type.'));
+        }
+    }
+
+    function init()
+    {
+        document.querySelectorAll('[data-humano-widget]').forEach(mount);
+    }
+
+    if (document.readyState === 'loading')
+    {
+        document.addEventListener('DOMContentLoaded', init);
+    }
+    else
+    {
+        init();
+    }
+})();

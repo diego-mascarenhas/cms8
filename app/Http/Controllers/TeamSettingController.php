@@ -173,6 +173,11 @@ class TeamSettingController extends Controller
                 $settings = array_intersect_key($settings, array_flip($allowedKeys));
             }
 
+            if ($group === 'affiliates' && ! auth()->user()->hasRole('admin'))
+            {
+                $settings = [];
+            }
+
             foreach ($settings as $key => $value)
             {
                 $type = $this->getSettingType($key);
@@ -280,6 +285,7 @@ class TeamSettingController extends Controller
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
             'assistant_auto_respond',
+            'assistant_auto_respond_admins_when_off',
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
@@ -499,6 +505,13 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'help' => __('When enabled, the assistant can reply automatically. Turn off to pause (same as the chat sidebar).'),
                     ],
+                    'assistant_auto_respond_admins_when_off' => [
+                        'label' => __('Assistant replies only for admins (when assistant off)'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_auto_respond_admins_when_off', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).'),
+                    ],
                     'assistant_chat_stub' => [
                         'label' => __('Predefined test responses'),
                         'type' => 'checkbox',
@@ -523,6 +536,24 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
+                    ],
+                ],
+            ],
+            'documents' => [
+                'title' => __('Document OCR'),
+                'icon' => 'ti ti-scan',
+                'settings' => [
+                    'documents_ocr_mode' => [
+                        'label' => __('OCR engine mode'),
+                        'type' => 'select',
+                        'options' => [
+                            'local' => __('Local (Tesseract)'),
+                            'ai' => __('AI (vision model)'),
+                            'hybrid' => __('Hybrid (runs both, picks best)'),
+                        ],
+                        'value' => $team->getSetting('documents_ocr_mode', 'ai'),
+                        'is_encrypted' => false,
+                        'help' => __('Choose how documents are read for OCR in the ingestion pipeline (chat, WhatsApp, uploads).'),
                     ],
                 ],
             ],
@@ -908,6 +939,19 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'placeholder' => 'primary or your-calendar@group.calendar.google.com',
                         'help' => 'Leave empty to use "primary". To sync a specific calendar, paste its Calendar ID from Google Calendar settings.',
+                    ],
+                ],
+            ],
+            'affiliates' => [
+                'title' => 'Affiliates (billing)',
+                'icon' => 'ti ti-affiliate',
+                'settings' => [
+                    'affiliate_commission_percent' => [
+                        'label' => 'Global commission % (this team as referrer)',
+                        'type' => 'text',
+                        'value' => $team->getSetting('affiliate_commission_percent', '0'),
+                        'is_encrypted' => false,
+                        'help' => 'Applies to referred client enterprises (referred_by = same-team referrer enterprise id, or legacy / external public code). 0 disables. Example: 10 = 10% of the paid invoice amount.',
                     ],
                 ],
             ],

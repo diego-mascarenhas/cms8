@@ -10,6 +10,8 @@ use App\Services\WhatsApp\WhatsAppInboundMessageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Transcription;
 
@@ -135,6 +137,25 @@ class WhatsAppLocalWebhookController extends Controller
             $body = ' '; // allow media-only messages so conversation appears in chat list
         }
 
+        $incomingMediaBase64 = $payload['media_base64'] ?? null;
+        $incomingMediaContentType = $payload['media_content_type'] ?? null;
+        $incomingMediaFileName = $payload['media_file_name'] ?? null;
+        if (is_string($incomingMediaBase64) && trim($incomingMediaBase64) !== '')
+        {
+            $storedMediaUrl = $this->persistInboundMediaAsPublicUrl(
+                $incomingMediaBase64,
+                is_string($incomingMediaContentType) ? $incomingMediaContentType : null,
+                is_string($incomingMediaFileName) ? $incomingMediaFileName : null,
+            );
+            if ($storedMediaUrl !== null)
+            {
+                $payload['mediaUrl'] = $storedMediaUrl;
+                $payload['mediaContentType'] = is_string($incomingMediaContentType) && trim($incomingMediaContentType) !== ''
+                    ? trim($incomingMediaContentType)
+                    : 'application/octet-stream';
+            }
+        }
+
         $normalized = [
             'MessageSid' => is_string($messageId) ? $messageId : json_encode($messageId),
             'From' => 'whatsapp:'.$cleanFrom,
@@ -143,11 +164,15 @@ class WhatsAppLocalWebhookController extends Controller
             'NumMedia' => $payload['numMedia'] ?? $payload['hasMedia'] ?? 0,
         ];
 
-        if (! empty($payload['mediaUrl']))
+        $mediaEntries = $this->extractMediaEntries($payload);
+        if ($mediaEntries !== [])
         {
-            $normalized['MediaUrl0'] = $payload['mediaUrl'];
-            $normalized['MediaContentType0'] = $payload['mediaContentType'] ?? 'application/octet-stream';
-            $normalized['NumMedia'] = 1;
+            $normalized['NumMedia'] = count($mediaEntries);
+            foreach ($mediaEntries as $index => $entry)
+            {
+                $normalized['MediaUrl'.$index] = $entry['url'];
+                $normalized['MediaContentType'.$index] = $entry['content_type'] ?? 'application/octet-stream';
+            }
         }
 
         $profileKeys = ['push_name', 'pushName', 'profile_name'];
@@ -163,6 +188,96 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function persistInboundMediaAsPublicUrl(string $mediaBase64, ?string $contentType = null, ?string $originalFileName = null): ?string
+    {
+        $decoded = base64_decode($mediaBase64, true);
+        if ($decoded === false || $decoded === '')
+        {
+            return null;
+        }
+
+        $contentType = is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream';
+        $extension = match ($contentType)
+        {
+            'image/jpeg', 'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'application/pdf' => 'pdf',
+            default => pathinfo((string) ($originalFileName ?? ''), PATHINFO_EXTENSION) ?: 'bin',
+        };
+
+        $safeExtension = preg_replace('/[^a-z0-9]/i', '', strtolower((string) $extension));
+        $safeExtension = $safeExtension !== '' ? $safeExtension : 'bin';
+
+        $relativePath = 'whatsapp-inbound/'.now()->format('Y/m/d').'/'.Str::uuid().'.'.$safeExtension;
+        Storage::disk('public')->put($relativePath, $decoded);
+
+        return url('storage/'.$relativePath);
+    }
+
+    /**
+     * @return array<int, array{url: string, content_type: string}>
+     */
+    private function extractMediaEntries(array $payload): array
+    {
+        $entries = [];
+
+        $addEntry = function (?string $url, ?string $contentType = null) use (&$entries): void
+        {
+            $cleanUrl = is_string($url) ? trim($url) : '';
+            if ($cleanUrl === '')
+            {
+                return;
+            }
+            $entries[] = [
+                'url' => $cleanUrl,
+                'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
+            ];
+        };
+
+        $addEntry($payload['mediaUrl'] ?? null, $payload['mediaContentType'] ?? null);
+        $addEntry($payload['imageUrl'] ?? null, $payload['imageContentType'] ?? 'image/jpeg');
+        $addEntry($payload['documentUrl'] ?? null, $payload['documentContentType'] ?? 'application/pdf');
+        $addEntry($payload['fileUrl'] ?? null, $payload['fileContentType'] ?? null);
+
+        if (isset($payload['media']) && is_array($payload['media']))
+        {
+            foreach ($payload['media'] as $mediaItem)
+            {
+                if (! is_array($mediaItem))
+                {
+                    continue;
+                }
+                $addEntry(
+                    $mediaItem['url'] ?? $mediaItem['mediaUrl'] ?? $mediaItem['link'] ?? null,
+                    $mediaItem['content_type'] ?? $mediaItem['contentType'] ?? $mediaItem['mimetype'] ?? null,
+                );
+            }
+        }
+
+        foreach (['image', 'document', 'file', 'attachment'] as $nestedKey)
+        {
+            $nested = $payload[$nestedKey] ?? null;
+            if (! is_array($nested))
+            {
+                continue;
+            }
+            $addEntry(
+                $nested['url'] ?? $nested['link'] ?? null,
+                $nested['content_type'] ?? $nested['contentType'] ?? $nested['mimetype'] ?? null,
+            );
+        }
+
+        $unique = [];
+        foreach ($entries as $entry)
+        {
+            $unique[$entry['url']] = $entry;
+        }
+
+        return array_values($unique);
     }
 
     /**

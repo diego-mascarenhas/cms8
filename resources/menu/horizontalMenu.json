@@ -93,7 +93,7 @@
         {
           "url": "app/chat",
           "name": "Chat",
-          "icon": "menu-icon tf-icons ti ti-messages",
+          "icon": "menu-icon tf-icons ti ti-send",
           "slug": "app-chat"
         },
         {

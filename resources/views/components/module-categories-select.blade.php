@@ -17,7 +17,7 @@
 @endphp
 
 <div class="form-group">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
         @if($label !== null && $label !== '')
             <label for="{{ $id }}" class="form-label mb-0">{{ $label }}</label>
         @else

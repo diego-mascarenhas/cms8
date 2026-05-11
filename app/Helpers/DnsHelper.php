@@ -247,4 +247,64 @@ class DnsHelper
             'mailbaby_auth' => self::checkMailBabyAuth($domain, $expectedMailBabyUser),
         ];
     }
+
+    /**
+     * DNS / MailBaby checks for the current team's outgoing-from address (same logic as message detail).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function outgoingDnsStatusForAuthUser(?\Illuminate\Contracts\Auth\Authenticatable $user): ?array
+    {
+        if ($user === null || ! method_exists($user, 'currentTeam'))
+        {
+            return null;
+        }
+
+        /** @var \App\Models\User $user */
+        $team = $user->currentTeam;
+
+        if ($team === null)
+        {
+            return null;
+        }
+
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $emailConfig = $team->getOutgoingEmailConfig();
+
+        if (empty($emailConfig['from_address']))
+        {
+            return null;
+        }
+
+        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
+
+        return self::checkEmailDomainConfiguration(
+            $emailConfig['from_address'],
+            $apiUser,
+        );
+    }
+
+    /**
+     * Whether the broadcast "Send now" UI may proceed: own SMTP, or MailBaby domain authorized.
+     * In the local environment, MailBaby/SPF checks are skipped so dev mail (e.g. Mailpit) works.
+     *
+     * @param  bool|null  $treatAsLocal  For tests: force local bypass; null uses {@see \Illuminate\Foundation\Application::isLocal()}.
+     */
+    public static function canSendBroadcastFromUi(?array $dnsStatus, bool $usingSystemSmtp, ?bool $treatAsLocal = null): bool
+    {
+        if ($treatAsLocal ?? app()->isLocal())
+        {
+            return true;
+        }
+
+        $isAuthorized = is_array($dnsStatus)
+            && ($dnsStatus['spf']['has_mailbaby'] ?? false)
+            && ($dnsStatus['mailbaby_auth']['authorized'] ?? false);
+
+        return ! $usingSystemSmtp || $isAuthorized;
+    }
 }

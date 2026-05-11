@@ -8,6 +8,7 @@ use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
+use App\Http\Controllers\CampaignsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
@@ -76,6 +77,7 @@ use App\Http\Controllers\TeamInvitationConfirmController;
 use App\Http\Controllers\TeamMailboxController;
 use App\Http\Controllers\TeamPasswordController;
 use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\TeamSocialConnectionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TimeController;
@@ -105,7 +107,8 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
     ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
-Route::get('/password/share/{token}', [TeamPasswordController::class, 'consumeShare'])->name('passwords.share.consume');
+Route::get('/password/share/{token}', [TeamPasswordController::class, 'showPasswordShare'])->name('passwords.share.consume');
+Route::post('/password/share/{token}', [TeamPasswordController::class, 'revealPasswordShare'])->name('passwords.share.reveal');
 
 Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::class, 'show'])
     ->name('public-shop.show');
@@ -115,6 +118,13 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
+
+Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
+Route::get('/front-pages/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('front-pages.pricing');
+Route::get('/pricing/checkout/complete', \App\Http\Controllers\PaymentLinkCheckoutCompleteController::class)
+    ->middleware('throttle:payment-link-checkout')
+    ->name('pricing.checkout.complete');
+
 Route::get('/wapify', function ()
 {
     \Illuminate\Support\Facades\App::setLocale('es_AR');
@@ -131,6 +141,11 @@ Route::get('/launch/{token?}', fn (?string $token = null) => view('landing-busin
 
 Route::get('/assistant/activity', [AssistantActivityController::class, 'index'])->name('assistant.activity')->middleware('auth');
 Route::get('/assistant/activity/data', [AssistantActivityController::class, 'data'])->name('assistant.activity.data')->middleware('auth');
+Route::get('/assistant/documents', [AssistantActivityController::class, 'documents'])->name('assistant.documents')->middleware('auth');
+Route::get('/assistant/documents/data', [AssistantActivityController::class, 'documentsData'])->name('assistant.documents.data')->middleware('auth');
+Route::get('/assistant/documents/{documentIngestion}', [AssistantActivityController::class, 'documentShow'])->name('assistant.documents.show')->middleware('auth');
+Route::post('/assistant/documents/{documentIngestion}/reprocess', [AssistantActivityController::class, 'documentReprocess'])->name('assistant.documents.reprocess')->middleware('auth');
+Route::post('/assistant/documents/{documentIngestion}/mark-ingested', [AssistantActivityController::class, 'documentMarkIngested'])->name('assistant.documents.mark-ingested')->middleware('auth');
 Route::get('/assistant/{key?}', fn (?string $key = null) => view('assistant-demo', ['promptKey' => $key]))->name('assistant');
 Route::redirect('/try-assistant', '/assistant')->name('assistant-demo');
 
@@ -154,6 +169,7 @@ Route::middleware([
     Route::get('/registration/billing', [RegistrationBillingController::class, 'billing'])->name('registration.billing');
     Route::get('/registration/checkout/start', [RegistrationBillingController::class, 'startCheckout'])->name('registration.checkout.start');
     Route::get('/registration/onboarding/qr', [RegistrationBillingController::class, 'onboardingQr'])->name('registration.onboarding.qr');
+    Route::get('/registration/onboarding/chat-link-qr.png', [RegistrationBillingController::class, 'onboardingChatLinkQrImage'])->name('registration.onboarding.chat-link-qr-image');
 });
 
 Route::redirect('/prospectflow', '/prospect/search');
@@ -267,6 +283,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
+    Route::get('/team/{team}/settings/social', [TeamSocialConnectionController::class, 'index'])->name('team-settings.social');
     Route::get('/team/{team}/settings/business-config', [TeamSettingController::class, 'businessConfig'])->name('team-settings.business-config');
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
@@ -845,6 +862,28 @@ Route::middleware(['auth'])->group(function ()
     // NOTE: These routes are now handled by the humano-billing package
     // See: packages/humano-billing/routes/web.php
 
+    // Campaigns (placeholder — mailer message list remains at message/list)
+    Route::get('/campaigns', [CampaignsController::class, 'index'])->name('campaigns.index');
+    Route::get('/campaigns/templates/select', [CampaignsController::class, 'selectTemplate'])->name('campaigns.templates.select');
+    Route::get('/campaigns/classic-editor', [CampaignsController::class, 'classicEditor'])->name('campaigns.classic-editor');
+    Route::post('/campaigns/classic-editor', [CampaignsController::class, 'storeClassicEditor'])->name('campaigns.classic-editor.store');
+    Route::get('/campaigns/classic-editor/grapes', [CampaignsController::class, 'classicEditorGrapes'])->name('campaigns.classic-editor.grapes');
+    Route::get('/campaigns/{campaign}/edit', [CampaignsController::class, 'edit'])
+        ->whereNumber('campaign')
+        ->name('campaigns.edit');
+    Route::get('/campaigns/{campaign}', [CampaignsController::class, 'show'])
+        ->whereNumber('campaign')
+        ->name('campaigns.show');
+    Route::post('/campaigns/{campaign}/pause-messages', [CampaignsController::class, 'pauseMessages'])
+        ->whereNumber('campaign')
+        ->name('campaigns.pause-messages');
+    Route::put('/campaigns/{campaign}', [CampaignsController::class, 'update'])
+        ->whereNumber('campaign')
+        ->name('campaigns.update');
+    Route::patch('/campaigns/{campaign}/sequence', [CampaignsController::class, 'updateSequence'])
+        ->whereNumber('campaign')
+        ->name('campaigns.sequence.update');
+
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
@@ -852,6 +891,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
+    Route::get('message/{id}/preview-html', [MessageController::class, 'previewHtml'])->name('message.preview.html');
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
     Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
     Route::post('message/{id}/send-pending-now', [MessageController::class, 'sendPendingNow'])->name('message.send-pending-now');
@@ -1260,7 +1300,10 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
+    Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
+    Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
+    Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
 });
 
 // Fallback route for 404 errors - must be at the end

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MenuController;
@@ -28,8 +29,10 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
+use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -52,6 +55,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request)
 {
     return $request->user();
+});
+
+Route::prefix('embed/demo')->middleware('throttle:60,1')->group(function ()
+{
+    Route::get('calendar', [LandingEmbedDemoController::class, 'calendar']);
+    Route::post('assistant', [LandingEmbedDemoController::class, 'assistant']);
 });
 
 // Prospect Search (public, for React frontend / prospection)
@@ -516,6 +525,17 @@ Route::middleware('auth:sanctum')->group(function ()
         'update' => 'api.contents.update',
         'destroy' => 'api.contents.destroy',
     ]);
+
+    // WhatsApp conversation list and thread messages (same handlers as web /chat/list, /chat/messages, /chat/send).
+    Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
+    Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
+        ->where('phone', '[0-9]+')
+        ->name('api.chat.whatsapp-messages');
+    Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
+    Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
+
+    // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
+    Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);

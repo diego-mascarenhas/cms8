@@ -66,10 +66,19 @@ class ClientController extends Controller
             'longitude' => '',
             'contact_person' => '',
             'link_subscription_id' => $linkSubscriptionId,
+            'referred_by' => '',
         ], $placeData, $prefillData);
         $trackingId = session('client_form_tracking_id');
+        $teamId = (int) auth()->user()->current_team_id;
+        $rawReferredBy = (string) old('referred_by', is_string($data->referred_by ?? null) ? $data->referred_by : '');
+        $referredBySelectValue = $this->canonicalReferredBySelectInput($rawReferredBy, $teamId);
+        $referrerEnterpriseOptions = $this->referrerEnterpriseSelectOptions(
+            null,
+            $rawReferredBy,
+            $teamId,
+        );
 
-        return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId'));
+        return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId', 'referrerEnterpriseOptions', 'referredBySelectValue'));
     }
 
     /**
@@ -107,6 +116,7 @@ class ClientController extends Controller
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
                 'contact_person' => 'nullable|string|max:255',
+                'referred_by' => 'nullable|string|max:255',
                 'code' => [
                     'nullable',
                     'string',
@@ -129,6 +139,7 @@ class ClientController extends Controller
                 'locality' => $request->locality,
                 'province' => $request->province,
                 'country' => $request->country,
+                'referred_by' => $this->normalizeReferredByFromRequestInput($request->input('referred_by'), $teamId),
                 'code' => $request->filled('code') ? trim((string) $request->code) : null,
                 'data' => array_merge((array) ($enterprise->data ?? []), [
                     'opening_hours' => $request->input('opening_hours'),
@@ -162,6 +173,7 @@ class ClientController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'contact_person' => 'nullable|string|max:255',
+            'referred_by' => 'nullable|string|max:255',
             'code' => [
                 'nullable',
                 'string',
@@ -176,6 +188,7 @@ class ClientController extends Controller
         $data['team_id'] = $teamId;
         $data['status_id'] = $request->status_id ?? 1;
         $data['code'] = $request->filled('code') ? trim((string) $request->code) : null;
+        $data['referred_by'] = $this->normalizeReferredByFromRequestInput($request->input('referred_by'), $teamId);
 
         $linkSubscriptionId = (int) $request->input('link_subscription_id', 0);
         if ($linkSubscriptionId > 0)
@@ -308,7 +321,17 @@ class ClientController extends Controller
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
 
-        return view('client.form', compact('data'));
+        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+        $teamId = (int) auth()->user()->current_team_id;
+        $rawReferredBy = (string) old('referred_by', $row->referred_by ?? '');
+        $referredBySelectValue = $this->canonicalReferredBySelectInput($rawReferredBy, $teamId);
+        $referrerEnterpriseOptions = $this->referrerEnterpriseSelectOptions(
+            (int) $id,
+            $rawReferredBy,
+            $teamId,
+        );
+
+        return view('client.form', compact('data', 'enterpriseStatuses', 'referrerEnterpriseOptions', 'referredBySelectValue'));
     }
 
     /**
@@ -650,5 +673,129 @@ class ClientController extends Controller
     public function showImportForm()
     {
         return view('client.import');
+    }
+
+    /**
+     * Persisted referred_by: same-team pick is the referrer enterprise id (string); other teams may use a public code.
+     */
+    private function normalizeReferredByFromRequestInput(mixed $raw, int $teamId): ?string
+    {
+        $t = trim((string) ($raw ?? ''));
+        if ($t === '')
+        {
+            return null;
+        }
+
+        if (ctype_digit($t))
+        {
+            $enterprise = Enterprise::query()
+                ->where('team_id', $teamId)
+                ->where('type_id', 1)
+                ->where('id', (int) $t)
+                ->first();
+            if ($enterprise)
+            {
+                return (string) $enterprise->id;
+            }
+        }
+
+        return $t;
+    }
+
+    /**
+     * Map DB value to the select option value (prefer enterprise id for same-team referrers).
+     */
+    private function canonicalReferredBySelectInput(?string $stored, int $teamId): string
+    {
+        $s = trim((string) ($stored ?? ''));
+        if ($s === '')
+        {
+            return '';
+        }
+
+        if (ctype_digit($s))
+        {
+            $exists = Enterprise::query()
+                ->where('team_id', $teamId)
+                ->where('type_id', 1)
+                ->where('id', (int) $s)
+                ->exists();
+            if ($exists)
+            {
+                return $s;
+            }
+        }
+
+        $byCode = Enterprise::query()
+            ->where('team_id', $teamId)
+            ->where('type_id', 1)
+            ->where('code', $s)
+            ->first();
+        if ($byCode)
+        {
+            return (string) $byCode->id;
+        }
+
+        return $s;
+    }
+
+    /**
+     * Options for referred_by: all client enterprises on this team; option value = enterprise id.
+     * Optional extra row when the stored value is external / legacy (not an id on this team).
+     *
+     * @return list<array{value: string, label: string, disabled?: bool}>
+     */
+    private function referrerEnterpriseSelectOptions(?int $excludeEnterpriseId, string $persistedOrOldReferredBy, int $teamId): array
+    {
+        $query = Enterprise::query()
+            ->where('team_id', $teamId)
+            ->where('type_id', 1)
+            ->orderBy('name');
+
+        if ($excludeEnterpriseId)
+        {
+            $query->where('id', '!=', $excludeEnterpriseId);
+        }
+
+        $rows = [];
+        foreach ($query->get(['id', 'name']) as $enterprise)
+        {
+            $rows[] = [
+                'value' => (string) $enterprise->id,
+                'label' => $enterprise->name,
+            ];
+        }
+
+        $extra = trim($persistedOrOldReferredBy);
+        if ($extra !== '')
+        {
+            $resolved = $this->canonicalReferredBySelectInput($extra, $teamId);
+            if (! $this->referrerSelectRowsContainValue($rows, $resolved)
+                && ! $this->referrerSelectRowsContainValue($rows, $extra))
+            {
+                $rows[] = [
+                    'value' => $extra,
+                    'label' => __('External referrer value').': '.$extra,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<array{value: string, label: string, disabled?: bool}>  $rows
+     */
+    private function referrerSelectRowsContainValue(array $rows, string $value): bool
+    {
+        foreach ($rows as $row)
+        {
+            if (($row['value'] ?? '') === $value)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

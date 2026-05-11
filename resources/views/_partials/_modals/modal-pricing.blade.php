@@ -24,7 +24,7 @@
             </label>
             <div class="mt-n5 ms-n5 d-none d-sm-block">
               <i class="ti ti-corner-left-down ti-sm text-muted me-1 scaleX-n1-rtl"></i>
-              <span class="badge badge-sm bg-label-primary">Save up to 10%</span>
+              <span class="badge badge-sm bg-label-primary">{{ __('humano_pricing.annual_discount_badge') }}</span>
             </div>
           </div>
           <div class="row mx-0 gy-3">

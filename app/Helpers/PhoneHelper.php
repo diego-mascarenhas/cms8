@@ -246,4 +246,32 @@ class PhoneHelper
 
         return null;
     }
+
+    /**
+     * Compare two phone strings allowing common WhatsApp variants (exact digits or same trailing digits).
+     * Aligns with Chat WhatsApp status when team whatsapp_from and gateway number differ by country code prefix.
+     */
+    public static function digitsBelongToSameLine(?string $left, ?string $right): bool
+    {
+        $leftDigits = preg_replace('/[^0-9]/', '', (string) $left);
+        $rightDigits = preg_replace('/[^0-9]/', '', (string) $right);
+        if ($leftDigits === '' || $rightDigits === '')
+        {
+            return false;
+        }
+        if ($leftDigits === $rightDigits)
+        {
+            return true;
+        }
+
+        $minLen = min(strlen($leftDigits), strlen($rightDigits));
+        if ($minLen < 8)
+        {
+            return false;
+        }
+
+        $suffixLen = min(10, $minLen);
+
+        return substr($leftDigits, -$suffixLen) === substr($rightDigits, -$suffixLen);
+    }
 }

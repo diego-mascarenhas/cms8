@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\RegistrationMode;
 use App\Models\Subscription;
 use App\Models\SubscriptionProduct;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -51,6 +52,39 @@ class RegistrationBillingModeTest extends TestCase
             ->get(route('registration.onboarding.qr'))
             ->assertOk()
             ->assertSee(__('auth.registration.qr_heading'), false);
+    }
+
+    public function test_registration_onboarding_qr_page_includes_chat_link_qr_when_whatsapp_driver_is_twilio(): void
+    {
+        config([
+            'registration.mode' => 'free',
+            'whatsapp.driver' => 'twilio',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($user)
+            ->get(route('registration.onboarding.qr'))
+            ->assertOk()
+            ->assertSee(route('registration.onboarding.chat-link-qr-image'), false);
+    }
+
+    public function test_registration_onboarding_chat_link_qr_image_returns_png(): void
+    {
+        config(['registration.mode' => 'free']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $response = $this->actingAs($user)
+            ->get(route('registration.onboarding.chat-link-qr-image'));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", (string) $response->getContent());
     }
 
     public function test_gate_mode_redirects_incomplete_billing_to_registration_billing(): void
@@ -331,6 +365,138 @@ class RegistrationBillingModeTest extends TestCase
         $this->actingAs($user)
             ->get('/profile/data')
             ->assertOk();
+    }
+
+    public function test_gate_mode_passes_when_active_subscription_has_payment_link_signup_metadata(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_reg_payment_link',
+        ]);
+
+        SubscriptionProduct::create([
+            'stripe_product' => 'prod_reg_payment_link',
+            'stripe_price' => 'price_reg_payment_link',
+            'name' => 'Registration',
+            'active' => true,
+            'category' => 'mailer',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_public_pricing',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_humano_public_plan_not_registration_catalog',
+            'quantity' => 1,
+            'data' => [
+                'payment_link_signup' => '1',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertOk();
+    }
+
+    public function test_gate_mode_passes_when_registration_catalog_has_no_prices_but_subscription_has_payment_link_signup(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_not_in_subscription_products_table',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->assertTrue(Team::registrationCheckoutStripePriceIds()->isEmpty());
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_no_catalog_row',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_public_only',
+            'quantity' => 1,
+            'data' => [
+                'payment_link_signup' => '1',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertOk();
+    }
+
+    public function test_gate_mode_redirects_when_registration_catalog_has_no_prices_and_subscription_has_no_bypass_flags(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_not_in_subscription_products_table',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_no_bypass',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_public_only',
+            'quantity' => 1,
+            'data' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertRedirect(route('registration.billing'));
+    }
+
+    public function test_gate_mode_redirects_to_pricing_when_after_public_payment_link_flag_is_set(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_reg_gate_pricing_redirect',
+        ]);
+
+        SubscriptionProduct::create([
+            'stripe_product' => 'prod_reg_gate_pricing_redirect',
+            'stripe_price' => 'price_reg_gate_pricing_redirect',
+            'name' => 'Registration',
+            'active' => true,
+            'category' => 'mailer',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_gate_pricing_redirect',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_wrong_no_match',
+            'quantity' => 1,
+            'data' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['humano_after_public_payment_link_checkout' => true])
+            ->get('/profile/data')
+            ->assertRedirect(route('pricing'))
+            ->assertSessionHas('error');
     }
 
     public function test_billing_info_does_not_error_when_subscription_product_category_is_null(): void

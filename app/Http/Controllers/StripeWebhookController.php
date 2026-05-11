@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
 use App\Models\Team;
+use App\Services\AffiliateCommissionRecorder;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
 
 class StripeWebhookController extends CashierController
@@ -25,7 +26,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::debug('Stripe webhook: skipping invoice handler — no team for customer yet (async or public payment link before /pricing/checkout/complete)', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }
@@ -53,6 +56,8 @@ class StripeWebhookController extends CashierController
                 }
             }
         }
+
+        app(AffiliateCommissionRecorder::class)->recordFromInvoice($team, $invoice);
     }
 
     /**
@@ -67,7 +72,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::debug('Stripe webhook: skipping subscription deleted — no team for customer', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }
@@ -90,7 +97,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::debug('Stripe webhook: skipping subscription updated — no team for customer', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }

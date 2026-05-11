@@ -26,6 +26,8 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
+use App\Services\DemoDataService;
+use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -62,11 +64,17 @@ class TeamDemoSeeder extends Seeder
         // 6. Create Staff category and contacts
         $this->createStaffCategoryAndContacts();
 
+        // 6.1. Demo WhatsApp threads (chat list / mobile API) — fictitious line, see DemoWhatsAppConversationsSeeder
+        $this->call(DemoWhatsAppConversationsSeeder::class);
+
         // 7. Create demo message
         $this->createDemoMessage();
 
         // 8. Configure email settings and Mailer credits
         $this->configureDemoEmailSettings($team);
+
+        // 8.1. Demo clients (REVISION ALPHA, IDONEO) + mail campaigns / secuencias / contactos Tester (equipo Demo)
+        $this->seedDemoClientsProjectsAndMail($team);
 
         // 9. Configure prospect credits for testing
         $this->configureDemoProspectCredits($team);
@@ -111,20 +119,17 @@ class TeamDemoSeeder extends Seeder
         );
         $user->update(['phone' => '34613194131']);
 
-        if (! $user->hasRole('admin'))
-        {
+        if (!$user->hasRole('admin')) {
             $user->assignRole('admin');
         }
 
         $team = $user->ownedTeams()->where('name', 'Demo')->orderBy('id')->first();
 
-        if (! $team)
-        {
+        if (!$team) {
             $team = Team::query()->where('name', 'Demo')->orderBy('id')->first();
         }
 
-        if ($team)
-        {
+        if ($team) {
             $user->update(['current_team_id' => $team->id]);
 
             return $team;
@@ -143,6 +148,16 @@ class TeamDemoSeeder extends Seeder
         $user->update(['current_team_id' => $team->id]);
 
         return $team;
+    }
+
+    /**
+     * Shared demo circuit: client enterprises + projects and mailer fixtures (see {@see DemoSeeder}).
+     */
+    private function seedDemoClientsProjectsAndMail(Team $team): void
+    {
+        DemoDataService::createClientsAndProjects($team->id, $this->command);
+        $console = $this->command instanceof Command ? $this->command : null;
+        DemoMailCampaignData::seed($team, $console);
     }
 
     private function assignCoreModules(Team $team): void
@@ -167,11 +182,9 @@ class TeamDemoSeeder extends Seeder
             'contents',
         ];
 
-        foreach ($defaultModuleKeys as $moduleKey)
-        {
+        foreach ($defaultModuleKeys as $moduleKey) {
             $module = Module::where('key', $moduleKey)->first();
-            if ($module)
-            {
+            if ($module) {
                 DB::table('module_team')->updateOrInsert([
                     'module_id' => $module->id,
                     'team_id' => $team->id,
@@ -193,11 +206,9 @@ class TeamDemoSeeder extends Seeder
             'website' => 'Sitio web (Entradas, Páginas)',
         ];
 
-        foreach ($modulesDisabledForDemo as $moduleKey => $label)
-        {
+        foreach ($modulesDisabledForDemo as $moduleKey => $label) {
             $module = Module::where('key', $moduleKey)->first();
-            if ($module)
-            {
+            if ($module) {
                 $now = now();
                 DB::table('module_team')->updateOrInsert(
                     [
@@ -229,8 +240,7 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'Referido', 'description' => 'Contactos referidos por clientes'],
             ['name' => 'Developer', 'description' => 'Desarrolladores o equipo técnico'],
         ];
-        foreach ($contactCategories as $cat)
-        {
+        foreach ($contactCategories as $cat) {
             Category::updateOrCreate([
                 'name' => $cat['name'],
                 'module_id' => $contactsModuleId,
@@ -261,8 +271,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📋 Creating Demo task categories...');
 
         $tasksModuleId = Module::where('key', 'tasks')->first()?->id;
-        if (! $tasksModuleId)
-        {
+        if (!$tasksModuleId) {
             $this->command->warn('⚠️  Tasks module not found.');
 
             return;
@@ -290,8 +299,7 @@ class TeamDemoSeeder extends Seeder
 
         // Subcategories
         $adminSubs = ['Cobranza', 'Pagos', 'Presupuestos'];
-        foreach ($adminSubs as $sub)
-        {
+        foreach ($adminSubs as $sub) {
             Category::updateOrCreate([
                 'name' => $sub,
                 'module_id' => $tasksModuleId,
@@ -303,8 +311,7 @@ class TeamDemoSeeder extends Seeder
         }
 
         $projectSubs = ['Diseño', 'Programación', 'Mantenimiento'];
-        foreach ($projectSubs as $sub)
-        {
+        foreach ($projectSubs as $sub) {
             Category::updateOrCreate([
                 'name' => $sub,
                 'module_id' => $tasksModuleId,
@@ -340,16 +347,13 @@ class TeamDemoSeeder extends Seeder
 
         $this->command->info("✅ Template created: {$template->name}");
 
-        try
-        {
+        try {
             $result = GrapesJsHelper::fixTemplateStructure($template);
-            if ($result)
-            {
+            if ($result) {
                 $this->command->info('✅ Fixed GrapesJS structure');
             }
-        } catch (\Exception $e)
-        {
-            $this->command->error('❌ Error fixing template: '.$e->getMessage());
+        } catch (\Exception $e) {
+            $this->command->error('❌ Error fixing template: ' . $e->getMessage());
         }
     }
 
@@ -358,8 +362,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('👥 Creating 30 demo contacts (staff and clients)...');
 
         $contactsModule = Module::where('key', 'contacts')->first();
-        if (! $contactsModule)
-        {
+        if (!$contactsModule) {
             return;
         }
 
@@ -416,8 +419,7 @@ class TeamDemoSeeder extends Seeder
         $existing = 0;
 
         // Create staff contacts
-        foreach ($staffContacts as $contactData)
-        {
+        foreach ($staffContacts as $contactData) {
             $contact = Contact::firstOrCreate(
                 ['email' => $contactData['email'], 'team_id' => $this->teamId],
                 [
@@ -433,8 +435,7 @@ class TeamDemoSeeder extends Seeder
                 ],
             );
 
-            if ($staffCategory && ! $contact->categories()->where('category_id', $staffCategory->id)->exists())
-            {
+            if ($staffCategory && !$contact->categories()->where('category_id', $staffCategory->id)->exists()) {
                 $contact->categories()->attach($staffCategory->id);
             }
 
@@ -443,8 +444,7 @@ class TeamDemoSeeder extends Seeder
         }
 
         // Create client contacts
-        foreach ($clientContacts as $index => $contactData)
-        {
+        foreach ($clientContacts as $index => $contactData) {
             // Assign to an enterprise if available
             $enterprise = $enterprises->isNotEmpty() ? $enterprises->random() : null;
 
@@ -465,14 +465,12 @@ class TeamDemoSeeder extends Seeder
                 ],
             );
 
-            if ($clientCategory && ! $contact->categories()->where('category_id', $clientCategory->id)->exists())
-            {
+            if ($clientCategory && !$contact->categories()->where('category_id', $clientCategory->id)->exists()) {
                 $contact->categories()->attach($clientCategory->id);
             }
 
             // Link contact to enterprise in pivot table
-            if ($enterprise)
-            {
+            if ($enterprise) {
                 DB::table('contact_enterprise')->updateOrInsert(
                     ['contact_id' => $contact->id, 'enterprise_id' => $enterprise->id],
                     ['position' => $contactData['profile'], 'created_at' => now(), 'updated_at' => now()],
@@ -500,8 +498,7 @@ class TeamDemoSeeder extends Seeder
             ->where('team_id', $this->teamId)
             ->first();
 
-        if ($template && $staffCategory)
-        {
+        if ($template && $staffCategory) {
             \App\Models\Message::firstOrCreate(
                 ['name' => 'Newsletter Demo', 'team_id' => $this->teamId],
                 [
@@ -584,12 +581,10 @@ class TeamDemoSeeder extends Seeder
                 'email_verified_at' => now(),
             ],
         );
-        if (! $victor->hasRole('admin'))
-        {
+        if (!$victor->hasRole('admin')) {
             $victor->assignRole('admin');
         }
-        if (! $victor->teams()->where('team_id', $team->id)->exists())
-        {
+        if (!$victor->teams()->where('team_id', $team->id)->exists()) {
             $victor->teams()->attach($team->id, ['role' => 'admin']);
             $this->command->info('✅ Added Victor as admin to Demo team');
         }
@@ -604,14 +599,45 @@ class TeamDemoSeeder extends Seeder
             ],
         );
         $diego->update(['phone' => 34722372858]);
-        if (! $diego->hasRole('admin'))
-        {
+        if (!$diego->hasRole('admin')) {
             $diego->assignRole('admin');
         }
-        if (! $diego->teams()->where('team_id', $team->id)->exists())
-        {
+        if (!$diego->teams()->where('team_id', $team->id)->exists()) {
             $diego->teams()->attach($team->id, ['role' => 'admin']);
             $this->command->info('✅ Added Diego as admin to Demo team');
+        }
+
+        $humanoTeam = Team::withoutGlobalScopes()->where('name', "Humano's Team")->first();
+        $revisionTeam = Team::withoutGlobalScopes()->where('name', "REVISION ALPHA's Team")->first();
+
+        foreach ([
+            [$humanoTeam, 'javier@humano.app', 'Javier Meraki', '34699217341', "Humano's Team"],
+            [$revisionTeam, 'leanamaro@gmail.com', 'Leandro Amaro', '5491136626495', "REVISION ALPHA's Team"],
+        ] as [$targetTeam, $email, $name, $phone, $teamLabel]) {
+            if (!$targetTeam) {
+                $this->command->warn("⚠️  Team «{$teamLabel}» not found — skip {$name} (seed TeamHumanoSeeder / TeamRevisionAlphaSeeder first).");
+
+                continue;
+            }
+
+            $cross = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $name,
+                    'password' => bcrypt('Simplicity!'),
+                    'email_verified_at' => now(),
+                    'phone' => $phone,
+                ],
+            );
+            $cross->update(['name' => $name, 'phone' => $phone]);
+            if (!$cross->hasRole('admin')) {
+                $cross->assignRole('admin');
+            }
+            if (!$cross->teams()->where('team_id', $targetTeam->id)->exists()) {
+                $cross->teams()->attach($targetTeam->id, ['role' => 'admin']);
+                $this->command->info("✅ Added {$name} as admin to {$targetTeam->name}");
+            }
+            $cross->update(['current_team_id' => $targetTeam->id]);
         }
 
         // Demo users with different roles (using existing roles: admin, employee, collaborator, developer, editor, user)
@@ -656,8 +682,7 @@ class TeamDemoSeeder extends Seeder
         $created = 0;
         $existing = 0;
 
-        foreach ($demoUsers as $userData)
-        {
+        foreach ($demoUsers as $userData) {
             $user = User::firstOrCreate(
                 ['email' => $userData['email']],
                 [
@@ -668,25 +693,22 @@ class TeamDemoSeeder extends Seeder
             );
 
             // Assign role
-            if (! $user->hasRole($userData['role']))
-            {
+            if (!$user->hasRole($userData['role'])) {
                 $user->assignRole($userData['role']);
             }
 
             // Add to team if not already
-            if (! $user->teams()->where('team_id', $team->id)->exists())
-            {
+            if (!$user->teams()->where('team_id', $team->id)->exists()) {
                 $user->teams()->attach($team->id, ['role' => $userData['role']]);
                 $created++;
                 $this->command->info("✅ Created: {$userData['name']} ({$userData['role']}) - {$userData['position']}");
-            } else
-            {
+            } else {
                 $existing++;
             }
         }
 
         $this->command->info("📊 Summary: {$created} new users created, {$existing} already existed");
-        $this->command->info('✅ Total team members: '.($team->users()->count()));
+        $this->command->info('✅ Total team members: ' . ($team->users()->count()));
     }
 
     private function createTaskBoards(): void
@@ -694,8 +716,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🎯 Creating task boards...');
 
         $team = Team::find($this->teamId);
-        if (! $team)
-        {
+        if (!$team) {
             return;
         }
 
@@ -703,8 +724,7 @@ class TeamDemoSeeder extends Seeder
             ->where('team_id', $team->id)
             ->count();
 
-        if ($existingBoards > 0)
-        {
+        if ($existingBoards > 0) {
             $this->command->warn("⏭️  Boards already exist ({$existingBoards})");
 
             return;
@@ -734,8 +754,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('👥 Creating demo contacts...');
 
         $enterprises = Enterprise::where('team_id', $this->teamId)->get();
-        if ($enterprises->isEmpty())
-        {
+        if ($enterprises->isEmpty()) {
             // Create demo enterprise first
             $enterprise = Enterprise::updateOrCreate(
                 ['id' => 1],
@@ -758,8 +777,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🏷️  Creating service categories and types...');
 
         $servicesModule = Module::where('key', 'services')->first();
-        if (! $servicesModule)
-        {
+        if (!$servicesModule) {
             $this->command->warn('⚠️  Services module not found');
 
             return;
@@ -778,8 +796,7 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'Diseño', 'description' => 'Servicios de diseño y UX'],
         ];
 
-        foreach ($subcategories as $subcat)
-        {
+        foreach ($subcategories as $subcat) {
             Category::firstOrCreate(
                 ['name' => $subcat['name'], 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
                 [
@@ -803,8 +820,7 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'Branding', 'description' => 'Diseño de identidad corporativa', 'category' => 'Diseño'],
         ];
 
-        foreach ($serviceTypes as $typeData)
-        {
+        foreach ($serviceTypes as $typeData) {
             $category = Category::where('name', $typeData['category'])
                 ->where('module_id', $servicesModule->id)
                 ->where('team_id', $this->teamId)
@@ -841,8 +857,7 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'Mobile Apps Studio', 'code' => 'MOBI010'],
         ];
 
-        foreach ($enterpriseNames as $enterpriseData)
-        {
+        foreach ($enterpriseNames as $enterpriseData) {
             Enterprise::firstOrCreate(
                 ['code' => $enterpriseData['code'], 'team_id' => $this->teamId],
                 [
@@ -850,8 +865,8 @@ class TeamDemoSeeder extends Seeder
                     'type_id' => 1,  // Cliente
                     'status_id' => 1,  // Activo
                     'responsible_id' => 1,
-                    'phone' => '34'.rand(600000000, 699999999),
-                    'email' => strtolower(str_replace(' ', '', explode(' ', $enterpriseData['name'])[0])).'@example.com',
+                    'phone' => '34' . rand(600000000, 699999999),
+                    'email' => strtolower(str_replace(' ', '', explode(' ', $enterpriseData['name'])[0])) . '@example.com',
                 ],
             );
             $this->command->info("✅ Enterprise: {$enterpriseData['name']}");
@@ -863,8 +878,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🛠️ Creating demo services...');
 
         $enterprises = Enterprise::where('team_id', $this->teamId)->get();
-        if ($enterprises->isEmpty())
-        {
+        if ($enterprises->isEmpty()) {
             $this->command->warn('⚠️  No enterprises found');
 
             return;
@@ -872,16 +886,14 @@ class TeamDemoSeeder extends Seeder
 
         // Get or create a default service type
         $serviceType = \App\Models\ServiceType::first();
-        if (! $serviceType)
-        {
+        if (!$serviceType) {
             $this->command->warn('⚠️  No service types found, skipping services');
 
             return;
         }
 
         $serviceTypes = \App\Models\ServiceType::all();
-        if ($serviceTypes->isEmpty())
-        {
+        if ($serviceTypes->isEmpty()) {
             $this->command->warn('⚠️  No service types found, using default');
             $serviceTypes = collect([$serviceType]);
         }
@@ -893,18 +905,16 @@ class TeamDemoSeeder extends Seeder
 
         $servicesCreated = 0;
 
-        foreach ($enterprises as $enterprise)
-        {
+        foreach ($enterprises as $enterprise) {
             // Create 1-3 services per enterprise
             $numServices = rand(1, 3);
-            for ($i = 0; $i < $numServices; $i++)
-            {
+            for ($i = 0; $i < $numServices; $i++) {
                 $selectedType = $serviceTypes->random();
 
                 Service::firstOrCreate(
                     ['enterprise_id' => $enterprise->id, 'service_type_id' => $selectedType->id],
                     [
-                        'description' => $selectedType->name.' para '.$enterprise->name,
+                        'description' => $selectedType->name . ' para ' . $enterprise->name,
                         'price' => rand(500, 5000),
                         'status' => 1,
                         'operation' => 'sell',
@@ -949,8 +959,7 @@ class TeamDemoSeeder extends Seeder
             ->where('team_id', $this->teamId)
             ->get();
 
-        if ($contacts->isEmpty())
-        {
+        if ($contacts->isEmpty()) {
             $this->command->warn('⚠️  No contacts found for List60');
 
             return;
@@ -960,14 +969,12 @@ class TeamDemoSeeder extends Seeder
         $responsibleId = $team?->user_id ?? 1;
         $status = List60Status::first();
         $statusId = $status ? $status->id : 1;
-        $typeId = 1; // EnterpriseType default
+        $typeId = 1;  // EnterpriseType default
 
         $created = 0;
-        foreach ($contacts as $contact)
-        {
+        foreach ($contacts as $contact) {
             $exists = List60::where('contact_id', $contact->id)->exists();
-            if ($exists)
-            {
+            if ($exists) {
                 continue;
             }
 
@@ -990,8 +997,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📁 Creating project categories and projects...');
 
         $projectsModule = Module::where('key', 'projects')->first();
-        if (! $projectsModule)
-        {
+        if (!$projectsModule) {
             $this->command->warn('⚠️  Projects module not found');
 
             return;
@@ -1011,8 +1017,7 @@ class TeamDemoSeeder extends Seeder
         ];
 
         $projectCategories = [];
-        foreach ($subcategories as $subcat)
-        {
+        foreach ($subcategories as $subcat) {
             $category = Category::firstOrCreate(
                 ['name' => $subcat['name'], 'module_id' => $projectsModule->id, 'team_id' => $this->teamId],
                 [
@@ -1027,8 +1032,7 @@ class TeamDemoSeeder extends Seeder
 
         // Get enterprises
         $enterprises = Enterprise::where('team_id', $this->teamId)->limit(5)->get();
-        if ($enterprises->isEmpty())
-        {
+        if ($enterprises->isEmpty()) {
             $this->command->warn('⚠️  No enterprises found for projects');
 
             return;
@@ -1044,8 +1048,7 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'eCommerce Platform', 'real_name' => 'eCommerce', 'description' => 'Plataforma de comercio electrónico con pasarela de pagos', 'status_id' => 2],
         ];
 
-        foreach ($projectData as $index => $project)
-        {
+        foreach ($projectData as $index => $project) {
             $enterprise = $enterprises->random();
             $category = collect($projectCategories)->random();
 
@@ -1076,8 +1079,7 @@ class TeamDemoSeeder extends Seeder
             ->limit(3)
             ->get();
 
-        if ($projects->isEmpty())
-        {
+        if ($projects->isEmpty()) {
             $this->command->warn('⚠️  No projects found for boards');
 
             return;
@@ -1088,13 +1090,12 @@ class TeamDemoSeeder extends Seeder
             ->where('team_id', $this->teamId)
             ->get();
 
-        foreach ($projects as $project)
-        {
+        foreach ($projects as $project) {
             // Create board for project
             $board = \App\Models\TaskBoard::firstOrCreate(
-                ['name' => 'Board: '.$project->name, 'team_id' => $this->teamId],
+                ['name' => 'Board: ' . $project->name, 'team_id' => $this->teamId],
                 [
-                    'description' => 'Tablero de tareas para '.$project->name,
+                    'description' => 'Tablero de tareas para ' . $project->name,
                     'is_default' => false,
                     'order' => 10,
                 ],
@@ -1122,15 +1123,14 @@ class TeamDemoSeeder extends Seeder
                 'Corrección de bugs',
             ];
 
-            for ($i = 0; $i < $numTasks; $i++)
-            {
-                $taskName = $taskTemplates[$i % count($taskTemplates)].' - '.$project->name;
+            for ($i = 0; $i < $numTasks; $i++) {
+                $taskName = $taskTemplates[$i % count($taskTemplates)] . ' - ' . $project->name;
                 $category = $taskCategories->isNotEmpty() ? $taskCategories->random() : null;
 
                 \App\Models\Task::firstOrCreate(
                     ['title' => $taskName, 'board_id' => $board->id],
                     [
-                        'description' => 'Tarea de '.strtolower($taskTemplates[$i % count($taskTemplates)]).' para '.$project->name,
+                        'description' => 'Tarea de ' . strtolower($taskTemplates[$i % count($taskTemplates)]) . ' para ' . $project->name,
                         'category_id' => $category?->id,
                         'status_id' => collect($taskStatuses)->random(),
                         'responsible_id' => 1,
@@ -1167,8 +1167,7 @@ class TeamDemoSeeder extends Seeder
             ])
             ->get();
 
-        if ($clientContacts->isEmpty())
-        {
+        if ($clientContacts->isEmpty()) {
             $this->command->warn('⚠️  No client contacts found');
 
             return;
@@ -1176,8 +1175,7 @@ class TeamDemoSeeder extends Seeder
 
         // Get enterprises
         $enterprises = Enterprise::where('team_id', $this->teamId)->get();
-        if ($enterprises->isEmpty())
-        {
+        if ($enterprises->isEmpty()) {
             $this->command->warn('⚠️  No enterprises found');
 
             return;
@@ -1188,8 +1186,7 @@ class TeamDemoSeeder extends Seeder
         $paymentType = PaymentType::first();
         $paymentAccount = PaymentAccount::withoutGlobalScopes()->where('team_id', $this->teamId)->first();
 
-        if (! $paymentAccount)
-        {
+        if (!$paymentAccount) {
             $this->command->warn('⚠️  No payment account found, creating one...');
             $paymentAccount = PaymentAccount::withoutGlobalScopes()->create([
                 'team_id' => $this->teamId,
@@ -1201,15 +1198,13 @@ class TeamDemoSeeder extends Seeder
         }
 
         $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
-        if (empty($taxStatuses))
-        {
+        if (empty($taxStatuses)) {
             $taxStatuses = [1];
         }
 
         $servicesModule = Module::where('key', 'services')->first();
         $serviceCategory = null;
-        if ($servicesModule)
-        {
+        if ($servicesModule) {
             $serviceCategory = Category::where('module_id', $servicesModule->id)
                 ->where('team_id', $this->teamId)
                 ->first();
@@ -1218,8 +1213,7 @@ class TeamDemoSeeder extends Seeder
         $invoiceStatuses = [1, 2];  // Paid, Pending
         $clientsCreated = 0;
 
-        foreach ($clientContacts as $contact)
-        {
+        foreach ($clientContacts as $contact) {
             // 1. Update contact to status 5 (Cliente)
             $contact->update(['status_id' => 5]);
 
@@ -1238,9 +1232,9 @@ class TeamDemoSeeder extends Seeder
                 ['enterprise_id' => $enterprise->id],
                 [
                     'name' => $enterprise->name,
-                    'identification_number' => 'CIF-'.strtoupper(substr(md5($enterprise->name), 0, 9)),
+                    'identification_number' => 'CIF-' . strtoupper(substr(md5($enterprise->name), 0, 9)),
                     'tax_status_type_id' => collect($taxStatuses)->random(),
-                    'address' => 'Calle '.fake()->streetName().', '.rand(1, 200),
+                    'address' => 'Calle ' . fake()->streetName() . ', ' . rand(1, 200),
                     'postal_code' => rand(28001, 28999),
                     'locality' => 'Madrid',
                     'province' => 'Madrid',
@@ -1251,9 +1245,8 @@ class TeamDemoSeeder extends Seeder
 
             // 4. Create 1-3 invoices for this client
             $numInvoices = rand(1, 3);
-            for ($i = 0; $i < $numInvoices; $i++)
-            {
-                $invoiceNumber = now()->format('Y').'-'.str_pad($enterprise->id, 4, '0', STR_PAD_LEFT).'-'.str_pad($i + 1, 3, '0', STR_PAD_LEFT);
+            for ($i = 0; $i < $numInvoices; $i++) {
+                $invoiceNumber = now()->format('Y') . '-' . str_pad($enterprise->id, 4, '0', STR_PAD_LEFT) . '-' . str_pad($i + 1, 3, '0', STR_PAD_LEFT);
                 $invoiceDate = now()->subDays(rand(1, 180));
                 $dueDate = $invoiceDate->copy()->addDays(30);
 
@@ -1283,8 +1276,7 @@ class TeamDemoSeeder extends Seeder
 
                 // 5. Create invoice items (2-4 items per invoice)
                 $numItems = rand(2, 4);
-                for ($j = 0; $j < $numItems; $j++)
-                {
+                for ($j = 0; $j < $numItems; $j++) {
                     $itemDescriptions = [
                         'Desarrollo de Software',
                         'Consultoría IT',
@@ -1309,11 +1301,9 @@ class TeamDemoSeeder extends Seeder
                 }
 
                 // 6. Create payment if invoice is paid
-                if ($status == 1 && $paymentType && $paymentAccount)
-                {
+                if ($status == 1 && $paymentType && $paymentAccount) {
                     $paymentDate = $invoiceDate->copy()->addDays(rand(1, 15));
-                    if ($paymentDate->lt('2024-07-01'))
-                    {
+                    if ($paymentDate->lt('2024-07-01')) {
                         $paymentDate = $paymentDate->setDate(2024, 7, 1);
                     }
                     Payment::withoutGlobalScopes()->firstOrCreate(
@@ -1326,7 +1316,7 @@ class TeamDemoSeeder extends Seeder
                             'account_id' => $paymentAccount->id,
                             'type_id' => $paymentType->id,
                             'amount' => $totalAmount,
-                            'remarks' => 'Pago de factura '.$invoiceNumber,
+                            'remarks' => 'Pago de factura ' . $invoiceNumber,
                             'status' => 1,
                         ],
                     );
@@ -1345,20 +1335,18 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('💰 Creating demo invoices...');
 
         $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
-        if (empty($taxStatuses))
-        {
+        if (empty($taxStatuses)) {
             $this->call(EnterpriseTaxStatusTypeSeeder::class);
             $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
         }
 
         $enterprises = Enterprise::where('team_id', $this->teamId)->get();
-        foreach ($enterprises->take(3) as $enterprise)
-        {
+        foreach ($enterprises->take(3) as $enterprise) {
             $billing = EnterpriseBillingAddress::firstOrCreate(
                 ['enterprise_id' => $enterprise->id],
                 [
-                    'name' => $enterprise->name.' Billing',
-                    'identification_number' => 'ID'.str_pad((string) $enterprise->id, 6, '0', STR_PAD_LEFT),
+                    'name' => $enterprise->name . ' Billing',
+                    'identification_number' => 'ID' . str_pad((string) $enterprise->id, 6, '0', STR_PAD_LEFT),
                     'tax_status_type_id' => collect($taxStatuses)->random(),
                     'address' => 'Main St 123',
                     'postal_code' => '28001',
@@ -1371,7 +1359,7 @@ class TeamDemoSeeder extends Seeder
 
             $invoiceType = InvoiceType::first();
             $invoice = Invoice::withoutGlobalScopes()->firstOrCreate(
-                ['enterprise_id' => $enterprise->id, 'number' => '2024-'.$enterprise->id],
+                ['enterprise_id' => $enterprise->id, 'number' => '2024-' . $enterprise->id],
                 [
                     'team_id' => $this->teamId,
                     'billing_id' => $billing->id,
@@ -1407,8 +1395,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('💳 Creating demo payments...');
 
         $accountsBefore = PaymentAccount::where('team_id', $this->teamId)->count();
-        if ($accountsBefore === 0)
-        {
+        if ($accountsBefore === 0) {
             $this->call(PaymentAccountSeeder::class);
         }
 
@@ -1419,15 +1406,12 @@ class TeamDemoSeeder extends Seeder
             ->where('status', 1)
             ->get();
 
-        foreach ($invoices->take(10) as $invoice)
-        {
+        foreach ($invoices->take(10) as $invoice) {
             $paymentDate = $invoice->due_date;
-            if (is_string($paymentDate))
-            {
+            if (is_string($paymentDate)) {
                 $paymentDate = \Carbon\Carbon::parse($paymentDate);
             }
-            if ($paymentDate->lt('2024-07-01'))
-            {
+            if ($paymentDate->lt('2024-07-01')) {
                 $paymentDate = \Carbon\Carbon::parse('2024-07-01');
             }
             Payment::withoutGlobalScopes()->firstOrCreate(
@@ -1440,7 +1424,7 @@ class TeamDemoSeeder extends Seeder
                     'account_id' => $account?->id ?? 1,
                     'type_id' => $paymentType?->id ?? 1,
                     'amount' => $invoice->total_amount,
-                    'remarks' => 'Payment for invoice '.$invoice->number,
+                    'remarks' => 'Payment for invoice ' . $invoice->number,
                     'status' => 1,
                 ],
             );
@@ -1456,18 +1440,14 @@ class TeamDemoSeeder extends Seeder
         $templates = Template::where('team_id', $this->teamId)->get();
         $fixed = 0;
 
-        foreach ($templates as $template)
-        {
-            try
-            {
+        foreach ($templates as $template) {
+            try {
                 $result = GrapesJsHelper::fixTemplateStructure($template);
-                if ($result)
-                {
+                if ($result) {
                     $fixed++;
                 }
-            } catch (\Exception $e)
-            {
-                $this->command->error('❌ Error: '.$e->getMessage());
+            } catch (\Exception $e) {
+                $this->command->error('❌ Error: ' . $e->getMessage());
             }
         }
 
@@ -1481,8 +1461,7 @@ class TeamDemoSeeder extends Seeder
             ['id' => 2, 'name' => 'WhatsApp', 'status' => 1],
         ];
 
-        foreach ($messageTypes as $type)
-        {
+        foreach ($messageTypes as $type) {
             DB::table('message_type')->updateOrInsert(['id' => $type['id']], $type);
         }
     }
@@ -1517,7 +1496,7 @@ class TeamDemoSeeder extends Seeder
                 'label' => 'Personal',
             ],
             [
-                'title' => 'Doctor\'s',
+                'title' => "Doctor's",
                 'start' => $base->copy()->setDay(20)->setTime(9, 0),
                 'end' => $base->copy()->setDay(20)->setTime(10, 0),
                 'label' => 'Personal',
@@ -1547,8 +1526,7 @@ class TeamDemoSeeder extends Seeder
             ],
         ];
 
-        foreach ($events as $data)
-        {
+        foreach ($events as $data) {
             $start = $data['start'];
             $end = $data['end'] ?? $start->copy()->addHour();
 

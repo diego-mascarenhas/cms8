@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
@@ -45,16 +46,14 @@ class ContactDataTable extends DataTable
             })
             ->filterColumn('name', function ($query, $keyword)
             {
-                // Search in both name and surname fields, and enterprise name
-                $query->where(function ($q) use ($keyword)
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
                 {
-                    $q->where('name', 'like', "%{$keyword}%")
-                        ->orWhere('surname', 'like', "%{$keyword}%")
-                        ->orWhereHas('enterprises', function ($enterpriseQuery) use ($keyword)
-                        {
-                            $enterpriseQuery->where('name', 'like', "%{$keyword}%");
-                        });
-                });
+                    return;
+                }
+
+                SearchNormalizer::applyContactDataTableNameColumnConditions($query, $keyword);
             })
             ->addColumn('current_sentiment', function ($row)
             {
@@ -73,6 +72,9 @@ class ContactDataTable extends DataTable
                     {
                         $q->where('sentiment_id', $keyword);
                     });
+                } elseif ($keyword !== '')
+                {
+                    $query->whereRaw('0 = 1');
                 }
             })
             ->addColumn('sources', function ($row)
@@ -107,6 +109,9 @@ class ContactDataTable extends DataTable
                     {
                         $q->where('id', $keyword);
                     });
+                } elseif ($keyword !== '')
+                {
+                    $query->whereRaw('0 = 1');
                 }
             })
             ->editColumn('status_id', function ($row)

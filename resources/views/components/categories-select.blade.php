@@ -126,19 +126,14 @@
 
 @push('scripts')
 <script>
-    console.log('Categories select script loading for: {{ $id }}');
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOMContentLoaded - initializing categories select for: {{ $id }}');
         const select = $('#{{ $id }}');
-        console.log('Select element found:', select.length);
 
         if (select.length === 0) {
-            console.error('Select element not found!');
             return;
         }
 
         const moduleKey = '{{ $moduleKey ?? "" }}';
-        console.log('Module key:', moduleKey);
 
         select.select2({
             placeholder: 'Select categories',
@@ -159,109 +154,76 @@
 
         // Function to check and add button
         function checkAndAddButton() {
-            try {
-                console.log('=== checkAndAddButton called ===');
-                const select2Data = select.data('select2');
-                if (!select2Data) {
-                    console.log('No select2 data');
-                    return;
-                }
+            const select2Data = select.data('select2');
+            if (!select2Data) {
+                return;
+            }
 
-                const dropdown = select2Data.$dropdown;
-                if (!dropdown || !dropdown.is(':visible')) {
-                    console.log('Dropdown not visible');
-                    return;
-                }
+            const dropdown = select2Data.$dropdown;
+            if (!dropdown || !dropdown.is(':visible')) {
+                return;
+            }
 
-                const results = dropdown.find('.select2-results__options');
-                if (results.length === 0) {
-                    console.log('No results container found');
-                    return;
-                }
+            const results = dropdown.find('.select2-results__options');
+            if (results.length === 0) {
+                return;
+            }
 
-                const searchInput = select2Data.dropdown.$search;
-                const searchTerm = searchInput ? searchInput.val().trim() : '';
-                console.log('Search term:', searchTerm);
+            const searchInput = select2Data.dropdown.$search;
+            const searchTerm = searchInput ? searchInput.val().trim() : '';
 
-                // Remove existing button
-                results.find('#add-category-btn-{{ $id }}').closest('li').remove();
+            // Remove existing button
+            results.find('#add-category-btn-{{ $id }}').closest('li').remove();
 
-                // Find the "no results" message by class and text content
-                let noResultsMsg = results.find('.select2-results__message');
-                console.log('Found by class:', noResultsMsg.length);
+            // Find the "no results" message by class and text content
+            let noResultsMsg = results.find('.select2-results__message');
 
-                // Also search by text content in case class doesn't match
-                if (noResultsMsg.length === 0) {
-                    results.find('li.select2-results__option').each(function() {
-                        const text = $(this).text().trim().toLowerCase();
-                        console.log('Checking option text:', text);
-                        // More flexible matching
-                        if (text.includes('no results') ||
-                            text.includes('no se encontraron') ||
-                            text.includes('sin resultados') ||
-                            text === 'no results found' ||
-                            text === 'no se encontraron resultados') {
-                            noResultsMsg = $(this);
-                            console.log('Found by text!');
-                            return false; // break
-                        }
-                    });
-                }
+            // Also search by text content in case class doesn't match
+            if (noResultsMsg.length === 0) {
+                results.find('li.select2-results__option').each(function() {
+                    const text = $(this).text().trim().toLowerCase();
+                    if (text.includes('no results') ||
+                        text.includes('no se encontraron') ||
+                        text.includes('sin resultados') ||
+                        text === 'no results found' ||
+                        text === 'no se encontraron resultados') {
+                        noResultsMsg = $(this);
+                        return false; // break
+                    }
+                });
+            }
 
-                console.log('Final noResultsMsg length:', noResultsMsg.length);
-                if (noResultsMsg.length > 0) {
-                    console.log('No results message HTML:', noResultsMsg[0].outerHTML);
-                }
+            // Check if there are any matching options in the original select element
+            const originalOptions = select.find('option');
+            let hasMatchingOption = false;
+            const searchLower = searchTerm.toLowerCase();
 
-                // Check if there are any matching options in the original select element
-                const originalOptions = select.find('option');
-                let hasMatchingOption = false;
-                const searchLower = searchTerm.toLowerCase();
+            if (searchTerm) {
+                originalOptions.each(function() {
+                    const optionText = $(this).text().toLowerCase();
+                    if (optionText.includes(searchLower)) {
+                        hasMatchingOption = true;
+                        return false; // break
+                    }
+                });
+            }
 
-                if (searchTerm) {
-                    originalOptions.each(function() {
-                        const optionText = $(this).text().toLowerCase();
-                        if (optionText.includes(searchLower)) {
-                            hasMatchingOption = true;
-                            return false; // break
-                        }
-                    });
-                }
+            // Count visible options in results (excluding groups and messages)
+            const visibleOptions = results.find('li.select2-results__option:visible').not('.select2-results__message').not('.select2-results__group');
 
-                // Count visible options in results (excluding groups and messages)
-                const visibleOptions = results.find('li.select2-results__option:visible').not('.select2-results__message').not('.select2-results__group');
-
-                console.log('Debug - Search term:', searchTerm, 'No results msg found:', noResultsMsg.length, 'Has matching:', hasMatchingOption, 'Visible options:', visibleOptions.length);
-
-                // If "no results" message exists and search term is at least 2 characters
-                if (noResultsMsg.length > 0 && searchTerm && searchTerm.length >= 2) {
-                    console.log('Condition met! Replacing message with button. Search term:', searchTerm);
-                    // Replace the message with the button
-                    const buttonHtml = '<li class="select2-results__option" role="option" style="padding: 0;"><div class="p-2"><button type="button" class="btn btn-sm btn-primary w-100" id="add-category-btn-{{ $id }}"><i class="ti ti-plus me-1"></i>Agregar "' + searchTerm + '"</button></div></li>';
-                    noResultsMsg.replaceWith(buttonHtml);
-                    console.log('Button added (replaced no results message)!');
-                }
-                // If no visible options and no message but search term exists
-                else if (visibleOptions.length === 0 && noResultsMsg.length === 0 && searchTerm && searchTerm.length >= 2 && !hasMatchingOption) {
-                    console.log('Condition met (no message but no options)! Adding button. Search term:', searchTerm);
-                    // Add button
-                    const buttonHtml = '<li class="select2-results__option" role="option" style="padding: 0;"><div class="p-2"><button type="button" class="btn btn-sm btn-primary w-100" id="add-category-btn-{{ $id }}"><i class="ti ti-plus me-1"></i>Agregar "' + searchTerm + '"</button></div></li>';
-                    results.append(buttonHtml);
-                    console.log('Button added (no options found)!');
-                } else {
-                    console.log('Condition NOT met. noResultsMsg:', noResultsMsg.length, 'searchTerm:', searchTerm, 'length:', searchTerm ? searchTerm.length : 0, 'visibleOptions:', visibleOptions.length, 'hasMatching:', hasMatchingOption);
-                }
-            } catch (e) {
-                console.error('Error in checkAndAddButton:', e);
+            if (noResultsMsg.length > 0 && searchTerm && searchTerm.length >= 2) {
+                const buttonHtml = '<li class="select2-results__option" role="option" style="padding: 0;"><div class="p-2"><button type="button" class="btn btn-sm btn-primary w-100" id="add-category-btn-{{ $id }}"><i class="ti ti-plus me-1"></i>Agregar "' + searchTerm + '"</button></div></li>';
+                noResultsMsg.replaceWith(buttonHtml);
+            } else if (visibleOptions.length === 0 && noResultsMsg.length === 0 && searchTerm && searchTerm.length >= 2 && !hasMatchingOption) {
+                const buttonHtml = '<li class="select2-results__option" role="option" style="padding: 0;"><div class="p-2"><button type="button" class="btn btn-sm btn-primary w-100" id="add-category-btn-{{ $id }}"><i class="ti ti-plus me-1"></i>Agregar "' + searchTerm + '"</button></div></li>';
+                results.append(buttonHtml);
             }
         }
 
         // Listen for when dropdown opens
         select.on('select2:open', function() {
-            console.log('Select2 dropdown opened for: {{ $id }}');
             setTimeout(function() {
                 const searchInput = select.data('select2').dropdown.$search;
-                console.log('Search input found:', searchInput ? 'yes' : 'no');
 
                 // Check immediately after opening
                 checkAndAddButton();

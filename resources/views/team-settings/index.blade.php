@@ -34,6 +34,19 @@
                     </div>
                 </div>
 
+                @if(auth()->user()->hasRole('admin'))
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-affiliate mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Affiliates</h5>
+                            <p class="card-text">Global commission when this team refers clients (billing)</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
@@ -128,6 +141,17 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-share mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Social networks') }}</h5>
+                            <p class="card-text">{{ __('Connect team accounts (Meta, LinkedIn, Bluesky) for dashboard stats.') }}</p>
+                            <a href="{{ route('team-settings.social', $team) }}" class="btn btn-primary">{{ __('Manage') }}</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-phone mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Twilio Integration</h5>
                             <p class="card-text">Configure Twilio API settings for SMS and WhatsApp</p>
@@ -143,6 +167,17 @@
                             <h5 class="card-title">{{ __('Chat / Asistente') }}</h5>
                             <p class="card-text">{{ __('Asistente: modo prueba, enrutado por palabras opcional') }}</p>
                             <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'chat']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-scan mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Document OCR') }}</h5>
+                            <p class="card-text">{{ __('Choose local, AI, or hybrid OCR mode for the document ingestion pipeline.') }}</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'documents']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
                         </div>
                     </div>
                 </div>

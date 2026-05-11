@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use App\Models\Conversation;
+use App\Models\DocumentIngestion;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -21,6 +24,7 @@ class AssistantActivityPageTest extends TestCase
         $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
         $admin->forceFill(['current_team_id' => $team->id])->save();
         $admin->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34600000001');
 
         $conversation = AgentConversation::create([
             'id' => (string) Str::uuid(),
@@ -73,5 +77,111 @@ class AssistantActivityPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('assistant.activity'));
 
         $response->assertForbidden();
+    }
+
+    public function test_admin_can_view_team_document_ingestions_page(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->withPersonalTeam()->create();
+        $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+        $admin->assignRole('admin');
+
+        $source = Source::query()->create([
+            'name' => 'WhatsApp',
+            'base_url' => 'https://wa.me/',
+            'icon' => 'fa-whatsapp',
+            'color' => '#25D366',
+        ]);
+
+        $primaryIngestion = DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'source_id' => $source->id,
+            'source_reference' => 'msg_123',
+            'file_name' => 'factura-test.pdf',
+            'file_url' => 'https://cdn.example.com/factura-test.pdf',
+            'mime_type' => 'application/pdf',
+            'document_type' => 'invoice',
+            'classification_status' => 'classified',
+            'classification_confidence' => 0.85,
+        ]);
+
+        $conversation = Conversation::query()->create([
+            'message_sid' => 'msg-fallback-null-team',
+            'channel' => 'whatsapp',
+            'from' => '34600000099',
+            'to' => 'whatsapp:34600000001',
+            'body' => 'fallback ingestion',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        DocumentIngestion::query()->create([
+            'team_id' => null,
+            'source_id' => $source->id,
+            'conversation_id' => $conversation->id,
+            'source_reference' => 'msg-fallback-null-team',
+            'file_name' => 'fallback.pdf',
+            'file_url' => 'https://cdn.example.com/fallback.pdf',
+            'mime_type' => 'application/pdf',
+            'document_type' => 'unknown',
+            'classification_status' => 'failed',
+            'classification_confidence' => 0,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('assistant.documents'));
+        $response->assertOk();
+        $response->assertSee('Documentos procesados');
+
+        $dataResponse = $this->actingAs($admin)->getJson(route('assistant.documents.data', [
+            'start_date' => now()->subDays(30)->toDateString(),
+            'end_date' => now()->toDateString(),
+        ]));
+
+        $dataResponse->assertOk();
+        $dataResponse->assertJsonFragment([
+            'document_type' => 'invoice',
+            'source_name' => 'WhatsApp',
+            'reception_note' => 'URL recibida correctamente',
+        ]);
+        $dataResponse->assertJsonFragment([
+            'source_reference' => 'msg-fallback-null-team',
+            'classification_status' => 'failed',
+        ]);
+
+        $detailResponse = $this->actingAs($admin)->get(route('assistant.documents.show', $primaryIngestion->id));
+        $detailResponse->assertOk();
+        $detailResponse->assertSee('Detalle de interpretación');
+    }
+
+    public function test_admin_can_mark_document_as_ingested_from_detail(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->withPersonalTeam()->create();
+        $team = $admin->currentTeam ?? $admin->ownedTeams()->first();
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+        $admin->assignRole('admin');
+
+        $document = DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'source_reference' => 'manual_001',
+            'file_name' => 'card.png',
+            'file_url' => 'https://cdn.example.com/card.png',
+            'mime_type' => 'image/png',
+            'document_type' => 'business_card',
+            'classification_status' => 'classified',
+            'classification_confidence' => 0.92,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('assistant.documents.mark-ingested', $document->id));
+
+        $response
+            ->assertRedirect(route('assistant.documents.show', $document->id))
+            ->assertSessionHas('success', 'Documento marcado como ingresado.');
+
+        $this->assertDatabaseHas('document_ingestions', [
+            'id' => $document->id,
+            'classification_status' => 'processed',
+        ]);
     }
 }

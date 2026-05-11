@@ -271,6 +271,53 @@
 
     <div class="row mb-4">
         <div class="col-12">
+            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3">
+                <div class="col">
+                    <div class="card h-100 border-0" style="background-color: #e8b5e6;">
+                        <div class="card-body py-3 text-center">
+                            <h2 class="mb-1">10,77k <i class="ti ti-arrow-up-right text-success"></i></h2>
+                            <span class="fs-5 text-body">Instagram</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card h-100 border-0" style="background-color: #8e97ea;">
+                        <div class="card-body py-3 text-center">
+                            <h2 class="mb-1">8.445 <i class="ti ti-arrow-down-right text-danger"></i></h2>
+                            <span class="fs-5 text-body">Facebook</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card h-100 border-0" style="background-color: #99a8b1;">
+                        <div class="card-body py-3 text-center">
+                            <h2 class="mb-1">1.511 <i class="ti ti-arrow-up-right text-success"></i></h2>
+                            <span class="fs-5 text-body">TikTok</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card h-100 border-0" style="background-color: #f58462;">
+                        <div class="card-body py-3 text-center">
+                            <h2 class="mb-1">1.070</h2>
+                            <span class="fs-5 text-body">YouTube</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card h-100 border-0" style="background-color: #5f6bdc;">
+                        <div class="card-body py-3 text-center">
+                            <h2 class="mb-1">31</h2>
+                            <span class="fs-5 text-body">Bluesky</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
             @include('partials.dashboard-recent-activities', ['recentContactActivities' => $recentContactActivities ?? collect()])
         </div>
     </div>
@@ -307,8 +354,11 @@
                         <small class="text-muted">Optimización de costos</small>
                     </div>
                     <div>
-                        <a href="{{ route('assistant.activity') }}" class="btn btn-sm btn-label-primary waves-effect">
-                            <i class="ti ti-activity me-1"></i>Ver actividad AI
+                        <a href="{{ route('assistant.activity') }}" class="btn btn-sm btn-label-primary waves-effect" title="Ver actividad AI" aria-label="Ver actividad AI">
+                            <i class="ti ti-activity"></i>
+                        </a>
+                        <a href="{{ route('assistant.documents') }}" class="btn btn-sm btn-label-info waves-effect" title="Ver documentos procesados" aria-label="Ver documentos procesados">
+                            <i class="ti ti-file-search"></i>
                         </a>
                     </div>
                 </div>

@@ -42,6 +42,7 @@ class PopulateMessageDeliveries extends Command
                 {
                     // Verificar si ya existe
                     $exists = MessageDelivery::where('message_id', $message->id)
+                        ->whereNull('campaign_id')
                         ->where('contact_id', $contactId)
                         ->exists();
                     if (! $exists)

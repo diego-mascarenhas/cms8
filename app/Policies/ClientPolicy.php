@@ -12,11 +12,11 @@ class ClientPolicy
 
     /**
      * Perform pre-authorization checks.
-     * Admins have full access to everything in their team.
+     * Admins and root have full access (aligned with ContactPolicy).
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin'))
+        if ($user->hasRole('admin') || $user->hasRole('root'))
         {
             return true;
         }
@@ -29,7 +29,12 @@ class ClientPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['admin', 'collaborator']);
+        if ($user->hasRole('collaborator'))
+        {
+            return true;
+        }
+
+        return $user->can('client.create');
     }
 
     /**

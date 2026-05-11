@@ -428,7 +428,7 @@
 </div>
 
 <!-- Billing History -->
-<div class="row">
+<div class="row mb-4">
 	<div class="col-12">
 		<div class="card">
 			<div class="card-header">
@@ -493,6 +493,122 @@
 					<p class="text-muted mb-0">Tus facturas aparecerán aquí una vez que realices tu primera compra</p>
 				</div>
 				@endif
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Afiliados (empresa cliente: referred_by = code del referente; comisión % en settings del equipo referidor) -->
+<div class="row">
+	<div class="col-12 mb-4">
+		<div class="card">
+			<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+				<div>
+					<h5 class="card-title mb-0"><i class="ti ti-affiliate me-2"></i>Afiliados</h5>
+					<p class="text-muted small mb-0 mt-1">En la ficha del cliente, <strong>Referido</strong> identifica la empresa referente: para clientes del mismo equipo se guarda el <strong>ID de empresa</strong>; para referentes de otro equipo puede usarse su <strong>código público</strong> (p. ej. id. de cliente de facturación). La comisión es un % global del equipo referidor (ajustes).</p>
+				</div>
+				@if(auth()->user()->hasRole('admin'))
+					<a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-sm btn-label-primary">
+						<i class="ti ti-settings me-1"></i>% comisión de este equipo
+					</a>
+				@endif
+			</div>
+			<div class="card-body">
+				<p class="mb-3"><span class="fw-medium">Porcentaje global de este equipo (cuando referís):</span> {{ number_format($affiliateCommissionPercent, 2) }}%</p>
+
+				<h6 class="mb-3">Como referidor: pago del cliente vs. tu comisión</h6>
+				@if($affiliateTotalsAsReferrer !== [])
+					<div class="d-flex flex-wrap gap-3 mb-3">
+						@foreach($affiliateTotalsAsReferrer as $cur => $tot)
+							<span class="badge bg-label-success rounded-pill">
+								{{ $cur }}: comisión {{ number_format($tot['commission_cents'] / 100, 2) }} · base pagada {{ number_format($tot['paid_cents'] / 100, 2) }}
+							</span>
+						@endforeach
+					</div>
+				@endif
+				<div class="table-responsive mb-4">
+					<table class="table table-sm table-hover">
+						<thead>
+							<tr>
+								<th>Fecha</th>
+								<th>Equipo que pagó</th>
+								<th>Empresa pagadora</th>
+								<th>Empresa referente</th>
+								<th>Ref. cobro</th>
+								<th class="text-end">Pagó (cliente)</th>
+								<th class="text-end">%</th>
+								<th class="text-end">Tu comisión</th>
+								<th>Moneda</th>
+							</tr>
+						</thead>
+						<tbody>
+							@forelse($affiliateCommissionsAsReferrer as $row)
+								<tr>
+									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
+									<td>{{ $row->payingTeam?->name ?? '—' }}</td>
+									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
+									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
+									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
+									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
+									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
+									<td class="text-end fw-medium">{{ number_format($row->commission_amount_cents / 100, 2) }}</td>
+									<td>{{ strtoupper($row->currency) }}</td>
+								</tr>
+							@empty
+								<tr>
+									<td colspan="9" class="text-center text-muted py-4">Sin movimientos como referidor.</td>
+								</tr>
+							@endforelse
+						</tbody>
+					</table>
+				</div>
+
+				<h6 class="mb-3">Tus pagos donde hubo comisión para el referidor</h6>
+				@if($affiliateTotalsAsPayer !== [])
+					<div class="d-flex flex-wrap gap-3 mb-3">
+						@foreach($affiliateTotalsAsPayer as $cur => $tot)
+							<span class="badge bg-label-info rounded-pill">
+								{{ $cur }}: pagaste {{ number_format($tot['paid_cents'] / 100, 2) }} · comisión referidor {{ number_format($tot['commission_cents'] / 100, 2) }}
+							</span>
+						@endforeach
+					</div>
+				@endif
+				<div class="table-responsive">
+					<table class="table table-sm table-hover">
+						<thead>
+							<tr>
+								<th>Fecha</th>
+								<th>Equipo referidor</th>
+								<th>Tu empresa (pagadora)</th>
+								<th>Empresa referente</th>
+								<th>Ref. cobro</th>
+								<th class="text-end">Tu pago</th>
+								<th class="text-end">%</th>
+								<th class="text-end">Comisión referidor</th>
+								<th>Moneda</th>
+							</tr>
+						</thead>
+						<tbody>
+							@forelse($affiliateCommissionsAsPayer as $row)
+								<tr>
+									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
+									<td>{{ $row->referrerTeam?->name ?? '—' }}</td>
+									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
+									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
+									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
+									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
+									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
+									<td class="text-end">{{ number_format($row->commission_amount_cents / 100, 2) }}</td>
+									<td>{{ strtoupper($row->currency) }}</td>
+								</tr>
+							@empty
+								<tr>
+									<td colspan="9" class="text-center text-muted py-4">Sin registros de comisión sobre tus pagos.</td>
+								</tr>
+							@endforelse
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	</div>

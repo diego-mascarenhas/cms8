@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use App\Models\Team;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,16 @@ use Illuminate\Support\Facades\Mail;
 class AccountController extends Controller
 {
     use ConfiguresTeamMail;
+
+    /**
+     * Additional module keys not shown on the root account edit form (state is preserved on save).
+     *
+     * @return list<string>
+     */
+    protected function moduleKeysHiddenFromAccountForm(): array
+    {
+        return ['accounting', 'events'];
+    }
 
     public function index(AccountDataTable $dataTable)
     {
@@ -57,27 +68,46 @@ class AccountController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Group additional modules by their 'group' field
+        // Group additional modules by their 'group' field (omit keys managed outside this form)
+        $hiddenKeys = $this->moduleKeysHiddenFromAccountForm();
         $additionalModules = Module::where('is_core', false)
             ->orderBy('group')
             ->orderBy('order')
             ->get()
-            ->groupBy('group');
+            ->groupBy('group')
+            ->map(static function (Collection $modules) use ($hiddenKeys): Collection
+            {
+                return $modules->whereNotIn('key', $hiddenKeys)->values();
+            })
+            ->filter(static fn (Collection $modules): bool => $modules->isNotEmpty());
 
         // Define group labels for better UI
         $groupLabels = [
-            'billing' => ['name' => 'Billing', 'icon' => 'credit-card', 'description' => 'Invoices, payments, earnings and expenses'],
+            'billing' => ['name' => 'Accounting', 'icon' => 'calculator', 'description' => 'Subscriptions, invoices, payments, affiliates and financial modules'],
             'ecommerce' => ['name' => 'E-commerce', 'icon' => 'shopping-cart', 'description' => 'E-commerce module (stores, products, orders)'],
             'infrastructure' => ['name' => 'Infrastructure', 'icon' => 'server', 'description' => 'Infrastructure management (servers, hosting)'],
-            'campaigns' => ['name' => 'Campaigns', 'icon' => 'mail-forward', 'description' => 'Templates, email campaigns and marketing automation'],
+            'campaigns' => ['name' => 'Marketing', 'icon' => 'broadcast', 'description' => 'Campaign messages, Mailer, templates and scheduled sends (email, WhatsApp, etc.)'],
             'automation' => ['name' => 'Automation', 'icon' => 'robot', 'description' => 'Assistant instructions, funnel and API.'],
             'innovation' => ['name' => 'Innovation', 'icon' => 'bulb', 'description' => 'Ideas, proposals and innovation challenges'],
             'security' => ['name' => 'Security', 'icon' => 'shield-lock', 'description' => 'Passwords and canary token security tools'],
-            'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, academy and landing pages'],
+            'content' => ['name' => 'Content', 'icon' => 'photo', 'description' => 'Content, multimedia, blog, e-books, academy and landing pages'],
             'support' => ['name' => 'Support', 'icon' => 'headset', 'description' => 'Customer support (tickets, mailbox, chat)'],
             'learning' => ['name' => 'Learning & Development', 'icon' => 'book', 'description' => 'Languages, certifications and training'],
             '' => ['name' => 'General Management', 'icon' => 'briefcase', 'description' => 'General management modules'],
         ];
+
+        foreach ($additionalModules->keys() as $groupKey)
+        {
+            if ($groupKey === '' || isset($groupLabels[$groupKey]))
+            {
+                continue;
+            }
+            $groupLabels[$groupKey] = [
+                'name' => ucfirst(str_replace('_', ' ', (string) $groupKey)),
+                'icon' => 'layout-grid',
+                'description' => '',
+            ];
+        }
 
         return view('account.form', compact('team', 'coreModules', 'additionalModules', 'groupLabels'));
     }
@@ -102,6 +132,16 @@ class AccountController extends Controller
         // Get all modules (core and additional)
         $allModules = Module::all();
 
+        $hiddenKeys = $this->moduleKeysHiddenFromAccountForm();
+        $preserveEnabledKeys = [];
+        foreach ($hiddenKeys as $hiddenKey)
+        {
+            if ($team->hasModule($hiddenKey))
+            {
+                $preserveEnabledKeys[] = $hiddenKey;
+            }
+        }
+
         // Disable all modules first
         foreach ($allModules as $module)
         {
@@ -115,6 +155,11 @@ class AccountController extends Controller
             {
                 $team->enableModule($moduleKey);
             }
+        }
+
+        foreach ($preserveEnabledKeys as $moduleKey)
+        {
+            $team->enableModule($moduleKey);
         }
 
         // Clear menu cache for all users in this team

@@ -64,7 +64,7 @@
     {
       "url": "opportunity/list",
       "name": "Opportunities",
-      "icon": "menu-icon tf-icons ti ti-chart-line",
+      "icon": "menu-icon tf-icons ti ti-chart-donut",
       "slug": "opportunity-list",
       "module_key": "opportunities"
     },
@@ -159,6 +159,13 @@
       "module_key": "financial"
     },
     {
+      "url": "billing",
+      "name": "Affiliates",
+      "icon": "menu-icon tf-icons ti ti-affiliate",
+      "slug": "billing.index",
+      "module_key": "affiliates"
+    },
+    {
       "menuHeader": "Team"
     },
     {
@@ -176,7 +183,14 @@
       "module_key": "departments"
     },
     {
-      "menuHeader": "Campaigns"
+      "menuHeader": "Marketing"
+    },
+    {
+      "url": "campaigns",
+      "name": "Campaigns",
+      "icon": "menu-icon tf-icons ti ti-broadcast",
+      "slug": "campaigns",
+      "module_key": "campaigns"
     },
     {
       "url": "message/list",
@@ -226,7 +240,7 @@
     {
       "url": "notification/list",
       "name": "Notificaciones",
-      "icon": "menu-icon tf-icons ti ti-speakerphone",
+      "icon": "menu-icon tf-icons ti ti-bell-ringing",
       "slug": "notification-list",
       "module_key": "notifications"
     },

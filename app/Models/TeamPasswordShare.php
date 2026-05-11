@@ -28,7 +28,8 @@ class TeamPasswordShare extends Model
 
     public function password(): BelongsTo
     {
-        return $this->belongsTo(TeamPassword::class, 'team_password_id');
+        return $this->belongsTo(TeamPassword::class, 'team_password_id')
+            ->withoutGlobalScopes();
     }
 
     public function creator(): BelongsTo

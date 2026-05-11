@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendMessageCampaignJob;
 use App\Models\Message;
 use App\Models\MessageDelivery;
+use App\Services\MessageDeliveryDispatcher;
 use Illuminate\Console\Command;
 
 class SendAllPendingNow extends Command
@@ -122,6 +122,7 @@ class SendAllPendingNow extends Command
 
         $sent = 0;
         $errors = 0;
+        $dispatcher = app(MessageDeliveryDispatcher::class);
 
         $bar = $this->output->createProgressBar($pendings->count());
         $bar->start();
@@ -180,9 +181,8 @@ class SendAllPendingNow extends Command
 
             try
             {
-                // 🚀 Dispatch job WITHOUT delay - send immediately!
-                SendMessageCampaignJob::dispatch($delivery)
-                    ->onQueue('mailer');
+                // Cola según perfil; sin jitter (envío inmediato solicitado por el comando).
+                $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);
 
                 // Increment team's email usage counter
                 $delivery->team->incrementEmailUsage(1);

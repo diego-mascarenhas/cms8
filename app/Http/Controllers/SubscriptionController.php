@@ -10,9 +10,11 @@ use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
+use App\Services\Stripe\StripeCheckoutSessionLogFormatter;
 use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
+use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
 use Illuminate\Http\Request;
@@ -1621,6 +1623,10 @@ class SubscriptionController extends Controller
         {
             Stripe::setApiKey($secret);
             $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            \Log::info('Stripe Checkout Session retrieved', array_merge(
+                ['category' => $category, 'context' => 'subscription.success'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
 
             $sessionCustomerId = is_string($session->customer)
                 ? $session->customer
@@ -1665,139 +1671,7 @@ class SubscriptionController extends Controller
                     ->with('error', 'Sesión inválida.');
             }
 
-            // Get the subscription ID from the session
-            $subscriptionId = $session->subscription;
-
-            if ($subscriptionId)
-            {
-                // Retrieve the full subscription from Stripe
-                $stripeSubscription = \Stripe\Subscription::retrieve([
-                    'id' => $subscriptionId,
-                    'expand' => ['items.data.price.product'],
-                ]);
-
-                // Get product ID and price ID from Stripe subscription
-                $priceId = $stripeSubscription->items->data[0]->price->id;
-                $rawProduct = $stripeSubscription->items->data[0]->price->product;
-                $productId = is_string($rawProduct) ? $rawProduct : (string) $rawProduct->id;
-
-                // Determine subscription type from local product
-                $subscriptionProduct = SubscriptionProduct::where('stripe_price', $priceId)
-                    ->orWhere('stripe_product', $productId)
-                    ->orWhere('stripe_id', $productId)
-                    ->first();
-
-                $subscriptionType = 'mailer'; // Default
-                if ($subscriptionProduct)
-                {
-                    $subscriptionType = $subscriptionProduct->category ?? 'mailer';
-                }
-
-                // Get metadata from Stripe subscription (includes domain for hosting/support)
-                $metadata = [];
-                if ($stripeSubscription->metadata)
-                {
-                    $metadata = $stripeSubscription->metadata->toArray();
-                }
-
-                // Log Stripe subscription data before saving
-                \Log::info('Stripe subscription from checkout - data before save', [
-                    'stripe_subscription_id' => $stripeSubscription->id,
-                    'stripe_subscription_status' => $stripeSubscription->status,
-                    'stripe_subscription_metadata_raw' => $stripeSubscription->metadata,
-                    'stripe_subscription_metadata_array' => $metadata,
-                    'metadata_type' => gettype($metadata),
-                    'metadata_is_array' => is_array($metadata),
-                    'metadata_json_encoded' => json_encode($metadata),
-                    'session_metadata' => $session->subscription_data->metadata ?? null,
-                ]);
-
-                // Sync subscription to local database if it doesn't exist
-                $localSubscription = $team->subscriptions()
-                    ->where('stripe_id', $stripeSubscription->id)
-                    ->first();
-
-                if (! $localSubscription)
-                {
-                    // Create the subscription record manually
-                    // Note: Cast 'array' doesn't work with mass assignment through relations,
-                    // so we need to encode explicitly
-                    \Log::info('Creating subscription with data', [
-                        'data_value' => ! empty($metadata) ? json_encode($metadata) : null,
-                        'data_type' => gettype(! empty($metadata) ? json_encode($metadata) : null),
-                    ]);
-                    $team->subscriptions()->create([
-                        'user_id' => $team->owner->id ?? $team->user_id,
-                        'type' => $subscriptionType,
-                        'stripe_id' => $stripeSubscription->id,
-                        'stripe_status' => $stripeSubscription->status,
-                        'stripe_price' => $priceId,
-                        'quantity' => $stripeSubscription->items->data[0]->quantity,
-                        'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
-                        'ends_at' => null,
-                        'data' => ! empty($metadata) ? json_encode($metadata) : null,
-                    ]);
-                    $this->logRegistrationDebug('subscription.success local subscription created', [
-                        'team_id' => $team?->id,
-                        'stripe_subscription_id' => $stripeSubscription->id,
-                        'stripe_price' => $priceId,
-                        'subscription_type' => $subscriptionType,
-                    ]);
-                } else
-                {
-                    if (! empty($metadata))
-                    {
-                        $existing = is_array($localSubscription->data) ? $localSubscription->data : [];
-                        $merged = array_merge($existing, $metadata);
-
-                        if ($merged !== $existing || $localSubscription->stripe_status !== $stripeSubscription->status)
-                        {
-                            $localSubscription->update([
-                                'data' => $merged,
-                                'stripe_status' => $stripeSubscription->status,
-                            ]);
-                        }
-                    } elseif ($localSubscription->stripe_status !== $stripeSubscription->status)
-                    {
-                        $localSubscription->update(['stripe_status' => $stripeSubscription->status]);
-                    }
-                    $this->logRegistrationDebug('subscription.success local subscription updated', [
-                        'team_id' => $team?->id,
-                        'local_subscription_id' => $localSubscription->id,
-                        'stripe_subscription_id' => $stripeSubscription->id,
-                        'stripe_status' => $stripeSubscription->status,
-                    ]);
-                }
-
-                // Only assign EmailPlan if it's a mailer subscription
-                if ($subscriptionType === 'mailer')
-                {
-                    // Map product ID to EmailPlan
-                    $plan = $this->getEmailPlanFromProductId($productId);
-
-                    if ($plan)
-                    {
-                        // Assign the plan to the team
-                        $team->assignEmailPlan($plan, auth()->id());
-                    }
-                }
-
-                if ($subscriptionType === 'prospecting')
-                {
-                    try
-                    {
-                        $plan = ProspectPlan::fromStripePriceId($priceId);
-                        $team->assignProspectPlan($plan, auth()->id());
-                    } catch (\Exception $e)
-                    {
-                        \Log::warning('Could not assign prospect plan: '.$e->getMessage());
-                    }
-                }
-            } else
-            {
-                // One-time payment: check for prospect credit packs
-                $this->applyProspectCreditPackFromSession($session, $team);
-            }
+            app(TeamCheckoutSessionSubscriptionSyncer::class)->sync($team, $session, $category, (int) auth()->id());
 
             $sessionMetadata = $session->metadata ? $session->metadata->toArray() : [];
 
@@ -2102,71 +1976,6 @@ class SubscriptionController extends Controller
 
             return redirect()->route($this->subscriptionCheckoutHomeRoute($request))
                 ->with('error', 'Error al actualizar el plan: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Get EmailPlan from Stripe product ID
-     */
-    private function getEmailPlanFromProductId(string $productId): ?EmailPlan
-    {
-        foreach (EmailPlan::getAll() as $plan)
-        {
-            if ($plan->getStripeProductId() === $productId)
-            {
-                return $plan;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Apply prospect credits from a one-time checkout session (credit pack).
-     */
-    private function applyProspectCreditPackFromSession($session, $team): void
-    {
-        if (! $session || $session->mode !== 'payment' || $session->payment_status !== 'paid')
-        {
-            return;
-        }
-
-        try
-        {
-            $lineItemsResponse = \Stripe\Checkout\Session::allLineItems($session->id, ['expand' => ['data.price']]);
-            $lineItems = $lineItemsResponse->data ?? [];
-        } catch (\Exception $e)
-        {
-            \Log::warning('Could not retrieve checkout session line items: '.$e->getMessage());
-
-            return;
-        }
-
-        foreach ($lineItems as $item)
-        {
-            $priceId = $item->price->id ?? null;
-            if (! $priceId)
-            {
-                continue;
-            }
-
-            $product = SubscriptionProduct::where('stripe_price', $priceId)->first();
-            if (! $product || $product->category !== 'prospecting' || $product->recurring_interval)
-            {
-                continue;
-            }
-
-            $packs = config('prospects.credit_packs', []);
-            $credits = (int) ($product->metadata['credits'] ?? $packs[$priceId] ?? 0);
-            if ($credits > 0)
-            {
-                $team->addProspectCreditsFromPurchase($credits);
-                \Log::info('Prospect credits added from one-time purchase', [
-                    'team_id' => $team->id,
-                    'price_id' => $priceId,
-                    'credits' => $credits,
-                ]);
-            }
         }
     }
 

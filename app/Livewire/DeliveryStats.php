@@ -11,8 +11,6 @@ class DeliveryStats extends Component
 
     public $stats;
 
-    public $isUsingSystemSmtp = false;
-
     public $message;
 
     public $criticalErrorsCount = 0;
@@ -35,14 +33,6 @@ class DeliveryStats extends Component
         $this->message = \App\Models\Message::with(['deliveries', 'team.settings'])->find($messageId);
         $this->loadStats();
         $this->checkForCriticalErrors();
-
-        // Check if team is using system SMTP
-        $team = auth()->user()->currentTeam;
-        if ($team && ! $team->relationLoaded('settings'))
-        {
-            $team->load('settings');
-        }
-        $this->isUsingSystemSmtp = $team ? $team->isUsingSystemSmtp() : false;
 
         // Calculate potential subscribers on mount
         $this->updatePotentialSubscribersCount();
@@ -221,6 +211,7 @@ class DeliveryStats extends Component
 
         // Get existing deliveries for comparison
         $existingDeliveryIds = \App\Models\MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
             ->pluck('contact_id')
             ->toArray();
 

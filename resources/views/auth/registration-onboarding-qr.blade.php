@@ -1,6 +1,8 @@
 @php
 $customizerHidden = 'customizer-hide';
 $configData = Helper::appClasses();
+$onboardingQrScanTargetsChatOnly = $onboardingQrScanTargetsChatOnly ?? false;
+$registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl ?? null) && !$onboardingQrScanTargetsChatOnly;
 @endphp
 
 @extends('layouts/blankLayout')
@@ -51,6 +53,18 @@ $configData = Helper::appClasses();
     );
     pointer-events: none;
   }
+  .registration-onboarding .chat-qr-fallback-frame .registration-wa-qr-loading-overlay {
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.82);
+    display: none;
+  }
+  #registration-wa-qr-container.registration-wa-qr-loading .chat-qr-fallback-frame .registration-wa-qr-loading-overlay {
+    display: flex !important;
+  }
+  #registration-onboarding-static-qr-loading {
+    min-width: 200px;
+    min-height: 200px;
+  }
 </style>
 @endsection
 
@@ -73,13 +87,33 @@ $configData = Helper::appClasses();
           </div>
           @elseif (!empty($qrImageUrl))
           <ol class="text-start small text-muted mb-4 ps-3">
-            @foreach (__('auth.registration.qr_whatsapp_steps_local') as $step)
+            @foreach (($onboardingQrScanTargetsChatOnly ? __('auth.registration.qr_whatsapp_steps_chat') : __('auth.registration.qr_whatsapp_steps_local')) as $step)
             <li class="mb-1">{{ $step }}</li>
             @endforeach
           </ol>
 
+          @if ($onboardingQrScanTargetsChatOnly)
+          <div class="d-flex flex-column align-items-center mb-4">
+            <div class="position-relative d-inline-block">
+              <div id="registration-onboarding-static-qr-loading" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 rounded border bg-white" style="z-index: 1;">
+                <div class="spinner-border text-primary" style="width: 2.25rem; height: 2.25rem;" aria-hidden="true"></div>
+                <span class="small text-muted text-center px-2">{{ __('auth.registration.qr_whatsapp_loading') }}</span>
+              </div>
+              <img
+                id="registration-onboarding-static-qr-img"
+                src="{{ $qrImageUrl }}?t={{ time() }}"
+                alt="{{ __('auth.registration.qr_whatsapp_image_alt') }}"
+                class="d-block mx-auto rounded border"
+                width="200"
+                height="200"
+                loading="eager"
+                onload="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');"
+                onerror="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');">
+            </div>
+          </div>
+          @else
           <div id="registration-wa-qr-block" class="d-flex flex-column align-items-center mb-4">
-            <div id="registration-wa-qr-container" class="mx-auto">
+            <div id="registration-wa-qr-container" @class(['mx-auto', 'registration-wa-qr-loading' => $registrationWaShowLoader])>
               <img id="registration-wa-qr-img"
                 src="{{ $qrImageUrl }}?t={{ time() }}"
                 alt="{{ __('auth.registration.qr_whatsapp_image_alt') }}"
@@ -88,20 +122,24 @@ $configData = Helper::appClasses();
                 height="200"
                 loading="eager"
                 data-qr-base="{{ $qrImageUrl }}">
-              <div id="registration-wa-qr-fallback" class="mb-2">
+              <div id="registration-wa-qr-fallback" @class(['mb-2', 'd-none' => !$registrationWaShowLoader])>
                 <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
+                  <div class="registration-wa-qr-loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 rounded" role="status" aria-live="polite">
+                    <div class="spinner-border text-primary" style="width: 2.25rem; height: 2.25rem;" aria-hidden="true"></div>
+                    <span class="small text-muted text-center px-2">{{ __('auth.registration.qr_whatsapp_loading') }}</span>
+                  </div>
                   <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
                   <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
                 </div>
               </div>
             </div>
-            <button type="button" id="registration-wa-qr-refresh" class="btn btn-sm btn-outline-secondary mt-2">
+            <p class="small text-muted mb-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
+            <button type="button" id="registration-wa-qr-refresh" class="btn btn-sm btn-outline-secondary mt-1">
               {{ __('auth.registration.qr_whatsapp_refresh') }}
             </button>
             <p id="registration-wa-qr-refresh-message" class="small text-muted mb-0 mt-2 d-none" role="status"></p>
           </div>
-          @else
-          <p class="text-muted small text-start mb-4">{{ __('auth.registration.qr_whatsapp_intro_cloud') }}</p>
+          @endif
           @endif
 
           <div class="d-flex flex-wrap justify-content-center gap-2">
@@ -126,7 +164,7 @@ $configData = Helper::appClasses();
 </div>
 @endsection
 
-@if (!empty($qrImageUrl) && !($teamWhatsAppIsConnected ?? false))
+@if (!empty($qrImageUrl) && !($teamWhatsAppIsConnected ?? false) && !($onboardingQrScanTargetsChatOnly ?? false))
 @push('scripts')
 <script>
 (function () {
@@ -137,27 +175,38 @@ $configData = Helper::appClasses();
   var qrContainer = document.getElementById('registration-wa-qr-container');
   var fallback = document.getElementById('registration-wa-qr-fallback');
   var msgEl = document.getElementById('registration-wa-qr-refresh-message');
+  var retryMs = 1100;
+  var maxRetries = 36;
+
+  function setLoadingUi(active) {
+    if (!qrContainer) return;
+    if (active) {
+      qrContainer.classList.add('registration-wa-qr-loading');
+      if (qrImg) qrImg.classList.add('d-none');
+      if (fallback) fallback.classList.remove('d-none');
+    } else {
+      qrContainer.classList.remove('registration-wa-qr-loading');
+    }
+  }
 
   function showRealQr() {
     if (!qrImg || !qrImg.dataset.qrBase) return;
     var retries = 0;
-    var maxRetries = 24;
     function bumpSrc() {
       var src = qrImg.dataset.qrBase + '?t=' + Date.now();
       qrImg.onload = function () {
         if (qrImg.naturalWidth > 20) {
-          if (qrContainer) qrContainer.classList.remove('registration-wa-qr-loading');
+          setLoadingUi(false);
           qrImg.classList.remove('d-none');
           if (fallback) fallback.classList.add('d-none');
           qrImg.onload = null;
           qrImg.onerror = null;
         } else if (retries < maxRetries) {
           retries += 1;
-          if (fallback) fallback.classList.remove('d-none');
-          if (qrContainer) qrContainer.classList.remove('registration-wa-qr-loading');
-          setTimeout(bumpSrc, 2500);
+          setLoadingUi(true);
+          setTimeout(bumpSrc, retryMs);
         } else {
-          if (qrContainer) qrContainer.classList.remove('registration-wa-qr-loading');
+          setLoadingUi(false);
           qrImg.classList.add('d-none');
           if (fallback) fallback.classList.remove('d-none');
           qrImg.onload = null;
@@ -165,59 +214,72 @@ $configData = Helper::appClasses();
         }
       };
       qrImg.onerror = function () {
-        if (qrContainer) qrContainer.classList.remove('registration-wa-qr-loading');
-        qrImg.classList.add('d-none');
-        if (fallback) fallback.classList.remove('d-none');
+        if (retries < maxRetries) {
+          retries += 1;
+          setLoadingUi(true);
+          setTimeout(bumpSrc, retryMs);
+        } else {
+          setLoadingUi(false);
+          qrImg.classList.add('d-none');
+          if (fallback) fallback.classList.remove('d-none');
+        }
         qrImg.onload = null;
         qrImg.onerror = null;
       };
       qrImg.removeAttribute('src');
       setTimeout(function () { qrImg.src = src; }, 0);
     }
-    bumpSrc();
+    setTimeout(bumpSrc, 450);
   }
 
-  showRealQr();
+  function postRefreshThenShow(showServerMessage) {
+    if (showServerMessage === undefined) {
+      showServerMessage = false;
+    }
+    if (btn) btn.disabled = true;
+    setLoadingUi(true);
+    if (msgEl) {
+      msgEl.textContent = '';
+      msgEl.classList.add('d-none');
+    }
+    var t = token ? token.getAttribute('content') : '';
+    if (!t) {
+      showRealQr();
+      if (btn) btn.disabled = false;
+      return;
+    }
+    fetch(refreshUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: '_token=' + encodeURIComponent(t)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('refresh failed');
+      return r.json();
+    }).then(function (data) {
+      if (msgEl && data.message && showServerMessage) {
+        msgEl.textContent = data.message;
+        msgEl.classList.remove('d-none');
+      }
+    }).catch(function () {
+      if (msgEl) {
+        msgEl.textContent = @json(__('auth.registration.qr_whatsapp_refresh_failed'));
+        msgEl.classList.remove('d-none');
+      }
+    }).finally(function () {
+      showRealQr();
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  postRefreshThenShow(false);
 
   if (btn) {
     btn.addEventListener('click', function () {
-      if (btn) btn.disabled = true;
-      if (msgEl) {
-        msgEl.textContent = '';
-        msgEl.classList.add('d-none');
-      }
-      if (qrContainer) {
-        qrContainer.classList.add('registration-wa-qr-loading');
-        if (qrImg) qrImg.classList.add('d-none');
-      }
-      if (fallback) fallback.classList.remove('d-none');
-
-      fetch(refreshUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: '_token=' + encodeURIComponent(token ? token.getAttribute('content') : '')
-      }).then(function (r) {
-        if (!r.ok) throw new Error('refresh failed');
-        return r.json();
-      }).then(function (data) {
-        if (msgEl && data.message) {
-          msgEl.textContent = data.message;
-          msgEl.classList.remove('d-none');
-        }
-        showRealQr();
-      }).catch(function () {
-        if (msgEl) {
-          msgEl.textContent = @json(__('auth.registration.qr_whatsapp_refresh_failed'));
-          msgEl.classList.remove('d-none');
-        }
-        if (qrContainer) qrContainer.classList.remove('registration-wa-qr-loading');
-      }).finally(function () {
-        if (btn) btn.disabled = false;
-      });
+      postRefreshThenShow(true);
     });
   }
 })();

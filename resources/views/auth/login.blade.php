@@ -23,7 +23,7 @@ $configData = Helper::appClasses();
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto w-100">
         <div class="d-lg-none mb-3">@include('auth.partials.cta-button', ['mobile' => true])</div>
-        <div class="app-brand mb-4">
+        <div class="app-brand mb-4 w-100 min-w-0">
             @include('auth.partials.logo-full', ['logoId' => 'logo'])
         </div>
         <h3 class="mb-1">
@@ -83,7 +83,7 @@ $configData = Helper::appClasses();
         @if (Route::has('register') && config('custom.custom.showRegister'))
         <p class="text-center">
           <span>{{ __('auth.login.new_platform') }}</span>
-          <a href="{{ route('register') }}">
+          <a href="{{ Route::has('pricing') ? route('pricing') : route('register') }}">
             <span>{{ __('auth.login.create_account') }}</span>
           </a>
         </p>

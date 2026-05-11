@@ -7,6 +7,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\Service;
+use App\Support\SearchNormalizer;
 use Livewire\Component;
 
 class GlobalSearch extends Component
@@ -105,14 +106,11 @@ class GlobalSearch extends Component
         // Search enterprises (admins only)
         if ($isAdmin)
         {
-            $this->results['enterprises'] = Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at')
-                ->where(function ($q) use ($searchQuery)
-                {
-                    $q->where('name', 'like', "%{$searchQuery}%")
-                        ->orWhere('code', 'like', "%{$searchQuery}%")
-                        ->orWhere('phone', 'like', "%{$searchQuery}%")
-                        ->orWhere('email', 'like', "%{$searchQuery}%");
-                })
+            /** @var \Illuminate\Database\Eloquent\Builder<\App\Models\Enterprise> $enterprisesQuery */
+            $enterprisesQuery = Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at');
+            SearchNormalizer::applyEnterpriseNavbarConditions($enterprisesQuery, $searchQuery);
+
+            $this->results['enterprises'] = $enterprisesQuery
                 ->limit(10)
                 ->get()
                 ->map(function ($enterprise)
@@ -143,7 +141,8 @@ class GlobalSearch extends Component
                 ->get()
                 ->map(function ($service)
                 {
-                    $domain = isset($service->data->domain) ? $service->data->domain : ($service->description ?: 'No domain');
+                    $serviceData = is_array($service->data) ? $service->data : (array) ($service->data ?? []);
+                    $domain = $serviceData['domain'] ?? ($service->description ?: 'No domain');
 
                     return [
                         'id' => $service->id,

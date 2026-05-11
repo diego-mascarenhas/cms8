@@ -168,6 +168,7 @@ class DebugMessageContacts extends Command
 
         // Check 5: Existing deliveries
         $existingDelivery = MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
             ->where('contact_id', $contact->id)
             ->first();
 

@@ -53,6 +53,15 @@
             );
             pointer-events: none;
         }
+        .chat-qr-fallback-frame .chat-qr-loading-overlay {
+            z-index: 3;
+            background: rgba(255, 255, 255, 0.82);
+            display: none;
+        }
+        #chat-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay,
+        #chat-history-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay {
+            display: flex !important;
+        }
         .chat-history-header {
             min-height: 4.5rem;
         }
@@ -104,6 +113,9 @@
             max-height: min(420px, 58vh);
             overflow-y: auto;
         }
+        #chat-send-error-bar {
+            flex-shrink: 0;
+        }
     </style>
 @endsection
 
@@ -128,7 +140,57 @@
         const formSendMessage = document.getElementById('chat-form');
         const messageInput = document.querySelector('.message-input');
         const useAiToggle = document.getElementById('use-ai-toggle');
+
+        function showChatSendErrorBar(text) {
+            var bar = document.getElementById('chat-send-error-bar');
+            if (!bar) return;
+            bar.textContent = text || '';
+            bar.classList.remove('d-none');
+        }
+        function hideChatSendErrorBar() {
+            var bar = document.getElementById('chat-send-error-bar');
+            if (!bar) return;
+            bar.textContent = '';
+            bar.classList.add('d-none');
+        }
+        function humChatParseSendFetchResponse(r) {
+            return r.text().then(function(t) {
+                var data = {};
+                try {
+                    data = t ? JSON.parse(t) : {};
+                } catch (e) {
+                    data = {};
+                }
+                return { ok: r.ok, status: r.status, data: data };
+            });
+        }
+        function humChatSendSucceeded(res) {
+            return res.ok && (!res.data || res.data.success !== false);
+        }
+        function humChatSendErrorFromResult(res) {
+            if (res.data && res.data.error) {
+                return String(res.data.error);
+            }
+            if (res.data && res.data.success === false && res.data.message) {
+                return String(res.data.message);
+            }
+            if (res.data && res.data.errors && typeof res.data.errors === 'object') {
+                var keys = Object.keys(res.data.errors);
+                if (keys.length && res.data.errors[keys[0]] && res.data.errors[keys[0]][0]) {
+                    return String(res.data.errors[keys[0]][0]);
+                }
+            }
+            if (res.status === 419) {
+                return '{{ __("Sesión caducada. Recarga la página.") }}';
+            }
+            if (!res.ok) {
+                return '{{ __("whatsapp.send.error.generic") }}';
+            }
+            return '{{ __("whatsapp.send.error.generic") }}';
+        }
         const recipientInput = document.getElementById('recipient');
+        const attachmentInput = document.getElementById('chat-attachments');
+        const attachmentCount = document.getElementById('chat-attachment-count');
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
         var assistantUrl = '{{ route("chat.assistant") }}';
@@ -151,6 +213,28 @@
         function getChatAssistantFlowRoutingKey() {
             var sel = document.getElementById('chatAssistantFlowRoutingKey');
             return sel && sel.value ? String(sel.value).trim() : '';
+        }
+
+        function getSelectedAttachments() {
+            if (!attachmentInput || !attachmentInput.files) return [];
+            return Array.from(attachmentInput.files);
+        }
+
+        function updateAttachmentCount() {
+            if (!attachmentCount) return;
+            var selected = getSelectedAttachments();
+            attachmentCount.textContent = selected.length > 0 ? (selected.length + ' adjunto(s)') : '';
+        }
+
+        function appendAttachmentsToFormData(formData) {
+            var selected = getSelectedAttachments();
+            selected.forEach(function (file) {
+                formData.append('attachments[]', file);
+            });
+        }
+
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', updateAttachmentCount);
         }
 
         if (messageInput && formSendMessage) {
@@ -195,6 +279,20 @@
             var flowPairKey = 'assistant_keyword_intent_routing';
             var elDefaultFlow = document.getElementById('sidebar-default-assistant-flow-toggle');
             var elKeywordRouting = document.getElementById('sidebar-assistant-keyword-routing-toggle');
+            var assistantExtraClientsSection = document.getElementById('assistant-conversations-extra-section');
+            var whatsappSection = document.getElementById('whatsapp-conversations-section');
+
+            function syncSidebarConversationsVisibility() {
+                var showAssistantClientsToggle = document.getElementById('sidebar-show-assistant-conversations-toggle');
+                var showWhatsAppToggle = document.getElementById('sidebar-show-whatsapp-conversations-toggle');
+                if (assistantExtraClientsSection && showAssistantClientsToggle) {
+                    assistantExtraClientsSection.classList.toggle('d-none', !showAssistantClientsToggle.checked);
+                }
+                if (whatsappSection && showWhatsAppToggle) {
+                    whatsappSection.classList.toggle('d-none', !showWhatsAppToggle.checked);
+                }
+            }
+
             function syncKeywordFlowPair(changed) {
                 if (!elDefaultFlow || !elKeywordRouting) return;
                 if (changed === elDefaultFlow) {
@@ -212,6 +310,9 @@
                     if (key === flowPairKey) {
                         syncKeywordFlowPair(input);
                     }
+                    if (key === 'chat_show_assistant_conversations' || key === 'chat_show_whatsapp_conversations') {
+                        syncSidebarConversationsVisibility();
+                    }
                     fetch(url, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
@@ -219,12 +320,34 @@
                     }).catch(function () {});
                 });
             });
+            syncSidebarConversationsVisibility();
+
+            var aiRepliesToggle = document.getElementById('sidebar-ai-replies-toggle');
+            var adminsWhenOffToggle = document.getElementById('sidebar-assistant-admins-when-off-toggle');
+            var adminsWhenOffLabel = adminsWhenOffToggle ? adminsWhenOffToggle.closest('label') : null;
+            function syncAdminsWhenOffToggleUi() {
+                if (!adminsWhenOffToggle || !aiRepliesToggle) {
+                    return;
+                }
+                var masterOn = aiRepliesToggle.checked;
+                adminsWhenOffToggle.disabled = masterOn;
+                if (adminsWhenOffLabel) {
+                    adminsWhenOffLabel.classList.toggle('opacity-50', masterOn);
+                }
+            }
+            syncAdminsWhenOffToggleUi();
+            if (aiRepliesToggle) {
+                aiRepliesToggle.addEventListener('change', syncAdminsWhenOffToggleUi);
+            }
+            window.syncChatAdminsWhenOffToggleUi = syncAdminsWhenOffToggleUi;
         })();
 
         let currentUserMessage = '';
         let currentAiResponse = '';
         let currentAiAudioBase64 = '';
         let currentAiAudioMime = '';
+        let currentAttachmentPreviews = [];
+        let localDocumentEvents = [];
 
         function renderMarkdownForChat(text) {
             if (!text) return '';
@@ -269,15 +392,45 @@
                 });
             }
         }
-        function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime) {
+        function buildAttachmentPreviewHtml(attachments) {
+            if (!attachments || !attachments.length) return '';
+            var blocks = attachments.map(function(file) {
+                var safeName = (file.name || 'adjunto').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if ((file.type || '').indexOf('image/') === 0) {
+                    var tmpUrl = URL.createObjectURL(file);
+                    return '<a href="' + tmpUrl + '" target="_blank" rel="noopener"><img src="' + tmpUrl + '" alt="' + safeName + '" style="max-width:140px;max-height:140px;border-radius:8px;margin:4px;"></a>';
+                }
+                return '<div class="small text-muted">📎 ' + safeName + '</div>';
+            });
+            return '<div class="chat-media mt-2">' + blocks.join('') + '</div>';
+        }
+
+        function registerLocalDocumentEvents(userMsg, aiMsg, attachments) {
+            var names = (attachments || []).map(function(file) { return file.name || 'adjunto'; }).filter(Boolean);
+            var userText = (userMsg && userMsg.trim() !== '') ? userMsg : ('📎 Documento adjunto' + (names.length ? ': ' + names.join(', ') : ''));
+            var assistantText = (aiMsg && aiMsg.trim() !== '') ? aiMsg : 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+            var nowIso = new Date().toISOString();
+            localDocumentEvents.push(
+                { role: 'user', content: userText, created_at: nowIso, local_document_event: true },
+                { role: 'assistant', content: assistantText, created_at: nowIso, local_document_event: true }
+            );
+            if (localDocumentEvents.length > 20) {
+                localDocumentEvents = localDocumentEvents.slice(localDocumentEvents.length - 20);
+            }
+        }
+
+        function appendAssistantExchangeToChat(userMsg, aiMsg, audioBase64, audioMime, attachments) {
             var list = document.getElementById('assistant-messages-list');
             if (!list) return;
             var empty = list.querySelector('.assistant-empty-state');
             if (empty) empty.remove();
             var timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            var safeUserMsg = (userMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            var userTextHtml = safeUserMsg !== '' ? safeUserMsg : '📎 Documento adjunto';
+            var attachmentHtml = buildAttachmentPreviewHtml(attachments || []);
             var userLi = document.createElement('li');
             userLi.className = 'chat-message chat-message-right';
-            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (userMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + userTextHtml + '</p>' + attachmentHtml + '</div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
             list.appendChild(userLi);
             var audioHtml = (audioBase64 && audioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + audioMime + ';base64,' + audioBase64 + '" type="' + audioMime + '"></audio></div>' : '';
             var aiLi = document.createElement('li');
@@ -292,6 +445,9 @@
             if (!data || typeof data.assistant_auto_respond !== 'boolean') return;
             var sidebar = document.getElementById('sidebar-ai-replies-toggle');
             if (sidebar) sidebar.checked = data.assistant_auto_respond;
+            if (typeof window.syncChatAdminsWhenOffToggleUi === 'function') {
+                window.syncChatAdminsWhenOffToggleUi();
+            }
         }
         function showAssistantTypingIndicator() {
             var list = document.getElementById('assistant-messages-list');
@@ -420,8 +576,11 @@
             e.stopImmediatePropagation();
             var form = e.target;
             var hasAudio = window.hasPendingRecordedAudio && window.hasPendingRecordedAudio();
+            var selectedAttachments = getSelectedAttachments();
+            var hasAttachments = selectedAttachments.length > 0;
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
-            if (!msg && !hasAudio) return;
+            if (!msg && !hasAudio && !hasAttachments) return;
+            hideChatSendErrorBar();
             var sendBtn = form.querySelector('.send-msg-btn');
             if (sendBtn) sendBtn.disabled = true;
             function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
@@ -444,23 +603,73 @@
                     fd.append('message', msg || '');
                     fd.append('audio', audioBlob, 'recording.webm');
                     if (contactId) fd.append('contact_id', contactId);
+                    appendAttachmentsToFormData(fd);
                     fetch('{{ route("chat.send") }}', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': token } })
-                        .then(function(r) { return r.json(); })
-                        .then(function() {
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
+                            messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
+                } else {
+                    if (hasAttachments) {
+                        var fdNoAi = new FormData();
+                        fdNoAi.append('_token', token);
+                        fdNoAi.append('to', toVal);
+                        fdNoAi.append('message', msg || '');
+                        if (contactId) fdNoAi.append('contact_id', contactId);
+                        appendAttachmentsToFormData(fdNoAi);
+                        fetch('{{ route("chat.send") }}', {
+                            method: 'POST',
+                            body: fdNoAi,
+                            headers: { 'X-CSRF-TOKEN': token }
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
+                            messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
+                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
+                    } else {
+                        var body = { to: toVal, message: msg, use_ai: false };
+                        if (contactId) body.contact_id = contactId;
+                        fetch('{{ route("chat.send") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify(body)
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
                             messageInput.value = '';
                             if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                        }).catch(function() {}).finally(reenableSend);
-                } else {
-                    var body = { to: toVal, message: msg, use_ai: false };
-                    if (contactId) body.contact_id = contactId;
-                    fetch('{{ route("chat.send") }}', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                        body: JSON.stringify(body)
-                    }).then(function(r) { return r.json(); }).then(function() {
-                        messageInput.value = '';
-                        if (window.refreshAssistantHistory) window.refreshAssistantHistory();
-                    }).catch(function() {}).finally(reenableSend);
+                        })
+                        .catch(function() {
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        })
+                        .finally(reenableSend);
+                    }
                 }
                 return;
             }
@@ -469,6 +678,7 @@
             /** Vista previa modal: no envío real; el backend desactiva send_whatsapp_message y evita relatos de fallo de envío */
             var previewOnlyAi = !isAssistantView;
             currentUserMessage = msg || (hasAudio ? '{{ __("[Mensaje de voz]") }}' : '');
+            currentAttachmentPreviews = selectedAttachments;
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
 
@@ -492,16 +702,18 @@
 
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
 
-            if (hasAudio) {
+            if (hasAudio || hasAttachments) {
                 var audioBlob = window.getPendingRecordedAudio && window.getPendingRecordedAudio();
-                if (!audioBlob) { reenableSend(); return; }
                 var formData = new FormData();
                 formData.append('_token', token);
                 formData.append('message', msg);
-                formData.append('audio', audioBlob, 'recording.webm');
+                if (audioBlob) {
+                    formData.append('audio', audioBlob, 'recording.webm');
+                }
                 if (respondWithAudio) formData.append('respond_with_audio', '1');
                 if (toVal) formData.append('recipient', toVal);
                 if (contactId) formData.append('contact_id', contactId);
+                appendAttachmentsToFormData(formData);
                 var flowKeyAudio = getChatAssistantFlowRoutingKey();
                 if (flowKeyAudio) formData.append('flow_routing_key', flowKeyAudio);
                 if (previewOnlyAi) formData.append('preview_only', '1');
@@ -544,14 +756,20 @@
                                 }
                             }
                             if (isAssistantView) {
-                                appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                                appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime, currentAttachmentPreviews);
+                                if (data.action_performed === 'document_ingestion') {
+                                    registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
+                                }
                                 syncSidebarAssistantAutoRespondFromResponse(data);
                                 messageInput.value = '';
+                                if (attachmentInput) attachmentInput.value = '';
+                                updateAttachmentCount();
                                 currentUserMessage = '';
                                 currentAiResponse = '';
                                 currentAiAudioBase64 = '';
                                 currentAiAudioMime = '';
-                                if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                                currentAttachmentPreviews = [];
+                                if (window.refreshAssistantHistory && data.action_performed !== 'document_ingestion') window.refreshAssistantHistory();
                             }
                         } else {
                             currentAiResponse = '';
@@ -634,14 +852,20 @@
                             }
                         }
                         if (isAssistantView) {
-                            appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime);
+                            appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime, currentAttachmentPreviews);
+                            if (data.action_performed === 'document_ingestion') {
+                                registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
+                            }
                             syncSidebarAssistantAutoRespondFromResponse(data);
                             messageInput.value = '';
+                            if (attachmentInput) attachmentInput.value = '';
+                            updateAttachmentCount();
                             currentUserMessage = '';
                             currentAiResponse = '';
                             currentAiAudioBase64 = '';
                             currentAiAudioMime = '';
-                            if (window.refreshAssistantHistory) window.refreshAssistantHistory();
+                            currentAttachmentPreviews = [];
+                            if (window.refreshAssistantHistory && data.action_performed !== 'document_ingestion') window.refreshAssistantHistory();
                         }
                     } else {
                         currentAiResponse = '';
@@ -733,7 +957,18 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                             body: JSON.stringify({ to: cleanTo, message: currentAiResponse, use_ai: false })
-                        }).then(function(r) { return r.json(); }).catch(function(err) { console.error('Error sending AI message:', err); });
+                        })
+                        .then(humChatParseSendFetchResponse)
+                        .then(function(res) {
+                            if (!humChatSendSucceeded(res)) {
+                                showChatSendErrorBar(humChatSendErrorFromResult(res));
+                                return;
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Error sending AI message:', err);
+                            showChatSendErrorBar('{{ __("Error de conexión") }}');
+                        });
                     }
                 }
 
@@ -866,7 +1101,12 @@
                 return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             }
             function renderMessages(messages) {
-                if (!messages || messages.length === 0) {
+                var mergedMessages = (messages || []).slice();
+                if (localDocumentEvents.length > 0) {
+                    mergedMessages = mergedMessages.concat(localDocumentEvents);
+                }
+
+                if (!mergedMessages || mergedMessages.length === 0) {
                     var src = document.getElementById('assistant-suggestions-source');
                     var inner = src ? src.innerHTML : '';
                     var extra = assistantUserId ? '' : '<p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? "" }}) para ver la misma conversación.</p>';
@@ -874,7 +1114,7 @@
                         '<div class="text-start">' + inner + '</div>' + extra + '</li>';
                     return;
                 }
-                var html = messages.map(function(m) {
+                var html = mergedMessages.map(function(m) {
                     var isAssistant = m.role === 'assistant';
                     var content = isAssistant && typeof renderMarkdownForChat === 'function'
                         ? renderMarkdownForChat(m.content || '')
@@ -893,7 +1133,7 @@
                 var body = document.querySelector('.chat-history-body');
                 var wasPinned = chatHistoryIsPinnedToBottom(body);
                 var distBottom = chatHistoryDistanceFromBottom(body);
-                var msgs = messages || [];
+                var msgs = mergedMessages || [];
                 var forceFirstBottom = !assistantHistoryInitialSyncDone && msgs.length > 0;
                 if (forceFirstBottom) {
                     assistantHistoryInitialSyncDone = true;
@@ -1017,6 +1257,20 @@
             var chatUrl = listEl.getAttribute('data-chat-url') || '{{ route("chat.index") }}';
             var listUrl = '{{ route("chat.list") }}';
 
+            function chatListFetchUrl() {
+                var sel = document.getElementById('chat-contact-status-filter');
+                if (!sel || !sel.value) return listUrl;
+                return listUrl + (listUrl.indexOf('?') >= 0 ? '&' : '?') + 'crm_status=' + encodeURIComponent(sel.value);
+            }
+            function buildChatIndexHrefWithPhone(fromDigits) {
+                var qs = [];
+                var sel = document.getElementById('chat-contact-status-filter');
+                if (sel && sel.value) qs.push('crm_status=' + encodeURIComponent(sel.value));
+                qs.push('phone=' + encodeURIComponent(fromDigits));
+                var sep = chatUrl.indexOf('?') >= 0 ? '&' : '?';
+                return chatUrl + sep + qs.join('&');
+            }
+
             function escapeHtml(s) {
                 if (s == null) return '';
                 var div = document.createElement('div');
@@ -1032,7 +1286,11 @@
                 if (!contacts || contacts.length === 0) {
                     var hasWa = listEl.getAttribute('data-team-has-wa-number') === '1';
                     var msg = hasWa ? '{{ __("No WhatsApp conversations") }}' : '{{ __("Link a WhatsApp number in the sidebar to see conversations here.") }}';
-                    listEl.innerHTML = '<li class="chat-contact-list-item chat-list-item-0"><h6 class="text-muted mb-0">' + msg + '</h6></li>';
+                    listEl.innerHTML =
+                        '<li class="chat-contact-list-item chat-list-item-0">' +
+                        '<a href="#" class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer" role="button" onclick="event.preventDefault();" data-bs-toggle="sidebar" data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">' +
+                        '<h6 class="text-muted mb-0">' + escapeHtml(msg) + '</h6>' +
+                        '</a></li>';
                     return;
                 }
                 var html = contacts.map(function (c) {
@@ -1046,7 +1304,7 @@
                     var avatar = c.user_photo
                         ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
                         : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
-                    var href = chatUrl + (chatUrl.indexOf('?') >= 0 ? '&' : '?') + 'phone=' + encodeURIComponent(c.from);
+                    var href = buildChatIndexHrefWithPhone(c.from);
                     var rightCol = '<div class="d-flex flex-column align-items-end flex-shrink-0 gap-1"><small class="text-muted">' + time + '</small>' + (badge ? badge : '') + '</div>';
                     return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
                 }).join('');
@@ -1055,7 +1313,7 @@
             function fetchChatList() {
                 var body = document.getElementById('chat-history-body');
                 var isAssistantView = body && body.getAttribute('data-view-assistant') === '1';
-                fetch(listUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                fetch(chatListFetchUrl(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         var selected = listEl.getAttribute('data-selected-phone') || '';
@@ -1069,6 +1327,20 @@
             }
             setInterval(fetchChatList, 5000);
             window.addEventListener('focus', fetchChatList);
+
+            var crmStatusFilterSel = document.getElementById('chat-contact-status-filter');
+            if (crmStatusFilterSel) {
+                crmStatusFilterSel.addEventListener('change', function () {
+                    var nextUrl = new URL(window.location.href);
+                    if (!crmStatusFilterSel.value) {
+                        nextUrl.searchParams.delete('crm_status');
+                    } else {
+                        nextUrl.searchParams.set('crm_status', crmStatusFilterSel.value);
+                    }
+                    window.history.replaceState({}, '', nextUrl.toString());
+                    fetchChatList();
+                });
+            }
         })();
 
         // Generate new QR: submit via AJAX so sidebar stays open
@@ -1122,7 +1394,7 @@
                                     var fbRetry = document.getElementById('chat-qr-fallback');
                                     if (fbRetry) fbRetry.classList.remove('d-none');
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                                    setTimeout(setQrSrc, 2500);
+                                    setTimeout(setQrSrc, 1100);
                                 } else {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     qrImg.classList.add('d-none');
@@ -1143,7 +1415,7 @@
                             qrImg.removeAttribute('src');
                             setTimeout(function () { qrImg.src = src; }, 0);
                         }
-                        setTimeout(setQrSrc, 4000);
+                        setTimeout(setQrSrc, 650);
                     } else {
                         if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                         if (qrImg) qrImg.classList.remove('d-none');
@@ -1166,6 +1438,7 @@
         var waConnectionBlock = document.getElementById('chat-sidebar-whatsapp-connection-block');
         var waTeamWasConnected = {{ ($teamWhatsAppIsConnected ?? false) ? 'true' : 'false' }};
         var waQrRefreshInFlight = false;
+        var chatWaQrManualBtn = document.getElementById('chat-whatsapp-qr-refresh-btn');
 
         function collectWaQrScopes() {
             var scopes = [];
@@ -1187,7 +1460,10 @@
             return scopes;
         }
 
-        function runWhatsappQrServerRefreshAndPoll() {
+        function runWhatsappQrServerRefreshAndPoll(isManualTrigger) {
+            if (isManualTrigger === undefined) {
+                isManualTrigger = false;
+            }
             if (waQrRefreshInFlight) {
                 return;
             }
@@ -1196,11 +1472,17 @@
                 return;
             }
             waQrRefreshInFlight = true;
+            if (chatWaQrManualBtn) {
+                chatWaQrManualBtn.disabled = true;
+            }
             var token = document.querySelector('meta[name="csrf-token"]');
             var t = token ? token.getAttribute('content') : '';
 
             function releaseRefresh() {
                 waQrRefreshInFlight = false;
+                if (chatWaQrManualBtn) {
+                    chatWaQrManualBtn.disabled = false;
+                }
             }
 
             if (!t) {
@@ -1277,8 +1559,29 @@
                         return;
                     }
                     var qrRetries = 0;
-                    var maxRetries = 40;
+                    var maxRetries = 36;
+                    var retryMs = 1100;
+                    var firstPollDelay = isManualTrigger ? 450 : 1100;
                     var loadErrMsg = '{{ __("The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.") }}';
+
+                    function setScopesLoadingUi(active) {
+                        scopes.forEach(function (s) {
+                            if (!s.container) {
+                                return;
+                            }
+                            if (active) {
+                                s.container.classList.add('chat-qr-loading');
+                                if (s.img) {
+                                    s.img.classList.add('d-none');
+                                }
+                                if (s.fallback) {
+                                    s.fallback.classList.remove('d-none');
+                                }
+                            } else {
+                                s.container.classList.remove('chat-qr-loading');
+                            }
+                        });
+                    }
 
                     function finishFailure() {
                         scopes.forEach(function (s) {
@@ -1323,14 +1626,15 @@
                         releaseRefresh();
                     }
 
-                    function setQrSrcAfterRefresh() {
+                    function bumpQrSrc() {
                         var src = probeImg.dataset.qrBase + '?t=' + Date.now();
                         probeImg.onload = function () {
                             if (probeImg.naturalWidth > 20) {
                                 applyQrSuccessAll(probeImg.src);
                             } else if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 2500);
+                                setScopesLoadingUi(true);
+                                setTimeout(bumpQrSrc, retryMs);
                             } else {
                                 finishFailure();
                             }
@@ -1338,7 +1642,8 @@
                         probeImg.onerror = function () {
                             if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 2500);
+                                setScopesLoadingUi(true);
+                                setTimeout(bumpQrSrc, retryMs);
                             } else {
                                 finishFailure();
                             }
@@ -1348,7 +1653,7 @@
                             probeImg.src = src;
                         }, 0);
                     }
-                    setTimeout(setQrSrcAfterRefresh, 3500);
+                    setTimeout(bumpQrSrc, firstPollDelay);
                 })
                 .catch(function () {
                     var netMsg = '{{ __("Could not refresh the QR code.") }}';
@@ -1370,8 +1675,14 @@
 
         if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') !== 'connected') {
             if (collectWaQrScopes().length > 0) {
-                runWhatsappQrServerRefreshAndPoll();
+                runWhatsappQrServerRefreshAndPoll(false);
             }
+        }
+
+        if (chatWaQrManualBtn) {
+            chatWaQrManualBtn.addEventListener('click', function () {
+                runWhatsappQrServerRefreshAndPoll(true);
+            });
         }
 
         // "Link current number to this team" – request QR URL so Node receives token and callbacks if already connected
@@ -1529,20 +1840,31 @@
                 <div class="sidebar-body px-4 pb-4">
                     @if(($whatsappDriver ?? 'twilio') === 'local')
                     <div class="my-4">
+                            @php
+                                $chatWaShowQrLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl ?? null);
+                            @endphp
                             <div id="chat-sidebar-whatsapp-connection-block" class="{{ ($teamWhatsAppIsConnected ?? false) ? 'd-none' : '' }}" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
-                                    <div class="d-inline-block text-center" id="chat-qr-container">
+                                    <div @class(['d-inline-block', 'text-center', 'chat-qr-loading' => $chatWaShowQrLoader]) id="chat-qr-container">
                                         <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
-                                        <div id="chat-qr-fallback" class="mb-2 d-none">
+                                        <div id="chat-qr-fallback" @class(['mb-2', 'd-none' => !$chatWaShowQrLoader])>
                                             <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
+                                                <div class="chat-qr-loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 rounded" role="status" aria-live="polite">
+                                                    <div class="spinner-border text-primary" style="width: 2.25rem; height: 2.25rem;" aria-hidden="true"></div>
+                                                    <span class="small text-muted text-center px-2">{{ __('auth.registration.qr_whatsapp_loading') }}</span>
+                                                </div>
                                                 <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
                                                 <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <p id="chat-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
+                                    <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="chat-whatsapp-qr-refresh-btn">
+                                        <i class="ti ti-refresh me-1"></i>{{ __('auth.registration.qr_whatsapp_refresh') }}
+                                    </button>
                                 @endif
                                 <div id="chat-link-existing-number-block" class="d-none mt-2" data-number="">
                                     <p class="small text-muted mb-2">{{ __('A number is connected in the service but not linked to this team.') }}</p>
@@ -1579,14 +1901,15 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
-                                    <i class="ti ti-bug me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
+                                <div class="pe-1 text-truncate" title="{{ __('When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).') }}">
+                                    <i class="ti ti-user-shield me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Assistant replies only for admins (when assistant off)') }}</span>
                                 </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
-                                        data-team-setting-key="assistant_chat_stub"
-                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif @if($assistantAutoRespond ?? false) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-admins-when-off-toggle"
+                                        data-team-setting-key="assistant_auto_respond_admins_when_off"
+                                        @checked($assistantAutoRespondAdminsWhenOff ?? false)
+                                        @if($sidebarReadOnly || ($assistantAutoRespond ?? false)) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
@@ -1624,15 +1947,48 @@
                                     </span>
                                 </label>
                             </li>
+                            <li class="w-100 mt-2 pt-3 border-top border-light">
+                                <small class="text-muted text-uppercase">{{ __('Show') }}</small>
+                            </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Block assistant AI button') }}">
-                                    <i class="ti ti-message-off me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Block assistant AI button') }}</span>
+                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
+                                    <i class="ti ti-bug me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
                                 </div>
                                 <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-chat-ai-blocked-toggle"
-                                        data-team-setting-key="chat_ai_assistance_blocked"
-                                        @checked($chatAiAssistanceBlockedTeam ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
+                                        data-team-setting-key="assistant_chat_stub"
+                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('Oculta solo la lista de asistente con otros clientes. Tu chat con el asistente sigue visible.') }}">
+                                    <i class="ti ti-layout-list me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Asistencia en usuarios') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-show-assistant-conversations-toggle"
+                                        data-team-setting-key="chat_show_assistant_conversations"
+                                        @checked($showAssistantConversations ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('Sección de conversaciones de WhatsApp en la lista de chats') }}">
+                                    <i class="ti ti-brand-whatsapp me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Conversaciones de WhatsApp') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-show-whatsapp-conversations-toggle"
+                                        data-team-setting-key="chat_show_whatsapp_conversations"
+                                        @checked($showWhatsAppConversations ?? true) @if($sidebarReadOnly) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
@@ -1671,50 +2027,85 @@
                 <hr class="container-m-nx m-0">
                 <div class="sidebar-body">
 
-                    <div class="chat-contact-list-item-title">
-                        <h5 class="text-primary mb-0 px-4 pt-3 pb-2">{{ __('Chats') }}</h5>
+                    @auth
+                    <div class="chat-contact-list-item-title px-4 pt-3 pb-2">
+                        <label for="chat-contact-status-filter" class="visually-hidden">{{ __('Filter by contact status') }}</label>
+                        <div class="flex-grow-1 input-group input-group-merge rounded-pill">
+                            <span class="input-group-text" id="chat-crm-status-addon"><i class="ti ti-filter"></i></span>
+                            <select id="chat-contact-status-filter" name="crm_status"
+                                class="form-select"
+                                title="{{ __('Filter WhatsApp chats by CRM contact status') }}"
+                                aria-describedby="chat-crm-status-addon">
+                                <option value="" @selected(!request()->filled('crm_status'))>{{ __('All statuses') }}</option>
+                                @foreach(($contactStatuses ?? []) as $st)
+                                    <option value="{{ $st->id }}" @selected(request('crm_status') == (string) $st->id || (request('crm_status') === 'none' && isset($leadContactStatusId) && (int) $st->id === (int) $leadContactStatusId))>{{ $st->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
+                    @endauth
                     <!-- Chats -->
-                    <ul class="list-unstyled chat-contact-list" id="chat-list">
+                    <div id="assistant-conversations-section">
+                        <div class="chat-contact-list-item-title mt-3">
+                            <h6 class="text-muted text-uppercase mb-0 px-4 pb-2">{{ __('Asistente') }}</h6>
+                        </div>
                         @auth
-                        <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
-                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="d-flex align-items-center">
-                                <div class="flex-shrink-0 avatar">
-                                    <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
-                                </div>
-                                <div class="chat-contact-info flex-grow-1 ms-2">
-                                    <h6 class="chat-contact-name text-truncate m-0">Asistente</h6>
-                                    <p class="chat-contact-status text-muted text-truncate mb-0">Mi conversación con el bot</p>
-                                </div>
-                            </a>
-                        </li>
-                        @foreach($assistantClients ?? [] as $client)
-                            @if($client->id !== auth()->id())
-                            <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
-                                <a href="{{ route('chat.index', ['view' => 'assistant', 'user_id' => $client->id]) }}" class="d-flex align-items-center">
+                        <ul class="list-unstyled chat-contact-list mb-0" id="chat-list">
+                            <li class="chat-contact-list-item {{ ($viewAssistant ?? false) && !($selectedAssistantUser ?? null) ? 'active' : '' }}">
+                                <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['view' => 'assistant'])) }}" class="d-flex align-items-center">
                                     <div class="flex-shrink-0 avatar">
-                                        <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
+                                        <span class="avatar-initial rounded-circle bg-label-info"><i class="ti ti-robot ti-sm"></i></span>
                                     </div>
                                     <div class="chat-contact-info flex-grow-1 ms-2">
-                                        <h6 class="chat-contact-name text-truncate m-0">{{ $client->name ?? $client->email }}</h6>
-                                        <p class="chat-contact-status text-muted text-truncate mb-0">{{ $client->phone ?? $client->email }}</p>
+                                        <h6 class="chat-contact-name text-truncate m-0">Asistente</h6>
+                                        <p class="chat-contact-status text-muted text-truncate mb-0">Mi conversación con el bot</p>
                                     </div>
                                 </a>
                             </li>
-                            @endif
-                        @endforeach
+                        </ul>
+                        <div id="assistant-conversations-extra-section" class="@if(!($showAssistantConversations ?? false)) d-none @endif">
+                            <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-assistant-clients">
+                                @foreach($assistantClients as $client)
+                                    @if($client->id !== auth()->id())
+                                    <li class="chat-contact-list-item {{ optional($selectedAssistantUser)->id === $client->id ? 'active' : '' }}">
+                                        <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['view' => 'assistant', 'user_id' => $client->id])) }}" class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 avatar">
+                                                <span class="avatar-initial rounded-circle bg-label-success">{{ substr($client->name ?? $client->email ?? '?', 0, 2) }}</span>
+                                            </div>
+                                            <div class="chat-contact-info flex-grow-1 ms-2">
+                                                <h6 class="chat-contact-name text-truncate m-0">{{ $client->name ?? $client->email }}</h6>
+                                                <p class="chat-contact-status text-muted text-truncate mb-0">{{ $client->phone ?? $client->email }}</p>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </div>
                         @endauth
-                    </ul>
-                    <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
+                    </div>
+                    <div id="whatsapp-conversations-section" class="@if(!($showWhatsAppConversations ?? true)) d-none @endif mt-4">
+                        <div class="chat-contact-list-item-title">
+                            <h6 class="text-muted text-uppercase mb-0 px-4 pt-1 pb-2">{{ __('WhatsApp') }}</h6>
+                        </div>
+                        <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
-                                <h6 class="text-muted mb-0">{{ !empty($teamWhatsAppNumber) ? __('No WhatsApp conversations') : __('Link a WhatsApp number in the sidebar to see conversations here.') }}</h6>
+                                <a href="#"
+                                   class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer"
+                                   role="button"
+                                   onclick="event.preventDefault();"
+                                   data-bs-toggle="sidebar"
+                                   data-overlay="app-overlay-ex"
+                                   data-target="#app-chat-sidebar-left">
+                                    <h6 class="text-muted mb-0">{{ !empty($teamWhatsAppNumber) ? __('No WhatsApp conversations') : __('Link a WhatsApp number in the sidebar to see conversations here.') }}</h6>
+                                </a>
                             </li>
                         @else
                             @foreach ($contacts as $contact)
                                 <li class="chat-contact-list-item {{ $selectedPhone == $contact->from ? 'active' : '' }}"
                                     data-phone="{{ $contact->from }}">
-                                    <a href="{{ route('chat.index', ['phone' => $contact->from]) }}"
+                                    <a href="{{ route('chat.index', array_merge(request()->only('crm_status'), ['phone' => $contact->from])) }}"
                                         class="d-flex align-items-center">
                                         <div class="flex-shrink-0 avatar">
                                             @if (isset($contact->user_photo))
@@ -1745,7 +2136,8 @@
                                 </li>
                             @endforeach
                         @endif
-                    </ul>
+                        </ul>
+                    </div>
                     <!-- Contacts -->
                     {{-- <ul class="list-unstyled chat-contact-list mb-0" id="contact-list">
                         <li class="chat-contact-list-item chat-contact-list-item-title">
@@ -2099,27 +2491,14 @@
                                 @endforeach
                             @endif
                         </ul>
-                        @if(($whatsappDriver ?? 'twilio') === 'local' && !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl))
-                            <div id="chat-history-wa-connect-panel" class="border-top pt-3 pb-3 mt-2 px-3 bg-label-secondary bg-opacity-10">
-                                <p class="small text-muted text-uppercase mb-2">{{ __('WhatsApp connection') }}</p>
-                                <p class="small text-muted mb-3 mb-md-2">{{ __('Scan this QR code with WhatsApp to link this team number.') }}</p>
-                                <div class="d-flex justify-content-center">
-                                    <div class="d-inline-block text-center" id="chat-history-qr-container">
-                                        <img id="chat-whatsapp-qr-img-history" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
-                                        <div id="chat-history-qr-fallback" class="mb-2 d-none">
-                                            <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
-                                                <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
-                                                <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p id="chat-history-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
-                            </div>
-                        @endif
+                        {{-- WhatsApp QR panel intentionally hidden in chat history view --}}
                     </div>
                     <!-- Chat message form -->
-                    <div class="chat-history-footer">
+                    <div class="chat-history-footer d-flex flex-column">
+                        <div id="chat-send-error-bar"
+                            class="alert alert-danger py-2 px-3 mb-2 d-none w-100 small"
+                            role="alert"
+                            aria-live="assertive"></div>
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center" @if($viewAssistant ?? false) data-view-assistant="1" @endif>
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedAssistantUser ? ($clientRecipientPhone ?? '') : ($selectedPhone ?? '') }}">
@@ -2145,7 +2524,7 @@
                             <div class="d-flex align-items-center w-100 flex-grow-1">
                                 @if($viewAssistant ?? false)
                                 <div class="d-flex align-items-center me-2">
-                                    <div class="form-check form-switch mb-0">
+                                    <div class="form-check form-switch mb-0 d-none">
                                         <input type="checkbox" class="form-check-input" id="respond-with-audio" title="{{ __('Respuesta por voz') }}">
                                         <label class="form-check-label text-muted" for="respond-with-audio" title="{{ __('Respuesta por voz') }}">
                                             <i class="ti ti-speakerphone ti-sm"></i>
@@ -2156,6 +2535,10 @@
                                 <button type="button" class="btn btn-icon flex-shrink-0 me-2" id="chat-mic-btn" title="{{ __('Grabar mensaje de voz') }}" aria-label="{{ __('Grabar mensaje de voz') }}">
                                     <i class="ti ti-microphone ti-sm" id="chat-mic-icon"></i>
                                 </button>
+                                <button type="button" class="btn btn-icon flex-shrink-0 me-2" id="chat-attach-btn" title="{{ __('Adjuntar archivo') }}" aria-label="{{ __('Adjuntar archivo') }}" onclick="document.getElementById('chat-attachments').click();">
+                                    <i class="ti ti-paperclip ti-sm"></i>
+                                </button>
+                                <input type="file" id="chat-attachments" class="d-none" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.csv,.txt,.doc,.docx,.xls,.xlsx" multiple>
                                 <div id="chat-record-status" class="d-none align-items-center me-2 small text-danger flex-shrink-0">
                                     <span class="recording-dot me-1"></span>
                                     <span id="chat-record-status-text">{{ __('Grabando...') }}</span>
@@ -2164,16 +2547,20 @@
                                     <span id="chat-recorded-duration"></span>
                                     <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger" id="chat-record-cancel">{{ __('Cancelar') }}</button>
                                 </div>
+                                <div id="chat-attachment-count" class="small text-muted me-2"></div>
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
 
-                                @if(!($viewAssistant ?? false))
+                                @if(!($viewAssistant ?? false) || ($selectedAssistantUser ?? null))
                                 <div class="d-flex align-items-center me-3">
-                                    <div class="form-check form-switch mb-0">
-                                        <input type="checkbox" class="form-check-input" id="use-ai-toggle">
-                                        <label class="form-check-label" for="use-ai-toggle">
-                                            <i class="ti ti-robot me-1"></i>
-                                        </label>
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="form-check form-switch mb-0">
+                                            <input type="checkbox" class="form-check-input" id="use-ai-toggle">
+                                            </div>
+                                            <i class="ti ti-robot ms-2"></i>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">{{ __('Asistente') }}</small>
                                     </div>
                                 </div>
                                 @endif

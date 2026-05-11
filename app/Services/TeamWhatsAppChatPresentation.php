@@ -18,7 +18,8 @@ final class TeamWhatsAppChatPresentation
      *     teamWhatsAppNumber: string|null,
      *     teamWhatsAppNumberFormatted: string|null,
      *     teamWhatsAppIsConnected: bool,
-     *     qrImageUrl: string|null
+     *     qrImageUrl: string|null,
+     *     onboardingQrScanTargetsChatOnly: bool
      * }
      */
     public static function resolveForTeam(?Team $team): array
@@ -29,52 +30,51 @@ final class TeamWhatsAppChatPresentation
         $teamWhatsAppNumberFormatted = null;
         $teamWhatsAppIsConnected = false;
         $qrImageUrl = null;
-
-        if ($whatsappDriver !== 'local' || ! app()->bound(WhatsAppGateway::class))
-        {
-            return compact(
-                'whatsappDriver',
-                'whatsappStatus',
-                'teamWhatsAppNumber',
-                'teamWhatsAppNumberFormatted',
-                'teamWhatsAppIsConnected',
-                'qrImageUrl',
-            );
-        }
-
-        $gateway = self::localGatewayForTeam($team) ?? app(WhatsAppGateway::class);
-
-        try
-        {
-            $whatsappStatus = $gateway->getConnectionStatus();
-        } catch (\Throwable $e)
-        {
-            $whatsappStatus = [
-                'status' => 'disconnected',
-                'number' => null,
-            ];
-        }
+        $onboardingQrScanTargetsChatOnly = false;
 
         $baseUrl = $team?->getWhatsAppServiceBaseUrl();
         $baseUrl = is_string($baseUrl) ? rtrim($baseUrl, '/') : '';
-        if ($baseUrl !== '')
+
+        if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
         {
-            $qrImageUrl = route('chat.whatsapp-qr-image');
+            $gateway = self::localGatewayForTeam($team) ?? app(WhatsAppGateway::class);
+
+            try
+            {
+                $whatsappStatus = $gateway->getConnectionStatus();
+            } catch (\Throwable $e)
+            {
+                $whatsappStatus = [
+                    'status' => 'disconnected',
+                    'number' => null,
+                ];
+            }
+
+            if ($baseUrl !== '')
+            {
+                $qrImageUrl = route('chat.whatsapp-qr-image');
+                $onboardingQrScanTargetsChatOnly = false;
+            }
+
+            if ($team)
+            {
+                $teamWhatsAppNumber = $team->getWhatsAppFrom();
+                $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
+                    ? PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
+                    : null;
+                $gatewayNumber = is_array($whatsappStatus) ? ($whatsappStatus['number'] ?? null) : null;
+                $teamWhatsAppIsConnected = ($whatsappStatus['status'] ?? '') === 'connected'
+                    && PhoneHelper::digitsBelongToSameLine(
+                        $teamWhatsAppNumber !== null && $teamWhatsAppNumber !== '' ? (string) $teamWhatsAppNumber : null,
+                        $gatewayNumber !== null && $gatewayNumber !== '' ? (string) $gatewayNumber : null,
+                    );
+            }
         }
 
-        if ($team)
+        if ($qrImageUrl === null && $team)
         {
-            $teamWhatsAppNumber = $team->getWhatsAppFrom();
-            $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
-                ? PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
-                : null;
-            $gatewayNumber = is_array($whatsappStatus) ? ($whatsappStatus['number'] ?? null) : null;
-            $teamNumNorm = $teamWhatsAppNumber ? preg_replace('/[^0-9]/', '', (string) $teamWhatsAppNumber) : '';
-            $gatewayNumNorm = $gatewayNumber ? preg_replace('/[^0-9]/', '', (string) $gatewayNumber) : '';
-            $teamWhatsAppIsConnected = ($whatsappStatus['status'] ?? '') === 'connected'
-                && $teamNumNorm !== ''
-                && $gatewayNumNorm !== ''
-                && $teamNumNorm === $gatewayNumNorm;
+            $qrImageUrl = route('registration.onboarding.chat-link-qr-image');
+            $onboardingQrScanTargetsChatOnly = true;
         }
 
         return compact(
@@ -84,6 +84,7 @@ final class TeamWhatsAppChatPresentation
             'teamWhatsAppNumberFormatted',
             'teamWhatsAppIsConnected',
             'qrImageUrl',
+            'onboardingQrScanTargetsChatOnly',
         );
     }
 

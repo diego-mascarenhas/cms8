@@ -25,13 +25,18 @@ class TeamAssistantController extends Controller
             return response()->json(['success' => false, 'message' => 'Team not found'], 401);
         }
 
+        $promptKeyRaw = $request->input('prompt_key');
+        $promptKey = \is_string($promptKeyRaw) && trim($promptKeyRaw) !== ''
+            ? trim($promptKeyRaw)
+            : null;
+
         $result = $assistant->run(
             $request->input('message'),
             (int) $teamId,
             null,
             null,
             false,
-            $request->input('prompt_key') ?: null,
+            $promptKey,
         );
 
         $payload = [

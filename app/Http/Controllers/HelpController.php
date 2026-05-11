@@ -206,11 +206,31 @@ class HelpController extends Controller
     }
 
     /**
+     * Display team social networks (OAuth) documentation
+     */
+    public function teamSocialNetworks()
+    {
+        return view('help.team-social-networks', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display WooCommerce configuration documentation
      */
     public function woocommerceConfiguration()
     {
         return view('help.woocommerce-configuration', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * PostgreSQL unaccent extension and SearchNormalizer (accent-insensitive search).
+     */
+    public function postgresqlSearchUnaccent()
+    {
+        return view('help.postgresql-search-unaccent', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
@@ -231,6 +251,16 @@ class HelpController extends Controller
     public function apiPrompts()
     {
         return view('help.api-prompts', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Stripe webhook URL and events (Cashier + Humano handlers).
+     */
+    public function stripeWebhook()
+    {
+        return view('help.stripe-webhook', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }

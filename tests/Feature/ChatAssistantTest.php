@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\SourceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
@@ -64,6 +66,34 @@ class ChatAssistantTest extends TestCase
             'action_performed' => null,
         ]);
         $response->assertSee('[Modo prueba]', false);
+    }
+
+    public function test_assistant_ingests_uploaded_attachment_into_document_pipeline(): void
+    {
+        $this->seed(SourceSeeder::class);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $file = UploadedFile::fake()->image('card.jpg');
+
+        $response = $this->actingAs($user)->post(route('chat.assistant'), [
+            'message' => '',
+            'attachments' => [$file],
+            'recipient' => '34600000000',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'action_performed' => 'document_ingestion',
+            'document_ingestion' => true,
+        ]);
+
+        $this->assertDatabaseHas('document_ingestions', [
+            'team_id' => $team->id,
+            'classification_status' => 'needs_review',
+        ]);
     }
 
     public function test_assistant_accepts_optional_flow_routing_key(): void

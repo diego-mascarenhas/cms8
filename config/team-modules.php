@@ -34,12 +34,12 @@ return [
         'payments' => false,
         'incomes' => false,
         'expenses' => false,
-        'financial' => false,
+        'financial' => true,
         'accounting' => false,
         // Additional modules (ecommerce)
-        'products' => true,
-        'orders' => true,
-        'stores' => true,
+        'products' => false,
+        'orders' => false,
+        'stores' => false,
         // Additional modules (infrastructure)
         'servers' => false,
         'hosting' => false,
@@ -48,6 +48,7 @@ return [
         'collaborators' => false,
         'communications' => false,
         'enterprises' => false,
+        'affiliates' => false,
         'events' => false,
         'today' => false,
         'times' => false,
@@ -55,6 +56,7 @@ return [
         'documentation' => false,
         'departments' => false,
         // Additional modules (campaigns)
+        'campaigns' => true,
         'mailer' => true,
         // Additional modules (automation)
         'prompts' => true,
@@ -68,6 +70,8 @@ return [
         'website' => false,
         'academy' => false,
         'landings' => false,
+        'blog' => false,
+        'ebooks' => false,
         // Additional modules (support)
         'tickets' => false,
         'mailbox' => false,

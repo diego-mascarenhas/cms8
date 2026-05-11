@@ -64,7 +64,7 @@ class ProcessActiveCampaigns extends Command
 
         $this->info("🎉 Processed {$totalProcessed} campaigns, created {$totalCreated} deliveries");
 
-        Log::info('📊 ProcessActiveCampaigns completed', [
+        Log::info('ProcessActiveCampaigns completed', [
             'campaigns_processed' => $totalProcessed,
             'deliveries_created' => $totalCreated,
         ]);
@@ -83,6 +83,7 @@ class ProcessActiveCampaigns extends Command
 
         // Step 1: Remove pending deliveries for contacts that NO LONGER meet criteria
         $removedCount = MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
             ->whereNull('sent_at') // Only remove pending deliveries, not sent ones
             ->whereNotIn('contact_id', $validContactIds)
             ->delete();
@@ -98,17 +99,21 @@ class ProcessActiveCampaigns extends Command
 
         // Step 2: Create deliveries for contacts that meet criteria and don't have one yet
         $lastDelivery = MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
             ->orderBy('sent_at', 'desc')
             ->first();
 
         $baseTime = $lastDelivery ? $lastDelivery->sent_at : $message->started_at;
         $createdCount = 0;
-        $deliveryIndex = MessageDelivery::where('message_id', $message->id)->count();
+        $deliveryIndex = MessageDelivery::where('message_id', $message->id)
+            ->whereNull('campaign_id')
+            ->count();
 
         foreach ($validContacts as $contact)
         {
             // Check if delivery already exists
             $existingDelivery = MessageDelivery::where('message_id', $message->id)
+                ->whereNull('campaign_id')
                 ->where('contact_id', $contact->id)
                 ->first();
 
@@ -138,6 +143,8 @@ class ProcessActiveCampaigns extends Command
                     $scheduledTime = $nextAvailableTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
                 }
 
+                $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime);
+
                 MessageDelivery::create([
                     'team_id' => $message->team_id,
                     'message_id' => $message->id,
@@ -149,7 +156,7 @@ class ProcessActiveCampaigns extends Command
                 $createdCount++;
                 $deliveryIndex++;
 
-                Log::info('📧 New delivery created dynamically', [
+                Log::info('New delivery created dynamically', [
                     'message_id' => $message->id,
                     'contact_id' => $contact->id,
                     'contact_email' => $contact->email,

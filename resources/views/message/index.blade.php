@@ -45,7 +45,7 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">
-            <i class="ti ti-plus me-1"></i>{{ __('Create New') }}
+            <i class="ti ti-plus me-1"></i>{{ __('New message') }}
         </a>
     </div>
 </div>

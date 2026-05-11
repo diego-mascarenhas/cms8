@@ -600,6 +600,16 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
             $cleanFrom = preg_replace('/[^0-9]/', '', (string) $from);
             $cleanTo = preg_replace('/[^0-9]/', '', (string) $to);
+            $resolvedInboundTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
+            Log::info('WhatsApp inbound resolved context', [
+                'message_sid' => $messageSid,
+                'channel_hint_from' => $from,
+                'channel_hint_to' => $to,
+                'from_digits' => $cleanFrom,
+                'to_digits' => $cleanTo,
+                'route_team_id' => $this->team?->id,
+                'resolved_team_id' => $resolvedInboundTeamId,
+            ]);
 
             if ($cleanFrom === '' && (strpos((string) $from, 'whatsapp') !== false || strpos((string) $to, 'whatsapp') !== false))
             {
@@ -630,9 +640,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            if ($channel === 'whatsapp' && $this->team && strlen($cleanFrom) >= 8)
+            if ($channel === 'whatsapp' && $resolvedInboundTeamId !== null && strlen($cleanFrom) >= 8)
             {
-                \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $this->team->id);
+                \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $resolvedInboundTeamId);
             }
 
             if (! empty($messageSid))
@@ -647,7 +657,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         'conversation_id' => $existingConversation->id,
                         'from' => $cleanFrom,
                         'to' => $cleanTo,
-                        'team_id' => $this->team?->id,
+                        'team_id' => $resolvedInboundTeamId,
                     ]);
 
                     return response()->json([
@@ -670,11 +680,69 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 {
                     $mediaUrl = $request->input("MediaUrl{$i}");
                     $contentType = $request->input("MediaContentType{$i}");
+                    if (is_string($mediaUrl) && trim($mediaUrl) !== '')
+                    {
+                        $media[] = [
+                            'url' => trim($mediaUrl),
+                            'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
+                        ];
+                    }
+                }
+            }
+
+            if ($media === [])
+            {
+                // Defensive fallback for non-standard providers that send MediaUrlN without NumMedia.
+                foreach (range(0, 9) as $i)
+                {
+                    $mediaUrl = $request->input("MediaUrl{$i}");
+                    if (! is_string($mediaUrl) || trim($mediaUrl) === '')
+                    {
+                        continue;
+                    }
+                    $contentType = $request->input("MediaContentType{$i}");
                     $media[] = [
-                        'url' => $mediaUrl,
-                        'content_type' => $contentType,
+                        'url' => trim($mediaUrl),
+                        'content_type' => is_string($contentType) && trim($contentType) !== '' ? trim($contentType) : 'application/octet-stream',
                     ];
                 }
+            }
+            Log::info('WhatsApp inbound media detection', [
+                'message_sid' => $messageSid,
+                'num_media_input' => $numMedia,
+                'media_detected_count' => count($media),
+                'media_urls' => array_values(array_filter(array_map(static fn ($item) => $item['url'] ?? null, $media))),
+            ]);
+
+            $isMediaPlaceholderBody = preg_match('/^\s*\[(image|imagen|photo|foto|document|documento|video|sticker)\]\s*$/iu', (string) $body) === 1;
+            if ($channel === 'whatsapp' && $media === [] && $isMediaPlaceholderBody)
+            {
+                Log::warning('WhatsApp inbound media placeholder without retrievable media URL', [
+                    'message_sid' => $messageSid,
+                    'team_id' => $resolvedInboundTeamId,
+                    'body' => (string) $body,
+                    'payload_keys' => array_keys($request->all()),
+                ]);
+
+                try
+                {
+                    $this->sendWhatsApp(
+                        $cleanFrom,
+                        'Recibí un adjunto, pero no llegó el enlace del archivo para procesarlo. Reenviámelo como foto/documento para poder cargarlo automáticamente.',
+                    );
+                } catch (\Throwable $e)
+                {
+                    Log::warning('WhatsApp missing-media notice send failed', [
+                        'message_sid' => $messageSid,
+                        'to' => $cleanFrom,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'missing_media_url' => true,
+                ]);
             }
 
             // Save incoming message to database (idempotent by message_sid when provided).
@@ -689,9 +757,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'metadata' => $request->except(['_token']),
             ];
 
-            if ($this->team)
+            if ($resolvedInboundTeamId !== null)
             {
-                $conversationPayload['team_id'] = $this->team->id;
+                $conversationPayload['team_id'] = $resolvedInboundTeamId;
             }
 
             try
@@ -730,6 +798,71 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     'conversation_id' => $conversation->id,
                 ]);
             }
+
+            if (! empty($media))
+            {
+                $ingestions = [];
+                try
+                {
+                    $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+                        $conversation,
+                        'WhatsApp',
+                        ! empty($messageSid) ? (string) $messageSid : null,
+                        $resolvedInboundTeamId,
+                    );
+                    Log::info('WhatsApp document ingestion completed', [
+                        'message_sid' => $messageSid,
+                        'conversation_id' => $conversation->id,
+                        'team_id' => $resolvedInboundTeamId,
+                        'ingestions_count' => count($ingestions),
+                        'ingestion_ids' => array_values(array_filter(array_map(
+                            static fn ($item) => is_object($item) ? (int) ($item->id ?? 0) : 0,
+                            $ingestions,
+                        ))),
+                    ]);
+                } catch (\Throwable $e)
+                {
+                    Log::warning('Document ingestion failed for inbound media', [
+                        'conversation_id' => $conversation->id,
+                        'message_sid' => $messageSid,
+                        'team_id' => $resolvedInboundTeamId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                if ($channel === 'whatsapp')
+                {
+                    try
+                    {
+                        $this->sendWhatsApp(
+                            $cleanFrom,
+                            $this->buildDocumentIngestionWhatsAppReply($ingestions),
+                        );
+                    } catch (\Throwable $e)
+                    {
+                        Log::warning('Document ingestion acknowledgement send failed', [
+                            'conversation_id' => $conversation->id,
+                            'to' => $cleanFrom,
+                            'team_id' => $resolvedInboundTeamId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'conversation_id' => $conversation->id,
+                    'document_ingestion' => true,
+                    'auto_ai_skipped' => 'document_ingestion_pending',
+                ]);
+            }
+
+            Log::info('WhatsApp inbound without media, continuing text pipeline', [
+                'message_sid' => $messageSid,
+                'conversation_id' => $conversation->id ?? null,
+                'team_id' => $resolvedInboundTeamId,
+                'body_preview' => mb_substr((string) $body, 0, 120),
+            ]);
 
             if ($channel === 'whatsapp' && $this->team)
             {
@@ -857,12 +990,33 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            // Automatic AI response using Claude (enabled when team has "Respuestas del Asistente Humano" ON)
+            // Automatic AI response using Claude (enabled when team has "Humano Assistant replies" ON,
+            // or when that is OFF but "admins only when off" is ON and the sender is a team admin/editor).
             $assistantAutoRespond = $this->team && filter_var(
                 $this->team->getSetting('assistant_auto_respond', '1'),
                 FILTER_VALIDATE_BOOLEAN,
             );
-            if ($assistantAutoRespond && $channel == 'whatsapp')
+            $adminsOnlyWhenAutoRespondOff = $this->team && filter_var(
+                $this->team->getSetting('assistant_auto_respond_admins_when_off', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            $shouldProcessAutoAi = false;
+            if ($channel === 'whatsapp' && $this->team)
+            {
+                if ($assistantAutoRespond)
+                {
+                    $shouldProcessAutoAi = true;
+                } elseif ($adminsOnlyWhenAutoRespondOff)
+                {
+                    $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
+                    $earlyUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                    if ($assistantTeamIdEarly !== null && $this->inboundWhatsAppUserIsTeamAdministrator($earlyUser, (int) $assistantTeamIdEarly))
+                    {
+                        $shouldProcessAutoAi = true;
+                    }
+                }
+            }
+            if ($shouldProcessAutoAi)
             {
                 try
                 {
@@ -1067,6 +1221,112 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $this->sendingGateway = null;
         }
+    }
+
+    /**
+     * @param  array<int, mixed>  $ingestions
+     */
+    private function buildDocumentIngestionWhatsAppReply(array $ingestions): string
+    {
+        if ($ingestions === [])
+        {
+            return 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+        }
+
+        $lines = [
+            'Recibi tu documento y ya lo procesé. Esto detecté:',
+            '',
+        ];
+
+        foreach ($ingestions as $index => $ingestion)
+        {
+            if (! is_object($ingestion))
+            {
+                continue;
+            }
+
+            $extracted = is_array($ingestion->extracted_data ?? null) ? $ingestion->extracted_data : [];
+            $name = trim((string) ($extracted['name'] ?? ''));
+            $title = trim((string) ($extracted['title'] ?? ''));
+            $company = trim((string) ($extracted['company'] ?? ''));
+            $website = trim((string) ($extracted['website'] ?? ''));
+            $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
+            $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+            $typeLabel = $this->translateDocumentTypeLabel((string) ($ingestion->document_type ?? 'unknown'));
+
+            $lines[] = ($index + 1).') Documento';
+            $lines[] = '   - Tipo: '.$typeLabel;
+            if ($name !== '')
+            {
+                $lines[] = '   - Nombre: '.$name;
+            }
+            if ($title !== '')
+            {
+                $lines[] = '   - Cargo: '.$title;
+            }
+            if ($company !== '')
+            {
+                $lines[] = '   - Empresa: '.$company;
+            }
+            if ($website !== '')
+            {
+                $lines[] = '   - Web: '.$website;
+            }
+            if ($email !== '')
+            {
+                $lines[] = '   - Email: '.$email;
+            }
+            if ($phone !== '')
+            {
+                $lines[] = '   - Teléfono: '.$phone;
+            }
+            $createdRecordUrl = $this->resolveCreatedRecordUrl($ingestion);
+            if ($createdRecordUrl !== null)
+            {
+                $lines[] = '   - Registro creado: '.$createdRecordUrl;
+            }
+            $lines[] = '';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function translateDocumentTypeLabel(string $documentType): string
+    {
+        return match ($documentType)
+        {
+            'business_card' => 'Tarjeta personal',
+            'invoice' => 'Factura',
+            'payment_proof' => 'Comprobante de pago',
+            default => 'Sin clasificar',
+        };
+    }
+
+    private function resolveCreatedRecordUrl(object $ingestion): ?string
+    {
+        $entityType = (string) ($ingestion->entity_type ?? '');
+        $entityId = (int) ($ingestion->entity_id ?? 0);
+        if ($entityType === '' || $entityId <= 0)
+        {
+            return null;
+        }
+
+        if ($entityType === Contact::class)
+        {
+            return route('contact.show', $entityId);
+        }
+
+        if ($entityType === \App\Models\Invoice::class)
+        {
+            return route('invoice.show', $entityId);
+        }
+
+        if ($entityType === \App\Models\Payment::class)
+        {
+            return route('payments.show', $entityId);
+        }
+
+        return null;
     }
 
     /**
@@ -3353,5 +3613,24 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Team WhatsApp line admins/editors (same idea as sheet-import checks), plus global admin/root.
+     */
+    private function inboundWhatsAppUserIsTeamAdministrator(?User $user, int $assistantTeamId): bool
+    {
+        if ($user === null)
+        {
+            return false;
+        }
+        if ($user->hasAnyRole(['admin', 'root']))
+        {
+            return true;
+        }
+        $membership = $user->teams()->where('teams.id', $assistantTeamId)->first();
+        $pivotRole = strtolower((string) ($membership?->pivot?->role ?? ''));
+
+        return in_array($pivotRole, ['admin', 'editor'], true);
     }
 }

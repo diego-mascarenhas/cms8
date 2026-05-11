@@ -116,7 +116,9 @@ document.addEventListener('DOMContentLoaded', function () {
           chatListItem0 = document.querySelector('.chat-list-item-0'),
           contactListItem0 = document.querySelector('.contact-list-item-0'),
           searchChatListItems = [].slice.call(
-            document.querySelectorAll('#chat-list li:not(.chat-contact-list-item-title)')
+            document.querySelectorAll(
+              '#chat-list li:not(.chat-contact-list-item-title), #chat-list-assistant-clients li:not(.chat-contact-list-item-title)'
+            )
           ),
           searchContactListItems = [].slice.call(
             document.querySelectorAll('#contact-list li:not(.chat-contact-list-item-title)')

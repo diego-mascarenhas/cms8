@@ -8,6 +8,18 @@
 </head>
 <body>
   <div class="landing-widget">
+    <section class="humano-embed-demo card" aria-label="{{ __('Real-time embed demo') }}">
+      <h2>{{ __('Real-time widgets (demo)') }}</h2>
+      <p class="description">
+        {{ __('Placeholders loaded by JavaScript — same pattern you can paste into static HTML on cPanel. API:') }}
+        <code>{{ url('/api/embed/demo') }}</code>
+      </p>
+      <div class="humano-embed-grid">
+        <div data-humano-widget="calendar" data-site="demo"></div>
+        <div data-humano-widget="assistant" data-site="demo"></div>
+      </div>
+    </section>
+
     <div class="card">
       <h1>Cuéntanos tu problema de negocio</h1>
       <p class="description">
@@ -61,6 +73,10 @@
     </div>
   </div>
 
+  <script>
+    window.HUMANO_WIDGETS_API_BASE = @json(rtrim(url('/api/embed/demo'), '/'));
+  </script>
+  <script src="{{ asset('js/humano-widgets.js') }}" defer></script>
   <script>
     window.LANDING_API_BASE_URL = @json(rtrim(config('services.landing_widget.api_url'), '/'));
     window.LANDING_TEAM_TOKEN = @json(config('services.landing_widget.team_token'));

@@ -32,9 +32,11 @@ class UpdateTeamSettingsRequest extends FormRequest
 
             // Chat / Assistant settings
             'chat.assistant_auto_respond' => 'nullable|in:0,1',
+            'chat.assistant_auto_respond_admins_when_off' => 'nullable|in:0,1',
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
             'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
+            'documents.documents_ocr_mode' => 'nullable|string|in:local,ai,hybrid',
 
             // Twilio settings
             'twilio.twilio_sid' => 'nullable|string|max:255',
@@ -78,6 +80,9 @@ class UpdateTeamSettingsRequest extends FormRequest
 
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
+
+            // Affiliates (admin-only save enforced in TeamSettingController)
+            'affiliates.affiliate_commission_percent' => 'nullable|numeric|min:0|max:100',
         ];
     }
 }

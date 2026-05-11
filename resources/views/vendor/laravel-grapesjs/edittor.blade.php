@@ -78,7 +78,8 @@
 </head>
 
 <body>
-    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+    {{-- Temporarily hidden: AI assistant bar above GrapesJS editor --}}
+    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="display: none; padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
       <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
         <img src="{{ asset('assets/logo-dark.svg') }}" alt="Humano" style="height: 36px; width: auto; min-width: 100px; object-fit: contain;" />
         <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Cambiar el color del botón, renombrar la plantilla, o describir contenido para generar"
@@ -107,6 +108,69 @@
         return null;
     }
 
+    function openBlocksPanel(editor) {
+        if (!editor) {
+            return;
+        }
+
+        try {
+            if (editor.Panels && typeof editor.Panels.getButton === 'function') {
+                var openBlocksBtn = editor.Panels.getButton('views', 'open-blocks');
+                if (openBlocksBtn && typeof openBlocksBtn.set === 'function') {
+                    openBlocksBtn.set('active', true);
+
+                    return;
+                }
+            }
+        } catch (e1) {}
+
+        try {
+            if (typeof editor.runCommand === 'function') {
+                editor.runCommand('open-blocks');
+
+                return;
+            }
+        } catch (e2) {}
+
+        var fallback = document.querySelector('.gjs-pn-views .gjs-pn-btn[title="Open Blocks"]')
+            || document.querySelector('.gjs-pn-btn.fa-th-large');
+        if (fallback && typeof fallback.click === 'function') {
+            fallback.click();
+        }
+    }
+
+    /**
+     * Open the Blocks sidebar on editor load (same as clicking Open Blocks once).
+     */
+    function wireOpenBlocksPanelOnEditorLoad(editor) {
+        if (!editor || typeof editor.on !== 'function') {
+            return;
+        }
+
+        var blocksSidebarOpenedOnce = false;
+
+        function scheduleOpenBlocksPanel() {
+            if (blocksSidebarOpenedOnce) {
+                return;
+            }
+
+            blocksSidebarOpenedOnce = true;
+            requestAnimationFrame(function () {
+                openBlocksPanel(editor);
+            });
+        }
+
+        editor.on('load', scheduleOpenBlocksPanel);
+
+        window.setTimeout(function () {
+            try {
+                if (!blocksSidebarOpenedOnce && editor.Canvas && editor.Canvas.getBody && editor.Canvas.getBody()) {
+                    scheduleOpenBlocksPanel();
+                }
+            } catch (e) {}
+        }, 250);
+    }
+
     function getCsrfToken() {
         var meta = document.querySelector('meta[name="csrf-token"]');
         if (meta) return meta.getAttribute('content');
@@ -115,6 +179,29 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        var blocksPanelWired = false;
+        var blocksPollAttempts = 0;
+        var blocksPollId = window.setInterval(function () {
+            if (blocksPanelWired) {
+                window.clearInterval(blocksPollId);
+
+                return;
+            }
+
+            blocksPollAttempts += 1;
+            var grapesEditorInstance = getGrapesEditorInstance();
+
+            if (grapesEditorInstance) {
+                blocksPanelWired = true;
+                wireOpenBlocksPanelOnEditorLoad(grapesEditorInstance);
+                window.clearInterval(blocksPollId);
+            }
+
+            if (blocksPollAttempts > 200) {
+                window.clearInterval(blocksPollId);
+            }
+        }, 25);
+
         setTimeout(function() {
             var generateAiBtn = document.getElementById('generate-ai-btn');
             if (generateAiBtn) {

@@ -49,6 +49,16 @@
                     <x-input-general id="code" label="Stripe Customer ID (cus_...)"
                         value="{{ old('code', $data->code ?? '') }}" />
                 </div>
+                <div class="col-12 col-md-6">
+                    <x-input-select
+                        id="referred_by"
+                        :label="__('Referrer enterprise')"
+                        :options="$referrerEnterpriseOptions"
+                        value="{{ old('referred_by', $referredBySelectValue ?? '') }}"
+                        :placeholder="__('No referrer')"
+                        :helpText="__('Referrer select help')"
+                    />
+                </div>
                 <div class="col-md-6">
                     <x-input-general id="email" label="Email (*)"
                         value="{{ old('email', $data->email ?? '') }}" />

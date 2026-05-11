@@ -5,14 +5,18 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
+use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Conversation;
+use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
+use App\Services\DocumentIngestionService;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -20,7 +24,9 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -38,33 +44,6 @@ class ChatController extends Controller
         $stripped = preg_replace('/:\d+$/', '', trim($phone));
 
         return $stripped !== '' ? $stripped : $phone;
-    }
-
-    /**
-     * Compare phone numbers allowing common WhatsApp prefix variants by suffix.
-     */
-    private function phonesBelongToSameLine(string $left, string $right): bool
-    {
-        $leftDigits = preg_replace('/[^0-9]/', '', $left);
-        $rightDigits = preg_replace('/[^0-9]/', '', $right);
-        if ($leftDigits === '' || $rightDigits === '')
-        {
-            return false;
-        }
-        if ($leftDigits === $rightDigits)
-        {
-            return true;
-        }
-
-        $minLen = min(strlen($leftDigits), strlen($rightDigits));
-        if ($minLen < 8)
-        {
-            return false;
-        }
-
-        $suffixLen = min(10, $minLen);
-
-        return substr($leftDigits, -$suffixLen) === substr($rightDigits, -$suffixLen);
     }
 
     /**
@@ -176,9 +155,11 @@ class ChatController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, object{from: string, last_message: string, last_message_time: string, last_message_at: \Carbon\Carbon, unread_count: int, user_name?: string, user_photo?: string, user_id?: int}>
+     * Filters WhatsApp sidebar rows using {@see ContactStatus} id via `crm_status`. Chats with no CRM contact ({@see findContactForTeamByChatPhone} null) match the Lead status filter. Legacy `crm_status=none` is treated as Lead.
+     *
+     * @return Collection<int, object>
      */
-    private function getWhatsAppContacts(): \Illuminate\Support\Collection
+    private function getWhatsAppContacts(?Request $request = null): Collection
     {
         $team = auth()->check() ? auth()->user()->currentTeam : null;
         if (! $team || ! $team->getWhatsAppFrom())
@@ -258,8 +239,23 @@ class ChatController extends Controller
                 $contact->user_photo = $userData->profile_photo_path;
                 $contact->user_id = $userData->id;
             }
+            $crmProfile = $this->findContactForTeamByChatPhone((int) $team->id, $digitsOnly);
+            $contact->crm_has_contact = $crmProfile !== null;
+            $contact->crm_status_id = $crmProfile?->status_id;
+            $contact->contact_id = $crmProfile?->id;
+            $contact->assistant_toggle_available = $crmProfile !== null;
+            $contact->assistant_inbound_enabled = $crmProfile !== null
+                ? $crmProfile->allowsInboundChatAssistant()
+                : true;
             $contacts->push($contact);
         }
+
+        $effectiveRequest = $request ?? request();
+        $contacts = $this->applyWhatsAppCrmConversationFilter(
+            $contacts,
+            $effectiveRequest instanceof Request ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest) : ['mode' => 'all'],
+            $this->resolveLeadContactStatusId(),
+        );
 
         return $contacts->sortByDesc(function ($c)
         {
@@ -267,11 +263,77 @@ class ChatController extends Controller
         })->values();
     }
 
+    /**
+     * @return array{mode: string, status_id?: int}
+     */
+    private function resolveWhatsAppListCrmStatusFilter(Request $request): array
+    {
+        if (! $request->filled('crm_status'))
+        {
+            return ['mode' => 'all'];
+        }
+        $raw = $request->query('crm_status');
+        if ($raw === 'none')
+        {
+            $leadId = $this->resolveLeadContactStatusId();
+
+            return $leadId !== null ? ['mode' => 'status_id', 'status_id' => $leadId] : ['mode' => 'all'];
+        }
+        $id = (int) $raw;
+
+        return $id > 0 ? ['mode' => 'status_id', 'status_id' => $id] : ['mode' => 'all'];
+    }
+
+    private function resolveLeadContactStatusId(): ?int
+    {
+        $id = ContactStatus::query()->where('name', 'Lead')->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    /**
+     * @param  array{mode: string, status_id?: int}  $spec
+     */
+    private function applyWhatsAppCrmConversationFilter(Collection $contacts, array $spec, ?int $leadStatusId): Collection
+    {
+        return match ($spec['mode'])
+        {
+            'status_id' => $contacts->filter(function ($c) use ($spec, $leadStatusId): bool
+            {
+                if (! isset($spec['status_id']))
+                {
+                    return false;
+                }
+                $targetId = (int) $spec['status_id'];
+
+                return $this->contactRowMatchesCrmStatusFilter($c, $targetId, $leadStatusId);
+            })->values(),
+            default => $contacts,
+        };
+    }
+
+    /**
+     * @param  object  $conversationRow  Row from {@see getWhatsAppContacts} with CRM fields.
+     */
+    private function contactRowMatchesCrmStatusFilter(object $conversationRow, int $targetStatusId, ?int $leadStatusId): bool
+    {
+        $hasContact = isset($conversationRow->crm_has_contact)
+            ? (bool) $conversationRow->crm_has_contact
+            : false;
+
+        if (! $hasContact)
+        {
+            return $leadStatusId !== null && $targetStatusId === $leadStatusId;
+        }
+
+        return (int) ($conversationRow->crm_status_id ?? 0) === $targetStatusId;
+    }
+
     public function index()
     {
         $viewAssistant = request('view') === 'assistant';
         $assistantUserId = request()->integer('user_id', 0) ?: null;
-        $contacts = $this->getWhatsAppContacts();
+        $contacts = $this->getWhatsAppContacts(request());
 
         // If a contact is selected, get their messages (normalize to digits so list dedupe and active state match)
         $selectedPhone = request('phone') ? preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) request('phone'))) : null;
@@ -404,14 +466,21 @@ class ChatController extends Controller
         $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
+        $assistantAutoRespondAdminsWhenOff = auth()->check() && auth()->user()->currentTeam
+            ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN)
+            : false;
 
         $currentTeam = auth()->user()?->currentTeam;
         $assistantChatStub = $currentTeam
             && filter_var($currentTeam->getSetting('assistant_chat_stub', false), FILTER_VALIDATE_BOOLEAN);
         $assistantKeywordIntentRouting = $currentTeam
             && filter_var($currentTeam->getSetting('assistant_keyword_intent_routing', false), FILTER_VALIDATE_BOOLEAN);
-        $chatAiAssistanceBlockedTeam = $currentTeam
-            && filter_var($currentTeam->getSetting('chat_ai_assistance_blocked', false), FILTER_VALIDATE_BOOLEAN);
+        $showAssistantConversations = $currentTeam
+            ? filter_var($currentTeam->getSetting('chat_show_assistant_conversations', false), FILTER_VALIDATE_BOOLEAN)
+            : false;
+        $showWhatsAppConversations = $currentTeam
+            ? filter_var($currentTeam->getSetting('chat_show_whatsapp_conversations', true), FILTER_VALIDATE_BOOLEAN)
+            : true;
         $canManageChatTeamSidebarSettings = auth()->check()
             && $currentTeam
             && auth()->user()->hasAnyRole(['admin', 'root']);
@@ -433,7 +502,15 @@ class ChatController extends Controller
                 ]);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'chatAiAssistanceBlockedTeam', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts'));
+        $contactStatuses = auth()->check()
+            ? ContactStatus::query()->orderBy('id')->get(['id', 'name'])
+            : collect();
+
+        $leadContactStatusId = auth()->check()
+            ? $this->resolveLeadContactStatusId()
+            : null;
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId'));
     }
 
     /**
@@ -653,15 +730,113 @@ class ChatController extends Controller
             Cache::forget('inbound_received_count_team_'.$team->id);
         }
 
-        return response()->json(['messages' => $messages]);
+        return response()->json([
+            'messages' => $messages,
+            'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone),
+        ]);
+    }
+
+    /**
+     * Per-contact inbound WhatsApp assistant (same flag as web chat CRM / {@see Contact::allowsInboundChatAssistant}).
+     */
+    public function updateWhatsAppContactAssistant(Request $request)
+    {
+        $request->validate([
+            'phone' => ['required', 'string'],
+            'on' => ['required', 'boolean'],
+        ]);
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $digits = preg_replace('/[^0-9]/', '', $request->string('phone')->toString());
+        if ($digits === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid phone number.'),
+            ], 422);
+        }
+        if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+        {
+            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $contact = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $contact)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $contact);
+        $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
+        $contact->refresh();
+
+        return response()->json([
+            'success' => true,
+            'assistant_inbound_enabled' => $contact->allowsInboundChatAssistant(),
+            'assistant_toggle_available' => true,
+        ]);
+    }
+
+    /**
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool}
+     */
+    private function whatsAppThreadAssistantMetaForDigits(string $digits): array
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team || $digits === '')
+        {
+            return [
+                'contact_id' => null,
+                'assistant_inbound_enabled' => true,
+                'assistant_toggle_available' => false,
+            ];
+        }
+
+        $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $crm)
+        {
+            return [
+                'contact_id' => null,
+                'assistant_inbound_enabled' => true,
+                'assistant_toggle_available' => false,
+            ];
+        }
+
+        return [
+            'contact_id' => (int) $crm->id,
+            'assistant_inbound_enabled' => $crm->allowsInboundChatAssistant(),
+            'assistant_toggle_available' => true,
+        ];
+    }
+
+    private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
+    {
+        $payload = json_encode($contact->data ?? new \stdClass);
+        $data = json_decode($payload ?: '{}', true);
+        if (! is_array($data))
+        {
+            $data = [];
+        }
+        $data['chat_assistant_ai_enabled'] = $on;
+        $contact->data = $data;
+        $contact->save();
     }
 
     /**
      * Get WhatsApp conversation list as JSON for sidebar polling (live update without page refresh).
      */
-    public function getChatList()
+    public function getChatList(Request $request)
     {
-        $contacts = $this->getWhatsAppContacts();
+        $contacts = $this->getWhatsAppContacts($request);
         $list = $contacts->map(function ($c)
         {
             $item = [
@@ -678,6 +853,12 @@ class ChatController extends Controller
             {
                 $item['user_photo'] = Storage::url($c->user_photo);
             }
+            if (isset($c->contact_id) && $c->contact_id !== null)
+            {
+                $item['contact_id'] = (int) $c->contact_id;
+            }
+            $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
+            $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
 
             return $item;
         })->values()->all();
@@ -739,15 +920,7 @@ class ChatController extends Controller
 
             $this->authorize('update', $contact);
 
-            $payload = json_encode($contact->data ?? new \stdClass);
-            $data = json_decode($payload ?: '{}', true);
-            if (! is_array($data))
-            {
-                $data = [];
-            }
-            $data['chat_assistant_ai_enabled'] = $request->boolean('on');
-            $contact->data = $data;
-            $contact->save();
+            $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
 
             return response()->json(['success' => true]);
         }
@@ -772,7 +945,7 @@ class ChatController extends Controller
     public function updateChatTeamSettingsSidebar(Request $request)
     {
         $request->validate([
-            'key' => ['required', 'string', 'in:assistant_auto_respond,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked'],
+            'key' => ['required', 'string', 'in:assistant_auto_respond,assistant_auto_respond_admins_when_off,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations'],
             'on' => ['required', 'boolean'],
         ]);
 
@@ -836,7 +1009,7 @@ class ChatController extends Controller
             return;
         }
 
-        if (in_array($key, ['assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked'], true))
+        if (in_array($key, ['assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations'], true))
         {
             $team->setSetting($key, $on, [
                 'group' => 'chat',
@@ -855,9 +1028,12 @@ class ChatController extends Controller
     public function assistant(Request $request, UserResolverService $userResolver, AgentConversationContextService $contextService, ChatAssistantReplyService $replyService)
     {
         $hasAudio = $request->hasFile('audio');
+        $hasAttachments = $request->hasFile('attachments');
         $request->validate([
-            'message' => ['required_without:audio', 'nullable', 'string', 'max:16000'],
+            'message' => ['required_without_all:audio,attachments', 'nullable', 'string', 'max:16000'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'respond_with_audio' => 'nullable|boolean',
             'recipient' => 'nullable|string|max:50',
             'contact_id' => 'nullable|integer|exists:contacts,id',
@@ -888,7 +1064,78 @@ class ChatController extends Controller
         }
         if ($message === '')
         {
-            return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+            if (! $hasAttachments)
+            {
+                return response()->json(['success' => false, 'message' => __('El mensaje no puede estar vacío.')], 422);
+            }
+        }
+
+        if ($hasAttachments)
+        {
+            $teamId = auth()->user()?->currentTeam?->id;
+            $recipientDigits = $request->filled('recipient')
+                ? preg_replace('/[^0-9]/', '', (string) $request->input('recipient'))
+                : '';
+            $sourceName = $recipientDigits !== '' ? 'WhatsApp' : 'Chat';
+            $ingestionResult = $this->ingestUploadedDocumentsForAssistant(
+                $request,
+                (int) ($teamId ?? 0),
+                $sourceName,
+                $recipientDigits !== '' ? $recipientDigits : null,
+            );
+            $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
+            session()->forget('assistant_pending_document_action');
+
+            $contextUser = null;
+            if ($request->filled('recipient'))
+            {
+                $contextUser = $userResolver->resolveUserForConversation($request->input('recipient'), $request->input('contact_id'));
+            }
+            if ($contextUser === null && $request->filled('contact_id'))
+            {
+                $contextUser = $userResolver->resolveUserForConversation(null, (int) $request->input('contact_id'));
+            }
+            if ($contextUser === null)
+            {
+                $contextUser = auth()->user();
+            }
+
+            if ($contextUser && $teamId !== null)
+            {
+                $attachmentNames = collect($request->file('attachments', []))
+                    ->filter()
+                    ->map(fn ($file) => method_exists($file, 'getClientOriginalName') ? (string) $file->getClientOriginalName() : '')
+                    ->filter()
+                    ->values()
+                    ->all();
+                $userMessageForContext = trim($message);
+                if ($userMessageForContext === '')
+                {
+                    $userMessageForContext = '📎 Documento adjunto'.($attachmentNames !== [] ? ': '.implode(', ', $attachmentNames) : '');
+                }
+
+                $contextService->persistMessages(
+                    $contextUser->id,
+                    $userMessageForContext,
+                    $assistantSummary,
+                    null,
+                    [],
+                    [],
+                    [],
+                    [],
+                    (int) $teamId,
+                    false,
+                    null,
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'response' => $assistantSummary,
+                'action_performed' => 'document_ingestion',
+                'document_ingestion' => true,
+                'documents_registered' => $ingestionResult['count'],
+            ]);
         }
 
         if ($request->filled('template_hashed_id'))
@@ -931,8 +1178,20 @@ class ChatController extends Controller
             return response()->json(['success' => false, 'message' => 'Could not resolve user for conversation'], 400);
         }
 
-        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
         $teamId = auth()->user()?->currentTeam?->id;
+        $pendingDecisionResponse = $this->tryHandlePendingDocumentDecision(
+            $message,
+            $contextUser,
+            $contextService,
+            $teamId,
+            $hasAudio,
+        );
+        if ($pendingDecisionResponse !== null)
+        {
+            return response()->json($pendingDecisionResponse);
+        }
+
+        $history = $contextService->getHistoryForPrompt($contextUser->id, AgentConversationContextService::DEFAULT_HISTORY_LIMIT);
 
         if ($teamId !== null && auth()->check() && ! $request->boolean('preview_only'))
         {
@@ -1089,6 +1348,265 @@ class ChatController extends Controller
         return response()->json($payload);
     }
 
+    private function ingestUploadedDocumentsForAssistant(
+        Request $request,
+        int $teamId,
+        string $sourceName,
+        ?string $recipientDigits = null,
+    ): array {
+        $uploadedFiles = $request->file('attachments', []);
+        if (! is_array($uploadedFiles) || $uploadedFiles === [])
+        {
+            return ['count' => 0, 'ingestions' => []];
+        }
+
+        $media = [];
+        foreach ($uploadedFiles as $index => $uploadedFile)
+        {
+            if ($uploadedFile === null)
+            {
+                continue;
+            }
+
+            $storedPath = $uploadedFile->store('temp/chat-attachments', 'public');
+            $media[] = [
+                'url' => Storage::url($storedPath),
+                'content_type' => $uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType(),
+                'name' => $uploadedFile->getClientOriginalName() ?: ('attachment-'.$index),
+                'size' => $uploadedFile->getSize(),
+            ];
+        }
+
+        if ($media === [])
+        {
+            return ['count' => 0, 'ingestions' => []];
+        }
+
+        $conversation = Conversation::create([
+            'message_sid' => 'chat_upload_'.uniqid('', true),
+            'channel' => $recipientDigits !== null && $recipientDigits !== '' ? 'whatsapp' : 'chat',
+            'from' => (string) (auth()->id() ?? '0'),
+            'to' => $recipientDigits !== null && $recipientDigits !== '' ? $recipientDigits : 'assistant',
+            'body' => '[Documento adjunto]',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => $media,
+            'metadata' => ['from_chat_footer' => true],
+        ]);
+
+        $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            $sourceName,
+            $conversation->message_sid,
+            $teamId > 0 ? $teamId : null,
+        );
+
+        return [
+            'count' => count($ingestions),
+            'ingestions' => $ingestions,
+        ];
+    }
+
+    private function buildDocumentIngestionAssistantResponse(array $ingestions): string
+    {
+        if ($ingestions === [])
+        {
+            return 'Recibi tu documento. Lo estoy procesando y podes seguir el estado en Ver documentos.';
+        }
+
+        $lines = [
+            'Recibi tu documento y ya lo procesé. Esto detecté:',
+            '',
+        ];
+
+        foreach ($ingestions as $index => $ingestion)
+        {
+            if (! is_object($ingestion))
+            {
+                continue;
+            }
+
+            $extracted = is_array($ingestion->extracted_data ?? null) ? $ingestion->extracted_data : [];
+            $name = trim((string) ($extracted['name'] ?? ''));
+            $title = trim((string) ($extracted['title'] ?? ''));
+            $company = trim((string) ($extracted['company'] ?? ''));
+            $website = trim((string) ($extracted['website'] ?? ''));
+            $email = isset($extracted['emails'][0]) ? (string) $extracted['emails'][0] : '';
+            $phone = isset($extracted['phones'][0]) ? (string) $extracted['phones'][0] : '';
+            $typeLabel = $this->translateDocumentTypeLabel((string) ($ingestion->document_type ?? 'unknown'));
+
+            $lines[] = ($index + 1).') Documento';
+            $lines[] = '   - Tipo: '.$typeLabel;
+            if ($name !== '')
+            {
+                $lines[] = '   - Nombre: '.$name;
+            }
+            if ($title !== '')
+            {
+                $lines[] = '   - Cargo: '.$title;
+            }
+            if ($company !== '')
+            {
+                $lines[] = '   - Empresa: '.$company;
+            }
+            if ($website !== '')
+            {
+                $lines[] = '   - Web: '.$website;
+            }
+            if ($email !== '')
+            {
+                $lines[] = '   - Email: '.$email;
+            }
+            if ($phone !== '')
+            {
+                $lines[] = '   - Teléfono: '.$phone;
+            }
+            $createdRecordLink = $this->resolveCreatedRecordMarkdownLink($ingestion);
+            if ($createdRecordLink !== null)
+            {
+                $lines[] = '   - Registro creado: '.$createdRecordLink;
+            }
+            $lines[] = '';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function translateDocumentTypeLabel(string $documentType): string
+    {
+        return match ($documentType)
+        {
+            'business_card' => 'Tarjeta personal',
+            'invoice' => 'Factura',
+            'payment_proof' => 'Comprobante de pago',
+            default => 'Sin clasificar',
+        };
+    }
+
+    private function resolveCreatedRecordMarkdownLink(object $ingestion): ?string
+    {
+        $entityType = (string) ($ingestion->entity_type ?? '');
+        $entityId = (int) ($ingestion->entity_id ?? 0);
+        if ($entityType === '' || $entityId <= 0)
+        {
+            return null;
+        }
+
+        if ($entityType === Contact::class)
+        {
+            $url = route('contact.show', $entityId);
+
+            return '[Contacto #'.$entityId.']('.$url.')';
+        }
+
+        if ($entityType === \App\Models\Invoice::class)
+        {
+            $url = route('invoice.show', $entityId);
+
+            return '[Factura #'.$entityId.']('.$url.')';
+        }
+
+        if ($entityType === \App\Models\Payment::class)
+        {
+            $url = route('payments.show', $entityId);
+
+            return '[Pago #'.$entityId.']('.$url.')';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, mixed>  $ingestions
+     */
+    private function storePendingDocumentDecisionContext(array $ingestions, int $teamId): void
+    {
+        $ids = collect($ingestions)
+            ->filter(fn ($item) => is_object($item) && isset($item->id))
+            ->map(fn ($item) => (int) $item->id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
+
+        if ($ids === [] || $teamId <= 0)
+        {
+            return;
+        }
+
+        session([
+            'assistant_pending_document_action' => [
+                'team_id' => $teamId,
+                'ingestion_ids' => $ids,
+                'created_at' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
+    private function tryHandlePendingDocumentDecision(
+        string $message,
+        User $contextUser,
+        AgentConversationContextService $contextService,
+        ?int $teamId,
+        bool $hasAudio,
+    ): ?array {
+        session()->forget('assistant_pending_document_action');
+
+        return null;
+    }
+
+    private function normalizeIntentText(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, [
+            'á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a',
+            'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+            'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u',
+            'ñ' => 'n',
+        ]);
+
+        return preg_replace('/\s+/u', ' ', $value) ?? $value;
+    }
+
+    private function extractCategoryNameFromMessage(string $message): ?string
+    {
+        if (preg_match('/categor[ií]a\s+["“]?([^"\n\r]+?)["”]?(?:\s*$|[\.!,])/iu', $message, $matches) === 1)
+        {
+            $name = trim((string) ($matches[1] ?? ''));
+
+            return $name !== '' ? $name : null;
+        }
+
+        return null;
+    }
+
+    private function resolveTeamContactCategoryByName(int $teamId, string $categoryName): ?Category
+    {
+        $contactsModuleId = Module::query()->where('key', 'contacts')->value('id');
+        $query = Category::query()
+            ->where('team_id', $teamId);
+
+        if ($contactsModuleId !== null)
+        {
+            $query->where('module_id', (int) $contactsModuleId);
+        }
+
+        $normalized = mb_strtolower(trim($categoryName));
+        $exact = (clone $query)
+            ->whereRaw('LOWER(name) = ?', [$normalized])
+            ->first();
+        if ($exact !== null)
+        {
+            return $exact;
+        }
+
+        return (clone $query)
+            ->whereRaw('LOWER(name) LIKE ?', ['%'.$normalized.'%'])
+            ->orderBy('name')
+            ->first();
+    }
+
     /**
      * Keep preview modal focused on the exact text to send.
      * Remove assistant meta wrappers/instructions that should never be shown to operators.
@@ -1205,10 +1723,13 @@ class ChatController extends Controller
         }
 
         $hasAudio = $request->hasFile('audio');
+        $hasAttachments = $request->hasFile('attachments');
         $request->validate([
             'to' => 'required|string',
-            'message' => ['required_without:audio', 'nullable', 'string'],
+            'message' => ['required_without_all:audio,attachments', 'nullable', 'string'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
         ], [
@@ -1259,6 +1780,25 @@ class ChatController extends Controller
                 }
 
                 return response()->json(['success' => true, 'message' => __('Mensaje de voz enviado.')]);
+            }
+
+            if ($hasAttachments)
+            {
+                $recipientDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to', ''));
+                $ingestionResult = $this->ingestUploadedDocumentsForAssistant(
+                    $request,
+                    (int) (auth()->user()?->currentTeam?->id ?? 0),
+                    $recipientDigits !== '' ? 'WhatsApp' : 'Chat',
+                    $recipientDigits !== '' ? $recipientDigits : null,
+                );
+                $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $assistantSummary,
+                    'document_ingestion' => true,
+                    'documents_registered' => $ingestionResult['count'],
+                ]);
             }
 
             // Check if AI assistance was requested
@@ -1320,7 +1860,17 @@ class ChatController extends Controller
                 return $this->sendWithTemplate($request);
             }
 
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            Log::warning('Chat sendMessage failed', [
+                'user_id' => auth()->id(),
+                'team_id' => auth()->user()?->current_team_id,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => WhatsAppSendExceptionPresenter::messageForUser($e),
+            ], 500);
         }
     }
 
@@ -1557,7 +2107,7 @@ class ChatController extends Controller
                     && $teamNumber !== ''
                     && $number !== null
                     && $number !== ''
-                    && $this->phonesBelongToSameLine((string) $teamNumber, (string) $number);
+                    && \App\Helpers\PhoneHelper::digitsBelongToSameLine((string) $teamNumber, (string) $number);
             }
         }
 

@@ -10,6 +10,18 @@ class Pricing extends Controller
     {
         $pageConfigs = ['myLayout' => 'front'];
 
-        return view('content.front-pages.pricing-page', ['pageConfigs' => $pageConfigs]);
+        $plans = collect(config('humano_pricing.plans', []))
+            ->map(function (array $plan): array
+            {
+                $plan['checkout_href'] = (string) $plan['checkout_url'];
+
+                return $plan;
+            })
+            ->all();
+
+        return view('content.front-pages.pricing-page', [
+            'pageConfigs' => $pageConfigs,
+            'plans' => $plans,
+        ]);
     }
 }

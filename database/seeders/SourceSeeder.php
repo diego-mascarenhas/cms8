@@ -85,6 +85,18 @@ class SourceSeeder extends Seeder
                 'icon' => 'fa-telegram',
                 'color' => '#0088cc',
             ],
+            [
+                'name' => 'Backend Upload',
+                'base_url' => 'internal://backend-upload',
+                'icon' => 'fa-file-arrow-up',
+                'color' => '#6C757D',
+            ],
+            [
+                'name' => 'Chat',
+                'base_url' => 'internal://chat',
+                'icon' => 'fa-comments',
+                'color' => '#6F42C1',
+            ],
         ];
 
         foreach ($sources as $source)

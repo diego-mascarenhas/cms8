@@ -43,7 +43,7 @@ class TeamPasswordController extends Controller
         $enterprises = Enterprise::query()->orderBy('name')->pluck('name', 'id');
 
         return view('password.form', [
-            'data' => new TeamPassword(),
+            'data' => new TeamPassword,
             'enterprises' => $enterprises,
         ]);
     }
@@ -53,7 +53,7 @@ class TeamPasswordController extends Controller
         $this->assertPasswordsModuleEnabled();
 
         $payload = $request->validated();
-        $teamPassword = new TeamPassword();
+        $teamPassword = new TeamPassword;
         $teamPassword->fill([
             'name' => $payload['name'],
             'username' => $payload['username'] ?? null,
@@ -222,7 +222,41 @@ class TeamPasswordController extends Controller
         ]);
     }
 
-    public function consumeShare(string $token)
+    public function showPasswordShare(string $token)
+    {
+        $resolution = $this->resolvePasswordShareForPublic($token);
+
+        return match ($resolution['status'])
+        {
+            'not_found' => response()->view('password.public-share', ['status' => 'not_found'], 404),
+            'expired' => response()->view('password.public-share', ['status' => 'expired'], 410),
+            'consumed' => response()->view('password.public-share', ['status' => 'consumed'], 410),
+            'ready' => view('password.public-share', [
+                'status' => 'reveal_prompt',
+                'token' => $token,
+            ]),
+            default => response()->view('password.public-share', ['status' => 'not_found'], 404),
+        };
+    }
+
+    public function revealPasswordShare(string $token)
+    {
+        $resolution = $this->resolvePasswordShareForPublic($token);
+
+        return match ($resolution['status'])
+        {
+            'not_found' => response()->view('password.public-share', ['status' => 'not_found'], 404),
+            'expired' => response()->view('password.public-share', ['status' => 'expired'], 410),
+            'consumed' => response()->view('password.public-share', ['status' => 'consumed'], 410),
+            'ready' => $this->consumePasswordShareAndRender($resolution['share']),
+            default => response()->view('password.public-share', ['status' => 'not_found'], 404),
+        };
+    }
+
+    /**
+     * @return array{status: string, share?: TeamPasswordShare}
+     */
+    private function resolvePasswordShareForPublic(string $token): array
     {
         $tokenHash = hash('sha256', $token);
 
@@ -234,36 +268,60 @@ class TeamPasswordController extends Controller
 
         if (! $share || ! $share->password)
         {
-            return response()->view('password.public-share', ['status' => 'not_found'], 404);
+            return ['status' => 'not_found'];
         }
 
         if ($share->isExpired())
         {
-            return response()->view('password.public-share', ['status' => 'expired'], 410);
+            return ['status' => 'expired'];
         }
 
         if ($share->isConsumed())
         {
-            return response()->view('password.public-share', ['status' => 'consumed'], 410);
+            return ['status' => 'consumed'];
         }
 
+        return ['status' => 'ready', 'share' => $share];
+    }
+
+    private function consumePasswordShareAndRender(TeamPasswordShare $share): \Illuminate\Contracts\View\View|\Illuminate\Http\Response
+    {
         $password = $share->password;
 
-        DB::transaction(function () use ($share)
+        $revealed = DB::transaction(function () use ($share): bool
         {
-            $share->refresh();
-            if ($share->isConsumed() || $share->isExpired())
+            $locked = TeamPasswordShare::query()
+                ->whereKey($share->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked || $locked->isConsumed() || $locked->isExpired())
             {
-                return;
+                return false;
             }
 
-            $share->views_count = $share->views_count + 1;
-            if ($share->views_count >= $share->max_views)
+            $locked->views_count = $locked->views_count + 1;
+            if ($locked->views_count >= $locked->max_views)
             {
-                $share->consumed_at = now();
+                $locked->consumed_at = now();
             }
-            $share->save();
+
+            $locked->save();
+
+            return true;
         });
+
+        if (! $revealed)
+        {
+            $share->refresh();
+
+            if ($share->isExpired())
+            {
+                return response()->view('password.public-share', ['status' => 'expired'], 410);
+            }
+
+            return response()->view('password.public-share', ['status' => 'consumed'], 410);
+        }
 
         return view('password.public-share', [
             'status' => 'ok',

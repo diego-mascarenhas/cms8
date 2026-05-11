@@ -58,7 +58,7 @@ class ModuleSeeder extends Seeder
         ],
         'opportunities' => [
             'name' => 'Opportunities',
-            'icon' => 'chart-line',
+            'icon' => 'chart-donut',
             'description' => 'CRM opportunities and pipeline',
             'is_enabled' => true,
         ],
@@ -76,7 +76,7 @@ class ModuleSeeder extends Seeder
         ],
         'notifications' => [
             'name' => 'Notifications',
-            'icon' => 'speakerphone',
+            'icon' => 'bell-ringing',
             'description' => 'Notifications and alerts module',
             'is_enabled' => true,  // On by default
         ],
@@ -109,9 +109,9 @@ class ModuleSeeder extends Seeder
             'is_enabled' => true,  // On by default
         ],
         'accounting' => [
-            'name' => 'Accounting',
+            'name' => 'Stripe billing',
             'icon' => 'calculator',
-            'description' => 'Accounting management module',
+            'description' => 'Stripe invoices, PDF downloads and quarterly CSV exports',
             'group' => 'billing',
             'order' => 3,
         ],
@@ -124,17 +124,31 @@ class ModuleSeeder extends Seeder
         ],
         'incomes' => [
             'name' => 'Incomes',
-            'icon' => 'coin',
+            'icon' => 'trending-up',
             'description' => 'Incomes management module',
             'group' => 'billing',
             'order' => 5,
         ],
         'expenses' => [
             'name' => 'Expenses',
-            'icon' => 'receipt',
+            'icon' => 'trending-down',
             'description' => 'Expenses management module',
             'group' => 'billing',
             'order' => 6,
+        ],
+        'enterprises' => [
+            'name' => 'Enterprises',
+            'icon' => 'building',
+            'description' => 'Enterprise management module',
+            'group' => 'billing',
+            'order' => 7,
+        ],
+        'affiliates' => [
+            'name' => 'Affiliates',
+            'icon' => 'affiliate',
+            'description' => 'Referral commissions on billing (enterprise referred_by and team commission %)',
+            'group' => 'billing',
+            'order' => 8,
         ],
         // ECOMMERCE GROUP
         'stores' => [
@@ -185,11 +199,11 @@ class ModuleSeeder extends Seeder
             'description' => 'Communications management module',
             'order' => 8,
         ],
-        // CAMPAIGNS GROUP
-        'templates' => [
-            'name' => 'Templates',
-            'icon' => 'template',
-            'description' => 'Templates management module',
+        // CAMPAIGNS GROUP (Marketing)
+        'campaigns' => [
+            'name' => 'Campaigns',
+            'icon' => 'broadcast',
+            'description' => 'Campaign messages and scheduled sends (email, WhatsApp, etc.)',
             'group' => 'campaigns',
             'order' => 0,
         ],
@@ -199,6 +213,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Email campaigns and marketing automation',
             'group' => 'campaigns',
             'order' => 1,
+        ],
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
+            'group' => 'campaigns',
+            'order' => 2,
         ],
         // AUTOMATION GROUP
         'funnel' => [
@@ -221,6 +242,13 @@ class ModuleSeeder extends Seeder
             'description' => 'Instructions for the assistant.',
             'group' => 'automation',
             'order' => 1,
+        ],
+        'ocr' => [
+            'name' => 'OCR',
+            'icon' => 'scan',
+            'description' => 'AI text extraction from PDFs and images',
+            'group' => 'automation',
+            'order' => 4,
         ],
         // CONTENT GROUP
         'multimedia' => [
@@ -265,6 +293,20 @@ class ModuleSeeder extends Seeder
             'group' => 'content',
             'order' => 6,
         ],
+        'blog' => [
+            'name' => 'Blog',
+            'icon' => 'article',
+            'description' => 'Blog articles and posts management',
+            'group' => 'content',
+            'order' => 7,
+        ],
+        'ebooks' => [
+            'name' => 'E-books',
+            'icon' => 'book-2',
+            'description' => 'Digital books and downloadable publications',
+            'group' => 'content',
+            'order' => 8,
+        ],
         // SUPPORT & TICKETS
         'tickets' => [
             'name' => 'Tickets',
@@ -288,21 +330,15 @@ class ModuleSeeder extends Seeder
             'order' => 3,
         ],
         // GENERAL MANAGEMENT
-        'enterprises' => [
-            'name' => 'Enterprises',
-            'icon' => 'building',
-            'description' => 'Enterprise management module',
-            'order' => 1,
-        ],
         'prospecting' => [
             'name' => 'Prospecting',
             'icon' => 'target',
             'description' => 'Prospect search and contact acquisition',
-            'order' => 2,
+            'order' => 1,
         ],
         'events' => [
             'name' => 'Events',
-            'icon' => 'calendar',
+            'icon' => 'calendar-event',
             'description' => 'Events management module',
             'order' => 2,
         ],
@@ -333,7 +369,7 @@ class ModuleSeeder extends Seeder
         ],
         'departments' => [
             'name' => 'Departments',
-            'icon' => 'users-group',
+            'icon' => 'hierarchy',
             'description' => 'Department management module',
             'order' => 7,
         ],
@@ -359,7 +395,7 @@ class ModuleSeeder extends Seeder
         ],
         'challenges' => [
             'name' => 'Challenges',
-            'icon' => 'trophy',
+            'icon' => 'puzzle',
             'description' => 'Innovation challenges management module',
             'group' => 'innovation',
             'order' => 2,
@@ -389,7 +425,7 @@ class ModuleSeeder extends Seeder
         ],
         'language-variants' => [
             'name' => 'Language Variants',
-            'icon' => 'language',
+            'icon' => 'letter-case-upper',
             'description' => 'Language variants management module',
             'group' => 'learning',
             'order' => 2,
@@ -417,7 +453,7 @@ class ModuleSeeder extends Seeder
         ],
         'stylebooks' => [
             'name' => 'Stylebooks',
-            'icon' => 'book',
+            'icon' => 'palette',
             'description' => 'Stylebooks management module',
             'group' => 'learning',
             'order' => 6,
@@ -432,7 +468,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'website', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'prospecting', 'projects', 'services', 'times', 'documentation', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()

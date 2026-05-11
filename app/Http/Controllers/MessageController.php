@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Enums\CampaignStatus;
+use App\Enums\MessageDeliverySendProfile;
+use App\Http\Requests\StoreMessageRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
+use App\Models\Template;
+use App\Services\MessageDeliveryDispatcher;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -28,12 +33,43 @@ class MessageController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
+        $legacyForm = $request->boolean('legacy_form');
+
+        if (! $legacyForm && (! $request->filled('template_id') || $request->integer('template_id') <= 0))
+        {
+            return redirect()->route('campaigns.templates.select', [
+                'type' => 'messages',
+                'title' => $request->string('title')->toString(),
+            ]);
+        }
+
         $data = new stdClass;
         $data->types = MessageType::getOptions();
-        $data->templates = \App\Models\Template::getOptions();
+        $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
+        $data->useLegacyTemplatePicker = $legacyForm;
+
+        if (! $legacyForm && $request->integer('template_id') > 0)
+        {
+            $template = Template::query()->whereKey($request->integer('template_id'))->first();
+
+            if (! $template)
+            {
+                return redirect()
+                    ->route('campaigns.templates.select', ['type' => 'messages', 'title' => ''])
+                    ->with('error', __('La plantilla seleccionada no está disponible.'));
+            }
+
+            $data->template_id = $template->id;
+            $data->template = $template;
+            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($template);
+            $data->templateGrapesEditorUrl = route('template.editor', $template->getHashedId());
+            $data->name = old('name', $request->string('name')->toString());
+            $data->type_id = old('type_id', 1);
+            $data->text = old('text', __('Boletín por correo'));
+        }
 
         return view('message.form', compact('data'));
     }
@@ -41,39 +77,62 @@ class MessageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreMessageRequest $request)
     {
-        $data = $request->except(['id', '_token']);
-
-        $request->validate([
-            'name' => 'required|string|min:3|max:50',
-            'text' => 'required|string|min:3|max:255',
+        $validated = $request->validated();
+        $data = $request->except([
+            'id',
+            '_token',
+            'send_allowed_weekdays',
+            'send_window_start',
+            'send_window_end',
         ]);
+
+        $weekdaysSorted = array_values(array_unique(array_map('intval', $validated['send_allowed_weekdays'])));
+        sort($weekdaysSorted);
+        $sendAllowedWeekdays = $weekdaysSorted === range(1, 7)
+            ? null
+            : $weekdaysSorted;
+
+        $sendWindowStart = filled($validated['send_window_start'] ?? null)
+            ? $validated['send_window_start']
+            : null;
+        $sendWindowEnd = filled($validated['send_window_end'] ?? null)
+            ? $validated['send_window_end']
+            : null;
 
         $templateId = $data['template_id'] ?? null;
 
-        // Set status_id based on checkbox presence
-        $status_id = $request->has('status_id') ? 1 : 0;  // 1 = active, 0 = inactive
+        $status_id = $request->boolean('status_id') ? 1 : 0;
 
         // Set boolean fields based on checkbox presence
         $show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
         $enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
         $enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
 
+        $rawMinHours = isset($validated['min_hours_between_emails'])
+            ? $validated['min_hours_between_emails']
+            : $request->input('min_hours_between_emails', 48);
+
+        $minHours = max(0, (int) round((float) $rawMinHours));
+
         Message::updateOrCreate(
             ['id' => $request->id],
             [
-                'name' => $data['name'],
+                'name' => $validated['name'],
                 'type_id' => $data['type_id'],
                 'category_id' => $data['category_id'] ?: null,  // Convert empty string to null
                 'contact_status_id' => $data['contact_status_id'] ?? null,
                 'template_id' => $templateId,
-                'text' => $data['text'],
+                'text' => $validated['text'],
                 'status_id' => $status_id,
                 'show_unsubscribe' => $show_unsubscribe,
                 'enable_open_tracking' => $enable_open_tracking,
                 'enable_click_tracking' => $enable_click_tracking,
-                'min_hours_between_emails' => $data['min_hours_between_emails'] ?? 48,
+                'min_hours_between_emails' => max(0, $minHours),
+                'send_allowed_weekdays' => $sendAllowedWeekdays,
+                'send_window_start' => $sendWindowStart,
+                'send_window_end' => $sendWindowEnd,
             ],
         );
 
@@ -175,7 +234,9 @@ class MessageController extends Controller
     public function show(string $id)
     {
         // Obtener el mensaje con relaciones necesarias
-        $message = Message::with(['category', 'deliveries', 'team.settings'])->findOrFail($id);
+        $message = Message::with(['category', 'deliveries', 'team.settings', 'template'])
+            ->withExists('campaigns')
+            ->findOrFail($id);
 
         // Obtener configuración de correo saliente del team con settings cargados
         $team = auth()->user()->currentTeam;
@@ -293,24 +354,11 @@ class MessageController extends Controller
             ->sortByDesc('total_clicks')
             ->values();
 
-        // Verificar configuración DNS para el dominio del remitente
-        $dnsStatus = null;
-        $apiUser = null;
+        $dnsStatus = class_exists(\App\Helpers\DnsHelper::class)
+            ? \App\Helpers\DnsHelper::outgoingDnsStatusForAuthUser(auth()->user())
+            : null;
 
-        if (! empty($emailConfig['from_address']))
-        {
-            // Obtener configuración de API de email
-            $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
-
-            // Verificar configuración DNS
-            if (class_exists(\App\Helpers\DnsHelper::class))
-            {
-                $dnsStatus = \App\Helpers\DnsHelper::checkEmailDomainConfiguration(
-                    $emailConfig['from_address'],
-                    $apiUser,
-                );
-            }
-        }
+        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
 
         return view('message.show', [
             'message' => $message,
@@ -330,7 +378,7 @@ class MessageController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Message::with(['deliveries', 'team.settings'])->find($id);
+        $data = Message::with(['deliveries', 'team.settings', 'template'])->find($id);
 
         if (! $data)
         {
@@ -338,8 +386,15 @@ class MessageController extends Controller
         }
 
         $data->types = MessageType::getOptions();
-        $data->templates = \App\Models\Template::getOptions();
+        $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
+        $data->useLegacyTemplatePicker = false;
+
+        if ($data->template_id && $data->template && (int) $data->type_id === 1)
+        {
+            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($data->template);
+            $data->templateGrapesEditorUrl = route('template.editor', $data->template->getHashedId());
+        }
 
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
@@ -483,6 +538,16 @@ class MessageController extends Controller
             }
 
             $message->update($updateData);
+
+            $message->load('campaigns');
+            foreach ($message->campaigns as $campaign)
+            {
+                $campaignStatus = CampaignStatus::tryFrom($campaign->status);
+                if ($campaignStatus !== CampaignStatus::Sent && $campaignStatus !== CampaignStatus::Scheduled)
+                {
+                    $campaign->update(['status' => CampaignStatus::Active->value]);
+                }
+            }
 
             // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();
@@ -634,9 +699,10 @@ class MessageController extends Controller
 
             foreach ($allPending as $index => $delivery)
             {
-                // Add small delay (3 seconds) between each to avoid spam
+                // Stagger via scheduled_for so SendMessageCampaignJob can release(); do not set sent_at until mail is sent
                 $delivery->update([
-                    'sent_at' => $baseTime->copy()->addSeconds($index * 3),
+                    'scheduled_for' => $baseTime->copy()->addSeconds($index * 3),
+                    'sent_at' => null,
                 ]);
             }
 
@@ -649,10 +715,10 @@ class MessageController extends Controller
                 ->get();
 
             $queued = 0;
+            $dispatcher = app(MessageDeliveryDispatcher::class);
             foreach ($deliveries as $delivery)
             {
-                // Dispatch immediately without delay
-                \App\Jobs\SendMessageCampaignJob::dispatch($delivery)->onQueue('mailer');
+                $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);
                 $queued++;
             }
 
@@ -808,26 +874,7 @@ class MessageController extends Controller
             ]);
 
             // Get email config (will use system defaults if not configured)
-            $emailConfig = $team->getOutgoingEmailConfig();
-
-            Log::info('🔍 TEST SEND: Email config retrieved', [
-                'smtp_host' => $emailConfig['host'],
-                'smtp_port' => $emailConfig['port'],
-                'smtp_username' => $emailConfig['username'],
-                'from_address' => $emailConfig['from_address'],
-                'from_name' => $emailConfig['from_name'],
-                'password_configured' => ! empty($emailConfig['password']),
-            ]);
-
-            // ✨ IMPORTANTE: Configurar SMTP igual que en el Job
             $this->configureMailForTeam($team);
-
-            Log::info('✅ TEST SEND: SMTP configured, ready to send', [
-                'after_config_host' => config('mail.mailers.smtp.host'),
-                'after_config_username' => config('mail.mailers.smtp.username'),
-                'after_config_from_address' => config('mail.from.address'),
-                'after_config_from_name' => config('mail.from.name'),
-            ]);
 
             // Create test contact data
             $testContact = new stdClass;
@@ -841,11 +888,6 @@ class MessageController extends Controller
 
             // Send test email using configured provider
             $emailProvider = config('services.email.provider', 'smtp');
-
-            Log::info('🔧 TEST SEND: Using email provider', [
-                'email_provider' => $emailProvider,
-                'user_email' => $user->email,
-            ]);
 
             switch ($emailProvider)
             {
@@ -866,11 +908,8 @@ class MessageController extends Controller
                     break;
             }
 
-            Log::info('✅ TEST SEND: Email sent successfully', [
+            Log::info('Test message sent', [
                 'message_id' => $message->id,
-                'user_email' => $user->email,
-                'smtp_host_used' => config('mail.mailers.smtp.host'),
-                'from_address_used' => config('mail.from.address'),
             ]);
 
             return response()->json([
@@ -880,17 +919,11 @@ class MessageController extends Controller
             ]);
         } catch (\Exception $e)
         {
-            // Log detailed error for debugging
-            Log::error('❌ TEST SEND: Failed to send test email', [
+            Log::error('Test message send failed', [
                 'message_id' => $id,
-                'user_email' => $user->email ?? 'unknown',
-                'team_id' => $team->id ?? 'unknown',
+                'team_id' => $team->id ?? null,
                 'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
                 'exception_class' => get_class($e),
-                'smtp_host_at_error' => config('mail.mailers.smtp.host'),
-                'smtp_username_at_error' => config('mail.mailers.smtp.username'),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             // Determine user-friendly error message based on error type
@@ -921,76 +954,111 @@ class MessageController extends Controller
     }
 
     /**
-     * Preview a message
+     * Full-window preview chrome; email HTML is loaded in an iframe from {@see previewHtml()}.
      */
     public function preview($id)
     {
         try
         {
-            $message = Message::with('template')->findOrFail($id);
-
-            // Get a sample contact for variable replacement
-            $sampleContact = null;
-            if ($message->category)
-            {
-                $sampleContact = $message->category->contacts()->first();
-            }
-
-            if (! $sampleContact)
-            {
-                // Create a sample contact for preview
-                $sampleContact = (object) [
-                    'name' => 'John',
-                    'surname' => 'Doe',
-                    'email' => 'john.doe@example.com',
-                ];
-            }
-
-            // Get template HTML
-            $htmlContent = '';
-            if ($message->template && $message->template->gjs_data)
-            {
-                $gjsData = is_array($message->template->gjs_data)
-                    ? $message->template->gjs_data
-                    : json_decode($message->template->gjs_data, true);
-
-                $htmlContent = $gjsData['html'] ?? '';
-
-                // Replace variables
-                $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
-            } else
-            {
-                $htmlContent = '<p>'.$message->text.'</p>';
-            }
-
-            // Add advertising footer if team is using system SMTP
-            $team = auth()->user()->currentTeam;
-            $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
-
-            if ($advertisingFooter)
-            {
-                if (stripos($htmlContent, '</body>') !== false)
-                {
-                    $htmlContent = str_ireplace('</body>', $advertisingFooter.'</body>', $htmlContent);
-                } else
-                {
-                    $htmlContent .= $advertisingFooter;
-                }
-            }
+            $message = Message::with(['template', 'category'])->findOrFail($id);
 
             return view('message.preview', [
                 'message' => $message,
-                'htmlContent' => $htmlContent,
-                'sampleContact' => $sampleContact,
+                'iframeSrc' => route('message.preview.html', $message->id),
             ]);
         } catch (\Exception $e)
         {
             return view('message.preview', [
                 'message' => null,
-                'htmlContent' => '<p>Error loading preview: '.$e->getMessage().'</p>',
-                'sampleContact' => null,
+                'iframeSrc' => null,
+                'previewError' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Raw HTML document for the email body (iframe source). Renders the online-style preview.
+     */
+    public function previewHtml($id): \Illuminate\Http\Response
+    {
+        try
+        {
+            $message = Message::with(['template', 'category'])->findOrFail($id);
+            $html = $this->buildMessagePreviewHtml($message);
+
+            return response($html, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        } catch (\Throwable $e)
+        {
+            $safe = e($e->getMessage());
+
+            return response(
+                '<!DOCTYPE html><html lang="'.e(str_replace('_', '-', app()->getLocale())).'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'.e(__('Error')).'</title></head><body><p>'.e(__('Error al cargar la vista previa.')).'</p><p>'.$safe.'</p></body></html>',
+                500,
+                [
+                    'Content-Type' => 'text/html; charset=UTF-8',
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return object{name?: string, surname?: string, email?: string}
+     */
+    private function resolvePreviewSampleContact(Message $message): object
+    {
+        if ($message->category)
+        {
+            $contact = $message->category->contacts()->first();
+            if ($contact !== null)
+            {
+                return $contact;
+            }
+        }
+
+        return (object) [
+            'name' => 'John',
+            'surname' => 'Doe',
+            'email' => 'john.doe@example.com',
+        ];
+    }
+
+    private function buildMessagePreviewHtml(Message $message): string
+    {
+        $sampleContact = $this->resolvePreviewSampleContact($message);
+
+        $htmlContent = '';
+        if ($message->template && $message->template->gjs_data)
+        {
+            $gjsData = is_array($message->template->gjs_data)
+                ? $message->template->gjs_data
+                : json_decode($message->template->gjs_data, true);
+
+            $htmlContent = $gjsData['html'] ?? '';
+
+            $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
+        } else
+        {
+            $htmlContent = '<p>'.e($message->text).'</p>';
+        }
+
+        $team = auth()->user()->currentTeam;
+        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+
+        if ($advertisingFooter)
+        {
+            if (stripos($htmlContent, '</body>') !== false)
+            {
+                $htmlContent = str_ireplace('</body>', $advertisingFooter.'</body>', $htmlContent);
+            } else
+            {
+                $htmlContent .= $advertisingFooter;
+            }
+        }
+
+        return $htmlContent;
     }
 
     /**
@@ -1040,6 +1108,23 @@ class MessageController extends Controller
     /**
      * Replace email template variables with actual values
      */
+    private function iframePreviewHtmlForTemplate(Template $template): string
+    {
+        $htmlContent = '';
+        if ($template->gjs_data && isset($template->gjs_data['html']))
+        {
+            $htmlContent = $template->gjs_data['html'];
+        }
+
+        $sampleContact = (object) [
+            'name' => 'John',
+            'surname' => 'Doe',
+            'email' => 'john.doe@example.com',
+        ];
+
+        return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+    }
+
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
     {
         // Basic contact variables
@@ -1087,14 +1172,16 @@ class MessageController extends Controller
                 'bounce_reason' => null,
             ]);
 
-            Log::info('📧 Delivery resend requested', [
+            Log::info('Delivery resend requested', [
                 'delivery_id' => $delivery->id,
-                'contact_email' => $delivery->contact->email ?? 'unknown',
                 'user_id' => auth()->id(),
             ]);
 
-            // Dispatch the job to send immediately
-            \App\Jobs\SendMessageCampaignJob::dispatch($delivery);
+            app(MessageDeliveryDispatcher::class)->enqueue(
+                delivery: $delivery,
+                profile: MessageDeliverySendProfile::Message,
+                withEnqueueJitter: false,
+            );
 
             return response()->json([
                 'success' => true,
@@ -1102,7 +1189,7 @@ class MessageController extends Controller
             ]);
         } catch (\Exception $e)
         {
-            Log::error('❌ Failed to resend delivery', [
+            Log::error('Failed to resend delivery', [
                 'delivery_id' => $deliveryId,
                 'error' => $e->getMessage(),
             ]);

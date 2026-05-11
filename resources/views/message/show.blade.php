@@ -24,26 +24,21 @@
 			<i class="ti ti-eye me-1"></i>Vista previa
 		</button>
 
-		<!-- Edit Button -->
 		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
-			<i class="ti ti-edit me-1"></i>Editar
+			<i class="ti ti-edit me-1"></i>{{ __('Editar') }}
 		</a>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
 		@php
-			$isAuthorized = isset($dnsStatus) && $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
 			$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
-			$canSend = !$usingSystemSmtp || $isAuthorized;
+			$canSend = \App\Helpers\DnsHelper::canSendBroadcastFromUi($dnsStatus ?? null, $usingSystemSmtp);
 		@endphp
 
 		@php
-			// Check if campaign is active and has deliveries pending or in progress
 			$totalDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->count();
 			$deliveredCount = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
-			// Show "Send Now" button if there are deliveries not yet delivered (regardless of sent_at)
 			$hasDeliveriesPending = $totalDeliveries > $deliveredCount;
-			$campaignIsActive = $message->status_id == 1;
-			$campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
+			$campaignCanBePaused = \App\Models\Campaign::messageIsOperationalForToolbar($message);
 		@endphp
 
 		@if($campaignCanBePaused)
@@ -69,36 +64,7 @@
 	</div>
 </div>
 
-<!-- Configuration Alerts (if any issues) -->
-@if(isset($dnsStatus))
-@php
-	$isAuthorized = $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
-	$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
-	$hasConfigIssues = $usingSystemSmtp && (!$dnsStatus['spf']['has_mailbaby'] || !$isAuthorized);
-@endphp
-
-@if($hasConfigIssues)
-<div class="row mb-3">
-	<div class="col-12">
-		@if(!$dnsStatus['spf']['has_mailbaby'])
-			<div class="alert alert-warning" role="alert">
-				<i class="ti ti-alert-triangle me-2"></i>
-				<strong>SPF Configuration Required:</strong>
-				Add TXT record: <code>"v=spf1 include:spf.revisionalpha.com -all"</code> to domain <strong>{{ $dnsStatus['domain'] }}</strong>
-			</div>
-		@endif
-
-		@if($usingSystemSmtp && !$isAuthorized)
-			<div class="alert alert-danger" role="alert">
-				<i class="ti ti-x-circle me-2"></i>
-				<strong>Domain Not Authorized:</strong>
-				Your domain <strong>{{ $dnsStatus['domain'] }}</strong> is not authorized to use system SMTP. Email sending is disabled.
-			</div>
-		@endif
-	</div>
-</div>
-@endif
-@endif
+@include('partials.email-smtp-dns-alerts')
 
 <div class="row">
 	<!-- Left Column: Stats + General Info -->
@@ -108,13 +74,8 @@
 
 		<!-- General Info -->
 		<div class="card mb-4">
-			<div class="card-header d-flex justify-content-between align-items-center">
+			<div class="card-header">
 				<h5 class="mb-0">{{ __('General Information') }}</h5>
-				<button class="btn btn-sm btn-outline-info {{ !$canSend ? 'disabled' : '' }}"
-						onclick="{{ $canSend ? 'testSend(' . $message->id . ')' : 'showAuthorizationError()' }}"
-						{{ !$canSend ? 'disabled' : '' }}>
-					<i class="ti ti-send-2 me-1"></i>{{ __('Test Send') }}
-				</button>
 			</div>
 			<div class="card-body">
 				@if(empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
@@ -379,80 +340,6 @@ function showAuthorizationError() {
 			confirmButton: 'btn btn-primary waves-effect waves-light'
 		},
 		buttonsStyling: false
-	});
-}
-
-function testSend(messageId) {
-	Swal.fire({
-		title: 'Enviar correo de prueba',
-		text: '¿Enviar un correo de prueba a {{ auth()->user()->email }}?',
-		icon: 'question',
-		showCancelButton: true,
-		confirmButtonText: 'Sí, enviar',
-		cancelButtonText: 'Cancelar',
-		customClass: {
-			confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
-			cancelButton: 'btn btn-label-secondary waves-effect waves-light'
-		},
-		buttonsStyling: false
-	}).then((result) => {
-		if (result.isConfirmed) {
-			Swal.fire({
-				title: 'Enviando...',
-				text: 'Por favor espera',
-				icon: 'info',
-				allowOutsideClick: false,
-				allowEscapeKey: false,
-				showConfirmButton: false,
-				willOpen: () => {
-					Swal.showLoading();
-				}
-			});
-
-	fetch(`/message/${messageId}/test`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'X-CSRF-TOKEN': '{{ csrf_token() }}'
-		}
-	})
-	.then(response => response.json())
-	.then(data => {
-		if (data.success) {
-					Swal.fire({
-						title: '¡Enviado!',
-						text: 'Correo de prueba enviado exitosamente a ' + data.email,
-						icon: 'success',
-						customClass: {
-							confirmButton: 'btn btn-success waves-effect waves-light'
-						},
-						buttonsStyling: false
-					});
-		} else {
-					Swal.fire({
-						title: 'Error',
-						text: data.message,
-						icon: 'error',
-						customClass: {
-							confirmButton: 'btn btn-danger waves-effect waves-light'
-						},
-						buttonsStyling: false
-					});
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-				Swal.fire({
-					title: 'Error',
-					text: 'Ocurrió un error al enviar el correo de prueba',
-					icon: 'error',
-					customClass: {
-						confirmButton: 'btn btn-danger waves-effect waves-light'
-					},
-					buttonsStyling: false
-				});
-			});
-		}
 	});
 }
 

@@ -61,6 +61,9 @@
 
                     <div class="row">
                         <div class="col-12 mb-3">
+                            <label class="form-label">Additional Modules</label>
+                            <p class="text-muted small">These are optional modules that can be enabled based on your needs.</p>
+
                             @if(isset($additionalModules['']) && isset($groupLabels['']))
                                 <div class="mb-4">
                                     <h6 class="text-primary mb-3">
@@ -91,16 +94,17 @@
                                 </div>
                             @endif
 
-                            <label class="form-label">Additional Modules</label>
-                            <p class="text-muted small">These are optional modules that can be enabled based on your needs.</p>
                             @foreach($additionalModules as $groupKey => $modules)
                                 @if($groupKey !== '' && isset($groupLabels[$groupKey]))
+                                    @php
+                                        $useEnglishGroupLabel = in_array($groupKey, ['automation', 'billing', 'campaigns', 'security', 'support'], true);
+                                    @endphp
                                     <div class="mb-4">
                                         <h6 class="text-primary mb-3">
                                             <i class="ti ti-{{ $groupLabels[$groupKey]['icon'] }} me-2"></i>
-                                            {{ __($groupLabels[$groupKey]['name']) }}
+                                            {{ $useEnglishGroupLabel ? $groupLabels[$groupKey]['name'] : __($groupLabels[$groupKey]['name']) }}
                                         </h6>
-                                        <p class="text-muted small mb-3">{{ __($groupLabels[$groupKey]['description']) }}</p>
+                                        <p class="text-muted small mb-3">{{ $useEnglishGroupLabel ? $groupLabels[$groupKey]['description'] : __($groupLabels[$groupKey]['description']) }}</p>
                                         <div class="row">
                                             @foreach($modules as $module)
                                                 <div class="col-md-4 mb-3">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Models\BillingAffiliateCommission;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
 use App\Services\TeamStripeCustomerService;
@@ -138,6 +139,22 @@ class BillingController extends Controller
         $remainingProspectCredits = $team->getRemainingProspectCredits();
         $currentProspectPlan = $team->getProspectPlan();
 
+        $affiliateCommissionsAsReferrer = $team->billingAffiliateCommissionsAsReferrer()
+            ->with(['payingTeam', 'payingEnterprise', 'referrerEnterprise'])
+            ->latest()
+            ->limit(200)
+            ->get();
+
+        $affiliateCommissionsAsPayer = $team->billingAffiliateCommissionsAsPayer()
+            ->with(['referrerTeam', 'payingEnterprise', 'referrerEnterprise'])
+            ->latest()
+            ->limit(200)
+            ->get();
+
+        $affiliateTotalsAsReferrer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsReferrer);
+        $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
+        $affiliateCommissionPercent = (float) $team->getSetting('affiliate_commission_percent', '0');
+
         return view('billing.index', compact(
             'team',
             'currentPlan',
@@ -150,6 +167,11 @@ class BillingController extends Controller
             'stripeData',
             'remainingProspectCredits',
             'currentProspectPlan',
+            'affiliateCommissionsAsReferrer',
+            'affiliateCommissionsAsPayer',
+            'affiliateTotalsAsReferrer',
+            'affiliateTotalsAsPayer',
+            'affiliateCommissionPercent',
         ));
     }
 
@@ -305,5 +327,27 @@ class BillingController extends Controller
         }
 
         return $countryCode.$cleaned;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, BillingAffiliateCommission>  $rows
+     * @return array<string, array{paid_cents: int, commission_cents: int}>
+     */
+    private function sumAffiliateCommissionsByCurrency($rows): array
+    {
+        $totals = [];
+
+        foreach ($rows as $row)
+        {
+            $currency = strtoupper((string) $row->currency);
+            if (! isset($totals[$currency]))
+            {
+                $totals[$currency] = ['paid_cents' => 0, 'commission_cents' => 0];
+            }
+            $totals[$currency]['paid_cents'] += (int) $row->amount_paid_cents;
+            $totals[$currency]['commission_cents'] += (int) $row->commission_amount_cents;
+        }
+
+        return $totals;
     }
 }

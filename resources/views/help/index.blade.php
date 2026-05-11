@@ -111,12 +111,45 @@
                                 </div>
 
                                 <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-danger">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-database display-4 text-danger mb-3"></i>
+                                            <h5 class="card-title">{{ __('PostgreSQL: búsqueda y unaccent') }}</h5>
+                                            <p class="card-text">{{ __('Extensión unaccent, comprobación y notas para Ubuntu. Relacionado con SearchNormalizer.') }}</p>
+                                            <a href="{{ route('help.postgresql-search-unaccent') }}" class="btn btn-danger">{{ __('Ver documentación') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-dark">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-share display-4 text-body mb-3"></i>
+                                            <h5 class="card-title">{{ __('Team social networks') }}</h5>
+                                            <p class="card-text">{{ __('Meta / LinkedIn app keys in .env vs per-team OAuth tokens. Where admins connect accounts.') }}</p>
+                                            <a href="{{ route('help.team-social-networks') }}" class="btn btn-dark">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-success">
                                         <div class="card-body text-center">
                                             <i class="ti ti-brand-wordpress display-4 text-success mb-3"></i>
                                             <h5 class="card-title">{{ __('WooCommerce') }}</h5>
                                             <p class="card-text">{{ __('Configure the connection with your WooCommerce store to manage products and orders from Humano.') }}</p>
                                             <a href="{{ route('help.woocommerce-configuration') }}" class="btn btn-success">{{ __('View instructivo') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-brand-stripe display-4 text-primary mb-3"></i>
+                                            <h5 class="card-title">{{ __('Stripe webhooks') }}</h5>
+                                            <p class="card-text">{{ __('Stripe webhooks help card body') }}</p>
+                                            <a href="{{ route('help.stripe-webhook') }}" class="btn btn-primary">{{ __('View documentation') }}</a>
                                         </div>
                                     </div>
                                 </div>

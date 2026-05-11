@@ -31,6 +31,56 @@
   height: 24px;
 }
 
+/* Humano public top nav: in document flow, no card chrome */
+.humano-front-navbar {
+  position: relative;
+  width: 100%;
+}
+
+.light-style .humano-front-navbar .humano-front-topnav,
+.dark-style .humano-front-navbar .humano-front-topnav {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-top: 0;
+}
+
+.light-style .layout-navbar.navbar-active.humano-front-navbar .humano-front-topnav,
+.dark-style .layout-navbar.navbar-active.humano-front-navbar .humano-front-topnav {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Front pages: static navbar — first-section-pt was sized for fixed floating pill */
+html[data-template^="front-"]:not(.layout-navbar-fixed) .first-section-pt {
+  padding-top: 3rem !important;
+}
+
+@media (min-width: 1200px) {
+  html[data-template^="front-"]:not(.layout-navbar-fixed) .first-section-pt {
+    padding-top: 3.5rem !important;
+  }
+}
+
+/* Front top nav: full logo must not use menu iso 34×24 box (vertical clip) */
+.layout-navbar .humano-front-topnav .app-brand .app-brand-logo.demo {
+  width: auto;
+  height: auto;
+  min-height: 2.75rem;
+  max-width: 100%;
+  justify-content: flex-start;
+}
+
+.layout-navbar .humano-front-topnav .app-brand .app-brand-logo.demo img {
+  width: auto;
+  height: auto;
+  max-height: 3.25rem;
+  max-width: 100%;
+  display: block;
+}
+
 /* Full logo in menu (expanded): do not crop */
 .menu .app-brand-logo.demo.app-brand-img {
   width: auto;
