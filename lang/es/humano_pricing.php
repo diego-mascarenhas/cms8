@@ -15,7 +15,7 @@ return [
     'prices_plus_vat' => '+ I.V.A.',
     'subscribe' => 'Suscribirse',
     'coupon_title' => '¿Tienes un código de amigo?',
-    'coupon_body' => 'Usa el código :code en el checkout cuando aparezca el campo de promoción.',
+    'coupon_body' => 'Usa el código :code en el checkout cuando aparezca el campo de promoción y obtén un descuento del 50%!!!',
     'coupon_copy' => 'Copiar código',
     'coupon_copied' => 'Copiado',
     'staging_note' => 'Precios de staging: en producción se pueden cambiar los enlaces por variables de entorno.',

@@ -101,9 +101,9 @@ class DatabaseSeeder extends Seeder
         // ============================================
         // PHASE 3: Team Data (Optional - for production/testing)
         // Uncomment the seeder you want to run:
-        // - TeamDemoSeeder: Creates demo team with sample data
+        // - TeamDemoSeeder: Creates demo team with sample data (createDemoUsers attaches Javi/Leandro if Humano + Revision teams exist)
         // - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
-        // - TeamHumanoSeeder: Creates Humano team and users
+        // - TeamHumanoSeeder: Creates Humano team and users (before TeamDemoSeeder)
         // - CampaignSeeder: Demo rows for /campaigns (php artisan db:seed --class=CampaignSeeder)
         // - Demo clients + mail (broadcast/sequence/standalone): TeamDemoSeeder → DemoDataService + DemoMailCampaignData
         // ============================================
@@ -111,9 +111,9 @@ class DatabaseSeeder extends Seeder
         $this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');
         $this->call([
             TeamRevisionAlphaSeeder::class,  // Production data import
+            TeamHumanoSeeder::class,  // Humano team setup (before TeamDemoSeeder: cross-team test admins)
             TeamDemoSeeder::class,  // Demo team (Chat on, Users hidden, modules in module_team)
             TextileProductsSeeder::class,  // Demo product catalogue (Ropa, Calzado, Accesorios + stores)
-            TeamHumanoSeeder::class,  // Humano team setup
             DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
         ]);
 

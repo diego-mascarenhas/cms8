@@ -28,6 +28,7 @@ class PublicHumanoPricingPageTest extends TestCase
         $response->assertSee('https://buy.stripe.com/3cIeVd98VabI07cgPb43S03', false);
         $response->assertSee('prefilled_promo_code=SOYAMIGO', false);
         $response->assertSee(__('humano_pricing.prices_plus_vat'), false);
+        $response->assertSee('50%', false);
         $response->assertSee('ti ti-point', false);
         $response->assertDontSee('Subscribe to newsletter', false);
         $response->assertDontSee('Most developer friendly', false);

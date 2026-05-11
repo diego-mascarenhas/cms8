@@ -15,7 +15,7 @@ return [
     'prices_plus_vat' => '+ VAT',
     'subscribe' => 'Subscribe',
     'coupon_title' => 'Have a referral code?',
-    'coupon_body' => 'Use code :code at checkout when the promotion field appears.',
+    'coupon_body' => 'Use code :code at checkout when the promotion field appears and get 50% off!!!',
     'coupon_copy' => 'Copy code',
     'coupon_copied' => 'Copied',
     'staging_note' => 'Staging prices — production links can be swapped via environment variables.',
