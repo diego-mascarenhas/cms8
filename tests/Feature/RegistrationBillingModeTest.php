@@ -54,6 +54,39 @@ class RegistrationBillingModeTest extends TestCase
             ->assertSee(__('auth.registration.qr_heading'), false);
     }
 
+    public function test_registration_onboarding_qr_page_includes_chat_link_qr_when_whatsapp_driver_is_twilio(): void
+    {
+        config([
+            'registration.mode' => 'free',
+            'whatsapp.driver' => 'twilio',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($user)
+            ->get(route('registration.onboarding.qr'))
+            ->assertOk()
+            ->assertSee(route('registration.onboarding.chat-link-qr-image'), false);
+    }
+
+    public function test_registration_onboarding_chat_link_qr_image_returns_png(): void
+    {
+        config(['registration.mode' => 'free']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $response = $this->actingAs($user)
+            ->get(route('registration.onboarding.chat-link-qr-image'));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", (string) $response->getContent());
+    }
+
     public function test_gate_mode_redirects_incomplete_billing_to_registration_billing(): void
     {
         config([

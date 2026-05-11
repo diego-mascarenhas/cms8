@@ -7,9 +7,14 @@ use App\Models\SubscriptionProduct;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Support\HumanoPublicPaymentLinkCheckout;
+use chillerlan\QRCode\Output\QROutputInterface;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use Stripe\Stripe;
 
@@ -140,6 +145,35 @@ class RegistrationBillingController extends Controller
             ['pageConfigs' => $pageConfigs],
             $presentation,
         ));
+    }
+
+    /**
+     * PNG QR that opens Humano Chat (browser) on the phone — used when the WhatsApp Web / Baileys QR is not available (e.g. Twilio driver).
+     */
+    public function onboardingChatLinkQrImage(Request $request): Response
+    {
+        abort_unless(Route::has('chat.index'), 404);
+
+        $target = route('chat.index', [], true);
+
+        $qrcode = new QRCode(new QROptions([
+            'outputType' => QROutputInterface::GDIMAGE_PNG,
+            'scale' => 5,
+        ]));
+
+        $dataUri = $qrcode->render($target);
+        $pngBase64 = str_replace('data:image/png;base64,', '', $dataUri);
+        $binary = base64_decode((string) $pngBase64, true);
+
+        if ($binary === false || $binary === '')
+        {
+            abort(500);
+        }
+
+        return response($binary, 200)->withHeaders([
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, max-age=60',
+        ]);
     }
 
     private function resolveSubscriptionProduct(): ?SubscriptionProduct

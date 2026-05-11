@@ -169,6 +169,7 @@ Route::middleware([
     Route::get('/registration/billing', [RegistrationBillingController::class, 'billing'])->name('registration.billing');
     Route::get('/registration/checkout/start', [RegistrationBillingController::class, 'startCheckout'])->name('registration.checkout.start');
     Route::get('/registration/onboarding/qr', [RegistrationBillingController::class, 'onboardingQr'])->name('registration.onboarding.qr');
+    Route::get('/registration/onboarding/chat-link-qr.png', [RegistrationBillingController::class, 'onboardingChatLinkQrImage'])->name('registration.onboarding.chat-link-qr-image');
 });
 
 Route::redirect('/prospectflow', '/prospect/search');

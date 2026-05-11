@@ -1,6 +1,7 @@
 @php
 $customizerHidden = 'customizer-hide';
 $configData = Helper::appClasses();
+$onboardingQrScanTargetsChatOnly = $onboardingQrScanTargetsChatOnly ?? false;
 @endphp
 
 @extends('layouts/blankLayout')
@@ -73,11 +74,22 @@ $configData = Helper::appClasses();
           </div>
           @elseif (!empty($qrImageUrl))
           <ol class="text-start small text-muted mb-4 ps-3">
-            @foreach (__('auth.registration.qr_whatsapp_steps_local') as $step)
+            @foreach (($onboardingQrScanTargetsChatOnly ? __('auth.registration.qr_whatsapp_steps_chat') : __('auth.registration.qr_whatsapp_steps_local')) as $step)
             <li class="mb-1">{{ $step }}</li>
             @endforeach
           </ol>
 
+          @if ($onboardingQrScanTargetsChatOnly)
+          <div class="d-flex flex-column align-items-center mb-4">
+            <img
+              src="{{ $qrImageUrl }}?t={{ time() }}"
+              alt="{{ __('auth.registration.qr_whatsapp_image_alt') }}"
+              class="d-block mx-auto rounded border"
+              width="200"
+              height="200"
+              loading="eager">
+          </div>
+          @else
           <div id="registration-wa-qr-block" class="d-flex flex-column align-items-center mb-4">
             <div id="registration-wa-qr-container" class="mx-auto">
               <img id="registration-wa-qr-img"
@@ -100,8 +112,7 @@ $configData = Helper::appClasses();
             </button>
             <p id="registration-wa-qr-refresh-message" class="small text-muted mb-0 mt-2 d-none" role="status"></p>
           </div>
-          @else
-          <p class="text-muted small text-start mb-4">{{ __('auth.registration.qr_whatsapp_intro_cloud') }}</p>
+          @endif
           @endif
 
           <div class="d-flex flex-wrap justify-content-center gap-2">
@@ -126,7 +137,7 @@ $configData = Helper::appClasses();
 </div>
 @endsection
 
-@if (!empty($qrImageUrl) && !($teamWhatsAppIsConnected ?? false))
+@if (!empty($qrImageUrl) && !($teamWhatsAppIsConnected ?? false) && !($onboardingQrScanTargetsChatOnly ?? false))
 @push('scripts')
 <script>
 (function () {
