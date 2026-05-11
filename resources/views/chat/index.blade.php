@@ -53,6 +53,15 @@
             );
             pointer-events: none;
         }
+        .chat-qr-fallback-frame .chat-qr-loading-overlay {
+            z-index: 3;
+            background: rgba(255, 255, 255, 0.82);
+            display: none;
+        }
+        #chat-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay,
+        #chat-history-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay {
+            display: flex !important;
+        }
         .chat-history-header {
             min-height: 4.5rem;
         }
@@ -1363,7 +1372,7 @@
                                     var fbRetry = document.getElementById('chat-qr-fallback');
                                     if (fbRetry) fbRetry.classList.remove('d-none');
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                                    setTimeout(setQrSrc, 2500);
+                                    setTimeout(setQrSrc, 1100);
                                 } else {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     qrImg.classList.add('d-none');
@@ -1384,7 +1393,7 @@
                             qrImg.removeAttribute('src');
                             setTimeout(function () { qrImg.src = src; }, 0);
                         }
-                        setTimeout(setQrSrc, 4000);
+                        setTimeout(setQrSrc, 650);
                     } else {
                         if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                         if (qrImg) qrImg.classList.remove('d-none');
@@ -1407,6 +1416,7 @@
         var waConnectionBlock = document.getElementById('chat-sidebar-whatsapp-connection-block');
         var waTeamWasConnected = {{ ($teamWhatsAppIsConnected ?? false) ? 'true' : 'false' }};
         var waQrRefreshInFlight = false;
+        var chatWaQrManualBtn = document.getElementById('chat-whatsapp-qr-refresh-btn');
 
         function collectWaQrScopes() {
             var scopes = [];
@@ -1437,11 +1447,17 @@
                 return;
             }
             waQrRefreshInFlight = true;
+            if (chatWaQrManualBtn) {
+                chatWaQrManualBtn.disabled = true;
+            }
             var token = document.querySelector('meta[name="csrf-token"]');
             var t = token ? token.getAttribute('content') : '';
 
             function releaseRefresh() {
                 waQrRefreshInFlight = false;
+                if (chatWaQrManualBtn) {
+                    chatWaQrManualBtn.disabled = false;
+                }
             }
 
             if (!t) {
@@ -1571,7 +1587,7 @@
                                 applyQrSuccessAll(probeImg.src);
                             } else if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 2500);
+                                setTimeout(setQrSrcAfterRefresh, 1100);
                             } else {
                                 finishFailure();
                             }
@@ -1579,7 +1595,7 @@
                         probeImg.onerror = function () {
                             if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 2500);
+                                setTimeout(setQrSrcAfterRefresh, 1100);
                             } else {
                                 finishFailure();
                             }
@@ -1589,7 +1605,7 @@
                             probeImg.src = src;
                         }, 0);
                     }
-                    setTimeout(setQrSrcAfterRefresh, 3500);
+                    setTimeout(setQrSrcAfterRefresh, 650);
                 })
                 .catch(function () {
                     var netMsg = '{{ __("Could not refresh the QR code.") }}';
@@ -1613,6 +1629,12 @@
             if (collectWaQrScopes().length > 0) {
                 runWhatsappQrServerRefreshAndPoll();
             }
+        }
+
+        if (chatWaQrManualBtn) {
+            chatWaQrManualBtn.addEventListener('click', function () {
+                runWhatsappQrServerRefreshAndPoll();
+            });
         }
 
         // "Link current number to this team" – request QR URL so Node receives token and callbacks if already connected
@@ -1770,20 +1792,31 @@
                 <div class="sidebar-body px-4 pb-4">
                     @if(($whatsappDriver ?? 'twilio') === 'local')
                     <div class="my-4">
+                            @php
+                                $chatWaShowQrLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl ?? null);
+                            @endphp
                             <div id="chat-sidebar-whatsapp-connection-block" class="{{ ($teamWhatsAppIsConnected ?? false) ? 'd-none' : '' }}" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
-                                    <div class="d-inline-block text-center" id="chat-qr-container">
+                                    <div @class(['d-inline-block', 'text-center', 'chat-qr-loading' => $chatWaShowQrLoader]) id="chat-qr-container">
                                         <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
-                                        <div id="chat-qr-fallback" class="mb-2 d-none">
+                                        <div id="chat-qr-fallback" @class(['mb-2', 'd-none' => !$chatWaShowQrLoader])>
                                             <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
+                                                <div class="chat-qr-loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 rounded" role="status" aria-live="polite">
+                                                    <div class="spinner-border text-primary" style="width: 2.25rem; height: 2.25rem;" aria-hidden="true"></div>
+                                                    <span class="small text-muted text-center px-2">{{ __('auth.registration.qr_whatsapp_loading') }}</span>
+                                                </div>
                                                 <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
                                                 <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <p id="chat-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
+                                    <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="chat-whatsapp-qr-refresh-btn">
+                                        <i class="ti ti-refresh me-1"></i>{{ __('auth.registration.qr_whatsapp_refresh') }}
+                                    </button>
                                 @endif
                                 <div id="chat-link-existing-number-block" class="d-none mt-2" data-number="">
                                     <p class="small text-muted mb-2">{{ __('A number is connected in the service but not linked to this team.') }}</p>

@@ -85,6 +85,8 @@ return [
         'qr_whatsapp_already_connected' => 'WhatsApp ya está conectado para este equipo. Puedes ir al panel o abrir Chat.',
         'qr_whatsapp_image_alt' => 'Código QR para vincular WhatsApp',
         'qr_whatsapp_refresh' => 'Actualizar código QR',
+        'qr_whatsapp_refresh_hint' => 'Si no aparece el código, tocá actualizar: también se renueva solo al abrir Chat.',
+        'qr_whatsapp_loading' => 'Cargando código QR…',
         'qr_whatsapp_refresh_failed' => 'No se pudo actualizar el código. Inténtalo de nuevo o abre Chat.',
         'qr_open_chat' => 'Abrir Chat',
         'qr_continue_dashboard' => 'Ir al panel',
