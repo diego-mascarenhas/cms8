@@ -466,6 +466,9 @@ class ChatController extends Controller
         $assistantAutoRespond = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN)
             : false;
+        $assistantAutoRespondAdminsWhenOff = auth()->check() && auth()->user()->currentTeam
+            ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN)
+            : false;
 
         $currentTeam = auth()->user()?->currentTeam;
         $assistantChatStub = $currentTeam
@@ -507,7 +510,7 @@ class ChatController extends Controller
             ? $this->resolveLeadContactStatusId()
             : null;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId'));
     }
 
     /**
@@ -942,7 +945,7 @@ class ChatController extends Controller
     public function updateChatTeamSettingsSidebar(Request $request)
     {
         $request->validate([
-            'key' => ['required', 'string', 'in:assistant_auto_respond,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations'],
+            'key' => ['required', 'string', 'in:assistant_auto_respond,assistant_auto_respond_admins_when_off,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations'],
             'on' => ['required', 'boolean'],
         ]);
 
@@ -1006,7 +1009,7 @@ class ChatController extends Controller
             return;
         }
 
-        if (in_array($key, ['assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations'], true))
+        if (in_array($key, ['assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations'], true))
         {
             $team->setSetting($key, $on, [
                 'group' => 'chat',

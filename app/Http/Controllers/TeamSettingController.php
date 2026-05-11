@@ -285,6 +285,7 @@ class TeamSettingController extends Controller
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
             'assistant_auto_respond',
+            'assistant_auto_respond_admins_when_off',
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
@@ -503,6 +504,13 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('assistant_auto_respond', '1') ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('When enabled, the assistant can reply automatically. Turn off to pause (same as the chat sidebar).'),
+                    ],
+                    'assistant_auto_respond_admins_when_off' => [
+                        'label' => __('Assistant replies only for admins (when assistant off)'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('assistant_auto_respond_admins_when_off', false) ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).'),
                     ],
                     'assistant_chat_stub' => [
                         'label' => __('Predefined test responses'),

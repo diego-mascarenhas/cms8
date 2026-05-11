@@ -321,6 +321,25 @@
                 });
             });
             syncSidebarConversationsVisibility();
+
+            var aiRepliesToggle = document.getElementById('sidebar-ai-replies-toggle');
+            var adminsWhenOffToggle = document.getElementById('sidebar-assistant-admins-when-off-toggle');
+            var adminsWhenOffLabel = adminsWhenOffToggle ? adminsWhenOffToggle.closest('label') : null;
+            function syncAdminsWhenOffToggleUi() {
+                if (!adminsWhenOffToggle || !aiRepliesToggle) {
+                    return;
+                }
+                var masterOn = aiRepliesToggle.checked;
+                adminsWhenOffToggle.disabled = masterOn;
+                if (adminsWhenOffLabel) {
+                    adminsWhenOffLabel.classList.toggle('opacity-50', masterOn);
+                }
+            }
+            syncAdminsWhenOffToggleUi();
+            if (aiRepliesToggle) {
+                aiRepliesToggle.addEventListener('change', syncAdminsWhenOffToggleUi);
+            }
+            window.syncChatAdminsWhenOffToggleUi = syncAdminsWhenOffToggleUi;
         })();
 
         let currentUserMessage = '';
@@ -426,6 +445,9 @@
             if (!data || typeof data.assistant_auto_respond !== 'boolean') return;
             var sidebar = document.getElementById('sidebar-ai-replies-toggle');
             if (sidebar) sidebar.checked = data.assistant_auto_respond;
+            if (typeof window.syncChatAdminsWhenOffToggleUi === 'function') {
+                window.syncChatAdminsWhenOffToggleUi();
+            }
         }
         function showAssistantTypingIndicator() {
             var list = document.getElementById('assistant-messages-list');
@@ -1872,6 +1894,22 @@
                                     <input type="checkbox" class="switch-input" id="sidebar-ai-replies-toggle"
                                         data-team-setting-key="assistant_auto_respond"
                                         @checked($assistantAutoRespond ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).') }}">
+                                    <i class="ti ti-user-shield me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Assistant replies only for admins (when assistant off)') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif @if($assistantAutoRespond ?? false) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-admins-when-off-toggle"
+                                        data-team-setting-key="assistant_auto_respond_admins_when_off"
+                                        @checked($assistantAutoRespondAdminsWhenOff ?? false)
+                                        @if($sidebarReadOnly || ($assistantAutoRespond ?? false)) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>

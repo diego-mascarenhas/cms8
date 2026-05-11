@@ -990,12 +990,33 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            // Automatic AI response using Claude (enabled when team has "Respuestas del Asistente Humano" ON)
+            // Automatic AI response using Claude (enabled when team has "Humano Assistant replies" ON,
+            // or when that is OFF but "admins only when off" is ON and the sender is a team admin/editor).
             $assistantAutoRespond = $this->team && filter_var(
                 $this->team->getSetting('assistant_auto_respond', '1'),
                 FILTER_VALIDATE_BOOLEAN,
             );
-            if ($assistantAutoRespond && $channel == 'whatsapp')
+            $adminsOnlyWhenAutoRespondOff = $this->team && filter_var(
+                $this->team->getSetting('assistant_auto_respond_admins_when_off', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            $shouldProcessAutoAi = false;
+            if ($channel === 'whatsapp' && $this->team)
+            {
+                if ($assistantAutoRespond)
+                {
+                    $shouldProcessAutoAi = true;
+                } elseif ($adminsOnlyWhenAutoRespondOff)
+                {
+                    $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
+                    $earlyUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                    if ($assistantTeamIdEarly !== null && $this->inboundWhatsAppUserIsTeamAdministrator($earlyUser, (int) $assistantTeamIdEarly))
+                    {
+                        $shouldProcessAutoAi = true;
+                    }
+                }
+            }
+            if ($shouldProcessAutoAi)
             {
                 try
                 {
@@ -3592,5 +3613,24 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Team WhatsApp line admins/editors (same idea as sheet-import checks), plus global admin/root.
+     */
+    private function inboundWhatsAppUserIsTeamAdministrator(?User $user, int $assistantTeamId): bool
+    {
+        if ($user === null)
+        {
+            return false;
+        }
+        if ($user->hasAnyRole(['admin', 'root']))
+        {
+            return true;
+        }
+        $membership = $user->teams()->where('teams.id', $assistantTeamId)->first();
+        $pivotRole = strtolower((string) ($membership?->pivot?->role ?? ''));
+
+        return in_array($pivotRole, ['admin', 'editor'], true);
     }
 }
