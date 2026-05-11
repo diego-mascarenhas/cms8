@@ -1879,21 +1879,6 @@
                                 </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
-                                    <i class="ti ti-bug me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
-                                        data-team-setting-key="assistant_chat_stub"
-                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
                                 <div class="pe-1 text-truncate" title="{{ __('How flows are chosen: AI asks vs automatic keyword routing.') }}">
                                     <i class="ti ti-sparkles me-1 ti-sm"></i>
                                     <span class="align-middle small">{{ __('Default assistant flow (AI discovery)') }}</span>
@@ -1918,6 +1903,24 @@
                                     <input type="checkbox" class="switch-input" id="sidebar-assistant-keyword-routing-toggle"
                                         data-team-setting-key="assistant_keyword_intent_routing"
                                         @checked($assistantKeywordIntentRouting ?? false) @if($sidebarReadOnly) disabled @endif />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="w-100 mt-2 pt-3 border-top border-light">
+                                <small class="text-muted text-uppercase">{{ __('Show') }}</small>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
+                                    <i class="ti ti-bug me-1 ti-sm"></i>
+                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
+                                </div>
+                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
+                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
+                                        data-team-setting-key="assistant_chat_stub"
+                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
                                     <span class="switch-toggle-slider">
                                         <span class="switch-on"></span>
                                         <span class="switch-off"></span>
