@@ -16,7 +16,13 @@ class StripeCheckoutSessionRetriever implements CheckoutSessionRetriever
 
         try
         {
-            return Session::retrieve($sessionId);
+            $session = Session::retrieve($sessionId);
+            Log::info('Stripe Checkout Session retrieved', array_merge(
+                ['category' => $category],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
+
+            return $session;
         } catch (\Exception $e)
         {
             Log::warning('Stripe checkout session retrieve failed', [

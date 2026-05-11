@@ -10,6 +10,7 @@ use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
+use App\Services\Stripe\StripeCheckoutSessionLogFormatter;
 use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
@@ -1622,6 +1623,10 @@ class SubscriptionController extends Controller
         {
             Stripe::setApiKey($secret);
             $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            \Log::info('Stripe Checkout Session retrieved', array_merge(
+                ['category' => $category, 'context' => 'subscription.success'],
+                StripeCheckoutSessionLogFormatter::toLogContext($session),
+            ));
 
             $sessionCustomerId = is_string($session->customer)
                 ? $session->customer

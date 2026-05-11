@@ -32,6 +32,21 @@ class TeamCheckoutSessionSubscriptionSyncer
             $priceId = $stripeSubscription->items->data[0]->price->id;
             $rawProduct = $stripeSubscription->items->data[0]->price->product;
             $productId = is_string($rawProduct) ? $rawProduct : (string) $rawProduct->id;
+            $subscriptionMetadata = $stripeSubscription->metadata ? $stripeSubscription->metadata->toArray() : [];
+            Log::info('Stripe Subscription retrieved from checkout session', [
+                'team_id' => $team->id,
+                'checkout_session_id' => $session->id ?? null,
+                'stripe_subscription_id' => $stripeSubscription->id,
+                'status' => $stripeSubscription->status,
+                'livemode' => $stripeSubscription->livemode ?? null,
+                'current_period_start' => $stripeSubscription->current_period_start ?? null,
+                'current_period_end' => $stripeSubscription->current_period_end ?? null,
+                'cancel_at_period_end' => $stripeSubscription->cancel_at_period_end ?? null,
+                'stripe_price_id' => $priceId,
+                'stripe_product_id' => $productId,
+                'quantity' => $stripeSubscription->items->data[0]->quantity ?? null,
+                'metadata' => $subscriptionMetadata,
+            ]);
 
             $subscriptionProduct = SubscriptionProduct::where('stripe_price', $priceId)
                 ->orWhere('stripe_product', $productId)
@@ -44,11 +59,7 @@ class TeamCheckoutSessionSubscriptionSyncer
                 $subscriptionType = $subscriptionProduct->category ?? 'mailer';
             }
 
-            $metadata = [];
-            if ($stripeSubscription->metadata)
-            {
-                $metadata = $stripeSubscription->metadata->toArray();
-            }
+            $metadata = $subscriptionMetadata;
 
             Log::info('Stripe subscription from checkout - data before save', [
                 'stripe_subscription_id' => $stripeSubscription->id,
