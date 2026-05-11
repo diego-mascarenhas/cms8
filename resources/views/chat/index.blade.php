@@ -1438,7 +1438,10 @@
             return scopes;
         }
 
-        function runWhatsappQrServerRefreshAndPoll() {
+        function runWhatsappQrServerRefreshAndPoll(isManualTrigger) {
+            if (isManualTrigger === undefined) {
+                isManualTrigger = false;
+            }
             if (waQrRefreshInFlight) {
                 return;
             }
@@ -1534,8 +1537,29 @@
                         return;
                     }
                     var qrRetries = 0;
-                    var maxRetries = 40;
+                    var maxRetries = 36;
+                    var retryMs = 1100;
+                    var firstPollDelay = isManualTrigger ? 450 : 1100;
                     var loadErrMsg = '{{ __("The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.") }}';
+
+                    function setScopesLoadingUi(active) {
+                        scopes.forEach(function (s) {
+                            if (!s.container) {
+                                return;
+                            }
+                            if (active) {
+                                s.container.classList.add('chat-qr-loading');
+                                if (s.img) {
+                                    s.img.classList.add('d-none');
+                                }
+                                if (s.fallback) {
+                                    s.fallback.classList.remove('d-none');
+                                }
+                            } else {
+                                s.container.classList.remove('chat-qr-loading');
+                            }
+                        });
+                    }
 
                     function finishFailure() {
                         scopes.forEach(function (s) {
@@ -1580,14 +1604,15 @@
                         releaseRefresh();
                     }
 
-                    function setQrSrcAfterRefresh() {
+                    function bumpQrSrc() {
                         var src = probeImg.dataset.qrBase + '?t=' + Date.now();
                         probeImg.onload = function () {
                             if (probeImg.naturalWidth > 20) {
                                 applyQrSuccessAll(probeImg.src);
                             } else if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 1100);
+                                setScopesLoadingUi(true);
+                                setTimeout(bumpQrSrc, retryMs);
                             } else {
                                 finishFailure();
                             }
@@ -1595,7 +1620,8 @@
                         probeImg.onerror = function () {
                             if (qrRetries < maxRetries) {
                                 qrRetries += 1;
-                                setTimeout(setQrSrcAfterRefresh, 1100);
+                                setScopesLoadingUi(true);
+                                setTimeout(bumpQrSrc, retryMs);
                             } else {
                                 finishFailure();
                             }
@@ -1605,7 +1631,7 @@
                             probeImg.src = src;
                         }, 0);
                     }
-                    setTimeout(setQrSrcAfterRefresh, 650);
+                    setTimeout(bumpQrSrc, firstPollDelay);
                 })
                 .catch(function () {
                     var netMsg = '{{ __("Could not refresh the QR code.") }}';
@@ -1627,13 +1653,13 @@
 
         if (waConnectionBlock && waConnectionBlock.getAttribute('data-wa-status') !== 'connected') {
             if (collectWaQrScopes().length > 0) {
-                runWhatsappQrServerRefreshAndPoll();
+                runWhatsappQrServerRefreshAndPoll(false);
             }
         }
 
         if (chatWaQrManualBtn) {
             chatWaQrManualBtn.addEventListener('click', function () {
-                runWhatsappQrServerRefreshAndPoll();
+                runWhatsappQrServerRefreshAndPoll(true);
             });
         }
 

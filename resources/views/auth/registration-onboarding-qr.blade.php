@@ -232,7 +232,10 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     setTimeout(bumpSrc, 450);
   }
 
-  function postRefreshThenShow() {
+  function postRefreshThenShow(showServerMessage) {
+    if (showServerMessage === undefined) {
+      showServerMessage = false;
+    }
     if (btn) btn.disabled = true;
     setLoadingUi(true);
     if (msgEl) {
@@ -242,6 +245,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     var t = token ? token.getAttribute('content') : '';
     if (!t) {
       showRealQr();
+      if (btn) btn.disabled = false;
       return;
     }
     fetch(refreshUrl, {
@@ -256,7 +260,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
       if (!r.ok) throw new Error('refresh failed');
       return r.json();
     }).then(function (data) {
-      if (msgEl && data.message) {
+      if (msgEl && data.message && showServerMessage) {
         msgEl.textContent = data.message;
         msgEl.classList.remove('d-none');
       }
@@ -271,11 +275,11 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     });
   }
 
-  postRefreshThenShow();
+  postRefreshThenShow(false);
 
   if (btn) {
     btn.addEventListener('click', function () {
-      postRefreshThenShow();
+      postRefreshThenShow(true);
     });
   }
 })();
