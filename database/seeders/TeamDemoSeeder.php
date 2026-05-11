@@ -611,7 +611,7 @@ class TeamDemoSeeder extends Seeder
         $revisionTeam = Team::withoutGlobalScopes()->where('name', "REVISION ALPHA's Team")->first();
 
         foreach ([
-            [$humanoTeam, 'javier@javiermeraki.com', 'Javier Meraki', '34699217341', "Humano's Team"],
+            [$humanoTeam, 'javier@humano.app', 'Javier Meraki', '34699217341', "Humano's Team"],
             [$revisionTeam, 'leanamaro@gmail.com', 'Leandro Amaro', '5491136626495', "REVISION ALPHA's Team"],
         ] as [$targetTeam, $email, $name, $phone, $teamLabel]) {
             if (!$targetTeam) {
