@@ -28,6 +28,28 @@ $planImages = [
       <p class="text-center small text-warning mt-2 mb-0">{{ __('humano_pricing.staging_note') }}</p>
     @endif
 
+    @if (session('success'))
+      <div class="alert alert-success col-lg-8 mx-auto mt-3 mb-0" role="alert">
+        {{ session('success') }}
+      </div>
+    @endif
+
+    @if (session('error'))
+      <div class="alert alert-danger col-lg-8 mx-auto mt-3 mb-0" role="alert">
+        {{ session('error') }}
+      </div>
+    @endif
+
+    @if ($errors->any())
+      <div class="alert alert-danger col-lg-8 mx-auto mt-3 mb-0" role="alert">
+        <ul class="mb-0 ps-3">
+          @foreach ($errors->all() as $message)
+            <li>{{ $message }}</li>
+          @endforeach
+        </ul>
+      </div>
+    @endif
+
     <div class="d-flex align-items-center justify-content-center flex-wrap gap-2 pb-4 pt-4 mb-0 mb-md-3">
       <label class="switch switch-primary ms-3 ms-sm-0 mt-2">
         <span class="switch-label">{{ __('humano_pricing.billing_monthly') }}</span>

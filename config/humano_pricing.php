@@ -13,12 +13,15 @@ return [
     | signup_completion (default: payment_link)
     |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
     |     buyers to route('pricing.checkout.complete') with
-    |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=mailer). User
+    |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business). User
     |     and team are ensured, then the user is logged in. Set the same URL in the
     |     Stripe Payment Link "After payment" redirect field.
     |   register_first — Opt-in legacy: send visitors to /register before paying
     |     (set HUMANO_PRICING_SIGNUP_COMPLETION=register_first only if you need this).
     | Any other or empty env value resolves to payment_link.
+    |
+    | Stripe for this flow: Payment Links for Humano plans always use the platform account
+    | (Cashier / STRIPE_* in .env). Team “own Stripe” settings apply to other products only.
     |
     */
 
@@ -26,7 +29,14 @@ return [
         ? 'register_first'
         : 'payment_link',
 
-    'post_checkout_stripe_category' => strtolower((string) env('HUMANO_PRICING_POST_CHECKOUT_CATEGORY', 'mailer')),
+    /*
+    | Default plan slug when checkout return URL omits &category= (assistant or business).
+    */
+    'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
+    {
+        'business' => 'business',
+        default => 'assistant',
+    },
 
     /*
     | Referral / friend promotion code label (e.g. for copy in UI or translations).

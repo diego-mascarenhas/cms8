@@ -63,4 +63,6 @@ return [
     'checkout_complete_no_team' => 'No pudimos asociar este pago a un espacio de trabajo. Contactá soporte.',
     'checkout_complete_customer_mismatch' => 'Este pago corresponde a otro cliente de Stripe que el de tu espacio actual. Iniciá sesión con la cuenta del email del pagador o contactá soporte.',
     'checkout_complete_register_first' => 'Primero creá tu cuenta y luego completá el pago desde el paso de facturación.',
+
+    'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copiá este mensaje y contactá soporte, o probá de nuevo en unos minutos.',
 ];

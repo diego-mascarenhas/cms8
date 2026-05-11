@@ -30,7 +30,7 @@ class StripeCheckoutSessionRetriever implements CheckoutSessionRetriever
             return $session;
         } catch (\Exception $e)
         {
-            Log::warning('Stripe checkout session retrieve failed', [
+            Log::error('Stripe checkout session retrieve failed', [
                 'session_id' => $sessionId,
                 'category' => $category,
                 'error' => $e->getMessage(),

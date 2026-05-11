@@ -21,7 +21,7 @@ class TeamStripeCustomerService
     public function getOrCreateStripeCustomerIdForCategory(Team $team, string $category): ?string
     {
         $category = StripeAccountResolver::normalizeCategory($category);
-        $hasDedicatedAccount = ! empty(config("stripe_accounts.{$category}.secret"));
+        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
 
         if (! $hasDedicatedAccount)
         {
@@ -68,7 +68,7 @@ class TeamStripeCustomerService
     public function getStripeCustomerIdForCategory(Team $team, string $category): ?string
     {
         $category = StripeAccountResolver::normalizeCategory($category);
-        $hasDedicatedAccount = ! empty(config("stripe_accounts.{$category}.secret"));
+        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
 
         if (! $hasDedicatedAccount)
         {
@@ -91,7 +91,7 @@ class TeamStripeCustomerService
             return;
         }
 
-        $hasDedicatedAccount = ! empty(config("stripe_accounts.{$category}.secret"));
+        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
         if (! $hasDedicatedAccount)
         {
             if ($team->stripe_id !== $customerId)

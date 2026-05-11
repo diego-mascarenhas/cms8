@@ -429,6 +429,43 @@ class RegistrationBillingModeTest extends TestCase
             ->assertRedirect(route('registration.billing'));
     }
 
+    public function test_gate_mode_redirects_to_pricing_when_after_public_payment_link_flag_is_set(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_reg_gate_pricing_redirect',
+        ]);
+
+        SubscriptionProduct::create([
+            'stripe_product' => 'prod_reg_gate_pricing_redirect',
+            'stripe_price' => 'price_reg_gate_pricing_redirect',
+            'name' => 'Registration',
+            'active' => true,
+            'category' => 'mailer',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_gate_pricing_redirect',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_wrong_no_match',
+            'quantity' => 1,
+            'data' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['humano_after_public_payment_link_checkout' => true])
+            ->get('/profile/data')
+            ->assertRedirect(route('pricing'))
+            ->assertSessionHas('error');
+    }
+
     public function test_billing_info_does_not_error_when_subscription_product_category_is_null(): void
     {
         config([

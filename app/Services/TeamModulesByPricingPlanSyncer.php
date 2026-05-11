@@ -8,8 +8,7 @@ use App\Models\Team;
 class TeamModulesByPricingPlanSyncer
 {
     /**
-     * Enable/disable team modules from Humano public pricing checkout (assistant / business / foundation).
-     * Foundation uses the same module bundle as business until a separate catalog is defined.
+     * Enable/disable team modules from Humano pricing plan slug (assistant / business; foundation from product id maps to business bundle).
      */
     public function syncForHumanoPricingPlan(Team $team, string $planSlug): void
     {

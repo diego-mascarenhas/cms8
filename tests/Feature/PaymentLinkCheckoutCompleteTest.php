@@ -29,7 +29,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_123',
-            'category' => 'mailer',
+            'category' => 'assistant',
         ]))
             ->assertRedirect(route('register'))
             ->assertSessionHas('info');
@@ -39,7 +39,8 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
     {
         config(['humano_pricing.signup_completion' => 'payment_link']);
 
-        $this->get(route('pricing.checkout.complete', ['category' => 'mailer']))
+        $this->get(route('pricing.checkout.complete', ['category' => 'assistant']))
+            ->assertRedirect(route('pricing'))
             ->assertSessionHasErrors('session_id');
     }
 
@@ -49,8 +50,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_123',
-            'category' => 'invalid-category',
+            'category' => 'mailer',
         ]))
+            ->assertRedirect(route('pricing'))
             ->assertSessionHasErrors('category');
     }
 
@@ -68,7 +70,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_missing',
-            'category' => 'mailer',
+            'category' => 'business',
         ]))
             ->assertRedirect(route('pricing'))
             ->assertSessionHas('error');
@@ -104,10 +106,49 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_open',
-            'category' => 'mailer',
+            'category' => 'assistant',
         ]))
             ->assertRedirect(route('pricing'))
             ->assertSessionHas('error');
+    }
+
+    public function test_accepts_checkout_when_category_query_omitted(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $email = 'payment-link-no-cat-'.uniqid('', true).'@example.com';
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_no_cat',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => 'cus_test_no_cat',
+            'subscription' => 'sub_test_no_cat',
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'No Category',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_no_cat',
+        ]))
+            ->assertRedirect(route('subscription.index'))
+            ->assertSessionHas('success');
+
+        $this->assertAuthenticatedAs(User::where('email', $email)->first());
     }
 
     public function test_creates_user_logs_in_and_syncs_subscription_when_payment_complete(): void
@@ -142,7 +183,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_paid',
-            'category' => 'mailer',
+            'category' => 'assistant',
         ]))
             ->assertRedirect(route('subscription.index'))
             ->assertSessionHas('success');
@@ -191,7 +232,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_existing',
-            'category' => 'mailer',
+            'category' => 'business',
         ]))
             ->assertRedirect(route('subscription.index'));
 
@@ -236,7 +277,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_orphan',
-            'category' => 'mailer',
+            'category' => 'business',
         ]))
             ->assertRedirect(route('subscription.index'))
             ->assertSessionHas('success');
