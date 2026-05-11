@@ -26,7 +26,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::info('Stripe webhook: skipping invoice handler — no team for customer yet (async or public payment link before /pricing/checkout/complete)', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }
@@ -70,7 +72,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::info('Stripe webhook: skipping subscription deleted — no team for customer', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }
@@ -93,7 +97,9 @@ class StripeWebhookController extends CashierController
 
         if (! $team)
         {
-            \Log::warning('Stripe webhook: Team not found for customer '.$customerId);
+            \Log::info('Stripe webhook: skipping subscription updated — no team for customer', [
+                'customer' => $customerId,
+            ]);
 
             return;
         }

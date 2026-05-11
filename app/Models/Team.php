@@ -883,6 +883,11 @@ class Team extends JetstreamTeam
             {
                 return true;
             }
+
+            if (is_array($data) && (($data['payment_link_signup'] ?? null) === '1' || ($data['payment_link_signup'] ?? null) === 1))
+            {
+                return true;
+            }
         }
 
         return false;

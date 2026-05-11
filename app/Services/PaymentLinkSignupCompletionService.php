@@ -91,12 +91,20 @@ class PaymentLinkSignupCompletionService
         {
             $isNewUser = true;
             $user = $this->createUserWithPersonalTeam($email, $session);
+        } else
+        {
+            $user->refresh();
+            if (! $this->resolveTeamForUser($user))
+            {
+                $this->ensurePersonalTeamForReturningUser($user, $session);
+                $user->refresh();
+            }
         }
 
         $team = $this->resolveTeamForUser($user);
         if (! $team)
         {
-            Log::error('Payment link signup: user has no team context', ['user_id' => $user->id]);
+            Log::error('Payment link signup: user has no team after signup flow', ['user_id' => $user->id]);
 
             return PaymentLinkSignupOutcome::redirectTo(
                 redirect()->route('pricing')
@@ -121,8 +129,44 @@ class PaymentLinkSignupCompletionService
 
         $team->refresh();
         $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id);
+        $this->tagSubscriptionFromPublicPaymentLink($team, $session);
 
         return PaymentLinkSignupOutcome::login($user, $isNewUser);
+    }
+
+    /**
+     * Marks the local subscription so registration billing gate (checkout/gate) accepts Humano
+     * public pricing checkouts, which use Stripe prices outside REGISTRATION_STRIPE_PRODUCT_ID.
+     */
+    private function tagSubscriptionFromPublicPaymentLink(Team $team, Session $session): void
+    {
+        $subscriptionRef = $session->subscription ?? null;
+        if (! $subscriptionRef)
+        {
+            return;
+        }
+
+        $stripeSubscriptionId = is_string($subscriptionRef) ? $subscriptionRef : (string) $subscriptionRef->id;
+        if ($stripeSubscriptionId === '')
+        {
+            return;
+        }
+
+        $local = $team->subscriptions()->where('stripe_id', $stripeSubscriptionId)->first();
+        if (! $local)
+        {
+            return;
+        }
+
+        $existing = is_array($local->data) ? $local->data : [];
+        if (($existing['payment_link_signup'] ?? null) === '1' || ($existing['payment_link_signup'] ?? null) === 1)
+        {
+            return;
+        }
+
+        $local->update([
+            'data' => array_merge($existing, ['payment_link_signup' => '1']),
+        ]);
     }
 
     private function resolvePayerEmail(Session $session): ?string
@@ -225,5 +269,37 @@ class PaymentLinkSignupCompletionService
         event(new Registered($user));
 
         return $user;
+    }
+
+    /**
+     * Existing Humano user (same email as Stripe payer) may have no team row; create a personal workspace
+     * so subscription and billing can attach like a new registration.
+     */
+    private function ensurePersonalTeamForReturningUser(User $user, Session $session): void
+    {
+        DB::transaction(function () use ($user, $session): void
+        {
+            $details = $session->customer_details ?? null;
+            $displayName = trim((string) ($user->name ?? ''));
+            if ($displayName === '')
+            {
+                $displayName = trim((string) ($details->name ?? ''));
+            }
+            if ($displayName === '')
+            {
+                $local = Str::before((string) $user->email, '@');
+                $displayName = Str::title(str_replace(['.', '_', '-'], ' ', $local));
+            }
+
+            $team = $user->ownedTeams()->save(Team::forceCreate([
+                'user_id' => $user->id,
+                'name' => explode(' ', $displayName, 2)[0]."'s Team",
+                'personal_team' => true,
+            ]));
+
+            $user->forceFill([
+                'current_team_id' => $team->id,
+            ])->save();
+        });
     }
 }

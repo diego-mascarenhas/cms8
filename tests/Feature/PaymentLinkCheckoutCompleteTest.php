@@ -198,6 +198,55 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_existing_user_without_team_gets_personal_team_and_login(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $email = 'orphan-pl-'.uniqid('', true).'@example.com';
+        $user = User::factory()->create([
+            'email' => $email,
+        ]);
+        $this->assertSame(0, $user->ownedTeams()->count());
+        $this->assertNull($user->current_team_id);
+
+        $customerId = 'cus_orphan_pl_'.uniqid('', true);
+        $session = Session::constructFrom([
+            'id' => 'cs_test_orphan',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => $customerId,
+            'subscription' => 'sub_test_orphan',
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Orphan Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_orphan',
+            'category' => 'mailer',
+        ]))
+            ->assertRedirect(route('subscription.index'))
+            ->assertSessionHas('success');
+
+        $user->refresh();
+        $this->assertNotNull($user->current_team_id);
+        $this->assertTrue($user->ownedTeams()->where('personal_team', true)->exists());
+        $this->assertAuthenticatedAs($user);
+    }
+
     private function bindNoopTeamCheckoutSessionSubscriptionSyncer(): void
     {
         $this->app->bind(TeamCheckoutSessionSubscriptionSyncer::class, function (): TeamCheckoutSessionSubscriptionSyncer

@@ -10,18 +10,21 @@ return [
     | Staging defaults match Humano Stripe test mode. Override with .env on
     | production when you are ready to go live.
     |
-    | signup_completion:
-    |   payment_link — After Stripe Payment Link checkout, redirect buyers to
-    |     route('pricing.checkout.complete') with ?session_id={CHECKOUT_SESSION_ID}
-    |     (and optional &category=mailer). A user is created or matched by email,
-    |     then logged in. Configure the same URL in the Stripe Payment Link
-    |     "After payment" redirect field.
-    |   register_first — Visitors are told to create an account at /register
-    |     before paying (legacy flow).
+    | signup_completion (default: payment_link)
+    |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
+    |     buyers to route('pricing.checkout.complete') with
+    |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=mailer). User
+    |     and team are ensured, then the user is logged in. Set the same URL in the
+    |     Stripe Payment Link "After payment" redirect field.
+    |   register_first — Opt-in legacy: send visitors to /register before paying
+    |     (set HUMANO_PRICING_SIGNUP_COMPLETION=register_first only if you need this).
+    | Any other or empty env value resolves to payment_link.
     |
     */
 
-    'signup_completion' => strtolower((string) env('HUMANO_PRICING_SIGNUP_COMPLETION', 'payment_link')),
+    'signup_completion' => strtolower(trim((string) env('HUMANO_PRICING_SIGNUP_COMPLETION', 'payment_link'))) === 'register_first'
+        ? 'register_first'
+        : 'payment_link',
 
     'post_checkout_stripe_category' => strtolower((string) env('HUMANO_PRICING_POST_CHECKOUT_CATEGORY', 'mailer')),
 

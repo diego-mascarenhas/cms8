@@ -333,6 +333,43 @@ class RegistrationBillingModeTest extends TestCase
             ->assertOk();
     }
 
+    public function test_gate_mode_passes_when_active_subscription_has_payment_link_signup_metadata(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_reg_payment_link',
+        ]);
+
+        SubscriptionProduct::create([
+            'stripe_product' => 'prod_reg_payment_link',
+            'stripe_price' => 'price_reg_payment_link',
+            'name' => 'Registration',
+            'active' => true,
+            'category' => 'mailer',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_public_pricing',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_humano_public_plan_not_registration_catalog',
+            'quantity' => 1,
+            'data' => [
+                'payment_link_signup' => '1',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertOk();
+    }
+
     public function test_billing_info_does_not_error_when_subscription_product_category_is_null(): void
     {
         config([
