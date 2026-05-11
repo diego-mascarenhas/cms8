@@ -15,8 +15,10 @@ class TeamCheckoutSessionSubscriptionSyncer
 {
     /**
      * Persist subscription rows and entitlements from a completed Stripe Checkout session.
+     *
+     * @param  bool  $fromPublicPaymentLinkCheckout  When true, marks the subscription so registration billing gate accepts public /pricing Payment Link checkouts.
      */
-    public function sync(Team $team, Session $session, string $category, int $actingUserId): void
+    public function sync(Team $team, Session $session, string $category, int $actingUserId, bool $fromPublicPaymentLinkCheckout = false): void
     {
         Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
 
@@ -73,8 +75,9 @@ class TeamCheckoutSessionSubscriptionSyncer
 
             if (! $localSubscription)
             {
+                $initialData = ! empty($metadata) ? $metadata : null;
                 Log::info('Creating subscription with data', [
-                    'data_value' => ! empty($metadata) ? json_encode($metadata) : null,
+                    'data_value' => $initialData,
                 ]);
                 $team->subscriptions()->create([
                     'user_id' => $team->owner->id ?? $team->user_id,
@@ -85,7 +88,7 @@ class TeamCheckoutSessionSubscriptionSyncer
                     'quantity' => $stripeSubscription->items->data[0]->quantity,
                     'trial_ends_at' => $stripeSubscription->trial_end ? Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
                     'ends_at' => null,
-                    'data' => ! empty($metadata) ? json_encode($metadata) : null,
+                    'data' => $initialData,
                 ]);
             } else
             {
@@ -104,6 +107,21 @@ class TeamCheckoutSessionSubscriptionSyncer
                 } elseif ($localSubscription->stripe_status !== $stripeSubscription->status)
                 {
                     $localSubscription->update(['stripe_status' => $stripeSubscription->status]);
+                }
+            }
+
+            $localSubscription = $team->subscriptions()
+                ->where('stripe_id', $stripeSubscription->id)
+                ->first();
+
+            if ($fromPublicPaymentLinkCheckout && $localSubscription)
+            {
+                $existing = is_array($localSubscription->data) ? $localSubscription->data : [];
+                if (($existing['payment_link_signup'] ?? null) !== '1' && ($existing['payment_link_signup'] ?? null) !== 1)
+                {
+                    $localSubscription->update([
+                        'data' => array_merge($existing, ['payment_link_signup' => '1']),
+                    ]);
                 }
             }
 

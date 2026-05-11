@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\RegistrationMode;
 use App\Models\Subscription;
 use App\Models\SubscriptionProduct;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -368,6 +369,64 @@ class RegistrationBillingModeTest extends TestCase
         $this->actingAs($user)
             ->get('/profile/data')
             ->assertOk();
+    }
+
+    public function test_gate_mode_passes_when_registration_catalog_has_no_prices_but_subscription_has_payment_link_signup(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_not_in_subscription_products_table',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->assertTrue(Team::registrationCheckoutStripePriceIds()->isEmpty());
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_no_catalog_row',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_public_only',
+            'quantity' => 1,
+            'data' => [
+                'payment_link_signup' => '1',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertOk();
+    }
+
+    public function test_gate_mode_redirects_when_registration_catalog_has_no_prices_and_subscription_has_no_bypass_flags(): void
+    {
+        config([
+            'registration.mode' => 'gate',
+            'registration.stripe_product_id' => 'prod_not_in_subscription_products_table',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_no_bypass',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_public_only',
+            'quantity' => 1,
+            'data' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/profile/data')
+            ->assertRedirect(route('registration.billing'));
     }
 
     public function test_billing_info_does_not_error_when_subscription_product_category_is_null(): void

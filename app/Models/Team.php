@@ -860,11 +860,6 @@ class Team extends JetstreamTeam
 
         $priceIds = static::registrationCheckoutStripePriceIds();
 
-        if ($priceIds->isEmpty())
-        {
-            return false;
-        }
-
         foreach ($this->subscriptions()->get() as $subscription)
         {
             if (! $subscription->active())
@@ -872,25 +867,45 @@ class Team extends JetstreamTeam
                 continue;
             }
 
-            if ($priceIds->contains($subscription->stripe_price))
+            if ($priceIds->isNotEmpty() && $priceIds->contains($subscription->stripe_price))
             {
                 return true;
             }
 
-            $data = $subscription->data;
+            $data = $this->subscriptionGateMetadataAsArray($subscription->data);
 
-            if (is_array($data) && (($data['registration_checkout'] ?? null) === '1' || ($data['registration_checkout'] ?? null) === 1))
+            if (($data['registration_checkout'] ?? null) === '1' || ($data['registration_checkout'] ?? null) === 1)
             {
                 return true;
             }
 
-            if (is_array($data) && (($data['payment_link_signup'] ?? null) === '1' || ($data['payment_link_signup'] ?? null) === 1))
+            if (($data['payment_link_signup'] ?? null) === '1' || ($data['payment_link_signup'] ?? null) === 1)
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function subscriptionGateMetadataAsArray(mixed $data): array
+    {
+        if (is_array($data))
+        {
+            return $data;
+        }
+
+        if (is_string($data) && $data !== '')
+        {
+            $decoded = json_decode($data, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
     }
 
     // Backwards compatibility methods (deprecated)

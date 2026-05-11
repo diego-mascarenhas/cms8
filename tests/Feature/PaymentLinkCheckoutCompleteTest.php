@@ -254,7 +254,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             return new class extends TeamCheckoutSessionSubscriptionSyncer
             {
                 #[\Override]
-                public function sync(Team $team, Session $session, string $category, int $actingUserId): void {}
+                public function sync(Team $team, Session $session, string $category, int $actingUserId, bool $fromPublicPaymentLinkCheckout = false): void {}
             };
         });
     }

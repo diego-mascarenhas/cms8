@@ -128,45 +128,9 @@ class PaymentLinkSignupCompletionService
         }
 
         $team->refresh();
-        $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id);
-        $this->tagSubscriptionFromPublicPaymentLink($team, $session);
+        $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id, true);
 
         return PaymentLinkSignupOutcome::login($user, $isNewUser);
-    }
-
-    /**
-     * Marks the local subscription so registration billing gate (checkout/gate) accepts Humano
-     * public pricing checkouts, which use Stripe prices outside REGISTRATION_STRIPE_PRODUCT_ID.
-     */
-    private function tagSubscriptionFromPublicPaymentLink(Team $team, Session $session): void
-    {
-        $subscriptionRef = $session->subscription ?? null;
-        if (! $subscriptionRef)
-        {
-            return;
-        }
-
-        $stripeSubscriptionId = is_string($subscriptionRef) ? $subscriptionRef : (string) $subscriptionRef->id;
-        if ($stripeSubscriptionId === '')
-        {
-            return;
-        }
-
-        $local = $team->subscriptions()->where('stripe_id', $stripeSubscriptionId)->first();
-        if (! $local)
-        {
-            return;
-        }
-
-        $existing = is_array($local->data) ? $local->data : [];
-        if (($existing['payment_link_signup'] ?? null) === '1' || ($existing['payment_link_signup'] ?? null) === 1)
-        {
-            return;
-        }
-
-        $local->update([
-            'data' => array_merge($existing, ['payment_link_signup' => '1']),
-        ]);
     }
 
     private function resolvePayerEmail(Session $session): ?string
