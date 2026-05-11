@@ -30,6 +30,7 @@ return [
         ],
         [
             'id' => 'business',
+            // Stripe Price IDs: monthly €299, yearly €2990 (Humano.app Business)
             'checkout_url' => env(
                 'HUMANO_PRICING_BUSINESS_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU14nfxjabIbPUbuR43S04',
@@ -37,8 +38,8 @@ return [
             'stripe_product_id' => env('HUMANO_PRICING_BUSINESS_STRIPE_PRODUCT_ID', 'prod_UUoHz602tHBY8b'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_BUSINESS_PRICE_MONTHLY_ID', 'price_1TVoebGelYN536DrLAOm6k90'),
             'stripe_price_yearly_id' => env('HUMANO_PRICING_BUSINESS_PRICE_YEARLY_ID', 'price_1TVof6GelYN536DrAaThyVzr'),
-            'monthly_amount' => '199',
-            'yearly_amount' => '1990',
+            'monthly_amount' => '299',
+            'yearly_amount' => '2990',
             'popular' => true,
         ],
         [
