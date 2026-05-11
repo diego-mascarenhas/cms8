@@ -53,4 +53,14 @@ return [
             ],
         ],
     ],
+
+    'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
+    'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abrí el enlace del recibo de Stripe o contactá soporte.',
+    'checkout_complete_not_paid' => 'Este checkout aún no está completado o pagado.',
+    'checkout_complete_unsupported_mode' => 'Este tipo de checkout no admite alta automática.',
+    'checkout_complete_no_email' => 'Stripe no proporcionó un email para este pago, así que no podemos crear tu cuenta.',
+    'checkout_complete_no_customer' => 'Stripe no devolvió un cliente para esta sesión.',
+    'checkout_complete_no_team' => 'No pudimos asociar este pago a un espacio de trabajo. Contactá soporte.',
+    'checkout_complete_customer_mismatch' => 'Este pago corresponde a otro cliente de Stripe que el de tu espacio actual. Iniciá sesión con la cuenta del email del pagador o contactá soporte.',
+    'checkout_complete_register_first' => 'Primero creá tu cuenta y luego completá el pago desde el paso de facturación.',
 ];

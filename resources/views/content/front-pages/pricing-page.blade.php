@@ -16,21 +16,6 @@ $planImages = [
 
 @section('page-script')
 <script src="{{ asset('assets/js/front-page-pricing.js') }}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('humano-pricing-copy-coupon');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var code = btn.getAttribute('data-code') || '';
-      if (!code || !navigator.clipboard) return;
-      navigator.clipboard.writeText(code).then(function () {
-        var prev = btn.textContent;
-        btn.textContent = @json(__('humano_pricing.coupon_copied'));
-        setTimeout(function () { btn.textContent = prev; }, 2000);
-      });
-    });
-  });
-</script>
 @endsection
 
 @section('content')
@@ -119,28 +104,6 @@ $planImages = [
         </div>
       @endforeach
     </div>
-
-    @if ($couponCode !== '')
-      <div class="row justify-content-center mt-4">
-        <div class="col-lg-8">
-          <div class="alert alert-primary mb-0" role="status">
-            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-              <div>
-                <h4 class="alert-heading h6 mb-1 d-flex align-items-center gap-2">
-                  <i class="ti ti-discount-2 ti-md text-primary" aria-hidden="true"></i>
-                  <span>{{ __('humano_pricing.coupon_title') }}</span>
-                </h4>
-                <p class="mb-0 small">{{ __('humano_pricing.coupon_body', ['code' => $couponCode]) }}</p>
-              </div>
-              <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                <code class="mb-0 user-select-all">{{ $couponCode }}</code>
-                <button type="button" class="btn btn-sm btn-primary" id="humano-pricing-copy-coupon" data-code="{{ $couponCode }}"><i class="ti ti-copy me-1" aria-hidden="true"></i>{{ __('humano_pricing.coupon_copy') }}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    @endif
   </div>
 </section>
 @endsection

@@ -77,6 +77,22 @@ enum EmailPlan: string
     }
 
     /**
+     * Resolve a paid mailer plan from a Stripe product ID (subscription_products / enum mapping).
+     */
+    public static function tryFromStripeProductId(string $productId): ?self
+    {
+        foreach (self::getAll() as $plan)
+        {
+            if ($plan->getStripeProductId() === $productId)
+            {
+                return $plan;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the Stripe product ID for this plan (from subscription_products).
      */
     public function getStripeProductId(): ?string

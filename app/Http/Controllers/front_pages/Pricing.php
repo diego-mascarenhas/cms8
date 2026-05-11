@@ -23,7 +23,6 @@ class Pricing extends Controller
         return view('content.front-pages.pricing-page', [
             'pageConfigs' => $pageConfigs,
             'plans' => $plans,
-            'couponCode' => $couponCode,
         ]);
     }
 

@@ -53,4 +53,14 @@ return [
             ],
         ],
     ],
+
+    'checkout_complete_success' => 'Welcome! Your workspace is ready.',
+    'checkout_complete_invalid_session' => 'We could not confirm this payment. Please open the link from your Stripe receipt or contact support.',
+    'checkout_complete_not_paid' => 'This checkout is not completed or paid yet.',
+    'checkout_complete_unsupported_mode' => 'This checkout type is not supported for automatic signup.',
+    'checkout_complete_no_email' => 'Stripe did not provide an email for this payment, so we cannot create your account.',
+    'checkout_complete_no_customer' => 'Stripe did not return a customer for this session.',
+    'checkout_complete_no_team' => 'We could not attach this payment to a workspace. Please contact support.',
+    'checkout_complete_customer_mismatch' => 'This payment belongs to a different Stripe customer than your current workspace. Sign in with the account that matches the payer email, or contact support.',
+    'checkout_complete_register_first' => 'Create your account first, then complete checkout from the billing step.',
 ];

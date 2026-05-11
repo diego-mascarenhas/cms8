@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\CheckoutSessionRetriever;
 use App\Contracts\WhatsAppGateway;
 use App\Models\Contact;
 use App\Models\SubscriptionProduct;
@@ -10,6 +11,7 @@ use App\Observers\ContactGoogleOutboundObserver;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\AssistantToolsService;
+use App\Services\Stripe\StripeCheckoutSessionRetriever;
 use App\Services\Stripe\StripeProductService;
 use App\Services\WhatsApp\CloudWhatsAppGateway;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -26,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(CheckoutSessionRetriever::class, StripeCheckoutSessionRetriever::class);
+
         $this->app->scoped(AssistantToolsService::class);
 
         // Register StripeProductService
