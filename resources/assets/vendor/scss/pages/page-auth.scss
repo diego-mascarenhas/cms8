@@ -109,12 +109,16 @@ $authentication-1-inner-max-width: 400px !default;
   .app-brand-logo.demo.logo-full {
     width: auto;
     height: auto;
-    min-height: 40px;
+    min-height: 3rem;
+    max-width: 100%;
 
     img {
-      height: 40px;
+      height: auto;
+      max-height: 3.25rem;
       width: auto;
+      max-width: 100%;
       display: block;
+      object-fit: contain;
     }
   }
 }

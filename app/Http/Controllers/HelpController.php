@@ -254,4 +254,14 @@ class HelpController extends Controller
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
+
+    /**
+     * Stripe webhook URL and events (Cashier + Humano handlers).
+     */
+    public function stripeWebhook()
+    {
+        return view('help.stripe-webhook', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
 }

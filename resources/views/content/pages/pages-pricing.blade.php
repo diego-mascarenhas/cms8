@@ -8,7 +8,8 @@ $configData = Helper::appClasses();
 
 <!-- Page -->
 @section('page-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/css/pages/page-pricing.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-pricing.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/front-page-pricing.css') }}" />
 @endsection
 
 @section('page-script')
@@ -34,7 +35,7 @@ $configData = Helper::appClasses();
         </label>
         <div class="mt-n5 ms-n5 d-none d-sm-block">
           <i class="ti ti-corner-left-down ti-sm text-muted me-1 scaleX-n1-rtl"></i>
-          <span class="badge badge-sm bg-label-primary">Save up to 10%</span>
+          <span class="badge badge-sm bg-label-primary">{{ __('humano_pricing.annual_discount_badge') }}</span>
         </div>
       </div>
 
@@ -56,15 +57,15 @@ $configData = Helper::appClasses();
                 </div>
               </div>
 
-              <ul class="ps-3 my-4 pt-2">
-                <li class="mb-2">100 responses a month</li>
-                <li class="mb-2">Unlimited forms and surveys</li>
-                <li class="mb-2">Unlimited fields</li>
-                <li class="mb-2">Basic form creation tools</li>
-                <li class="mb-0">Up to 2 subdomains</li>
+              <ul class="ps-0 my-4 pt-2 circle-bullets">
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>100 responses a month</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Unlimited forms and surveys</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Unlimited fields</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Basic form creation tools</span></li>
+                <li class="mb-0 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Up to 2 subdomains</span></li>
               </ul>
 
-              <a href="{{url('auth/register-basic')}}" class="btn btn-label-success d-grid w-100">Your Current Plan</a>
+              <a href="{{ url('auth/register-basic') }}" class="btn btn-label-success d-grid w-100"><i class="ti ti-check me-1" aria-hidden="true"></i>Your Current Plan</a>
             </div>
           </div>
         </div>
@@ -91,15 +92,15 @@ $configData = Helper::appClasses();
                 <small class="price-yearly price-yearly-toggle text-muted">$ 90 / year</small>
               </div>
 
-              <ul class="ps-3 my-4 pt-2">
-                <li class="mb-2">Up to 5 users</li>
-                <li class="mb-2">120+ components</li>
-                <li class="mb-2">Basic support on Github</li>
-                <li class="mb-2">Monthly updates</li>
-                <li class="mb-0">Integrations</li>
+              <ul class="ps-0 my-4 pt-2 circle-bullets">
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Up to 5 users</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>120+ components</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Basic support on Github</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Monthly updates</span></li>
+                <li class="mb-0 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Integrations</span></li>
               </ul>
 
-              <a href="{{url('auth/register-basic')}}" class="btn btn-primary d-grid w-100">Upgrade</a>
+              <a href="{{ url('auth/register-basic') }}" class="btn btn-primary d-grid w-100"><i class="ti ti-arrow-up me-1" aria-hidden="true"></i>Upgrade</a>
             </div>
           </div>
         </div>
@@ -125,15 +126,15 @@ $configData = Helper::appClasses();
                 <small class="price-yearly price-yearly-toggle text-muted">$ 190 / year</small>
               </div>
 
-              <ul class="ps-3 my-4 pt-2">
-                <li class="mb-2">Up to 10 users</li>
-                <li class="mb-2">150+ components</li>
-                <li class="mb-2">Basic support on Github</li>
-                <li class="mb-2">Monthly updates</li>
-                <li class="mb-0">Speedy build tooling</li>
+              <ul class="ps-0 my-4 pt-2 circle-bullets">
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Up to 10 users</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>150+ components</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Basic support on Github</span></li>
+                <li class="mb-2 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Monthly updates</span></li>
+                <li class="mb-0 d-flex align-items-start gap-2"><i class="ti ti-point ti-lg flex-shrink-0 text-primary" aria-hidden="true"></i><span>Speedy build tooling</span></li>
               </ul>
 
-              <a href="{{url('auth/register-basic')}}" class="btn btn-label-primary d-grid w-100">Upgrade</a>
+              <a href="{{ url('auth/register-basic') }}" class="btn btn-label-primary d-grid w-100"><i class="ti ti-arrow-up me-1" aria-hidden="true"></i>Upgrade</a>
             </div>
           </div>
         </div>

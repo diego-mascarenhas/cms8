@@ -747,5 +747,9 @@
   "Referrer select help": "Choose a team client as referrer: we store that company’s enterprise ID. For a referrer outside this team, use their public billing code on the client record.",
   "Client enterprise ID": "Enterprise ID",
   "External referrer value": "External referrer",
-  "No client code (add Stripe / customer ID on that company)": "No client code yet — add Stripe / customer ID on that company"
+  "No client code (add Stripe / customer ID on that company)": "No client code yet — add Stripe / customer ID on that company",
+  "Stripe webhooks": "Stripe webhooks",
+  "Stripe webhooks help card body": "Webhook URL (POST /stripe/webhook), recommended events for Laravel Cashier and Humano, and Stripe CLI for local testing.",
+  "View documentation": "View documentation",
+  "Help": "Help"
 }

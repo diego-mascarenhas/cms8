@@ -142,6 +142,17 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-brand-stripe display-4 text-primary mb-3"></i>
+                                            <h5 class="card-title">{{ __('Stripe webhooks') }}</h5>
+                                            <p class="card-text">{{ __('Stripe webhooks help card body') }}</p>
+                                            <a href="{{ route('help.stripe-webhook') }}" class="btn btn-primary">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div id="cursor-mcp-setup" class="card border-primary mb-4 mt-4">

@@ -118,6 +118,10 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
+
+Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
+Route::get('/front-pages/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('front-pages.pricing');
+
 Route::get('/wapify', function ()
 {
     \Illuminate\Support\Facades\App::setLocale('es_AR');
@@ -1295,6 +1299,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
+    Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
 });
 
 // Fallback route for 404 errors - must be at the end

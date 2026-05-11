@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -16,6 +17,10 @@ class AuthenticationTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertStatus(200);
+        if (Route::has('pricing') && config('custom.custom.showRegister'))
+        {
+            $response->assertSee(route('pricing'), false);
+        }
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void

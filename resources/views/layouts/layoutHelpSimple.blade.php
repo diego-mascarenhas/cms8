@@ -95,6 +95,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.stripe-webhook') ? 'active' : '' }}">
+          <a href="{{ route('help.stripe-webhook') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-brand-stripe"></i>
+            <div>{{ __('Stripe webhooks') }}</div>
+          </a>
+        </li>
+
         <li class="menu-header small text-uppercase">
           <span class="menu-header-text">{{ __('API Documentation') }}</span>
         </li>

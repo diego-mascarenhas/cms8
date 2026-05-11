@@ -1558,5 +1558,8 @@
   "Referrer select help": "Elegí un cliente del equipo como referente: se guarda el ID de esa empresa. Si el referente es de otro equipo, usá su código público de facturación en la ficha del cliente.",
   "Client enterprise ID": "ID empresa",
   "External referrer value": "Referente externo",
-  "No client code (add Stripe / customer ID on that company)": "Sin código de cliente — agregá el id. de Stripe / cliente en esa empresa"
+  "No client code (add Stripe / customer ID on that company)": "Sin código de cliente — agregá el id. de Stripe / cliente en esa empresa",
+  "Stripe webhooks": "Webhooks de Stripe",
+  "Stripe webhooks help card body": "URL del webhook (POST /stripe/webhook), eventos recomendados para Laravel Cashier y Humano, y Stripe CLI para pruebas en local.",
+  "Help": "Ayuda"
 }
