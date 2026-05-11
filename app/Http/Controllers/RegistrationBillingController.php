@@ -6,6 +6,7 @@ use App\Enums\RegistrationMode;
 use App\Models\SubscriptionProduct;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamWhatsAppChatPresentation;
+use App\Support\HumanoPublicPaymentLinkCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -132,6 +133,8 @@ class RegistrationBillingController extends Controller
 
         $pageConfigs = ['myLayout' => 'blank'];
         $presentation = TeamWhatsAppChatPresentation::resolveForTeam($request->user()?->currentTeam);
+
+        $request->session()->forget(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA);
 
         return view('auth.registration-onboarding-qr', array_merge(
             ['pageConfigs' => $pageConfigs],

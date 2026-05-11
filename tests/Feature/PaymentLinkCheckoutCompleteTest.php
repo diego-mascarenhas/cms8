@@ -6,6 +6,7 @@ use App\Contracts\CheckoutSessionRetriever;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
+use App\Support\HumanoPublicPaymentLinkCheckout;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -145,8 +146,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $this->get(route('pricing.checkout.complete', [
             'session_id' => 'cs_test_no_cat',
         ]))
-            ->assertRedirect(route('subscription.index'))
-            ->assertSessionHas('success');
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('success')
+            ->assertSessionHas(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
 
         $this->assertAuthenticatedAs(User::where('email', $email)->first());
     }
@@ -185,8 +187,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             'session_id' => 'cs_test_paid',
             'category' => 'assistant',
         ]))
-            ->assertRedirect(route('subscription.index'))
-            ->assertSessionHas('success');
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('success')
+            ->assertSessionHas(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
 
         $this->assertDatabaseHas('users', ['email' => $email]);
 
@@ -234,7 +237,8 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             'session_id' => 'cs_test_existing',
             'category' => 'business',
         ]))
-            ->assertRedirect(route('subscription.index'));
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
 
         $this->assertAuthenticatedAs($user);
     }
@@ -279,8 +283,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             'session_id' => 'cs_test_orphan',
             'category' => 'business',
         ]))
-            ->assertRedirect(route('subscription.index'))
-            ->assertSessionHas('success');
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('success')
+            ->assertSessionHas(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
 
         $user->refresh();
         $this->assertNotNull($user->current_team_id);

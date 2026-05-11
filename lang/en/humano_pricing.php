@@ -63,6 +63,9 @@ return [
     'checkout_complete_no_team' => 'We could not attach this payment to a workspace. Please contact support.',
     'checkout_complete_customer_mismatch' => 'This payment belongs to a different Stripe customer than your current workspace. Sign in with the account that matches the payer email, or contact support.',
     'checkout_complete_register_first' => 'Create your account first, then complete checkout from the billing step.',
+    'dashboard_post_checkout_whatsapp_title' => 'Link WhatsApp',
+    'dashboard_post_checkout_whatsapp_body' => 'Scan the QR code to connect WhatsApp (Linked devices) when your connector supports it.',
+    'dashboard_post_checkout_whatsapp_button' => 'Scan WhatsApp QR',
 
     'checkout_billing_gate_pending' => 'Your payment was received, but we could not unlock the app billing check yet. Please copy this message and contact support, or try again in a few minutes.',
 ];

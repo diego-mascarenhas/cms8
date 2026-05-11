@@ -27,6 +27,10 @@ class PublicHumanoPricingPageTest extends TestCase
         $response->assertSee('Humano.app Foundation', false);
         $response->assertSee('3cIeVd98VabI07cgPb43S03', false);
         $response->assertDontSee('prefilled_promo_code=', false);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<a[^>]+href="https:\/\/buy\.stripe\.com[^"]*"[^>]*\btarget="_blank\b/',
+            $response->getContent(),
+        );
         $response->assertSee(__('humano_pricing.prices_plus_vat'), false);
         $response->assertSee('ti ti-point', false);
         $response->assertDontSee('Subscribe to newsletter', false);

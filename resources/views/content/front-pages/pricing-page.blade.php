@@ -117,8 +117,8 @@ $planImages = [
               @endif
 
               <div class="mt-auto pt-2">
-                <a href="{{ $plan['checkout_href'] }}" class="btn {{ ! empty($plan['popular']) ? 'btn-primary' : 'btn-label-primary' }} d-grid w-100" rel="noopener noreferrer" target="_blank">
-                  <i class="ti ti-external-link me-1" aria-hidden="true"></i>{{ __('humano_pricing.subscribe') }}
+                <a href="{{ $plan['checkout_href'] }}" class="btn {{ ! empty($plan['popular']) ? 'btn-primary' : 'btn-label-primary' }} d-grid w-100">
+                  <i class="ti ti-credit-card me-1" aria-hidden="true"></i>{{ __('humano_pricing.subscribe') }}
                 </a>
               </div>
             </div>

@@ -63,6 +63,9 @@ return [
     'checkout_complete_no_team' => 'No pudimos asociar este pago a un espacio de trabajo. Contactá soporte.',
     'checkout_complete_customer_mismatch' => 'Este pago corresponde a otro cliente de Stripe que el de tu espacio actual. Iniciá sesión con la cuenta del email del pagador o contactá soporte.',
     'checkout_complete_register_first' => 'Primero creá tu cuenta y luego completá el pago desde el paso de facturación.',
+    'dashboard_post_checkout_whatsapp_title' => 'Vincular WhatsApp',
+    'dashboard_post_checkout_whatsapp_body' => 'Escaneá el código QR para conectar WhatsApp (Dispositivos vinculados) cuando tu conector lo permita.',
+    'dashboard_post_checkout_whatsapp_button' => 'Escanear QR de WhatsApp',
 
     'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copiá este mensaje y contactá soporte, o probá de nuevo en unos minutos.',
 ];

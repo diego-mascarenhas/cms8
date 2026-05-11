@@ -92,6 +92,23 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Plans (Stripe Payment Links + Price IDs)
+    |--------------------------------------------------------------------------
+    |
+    | Default checkout URLs and Stripe catalog IDs for Humano.app (override with
+    | HUMANO_PRICING_* in .env). Display names and marketing copy live under lang (humano_pricing.php).
+    |
+    | Humano.app Assistant — Payment Link …/3cIeVd98VabI07cgPb43S03, product prod_UUoDnxftlyItz0,
+    |   monthly price_1TVoawGelYN536DrEH4gIAsR (99€), yearly price_1TVod6GelYN536DrtCsqOG6d (990€).
+    | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
+    |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
+    | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
+    |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
+    |
+    */
+
     'plans' => [
         [
             'id' => 'assistant',
@@ -108,7 +125,6 @@ return [
         ],
         [
             'id' => 'business',
-            // Stripe Price IDs: monthly €299, yearly €2990 (Humano.app Business)
             'checkout_url' => env(
                 'HUMANO_PRICING_BUSINESS_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU14nfxjabIbPUbuR43S04',

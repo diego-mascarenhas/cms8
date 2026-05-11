@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PaymentLinkSignupCompletionService;
+use App\Support\HumanoPublicPaymentLinkCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,20 +80,21 @@ class PaymentLinkCheckoutCompleteController extends Controller
         Auth::login($outcome->user, true);
         $request->session()->regenerate();
         $request->session()->put('humano_after_public_payment_link_checkout', true);
+        $request->session()->put(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
 
         if ($outcome->isNewUser && config('app.env') !== 'testing')
         {
             Password::sendResetLink(['email' => $outcome->user->email]);
         }
 
-        Log::info('pricing.checkout.complete: user logged in, redirecting to subscription', [
+        Log::info('pricing.checkout.complete: user logged in, redirecting to dashboard', [
             'user_id' => $outcome->user->id,
             'is_new_user' => $outcome->isNewUser,
             'pricing_plan_slug' => $pricingPlanSlug,
             'stripe_scope' => 'humano_platform',
         ]);
 
-        return redirect()->route('subscription.index')
+        return redirect()->route('dashboard')
             ->with('success', __('humano_pricing.checkout_complete_success'));
     }
 }
