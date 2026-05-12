@@ -6,6 +6,7 @@ use App\Enums\EmailPlan;
 use App\Models\BillingAffiliateCommission;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
+use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
 use Illuminate\Http\Request;
@@ -155,6 +156,12 @@ class BillingController extends Controller
         $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
         $affiliateCommissionPercent = (float) $team->getSetting('affiliate_commission_percent', '0');
 
+        $tokenStats = null;
+        if ($user->hasRole(['root', 'admin']))
+        {
+            $tokenStats = TeamApiUsageStatsService::forTeam((int) $team->id);
+        }
+
         return view('billing.index', compact(
             'team',
             'currentPlan',
@@ -172,6 +179,7 @@ class BillingController extends Controller
             'affiliateTotalsAsReferrer',
             'affiliateTotalsAsPayer',
             'affiliateCommissionPercent',
+            'tokenStats',
         ));
     }
 
