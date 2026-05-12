@@ -245,8 +245,15 @@ class TemplateController extends Controller
             ? 'app.email_template_duplicate_success_linked'
             : 'app.email_template_duplicate_success';
 
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        $editorTarget = route('template.editor', $copy->getHashedId());
+        if ($returnUrl !== null)
+        {
+            $editorTarget = TemplateEditorReturnUrl::editorRouteWithReturn($editorTarget, $returnUrl);
+        }
+
         return redirect()
-            ->route('template.editor', $copy->getHashedId())
+            ->to($editorTarget)
             ->with('success', __($successKey));
     }
 

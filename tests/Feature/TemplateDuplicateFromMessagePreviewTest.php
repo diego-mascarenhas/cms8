@@ -187,4 +187,62 @@ class TemplateDuplicateFromMessagePreviewTest extends TestCase
         $message->refresh();
         $this->assertSame($copy->id, (int) $message->template_id);
     }
+
+    public function test_duplicate_redirect_appends_valid_return_url_to_editor(): void
+    {
+        Permission::firstOrCreate(['name' => 'template.store', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->givePermissionTo('template.store');
+        $this->actingAs($user->fresh());
+
+        $source = Template::create([
+            'team_id' => (int) $team->id,
+            'name' => 'Tpl with return',
+            'status_id' => true,
+            'gjs_data' => ['html' => '<p>x</p>'],
+        ]);
+
+        $response = $this->post(route('template.duplicate', $source->getHashedId()), [
+            '_token' => csrf_token(),
+            'duplicate_template_name' => 'Tpl copy return',
+            'return_url' => '/message/55/edit',
+        ]);
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $parts = parse_url($location);
+        parse_str($parts['query'] ?? '', $query);
+        $this->assertSame('/message/55/edit', $query['return_url'] ?? null);
+    }
+
+    public function test_duplicate_redirect_ignores_untrusted_return_url(): void
+    {
+        Permission::firstOrCreate(['name' => 'template.store', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->givePermissionTo('template.store');
+        $this->actingAs($user->fresh());
+
+        $source = Template::create([
+            'team_id' => (int) $team->id,
+            'name' => 'Tpl no bad return',
+            'status_id' => true,
+            'gjs_data' => ['html' => '<p>x</p>'],
+        ]);
+
+        $response = $this->post(route('template.duplicate', $source->getHashedId()), [
+            '_token' => csrf_token(),
+            'duplicate_template_name' => 'Tpl copy safe',
+            'return_url' => 'https://evil.example/phish',
+        ]);
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringNotContainsString('return_url=', $location);
+    }
 }

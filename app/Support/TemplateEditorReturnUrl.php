@@ -12,8 +12,14 @@ final class TemplateEditorReturnUrl
      */
     public static function validatedFromRequest(Request $request): ?string
     {
-        $candidate = $request->query('return_url');
+        return self::validatedCandidate($request, $request->query('return_url'));
+    }
 
+    /**
+     * Same rules as the editor query string, for values supplied in POST bodies (e.g. template duplicate).
+     */
+    public static function validatedCandidate(Request $request, mixed $candidate): ?string
+    {
         if (! is_string($candidate))
         {
             return null;

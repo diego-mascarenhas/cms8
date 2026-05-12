@@ -211,6 +211,7 @@
         aria-hidden="true"
     >
         @csrf
+        <input type="hidden" name="return_url" value="{{ request()->fullUrl() }}">
     </form>
 @endif
 @endsection

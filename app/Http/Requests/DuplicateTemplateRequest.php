@@ -21,6 +21,7 @@ class DuplicateTemplateRequest extends FormRequest
 
         return [
             'duplicate_template_name' => ['required', 'string', 'min:3', 'max:75'],
+            'return_url' => ['nullable', 'string', 'max:2048'],
             'message_id' => [
                 'nullable',
                 'integer',

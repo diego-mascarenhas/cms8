@@ -535,6 +535,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		action="{{ ($showEmailTemplatePreview && isset($data->template)) ? route('template.duplicate', $data->template->getHashedId()) : '#' }}"
 	>
 		@csrf
+		<input type="hidden" name="return_url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
 	</form>
 @push('scripts')
 <script>

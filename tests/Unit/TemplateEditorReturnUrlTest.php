@@ -15,6 +15,7 @@ class TemplateEditorReturnUrlTest extends TestCase
         ]);
 
         $this->assertSame('/message/5/edit', TemplateEditorReturnUrl::validatedFromRequest($request));
+        $this->assertSame('/message/5/edit', TemplateEditorReturnUrl::validatedCandidate($request, '/message/5/edit'));
     }
 
     public function test_validated_from_request_rejects_protocol_relative_url(): void
@@ -24,6 +25,7 @@ class TemplateEditorReturnUrlTest extends TestCase
         ]);
 
         $this->assertNull(TemplateEditorReturnUrl::validatedFromRequest($request));
+        $this->assertNull(TemplateEditorReturnUrl::validatedCandidate($request, '//evil.example/phish'));
     }
 
     public function test_validated_from_request_accepts_same_host_absolute_url(): void
@@ -33,6 +35,10 @@ class TemplateEditorReturnUrlTest extends TestCase
         ]);
 
         $this->assertSame('https://humano.test/message/list', TemplateEditorReturnUrl::validatedFromRequest($request));
+        $this->assertSame(
+            'https://humano.test/message/list',
+            TemplateEditorReturnUrl::validatedCandidate($request, 'https://humano.test/message/list'),
+        );
     }
 
     public function test_validated_from_request_rejects_other_host(): void
@@ -42,6 +48,7 @@ class TemplateEditorReturnUrlTest extends TestCase
         ]);
 
         $this->assertNull(TemplateEditorReturnUrl::validatedFromRequest($request));
+        $this->assertNull(TemplateEditorReturnUrl::validatedCandidate($request, 'https://evil.example/'));
     }
 
     public function test_editor_route_with_return_appends_query_string(): void
