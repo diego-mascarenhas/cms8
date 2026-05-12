@@ -888,6 +888,7 @@ Route::middleware(['auth'])->group(function ()
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
+    Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
@@ -896,6 +897,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
     Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
     Route::post('message/{id}/send-pending-now', [MessageController::class, 'sendPendingNow'])->name('message.send-pending-now');
+    Route::post('message/test-from-template', [MessageController::class, 'testSendFromTemplate'])->name('message.test-from-template');
     Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
     Route::post('message/delivery/{deliveryId}/resend', [MessageController::class, 'resendDelivery'])->name('message.delivery.resend');
     Route::get('message/{id}/link-details/{encodedLink}', [MessageController::class, 'getLinkDetails'])->name('message.link-details');

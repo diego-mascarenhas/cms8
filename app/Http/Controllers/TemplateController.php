@@ -9,7 +9,10 @@ use App\Jobs\GenerateTemplateHtmlJob;
 use App\Models\Message;
 use App\Models\Template;
 use App\Services\TemplateHtmlGenerationService;
+use App\Support\TemplateEditorReturnUrl;
+use Dotlogics\Grapesjs\App\Editor\Config;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -171,7 +174,7 @@ class TemplateController extends Controller
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 
-    public function editor(Request $request, string $hashedId)
+    public function editor(Request $request, string $hashedId): View|RedirectResponse
     {
         $page = Template::findByHash($hashedId);
 
@@ -180,11 +183,17 @@ class TemplateController extends Controller
             return redirect()->route('template.index')->with('error', 'Template not found.');
         }
 
-        // Add team ID information to the editor context
         $teamId = auth()->user()->currentTeam->id ?? 'default';
         $request->merge(['team_id' => $teamId]);
 
-        return $this->show_gjs_editor($request, $page);
+        $returnUrl = TemplateEditorReturnUrl::validatedFromRequest($request);
+        $editorConfig = app(Config::class)->initialize($page);
+
+        return view('laravel-grapesjs::edittor', [
+            'editorConfig' => $editorConfig,
+            'model' => $page,
+            'returnUrl' => $returnUrl,
+        ]);
     }
 
     /**

@@ -94,6 +94,24 @@ class MessageCreateTemplateFlowTest extends TestCase
         );
     }
 
+    public function test_message_create_legacy_form_contact_status_select_reinitializes_select2_with_allow_clear(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+
+        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
+
+        $response->assertOk();
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/\$\([\'"]#contact_status_id[\'"]\)[\s\S]*?select2\s*\(\s*[\'"]destroy[\'"]/s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\$\([\'"]#contact_status_id[\'"]\)[\s\S]*?allowClear:\s*true/s',
+            $html,
+        );
+    }
+
     public function test_message_store_persists_null_contact_status_when_empty(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -149,6 +167,57 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertNull($message->template_id);
     }
 
+    public function test_message_store_update_succeeds_when_type_id_omitted_with_template(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Store tpl',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<html><body><p>Hi</p></body></html>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Newsletter Demo',
+            'type_id' => 1,
+            'text' => 'Hola {{name}}, bienvenido a nuestra plataforma.',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => (string) $message->id,
+            'template_id' => (string) $template->id,
+            'name' => 'Newsletter Demo',
+            'category_id' => '',
+            'contact_status_id' => null,
+            'text' => 'Hola {{name}}, bienvenido a nuestra plataforma.',
+            'min_hours_between_emails' => '2',
+            'time_unit' => 'days',
+            'send_allowed_weekdays' => ['1', '2', '3', '4', '5', '6', '7'],
+            'send_window_start' => null,
+            'send_window_end' => null,
+            'status_id' => '0',
+            'show_unsubscribe' => '1',
+            'enable_open_tracking' => '1',
+            'enable_click_tracking' => '1',
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message->refresh();
+        $this->assertSame(1, $message->type_id);
+        $this->assertSame($template->id, $message->template_id);
+    }
+
     public function test_message_create_with_template_shows_email_content_preview(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -181,6 +250,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
         $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
         $this->assertStringContainsString('name="duplicate_template_name"', $html);
+        $this->assertStringContainsString('id="email-test-send-modal-draft-'.$template->id.'"', $html);
     }
 
     public function test_message_show_does_not_render_email_content_preview_card_for_mailer_with_template(): void
@@ -245,6 +315,7 @@ class MessageCreateTemplateFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
+        $response->assertSee('data-email-test-send-recipients', false);
         $response->assertSee('openEmailTestSendModal', false);
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);

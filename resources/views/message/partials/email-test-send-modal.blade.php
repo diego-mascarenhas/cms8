@@ -1,51 +1,26 @@
 @props([
-    'messageId',
+    'messageId' => null,
+    'templateId' => null,
+    'inlineOnly' => false,
 ])
 
 @php
-    $testSendModalId = 'email-test-send-modal-'.$messageId;
-    $testSendUrl = route('message.test', $messageId);
+    $useDraftTestSend = ! $messageId && $templateId;
+    $testSendModalId = $useDraftTestSend
+        ? 'email-test-send-modal-draft-'.$templateId
+        : 'email-test-send-modal-'.$messageId;
+    $testSendUrl = $useDraftTestSend
+        ? route('message.test-from-template')
+        : route('message.test', $messageId);
 @endphp
 
-@push('modals')
-    <div
-        class="modal fade"
-        id="{{ $testSendModalId }}"
-        tabindex="-1"
-        aria-labelledby="{{ $testSendModalId }}-title"
-        aria-hidden="true"
-    >
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="{{ $testSendModalId }}-title">{{ __('Enviar correo de prueba') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Cerrar') }}"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert d-none mb-3" role="alert" data-email-test-send-alert></div>
-                    <p class="mb-2">
-                        {{ __('Se enviará un correo de prueba usando la configuración del equipo a la cuenta con la que iniciaste sesión:') }}
-                    </p>
-                    <p class="mb-0 fw-semibold">{{ auth()->user()?->email ?? '—' }}</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                        {{ __('Cancel') }}
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary waves-effect waves-light"
-                        data-email-test-send-submit
-                        data-submit-url="{{ $testSendUrl }}"
-                        data-submit-label="{{ __('Enviar') }}"
-                    >
-                        {{ __('Enviar') }}
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-@endpush
+@if ($inlineOnly)
+    @include('message.partials.email-test-send-modal-inner')
+@else
+    @push('modals')
+        @include('message.partials.email-test-send-modal-inner')
+    @endpush
+@endif
 
 @once('message-email-test-send-modal-script')
     @push('scripts')
@@ -57,6 +32,56 @@
                     var m = document.querySelector('meta[name="csrf-token"]');
 
                     return m ? m.getAttribute('content') : '';
+                }
+
+                function buildTestSendJsonBody(modalEl, btn)
+                {
+                    var payload = {};
+                    var recInput = modalEl.querySelector('[data-email-test-send-recipients]');
+                    if (recInput && recInput.value && String(recInput.value).trim())
+                    {
+                        payload.test_recipients = String(recInput.value).trim();
+                    }
+
+                    var tid = btn.getAttribute('data-email-test-send-template-id');
+                    if (! tid)
+                    {
+                        return JSON.stringify(payload);
+                    }
+
+                    var templateId = parseInt(tid, 10);
+                    if (isNaN(templateId))
+                    {
+                        return JSON.stringify(payload);
+                    }
+
+                    payload.template_id = templateId;
+
+                    var nameEl = document.querySelector('input[name="name"]');
+                    if (nameEl && nameEl.value && String(nameEl.value).trim())
+                    {
+                        payload.draft_name = String(nameEl.value).trim();
+                    }
+
+                    var subjectEl = document.querySelector('input#subject[name="subject"]');
+                    if ((! payload.draft_name) && subjectEl && subjectEl.value && String(subjectEl.value).trim())
+                    {
+                        payload.draft_name = String(subjectEl.value).trim();
+                    }
+
+                    var internalTitle = document.querySelector('input#internal-title');
+                    if ((! payload.draft_name) && internalTitle && internalTitle.value && String(internalTitle.value).trim())
+                    {
+                        payload.draft_name = String(internalTitle.value).trim();
+                    }
+
+                    var textArea = document.querySelector('textarea#text[name="text"]');
+                    if (textArea && textArea.value && String(textArea.value).trim())
+                    {
+                        payload.fallback_text = String(textArea.value).trim();
+                    }
+
+                    return JSON.stringify(payload);
                 }
 
                 function hideAlert(modalEl)
@@ -99,6 +124,11 @@
                         modalEl.addEventListener('show.bs.modal', function ()
                         {
                             hideAlert(modalEl);
+                            var recInp = modalEl.querySelector('[data-email-test-send-recipients]');
+                            if (recInp && recInp.dataset.defaultRecipients)
+                            {
+                                recInp.value = recInp.dataset.defaultRecipients;
+                            }
                             var submitBtn = modalEl.querySelector('[data-email-test-send-submit]');
                             if (submitBtn)
                             {
@@ -128,6 +158,8 @@
                 {
                     bindTestSendModals();
                 }
+
+                window.humaBindEmailTestSendModals = bindTestSendModals;
 
                 document.addEventListener('click', function (e)
                 {
@@ -165,6 +197,7 @@
                             'X-CSRF-TOKEN': csrfHeader(),
                             'X-Requested-With': 'XMLHttpRequest',
                         },
+                        body: buildTestSendJsonBody(modalEl, btn),
                     })
                         .then(function (res)
                         {
@@ -205,9 +238,11 @@
                                     inst.hide();
                                 }
 
-                                var successBody = data.email
-                                    ? (@json(__('Correo de prueba enviado exitosamente a')) + ' ' + data.email)
-                                    : (data.message || @json(__('Correo de prueba enviado exitosamente.')));
+                                var successBody = (data.emails && data.emails.length)
+                                    ? (@json(__('Correo de prueba enviado exitosamente a')) + ' ' + data.emails.join(', '))
+                                    : (data.email
+                                        ? (@json(__('Correo de prueba enviado exitosamente a')) + ' ' + data.email)
+                                        : (data.message || @json(__('Correo de prueba enviado exitosamente.'))));
 
                                 if (typeof Swal !== 'undefined')
                                 {

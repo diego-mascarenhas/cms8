@@ -1,4 +1,8 @@
-@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null, 'disabled' => false])
+@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null, 'disabled' => false, 'allowClear' => null])
+
+@php
+    $allowClearResolved = $allowClear !== null ? (bool) $allowClear : ! $required;
+@endphp
 
 <div class="form-group">
     @if($label)
@@ -52,15 +56,28 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    $(function () {
         var $el = $('#{{ $id }}');
-        if ($el.hasClass('select2-hidden-accessible')) {
+        if (! $el.length) {
             return;
         }
+        if ($el.hasClass('select2-hidden-accessible')) {
+            $el.select2('destroy');
+        }
+        var $parent = $el.parent();
+        var dropdownParent = $parent.hasClass('position-relative') ? $parent : $(document.body);
         $el.select2({
-            placeholder: '{{ $placeholder ?? "Seleccionar" }}',
-            allowClear: {{ $required ? 'false' : 'true' }},
-            width: '100%'
+            placeholder: @json($placeholder ?? 'Seleccionar'),
+            allowClear: {{ $allowClearResolved ? 'true' : 'false' }},
+            width: '100%',
+            dropdownParent: dropdownParent,
+        });
+        $el.on('select2:opening', function (e)
+        {
+            if ($el.prop('disabled'))
+            {
+                e.preventDefault();
+            }
         });
     });
 </script>

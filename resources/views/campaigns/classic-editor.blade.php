@@ -102,7 +102,7 @@
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
             <a href="{{ $grapesEditorUrl }}" class="btn btn-label-secondary waves-effect">
-                <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor') }}
+                <i class="ti ti-edit me-1"></i>{{ __('Abrir editor') }}
             </a>
             <button type="button" class="btn btn-label-danger waves-effect">{{ __('Eliminar') }}</button>
             <button type="submit" name="intent" value="save_next" class="btn btn-label-secondary waves-effect">{{ __('Guardar para después') }}</button>
@@ -171,6 +171,7 @@
         'grapesEditorUrl' => $grapesEditorUrl,
         'templateLabel' => ($selectedTemplateName ?? '') !== '' ? $selectedTemplateName : null,
         'messageId' => ($messageId ?? 0) > 0 ? $messageId : null,
+        'templateId' => ($selectedTemplateId ?? 0) > 0 ? (int) $selectedTemplateId : null,
         'previewFrameId' => 'body-preview-frame',
         'parentSyncsPreview' => true,
         'templateHashedId' => $templateHashedIdForDuplicate,

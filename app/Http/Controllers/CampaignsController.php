@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\SubscriptionProduct;
 use App\Models\Template;
 use App\Services\CampaignClassicEditorPersistence;
+use App\Support\TemplateEditorReturnUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -515,9 +516,13 @@ class CampaignsController extends Controller
 
         $grapesEditorUrl = '#';
         $templateHashedIdForDuplicate = null;
+        $classicEditorReturnUrl = $request->fullUrl();
         if ($selectedTemplate instanceof Template)
         {
-            $grapesEditorUrl = route('template.editor', $selectedTemplate->getHashedId());
+            $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                route('template.editor', $selectedTemplate->getHashedId()),
+                $classicEditorReturnUrl,
+            );
             $templateHashedIdForDuplicate = $selectedTemplate->getHashedId();
         } elseif ($selectedTemplateId > 0)
         {
@@ -525,7 +530,10 @@ class CampaignsController extends Controller
             {
                 if ($legacyTemplate->id === $selectedTemplateId)
                 {
-                    $grapesEditorUrl = route('template.editor', $legacyTemplate->getHashedId());
+                    $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                        route('template.editor', $legacyTemplate->getHashedId()),
+                        $classicEditorReturnUrl,
+                    );
                     $templateHashedIdForDuplicate = $legacyTemplate->getHashedId();
                     break;
                 }
