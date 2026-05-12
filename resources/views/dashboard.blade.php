@@ -75,11 +75,11 @@
 
     <!-- Hour chart  -->
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
-        <div class="card-body row p-0 pb-2">
+        <div class="card-body row p-0 pb-2 align-items-stretch">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
                 <h3 class="mb-1">{{ __('app.welcome') }}</h3>
                 @if(!empty($dailyPerformanceInsight?->message))
-                    <p class="text-muted mb-4 mb-md-4 pb-1 small lh-sm">{{ e($dailyPerformanceInsight->message) }}</p>
+                    <p class="text-muted mb-2 pb-1 small">{{ e($dailyPerformanceInsight->message) }}</p>
                 @endif
                 <div class="d-flex justify-content-between gap-3 me-5">
                     <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
@@ -113,22 +113,33 @@
             </div>
 
             <!-- View sales -->
-            <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <div class="card">
-                    <div class="d-flex align-items-start row">
-                        <div class="col-7">
-                            <div class="card-body">
+            <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2 d-flex flex-column">
+                <div class="card w-100 flex-grow-1 d-flex flex-column">
+                    <div class="row g-0 flex-grow-1 align-items-stretch">
+                        <div class="col-9 min-w-0 d-flex flex-column">
+                            <div class="card-body d-flex flex-column flex-grow-1">
                                 @php
                                     $insightCardFirstName = explode(' ', auth()->user()->name)[0];
                                 @endphp
                                 @if(!empty($dailyPerformanceInsight))
+                                    @php
+                                        $insightHeadlineParts = \App\Models\UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($dailyPerformanceInsight->headline);
+                                    @endphp
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                        <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-sparkles ti-sm"></i></span>
-                                        <h5 class="card-title mb-0 fw-semibold">{{ e($dailyPerformanceInsight->headline) }}</h5>
+                                        @if($insightHeadlineParts['emoji'] !== '')
+                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center lh-1">{{ $insightHeadlineParts['emoji'] }}</span>
+                                        @else
+                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center" aria-hidden="true">
+                                                <i class="ti ti-sparkles ti-sm"></i>
+                                            </span>
+                                        @endif
+                                        <h5 class="card-title mb-0 fw-semibold">{{ e($insightHeadlineParts['text']) }}</h5>
                                     </div>
                                     <p class="mb-2 text-body"><strong>{!! nl2br(e($dailyPerformanceInsight->focus), false) !!}</strong></p>
                                     @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
-                                        <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light">{{ __('app.dashboard_open_assistant') }}</a>
+                                        <div class="mt-auto pt-2">
+                                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light">{{ __('app.dashboard_open_assistant') }}</a>
+                                        </div>
                                     @endif
                                 @else
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
@@ -161,10 +172,10 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="col-5 text-center text-sm-left">
-                            <div class="card-body pb-0 px-0 px-md-4">
+                        <div class="col-3 text-center text-sm-left flex-shrink-0 d-flex align-items-end justify-content-center">
+                            <div class="card-body pb-2 px-0 px-md-4 pt-0">
                                 <img src="{{ asset('assets/img/illustrations/card-advance-sale.png') }}" height="140"
-                                    alt="view sales">
+                                    alt="" role="presentation">
                             </div>
                         </div>
                     </div>

@@ -131,7 +131,7 @@ class MessageDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title(__('Name'))
+                ->title(__('Subject'))
                 ->addClass('all'),
             Column::computed('category_info')
                 ->title(__('Category'))

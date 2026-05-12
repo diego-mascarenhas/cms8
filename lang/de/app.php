@@ -44,4 +44,7 @@ return [
     'performance_insight_emergency_focus_high' => 'Compound wins tighten ops cadence',
     'performance_insight_emergency_message_high' => 'Strong week—:interactions touches, :minutes call minutes, :tasks tasks. Celebrate one win out loud and trim one noisy task so :mentoring_label stays fun to use.',
     'dashboard_open_assistant' => 'Open assistant',
+    'message_form_contact_status_all' => 'Alle (beliebiger Status)',
+    'message_form_template_none' => 'Keine Vorlage (nur Alternativtext)',
+    'message_form_toggle_section' => 'Abschnitt ein- oder ausblenden',
 ];

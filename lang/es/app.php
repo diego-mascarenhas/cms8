@@ -15,7 +15,7 @@ return [
     'enterprises' => 'Empresas',
     'list60' => 'Lista de 60',
 
-    'performance_insights_menu' => 'Rendimiento del equipo',
+    'performance_insights_menu' => 'Rendimiento',
     'performance_insight_default_headline' => 'Tu foco del día',
     'performance_insight_column_date' => 'Fecha',
     'performance_insight_column_user' => 'Usuario',
@@ -49,6 +49,9 @@ return [
     'performance_insight_emergency_focus_high' => 'Profundiza cuentas reduce ruido opera',
     'performance_insight_emergency_message_high' => 'Semanón: :interactions contactos, :minutes minutos y :tasks tareas. Celebra un logro con mimo y suelta un ruidito para que :mentoring_label siga siendo un aliado.',
     'dashboard_open_assistant' => 'Abrir asistente',
+    'message_form_contact_status_all' => 'Todos (cualquier estado)',
+    'message_form_template_none' => 'Sin plantilla (solo texto alternativo)',
+    'message_form_toggle_section' => 'Mostrar u ocultar esta sección',
 
     'communication_client_landing_hint' => 'Si selecciona Cliente, recibirá un email con un enlace seguro (token) para acceder a la landing del proyecto y responder.',
 

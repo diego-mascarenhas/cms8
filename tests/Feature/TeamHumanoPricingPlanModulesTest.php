@@ -90,6 +90,60 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->hasModule('financial'));
     }
 
+    public function test_humano_pricing_business_bundle_includes_expected_addon_keys(): void
+    {
+        $keys = config('humano_pricing.plan_team_modules.business', []);
+        $this->assertSame([], array_diff([
+            'settings',
+            'campaigns',
+            'mailer',
+            'funnel',
+            'payments',
+            'financial',
+        ], $keys));
+    }
+
+    public function test_demo_team_plan_slug_is_configured(): void
+    {
+        $slug = config('humano_pricing.demo_team_plan_slug');
+        $this->assertContains($slug, ['assistant', 'business', 'foundation']);
+    }
+
+    public function test_business_plan_sync_disables_modules_outside_bundle(): void
+    {
+        $this->seedModulesFromPricingConfig();
+
+        foreach (['list60', 'products', 'projects'] as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => $key,
+                    'icon' => 'layout',
+                    'description' => 'Test',
+                    'is_core' => false,
+                    'status' => 1,
+                ],
+            );
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->assertTrue($team->enableModule('list60'));
+        $this->assertTrue($team->enableModule('products'));
+        $this->assertTrue($team->enableModule('projects'));
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'business');
+
+        $team = $team->fresh();
+        $this->assertFalse($team->hasModule('list60'));
+        $this->assertFalse($team->hasModule('products'));
+        $this->assertFalse($team->hasModule('projects'));
+        $this->assertTrue($team->hasModule('campaigns'));
+    }
+
     public function test_foundation_plan_uses_business_module_bundle(): void
     {
         $this->seedModulesFromPricingConfig();

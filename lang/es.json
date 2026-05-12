@@ -1107,6 +1107,7 @@
   "Email sender not configured.": "Remitente de email no configurado.",
   "Configure it here": "Configurar aquí",
   "Upgrade Plan": "Actualizar Plan",
+  "Message sending schedule": "Programación de envíos",
   "Minimum Time Between Emails": "Tiempo mínimo entre correos",
   "Time to wait before sending another email to the same contact": "Tiempo de espera antes de enviar otro correo al mismo contacto",
   "Allowed sending weekdays": "Días permitidos para enviar",

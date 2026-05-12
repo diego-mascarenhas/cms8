@@ -367,7 +367,7 @@ class DashboardController extends Controller
         }
 
         $dailyPerformanceInsight = null;
-        if ($activeTeam && $activeTeam->hasModule('performance_insights'))
+        if ($activeTeam && $authUser->hasAnyRole(['admin', 'root']))
         {
             $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
                 ->ensureTodayRecord($authUser, $activeTeam, $mentoringLevelName);

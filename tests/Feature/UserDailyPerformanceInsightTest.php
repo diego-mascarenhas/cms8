@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Contact;
 use App\Models\ContactInteraction;
-use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
@@ -36,7 +35,7 @@ class UserDailyPerformanceInsightTest extends TestCase
         ]);
     }
 
-    private function createUserWithRole(string $roleName, bool $enablePerformanceInsightsModule = true): User
+    private function createUserWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(['name' => $roleName]);
         $user = User::factory()->create();
@@ -46,22 +45,6 @@ class UserDailyPerformanceInsightTest extends TestCase
         $user->current_team_id = $team->id;
         $user->save();
         $user->assignRole($role);
-
-        if ($enablePerformanceInsightsModule)
-        {
-            Module::query()->firstOrCreate(
-                ['key' => 'performance_insights'],
-                [
-                    'name' => 'Team performance insights',
-                    'icon' => 'chart-infographic',
-                    'description' => 'Daily performance insights',
-                    'is_core' => false,
-                    'status' => 1,
-                    'order' => 10,
-                ],
-            );
-            $user->refresh()->currentTeam->enableModule('performance_insights');
-        }
 
         return $user->refresh();
     }
@@ -84,16 +67,6 @@ class UserDailyPerformanceInsightTest extends TestCase
         $response = $this->actingAs($user)->get(route('performance-insights.index'));
 
         $response->assertOk();
-    }
-
-    public function test_performance_insights_index_forbidden_for_admin_when_performance_insights_module_disabled(): void
-    {
-        $this->seedInsightDependencies();
-        $user = $this->createUserWithRole('admin', false);
-
-        $response = $this->actingAs($user)->get(route('performance-insights.index'));
-
-        $response->assertForbidden();
     }
 
     public function test_performance_insights_generate_command_only_targets_admin_and_root(): void
@@ -163,7 +136,12 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $insight = UserDailyPerformanceInsight::query()->where('user_id', $user->id)->first();
         $this->assertNotNull($insight);
-        $response->assertSee($insight->headline, false);
+        $headlineParts = UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($insight->headline);
+        $response->assertSee($headlineParts['text'], false);
+        if ($headlineParts['emoji'] !== '')
+        {
+            $response->assertSee($headlineParts['emoji'], false);
+        }
         $focusWords = preg_split('/\s+/u', str_replace("\n", ' ', $insight->focus), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $this->assertNotEmpty($focusWords);
         $response->assertSee($focusWords[0], false);
@@ -290,5 +268,21 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame('Phase B', $second->context_snapshot['mentoring_phase_label'] ?? null);
+    }
+
+    public function test_split_headline_word_and_trailing_emoji_for_dashboard(): void
+    {
+        $this->assertSame(
+            ['text' => 'Acción', 'emoji' => '🎯'],
+            UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji('Acción🎯'),
+        );
+        $this->assertSame(
+            ['text' => 'Glow', 'emoji' => '✨'],
+            UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji('Glow✨'),
+        );
+        $this->assertSame(
+            ['text' => 'Solo', 'emoji' => ''],
+            UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji('Solo'),
+        );
     }
 }

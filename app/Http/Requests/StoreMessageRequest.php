@@ -12,6 +12,19 @@ class StoreMessageRequest extends FormRequest
         return auth()->check();
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('contact_status_id') === '' || $this->input('contact_status_id') === null)
+        {
+            $this->merge(['contact_status_id' => null]);
+        }
+
+        if ($this->input('template_id') === '' || $this->input('template_id') === null)
+        {
+            $this->merge(['template_id' => null]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -20,6 +33,8 @@ class StoreMessageRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:3', 'max:50'],
             'text' => ['required', 'string', 'min:3', 'max:255'],
+            'contact_status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
+            'template_id' => ['nullable', 'integer', 'exists:templates,id'],
             'min_hours_between_emails' => ['nullable', 'numeric', 'min:0', 'max:8760'],
             'send_allowed_weekdays' => ['required', 'array', 'min:1'],
             'send_allowed_weekdays.*' => ['integer', 'between:1,7', 'distinct'],

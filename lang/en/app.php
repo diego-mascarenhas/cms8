@@ -49,6 +49,9 @@ return [
     'performance_insight_emergency_focus_high' => 'Compound wins tighten ops cadence',
     'performance_insight_emergency_message_high' => 'Strong week—:interactions touches, :minutes call minutes, :tasks tasks. Celebrate one win out loud and trim one noisy task so :mentoring_label stays fun to use.',
     'dashboard_open_assistant' => 'Open assistant',
+    'message_form_contact_status_all' => 'All (any status)',
+    'message_form_template_none' => 'No template (alternative text only)',
+    'message_form_toggle_section' => 'Show or hide this section',
 
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',

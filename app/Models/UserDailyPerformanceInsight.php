@@ -36,4 +36,28 @@ class UserDailyPerformanceInsight extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Headlines from the insight pipeline may end with one emoji cluster (no space). Split so the word stays in the title row and the emoji can sit beside the sparkles icon.
+     *
+     * @return array{text: string, emoji: string}
+     */
+    public static function splitHeadlineWordAndTrailingEmoji(?string $headline): array
+    {
+        $headline = trim((string) $headline);
+        if ($headline === '')
+        {
+            return ['text' => '', 'emoji' => ''];
+        }
+
+        if (preg_match('/^(.+?)(\p{Extended_Pictographic}(?:\x{FE0F}|\x{200D}\p{Extended_Pictographic})*)$/us', $headline, $matches) === 1)
+        {
+            return [
+                'text' => $matches[1],
+                'emoji' => $matches[2],
+            ];
+        }
+
+        return ['text' => $headline, 'emoji' => ''];
+    }
 }

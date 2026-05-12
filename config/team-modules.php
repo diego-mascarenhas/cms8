@@ -29,7 +29,8 @@ return [
         'calendar' => true,
         'notifications' => false,
         // New teams only (see EnableCoreModulesForTeam); existing teams are unchanged.
-        'performance_insights' => true,
+        // Not a sidebar module; insights are generated on schedule and on dashboard for admin/root.
+        'performance_insights' => false,
         'templates' => false,
         // Additional modules (billing)
         'invoices' => true,

@@ -212,10 +212,21 @@ document.querySelector('form').addEventListener('submit', function() {
 		<div class="card-body">
 		<div class="row g-3">
 			<div class="col-md-6">
-				<x-input-general id="name" label="{{ __('Name') }} (*)" value="{{ old('name', $data->name?? '') }}" />
+				<x-input-general id="name" label="{{ __('Subject') }} (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="type_id" label="{{ __('Canal') }} (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select
+					id="type_id"
+					label="{{ __('Canal') }} (*)"
+					:options="$data->types"
+					value="{{ old('type_id', $data->type_id ?? '') }}"
+					:disabled="$showEmailTemplatePreview || (isset($data->hasDeliveries) && $data->hasDeliveries)"
+				/>
+				@if(isset($data->hasDeliveries) && $data->hasDeliveries)
+					<div class="form-text text-warning mt-1">
+						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar el canal porque el mensaje ya tiene entregas creadas.
+					</div>
+				@endif
 			</div>
 			<div class="col-md-6">
 				<x-module-categories-select
@@ -239,6 +250,7 @@ document.querySelector('form').addEventListener('submit', function() {
 					label="{{ __('Estado del contacto') }}"
 					:options="$data->contactStatuses ?? []"
 					value="{{ old('contact_status_id', $data->contact_status_id ?? '') }}"
+					:placeholder="__('app.message_form_contact_status_all')"
 					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
 				/>
 				@if(isset($data->hasDeliveries) && $data->hasDeliveries)
@@ -255,7 +267,13 @@ document.querySelector('form').addEventListener('submit', function() {
 			</div>
 			@unless ($showEmailTemplatePreview)
 				<div class="col-md-6">
-					<x-input-select id="template_id" label="{{ __('Plantilla') }}" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
+					<x-input-select
+						id="template_id"
+						label="{{ __('Plantilla') }}"
+						:options="$data->templates ?? []"
+						value="{{ old('template_id', $data->template_id ?? '') }}"
+						:placeholder="__('app.message_form_template_none')"
+					/>
 					<div class="form-text mt-1">
 						¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
 					</div>
@@ -268,6 +286,48 @@ document.querySelector('form').addEventListener('submit', function() {
 					</div>
 				@endif
 			@endunless
+		</div>
+		</div>
+	</div>
+
+	@if ($showEmailTemplatePreview)
+		@include('message.partials.email-template-content-preview', [
+			'previewHtml' => $data->emailTemplatePreviewHtml,
+			'grapesEditorUrl' => $data->templateGrapesEditorUrl,
+			'templateLabel' => $data->template->name,
+			'messageId' => $data->id ?? null,
+		])
+	@endif
+
+	@php
+		$messageFormScheduleCollapseOpen = $errors->has('send_allowed_weekdays')
+			|| $errors->has('send_window_start')
+			|| $errors->has('send_window_end')
+			|| $errors->has('min_hours_between_emails');
+	@endphp
+	<div class="card mb-4">
+		<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<div class="d-flex align-items-center gap-2 flex-wrap min-w-0">
+				<h5 class="mb-0">{{ __('Message sending schedule') }}</h5>
+				@env('local')
+					<span class="text-success flex-shrink-0" title="APP_ENV=local"><i class="ti ti-bug ti-sm"></i></span>
+				@endenv
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-icon btn-label-secondary {{ $messageFormScheduleCollapseOpen ? '' : 'collapsed' }}"
+				data-bs-toggle="collapse"
+				data-bs-target="#message-form-schedule-collapse"
+				aria-expanded="{{ $messageFormScheduleCollapseOpen ? 'true' : 'false' }}"
+				aria-controls="message-form-schedule-collapse"
+				title="{{ __('app.message_form_toggle_section') }}"
+			>
+				<i class="ti ti-chevron-down"></i>
+			</button>
+		</div>
+		<div id="message-form-schedule-collapse" class="collapse {{ $messageFormScheduleCollapseOpen ? 'show' : '' }}">
+		<div class="card-body">
+			<div class="row g-3">
 			<div class="col-md-6">
 				<div class="form-group mb-0">
 					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
@@ -358,23 +418,32 @@ document.querySelector('form').addEventListener('submit', function() {
 					</div>
 				</div>
 			</div>
+			</div>
 		</div>
 		</div>
 	</div>
 
-	@if ($showEmailTemplatePreview)
-		@include('message.partials.email-template-content-preview', [
-			'previewHtml' => $data->emailTemplatePreviewHtml,
-			'grapesEditorUrl' => $data->templateGrapesEditorUrl,
-			'templateLabel' => $data->template->name,
-			'messageId' => $data->id ?? null,
-		])
-	@endif
-
 	<div class="card mb-4">
-		<div class="card-header">
-			<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
+		<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<div class="d-flex align-items-center gap-2 flex-wrap min-w-0">
+				<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
+				@env('local')
+					<span class="text-success flex-shrink-0" title="APP_ENV=local"><i class="ti ti-bug ti-sm"></i></span>
+				@endenv
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-icon btn-label-secondary collapsed"
+				data-bs-toggle="collapse"
+				data-bs-target="#message-form-options-collapse"
+				aria-expanded="false"
+				aria-controls="message-form-options-collapse"
+				title="{{ __('app.message_form_toggle_section') }}"
+			>
+				<i class="ti ti-chevron-down"></i>
+			</button>
 		</div>
+		<div id="message-form-options-collapse" class="collapse">
 		<div class="card-body">
 			@if (isset($data->id))
 				<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
@@ -408,6 +477,7 @@ document.querySelector('form').addEventListener('submit', function() {
 					</div>
 				</div>
 			</div>
+		</div>
 		</div>
 	</div>
 

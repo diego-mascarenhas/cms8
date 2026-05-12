@@ -101,7 +101,7 @@ class MessageController extends Controller
             ? $validated['send_window_end']
             : null;
 
-        $templateId = $data['template_id'] ?? null;
+        $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
 
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
@@ -121,8 +121,8 @@ class MessageController extends Controller
             [
                 'name' => $validated['name'],
                 'type_id' => $data['type_id'],
-                'category_id' => $data['category_id'] ?: null,  // Convert empty string to null
-                'contact_status_id' => $data['contact_status_id'] ?? null,
+                'category_id' => ($data['category_id'] ?? '') ?: null,
+                'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
                 'template_id' => $templateId,
                 'text' => $validated['text'],
                 'status_id' => $status_id,
@@ -941,9 +941,16 @@ class MessageController extends Controller
      */
     private function getTestHtmlForContact($message, $testContact)
     {
-        $templateHtml = $message && $message->template && isset($message->template->gjs_data['html'])
-            ? $message->template->gjs_data['html']
-            : '';
+        $templateHtml = '';
+        if ($message && $message->template && isset($message->template->gjs_data['html']))
+        {
+            $templateHtml = (string) $message->template->gjs_data['html'];
+        }
+
+        if (trim($templateHtml) === '')
+        {
+            $templateHtml = '<p>'.e($message->text ?? '').'</p>';
+        }
 
         // Replace variables
         $html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);

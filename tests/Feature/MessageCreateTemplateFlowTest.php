@@ -53,6 +53,12 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
 
         $response->assertOk();
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<select[^>]+id=["\']type_id["\'][^>]+name=["\']type_id["\']/si',
+            $html,
+        );
+        $response->assertSee(__('Message sending schedule'), false);
     }
 
     public function test_message_create_legacy_form_defaults_minimum_interval_unit_to_days(): void
@@ -71,6 +77,76 @@ class MessageCreateTemplateFlowTest extends TestCase
             '/<input[^>]+id=["\']min_hours_between_emails["\'][^>]+value=["\']2["\']/s',
             $html,
         );
+    }
+
+    public function test_message_create_legacy_form_renders_contact_status_all_placeholder_option(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+
+        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
+
+        $response->assertOk();
+        $response->assertSee(e(__('app.message_form_contact_status_all')), false);
+        $response->assertSee('id="contact_status_id"', false);
+        $this->assertMatchesRegularExpression(
+            '/id="contact_status_id"[^>]*>[\s\S]*?<option value="">'.preg_quote(e(__('app.message_form_contact_status_all')), '/').'<\/option>/',
+            $response->getContent(),
+        );
+    }
+
+    public function test_message_store_persists_null_contact_status_when_empty(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => '',
+            'name' => 'Broadcast all statuses',
+            'text' => 'Alt text for the campaign body',
+            'type_id' => 1,
+            'category_id' => '',
+            'contact_status_id' => '',
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('name', 'Broadcast all statuses')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertNull($message->contact_status_id);
+    }
+
+    public function test_message_store_persists_null_template_id_when_empty(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => '',
+            'name' => 'Plain text campaign',
+            'text' => 'Hello, this is the full email body without a template.',
+            'type_id' => 1,
+            'category_id' => '',
+            'contact_status_id' => '',
+            'template_id' => '',
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('name', 'Plain text campaign')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertNull($message->template_id);
     }
 
     public function test_message_create_with_template_shows_email_content_preview(): void
@@ -98,6 +174,9 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('Contenido del correo'), false);
         $response->assertSee(e($template->name), false);
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression('/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i', $html);
+        $this->assertMatchesRegularExpression('/<select[^>]+id=["\']type_id["\'][^>]*disabled/si', $html);
     }
 
     public function test_message_show_does_not_render_email_content_preview_card_for_mailer_with_template(): void

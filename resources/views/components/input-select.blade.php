@@ -6,9 +6,13 @@
             <label for="{{ $id }}" class="form-label mb-0">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
         </div>
     @endif
-    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" 
+    @if($disabled)
+        <input type="hidden" name="{{ $id }}" value="{{ old($id, $value) }}">
+    @endif
+    <select id="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror"
+        @if(! $disabled) name="{{ $id }}" @endif
         data-placeholder="{{ $placeholder ?? 'Seleccionar' }}"
-        @if($required) required @endif 
+        @if($required && ! $disabled) required @endif
         @if($disabled) disabled @endif>
         @if($placeholder)
             <option value="">{{ $placeholder }}</option>

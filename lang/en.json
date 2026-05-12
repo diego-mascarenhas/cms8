@@ -761,5 +761,6 @@
   "Stripe webhooks": "Stripe webhooks",
   "Stripe webhooks help card body": "Webhook URL (POST /stripe/webhook), recommended events for Laravel Cashier and Humano, and Stripe CLI for local testing.",
   "View documentation": "View documentation",
+  "Message sending schedule": "Sending schedule & window",
   "Help": "Help"
 }

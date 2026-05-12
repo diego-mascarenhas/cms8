@@ -215,10 +215,16 @@ class MessageDelivery extends Model
      */
     public function getHtmlForContact()
     {
-        $templateHtml = $this->message && $this->message->template && isset($this->message->template->gjs_data['html'])
-            ? $this->message->template->gjs_data['html']
-            : '';
-        $contactName = $this->contact ? $this->contact->name : '';
+        $templateHtml = '';
+        if ($this->message && $this->message->template && isset($this->message->template->gjs_data['html']))
+        {
+            $templateHtml = (string) $this->message->template->gjs_data['html'];
+        }
+
+        if (trim($templateHtml) === '')
+        {
+            $templateHtml = '<p>'.e($this->message?->text ?? '').'</p>';
+        }
 
         // Replace all template variables
         $html = $this->replaceEmailVariables($templateHtml, $this->contact, $this->message);

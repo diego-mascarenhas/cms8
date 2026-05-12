@@ -30,9 +30,22 @@ return [
     /*
      * | Default plan slug when checkout return URL omits &category= (assistant or business).
      */
-    'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant')))) {
+    'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
+    {
         'business' => 'business',
         default => 'assistant',
+    },
+
+    /*
+     * | Plan slug for the seeded Demo team: {@see TeamDemoSeeder} calls {@see TeamModulesByPricingPlanSyncer}
+     * | with this value (assistant, business, or foundation). Foundation uses the business module list in the syncer.
+     * | Override with HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG.
+     */
+    'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'business'))))
+    {
+        'assistant' => 'assistant',
+        'foundation' => 'foundation',
+        default => 'business',
     },
 
     /*
@@ -49,6 +62,7 @@ return [
      * | Matched via stripe_product_id on the subscription vs plans below.
      * | Each plan lists every module key to enable (business repeats assistant + extras).
      * | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
+     * | Demo team modules follow demo_team_plan_slug above (default: business).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
      * |

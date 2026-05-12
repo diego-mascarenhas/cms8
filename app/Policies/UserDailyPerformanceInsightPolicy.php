@@ -10,6 +10,10 @@ class UserDailyPerformanceInsightPolicy
 {
     use HandlesAuthorization;
 
+    /**
+     * Daily insights are not gated by the performance_insights module (hidden from the sidebar);
+     * admin and root may open the list route and the scheduled job runs for all teams.
+     */
     public function viewAny(User $user): bool
     {
         if (! $user->hasRole('admin') && ! $user->hasRole('root'))
@@ -19,7 +23,7 @@ class UserDailyPerformanceInsightPolicy
 
         $team = $user->currentTeam;
 
-        return $team && $team->hasModule('performance_insights');
+        return (bool) $team;
     }
 
     public function view(User $user, UserDailyPerformanceInsight $insight): bool

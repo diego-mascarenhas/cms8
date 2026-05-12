@@ -20,7 +20,6 @@ class GenerateDailyPerformanceInsightsCommand extends Command
         $force = (bool) $this->option('force');
 
         $teams = Team::query()
-            ->with('modules')
             ->when($teamId, fn ($q) => $q->where('id', (int) $teamId))
             ->cursor();
 
@@ -28,11 +27,6 @@ class GenerateDailyPerformanceInsightsCommand extends Command
         $skippedNonPrivileged = 0;
         foreach ($teams as $team)
         {
-            if (! $team->hasModule('performance_insights'))
-            {
-                continue;
-            }
-
             foreach ($team->allUsers()->unique('id') as $user)
             {
                 if ($userId && (int) $user->id !== (int) $userId)

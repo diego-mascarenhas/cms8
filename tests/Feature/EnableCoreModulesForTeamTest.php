@@ -176,7 +176,7 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertFalse($team->hasModule('stores'));
     }
 
-    public function test_new_team_enables_performance_insights_addon_when_default_true(): void
+    public function test_new_team_does_not_enable_performance_insights_addon_by_default(): void
     {
         Module::query()->create([
             'name' => 'Team performance insights',
@@ -194,6 +194,6 @@ class EnableCoreModulesForTeamTest extends TestCase
             'personal_team' => true,
         ]);
 
-        $this->assertTrue($team->fresh()->hasModule('performance_insights'));
+        $this->assertFalse($team->fresh()->hasModule('performance_insights'));
     }
 }
