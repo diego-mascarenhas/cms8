@@ -41,6 +41,14 @@
       "module_key": "collaborators"
     },
     {
+      "url": "performance-insights/list",
+      "name": "app.performance_insights_menu",
+      "icon": "menu-icon tf-icons ti ti-chart-infographic",
+      "slug": "performance-insights",
+      "module_key": "performance_insights",
+      "permission": "view-performance-insights"
+    },
+    {
       "url": "list60/list",
       "name": "List of 60",
       "icon": "menu-icon tf-icons ti ti-list-check",

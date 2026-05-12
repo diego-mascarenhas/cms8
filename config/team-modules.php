@@ -28,6 +28,8 @@ return [
         'tasks' => false,
         'calendar' => true,
         'notifications' => false,
+        // New teams only (see EnableCoreModulesForTeam); existing teams are unchanged.
+        'performance_insights' => true,
         'templates' => false,
         // Additional modules (billing)
         'invoices' => true,

@@ -17,6 +17,7 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         $this->assertTestsUseIsolatedDatabase();
+        config(['daily_performance_insight.use_llm' => false]);
     }
 
     protected function assertTestsUseIsolatedDatabase(): void

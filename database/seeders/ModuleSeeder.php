@@ -385,6 +385,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Survival management module',
             'order' => 9,
         ],
+        'performance_insights' => [
+            'name' => 'Team performance insights',
+            'icon' => 'chart-infographic',
+            'description' => 'Daily performance insights and admin team metrics list',
+            'order' => 10,
+        ],
         // INNOVATION GROUP
         'proposals' => [
             'name' => 'Proposals',

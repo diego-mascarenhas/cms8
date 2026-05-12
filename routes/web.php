@@ -1018,6 +1018,8 @@ Route::middleware(['auth'])->group(function ()
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
+
+    Route::get('/performance-insights/list', [App\Http\Controllers\UserDailyPerformanceInsightController::class, 'index'])->name('performance-insights.index');
 });
 
 // Testing

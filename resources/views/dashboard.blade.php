@@ -77,7 +77,10 @@
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
         <div class="card-body row p-0 pb-2">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <h3>{{ __('app.welcome') }}</h3>
+                <h3 class="mb-1">{{ __('app.welcome') }}</h3>
+                @if(!empty($dailyPerformanceInsight?->message))
+                    <p class="text-muted mb-4 mb-md-4 pb-1 small lh-sm">{{ e($dailyPerformanceInsight->message) }}</p>
+                @endif
                 <div class="d-flex justify-content-between gap-3 me-5">
                     <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
                         <span class="bg-label-primary p-2 rounded">
@@ -112,31 +115,50 @@
             <!-- View sales -->
             <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
                 <div class="card">
-                    <div class="d-flex align-items-end row">
+                    <div class="d-flex align-items-start row">
                         <div class="col-7">
-                            <div class="card-body text-nowrap">
-                                <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
-                                </h5>
-                                @if($mentoringPlan)
-                                    @if($mentoringMessage)
-                                        <p class="mb-2">{{ $mentoringMessage }}</p>
+                            <div class="card-body">
+                                @php
+                                    $insightCardFirstName = explode(' ', auth()->user()->name)[0];
+                                @endphp
+                                @if(!empty($dailyPerformanceInsight))
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                        <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-sparkles ti-sm"></i></span>
+                                        <h5 class="card-title mb-0 fw-semibold">{{ e($dailyPerformanceInsight->headline) }}</h5>
+                                    </div>
+                                    <p class="mb-2 text-body"><strong>{!! nl2br(e($dailyPerformanceInsight->focus), false) !!}</strong></p>
+                                    @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
+                                        <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light">{{ __('app.dashboard_open_assistant') }}</a>
                                     @endif
-                                    @if($mentoringLevelName)
-                                        <p class="mb-4"><strong>{{ $mentoringLevelName }}</strong></p>
-                                    @endif
-                                @elseif($subscriptionLevel)
-                                    <p class="mb-2">¡Vas viento en popa!</p>
-                                    <p class="mb-4"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
                                 @else
-                                    <p class="mb-4">¡Vas viento en popa!</p>
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                        <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-sparkles ti-sm"></i></span>
+                                        <h5 class="card-title mb-0 fw-semibold">{{ __('app.performance_insight_card_greeting_default', ['name' => $insightCardFirstName]) }}</h5>
+                                    </div>
+                                    @if($mentoringPlan)
+                                        @if($mentoringMessage)
+                                            <p class="mb-2">{{ $mentoringMessage }}</p>
+                                        @endif
+                                        @if($mentoringLevelName)
+                                            <p class="mb-4"><strong>{{ $mentoringLevelName }}</strong></p>
+                                        @endif
+                                    @elseif($subscriptionLevel)
+                                        <p class="mb-2">¡Vas viento en popa!</p>
+                                        <p class="mb-4"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
+                                    @else
+                                        <p class="mb-4">¡Vas viento en popa!</p>
+                                    @endif
                                 @endif
 
                                 {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
+                                {{-- Strategy & Organization: hidden for now; restore by changing to @if(true) --}}
+                                @if(false)
                                 <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Strategia</a>
                                 <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
+                                @endif
                             </div>
                         </div>
                         <div class="col-5 text-center text-sm-left">
@@ -229,22 +251,22 @@
     <!-- / Google Analytics -->
     @endif
 
-    <div class="row">
-        <!-- Emotional Balance and Dangerous Clients (right column) -->
-        <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0">
+    <div class="row align-items-lg-stretch">
+        <!-- Emotional Balance (right column) -->
+        <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0 d-flex flex-column">
             <!-- Emotional Balance -->
-            <div class="card mb-4">
+            <div class="card mb-4 flex-grow-1 d-flex flex-column w-100">
                 <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">Balance emocional</h5>
                         <small class="text-muted">¡Bravo! Estás en el buen camino</small>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="sentiment-chart">
-                                <div class="d-flex align-items-end justify-content-between">
+                <div class="card-body flex-grow-1 d-flex flex-column">
+                    <div class="row flex-grow-1">
+                        <div class="col-12 d-flex flex-column flex-grow-1">
+                            <div class="sentiment-chart flex-grow-1 d-flex flex-column">
+                                <div class="d-flex align-items-end justify-content-between flex-grow-1">
                                     @foreach ($sentimentData as $index => $sentiment)
                                         <div class="sentiment-column text-center">
                                             <div class="sentiment-bar" style="height: calc({{ $sentiment['count'] && max(array_column($sentimentData, 'count')) ? ($sentiment['count'] / max(array_column($sentimentData, 'count'))) * 150 : 0 }}px)">
@@ -282,62 +304,82 @@
                 </div>
             </div>
 
-            <!-- Clients in danger -->
-            <div class="card mb-4">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <div class="card-title mb-0">
-                        <h5 class="m-0 me-2">Clientes en peligro</h5>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-borderless border-top">
-                        <tbody>
-                            @if(isset($dangerousContacts) && $dangerousContacts->count() > 0)
-                                @foreach($dangerousContacts as $contact)
-                                    <tr>
-                                        <td class="pt-2">
-                                            <div
-                                                class="d-flex justify-content-start align-items-center @if ($loop->first) mt-lg-4 @endif">
-                                                <div class="d-flex flex-column">
-                                                    <h6 class="mb-0">
-                                                        <a
-                                                            href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a>
-                                                    </h6>
-                                                    @if ($contact->enterprise)
-                                                        <small class="text-muted">{{ $contact->enterprise->name }}</small>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="text-end @if ($loop->first) pt-2 @endif">
-                                            <div class="user-progress @if ($loop->first) mt-lg-4 @endif">
-                                                <p class="mb-0 fw-medium" style="font-size: 1.5em;">
-                                                    {{ $contact->currentSentiment->sentiment->emoji }}</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="2" class="text-center py-4">
-                                        <i class="ti ti-mood-smile text-success ti-2x mb-2"></i>
-                                        <p class="mb-0">No hay clientes en situación de riesgo</p>
-                                    </td>
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
             {{-- Activity Feed section removed - Activity Log package was removed from the project --}}
         </div>
 
         <!-- Main Content Column -->
-        <div class="col-lg-8 order-lg-1">
-            <!-- Ongoing Projects (only when team has projects module) -->
-            @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
-            <div class="card mb-4">
+        <div class="col-lg-8 order-lg-1 d-flex flex-column">
+            <!-- Today's contacts — paired with emotional balance; matching header + equal card height (lg+) -->
+            <div class="card mb-4 flex-grow-1 d-flex flex-column w-100">
+                <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Contactos para hoy</h5>
+                        <small class="text-muted">Lista de seguimiento diario</small>
+                    </div>
+                </div>
+                <div class="card-body flex-grow-1 d-flex flex-column">
+                    <div class="table-responsive flex-grow-1">
+                        <table class="table table-borderless">
+                            @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Sentimiento</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($todayContacts as $contact)
+                                        @if($contact->contact)
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex flex-column">
+                                                        <h6 class="mb-0">
+                                                            <a href="{{ route('contact.show', $contact->contact->id) }}">{{ $contact->contact->name }}</a>
+                                                        </h6>
+                                                        @if($contact->contact->enterprise)
+                                                            <small class="text-muted">{{ $contact->contact->enterprise->name }}</small>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge rounded-pill {{ $contact->status->label_class }}">
+                                                        {{ $contact->status->name }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">{{ $contact->contact->currentSentiment->sentiment->emoji ?? '' }}</td>
+                                                <td class="text-center">
+                                                    <a href="{{ route('contact.show', $contact->contact->id) }}" class="btn btn-sm btn-primary rounded-pill">
+                                                        <i class="ti ti-phone-call me-1"></i>Contactar
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                </tbody>
+                            @else
+                                <tbody>
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4">
+                                            <i class="ti ti-checkbox text-success ti-3x mb-3"></i>
+                                            <h5>¡Todo al día!</h5>
+                                            <p class="text-muted">Has completado todas las tareas programadas para hoy</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            @endif
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card mb-0">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
                         <h5 class="m-0 me-2">{{ __('Ongoing Projects') }}</h5>
@@ -412,74 +454,9 @@
                     </div>
                 </div>
             </div>
-            @endif
-
-            <!-- Today's Contacts (Restored) -->
-            <div class="card mb-4">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <div class="card-title mb-0">
-                        <h5 class="m-0 me-2">Contactos para hoy</h5>
-                        <small class="text-muted">Lista de seguimiento diario</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-borderless">
-                            @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
-                                <thead>
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th class="text-center">Estado</th>
-                                        <th class="text-center">Sentimiento</th>
-                                        <th class="text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($todayContacts as $contact)
-                                        @if($contact->contact)
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex flex-column">
-                                                        <h6 class="mb-0">
-                                                            <a href="{{ route('contact.show', $contact->contact->id) }}">{{ $contact->contact->name }}</a>
-                                                        </h6>
-                                                        @if($contact->contact->enterprise)
-                                                            <small class="text-muted">{{ $contact->contact->enterprise->name }}</small>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge rounded-pill {{ $contact->status->label_class }}">
-                                                        {{ $contact->status->name }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">{{ $contact->contact->currentSentiment->sentiment->emoji ?? '' }}</td>
-                                                <td class="text-center">
-                                                    <a href="{{ route('contact.show', $contact->contact->id) }}" class="btn btn-sm btn-primary rounded-pill">
-                                                        <i class="ti ti-phone-call me-1"></i>Contactar
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endif
-                                    @endforeach
-                                </tbody>
-                            @else
-                                <tbody>
-                                    <tr>
-                                        <td colspan="4" class="text-center py-4">
-                                            <i class="ti ti-checkbox text-success ti-3x mb-3"></i>
-                                            <h5>¡Todo al día!</h5>
-                                            <p class="text-muted">Has completado todas las tareas programadas para hoy</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            @endif
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
+    @endif
 
 @endsection
 
