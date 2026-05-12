@@ -4,6 +4,7 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('page-style')
@@ -116,11 +117,56 @@
         #chat-send-error-bar {
             flex-shrink: 0;
         }
+        /* WhatsApp badge: show disconnect only on hover/focus (local driver, connected).
+           Flexbox centering on a full-size overlay avoids .btn:hover overriding transform. */
+        .chat-wa-badge-disconnect-wrap {
+            overflow: visible;
+        }
+        .chat-wa-badge-disconnect-wrap .chat-wa-disconnect-hover-positioner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            z-index: 2;
+        }
+        .chat-wa-badge-disconnect-wrap.chat-wa-disconnect-enabled:hover .chat-wa-disconnect-hover-positioner,
+        .chat-wa-badge-disconnect-wrap.chat-wa-disconnect-enabled:focus-within .chat-wa-disconnect-hover-positioner {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .chat-wa-badge-disconnect-wrap .chat-wa-disconnect-hover-positioner:has(.chat-wa-disconnect-hover-trigger:disabled) {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .chat-wa-badge-disconnect-wrap .chat-wa-disconnect-hover-trigger {
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            margin: 0;
+            min-width: 100%;
+            width: max-content;
+            max-width: min(100vw, 18rem);
+            padding: 0.28rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.15;
+            white-space: nowrap;
+            border-radius: 10rem;
+            flex-shrink: 0;
+        }
     </style>
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 @endsection
 
@@ -1713,6 +1759,8 @@
         function applyWaStatus(data) {
             var titleEl = document.getElementById('chat-sidebar-wa-title');
             var badgeEl = document.getElementById('chat-sidebar-wa-badge');
+            var badgeWrap = document.getElementById('chat-sidebar-wa-badge-wrap');
+            var disconnectBadgeTrigger = document.getElementById('chat-whatsapp-disconnect-badge-trigger');
             var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
             var contactsWaAvatar = document.getElementById('chat-contacts-wa-avatar');
             var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
@@ -1726,7 +1774,9 @@
                     historyWaPanel.classList.add('d-none');
                 }
                 if (linkExistingBlock) { linkExistingBlock.classList.add('d-none'); }
-                if (badgeEl) { badgeEl.textContent = connectedLabel; badgeEl.className = 'badge bg-success mt-1'; }
+                if (badgeEl) { badgeEl.textContent = connectedLabel; badgeEl.className = 'badge bg-success'; }
+                if (badgeWrap) { badgeWrap.classList.add('chat-wa-disconnect-enabled'); }
+                if (disconnectBadgeTrigger) { disconnectBadgeTrigger.disabled = false; }
                 if (avatarEl) { avatarEl.classList.remove('avatar-offline'); avatarEl.classList.add('avatar-online'); }
                 if (contactsWaAvatar) { contactsWaAvatar.classList.remove('avatar-offline'); contactsWaAvatar.classList.add('avatar-online'); }
             } else {
@@ -1752,8 +1802,10 @@
                 if (badgeEl) {
                     var status = data.status || 'disconnected';
                     badgeEl.textContent = status === 'waiting_qr' ? scanQrLabel : disconnectedLabel;
-                    badgeEl.className = status === 'waiting_qr' ? 'badge bg-warning mt-1' : 'badge bg-secondary mt-1';
+                    badgeEl.className = status === 'waiting_qr' ? 'badge bg-warning' : 'badge bg-secondary';
                 }
+                if (badgeWrap) { badgeWrap.classList.remove('chat-wa-disconnect-enabled'); }
+                if (disconnectBadgeTrigger) { disconnectBadgeTrigger.disabled = true; }
                 if (avatarEl) { avatarEl.classList.remove('avatar-online'); avatarEl.classList.add('avatar-offline'); }
                 if (contactsWaAvatar) { contactsWaAvatar.classList.remove('avatar-online'); contactsWaAvatar.classList.add('avatar-offline'); }
             }
@@ -1773,6 +1825,101 @@
 
         var btnLinkExisting = document.getElementById('chat-btn-link-existing-number');
         var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
+        var chatWaDisconnectBadgeTrigger = document.getElementById('chat-whatsapp-disconnect-badge-trigger');
+        if (chatWaDisconnectBadgeTrigger && typeof Swal !== 'undefined') {
+            chatWaDisconnectBadgeTrigger.addEventListener('click', function () {
+                if (chatWaDisconnectBadgeTrigger.disabled) {
+                    return;
+                }
+                Swal.fire({
+                    title: '{{ __("Disconnect from WhatsApp?") }}',
+                    text: '{{ __("You will be signed out of WhatsApp for this team. You will need to scan the QR code again to reconnect.") }}',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    showDenyButton: false,
+                    showCloseButton: false,
+                    confirmButtonText: '{{ __("Disconnect") }}',
+                    cancelButtonText: '{{ __("Cancel") }}',
+                    confirmButtonColor: '#d33',
+                    didOpen: function (popup) {
+                        var denyBtn = popup.querySelector('.swal2-deny');
+                        if (denyBtn) {
+                            denyBtn.style.setProperty('display', 'none', 'important');
+                        }
+                    },
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                    var token = document.querySelector('meta[name="csrf-token"]');
+                    var t = token ? token.getAttribute('content') : '';
+                    if (!t) {
+                        return;
+                    }
+                    chatWaDisconnectBadgeTrigger.disabled = true;
+                    fetch("{{ route('chat.whatsapp-disconnect') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': t,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: '_token=' + encodeURIComponent(t),
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (data) {
+                                return { r: r, data: data && typeof data === 'object' ? data : {} };
+                            }).catch(function () {
+                                return { r: r, data: {} };
+                            });
+                        })
+                        .then(function (payload) {
+                            var r = payload.r;
+                            var data = payload.data;
+                            chatWaDisconnectBadgeTrigger.disabled = false;
+                            if (!r.ok || data.ok === false) {
+                                var msg = (data && data.message) ? data.message : "{{ __('Could not disconnect from WhatsApp.') }}";
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: "{{ __('Error') }}",
+                                    text: msg,
+                                    showDenyButton: false,
+                                    showCloseButton: false,
+                                });
+
+                                return;
+                            }
+                            Swal.fire({
+                                title: "{{ __('Disconnected') }}",
+                                text: (data && data.message) ? data.message : "{{ __('You have been disconnected from WhatsApp for this team.') }}",
+                                icon: 'success',
+                                showConfirmButton: false,
+                                showCancelButton: false,
+                                showDenyButton: false,
+                                showCloseButton: false,
+                                timer: 2200,
+                                timerProgressBar: true,
+                            }).then(function () {
+                                if (window.location) {
+                                    window.location.reload();
+                                }
+                            });
+                        })
+                        .catch(function () {
+                            chatWaDisconnectBadgeTrigger.disabled = false;
+                            Swal.fire({
+                                icon: 'error',
+                                title: "{{ __('Error') }}",
+                                text: "{{ __('Could not disconnect from WhatsApp.') }}",
+                                showDenyButton: false,
+                                showCloseButton: false,
+                            });
+                        });
+                });
+            });
+        }
+
         if (btnLinkExisting && linkExistingBlock) {
             btnLinkExisting.addEventListener('click', function () {
                 var number = linkExistingBlock.dataset.number;
@@ -1830,7 +1977,14 @@
                             $badgeClass = $waConnected ? 'success' : ($status === 'waiting_qr' ? 'warning' : 'secondary');
                             $statusLabel = $waConnected ? __('Connected') : ($status === 'waiting_qr' ? __('Scan QR') : __('Disconnected'));
                         @endphp
-                        <span id="chat-sidebar-wa-badge" class="badge bg-{{ $badgeClass }} mt-1">{{ $statusLabel }}</span>
+                        <div id="chat-sidebar-wa-badge-wrap" class="position-relative d-inline-block flex-shrink-0 mt-1 chat-wa-badge-disconnect-wrap {{ $waConnected ? 'chat-wa-disconnect-enabled' : '' }}">
+                            <span id="chat-sidebar-wa-badge" class="badge bg-{{ $badgeClass }}">{{ $statusLabel }}</span>
+                            <div class="chat-wa-disconnect-hover-positioner">
+                                <button type="button" id="chat-whatsapp-disconnect-badge-trigger" class="btn btn-danger chat-wa-disconnect-hover-trigger" @disabled(!$waConnected) title="{{ __('Disconnect WhatsApp') }}" aria-label="{{ __('Disconnect WhatsApp') }}">
+                                    <i class="ti ti-logout me-1"></i>{{ __('Disconnect') }}
+                                </button>
+                            </div>
+                        </div>
                     @else
                         <span>Admin</span>
                     @endif

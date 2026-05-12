@@ -2265,6 +2265,78 @@ class ChatController extends Controller
     }
 
     /**
+     * End the local WhatsApp session for the current team (Node /logout) and clear the linked number in team settings.
+     */
+    public function whatsappDisconnect(Request $request)
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return $request->expectsJson()
+                ? response()->json(['ok' => false], 400)
+                : redirect()->route('chat.index');
+        }
+        $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
+        $team = auth()->user()?->currentTeam;
+
+        if ($baseUrl === '')
+        {
+            $err = __('The WhatsApp service URL is not configured for this team.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 422)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        $logoutUrl = $baseUrl.'/logout';
+        if ($team)
+        {
+            $logoutUrl .= (str_contains($logoutUrl, '?') ? '&' : '?').'team_id='.$team->id;
+        }
+        $httpStatus = null;
+        $exception = false;
+        try
+        {
+            $resp = \Illuminate\Support\Facades\Http::timeout(30)->post($logoutUrl);
+            $httpStatus = $resp->status();
+        } catch (\Throwable $e)
+        {
+            $exception = true;
+        }
+
+        if ($exception)
+        {
+            $err = __('Could not reach the WhatsApp service. Check that it is running and the URL is correct.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 503)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        if ($httpStatus !== null && $httpStatus >= 400)
+        {
+            $err = __('The WhatsApp service returned an error (:status).', ['status' => (string) $httpStatus]);
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 502)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
+
+        if ($team)
+        {
+            $team->settings()->where('key', 'whatsapp_from')->delete();
+        }
+
+        $message = __('You have been disconnected from WhatsApp for this team.');
+
+        if ($request->expectsJson())
+        {
+            return response()->json(['ok' => true, 'message' => $message]);
+        }
+
+        return redirect()->route('chat.index')->with('success', $message);
+    }
+
+    /**
      * Callback from the Node WhatsApp service when a session connects.
      * Validates the link token (15 min expiry), extracts the team, and saves the connected number as the team's whatsapp_from.
      * Protected by X-Webhook-Secret when configured.
