@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\NewUserNotification;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -64,6 +65,11 @@ class SendNewUserWelcomeEmail implements ShouldQueue
             {
                 Log::error("Invalid email address for user {$this->user->id}: {$this->user->email}");
 
+                return;
+            }
+
+            if (NewUserWelcomeEmailNotifier::isPlaceholderInboxEmail($this->user->email))
+            {
                 return;
             }
 

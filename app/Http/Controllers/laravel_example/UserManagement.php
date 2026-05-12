@@ -5,6 +5,7 @@ namespace App\Http\Controllers\laravel_example;
 use App\DataTables\UserDataTable;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -285,7 +286,7 @@ class UserManagement extends Controller
                     // Queue welcome email with password setup link (asynchronous)
                     try
                     {
-                        \App\Jobs\SendNewUserWelcomeEmail::dispatch($user, $currentTeam);
+                        NewUserWelcomeEmailNotifier::queue($user, $currentTeam);
                         Log::info("Welcome email job queued for: {$user->email}");
                     } catch (\Exception $e)
                     {

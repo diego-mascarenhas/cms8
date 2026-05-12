@@ -21,6 +21,7 @@ use App\Models\Source;
 use App\Services\AstralChartService;
 use App\Services\MessageDeliveryDispatcher;
 use App\Support\CollectionMessagingGuide;
+use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\SearchNormalizer;
 use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
@@ -1756,6 +1757,8 @@ class ContactController extends Controller
             // Link user to contact
             $contact->update(['user_id' => $user->id]);
 
+            NewUserWelcomeEmailNotifier::queue($user, auth()->user()->currentTeam);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Usuario creado y vinculado correctamente',
@@ -1871,6 +1874,8 @@ class ContactController extends Controller
             $contact->update(['user_id' => $user->id]);
 
             $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
+
+            NewUserWelcomeEmailNotifier::queue($user, auth()->user()->currentTeam);
 
             return redirect()->route($redirectRoute, $id)->with('success', 'Usuario creado y vinculado correctamente');
         } catch (\Exception $e)

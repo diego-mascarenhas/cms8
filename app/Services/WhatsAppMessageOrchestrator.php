@@ -18,6 +18,7 @@ use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
@@ -1914,6 +1915,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             // Associate with team 1
             $user->teams()->attach(1, ['role' => 'client']);
+
+            NewUserWelcomeEmailNotifier::queue($user, Team::find(1));
 
             // Create contact
             $contact = \App\Models\Contact::create([

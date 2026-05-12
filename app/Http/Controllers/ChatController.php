@@ -24,6 +24,7 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -1998,6 +1999,8 @@ class ChatController extends Controller
                         $user->assignRole($clientRole);
                     }
                 }
+
+                NewUserWelcomeEmailNotifier::queue($user, null);
 
                 $response = "¡Gracias por registrarte!\n\nVamos a confirmar tus datos y a partir de ahora todas las comunicaciones con nosotros estarán validadas con este número telefónico.\nEn breve nos pondremos en contacto por este mismo medio.";
 

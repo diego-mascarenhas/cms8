@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\TokenHelper;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,8 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        NewUserWelcomeEmailNotifier::queue($user, null);
 
         $token = $user->createToken('IDONEO Access Token')->plainTextToken;
 

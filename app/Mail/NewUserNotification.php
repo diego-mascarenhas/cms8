@@ -2,10 +2,13 @@
 
 namespace App\Mail;
 
+use App\Helpers\Helpers;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 
 class NewUserNotification extends Mailable
@@ -36,7 +39,7 @@ class NewUserNotification extends Mailable
             ], false));
         } catch (\Exception $e)
         {
-            \Log::error("Failed to generate password reset token for user {$user->id}: ".$e->getMessage());
+            Log::error("Failed to generate password reset token for user {$user->id}: ".$e->getMessage());
             // Fallback URL to password reset request page
             $this->resetUrl = url(route('password.request'));
         }
@@ -47,12 +50,65 @@ class NewUserNotification extends Mailable
      */
     public function build()
     {
-        return $this->subject('Bienvenido a '.($this->team ? $this->team->name : config('app.name')).' - Configura tu contraseña')
+        $appName = (string) config('app.name');
+        $brand = $this->resolvePublicBrandLabel();
+        $displayName = trim((string) $this->user->name);
+        if ($displayName === '')
+        {
+            $displayName = (string) $this->user->email;
+        }
+        $showBrandLine = $brand !== $appName;
+        $logoUrl = url(Helpers::logoAsset('dark'));
+
+        return $this->subject('¡Hola, '.$displayName.'! · Activa tu acceso')
             ->view('emails.new-user-notification')
             ->with([
                 'user' => $this->user,
                 'team' => $this->team,
                 'resetUrl' => $this->resetUrl,
+                'brand' => $brand,
+                'displayName' => $displayName,
+                'showBrandLine' => $showBrandLine,
+                'appName' => $appName,
+                'logoUrl' => $logoUrl,
             ]);
+    }
+
+    /**
+     * Public-facing brand line: hide internal demo workspaces (names starting with "Demo" + dash, or exactly "Demo").
+     */
+    private function resolvePublicBrandLabel(): string
+    {
+        $appName = (string) config('app.name');
+        if (! $this->team instanceof Team)
+        {
+            return $appName;
+        }
+
+        $rawTeamName = trim((string) $this->team->name);
+        if ($rawTeamName === '')
+        {
+            return $appName;
+        }
+
+        if ($this->teamNameShouldUseAppBrandInstead($rawTeamName))
+        {
+            return $appName;
+        }
+
+        return $rawTeamName;
+    }
+
+    /**
+     * True for names like "Demo", "Demo — ACME", "Demo – ACME", "Demo-Team" (internal demo), not "Democracia".
+     */
+    private function teamNameShouldUseAppBrandInstead(string $rawTeamName): bool
+    {
+        if (strcasecmp($rawTeamName, 'demo') === 0)
+        {
+            return true;
+        }
+
+        return (bool) preg_match('/^demo(?=\s|\p{Pd}|$)/iu', $rawTeamName);
     }
 }
