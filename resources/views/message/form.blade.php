@@ -105,30 +105,50 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// Convert to hours before form submission
-document.querySelector('form').addEventListener('submit', function() {
-    const input = document.getElementById('min_hours_between_emails');
-    const unit = document.getElementById('time_unit').value;
-    const value = parseFloat(input.value) || 0;
-
-    let hours = value;
-    if (unit === 'days') {
-        hours = value * 24;
-    } else if (unit === 'weeks') {
-        hours = value * 24 * 7;
+// Convert display unit to stored hours before submit (idempotent for bfcache / validation re-renders).
+document.addEventListener('DOMContentLoaded', function ()
+{
+    var storeForm = document.getElementById('message-store-form');
+    if (! storeForm)
+    {
+        return;
     }
 
-    // Create hidden input with hours value
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'min_hours_between_emails';
-    hiddenInput.value = Math.round(hours);
+    storeForm.addEventListener('submit', function ()
+    {
+        var input = document.getElementById('min_hours_between_emails');
+        var unitEl = document.getElementById('time_unit');
+        if (! input || ! unitEl)
+        {
+            return;
+        }
 
-    // Remove name from visible input to avoid conflict
-    input.removeAttribute('name');
+        storeForm.querySelectorAll('input[name="min_hours_between_emails"][data-min-hours-submit-synth="1"]').forEach(function (n)
+        {
+            n.remove();
+        });
+        input.setAttribute('name', 'min_hours_between_emails');
 
-    // Add hidden input to form
-    this.appendChild(hiddenInput);
+        var unit = unitEl.value;
+        var value = parseFloat(input.value) || 0;
+        var hours = value;
+        if (unit === 'days')
+        {
+            hours = value * 24;
+        } else if (unit === 'weeks')
+        {
+            hours = value * 24 * 7;
+        }
+
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'min_hours_between_emails';
+        hiddenInput.value = String(Math.round(hours));
+        hiddenInput.setAttribute('data-min-hours-submit-synth', '1');
+
+        input.removeAttribute('name');
+        storeForm.appendChild(hiddenInput);
+    });
 });
 </script>
 @endsection
@@ -148,7 +168,7 @@ document.querySelector('form').addEventListener('submit', function() {
     @endif
 </div>
 
-<form action="{{ route('message.store') }}" method="POST">
+<form id="message-store-form" action="{{ route('message.store') }}" method="POST">
 	@csrf
 	<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 

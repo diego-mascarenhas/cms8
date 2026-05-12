@@ -54,6 +54,8 @@ class MessageCreateTemplateFlowTest extends TestCase
 
         $response->assertOk();
         $html = $response->getContent();
+        $this->assertStringContainsString('id="message-store-form"', $html);
+        $this->assertStringContainsString("getElementById('message-store-form')", $html);
         $this->assertMatchesRegularExpression(
             '/<select[^>]+id=["\']type_id["\'][^>]+name=["\']type_id["\']/si',
             $html,
