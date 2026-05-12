@@ -169,31 +169,16 @@
 
 @section('content')
 
+    @include('partials.business-configuration-prompt', [
+        'team' => $activeTeam ?? null,
+        'dashboardTopRow' => true,
+    ])
+
     <!-- Hour chart  -->
-    <div class="card bg-transparent shadow-none my-4 border-0">
+    <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
         <div class="card-body row p-0 pb-2">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
                 <h3>{{ __('app.welcome') }}</h3>
-                @include('partials.business-configuration-prompt', ['team' => $activeTeam ?? null])
-                <div class="col-12 col-lg-12">
-                    @php
-                        $weeklyGoals = [
-                            'Esta semana me comprometo a escuchar activamente a cada cliente',
-                            'Mi objetivo es identificar nuevas oportunidades en cada conversación',
-                            'Me enfocaré en fortalecer la relación con los clientes más antiguos',
-                            'Buscaré convertir cada interacción en una experiencia positiva',
-                            'Me propongo dar seguimiento oportuno a todas las conversaciones pendientes',
-                            'Esta semana mejoraré la calidad de mis notas y registros de contacto',
-                            'Me comprometo a identificar y atender las necesidades no expresadas',
-                            'Trabajaré en proporcionar soluciones proactivas a mis clientes',
-                            'Mi meta es aumentar el nivel de satisfacción de cada cliente',
-                            'Me dedicaré a construir relaciones más sólidas y duraderas',
-                        ];
-
-                        $randomGoal = $weeklyGoals[array_rand($weeklyGoals)];
-                    @endphp
-                    <p>{{ $randomGoal }}</p>
-                </div>
                 <div class="d-flex justify-content-between gap-3 me-5">
                     <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
                         <span class="bg-label-primary p-2 rounded">
@@ -209,7 +194,7 @@
                             <i class='ti ti-target ti-xl'></i>
                         </span>
                         <div class="content-right">
-                            <p class="mb-0">Contactos recientes</p>
+                            <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
                             <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
                         </div>
                     </div>
@@ -269,52 +254,55 @@
     </div>
     <!-- Hour chart End  -->
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3">
-                <div class="col">
-                    <div class="card h-100 border-0" style="background-color: #e8b5e6;">
-                        <div class="card-body py-3 text-center">
-                            <h2 class="mb-1">10,77k <i class="ti ti-arrow-up-right text-success"></i></h2>
-                            <span class="fs-5 text-body">Instagram</span>
+    {{-- Placeholder social stat cards: hidden until real team stats are wired. Set to @if(true) to show. --}}
+    @if(false)
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3">
+                    <div class="col">
+                        <div class="card h-100 border-0" style="background-color: #e8b5e6;">
+                            <div class="card-body py-3 text-center">
+                                <h2 class="mb-1">10,77k <i class="ti ti-arrow-up-right text-success"></i></h2>
+                                <span class="fs-5 text-body">Instagram</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="card h-100 border-0" style="background-color: #8e97ea;">
-                        <div class="card-body py-3 text-center">
-                            <h2 class="mb-1">8.445 <i class="ti ti-arrow-down-right text-danger"></i></h2>
-                            <span class="fs-5 text-body">Facebook</span>
+                    <div class="col">
+                        <div class="card h-100 border-0" style="background-color: #8e97ea;">
+                            <div class="card-body py-3 text-center">
+                                <h2 class="mb-1">8.445 <i class="ti ti-arrow-down-right text-danger"></i></h2>
+                                <span class="fs-5 text-body">Facebook</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="card h-100 border-0" style="background-color: #99a8b1;">
-                        <div class="card-body py-3 text-center">
-                            <h2 class="mb-1">1.511 <i class="ti ti-arrow-up-right text-success"></i></h2>
-                            <span class="fs-5 text-body">TikTok</span>
+                    <div class="col">
+                        <div class="card h-100 border-0" style="background-color: #99a8b1;">
+                            <div class="card-body py-3 text-center">
+                                <h2 class="mb-1">1.511 <i class="ti ti-arrow-up-right text-success"></i></h2>
+                                <span class="fs-5 text-body">TikTok</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="card h-100 border-0" style="background-color: #f58462;">
-                        <div class="card-body py-3 text-center">
-                            <h2 class="mb-1">1.070</h2>
-                            <span class="fs-5 text-body">YouTube</span>
+                    <div class="col">
+                        <div class="card h-100 border-0" style="background-color: #f58462;">
+                            <div class="card-body py-3 text-center">
+                                <h2 class="mb-1">1.070</h2>
+                                <span class="fs-5 text-body">YouTube</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="card h-100 border-0" style="background-color: #5f6bdc;">
-                        <div class="card-body py-3 text-center">
-                            <h2 class="mb-1">31</h2>
-                            <span class="fs-5 text-body">Bluesky</span>
+                    <div class="col">
+                        <div class="card h-100 border-0" style="background-color: #5f6bdc;">
+                            <div class="card-body py-3 text-center">
+                                <h2 class="mb-1">31</h2>
+                                <span class="fs-5 text-body">Bluesky</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 
     <div class="row mb-4">
         <div class="col-12">

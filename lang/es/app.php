@@ -1,8 +1,9 @@
 <?php
 
 return [
-    'welcome' => 'Bienvenido a '.config('variables.templateName').'!',
-    'dashboard' => 'Cuadro de mando',
+    'welcome' => '¡Bienvenido a '.config('variables.templateName').'!',
+    'dashboard' => 'Panel de control',
+    'dashboard_metric_new_leads' => 'Leads nuevos',
     'search' => 'Buscar',
     'search_with_shortcut' => 'Buscar (Ctrl+/)',
     'searching' => 'Buscando...',

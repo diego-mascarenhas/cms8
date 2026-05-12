@@ -3,6 +3,7 @@
 return [
     'welcome' => 'Welcome to '.config('variables.templateName').'!',
     'dashboard' => 'Dashboard',
+    'dashboard_metric_new_leads' => 'New leads',
     'search' => 'Search',
     'search_with_shortcut' => 'Search (Ctrl+/)',
     'searching' => 'Searching...',
