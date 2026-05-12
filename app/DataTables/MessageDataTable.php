@@ -97,7 +97,12 @@ class MessageDataTable extends DataTable
     public function query(Message $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with(['type', 'category', 'contactStatus'])
+            ->with([
+                'type',
+                'category',
+                'contactStatus',
+                'deliveries',
+            ])
             ->withCount([
                 'deliveries',
                 'deliveries as sent_count' => function ($query)

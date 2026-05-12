@@ -107,7 +107,8 @@ class Campaign extends Model
             $this->load([
                 'messages' => function ($q): void
                 {
-                    $q->select('messages.id', 'messages.team_id', 'messages.status_id', 'messages.started_at');
+                    $q->select('messages.id', 'messages.team_id', 'messages.status_id', 'messages.started_at')
+                        ->withCount('deliveries');
                 },
             ]);
         }
@@ -153,7 +154,9 @@ class Campaign extends Model
      */
     public static function messageIsOperationalForToolbar(Message $message): bool
     {
-        $totalDeliveries = MessageDelivery::where('message_id', $message->id)->count();
+        $totalDeliveries = array_key_exists('deliveries_count', $message->getAttributes())
+            ? (int) $message->getAttribute('deliveries_count')
+            : (int) MessageDelivery::query()->where('message_id', $message->id)->count();
 
         return (bool) $message->status_id
             && ($totalDeliveries > 0 || $message->started_at !== null);
@@ -241,22 +244,6 @@ class Campaign extends Model
 
         $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
         $clickRate = $delivered > 0 ? round(($clicked / $delivered) * 100, 2) : 0.0;
-
-        // #region agent log
-        file_put_contents(base_path('.cursor/debug-ca54fc.log'), json_encode([
-            'sessionId' => 'ca54fc',
-            'hypothesisId' => 'H4',
-            'location' => 'Campaign.php:deliveryStatistics',
-            'message' => 'campaign delivery stats aggregate',
-            'data' => [
-                'campaignId' => $campaignId,
-                'messageIdsCount' => count($messageIds),
-                'clicked' => $clicked,
-                'total' => $total,
-            ],
-            'timestamp' => (int) (microtime(true) * 1000),
-        ])."\n", FILE_APPEND | LOCK_EX);
-        // #endregion
 
         return [
             'total' => $total,

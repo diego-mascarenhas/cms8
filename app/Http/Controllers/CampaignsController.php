@@ -11,7 +11,6 @@ use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
 use App\Models\Content;
 use App\Models\Message;
-use App\Models\MessageDelivery;
 use App\Models\MessageType;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
@@ -165,6 +164,13 @@ class CampaignsController extends Controller
                     'messages.started_at',
                 )
                     ->with('type')
+                    ->withCount([
+                        'deliveries',
+                        'deliveries as delivered_deliveries_count' => static function ($query): void
+                        {
+                            $query->whereNotNull('delivered_at');
+                        },
+                    ])
                     ->orderBy('campaign_message.sort_order')
                     ->orderBy('campaign_message.id');
             },
@@ -249,8 +255,8 @@ class CampaignsController extends Controller
 
         foreach ($campaign->messages as $message)
         {
-            $totalDeliveries = MessageDelivery::where('message_id', $message->id)->count();
-            $deliveredCount = MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
+            $totalDeliveries = (int) $message->deliveries_count;
+            $deliveredCount = (int) $message->delivered_deliveries_count;
 
             if ($totalDeliveries > $deliveredCount)
             {
