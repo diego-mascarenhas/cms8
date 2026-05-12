@@ -3,90 +3,123 @@
     'grapesEditorUrl',
     'templateLabel' => null,
     'messageId' => null,
+    'templateId' => null,
     'previewFrameId' => null,
     'parentSyncsPreview' => false,
+    'templateHashedId' => null,
+    'duplicateFormId' => null,
+    'duplicateModalId' => null,
+    'removeTemplateUrl' => null,
 ])
 
 @php
-    $iframeId = $previewFrameId ?: 'email-template-preview-'.\Illuminate\Support\Str::random(10);
+    $dupModalDomId = $duplicateModalId ?? 'email-template-duplicate-modal';
+    $defaultDuplicateTemplateName = filled($templateLabel)
+        ? \Illuminate\Support\Str::limit(rtrim($templateLabel).' ('.__('app.email_template_copy_suffix').')', 75, '')
+        : __('app.email_template_duplicate_default_name');
 @endphp
 
-<div class="card mb-4 email-template-content-preview">
-    <div class="card-body">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
-            <label class="form-label mb-0">{{ __('Contenido del correo') }}</label>
-            <div class="d-flex flex-wrap gap-2">
-                @if ($messageId)
-                    @php
-                        $emailTestSendModalDomId = 'email-test-send-modal-'.$messageId;
-                    @endphp
-                    <button
-                        type="button"
-                        class="btn btn-label-secondary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#{{ $emailTestSendModalDomId }}"
-                        aria-controls="{{ $emailTestSendModalDomId }}"
-                    >
-                        <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
-                    </button>
-                @else
-                    <span class="btn btn-label-secondary disabled" title="{{ __('Disponible después de guardar el mensaje') }}">
-                        <i class="ti ti-send me-1"></i>{{ __('Enviar correo de prueba') }}
-                    </span>
-                @endif
-                @if (filled($grapesEditorUrl) && $grapesEditorUrl !== '#')
-                    <a
-                        href="{{ $grapesEditorUrl }}"
-                        class="btn btn-primary"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-                    </a>
-                @else
-                    <span
-                        class="btn btn-primary disabled"
-                        role="button"
-                        tabindex="-1"
-                        title="{{ __('Select a template with a visual editor to open it.') }}"
-                    >
-                        <i class="ti ti-external-link me-1"></i>{{ __('Abrir editor visual') }}
-                    </span>
-                @endif
-            </div>
-        </div>
+@include('message.partials.email-template-content-preview-card', [
+    'previewHtml' => $previewHtml,
+    'grapesEditorUrl' => $grapesEditorUrl,
+    'templateLabel' => $templateLabel,
+    'messageId' => $messageId,
+    'templateId' => $templateId,
+    'previewFrameId' => $previewFrameId,
+    'parentSyncsPreview' => $parentSyncsPreview,
+    'templateHashedId' => $templateHashedId,
+    'duplicateFormId' => $duplicateFormId,
+    'duplicateModalId' => $duplicateModalId,
+    'removeTemplateUrl' => $removeTemplateUrl,
+])
 
-        @if ($messageId)
-            @include('message.partials.email-test-send-modal', ['messageId' => $messageId])
-        @endif
+@if (filled($templateHashedId) && filled($duplicateFormId))
+    @push('modals')
+        @include('message.partials.email-template-content-preview-duplicate-modal', [
+            'dupModalDomId' => $dupModalDomId,
+            'duplicateFormId' => $duplicateFormId,
+            'defaultDuplicateTemplateName' => $defaultDuplicateTemplateName,
+            'messageId' => $messageId,
+        ])
+    @endpush
 
-        @if ($templateLabel)
-            <p class="text-muted small mb-3">{{ __('Plantilla:') }} <span class="fw-semibold">{{ $templateLabel }}</span></p>
-        @endif
-
-        <div class="mb-3">
-            <div class="border rounded overflow-hidden">
-                <iframe
-                    id="{{ $iframeId }}"
-                    title="{{ __('Vista previa del contenido del correo') }}"
-                    class="w-100 border-0"
-                    style="min-height: 560px; background: #fff;"
-                    src="about:blank"
-                ></iframe>
-                @unless ($parentSyncsPreview)
-                <script>
-                    (function ()
+    @if ($errors->has('duplicate_template_name') || $errors->has('message_id'))
+        @push('scripts')
+            <script>
+                document.addEventListener('DOMContentLoaded', function ()
+                {
+                    var modalEl = document.getElementById(@json($dupModalDomId));
+                    if (! modalEl || typeof bootstrap === 'undefined' || ! bootstrap.Modal)
                     {
-                        var frame = document.getElementById(@json($iframeId));
-                        if (! frame)
+                        return;
+                    }
+                    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                });
+            </script>
+        @endpush
+    @endif
+@endif
+
+@once('message-email-remove-template-swal')
+    @push('scripts')
+        <script>
+            (function ()
+            {
+                document.addEventListener('click', function (e)
+                {
+                    var link = e.target.closest('a[data-message-remove-template-confirm]');
+                    if (! link)
+                    {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    var url = link.getAttribute('href');
+                    if (! url)
+                    {
+                        return;
+                    }
+
+                    function go()
+                    {
+                        window.location.href = url;
+                    }
+
+                    if (typeof Swal === 'undefined')
+                    {
+                        if (window.confirm(@json(__('app.message_remove_mail_template_swal_text'))))
                         {
-                            return;
+                            go();
                         }
-                        frame.srcdoc = @json($previewHtml);
-                    })();
-                </script>
-                @endunless
-            </div>
-        </div>
-    </div>
-</div>
+
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: @json(__('app.message_remove_mail_template_swal_title')),
+                        text: @json(__('app.message_remove_mail_template_swal_text')),
+                        icon: 'warning',
+                        showCancelButton: true,
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-danger me-2',
+                            cancelButton: 'btn btn-label-secondary',
+                        },
+                        confirmButtonText: @json(__('app.message_remove_mail_template_swal_confirm')),
+                        cancelButtonText: @json(__('Cancel')),
+                        allowOutsideClick: true,
+                        allowEscapeKey: true,
+                    }).then(function (result)
+                    {
+                        if (result.isConfirmed)
+                        {
+                            go();
+                        }
+                    });
+                });
+            })();
+        </script>
+    @endpush
+@endonce

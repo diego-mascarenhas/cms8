@@ -15,12 +15,12 @@ use Illuminate\Validation\Rule;
 class PaymentLinkCheckoutCompleteController extends Controller
 {
     /**
-     * Humano plan slugs allowed on ?category= (display / module hints). Checkout session and billing
-     * always use the platform Stripe account from .env (Cashier), not per-team Stripe from settings.
+     * Humano plan slugs allowed on ?category= (must match Stripe Payment Link "After payment" URL).
+     * Checkout session and billing always use the platform Stripe account from .env (Cashier).
      *
      * @var array<int, string>
      */
-    private const PRICING_PLAN_SLUGS = ['assistant', 'business'];
+    private const PRICING_PLAN_SLUGS = ['assistant', 'business', 'foundation'];
 
     public function __invoke(Request $request, PaymentLinkSignupCompletionService $service): RedirectResponse
     {

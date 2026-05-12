@@ -9,6 +9,7 @@ use App\Models\ContactValoration;
 use App\Models\Fare;
 use App\Models\Language;
 use App\Models\Project;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity; // Added this import for the new method
 
@@ -777,6 +778,8 @@ class CollaboratorController extends Controller
             // Link user to collaborator
             $collaborator->update(['user_id' => $user->id]);
 
+            NewUserWelcomeEmailNotifier::queue($user, auth()->user()->currentTeam);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Usuario creado y vinculado correctamente',
@@ -1185,6 +1188,8 @@ class CollaboratorController extends Controller
                 'status_id' => 1, // Assuming 1 is active status
             ]);
 
+            NewUserWelcomeEmailNotifier::queue($user, $team);
+
             // Activity log was removed
             /*
             // Log the activity
@@ -1198,10 +1203,6 @@ class CollaboratorController extends Controller
                 ])
                 ->log('Colaborador aceptado y usuario creado');
             */
-
-            // Send welcome email with credentials (optional)
-            // You can implement this later if needed
-            // Mail::to($user->email)->send(new WelcomeCollaboratorMail($user, $password));
 
             return redirect()->route('collaborator.show', $id)
                 ->with('success', 'Colaborador aceptado correctamente. Usuario creado con email: '.$user->email);

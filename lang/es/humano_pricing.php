@@ -20,40 +20,38 @@ return [
     'coupon_copied' => 'Copiado',
     'staging_note' => 'Precios de staging: en producción se pueden cambiar los enlaces por variables de entorno.',
     'most_popular' => 'Más popular',
-
     'plans' => [
         'assistant' => [
-            'name' => 'Humano.app Assistant',
+            'name' => 'Assistant',
             'description' => 'Déjate ayudar por la inteligencia artificial para automatizar procesos rutinarios de tu negocio, como la gestión a través de WhatsApp de la agenda, los clientes y las tareas manteniendo tu propia identidad.',
             'features' => [
-                'Asistente centrado en WhatsApp con tu tono de marca',
-                'Agenda, clientes y tareas del día a día en un solo flujo',
-                'Automatización de lo repetitivo para ganar tiempo',
-                'Canales digitales para seguir cerca de tus clientes',
+                'Chat por WhatsApp y prompts alineados con tu tono de marca',
+                'Calendario, clientes, contactos y tareas en un solo flujo',
+                'Prospección y automatización de lo repetitivo para ganar tiempo',
+                'Mailer, landings y panel para seguir cerca de tus clientes',
             ],
         ],
         'business' => [
-            'name' => 'Humano.app Business',
+            'name' => 'Business',
             'description' => 'Controla toda la parte digital de tu negocio en una sola plataforma gestionada con inteligencia artificial y sin perder el toque humano que te diferencia de la competencia.',
             'features' => [
-                'Todo lo de Assistant, más una vista digital unificada',
-                'IA que apoya decisiones sin sustituir tu estilo',
-                'Espacio para crecer con tu equipo y tus procesos',
-                'Visibilidad operativa de conjunto',
+                'Todo lo de Assistant, más campañas y embudo comercial',
+                'Facturas, cobros y módulo financiero en la misma plataforma',
+                'Marketing, ventas y cobros enlazados sin cambiar de herramienta',
+                'Dashboard y ajustes del equipo para visibilidad operativa',
             ],
         ],
         'foundation' => [
-            'name' => 'Humano.app Foundation',
+            'name' => 'Foundation',
             'description' => 'La solución completa para automatizar todo tu negocio y hacerlo crecer más allá de lo que jamás imaginaste sin necesidad de tener que contratar a más personal.',
             'features' => [
+                'Incluye todos los módulos del plan Business en tu espacio de trabajo',
                 'Automatización integral adaptada a cómo trabajas',
                 'Escala ingresos y capacidad sin crecer a la fuerza en plantilla',
                 'Acompañamiento prioritario en despliegues complejos',
-                'Una base pensada para sumar valor con el tiempo',
             ],
         ],
     ],
-
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abrí el enlace del recibo de Stripe o contactá soporte.',
     'checkout_complete_not_paid' => 'Este checkout aún no está completado o pagado.',
@@ -66,6 +64,5 @@ return [
     'dashboard_post_checkout_whatsapp_title' => 'Vincular WhatsApp',
     'dashboard_post_checkout_whatsapp_body' => 'Escaneá el código QR para conectar WhatsApp (Dispositivos vinculados) cuando tu conector lo permita.',
     'dashboard_post_checkout_whatsapp_button' => 'Escanear QR de WhatsApp',
-
     'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copiá este mensaje y contactá soporte, o probá de nuevo en unos minutos.',
 ];

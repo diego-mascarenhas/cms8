@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\UploadedFile;
@@ -15,7 +16,6 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -158,7 +158,7 @@ class User extends Authenticatable
     public function teams()
     {
         return $this->belongsToMany(Team::class, 'team_user')
-            ->withPivot('role')
+            ->withPivot(['role'])
             ->withTimestamps();
     }
 
@@ -191,6 +191,11 @@ class User extends Authenticatable
     public function contact()
     {
         return $this->hasOne(Contact::class);
+    }
+
+    public function dailyPerformanceInsights()
+    {
+        return $this->hasMany(UserDailyPerformanceInsight::class);
     }
 
     /**

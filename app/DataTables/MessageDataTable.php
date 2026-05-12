@@ -97,7 +97,12 @@ class MessageDataTable extends DataTable
     public function query(Message $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with(['type', 'category', 'contactStatus'])
+            ->with([
+                'type',
+                'category',
+                'contactStatus',
+                'deliveries',
+            ])
             ->withCount([
                 'deliveries',
                 'deliveries as sent_count' => function ($query)
@@ -131,7 +136,7 @@ class MessageDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title(__('Name'))
+                ->title(__('Subject'))
                 ->addClass('all'),
             Column::computed('category_info')
                 ->title(__('Category'))

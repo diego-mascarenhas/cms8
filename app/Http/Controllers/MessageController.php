@@ -6,18 +6,25 @@ use App\DataTables\MessageDataTable;
 use App\Enums\CampaignStatus;
 use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\TestMessageFromTemplateRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
+use App\Models\Team;
 use App\Models\Template;
+use App\Models\User;
 use App\Services\MessageDeliveryDispatcher;
+use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use stdClass;
 use Twilio\Rest\Client;
 
@@ -65,7 +72,10 @@ class MessageController extends Controller
             $data->template_id = $template->id;
             $data->template = $template;
             $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($template);
-            $data->templateGrapesEditorUrl = route('template.editor', $template->getHashedId());
+            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                route('template.editor', $template->getHashedId()),
+                $request->fullUrl(),
+            );
             $data->name = old('name', $request->string('name')->toString());
             $data->type_id = old('type_id', 1);
             $data->text = old('text', __('Boletín por correo'));
@@ -101,7 +111,7 @@ class MessageController extends Controller
             ? $validated['send_window_end']
             : null;
 
-        $templateId = $data['template_id'] ?? null;
+        $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
 
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
@@ -120,9 +130,9 @@ class MessageController extends Controller
             ['id' => $request->id],
             [
                 'name' => $validated['name'],
-                'type_id' => $data['type_id'],
-                'category_id' => $data['category_id'] ?: null,  // Convert empty string to null
-                'contact_status_id' => $data['contact_status_id'] ?? null,
+                'type_id' => $this->resolveTypeIdForMessageStore($request),
+                'category_id' => ($data['category_id'] ?? '') ?: null,
+                'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
                 'template_id' => $templateId,
                 'text' => $validated['text'],
                 'status_id' => $status_id,
@@ -376,7 +386,7 @@ class MessageController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         $data = Message::with(['deliveries', 'team.settings', 'template'])->find($id);
 
@@ -385,21 +395,92 @@ class MessageController extends Controller
             return redirect()->route('message.index')->with('error', 'Message not found.');
         }
 
+        $removeMailTemplate = $request->boolean('remove_mail_template');
+
         $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
         $data->useLegacyTemplatePicker = false;
 
-        if ($data->template_id && $data->template && (int) $data->type_id === 1)
+        if (! $removeMailTemplate && $data->template_id && $data->template && (int) $data->type_id === 1)
         {
             $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($data->template);
-            $data->templateGrapesEditorUrl = route('template.editor', $data->template->getHashedId());
+            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                route('template.editor', $data->template->getHashedId()),
+                route('message.edit', $data->id),
+            );
         }
 
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
 
-        return view('message.form', compact('data'));
+        return view('message.form', compact('data', 'removeMailTemplate'));
+    }
+
+    /**
+     * JSON + HTML fragment for the message form when the user selects an email template (legacy / edit) before save.
+     */
+    public function templateEmailPreviewForMessageForm(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'template_id' => ['required', 'integer', 'exists:templates,id'],
+            'message_id' => ['nullable', 'integer'],
+            'context_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $template = Template::query()->whereKey($validated['template_id'])->firstOrFail();
+
+        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
+        if ($messageId <= 0)
+        {
+            $messageId = null;
+        } elseif (Message::query()->whereKey($messageId)->doesntExist())
+        {
+            $messageId = null;
+        }
+
+        $returnUrl = null;
+        if ($messageId !== null)
+        {
+            $returnUrl = route('message.edit', $messageId);
+        }
+        if ($returnUrl === null)
+        {
+            $returnUrl = TemplateEditorReturnUrl::validatedFromRequest($request);
+        }
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            $returnUrl = route('message.create', ['legacy_form' => 1]);
+        }
+
+        $previewHtml = $this->iframePreviewHtmlForTemplate($template);
+        $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+            route('template.editor', $template->getHashedId()),
+            $returnUrl,
+        );
+
+        $removeMailTemplateUrl = $messageId
+            ? route('message.edit', ['id' => $messageId, 'remove_mail_template' => 1])
+            : route('message.create', array_filter([
+                'legacy_form' => 1,
+                'name' => filled($validated['context_name'] ?? null) ? $validated['context_name'] : null,
+            ]));
+
+        $html = view('message.ajax.email-template-preview-bundle', [
+            'previewHtml' => $previewHtml,
+            'grapesEditorUrl' => $grapesEditorUrl,
+            'templateLabel' => $template->name,
+            'messageId' => $messageId,
+            'templateId' => $template->id,
+            'templateHashedId' => $template->getHashedId(),
+            'removeTemplateUrl' => $removeMailTemplateUrl,
+        ])->render();
+
+        return response()->json([
+            'preview_html' => $previewHtml,
+            'html' => $html,
+            'duplicate_action_url' => route('template.duplicate', $template->getHashedId()),
+        ]);
     }
 
     /**
@@ -848,13 +929,16 @@ class MessageController extends Controller
     }
 
     /**
-     * Send a test email to the current user
+     * Send a test email to the current user (saved message).
      */
     public function testSend(Request $request, $id)
     {
+        $emails = $this->resolveTestRecipientEmails($request);
+        $team = null;
+
         try
         {
-            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings', 'template'])->findOrFail($id);
             $user = auth()->user();
             $team = $user->currentTeam;
             if ($team && ! $team->relationLoaded('settings'))
@@ -873,40 +957,7 @@ class MessageController extends Controller
                 'before_config_username' => config('mail.mailers.smtp.username'),
             ]);
 
-            // Get email config (will use system defaults if not configured)
-            $this->configureMailForTeam($team);
-
-            // Create test contact data
-            $testContact = new stdClass;
-            $testContact->name = $user->name;
-            $testContact->surname = '';
-            $testContact->email = $user->email;
-            $testContact->id = 'test';
-
-            // Get HTML content for the test (simplified without tracking)
-            $htmlContent = $this->getTestHtmlForContact($message, $testContact);
-
-            // Send test email using configured provider
-            $emailProvider = config('services.email.provider', 'smtp');
-
-            switch ($emailProvider)
-            {
-                case 'api':
-                    if (config('humano-mailer.providers.api.enabled'))
-                    {
-                        // Use configured email API (MailBaby, Mailgun, etc.)
-                        Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
-                    } else
-                    {
-                        Log::warning('TEST SEND: Email API not configured, using default SMTP');
-                        Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
-                    }
-                    break;
-                case 'smtp':
-                default:
-                    Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
-                    break;
-            }
+            $this->sendTestEmailUsingMessageContext($message, $user, $team, $emails);
 
             Log::info('Test message sent', [
                 'message_id' => $message->id,
@@ -915,13 +966,17 @@ class MessageController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Correo de prueba enviado exitosamente',
-                'email' => $user->email,
+                'email' => implode(', ', $emails),
+                'emails' => $emails,
             ]);
+        } catch (ValidationException $e)
+        {
+            throw $e;
         } catch (\Exception $e)
         {
             Log::error('Test message send failed', [
                 'message_id' => $id,
-                'team_id' => $team->id ?? null,
+                'team_id' => isset($team) ? $team->id : null,
                 'error_message' => $e->getMessage(),
                 'exception_class' => get_class($e),
             ]);
@@ -937,13 +992,95 @@ class MessageController extends Controller
     }
 
     /**
+     * Send a test email using a team template before the message is saved (e.g. message create flow).
+     */
+    public function testSendFromTemplate(TestMessageFromTemplateRequest $request): JsonResponse
+    {
+        $team = null;
+
+        try
+        {
+            $user = $request->user();
+            $team = $user->currentTeam;
+
+            if (! $team)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('app.message_test_send_requires_team'),
+                ], 422);
+            }
+
+            if (! $team->relationLoaded('settings'))
+            {
+                $team->load('settings');
+            }
+
+            $validated = $request->validated();
+            $emails = $this->parseTestRecipientEmailsList($validated['test_recipients'] ?? null);
+            $template = Template::query()->whereKey($validated['template_id'])->firstOrFail();
+
+            $draftMessage = new Message([
+                'name' => filled($validated['draft_name'] ?? null) ? $validated['draft_name'] : $template->name,
+                'text' => $validated['fallback_text'] ?? '',
+                'team_id' => $team->id,
+                'type_id' => 1,
+            ]);
+            $draftMessage->setRelation('template', $template);
+
+            Log::info('🧪 TEST SEND: Starting test email from template (draft)', [
+                'template_id' => $template->id,
+                'user_email' => $user->email,
+                'team_id' => $team->id,
+            ]);
+
+            $this->sendTestEmailUsingMessageContext($draftMessage, $user, $team, $emails);
+
+            Log::info('Test message sent from template', [
+                'template_id' => $template->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Correo de prueba enviado exitosamente',
+                'email' => implode(', ', $emails),
+                'emails' => $emails,
+            ]);
+        } catch (ValidationException $e)
+        {
+            throw $e;
+        } catch (\Exception $e)
+        {
+            Log::error('Test message send from template failed', [
+                'team_id' => isset($team) ? $team->id : null,
+                'error_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+
+            $userMessage = $this->getUserFriendlyErrorMessage($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => $userMessage,
+            ]);
+        }
+    }
+
+    /**
      * Generate HTML content for test send (without tracking)
      */
     private function getTestHtmlForContact($message, $testContact)
     {
-        $templateHtml = $message && $message->template && isset($message->template->gjs_data['html'])
-            ? $message->template->gjs_data['html']
-            : '';
+        $templateHtml = '';
+        if ($message && $message->template && isset($message->template->gjs_data['html']))
+        {
+            $templateHtml = (string) $message->template->gjs_data['html'];
+        }
+
+        if (trim($templateHtml) === '')
+        {
+            $templateHtml = '<p>'.e($message->text ?? '').'</p>';
+        }
 
         // Replace variables
         $html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);
@@ -951,6 +1088,133 @@ class MessageController extends Controller
         $html = str_replace('{{email}}', $testContact->email ?? '', $html);
 
         return $html;
+    }
+
+    /**
+     * @param  list<string>  $recipientEmails
+     */
+    private function sendTestEmailUsingMessageContext(Message $message, User $user, Team $team, array $recipientEmails): void
+    {
+        $this->configureMailForTeam($team);
+
+        $emailProvider = config('services.email.provider', 'smtp');
+
+        foreach ($recipientEmails as $recipientEmail)
+        {
+            $testContact = new stdClass;
+            $testContact->name = (string) Str::of($recipientEmail)->before('@') ?: $user->name;
+            $testContact->surname = '';
+            $testContact->email = $recipientEmail;
+            $testContact->id = 'test';
+
+            $htmlContent = $this->getTestHtmlForContact($message, $testContact);
+
+            switch ($emailProvider)
+            {
+                case 'api':
+                    if (config('humano-mailer.providers.api.enabled'))
+                    {
+                        Mail::to($recipientEmail)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    } else
+                    {
+                        Log::warning('TEST SEND: Email API not configured, using default SMTP');
+                        Mail::to($recipientEmail)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    }
+                    break;
+                case 'smtp':
+                default:
+                    Mail::to($recipientEmail)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Disabled channel controls omit type_id from the request; preserve the stored value on update,
+     * otherwise default to mail (1) as a last resort.
+     */
+    private function resolveTypeIdForMessageStore(Request $request): int
+    {
+        $raw = $request->input('type_id');
+        if ($raw !== null && $raw !== '')
+        {
+            return (int) $raw;
+        }
+
+        if ($request->filled('id'))
+        {
+            $existing = Message::query()->whereKey((int) $request->id)->value('type_id');
+            if ($existing !== null)
+            {
+                return (int) $existing;
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveTestRecipientEmails(Request $request): array
+    {
+        $validated = $request->validate([
+            'test_recipients' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        return $this->parseTestRecipientEmailsList($validated['test_recipients'] ?? null);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseTestRecipientEmailsList(?string $raw): array
+    {
+        $user = auth()->user();
+        if ($user === null)
+        {
+            throw ValidationException::withMessages([
+                'test_recipients' => __('app.message_test_send_unauthenticated'),
+            ]);
+        }
+
+        if ($raw === null || trim($raw) === '')
+        {
+            return [$user->email];
+        }
+
+        $segments = collect(explode(',', $raw))
+            ->map(static fn (string $s): string => trim($s))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($segments->isEmpty())
+        {
+            return [$user->email];
+        }
+
+        if ($segments->count() > 15)
+        {
+            throw ValidationException::withMessages([
+                'test_recipients' => __('app.message_test_send_too_many_recipients'),
+            ]);
+        }
+
+        $out = [];
+        foreach ($segments as $email)
+        {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL))
+            {
+                throw ValidationException::withMessages([
+                    'test_recipients' => __('app.message_test_send_invalid_recipient', ['email' => $email]),
+                ]);
+            }
+
+            $out[] = $email;
+        }
+
+        return $out;
     }
 
     /**

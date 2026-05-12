@@ -57,6 +57,47 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             ->assertSessionHasErrors('category');
     }
 
+    public function test_accepts_foundation_category_query(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $email = 'payment-link-foundation-'.uniqid('', true).'@example.com';
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_foundation',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => 'cus_test_foundation',
+            'subscription' => 'sub_test_foundation',
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Foundation Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_foundation',
+            'category' => 'foundation',
+        ]))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('success')
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertAuthenticatedAs(User::where('email', $email)->first());
+    }
+
     public function test_redirects_to_pricing_when_stripe_session_missing(): void
     {
         config(['humano_pricing.signup_completion' => 'payment_link']);

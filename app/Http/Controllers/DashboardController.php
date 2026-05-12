@@ -9,7 +9,7 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
-use App\Services\TeamApiUsageStatsService;
+use App\Services\UserDailyPerformanceInsightService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
@@ -44,27 +44,6 @@ class DashboardController extends Controller
 
         // Ensure we never have negative minutes
         $totalTeamMinutes = max(0, round($totalTeamSeconds / 60));
-
-        // Filter dangerous contacts by team
-        $dangerousContacts = Contact::where('team_id', $activeTeam->id)
-            ->whereHas('sentimentHistories', function ($query)
-            {
-                $query
-                    ->whereIn('sentiment_id', [1, 2])
-                    ->whereIn('id', function ($subQuery)
-                    {
-                        $subQuery
-                            ->selectRaw('MAX(id)')
-                            ->from('contact_sentiment_histories')
-                            ->groupBy('contact_id');
-                    });
-            })
-            ->where('status_id', 5)
-            ->with(['currentSentiment' => function ($query)
-            {
-                $query->whereIn('sentiment_id', [1, 2]);
-            }])
-            ->get();
 
         // Clients to contact today (List of 60) - only when module is enabled
         $today = Carbon::today();
@@ -338,10 +317,7 @@ class DashboardController extends Controller
         //     {
         //         \Log::error('Error fetching Stripe data: '.$e->getMessage());
         //     }
-        // }
-
-        // API usage widget: token logs + assistant conversation usage for this team
-        $tokenStats = TeamApiUsageStatsService::forTeam((int) $activeTeam->id);
+        //         }
 
         $authUser = auth()->user();
         $recentContactActivities = ContactInteraction::query()
@@ -390,10 +366,16 @@ class DashboardController extends Controller
             }
         }
 
+        $dailyPerformanceInsight = null;
+        if ($activeTeam && $authUser->hasAnyRole(['admin', 'root']))
+        {
+            $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
+                ->ensureTodayRecord($authUser, $activeTeam, $mentoringLevelName);
+        }
+
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
-            'dangerousContacts',
             'clientsToContactToday',
             'sentimentData',
             'recentLeadsCount',
@@ -407,9 +389,9 @@ class DashboardController extends Controller
             'mentoringLevelName',
             'mentoringMessage',
             'hasProjects',
-            'tokenStats',
             'analyticsChartData',
             'recentContactActivities',
+            'dailyPerformanceInsight',
         ));
     }
 }

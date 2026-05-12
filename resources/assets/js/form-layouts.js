@@ -106,8 +106,17 @@ $(function () {
   if (select2.length) {
     select2.each(function () {
       var $this = $(this);
+      if ($this.hasClass('select2-hidden-accessible')) {
+        return;
+      }
+      var hasEmptyOption = $this.find('option[value=""]').length > 0;
+      var placeholder =
+        $this.data('placeholder') ||
+        (hasEmptyOption ? $this.find('option[value=""]').first().text().trim() : '') ||
+        'Select value';
       $this.wrap('<div class="position-relative"></div>').select2({
-        placeholder: 'Select value',
+        placeholder: placeholder,
+        allowClear: hasEmptyOption && !$this.prop('required'),
         dropdownParent: $this.parent(),
         // Add specific options for multiple select
         multiple: $this.prop('multiple'),

@@ -175,4 +175,25 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertFalse($team->hasModule('orders'));
         $this->assertFalse($team->hasModule('stores'));
     }
+
+    public function test_new_team_does_not_enable_performance_insights_addon_by_default(): void
+    {
+        Module::query()->create([
+            'name' => 'Team performance insights',
+            'key' => 'performance_insights',
+            'icon' => 'chart-infographic',
+            'description' => 'Test',
+            'is_core' => false,
+            'status' => 1,
+            'order' => 10,
+        ]);
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'personal_team' => true,
+        ]);
+
+        $this->assertFalse($team->fresh()->hasModule('performance_insights'));
+    }
 }

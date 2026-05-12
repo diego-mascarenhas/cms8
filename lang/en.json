@@ -635,6 +635,13 @@
   "Could not reach the WhatsApp service. Check that it is running and the URL is correct.": "Could not reach the WhatsApp service. Check that it is running and the URL is correct.",
   "The WhatsApp service returned an error (:status).": "The WhatsApp service returned an error (:status).",
   "Could not refresh the QR code.": "Could not refresh the QR code.",
+  "Could not disconnect from WhatsApp.": "Could not disconnect from WhatsApp.",
+  "Disconnect": "Disconnect",
+  "Disconnect from WhatsApp?": "Disconnect from WhatsApp?",
+  "Disconnect WhatsApp": "Disconnect WhatsApp",
+  "Disconnected": "Disconnected",
+  "You have been disconnected from WhatsApp for this team.": "You have been disconnected from WhatsApp for this team.",
+  "You will be signed out of WhatsApp for this team. You will need to scan the QR code again to reconnect.": "You will be signed out of WhatsApp for this team. You will need to scan the QR code again to reconnect.",
   "The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.": "The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.",
   "Si actualizaste rubro, descripción o propuesta de valor en pasos anteriores, regenerá el informe para que refleje los cambios.": "If you updated industry, description, or value proposition in earlier steps, regenerate the report to reflect those changes.",
   "Completa rubro, descripción y propuesta de valor (paso 1) para regenerar.": "Complete industry, description, and value proposition (step 1) to regenerate.",
@@ -754,5 +761,6 @@
   "Stripe webhooks": "Stripe webhooks",
   "Stripe webhooks help card body": "Webhook URL (POST /stripe/webhook), recommended events for Laravel Cashier and Humano, and Stripe CLI for local testing.",
   "View documentation": "View documentation",
+  "Message sending schedule": "Sending schedule & window",
   "Help": "Help"
 }

@@ -143,3 +143,10 @@ Schedule::command('google:sync-data')
     ->description('Queue Google contacts and calendar incremental sync jobs')
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('performance-insights:generate')
+    ->dailyAt('06:15')
+    ->name('performance-insights-generate')
+    ->description('Persist daily performance insight rows for admin/root users (idempotent without --force)')
+    ->withoutOverlapping(120)
+    ->runInBackground();

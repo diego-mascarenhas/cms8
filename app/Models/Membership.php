@@ -12,4 +12,11 @@ class Membership extends JetstreamMembership
      * @var bool
      */
     public $incrementing = true;
+
+    /**
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'role',
+    ];
 }

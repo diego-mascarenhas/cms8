@@ -1,4 +1,8 @@
-@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null, 'disabled' => false])
+@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null, 'disabled' => false, 'allowClear' => null])
+
+@php
+    $allowClearResolved = $allowClear !== null ? (bool) $allowClear : ! $required;
+@endphp
 
 <div class="form-group">
     @if($label)
@@ -6,9 +10,13 @@
             <label for="{{ $id }}" class="form-label mb-0">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
         </div>
     @endif
-    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" 
+    @if($disabled)
+        <input type="hidden" name="{{ $id }}" value="{{ old($id, $value) }}">
+    @endif
+    <select id="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror"
+        @if(! $disabled) name="{{ $id }}" @endif
         data-placeholder="{{ $placeholder ?? 'Seleccionar' }}"
-        @if($required) required @endif 
+        @if($required && ! $disabled) required @endif
         @if($disabled) disabled @endif>
         @if($placeholder)
             <option value="">{{ $placeholder }}</option>
@@ -48,11 +56,28 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        $('#{{ $id }}').select2({
-            placeholder: '{{ $placeholder ?? "Seleccionar" }}',
-            allowClear: {{ $required ? 'false' : 'true' }},
-            width: '100%'
+    $(function () {
+        var $el = $('#{{ $id }}');
+        if (! $el.length) {
+            return;
+        }
+        if ($el.hasClass('select2-hidden-accessible')) {
+            $el.select2('destroy');
+        }
+        var $parent = $el.parent();
+        var dropdownParent = $parent.hasClass('position-relative') ? $parent : $(document.body);
+        $el.select2({
+            placeholder: @json($placeholder ?? 'Seleccionar'),
+            allowClear: {{ $allowClearResolved ? 'true' : 'false' }},
+            width: '100%',
+            dropdownParent: dropdownParent,
+        });
+        $el.on('select2:opening', function (e)
+        {
+            if ($el.prop('disabled'))
+            {
+                e.preventDefault();
+            }
         });
     });
 </script>

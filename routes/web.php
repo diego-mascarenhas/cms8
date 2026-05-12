@@ -541,6 +541,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('chat.whatsapp-status');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
+    Route::post('/chat/whatsapp-disconnect', [ChatController::class, 'whatsappDisconnect'])->name('chat.whatsapp-disconnect');
     Route::post('/chat/link-current-number', [ChatController::class, 'linkCurrentNumberFromService'])->name('chat.link-current-number');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::get('/chat/list', [ChatController::class, 'getChatList'])->name('chat.list');
@@ -887,6 +888,7 @@ Route::middleware(['auth'])->group(function ()
     // Messages
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
+    Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
@@ -895,6 +897,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
     Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
     Route::post('message/{id}/send-pending-now', [MessageController::class, 'sendPendingNow'])->name('message.send-pending-now');
+    Route::post('message/test-from-template', [MessageController::class, 'testSendFromTemplate'])->name('message.test-from-template');
     Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
     Route::post('message/delivery/{deliveryId}/resend', [MessageController::class, 'resendDelivery'])->name('message.delivery.resend');
     Route::get('message/{id}/link-details/{encodedLink}', [MessageController::class, 'getLinkDetails'])->name('message.link-details');
@@ -914,6 +917,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
     Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
     Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
+    Route::post('/template/{hashedId}/duplicate', [TemplateController::class, 'duplicate'])->name('template.duplicate');
     Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
     Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
@@ -1017,6 +1021,8 @@ Route::middleware(['auth'])->group(function ()
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
+
+    Route::get('/performance-insights/list', [App\Http\Controllers\UserDailyPerformanceInsightController::class, 'index'])->name('performance-insights.index');
 });
 
 // Testing

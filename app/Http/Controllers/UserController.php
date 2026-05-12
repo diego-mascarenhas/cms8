@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\UserDataTable;
 use App\Models\User;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -101,6 +102,8 @@ class UserController extends Controller
 
         // Add user to current team
         $user->teams()->attach(Auth::user()->currentTeam->id);
+
+        NewUserWelcomeEmailNotifier::queue($user, Auth::user()->currentTeam);
 
         return redirect()->route('user.index')
             ->with('success', __('User created successfully.'));

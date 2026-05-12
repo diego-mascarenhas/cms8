@@ -2,6 +2,136 @@
 
 @section('title', 'Facturación y Planes')
 
+@section('vendor-style')
+	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
+@endsection
+
+@section('vendor-script')
+	<script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
+@endsection
+
+@section('page-script')
+	@if (auth()->user()->hasRole(['root', 'admin']) && is_array($tokenStats ?? null) && ! empty($tokenStats['byModule']))
+		<script>
+			(function() {
+				const moduleData = @json($tokenStats['byModule']);
+				const labels = [];
+				const series = [];
+				const colors = ['#696cff', '#8592a3', '#71dd37', '#ffab00', '#ff3e1d', '#03c3ec'];
+
+				Object.values(moduleData).forEach(module => {
+					if (module.tokens_used > 0) {
+						labels.push(module.module_name);
+						series.push(module.tokens_used);
+					}
+				});
+
+				if (series.length > 0) {
+					const chartEl = document.querySelector('#tokensByModuleChart');
+					const chartHeight = chartEl && chartEl.dataset.chartHeight
+						? parseInt(chartEl.dataset.chartHeight, 10)
+						: 160;
+					const chart = new ApexCharts(chartEl, {
+						chart: {
+							type: 'donut',
+							height: chartHeight,
+							fontFamily: 'Public Sans'
+						},
+						series: series,
+						labels: labels,
+						colors: colors,
+						stroke: {
+							width: 0
+						},
+						dataLabels: {
+							enabled: false
+						},
+						legend: {
+							show: true,
+							position: 'bottom',
+							horizontalAlign: 'center',
+							fontSize: '11px',
+							fontFamily: 'Public Sans',
+							markers: {
+								width: 10,
+								height: 10,
+								offsetX: -3
+							},
+							itemMargin: {
+								horizontal: 8,
+								vertical: 5
+							},
+							offsetY: 0
+						},
+						plotOptions: {
+							pie: {
+								donut: {
+									size: '70%',
+									labels: {
+										show: true,
+										name: {
+											show: false
+										},
+										value: {
+											show: true,
+											fontSize: '18px',
+											fontWeight: 600,
+											color: '#566a7f',
+											offsetY: 4,
+											formatter: val => parseInt(val).toLocaleString()
+										},
+										total: {
+											show: true,
+											showAlways: true,
+											fontSize: '11px',
+											fontWeight: 400,
+											color: '#a1acb8',
+											label: 'Total tokens',
+											formatter: w => w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString()
+										}
+									}
+								}
+							}
+						},
+						tooltip: {
+							y: {
+								formatter: val => val.toLocaleString() + ' tokens'
+							}
+						},
+						responsive: [{
+							breakpoint: 480,
+							options: {
+								chart: {
+									height: Math.max(130, chartHeight - 20)
+								},
+								legend: {
+									fontSize: '10px'
+								}
+							}
+						}]
+					});
+					chart.render();
+				}
+			})();
+		</script>
+	@endif
+	<script>
+		function confirmCancel(stripeId)
+		{
+			document.getElementById('cancelStripeId').value = stripeId || '';
+			const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
+			modal.show();
+		}
+
+		@if ($errors->any())
+		document.addEventListener('DOMContentLoaded', function() {
+			var myModal = new bootstrap.Modal(document.getElementById('editBillingModal'));
+			myModal.show();
+		});
+		@endif
+	</script>
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
@@ -148,10 +278,10 @@
 	</div>
 </div>
 
-<!-- All Subscriptions -->
-<div class="row">
-	<div class="col-12 mb-4">
-		<div class="card">
+<!-- All Subscriptions + API usage (sidebar on large screens) -->
+<div class="row align-items-lg-start mb-4">
+	<div class="col-12 col-lg-8 mb-4 mb-lg-0">
+		<div class="card mb-0">
 			<div class="card-header d-flex justify-content-between align-items-center">
 				<h5 class="card-title mb-0">Todas las Suscripciones</h5>
 				<a href="{{ route('subscription.index') }}" class="btn btn-primary">
@@ -425,6 +555,11 @@
 			</div>
 		</div>
 	</div>
+	@if ($tokenStats !== null)
+		<div class="col-12 col-lg-4 mt-4 mt-lg-0">
+			@include('partials.team-api-usage-widget', ['tokenStats' => $tokenStats])
+		</div>
+	@endif
 </div>
 
 <!-- Billing History -->
@@ -770,25 +905,4 @@
 	</div>
 </div>
 
-@section('vendor-script')
-@endsection
-
-<script>
-function confirmCancel(stripeId)
-{
-	// Set the stripe_id in the hidden input
-	document.getElementById('cancelStripeId').value = stripeId || '';
-
-	const modal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
-	modal.show();
-}
-
-// Reabrir el modal si hay errores de validación
-@if($errors->any())
-	document.addEventListener('DOMContentLoaded', function() {
-		var myModal = new bootstrap.Modal(document.getElementById('editBillingModal'));
-		myModal.show();
-	});
-@endif
-</script>
 @endsection

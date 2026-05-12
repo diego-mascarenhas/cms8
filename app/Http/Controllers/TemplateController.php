@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\DataTables\TemplateDataTable;
 use App\Helpers\GrapesJsHelper;
+use App\Http\Requests\DuplicateTemplateRequest;
 use App\Jobs\GenerateTemplateHtmlJob;
+use App\Models\Message;
 use App\Models\Template;
 use App\Services\TemplateHtmlGenerationService;
+use App\Support\TemplateEditorReturnUrl;
+use Dotlogics\Grapesjs\App\Editor\Config;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -169,7 +174,7 @@ class TemplateController extends Controller
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 
-    public function editor(Request $request, string $hashedId)
+    public function editor(Request $request, string $hashedId): View|RedirectResponse
     {
         $page = Template::findByHash($hashedId);
 
@@ -178,11 +183,78 @@ class TemplateController extends Controller
             return redirect()->route('template.index')->with('error', 'Template not found.');
         }
 
-        // Add team ID information to the editor context
         $teamId = auth()->user()->currentTeam->id ?? 'default';
         $request->merge(['team_id' => $teamId]);
 
-        return $this->show_gjs_editor($request, $page);
+        $returnUrl = TemplateEditorReturnUrl::validatedFromRequest($request);
+        $editorConfig = app(Config::class)->initialize($page);
+
+        return view('laravel-grapesjs::edittor', [
+            'editorConfig' => $editorConfig,
+            'model' => $page,
+            'returnUrl' => $returnUrl,
+        ]);
+    }
+
+    /**
+     * Duplicate a template (same team) and redirect to the visual editor for the copy.
+     */
+    public function duplicate(DuplicateTemplateRequest $request, string $hashedId): RedirectResponse
+    {
+        $source = Template::findByHash($hashedId);
+
+        if (! $source)
+        {
+            return redirect()->back()->with('error', __('Template not found.'));
+        }
+
+        $validated = $request->validated();
+        $newName = Str::limit(trim((string) $validated['duplicate_template_name']), 75, '');
+
+        $gjsData = $source->gjs_data;
+        if (! is_array($gjsData))
+        {
+            $gjsData = [];
+        } else
+        {
+            $gjsData = json_decode(json_encode($gjsData), true) ?? [];
+        }
+
+        $copy = Template::create([
+            'name' => $newName,
+            'status_id' => false,
+            'gjs_data' => $gjsData,
+        ]);
+
+        $linkedToMessage = false;
+        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
+
+        if ($messageId > 0)
+        {
+            $message = Message::query()->whereKey($messageId)->first();
+
+            if ($message !== null && (int) $message->type_id === 1)
+            {
+                $message->template_id = $copy->id;
+                $message->save();
+                $linkedToMessage = true;
+            }
+        }
+
+        $successKey = $linkedToMessage
+            ? 'app.email_template_duplicate_success_linked'
+            : 'app.email_template_duplicate_success';
+
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        $editorTarget = route('template.editor', $copy->getHashedId());
+        if ($returnUrl !== null)
+        {
+            $editorTarget = TemplateEditorReturnUrl::editorRouteWithReturn($editorTarget, $returnUrl);
+        }
+
+        return redirect()
+            ->to($editorTarget)
+            ->with('success', __($successKey));
     }
 
     /**

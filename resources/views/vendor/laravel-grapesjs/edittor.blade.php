@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit {{ $model->editor_page_title }}</title>
 
@@ -12,15 +12,41 @@
         <link rel="stylesheet" href="{{ $style }}">
     @endforeach
 
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
-
     <style>
         * {
             margin: 0;
             padding: 0;
         }
+
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            width: auto;
+            min-height: 30px;
+            padding: 0 0.5rem;
+        }
+
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn .gjs-pn-btn-text {
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1;
+            white-space: nowrap;
+        }
     </style>
     <script>
+        window.grapesJsToolbarLabels = {
+            save: @json(__('app.grapesjs_toolbar_save')),
+            back: @json(__('app.grapesjs_toolbar_back')),
+        };
+
         window.editorConfig = @json($editorConfig ?? []);
 
         Object.defineProperty(window, 'grapesjs', {
@@ -78,176 +104,233 @@
 </head>
 
 <body>
-    {{-- Temporarily hidden: AI assistant bar above GrapesJS editor --}}
-    <div id="editor-assistant-bar" data-template-hashed-id="{{ $model->getHashedId() }}" style="display: none; padding: 6px 32px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
-      <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
-        <img src="{{ asset('assets/logo-dark.svg') }}" alt="Humano" style="height: 36px; width: auto; min-width: 100px; object-fit: contain;" />
-        <textarea id="generate-ai-prompt" rows="2" placeholder="Ej: Cambiar el color del botón, renombrar la plantilla, o describir contenido para generar"
-          style="font-family: 'Public Sans', Arial, Helvetica, sans-serif; flex: 1 1 75%; min-width: 840px; max-width: 1200px; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
-        <button type="button" id="generate-ai-btn"
-          style="padding: 0.5rem 1.25rem; background: #7367f0; color: #fff; border: none; border-radius: 0.375rem; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Public Sans', Arial, Helvetica, sans-serif; white-space: nowrap; box-shadow: 0 4px 8px rgba(115, 103, 240, 0.35);">
-          Crear con el Asistente Humano
-        </button>
-      </div>
-    </div>
     <div id="{{ str_replace('#', '', $editorConfig->container ?? 'editor') }}"></div>
 
     @foreach ($editorConfig->getScripts() as $script)
         <script src="{{ $script }}"></script>
     @endforeach
-
     <script>
-    function getGrapesEditorInstance() {
-        if (window.gjsEditor && typeof window.gjsEditor.setComponents === 'function') return window.gjsEditor;
-        if (window.editor && typeof window.editor.setComponents === 'function') return window.editor;
-        if (window.grapesjs && window.grapesjs.editors && window.grapesjs.editors.length) {
-            for (let ed of window.grapesjs.editors) {
-                if (typeof ed.setComponents === 'function') return ed;
-            }
-        }
-        return null;
-    }
-
-    function openBlocksPanel(editor) {
-        if (!editor) {
-            return;
-        }
-
-        try {
-            if (editor.Panels && typeof editor.Panels.getButton === 'function') {
-                var openBlocksBtn = editor.Panels.getButton('views', 'open-blocks');
-                if (openBlocksBtn && typeof openBlocksBtn.set === 'function') {
-                    openBlocksBtn.set('active', true);
-
+        (function ()
+        {
+            function enhanceHumanoGrapesToolbar(editor)
+            {
+                if (! editor || editor.get('_humanoToolbarEnhanced'))
+                {
                     return;
                 }
-            }
-        } catch (e1) {}
 
-        try {
-            if (typeof editor.runCommand === 'function') {
-                editor.runCommand('open-blocks');
+                var labels = window.grapesJsToolbarLabels || { save: 'Save', back: 'Back' };
 
-                return;
-            }
-        } catch (e2) {}
+                try
+                {
+                    var cancel = editor.Panels.getButton('options', 'cancel');
+                    var save = editor.Panels.getButton('options', 'save');
 
-        var fallback = document.querySelector('.gjs-pn-views .gjs-pn-btn[title="Open Blocks"]')
-            || document.querySelector('.gjs-pn-btn.fa-th-large');
-        if (fallback && typeof fallback.click === 'function') {
-            fallback.click();
-        }
-    }
-
-    /**
-     * Open the Blocks sidebar on editor load (same as clicking Open Blocks once).
-     */
-    function wireOpenBlocksPanelOnEditorLoad(editor) {
-        if (!editor || typeof editor.on !== 'function') {
-            return;
-        }
-
-        var blocksSidebarOpenedOnce = false;
-
-        function scheduleOpenBlocksPanel() {
-            if (blocksSidebarOpenedOnce) {
-                return;
-            }
-
-            blocksSidebarOpenedOnce = true;
-            requestAnimationFrame(function () {
-                openBlocksPanel(editor);
-            });
-        }
-
-        editor.on('load', scheduleOpenBlocksPanel);
-
-        window.setTimeout(function () {
-            try {
-                if (!blocksSidebarOpenedOnce && editor.Canvas && editor.Canvas.getBody && editor.Canvas.getBody()) {
-                    scheduleOpenBlocksPanel();
-                }
-            } catch (e) {}
-        }, 250);
-    }
-
-    function getCsrfToken() {
-        var meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta) return meta.getAttribute('content');
-        var match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : '';
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        var blocksPanelWired = false;
-        var blocksPollAttempts = 0;
-        var blocksPollId = window.setInterval(function () {
-            if (blocksPanelWired) {
-                window.clearInterval(blocksPollId);
-
-                return;
-            }
-
-            blocksPollAttempts += 1;
-            var grapesEditorInstance = getGrapesEditorInstance();
-
-            if (grapesEditorInstance) {
-                blocksPanelWired = true;
-                wireOpenBlocksPanelOnEditorLoad(grapesEditorInstance);
-                window.clearInterval(blocksPollId);
-            }
-
-            if (blocksPollAttempts > 200) {
-                window.clearInterval(blocksPollId);
-            }
-        }, 25);
-
-        setTimeout(function() {
-            var generateAiBtn = document.getElementById('generate-ai-btn');
-            if (generateAiBtn) {
-                generateAiBtn.addEventListener('click', async function() {
-                    var promptInput = document.getElementById('generate-ai-prompt');
-                    var prompt = promptInput && promptInput.value ? promptInput.value.trim() : '';
-                    if (!prompt) {
-                        alert('Escribe tu solicitud (cambios, renombrar, generar contenido, etc.).');
+                    if (! cancel || ! save)
+                    {
                         return;
                     }
-                    var bar = document.getElementById('editor-assistant-bar');
-                    var templateHashedId = bar && bar.getAttribute ? bar.getAttribute('data-template-hashed-id') : '';
-                    var btn = this;
-                    var originalText = btn.textContent;
-                    btn.disabled = true;
-                    btn.textContent = 'Enviando...';
-                    promptInput.value = '';
-                    try {
-                        var body = { message: prompt };
-                        if (templateHashedId) body.template_hashed_id = templateHashedId;
-                        var response = await fetch('{{ route("chat.assistant") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': getCsrfToken(),
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify(body)
-                        });
-                        var rawText = await response.text();
-                        var data = rawText ? (function(){ try { return JSON.parse(rawText); } catch(e) { return {}; } })() : {};
-                        if (data.success && data.response) {
-                            alert(data.response);
-                        } else {
-                            alert(data.message || data.error || 'No se pudo enviar. Intenta de nuevo.');
-                        }
-                    } catch (e) {
-                        alert('Error: ' + (e.message || 'Error de conexión'));
-                    } finally {
-                        btn.disabled = false;
-                        btn.textContent = originalText;
+
+                    var cancelView = cancel.get('view');
+                    var saveView = save.get('view');
+                    var cancelEl = cancelView && cancelView.el;
+                    var saveEl = saveView && saveView.el;
+
+                    if (! cancelEl || ! saveEl)
+                    {
+                        return;
                     }
-                });
+
+                    if (! cancelEl.querySelector('.gjs-pn-btn-text'))
+                    {
+                        var cancelLabel = document.createElement('span');
+                        cancelLabel.className = 'gjs-pn-btn-text';
+                        cancelLabel.textContent = labels.back;
+                        cancelEl.appendChild(cancelLabel);
+                    }
+
+                    if (! saveEl.querySelector('.gjs-pn-btn-text'))
+                    {
+                        var saveLabel = document.createElement('span');
+                        saveLabel.className = 'gjs-pn-btn-text';
+                        saveLabel.textContent = labels.save;
+                        saveEl.appendChild(saveLabel);
+                    }
+
+                    var parent = cancelEl.parentElement;
+                    if (parent && saveEl.parentElement === parent)
+                    {
+                        parent.appendChild(cancelEl);
+                        parent.appendChild(saveEl);
+                    }
+
+                    editor.set('_humanoToolbarEnhanced', true);
+                }
+                catch (e)
+                {
+                    console.error(e);
+                }
             }
-        }, 1500); // Espera 1.5s para asegurar que el editor esté inicializado
-    });
+
+            function runToolbarEnhancement()
+            {
+                var editor = window.gjsEditor;
+                if (! editor)
+                {
+                    return false;
+                }
+
+                enhanceHumanoGrapesToolbar(editor);
+
+                if (! editor.get('_humanoToolbarRetryScheduled'))
+                {
+                    editor.set('_humanoToolbarRetryScheduled', true);
+                    [120, 350, 700].forEach(function (delay)
+                    {
+                        setTimeout(function ()
+                        {
+                            editor.unset('_humanoToolbarEnhanced');
+                            enhanceHumanoGrapesToolbar(editor);
+                        }, delay);
+                    });
+                }
+
+                return editor.get('_humanoToolbarEnhanced') === true;
+            }
+
+            var toolbarAttempts = 0;
+            var toolbarTimer = setInterval(function ()
+            {
+                toolbarAttempts++;
+                if (runToolbarEnhancement() || toolbarAttempts > 400)
+                {
+                    clearInterval(toolbarTimer);
+                }
+            }, 50);
+        })();
     </script>
+    <script>
+        (function ()
+        {
+            function bindDefaultBlocksPanel(editor)
+            {
+                if (! editor || editor.get('_humanoOpenBlocksHook'))
+                {
+                    return;
+                }
+
+                editor.set('_humanoOpenBlocksHook', true);
+
+                var ran = false;
+
+                function runOpenBlocksOnce()
+                {
+                    if (ran)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        editor.runCommand('open-blocks');
+                        ran = true;
+                    }
+                    catch (e)
+                    {
+                        console.error(e);
+                    }
+                }
+
+                editor.on('load', function ()
+                {
+                    setTimeout(runOpenBlocksOnce, 100);
+                });
+
+                setTimeout(runOpenBlocksOnce, 450);
+                setTimeout(runOpenBlocksOnce, 900);
+            }
+
+            var blocksAttempts = 0;
+            var blocksTimer = setInterval(function ()
+            {
+                blocksAttempts++;
+                var editor = window.gjsEditor;
+                if (editor)
+                {
+                    bindDefaultBlocksPanel(editor);
+                }
+                if (blocksAttempts > 400)
+                {
+                    clearInterval(blocksTimer);
+                }
+            }, 50);
+        })();
+    </script>
+    @if (isset($returnUrl) && filled($returnUrl))
+        <script>
+            (function ()
+            {
+                var returnUrl = @json($returnUrl);
+
+                function goReturn()
+                {
+                    window.location.href = returnUrl;
+                }
+
+                function patchEditor()
+                {
+                    var editor = window.gjsEditor;
+                    if (! editor)
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        var cancel = editor.Panels.getButton('options', 'cancel');
+                        if (cancel)
+                        {
+                            cancel.set('command', function ()
+                            {
+                                goReturn();
+                            });
+                        }
+
+                        var save = editor.Panels.getButton('options', 'save');
+                        if (save)
+                        {
+                            save.set('command', function (ed)
+                            {
+                                ed.store(function (err)
+                                {
+                                    if (err)
+                                    {
+                                        return;
+                                    }
+                                    goReturn();
+                                });
+                            });
+                        }
+                    }
+                    catch (e)
+                    {
+                        console.error(e);
+                    }
+
+                    return true;
+                }
+
+                var attempts = 0;
+                var timer = setInterval(function ()
+                {
+                    attempts++;
+                    if (patchEditor() || attempts > 300)
+                    {
+                        clearInterval(timer);
+                    }
+                }, 50);
+            })();
+        </script>
+    @endif
 </body>
 </html>

@@ -18,6 +18,7 @@ use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\NewUserWelcomeEmailNotifier;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
@@ -1915,6 +1916,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             // Associate with team 1
             $user->teams()->attach(1, ['role' => 'client']);
 
+            NewUserWelcomeEmailNotifier::queue($user, Team::find(1));
+
             // Create contact
             $contact = \App\Models\Contact::create([
                 'team_id' => 1,
@@ -2258,7 +2261,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             // Body text: use caption when provided (e.g. voice message); for QR types use the legacy text
             $isQrType = in_array($type, ['generic_qr', 'personalized_qr'], true);
-            $bodyText = $caption ?? ($isQrType ? '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.' : '🎤 Mensaje de voz');
+            $bodyText = $caption ?? ($isQrType ? '🔄 ¡Tu código QR está listo! Escanéalo para acceder a revision alpha.' : '🎤 Mensaje de voz');
             $bodyText = WhatsAppOutboundText::sanitize($bodyText);
 
             // For local development, Twilio cannot fetch .test URLs; send text only (caption or fallback)
@@ -2371,7 +2374,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'channel' => 'whatsapp',
                 'from' => preg_replace('/[^0-9]/', '', $this->config['whatsapp_from']),
                 'to' => preg_replace('/[^0-9]/', '', $phoneNumber),
-                'body' => '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.',
+                'body' => '🔄 ¡Tu código QR está listo! Escanéalo para acceder a revision alpha.',
                 'status' => $twilioMessage->status ?? 'sent',
                 'direction' => 'outbound',
                 'team_id' => $this->team ? $this->team->id : null,

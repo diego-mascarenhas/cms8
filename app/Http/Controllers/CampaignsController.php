@@ -11,12 +11,12 @@ use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
 use App\Models\Content;
 use App\Models\Message;
-use App\Models\MessageDelivery;
 use App\Models\MessageType;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
 use App\Models\Template;
 use App\Services\CampaignClassicEditorPersistence;
+use App\Support\TemplateEditorReturnUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -165,6 +165,13 @@ class CampaignsController extends Controller
                     'messages.started_at',
                 )
                     ->with('type')
+                    ->withCount([
+                        'deliveries',
+                        'deliveries as delivered_deliveries_count' => static function ($query): void
+                        {
+                            $query->whereNotNull('delivered_at');
+                        },
+                    ])
                     ->orderBy('campaign_message.sort_order')
                     ->orderBy('campaign_message.id');
             },
@@ -249,8 +256,8 @@ class CampaignsController extends Controller
 
         foreach ($campaign->messages as $message)
         {
-            $totalDeliveries = MessageDelivery::where('message_id', $message->id)->count();
-            $deliveredCount = MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
+            $totalDeliveries = (int) $message->deliveries_count;
+            $deliveredCount = (int) $message->delivered_deliveries_count;
 
             if ($totalDeliveries > $deliveredCount)
             {
@@ -285,6 +292,44 @@ class CampaignsController extends Controller
 
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
         $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
+
+        $curatedTemplateIds = collect($templatesByLegacyId)
+            ->filter(fn ($template): bool => $template instanceof Template)
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $teamId = auth()->user()?->currentTeam?->id;
+        $userTemplates = [];
+
+        if ($teamId !== null)
+        {
+            $userTemplatesQuery = Template::withoutGlobalScopes()
+                ->where('team_id', $teamId)
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id');
+
+            if ($curatedTemplateIds !== [])
+            {
+                $userTemplatesQuery->whereNotIn('id', $curatedTemplateIds);
+            }
+
+            $userTemplates = $userTemplatesQuery->get()->map(function (Template $template): array
+            {
+                $label = Str::limit($template->name, 48, '');
+                $placeholder = 'https://placehold.co/640x360/f8f9fa/adb5bd?text='.rawurlencode($label);
+
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'description' => __('app.campaign_select_user_template_description'),
+                    'preview' => $placeholder,
+                    'full_preview' => $placeholder,
+                ];
+            })->values()->all();
+        }
 
         $selectedTypeLabel = match ($selectedType)
         {
@@ -323,6 +368,7 @@ class CampaignsController extends Controller
                     'full_preview' => $definition['full_preview'],
                 ];
             }, array_filter($templateDefinitions, fn (array $item): bool => $item['group'] === 'kajabi'))),
+            'userTemplates' => $userTemplates,
         ]);
     }
 
@@ -469,16 +515,26 @@ class CampaignsController extends Controller
         }
 
         $grapesEditorUrl = '#';
+        $templateHashedIdForDuplicate = null;
+        $classicEditorReturnUrl = $request->fullUrl();
         if ($selectedTemplate instanceof Template)
         {
-            $grapesEditorUrl = route('template.editor', $selectedTemplate->getHashedId());
+            $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                route('template.editor', $selectedTemplate->getHashedId()),
+                $classicEditorReturnUrl,
+            );
+            $templateHashedIdForDuplicate = $selectedTemplate->getHashedId();
         } elseif ($selectedTemplateId > 0)
         {
             foreach ($templatesByLegacyId as $legacyTemplate)
             {
                 if ($legacyTemplate->id === $selectedTemplateId)
                 {
-                    $grapesEditorUrl = route('template.editor', $legacyTemplate->getHashedId());
+                    $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+                        route('template.editor', $legacyTemplate->getHashedId()),
+                        $classicEditorReturnUrl,
+                    );
+                    $templateHashedIdForDuplicate = $legacyTemplate->getHashedId();
                     break;
                 }
             }
@@ -494,6 +550,7 @@ class CampaignsController extends Controller
             'campaignId' => $campaignId,
             'messageId' => $messageId,
             'grapesEditorUrl' => $grapesEditorUrl,
+            'templateHashedIdForDuplicate' => $templateHashedIdForDuplicate,
             'defaultInternalTitle' => $defaultInternalTitle,
             'defaultSubject' => $defaultSubject,
             'defaultPreviewText' => $defaultPreviewText,

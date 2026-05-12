@@ -20,40 +20,38 @@ return [
     'coupon_copied' => 'Copied',
     'staging_note' => 'Staging prices — production links can be swapped via environment variables.',
     'most_popular' => 'Most popular',
-
     'plans' => [
         'assistant' => [
-            'name' => 'Humano.app Assistant',
+            'name' => 'Assistant',
             'description' => 'Let AI help you automate routine work like WhatsApp scheduling, clients, and tasks while keeping your brand voice.',
             'features' => [
-                'WhatsApp-first assistant aligned with your tone of voice',
-                'Calendar, clients, and day-to-day tasks in one flow',
-                'Automation for repetitive workflows',
-                'Digital channels to stay close to your customers',
+                'WhatsApp chat and saved prompts aligned with your brand voice',
+                'Calendar, clients, contacts, and tasks in one workflow',
+                'Prospecting plus automation for repetitive work',
+                'Mailer, landing pages, and dashboard to stay close to customers',
             ],
         ],
         'business' => [
-            'name' => 'Humano.app Business',
+            'name' => 'Business',
             'description' => 'Run your digital operations in one AI-assisted platform without losing the human touch that sets you apart.',
             'features' => [
-                'Everything in Assistant, plus a unified digital cockpit',
-                'AI that supports decisions without replacing your style',
-                'Room to grow with your team and processes',
-                'Operational visibility across the business',
+                'Everything in Assistant, plus campaigns and sales funnel',
+                'Invoices, payments, and financial reporting in one place',
+                'Linked marketing, sales, and collections without tool-hopping',
+                'Team settings and dashboard for operational visibility',
             ],
         ],
         'foundation' => [
-            'name' => 'Humano.app Foundation',
+            'name' => 'Foundation',
             'description' => 'The full stack to automate and grow your business beyond what you thought possible—without hiring more staff.',
             'features' => [
+                'Includes the full Business module suite in your workspace',
                 'End-to-end automation tailored to how you work',
                 'Scale revenue and capacity without linear headcount',
                 'Priority guidance for complex rollouts',
-                'A foundation built to compound over time',
             ],
         ],
     ],
-
     'checkout_complete_success' => 'Welcome! Your workspace is ready.',
     'checkout_complete_invalid_session' => 'We could not confirm this payment. Please open the link from your Stripe receipt or contact support.',
     'checkout_complete_not_paid' => 'This checkout is not completed or paid yet.',
@@ -66,6 +64,5 @@ return [
     'dashboard_post_checkout_whatsapp_title' => 'Link WhatsApp',
     'dashboard_post_checkout_whatsapp_body' => 'Scan the QR code to connect WhatsApp (Linked devices) when your connector supports it.',
     'dashboard_post_checkout_whatsapp_button' => 'Scan WhatsApp QR',
-
     'checkout_billing_gate_pending' => 'Your payment was received, but we could not unlock the app billing check yet. Please copy this message and contact support, or try again in a few minutes.',
 ];

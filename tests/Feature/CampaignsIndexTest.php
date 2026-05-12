@@ -9,6 +9,7 @@ use App\Models\Currency;
 use App\Models\Message;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
+use App\Models\Template;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -461,6 +462,28 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Plantillas destacadas'),
         );
+    }
+
+    public function test_template_selection_lists_team_templates_outside_catalog(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        Template::withoutGlobalScopes()->create([
+            'name' => 'USER_DUP_LIST_UNIQUE_TEMPLATE',
+            'team_id' => $teamId,
+            'status_id' => false,
+            'gjs_data' => ['html' => '<p>Extra</p>'],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('campaigns.templates.select', [
+            'type' => 'messages',
+            'title' => '',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('USER_DUP_LIST_UNIQUE_TEMPLATE', false);
+        $response->assertSee(e(__('app.campaign_select_user_templates_heading')), false);
     }
 
     public function test_template_selection_with_campaign_id_shows_back_link_and_context(): void

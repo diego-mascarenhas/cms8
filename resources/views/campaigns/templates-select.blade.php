@@ -140,6 +140,31 @@
 
 <input id="selected-template-id" type="hidden" value="">
 
+@if (! empty($userTemplates))
+    <h5 class="mb-3">{{ __('app.campaign_select_user_templates_heading') }}</h5>
+    <p class="text-muted small mb-3">{{ __('app.campaign_select_user_templates_lead') }}</p>
+    <div class="row g-3 mb-4">
+        @foreach ($userTemplates as $template)
+            <div class="col-12 col-md-6 col-xl-4">
+                <div
+                    class="card h-100 cursor-pointer border"
+                    data-template-card="{{ $template['id'] }}"
+                    data-template-name="{{ $template['name'] }}"
+                    data-template-description="{{ $template['description'] }}"
+                    data-template-preview="{{ $template['preview'] }}"
+                    data-template-full-preview="{{ $template['full_preview'] ?? $template['preview'] }}"
+                >
+                    <img src="{{ $template['preview'] }}" alt="{{ $template['name'] }}" class="card-img-top">
+                    <div class="card-body">
+                        <h6 class="mb-1">{{ $template['name'] }}</h6>
+                        <p class="text-muted mb-0">{{ $template['description'] }}</p>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+@endif
+
 <h5 class="mb-3">{{ __('Plantillas personalizadas') }}</h5>
 <p class="text-muted small mb-3">{{ __('Plantillas con estilos propios, listas para campañas y secuencias.') }}</p>
 <div class="row g-3 mb-4">

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\AssignAdminRole;
 use App\Listeners\EnableCoreModulesForTeam;
+use App\Listeners\SendNewUserWelcomeEmailListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -20,6 +21,7 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
             AssignAdminRole::class,
+            SendNewUserWelcomeEmailListener::class,
         ],
         TeamCreated::class => [
             EnableCoreModulesForTeam::class,

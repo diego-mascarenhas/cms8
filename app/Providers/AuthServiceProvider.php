@@ -23,6 +23,7 @@ use App\Models\Stylebook;
 use App\Models\TeamFile;
 use App\Models\TeamPassword;
 use App\Models\Ticket;
+use App\Models\UserDailyPerformanceInsight;
 use App\Policies\CategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
@@ -44,6 +45,7 @@ use App\Policies\StyleBookPolicy;
 use App\Policies\TeamFilePolicy;
 use App\Policies\TeamPasswordPolicy;
 use App\Policies\TicketPolicy;
+use App\Policies\UserDailyPerformanceInsightPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -71,6 +73,7 @@ class AuthServiceProvider extends ServiceProvider
         Ticket::class => TicketPolicy::class,
         TeamFile::class => TeamFilePolicy::class,
         TeamPassword::class => TeamPasswordPolicy::class,
+        UserDailyPerformanceInsight::class => UserDailyPerformanceInsightPolicy::class,
     ];
 
     public function boot()
@@ -80,6 +83,11 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('view-language-variants', function ($user)
         {
             return $user->hasRole('admin');
+        });
+
+        Gate::define('view-performance-insights', function ($user)
+        {
+            return $user->can('viewAny', UserDailyPerformanceInsight::class);
         });
     }
 }

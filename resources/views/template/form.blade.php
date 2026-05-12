@@ -22,7 +22,7 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         @if(isset($data->id))
-            <a href="{{ route('template.editor', $data->getHashedId()) }}" class="btn btn-info waves-effect waves-light">
+            <a href="{{ \App\Support\TemplateEditorReturnUrl::editorRouteWithReturn(route('template.editor', $data->getHashedId()), route('template.index')) }}" class="btn btn-info waves-effect waves-light">
                 <i class="ti ti-edit me-1"></i>{{ __('Visual Editor') }}
             </a>
         @endif
