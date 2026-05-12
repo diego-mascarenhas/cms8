@@ -170,18 +170,16 @@ class TeamDemoSeeder extends Seeder
     private function assignCoreModules(Team $team): void
     {
         $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'business');
-        $tier = $planSlug === 'foundation' ? 'business' : $planSlug;
-        if (! in_array($tier, ['assistant', 'business'], true))
+        if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
         {
             $planSlug = 'business';
-            $tier = 'business';
         }
 
-        $this->command->info("🔧 Syncing Demo team modules to Humano plan «{$planSlug}» (humano_pricing.plan_team_modules.{$tier})...");
+        $this->command->info("🔧 Syncing Demo team modules to Humano plan «{$planSlug}» (humano_pricing.plan_team_modules.{$planSlug})...");
 
         app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
 
-        $enabledKeys = config("humano_pricing.plan_team_modules.{$tier}", []);
+        $enabledKeys = config("humano_pricing.plan_team_modules.{$planSlug}", []);
         foreach ($enabledKeys as $moduleKey)
         {
             if ($team->fresh()->hasModule($moduleKey))

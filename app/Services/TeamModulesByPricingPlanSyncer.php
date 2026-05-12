@@ -8,7 +8,7 @@ use App\Models\Team;
 class TeamModulesByPricingPlanSyncer
 {
     /**
-     * Enable/disable team modules from Humano pricing plan slug (assistant / business; foundation from product id maps to business bundle).
+     * Enable/disable team modules from Humano pricing plan slug (assistant, business, foundation).
      */
     public function syncForHumanoPricingPlan(Team $team, string $planSlug): void
     {
@@ -18,13 +18,12 @@ class TeamModulesByPricingPlanSyncer
             return;
         }
 
-        $tier = $planSlug === 'foundation' ? 'business' : $planSlug;
-        if (! in_array($tier, ['assistant', 'business'], true))
+        if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
         {
             return;
         }
 
-        $enabledKeys = config("humano_pricing.plan_team_modules.{$tier}", []);
+        $enabledKeys = config("humano_pricing.plan_team_modules.{$planSlug}", []);
 
         if ($enabledKeys === [])
         {

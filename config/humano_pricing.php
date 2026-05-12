@@ -12,7 +12,7 @@ return [
      * | signup_completion (default: payment_link)
      * |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
      * |     buyers to route('pricing.checkout.complete') with
-     * |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business). User
+     * |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business|foundation). User
      * |     and team are ensured, then the user is logged in. Set the same URL in the
      * |     Stripe Payment Link "After payment" redirect field.
      * |   register_first — Opt-in legacy: send visitors to /register before paying
@@ -28,17 +28,18 @@ return [
         : 'payment_link',
 
     /*
-     * | Default plan slug when checkout return URL omits &category= (assistant or business).
+     * | Default plan slug when checkout return URL omits &category= (assistant, business, or foundation).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
     {
         'business' => 'business',
+        'foundation' => 'foundation',
         default => 'assistant',
     },
 
     /*
      * | Plan slug for the seeded Demo team: {@see TeamDemoSeeder} calls {@see TeamModulesByPricingPlanSyncer}
-     * | with this value (assistant, business, or foundation). Foundation uses the business module list in the syncer.
+     * | with this value (assistant, business, or foundation). Foundation = business modules plus enterprise extras below.
      * | Override with HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG.
      */
     'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'business'))))
@@ -61,7 +62,7 @@ return [
      * |
      * | Matched via stripe_product_id on the subscription vs plans below.
      * | Each plan lists every module key to enable (business repeats assistant + extras).
-     * | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
+     * | foundation is business plus org, CRM, API, files, support, extended billing, and commerce keys.
      * | Demo team modules follow demo_team_plan_slug above (default: business).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
@@ -98,6 +99,42 @@ return [
             'invoices',
             'payments',
             'financial',
+        ],
+        'foundation' => [
+            'settings',
+            'dashboard',
+            'calendar',
+            'clients',
+            'contacts',
+            'tasks',
+            'prospecting',
+            'prompts',
+            'campaigns',
+            'mailer',
+            'landings',
+            'chat',
+            'funnel',
+            'invoices',
+            'payments',
+            'financial',
+            'users',
+            'projects',
+            'opportunities',
+            'templates',
+            'integrations',
+            'team_files',
+            'tickets',
+            'departments',
+            'collaborators',
+            'enterprises',
+            'subscriptions',
+            'performance_insights',
+            'accounting',
+            'incomes',
+            'expenses',
+            'stores',
+            'products',
+            'orders',
         ],
     ],
 

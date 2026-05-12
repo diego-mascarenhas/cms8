@@ -18,6 +18,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $keys = array_values(array_unique(array_merge(
             config('humano_pricing.plan_team_modules.assistant', []),
             config('humano_pricing.plan_team_modules.business', []),
+            config('humano_pricing.plan_team_modules.foundation', []),
         )));
 
         foreach ($keys as $key)
@@ -144,7 +145,23 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->hasModule('campaigns'));
     }
 
-    public function test_foundation_plan_uses_business_module_bundle(): void
+    public function test_humano_pricing_foundation_bundle_includes_business_and_enterprise_keys(): void
+    {
+        $keys = config('humano_pricing.plan_team_modules.foundation', []);
+        $this->assertSame([], array_diff([
+            'settings',
+            'campaigns',
+            'financial',
+            'enterprises',
+            'integrations',
+            'team_files',
+            'tickets',
+            'products',
+            'orders',
+        ], $keys));
+    }
+
+    public function test_foundation_plan_enables_business_and_enterprise_modules(): void
     {
         $this->seedModulesFromPricingConfig();
 
@@ -157,5 +174,42 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $team = $team->fresh();
         $this->assertTrue($team->hasModule('funnel'));
         $this->assertTrue($team->hasModule('financial'));
+        $this->assertTrue($team->hasModule('enterprises'));
+        $this->assertTrue($team->hasModule('integrations'));
+        $this->assertTrue($team->hasModule('projects'));
+    }
+
+    public function test_foundation_plan_sync_disables_modules_outside_bundle(): void
+    {
+        $this->seedModulesFromPricingConfig();
+
+        foreach (['list60', 'survival', 'canary_tokens'] as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => $key,
+                    'icon' => 'layout',
+                    'description' => 'Test',
+                    'is_core' => false,
+                    'status' => 1,
+                ],
+            );
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->assertTrue($team->enableModule('list60'));
+        $this->assertTrue($team->enableModule('survival'));
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'foundation');
+
+        $team = $team->fresh();
+        $this->assertFalse($team->hasModule('list60'));
+        $this->assertFalse($team->hasModule('survival'));
+        $this->assertFalse($team->hasModule('canary_tokens'));
+        $this->assertTrue($team->hasModule('orders'));
     }
 }
