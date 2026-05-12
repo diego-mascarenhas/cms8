@@ -292,6 +292,44 @@ class CampaignsController extends Controller
         $templateDefinitions = $this->getCampaignTemplateDefinitions();
         $templatesByLegacyId = $this->syncCampaignTemplatesToDatabase($templateDefinitions);
 
+        $curatedTemplateIds = collect($templatesByLegacyId)
+            ->filter(fn ($template): bool => $template instanceof Template)
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $teamId = auth()->user()?->currentTeam?->id;
+        $userTemplates = [];
+
+        if ($teamId !== null)
+        {
+            $userTemplatesQuery = Template::withoutGlobalScopes()
+                ->where('team_id', $teamId)
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id');
+
+            if ($curatedTemplateIds !== [])
+            {
+                $userTemplatesQuery->whereNotIn('id', $curatedTemplateIds);
+            }
+
+            $userTemplates = $userTemplatesQuery->get()->map(function (Template $template): array
+            {
+                $label = Str::limit($template->name, 48, '');
+                $placeholder = 'https://placehold.co/640x360/f8f9fa/adb5bd?text='.rawurlencode($label);
+
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'description' => __('app.campaign_select_user_template_description'),
+                    'preview' => $placeholder,
+                    'full_preview' => $placeholder,
+                ];
+            })->values()->all();
+        }
+
         $selectedTypeLabel = match ($selectedType)
         {
             'sequences' => __('Secuencia de correo'),
@@ -329,6 +367,7 @@ class CampaignsController extends Controller
                     'full_preview' => $definition['full_preview'],
                 ];
             }, array_filter($templateDefinitions, fn (array $item): bool => $item['group'] === 'kajabi'))),
+            'userTemplates' => $userTemplates,
         ]);
     }
 

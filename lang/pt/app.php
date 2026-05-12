@@ -56,6 +56,9 @@ return [
     'email_template_duplicate_modal_hint_draft' => 'Abre-se o editor visual com o novo modelo. Ao voltar, guarde a mensagem se quiser mantê-la associada.',
     'email_template_duplicate_modal_submit' => 'Duplicar e abrir editor',
     'email_template_copy_suffix' => 'Cópia',
+    'campaign_select_user_templates_heading' => 'Os seus modelos',
+    'campaign_select_user_templates_lead' => 'Cópias e outros modelos da equipa que não estão no catálogo abaixo.',
+    'campaign_select_user_template_description' => 'Modelo da equipa — pré-visualização genérica; abra no editor para ver o layout.',
     'email_template_duplicate_default_name' => 'Modelo duplicado',
     'message_form_toggle_section' => 'Mostrar ou ocultar esta secção',
 ];

@@ -61,6 +61,9 @@ return [
     'email_template_duplicate_modal_hint_draft' => 'The visual editor opens next with the new template. Save the message when you return if you want to keep using it.',
     'email_template_duplicate_modal_submit' => 'Duplicate and open editor',
     'email_template_copy_suffix' => 'Copy',
+    'campaign_select_user_templates_heading' => 'Your templates',
+    'campaign_select_user_templates_lead' => 'Copies and other team templates that are not in the catalog below.',
+    'campaign_select_user_template_description' => 'Team template — generic preview; open it in the editor to see the layout.',
     'email_template_duplicate_default_name' => 'Duplicate template',
     'message_form_toggle_section' => 'Show or hide this section',
 

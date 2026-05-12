@@ -61,6 +61,9 @@ return [
     'email_template_duplicate_modal_hint_draft' => 'Se abre el editor visual con la nueva plantilla. Al volver, guarda el mensaje si quieres conservarla vinculada.',
     'email_template_duplicate_modal_submit' => 'Duplicar y abrir editor',
     'email_template_copy_suffix' => 'Copia',
+    'campaign_select_user_templates_heading' => 'Tus plantillas',
+    'campaign_select_user_templates_lead' => 'Copias y otras plantillas de tu equipo que no están en el catálogo de abajo.',
+    'campaign_select_user_template_description' => 'Plantilla del equipo — vista previa genérica; ábrela en el editor para ver el diseño.',
     'email_template_duplicate_default_name' => 'Plantilla duplicada',
     'message_form_toggle_section' => 'Mostrar u ocultar esta sección',
 

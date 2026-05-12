@@ -56,6 +56,9 @@ return [
     'email_template_duplicate_modal_hint_draft' => 'Als Nächstes öffnet sich der visuelle Editor mit der neuen Vorlage. Speichern Sie die Nachricht nach der Rückkehr, wenn Sie sie weiterverwenden möchten.',
     'email_template_duplicate_modal_submit' => 'Duplizieren und Editor öffnen',
     'email_template_copy_suffix' => 'Kopie',
+    'campaign_select_user_templates_heading' => 'Ihre Vorlagen',
+    'campaign_select_user_templates_lead' => 'Kopien und andere Team-Vorlagen, die nicht im untenstehenden Katalog stehen.',
+    'campaign_select_user_template_description' => 'Team-Vorlage — generische Vorschau; im Editor öffnen, um das Layout zu sehen.',
     'email_template_duplicate_default_name' => 'Duplizierte Vorlage',
     'message_form_toggle_section' => 'Abschnitt ein- oder ausblenden',
 ];
