@@ -915,6 +915,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
     Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
     Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
+    Route::post('/template/{hashedId}/duplicate', [TemplateController::class, 'duplicate'])->name('template.duplicate');
     Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
     Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');

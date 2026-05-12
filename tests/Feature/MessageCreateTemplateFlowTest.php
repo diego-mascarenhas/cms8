@@ -177,6 +177,10 @@ class MessageCreateTemplateFlowTest extends TestCase
         $html = $response->getContent();
         $this->assertMatchesRegularExpression('/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i', $html);
         $this->assertMatchesRegularExpression('/<select[^>]+id=["\']type_id["\'][^>]*disabled/si', $html);
+        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);
+        $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
+        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
+        $this->assertStringContainsString('name="duplicate_template_name"', $html);
     }
 
     public function test_message_show_does_not_render_email_content_preview_card_for_mailer_with_template(): void
@@ -242,5 +246,10 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
         $response->assertSee('openEmailTestSendModal', false);
+        $html = $response->getContent() ?? '';
+        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);
+        $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
+        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
+        $this->assertStringContainsString('name="duplicate_template_name"', $html);
     }
 }

@@ -53,7 +53,11 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        $('#{{ $id }}').select2({
+        var $el = $('#{{ $id }}');
+        if ($el.hasClass('select2-hidden-accessible')) {
+            return;
+        }
+        $el.select2({
             placeholder: '{{ $placeholder ?? "Seleccionar" }}',
             allowClear: {{ $required ? 'false' : 'true' }},
             width: '100%'

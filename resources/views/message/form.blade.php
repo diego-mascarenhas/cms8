@@ -296,6 +296,9 @@ document.querySelector('form').addEventListener('submit', function() {
 			'grapesEditorUrl' => $data->templateGrapesEditorUrl,
 			'templateLabel' => $data->template->name,
 			'messageId' => $data->id ?? null,
+			'templateHashedId' => $data->template->getHashedId(),
+			'duplicateFormId' => 'message-email-template-duplicate-form',
+			'duplicateModalId' => 'message-email-template-duplicate-modal',
 		])
 	@endif
 
@@ -486,4 +489,16 @@ document.querySelector('form').addEventListener('submit', function() {
 		<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
 	</div>
 </form>
+
+@if ($showEmailTemplatePreview && isset($data->template))
+	<form
+		id="message-email-template-duplicate-form"
+		method="post"
+		action="{{ route('template.duplicate', $data->template->getHashedId()) }}"
+		class="d-none"
+		aria-hidden="true"
+	>
+		@csrf
+	</form>
+@endif
 @endsection

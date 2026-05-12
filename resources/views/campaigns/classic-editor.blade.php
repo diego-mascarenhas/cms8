@@ -173,6 +173,9 @@
         'messageId' => ($messageId ?? 0) > 0 ? $messageId : null,
         'previewFrameId' => 'body-preview-frame',
         'parentSyncsPreview' => true,
+        'templateHashedId' => $templateHashedIdForDuplicate,
+        'duplicateFormId' => filled($templateHashedIdForDuplicate ?? null) ? 'campaign-classic-email-template-duplicate-form' : null,
+        'duplicateModalId' => filled($templateHashedIdForDuplicate ?? null) ? 'campaign-classic-email-template-duplicate-modal' : null,
     ])
 
     <div class="mb-4">
@@ -197,4 +200,16 @@
         <button type="button" class="btn btn-label-secondary waves-effect" onclick="location.href='{{ $classicEditorCancelUrl }}'">{{ __('Cancel') }}</button>
     </div>
 </form>
+
+@if (filled($templateHashedIdForDuplicate ?? null))
+    <form
+        id="campaign-classic-email-template-duplicate-form"
+        method="post"
+        action="{{ route('template.duplicate', $templateHashedIdForDuplicate) }}"
+        class="d-none"
+        aria-hidden="true"
+    >
+        @csrf
+    </form>
+@endif
 @endsection

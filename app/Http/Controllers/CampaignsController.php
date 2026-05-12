@@ -475,9 +475,11 @@ class CampaignsController extends Controller
         }
 
         $grapesEditorUrl = '#';
+        $templateHashedIdForDuplicate = null;
         if ($selectedTemplate instanceof Template)
         {
             $grapesEditorUrl = route('template.editor', $selectedTemplate->getHashedId());
+            $templateHashedIdForDuplicate = $selectedTemplate->getHashedId();
         } elseif ($selectedTemplateId > 0)
         {
             foreach ($templatesByLegacyId as $legacyTemplate)
@@ -485,6 +487,7 @@ class CampaignsController extends Controller
                 if ($legacyTemplate->id === $selectedTemplateId)
                 {
                     $grapesEditorUrl = route('template.editor', $legacyTemplate->getHashedId());
+                    $templateHashedIdForDuplicate = $legacyTemplate->getHashedId();
                     break;
                 }
             }
@@ -500,6 +503,7 @@ class CampaignsController extends Controller
             'campaignId' => $campaignId,
             'messageId' => $messageId,
             'grapesEditorUrl' => $grapesEditorUrl,
+            'templateHashedIdForDuplicate' => $templateHashedIdForDuplicate,
             'defaultInternalTitle' => $defaultInternalTitle,
             'defaultSubject' => $defaultSubject,
             'defaultPreviewText' => $defaultPreviewText,

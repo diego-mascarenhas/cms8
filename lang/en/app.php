@@ -51,6 +51,17 @@ return [
     'dashboard_open_assistant' => 'Open assistant',
     'message_form_contact_status_all' => 'All (any status)',
     'message_form_template_none' => 'No template (alternative text only)',
+    'email_template_duplicate_button' => 'Duplicate template',
+    'email_template_duplicate_confirm' => 'Duplicate this template? You will open the copy in the visual editor.',
+    'email_template_duplicate_success' => 'Copy created. You are now editing it in the visual editor.',
+    'email_template_duplicate_success_linked' => 'Copy created and linked to your message. You are now editing it in the visual editor.',
+    'email_template_duplicate_modal_title' => 'Duplicate template',
+    'email_template_duplicate_modal_name_label' => 'Name for the new template',
+    'email_template_duplicate_modal_hint' => 'If you are editing a saved email message, it will use this template. The visual editor opens next.',
+    'email_template_duplicate_modal_hint_draft' => 'The visual editor opens next with the new template. Save the message when you return if you want to keep using it.',
+    'email_template_duplicate_modal_submit' => 'Duplicate and open editor',
+    'email_template_copy_suffix' => 'Copy',
+    'email_template_duplicate_default_name' => 'Duplicate template',
     'message_form_toggle_section' => 'Show or hide this section',
 
     // Messages
