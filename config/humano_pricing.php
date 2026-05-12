@@ -1,62 +1,58 @@
 <?php
 
 return [
-
     /*
-    |--------------------------------------------------------------------------
-    | Public pricing (Stripe Payment Links)
-    |--------------------------------------------------------------------------
-    |
-    | Staging defaults match Humano Stripe test mode. Override with .env on
-    | production when you are ready to go live.
-    |
-    | signup_completion (default: payment_link)
-    |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
-    |     buyers to route('pricing.checkout.complete') with
-    |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business). User
-    |     and team are ensured, then the user is logged in. Set the same URL in the
-    |     Stripe Payment Link "After payment" redirect field.
-    |   register_first — Opt-in legacy: send visitors to /register before paying
-    |     (set HUMANO_PRICING_SIGNUP_COMPLETION=register_first only if you need this).
-    | Any other or empty env value resolves to payment_link.
-    |
-    | Stripe for this flow: Payment Links for Humano plans always use the platform account
-    | (Cashier / STRIPE_* in .env). Team “own Stripe” settings apply to other products only.
-    |
-    */
-
+     * |--------------------------------------------------------------------------
+     * | Public pricing (Stripe Payment Links)
+     * |--------------------------------------------------------------------------
+     * |
+     * | Staging defaults match Humano Stripe test mode. Override with .env on
+     * | production when you are ready to go live.
+     * |
+     * | signup_completion (default: payment_link)
+     * |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
+     * |     buyers to route('pricing.checkout.complete') with
+     * |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business). User
+     * |     and team are ensured, then the user is logged in. Set the same URL in the
+     * |     Stripe Payment Link "After payment" redirect field.
+     * |   register_first — Opt-in legacy: send visitors to /register before paying
+     * |     (set HUMANO_PRICING_SIGNUP_COMPLETION=register_first only if you need this).
+     * | Any other or empty env value resolves to payment_link.
+     * |
+     * | Stripe for this flow: Payment Links for Humano plans always use the platform account
+     * | (Cashier / STRIPE_* in .env). Team “own Stripe” settings apply to other products only.
+     * |
+     */
     'signup_completion' => strtolower(trim((string) env('HUMANO_PRICING_SIGNUP_COMPLETION', 'payment_link'))) === 'register_first'
         ? 'register_first'
         : 'payment_link',
 
     /*
-    | Default plan slug when checkout return URL omits &category= (assistant or business).
-    */
-    'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
-    {
+     * | Default plan slug when checkout return URL omits &category= (assistant or business).
+     */
+    'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant')))) {
         'business' => 'business',
         default => 'assistant',
     },
 
     /*
-    | Referral / friend promotion code label (e.g. for copy in UI or translations).
-    | Not appended to Payment Link URLs — users enter it in Stripe checkout if they have it.
-    */
+     * | Referral / friend promotion code label (e.g. for copy in UI or translations).
+     * | Not appended to Payment Link URLs — users enter it in Stripe checkout if they have it.
+     */
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
-    |--------------------------------------------------------------------------
-    | Team modules after checkout (by plan id: assistant, business, foundation)
-    |--------------------------------------------------------------------------
-    |
-    | Matched via stripe_product_id on the subscription vs plans below.
-    | Each plan lists every module key to enable (business repeats assistant + extras).
-    | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
-    | Keys must match modules.key (see ModuleSeeder). Include settings so team
-    | settings stay usable after paid signup.
-    |
-    */
-
+     * |--------------------------------------------------------------------------
+     * | Team modules after checkout (by plan id: assistant, business, foundation)
+     * |--------------------------------------------------------------------------
+     * |
+     * | Matched via stripe_product_id on the subscription vs plans below.
+     * | Each plan lists every module key to enable (business repeats assistant + extras).
+     * | foundation checkout still uses the business list (see TeamModulesByPricingPlanSyncer).
+     * | Keys must match modules.key (see ModuleSeeder). Include settings so team
+     * | settings stay usable after paid signup.
+     * |
+     */
     'plan_team_modules' => [
         'assistant' => [
             'settings',
@@ -67,7 +63,6 @@ return [
             'tasks',
             'prospecting',
             'prompts',
-            'campaigns',
             'mailer',
             'landings',
             'chat',
@@ -93,22 +88,21 @@ return [
     ],
 
     /*
-    |--------------------------------------------------------------------------
-    | Plans (Stripe Payment Links + Price IDs)
-    |--------------------------------------------------------------------------
-    |
-    | Default checkout URLs and Stripe catalog IDs for Humano.app (override with
-    | HUMANO_PRICING_* in .env). Display names and marketing copy live under lang (humano_pricing.php).
-    |
-    | Humano.app Assistant — Payment Link …/3cIeVd98VabI07cgPb43S03, product prod_UUoDnxftlyItz0,
-    |   monthly price_1TVoawGelYN536DrEH4gIAsR (99€), yearly price_1TVod6GelYN536DrtCsqOG6d (990€).
-    | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
-    |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
-    | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
-    |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
-    |
-    */
-
+     * |--------------------------------------------------------------------------
+     * | Plans (Stripe Payment Links + Price IDs)
+     * |--------------------------------------------------------------------------
+     * |
+     * | Default checkout URLs and Stripe catalog IDs for Humano.app (override with
+     * | HUMANO_PRICING_* in .env). Display names and marketing copy live under lang (humano_pricing.php).
+     * |
+     * | Humano.app Assistant — Payment Link …/3cIeVd98VabI07cgPb43S03, product prod_UUoDnxftlyItz0,
+     * |   monthly price_1TVoawGelYN536DrEH4gIAsR (99€), yearly price_1TVod6GelYN536DrtCsqOG6d (990€).
+     * | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
+     * |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
+     * | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
+     * |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
+     * |
+     */
     'plans' => [
         [
             'id' => 'assistant',
@@ -150,5 +144,4 @@ return [
             'popular' => false,
         ],
     ],
-
 ];
