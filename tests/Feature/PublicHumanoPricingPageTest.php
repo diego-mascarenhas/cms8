@@ -22,10 +22,13 @@ class PublicHumanoPricingPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('humano-front-topnav', false);
-        $response->assertSee('Humano.app Assistant', false);
-        $response->assertSee('Humano.app Business', false);
-        $response->assertSee('Humano.app Foundation', false);
+        $response->assertSee(__('humano_pricing.plans.assistant.name'), false);
+        $response->assertSee(__('humano_pricing.plans.business.name'), false);
+        $response->assertSee(__('humano_pricing.plans.foundation.name'), false);
         $response->assertSee('3cIeVd98VabI07cgPb43S03', false);
+        $response->assertDontSee('6oU14nfxjabIbPUbuR43S04', false);
+        $response->assertDontSee('4gM4gz3OB0B82fkcyV43S05', false);
+        $response->assertSee(__('humano_pricing.coming_soon'), false);
         $response->assertDontSee('prefilled_promo_code=', false);
         $this->assertDoesNotMatchRegularExpression(
             '/<a[^>]+href="https:\/\/buy\.stripe\.com[^"]*"[^>]*\btarget="_blank\b/',

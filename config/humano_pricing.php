@@ -153,6 +153,9 @@ return [
      * | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
      * |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
      * |
+     * | checkout_available (per plan): when false, the public pricing card hides amounts and shows
+     * | "Coming soon" instead of the Stripe subscribe button. Override with HUMANO_PRICING_*_CHECKOUT_AVAILABLE.
+     * |
      */
     'plans' => [
         [
@@ -167,6 +170,10 @@ return [
             'monthly_amount' => '99',
             'yearly_amount' => '990',
             'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_ASSISTANT_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
         [
             'id' => 'business',
@@ -180,6 +187,10 @@ return [
             'monthly_amount' => '299',
             'yearly_amount' => '2990',
             'popular' => true,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_BUSINESS_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
         [
             'id' => 'foundation',
@@ -193,6 +204,10 @@ return [
             'monthly_amount' => '999',
             'yearly_amount' => '9990',
             'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_FOUNDATION_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
     ],
 ];
