@@ -21,6 +21,7 @@ use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -113,6 +114,8 @@ class MessageController extends Controller
 
         $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
 
+        $resolvedTypeId = $this->resolveTypeIdForMessageStore($request);
+
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
         // Set boolean fields based on checkbox presence
@@ -126,25 +129,30 @@ class MessageController extends Controller
 
         $minHours = max(0, (int) round((float) $rawMinHours));
 
-        Message::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'name' => $validated['name'],
-                'type_id' => $this->resolveTypeIdForMessageStore($request),
-                'category_id' => ($data['category_id'] ?? '') ?: null,
-                'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
-                'template_id' => $templateId,
-                'text' => $validated['text'],
-                'status_id' => $status_id,
-                'show_unsubscribe' => $show_unsubscribe,
-                'enable_open_tracking' => $enable_open_tracking,
-                'enable_click_tracking' => $enable_click_tracking,
-                'min_hours_between_emails' => max(0, $minHours),
-                'send_allowed_weekdays' => $sendAllowedWeekdays,
-                'send_window_start' => $sendWindowStart,
-                'send_window_end' => $sendWindowEnd,
-            ],
-        );
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd): void
+        {
+            Message::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'name' => $validated['name'],
+                    'type_id' => $resolvedTypeId,
+                    'category_id' => ($data['category_id'] ?? '') ?: null,
+                    'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
+                    'template_id' => $templateId,
+                    'text' => $validated['text'],
+                    'status_id' => $status_id,
+                    'show_unsubscribe' => $show_unsubscribe,
+                    'enable_open_tracking' => $enable_open_tracking,
+                    'enable_click_tracking' => $enable_click_tracking,
+                    'min_hours_between_emails' => max(0, $minHours),
+                    'send_allowed_weekdays' => $sendAllowedWeekdays,
+                    'send_window_start' => $sendWindowStart,
+                    'send_window_end' => $sendWindowEnd,
+                ],
+            );
+
+            $this->syncTemplateHtmlFromMessageForm($request, $resolvedTypeId, $templateId);
+        });
 
         return redirect()->route('message.index')->with('success', 'Record saved successfully.');
     }
@@ -454,6 +462,7 @@ class MessageController extends Controller
         }
 
         $previewHtml = $this->iframePreviewHtmlForTemplate($template);
+        $mailHtmlTextareaValue = $this->rawTemplateHtmlFromModel($template);
         $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
             route('template.editor', $template->getHashedId()),
             $returnUrl,
@@ -474,6 +483,9 @@ class MessageController extends Controller
             'templateId' => $template->id,
             'templateHashedId' => $template->getHashedId(),
             'removeTemplateUrl' => $removeMailTemplateUrl,
+            'useMailHtmlTextarea' => true,
+            'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+            'mailHtmlTextareaReadonly' => false,
         ])->render();
 
         return response()->json([
@@ -1082,12 +1094,7 @@ class MessageController extends Controller
             $templateHtml = '<p>'.e($message->text ?? '').'</p>';
         }
 
-        // Replace variables
-        $html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);
-        $html = str_replace('{{contact_name}}', $testContact->name ?? '', $html);
-        $html = str_replace('{{email}}', $testContact->email ?? '', $html);
-
-        return $html;
+        return $this->replaceEmailVariables($templateHtml, $testContact, $message);
     }
 
     /**
@@ -1387,6 +1394,48 @@ class MessageController extends Controller
         ];
 
         return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+    }
+
+    private function rawTemplateHtmlFromModel(Template $template): string
+    {
+        $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
+
+        return (string) ($gjsData['html'] ?? '');
+    }
+
+    /**
+     * Writes HTML from the message form into the linked template's GrapesJS data (same record all messages use).
+     * Skipped when the message already has deliveries (form body is readonly) or the payload is empty.
+     */
+    private function syncTemplateHtmlFromMessageForm(Request $request, int $resolvedTypeId, ?int $templateId): void
+    {
+        if ($resolvedTypeId !== 1 || $templateId === null || $templateId <= 0)
+        {
+            return;
+        }
+
+        $messageId = $request->filled('id') ? (int) $request->input('id') : 0;
+        if ($messageId > 0 && MessageDelivery::query()->where('message_id', $messageId)->exists())
+        {
+            return;
+        }
+
+        $raw = $request->input('template_html');
+        if (! is_string($raw) || trim($raw) === '')
+        {
+            return;
+        }
+
+        $template = Template::query()->whereKey($templateId)->first();
+        if (! $template instanceof Template)
+        {
+            return;
+        }
+
+        $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
+        $gjsData['html'] = trim($raw);
+
+        $template->forceFill(['gjs_data' => $gjsData])->save();
     }
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string

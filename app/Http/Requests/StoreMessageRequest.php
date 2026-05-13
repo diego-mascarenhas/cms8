@@ -35,6 +35,7 @@ class StoreMessageRequest extends FormRequest
             'text' => ['required', 'string', 'min:3', 'max:255'],
             'contact_status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
             'template_id' => ['nullable', 'integer', 'exists:templates,id'],
+            'template_html' => ['nullable', 'string'],
             'min_hours_between_emails' => ['nullable', 'numeric', 'min:0', 'max:8760'],
             'send_allowed_weekdays' => ['required', 'array', 'min:1'],
             'send_allowed_weekdays.*' => ['integer', 'between:1,7', 'distinct'],

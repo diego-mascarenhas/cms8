@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Message;
+use App\Models\MessageDelivery;
 use App\Models\Template;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
@@ -220,6 +221,110 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertSame($template->id, $message->template_id);
     }
 
+    public function test_message_store_updates_template_html_when_type_mail_and_template(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Mail html tpl',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<html><body><p>Original</p></body></html>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $customHtml = '<html><body><p>Custom override</p></body></html>';
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => '',
+            'name' => 'Campaign with custom HTML',
+            'text' => 'Plain text summary for the message record',
+            'type_id' => 1,
+            'template_id' => (string) $template->id,
+            'template_html' => $customHtml,
+            'category_id' => '',
+            'contact_status_id' => '',
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('name', 'Campaign with custom HTML')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertSame($customHtml, $template->fresh()->gjs_data['html']);
+    }
+
+    public function test_message_store_does_not_update_template_html_when_message_has_deliveries(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $originalHtml = '<html><body><p>Locked</p></body></html>';
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Tpl locked',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => $originalHtml,
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Sent once',
+            'type_id' => 1,
+            'text' => 'Body',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'status_id' => false,
+        ]);
+
+        $contact = \App\Models\Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        MessageDelivery::create([
+            'team_id' => $teamId,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'campaign_id' => null,
+            'status_id' => 1,
+            'sent_at' => now(),
+        ]);
+
+        $tamperedHtml = '<html><body><p>Tampered</p></body></html>';
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => (string) $message->id,
+            'template_id' => (string) $template->id,
+            'name' => 'Sent once',
+            'text' => 'Body',
+            'type_id' => 1,
+            'template_html' => $tamperedHtml,
+            'category_id' => '',
+            'contact_status_id' => '',
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+        $this->assertSame($originalHtml, $template->fresh()->gjs_data['html']);
+    }
+
     public function test_message_create_with_template_shows_email_content_preview(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -246,6 +351,10 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertSee(__('Contenido del correo'), false);
         $response->assertSee(e($template->name), false);
         $html = $response->getContent();
+        $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
+        $this->assertStringContainsString('name="template_html"', $html);
+        $this->assertStringContainsString('id="message-template-html-initial-json"', $html);
+        $this->assertStringContainsString('\u003Cp\u003EHi\u003C\\/p\u003E', $html);
         $this->assertMatchesRegularExpression('/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i', $html);
         $this->assertMatchesRegularExpression('/<select[^>]+id=["\']type_id["\'][^>]*disabled/si', $html);
         $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);

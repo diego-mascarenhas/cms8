@@ -10,6 +10,9 @@
     'duplicateFormId' => null,
     'duplicateModalId' => null,
     'removeTemplateUrl' => null,
+    'useMailHtmlTextarea' => false,
+    'mailHtmlTextareaValue' => '',
+    'mailHtmlTextareaReadonly' => false,
 ])
 
 @php
@@ -31,6 +34,9 @@
     'duplicateFormId' => $duplicateFormId,
     'duplicateModalId' => $duplicateModalId,
     'removeTemplateUrl' => $removeTemplateUrl,
+    'useMailHtmlTextarea' => $useMailHtmlTextarea,
+    'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+    'mailHtmlTextareaReadonly' => $mailHtmlTextareaReadonly,
 ])
 
 @if (filled($templateHashedId) && filled($duplicateFormId))

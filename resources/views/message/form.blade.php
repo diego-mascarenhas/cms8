@@ -6,6 +6,9 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -15,6 +18,8 @@
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -324,6 +329,13 @@ document.addEventListener('DOMContentLoaded', function ()
 					'legacy_form' => 1,
 					'name' => filled($data->name ?? null) ? $data->name : (request()->filled('name') ? request('name') : null),
 				]));
+			$rawTemplateHtmlForMailField = '';
+			if (isset($data->template->gjs_data) && is_array($data->template->gjs_data))
+			{
+				$rawTemplateHtmlForMailField = (string) ($data->template->gjs_data['html'] ?? '');
+			}
+			$mailHtmlTextareaValue = old('template_html', $rawTemplateHtmlForMailField);
+			$mailHtmlTextareaReadonly = isset($data->hasDeliveries) && $data->hasDeliveries;
 		@endphp
 		@include('message.partials.email-template-content-preview', [
 			'previewHtml' => $data->emailTemplatePreviewHtml,
@@ -335,6 +347,9 @@ document.addEventListener('DOMContentLoaded', function ()
 			'duplicateFormId' => 'message-email-template-duplicate-form',
 			'duplicateModalId' => 'message-email-template-duplicate-modal',
 			'removeTemplateUrl' => $removeMailTemplateUrl,
+			'useMailHtmlTextarea' => true,
+			'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+			'mailHtmlTextareaReadonly' => $mailHtmlTextareaReadonly,
 		])
 	@endif
 	</div>
@@ -548,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function ()
     var serverRenderedPreview = @json((bool) $showEmailTemplatePreview);
     var messageFormTypeIdServerDisabled = @json((bool) $messageFormTypeIdDisabled);
 
-    if (! mount || ! document.getElementById('template_id'))
+    if (! mount)
     {
         return;
     }
@@ -737,6 +752,10 @@ document.addEventListener('DOMContentLoaded', function ()
                 {
                     window.humaBindEmailTestSendModals();
                 }
+                if (window.humaInitMessageTemplateHtmlQuill)
+                {
+                    window.humaInitMessageTemplateHtmlQuill(mount);
+                }
             })
             .catch(function ()
             {
@@ -774,6 +793,145 @@ document.addEventListener('DOMContentLoaded', function ()
         $tpl.on('change select2:select', evaluate);
         $type.on('change select2:select', evaluate);
         window.setTimeout(evaluate, 0);
+    });
+})();
+</script>
+<script>
+(function ()
+{
+    window.humaMessageTemplateQuillInstance = null;
+
+    window.humaSyncMessageTemplateHtmlQuill = function ()
+    {
+        if (! window.humaMessageTemplateQuillInstance)
+        {
+            return;
+        }
+        var ta = document.getElementById('message-template-html-body');
+        if (! ta)
+        {
+            return;
+        }
+        ta.value = window.humaMessageTemplateQuillInstance.root.innerHTML;
+    };
+
+    /**
+     * @param {ParentNode|Document|null} root
+     */
+    window.humaInitMessageTemplateHtmlQuill = function (root)
+    {
+        root = root || document;
+        if (typeof Quill === 'undefined')
+        {
+            return;
+        }
+        var ta = root.querySelector('#message-template-html-body');
+        var mountEl = root.querySelector('#message-template-html-quill-editor');
+        if (! ta || ! mountEl)
+        {
+            return;
+        }
+        if (mountEl.dataset.quillBound === '1')
+        {
+            return;
+        }
+        mountEl.dataset.quillBound = '1';
+        window.humaMessageTemplateQuillInstance = null;
+
+        var readonly = ta.hasAttribute('readonly');
+        var toolbar = readonly
+            ? false
+            : [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ align: [] }],
+                ['link'],
+                [{ color: [] }, { background: [] }],
+                ['blockquote', 'code-block'],
+                ['clean'],
+            ];
+
+        var quill = new Quill(mountEl, {
+            theme: 'snow',
+            modules: {
+                toolbar: toolbar,
+            },
+            bounds: mountEl,
+        });
+
+        var jsonEl = root.querySelector('#message-template-html-initial-json');
+        var initialHtml = '';
+        if (jsonEl && jsonEl.textContent)
+        {
+            try
+            {
+                initialHtml = JSON.parse(jsonEl.textContent);
+            }
+            catch (e)
+            {
+                initialHtml = '';
+            }
+        }
+        if (typeof initialHtml !== 'string')
+        {
+            initialHtml = '';
+        }
+        if (initialHtml.trim() === '' && (ta.value || '').trim() !== '')
+        {
+            initialHtml = ta.value;
+        }
+
+        initialHtml = initialHtml.trim();
+        if (initialHtml !== '' && initialHtml !== '<p><br></p>' && initialHtml !== '<p></p>')
+        {
+            if (quill.clipboard && typeof quill.clipboard.dangerouslyPasteHTML === 'function')
+            {
+                quill.setContents([], 'silent');
+                quill.clipboard.dangerouslyPasteHTML(0, initialHtml);
+            }
+            else
+            {
+                quill.root.innerHTML = initialHtml;
+            }
+        }
+
+        if (readonly)
+        {
+            quill.enable(false);
+        }
+
+        window.humaMessageTemplateQuillInstance = quill;
+
+        quill.on('text-change', function ()
+        {
+            if (! readonly)
+            {
+                ta.value = quill.root.innerHTML;
+            }
+        });
+
+        ta.value = quill.root.innerHTML;
+    };
+
+    document.addEventListener('DOMContentLoaded', function ()
+    {
+        if (window.humaInitMessageTemplateHtmlQuill)
+        {
+            window.humaInitMessageTemplateHtmlQuill(document);
+        }
+
+        var storeForm = document.getElementById('message-store-form');
+        if (storeForm)
+        {
+            storeForm.addEventListener('submit', function ()
+            {
+                if (window.humaSyncMessageTemplateHtmlQuill)
+                {
+                    window.humaSyncMessageTemplateHtmlQuill();
+                }
+            });
+        }
     });
 })();
 </script>
