@@ -1095,7 +1095,13 @@ Route::get('/kanban', [KanbanController::class, 'index'])->name('kanban');
 Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
 Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 
-// Editor
+// Editor (team landing uses GrapesJS; HTML stored in team_settings)
+Route::get('pages/landing/editor', [PageController::class, 'teamLandingEditor'])
+    ->middleware('auth')
+    ->name('page.team-landing-editor');
+Route::post('pages/landing/editor', [PageController::class, 'teamLandingEditorStore'])
+    ->middleware('auth')
+    ->name('page.team-landing-editor.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 

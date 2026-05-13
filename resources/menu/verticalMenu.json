@@ -262,11 +262,10 @@
       "module_key": "website"
     },
     {
-      "url": "pages/1/editor",
+      "url": "pages/landing/editor",
       "name": "Landing Page",
       "icon": "menu-icon tf-icons ti ti-globe",
-      "slug": "page-edit",
-      "target": "blank",
+      "slug": "page.team-landing-editor",
       "module_key": "landings"
     },
     {
