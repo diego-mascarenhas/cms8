@@ -12,12 +12,14 @@ class PaymentLinkAffiliateEnterpriseAttributionService
     /**
      * After a public Payment Link checkout, persist {@see Enterprise::$referred_by} on the paying team's
      * billing client enterprise (type_id = client, code = Stripe customer id) when the Checkout Session
-     * includes a matching custom field with the referrer enterprise id (digits). This feeds
-     * {@see AffiliateCommissionRecorder} on invoice payment.
+     * includes a referrer enterprise id (digits only) from either:
+     * - a matching custom field ({@see config('humano_pricing.payment_link_affiliate_custom_field_keys')}), or
+     * - {@see Session::$client_reference_id} (Payment Link URL query {@code client_reference_id}).
+     * Custom field wins when both are set. This feeds {@see AffiliateCommissionRecorder} on invoice payment.
      */
     public function syncBillingEnterpriseReferrerFromSession(Team $team, Session $session, int $actingUserId): void
     {
-        $rawId = $this->extractReferrerEnterpriseIdFromSession($session);
+        $rawId = $this->resolveReferrerEnterpriseIdRaw($session);
         if ($rawId === null || $rawId === '')
         {
             return;
@@ -25,7 +27,7 @@ class PaymentLinkAffiliateEnterpriseAttributionService
 
         if (! ctype_digit($rawId))
         {
-            Log::info('Payment link affiliate: custom field value is not a numeric enterprise id', [
+            Log::info('Payment link affiliate: referrer raw value is not a numeric enterprise id', [
                 'team_id' => $team->id,
                 'value_preview' => substr($rawId, 0, 32),
             ]);
@@ -135,7 +137,27 @@ class PaymentLinkAffiliateEnterpriseAttributionService
         return null;
     }
 
-    private function extractReferrerEnterpriseIdFromSession(Session $session): ?string
+    /**
+     * Prefer custom checkout field; otherwise use Stripe {@see Session::$client_reference_id} from the Payment Link URL.
+     */
+    private function resolveReferrerEnterpriseIdRaw(Session $session): ?string
+    {
+        $fromCustom = $this->extractReferrerEnterpriseIdFromCustomFields($session);
+        if ($fromCustom !== null && $fromCustom !== '')
+        {
+            return $fromCustom;
+        }
+
+        $fromClientRef = trim((string) ($session->client_reference_id ?? ''));
+        if ($fromClientRef !== '')
+        {
+            return $fromClientRef;
+        }
+
+        return null;
+    }
+
+    private function extractReferrerEnterpriseIdFromCustomFields(Session $session): ?string
     {
         $keys = config('humano_pricing.payment_link_affiliate_custom_field_keys', ['referente', 'affiliate']);
         if (! is_array($keys) || $keys === [])
