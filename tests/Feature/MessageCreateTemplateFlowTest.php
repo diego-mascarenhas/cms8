@@ -37,58 +37,44 @@ class MessageCreateTemplateFlowTest extends TestCase
         return $user->fresh();
     }
 
-    public function test_message_create_redirects_to_template_gallery_when_no_template_id(): void
+    public function test_message_create_shows_form_without_template_id(): void
     {
         $user = $this->userWithPersonalTeamResolved();
 
         $response = $this->actingAs($user)->get(route('message.create'));
 
-        $response->assertRedirect(route('campaigns.templates.select', [
-            'type' => 'messages',
-            'title' => '',
-        ]));
-    }
-
-    public function test_message_create_legacy_form_skips_gallery(): void
-    {
-        $user = $this->userWithPersonalTeamResolved();
-
-        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
-
         $response->assertOk();
-        $html = $response->getContent();
+        $html = $response->getContent() ?? '';
         $this->assertStringContainsString('id="message-store-form"', $html);
         $this->assertStringContainsString("getElementById('message-store-form')", $html);
         $this->assertMatchesRegularExpression(
+            '/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i',
+            $html,
+        );
+        $response->assertDontSee(__('Message sending schedule'), false);
+    }
+
+    public function test_message_create_shows_classic_form_without_channel_select(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+
+        $response = $this->actingAs($user)->get(route('message.create'));
+
+        $response->assertOk();
+        $html = $response->getContent() ?? '';
+        $this->assertStringContainsString('id="message-store-form"', $html);
+        $this->assertDoesNotMatchRegularExpression(
             '/<select[^>]+id=["\']type_id["\'][^>]+name=["\']type_id["\']/si',
             $html,
         );
-        $response->assertSee(__('Message sending schedule'), false);
+        $response->assertDontSee(__('Message sending schedule'), false);
     }
 
-    public function test_message_create_legacy_form_defaults_minimum_interval_unit_to_days(): void
+    public function test_message_create_renders_contact_status_all_placeholder_option(): void
     {
         $user = $this->userWithPersonalTeamResolved();
 
-        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
-
-        $response->assertOk();
-        $html = $response->getContent();
-        $this->assertMatchesRegularExpression(
-            '/<option[^>]+value=["\']days["\'][^>]*selected/s',
-            $html,
-        );
-        $this->assertMatchesRegularExpression(
-            '/<input[^>]+id=["\']min_hours_between_emails["\'][^>]+value=["\']2["\']/s',
-            $html,
-        );
-    }
-
-    public function test_message_create_legacy_form_renders_contact_status_all_placeholder_option(): void
-    {
-        $user = $this->userWithPersonalTeamResolved();
-
-        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
+        $response = $this->actingAs($user)->get(route('message.create'));
 
         $response->assertOk();
         $response->assertSee(e(__('app.message_form_contact_status_all')), false);
@@ -99,14 +85,14 @@ class MessageCreateTemplateFlowTest extends TestCase
         );
     }
 
-    public function test_message_create_legacy_form_contact_status_select_reinitializes_select2_with_allow_clear(): void
+    public function test_message_create_contact_status_select_reinitializes_select2_with_allow_clear(): void
     {
         $user = $this->userWithPersonalTeamResolved();
 
-        $response = $this->actingAs($user)->get(route('message.create', ['legacy_form' => 1]));
+        $response = $this->actingAs($user)->get(route('message.create'));
 
         $response->assertOk();
-        $html = $response->getContent();
+        $html = $response->getContent() ?? '';
         $this->assertMatchesRegularExpression(
             '/\$\([\'"]#contact_status_id[\'"]\)[\s\S]*?select2\s*\(\s*[\'"]destroy[\'"]/s',
             $html,
@@ -327,7 +313,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertSame($originalHtml, $template->fresh()->gjs_data['html']);
     }
 
-    public function test_message_create_with_template_shows_email_content_preview(): void
+    public function test_message_create_with_template_prefills_and_exposes_preview_ajax_contract(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -350,21 +336,28 @@ class MessageCreateTemplateFlowTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee(__('Contenido del correo'), false);
-        $response->assertSee(e($template->name), false);
-        $html = $response->getContent();
-        $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
-        $this->assertStringContainsString('name="template_html"', $html);
-        $this->assertStringContainsString('id="message-template-html-initial-json"', $html);
-        $this->assertStringContainsString('\u003Cp\u003EHi\u003C\\/p\u003E', $html);
+        $html = $response->getContent() ?? '';
+        $this->assertStringContainsString('id="message-email-template-preview-mount"', $html);
+        $this->assertStringContainsString('template-email-preview', $html);
+        $this->assertStringContainsString('id="message-store-form"', $html);
+        $this->assertStringContainsString('value="My broadcast"', $html);
         $this->assertStringContainsString('id="template_id"', $html);
-        $this->assertMatchesRegularExpression('/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i', $html);
-        $this->assertMatchesRegularExpression('/<select[^>]+id=["\']type_id["\'][^>]*disabled/si', $html);
-        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i',
+            $html,
+        );
         $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
-        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
-        $this->assertStringContainsString('name="duplicate_template_name"', $html);
-        $this->assertStringContainsString('id="email-test-send-modal-draft-'.$template->id.'"', $html);
+
+        $previewResponse = $this->actingAs($user)->getJson(route('message.template-email-preview', [
+            'template_id' => $template->id,
+        ]));
+        $previewResponse->assertOk();
+        $fragment = (string) ($previewResponse->json('html') ?? '');
+        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $fragment);
+        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $fragment);
+        $this->assertStringContainsString('name="duplicate_template_name"', $fragment);
+        $this->assertStringContainsString('id="email-test-send-modal-draft-'.$template->id.'"', $fragment);
+        $this->assertStringContainsString('data-email-test-send-recipients', $fragment);
     }
 
     public function test_message_show_does_not_render_email_content_preview_card_for_mailer_with_template(): void
@@ -399,7 +392,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertDontSee(__('Contenido del correo'));
     }
 
-    public function test_message_edit_renders_email_test_send_modal_when_mailer_template_preview_shown(): void
+    public function test_message_template_email_preview_json_includes_test_send_modal_for_saved_message(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -425,20 +418,28 @@ class MessageCreateTemplateFlowTest extends TestCase
             'status_id' => false,
         ]);
 
-        $response = $this->actingAs($user)->get(route('message.edit', $message->id));
+        $editResponse = $this->actingAs($user)->get(route('message.edit', $message->id));
+        $editResponse->assertOk();
+        $editHtml = $editResponse->getContent() ?? '';
+        $this->assertStringContainsString('id="message-email-template-preview-mount"', $editHtml);
+        $this->assertStringContainsString('template-email-preview', $editHtml);
 
-        $response->assertOk();
-        $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
-        $response->assertSee('data-email-test-send-recipients', false);
-        $response->assertSee('openEmailTestSendModal', false);
-        $html = $response->getContent() ?? '';
-        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);
-        $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
-        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
-        $this->assertStringContainsString('name="duplicate_template_name"', $html);
+        $previewResponse = $this->actingAs($user)->getJson(route('message.template-email-preview', [
+            'template_id' => $template->id,
+            'message_id' => $message->id,
+        ]));
+
+        $previewResponse->assertOk();
+        $fragment = (string) ($previewResponse->json('html') ?? '');
+        $this->assertStringContainsString('id="email-test-send-modal-'.$message->id.'"', $fragment);
+        $this->assertStringContainsString('data-email-test-send-recipients', $fragment);
+        $this->assertStringContainsString('data-bs-toggle="modal"', $fragment);
+        $this->assertStringContainsString('form="message-email-template-duplicate-form"', $fragment);
+        $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $fragment);
+        $this->assertStringContainsString('name="duplicate_template_name"', $fragment);
     }
 
-    public function test_message_edit_form_disables_template_select_when_channel_is_whatsapp(): void
+    public function test_message_edit_legacy_whatsapp_message_keeps_hidden_type_and_template_select_enabled(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -457,11 +458,11 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertMatchesRegularExpression(
-            '/<select[^>]*\bid=["\']template_id["\'][^>]*\bdisabled/si',
+            '/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']2["\']/i',
             $html,
         );
-        $this->assertStringContainsString(
-            e(__('Los mensajes por WhatsApp no usan plantilla de correo; solo texto alternativo.')),
+        $this->assertDoesNotMatchRegularExpression(
+            '/<select[^>]*\bid=["\']template_id["\'][^>]*\bdisabled/si',
             $html,
         );
     }

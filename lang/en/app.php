@@ -53,6 +53,8 @@ return [
     'dashboard_open_assistant' => 'Assistant chat',
     'message_form_contact_status_all' => 'All (any status)',
     'message_form_template_none' => 'No template (alternative text only)',
+    'message_form_subtitle' => 'Template, category and recipients',
+    'message_form_alt_text_help' => 'Plain-text fallback for email clients without HTML. If you use a template, this text is also used as a short fallback.',
     'email_template_duplicate_button' => 'Duplicate template',
     'email_template_duplicate_confirm' => 'Duplicate this template? You will open the copy in the visual editor.',
     'email_template_duplicate_success' => 'Copy created. You are now editing it in the visual editor.',

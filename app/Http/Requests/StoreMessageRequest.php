@@ -23,6 +23,24 @@ class StoreMessageRequest extends FormRequest
         {
             $this->merge(['template_id' => null]);
         }
+
+        if (! $this->has('send_allowed_weekdays') || ! is_array($this->input('send_allowed_weekdays')) || count($this->input('send_allowed_weekdays')) === 0)
+        {
+            $this->merge(['send_allowed_weekdays' => range(1, 7)]);
+        }
+
+        if (! $this->filled('min_hours_between_emails'))
+        {
+            $this->merge(['min_hours_between_emails' => 48]);
+        }
+
+        foreach (['show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking'] as $flag)
+        {
+            if (! $this->has($flag))
+            {
+                $this->merge([$flag => '1']);
+            }
+        }
     }
 
     /**

@@ -43,40 +43,23 @@ class MessageController extends Controller
      */
     public function create(Request $request)
     {
-        $legacyForm = $request->boolean('legacy_form');
-
-        if (! $legacyForm && (! $request->filled('template_id') || $request->integer('template_id') <= 0))
-        {
-            return redirect()->route('campaigns.templates.select', [
-                'type' => 'messages',
-                'title' => $request->string('title')->toString(),
-            ]);
-        }
-
         $data = new stdClass;
-        $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
-        $data->useLegacyTemplatePicker = $legacyForm;
 
-        if (! $legacyForm && $request->integer('template_id') > 0)
+        if ($request->integer('template_id') > 0)
         {
             $template = Template::query()->whereKey($request->integer('template_id'))->first();
 
             if (! $template)
             {
                 return redirect()
-                    ->route('campaigns.templates.select', ['type' => 'messages', 'title' => ''])
+                    ->route('message.create')
                     ->with('error', __('La plantilla seleccionada no está disponible.'));
             }
 
             $data->template_id = $template->id;
             $data->template = $template;
-            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($template);
-            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-                route('template.editor', $template->getHashedId()),
-                $request->fullUrl(),
-            );
             $data->name = old('name', $request->string('name')->toString());
             $data->type_id = old('type_id', 1);
             $data->text = old('text', __('Boletín por correo'));
@@ -122,10 +105,9 @@ class MessageController extends Controller
 
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
-        // Set boolean fields based on checkbox presence
-        $show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
-        $enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
-        $enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
+        $show_unsubscribe = $request->boolean('show_unsubscribe') ? 1 : 0;
+        $enable_open_tracking = $request->boolean('enable_open_tracking') ? 1 : 0;
+        $enable_click_tracking = $request->boolean('enable_click_tracking') ? 1 : 0;
 
         $rawMinHours = isset($validated['min_hours_between_emails'])
             ? $validated['min_hours_between_emails']
@@ -409,19 +391,8 @@ class MessageController extends Controller
 
         $removeMailTemplate = $request->boolean('remove_mail_template');
 
-        $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
-        $data->useLegacyTemplatePicker = false;
-
-        if (! $removeMailTemplate && $data->template_id && $data->template && (int) $data->type_id === 1)
-        {
-            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($data->template);
-            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-                route('template.editor', $data->template->getHashedId()),
-                route('message.edit', $data->id),
-            );
-        }
 
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
@@ -462,7 +433,7 @@ class MessageController extends Controller
         }
         if ($returnUrl === null || $returnUrl === '')
         {
-            $returnUrl = route('message.create', ['legacy_form' => 1]);
+            $returnUrl = route('message.create');
         }
 
         $previewHtml = $this->iframePreviewHtmlForTemplate($template);
@@ -1163,21 +1134,26 @@ class MessageController extends Controller
     private function resolveTypeIdForMessageStore(Request $request): int
     {
         $raw = $request->input('type_id');
+        $resolved = 1;
+
         if ($raw !== null && $raw !== '')
         {
-            return (int) $raw;
-        }
-
-        if ($request->filled('id'))
+            $resolved = (int) $raw;
+        } elseif ($request->filled('id'))
         {
             $existing = Message::query()->whereKey((int) $request->id)->value('type_id');
             if ($existing !== null)
             {
-                return (int) $existing;
+                $resolved = (int) $existing;
             }
         }
 
-        return 1;
+        if (! $request->filled('id') && $resolved === $this->whatsappMessageTypeId())
+        {
+            return 1;
+        }
+
+        return $resolved;
     }
 
     /**

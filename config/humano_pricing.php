@@ -83,7 +83,6 @@ return [
         'assistant' => [
             'today',
             'settings',
-            'dashboard',
             'calendar',
             'clients',
             'contacts',
