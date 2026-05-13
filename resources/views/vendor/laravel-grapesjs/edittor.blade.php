@@ -40,6 +40,17 @@
             line-height: 1;
             white-space: nowrap;
         }
+
+        /*
+         * Globally hide default GrapesJS options toolbar actions (outline, preview, fullscreen, clear canvas).
+         * Scoped to the options panel so device / code / save buttons elsewhere are unaffected.
+         */
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-square-o,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-eye,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-arrows-alt,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-trash {
+            display: none !important;
+        }
     </style>
     <script>
         window.grapesJsToolbarLabels = {
@@ -216,42 +227,154 @@
     <script>
         (function ()
         {
-            function bindDefaultBlocksPanel(editor)
+            /**
+             * Match default GrapesJS "views" toolbar: only Blocks active, panel open, Basic category expanded.
+             */
+            function humaTryOpenBlocksPanel(editor)
             {
-                if (! editor || editor.get('_humanoOpenBlocksHook'))
+                if (! editor)
                 {
                     return;
                 }
 
-                editor.set('_humanoOpenBlocksHook', true);
-
-                var ran = false;
-
-                function runOpenBlocksOnce()
+                var viewButtonIds = ['open-blocks', 'open-layers', 'open-tm', 'open-sm'];
+                viewButtonIds.forEach(function (id)
                 {
-                    if (ran)
-                    {
-                        return;
-                    }
-
                     try
                     {
-                        editor.runCommand('open-blocks');
-                        ran = true;
+                        var b = editor.Panels.getButton('views', id);
+                        if (b && typeof b.set === 'function')
+                        {
+                            b.set('active', id === 'open-blocks');
+                        }
                     }
-                    catch (e)
+                    catch (e0)
                     {
-                        console.error(e);
+                    }
+                });
+
+                try
+                {
+                    editor.runCommand('open-blocks');
+                }
+                catch (e)
+                {
+                }
+
+                try
+                {
+                    var btn = editor.Panels.getButton('views', 'open-blocks');
+                    if (btn && typeof btn.set === 'function')
+                    {
+                        btn.set('active', true);
                     }
                 }
+                catch (e2)
+                {
+                }
+
+                try
+                {
+                    if (editor.Panels && typeof editor.Panels.openPanel === 'function')
+                    {
+                        editor.Panels.openPanel('blocks');
+                    }
+                }
+                catch (e3)
+                {
+                }
+
+                humaEnsureBasicBlocksCategoryOpen(editor);
+            }
+
+            /**
+             * Keep "Basic" open and collapse others (e.g. Extra), via API or DOM fallback.
+             */
+            function humaEnsureBasicBlocksCategoryOpen(editor)
+            {
+                try
+                {
+                    if (editor.BlockManager && typeof editor.BlockManager.getCategories === 'function')
+                    {
+                        var cats = editor.BlockManager.getCategories();
+                        if (cats && typeof cats.each === 'function')
+                        {
+                            cats.each(function (cat)
+                            {
+                                if (! cat || typeof cat.get !== 'function' || typeof cat.set !== 'function')
+                                {
+                                    return;
+                                }
+
+                                var id = String(cat.get('id') || '').toLowerCase();
+                                var label = String(cat.get('label') || '').toLowerCase();
+                                var isBasic = id === 'basic' || label.indexOf('basic') !== -1;
+
+                                cat.set('open', isBasic);
+                            });
+                        }
+                    }
+                }
+                catch (e)
+                {
+                }
+
+                try
+                {
+                    document.querySelectorAll('.gjs-blocks-c .gjs-block-category').forEach(function (wrap)
+                    {
+                        var t = wrap.querySelector('.gjs-title');
+                        if (! t)
+                        {
+                            t = wrap.querySelector('.gjs-block-category .gjs-title');
+                        }
+
+                        var txt = t ? String(t.textContent || '').trim() : '';
+                        if (/^basic$/i.test(txt))
+                        {
+                            wrap.classList.add('gjs-open');
+                        }
+                        else if (/^extra$/i.test(txt))
+                        {
+                            wrap.classList.remove('gjs-open');
+                        }
+                    });
+                }
+                catch (e2)
+                {
+                }
+            }
+
+            function bindDefaultBlocksPanel(editor)
+            {
+                if (! editor || editor.get('_humanoOpenBlocksScheduled'))
+                {
+                    return;
+                }
+
+                editor.set('_humanoOpenBlocksScheduled', true);
+
+                var delays = [0, 60, 150, 320, 600, 1100, 1800, 2600];
+                delays.forEach(function (ms)
+                {
+                    setTimeout(function ()
+                    {
+                        humaTryOpenBlocksPanel(editor);
+                    }, ms);
+                });
 
                 editor.on('load', function ()
                 {
-                    setTimeout(runOpenBlocksOnce, 100);
+                    humaTryOpenBlocksPanel(editor);
+                    setTimeout(function ()
+                    {
+                        humaTryOpenBlocksPanel(editor);
+                    }, 120);
+                    setTimeout(function ()
+                    {
+                        humaEnsureBasicBlocksCategoryOpen(editor);
+                    }, 400);
                 });
-
-                setTimeout(runOpenBlocksOnce, 450);
-                setTimeout(runOpenBlocksOnce, 900);
             }
 
             var blocksAttempts = 0;
@@ -266,6 +389,84 @@
                 if (blocksAttempts > 400)
                 {
                     clearInterval(blocksTimer);
+                }
+            }, 50);
+        })();
+    </script>
+    <script>
+        (function ()
+        {
+            /**
+             * Remove built-in options buttons (component outline, preview, fullscreen) and extra-buttons canvas-clear.
+             */
+            function humaRemoveUnwantedOptionsPanelButtons(editor)
+            {
+                if (! editor)
+                {
+                    return;
+                }
+
+                var ids = [
+                    'sw-visibility',
+                    'preview',
+                    'fullscreen',
+                    'canvas-preview',
+                    'canvas-fullscreen',
+                    'canvas-clear',
+                ];
+
+                ids.forEach(function (id)
+                {
+                    try
+                    {
+                        editor.Panels.removeButton('options', id);
+                    }
+                    catch (e)
+                    {
+                    }
+                });
+            }
+
+            function bindHumaOptionsPanelButtonPurge(editor)
+            {
+                if (! editor || editor.get('_humanoOptionsPurgeBound'))
+                {
+                    return;
+                }
+
+                editor.set('_humanoOptionsPurgeBound', true);
+
+                function runRemoval()
+                {
+                    humaRemoveUnwantedOptionsPanelButtons(editor);
+                }
+
+                editor.on('load', function ()
+                {
+                    runRemoval();
+                    setTimeout(runRemoval, 200);
+                    setTimeout(runRemoval, 700);
+                    setTimeout(runRemoval, 1600);
+                });
+
+                runRemoval();
+                setTimeout(runRemoval, 120);
+                setTimeout(runRemoval, 450);
+                setTimeout(runRemoval, 1200);
+            }
+
+            var purgeAttempts = 0;
+            var purgeTimer = setInterval(function ()
+            {
+                purgeAttempts++;
+                var editor = window.gjsEditor;
+                if (editor)
+                {
+                    bindHumaOptionsPanelButtonPurge(editor);
+                }
+                if (purgeAttempts > 400)
+                {
+                    clearInterval(purgeTimer);
                 }
             }, 50);
         })();

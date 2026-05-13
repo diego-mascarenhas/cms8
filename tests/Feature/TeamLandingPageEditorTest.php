@@ -52,6 +52,8 @@ class TeamLandingPageEditorTest extends TestCase
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString('window.gjsEditor', $html);
         $this->assertStringContainsString('vendor/laravel-grapesjs/assets/editor.js', $html);
+        $this->assertStringContainsString('var returnUrl', $html);
+        $this->assertStringContainsString('goReturn', $html);
 
         $this->assertSame(0, TeamSetting::query()->where('team_id', $teamId)->where('key', TeamLandingEditable::SETTING_KEY)->count());
     }

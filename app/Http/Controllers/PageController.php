@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Grapesjs\TeamLandingEditable;
 use App\Models\Page;
+use App\Support\TemplateEditorReturnUrl;
+use Dotlogics\Grapesjs\App\Editor\Config;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -25,8 +27,35 @@ class PageController extends Controller
         }
 
         $editable = TeamLandingEditable::fromTeam($user->currentTeam);
+        $editorConfig = app(Config::class)->initialize($editable);
+        $returnUrl = $this->grapesJsReturnUrlAfterSave($request);
 
-        return $this->show_gjs_editor($request, $editable);
+        return view('laravel-grapesjs::edittor', [
+            'editorConfig' => $editorConfig,
+            'model' => $editable,
+            'returnUrl' => $returnUrl,
+        ]);
+    }
+
+    /**
+     * Safe URL to open after Save (same-origin). Query `return_url` overrides.
+     */
+    private function grapesJsReturnUrlAfterSave(Request $request): string
+    {
+        $fromQuery = TemplateEditorReturnUrl::validatedFromRequest($request);
+        if ($fromQuery !== null)
+        {
+            return $fromQuery;
+        }
+
+        $previous = (string) url()->previous();
+        $validated = TemplateEditorReturnUrl::validatedCandidate($request, $previous);
+        if ($validated !== null && rtrim($validated, '/') !== rtrim($request->url(), '/'))
+        {
+            return $validated;
+        }
+
+        return '/';
     }
 
     /**
