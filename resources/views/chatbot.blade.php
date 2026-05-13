@@ -17,12 +17,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Asistente') }}</h4>
-        <p class="text-muted">{{ __('Escribe tu necesidad; te enrutaré al flujo más adecuado (estrategia, email, notas, proyecto, etc.).') }}</p>
-    </div>
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('chat.index') }}" class="btn btn-label-secondary">
-            <i class="ti ti-message-chatbot me-1"></i>{{ __('Chat WhatsApp') }}
-        </a>
+        <p class="text-muted mb-0">{{ __('Escribe tu necesidad; te enrutaré al flujo más adecuado (estrategia, email, notas, proyecto, etc.).') }}</p>
     </div>
 </div>
 

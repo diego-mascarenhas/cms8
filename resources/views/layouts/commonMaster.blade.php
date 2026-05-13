@@ -78,6 +78,10 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   @include('layouts/sections/scripts' . $isFront)
 
   @stack('scripts')
+
+  @auth
+    @include('layouts.partials.assistant-fab')
+  @endauth
 </body>
 
 </html>

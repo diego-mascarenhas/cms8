@@ -1,0 +1,67 @@
+@if (! request()->routeIs('assistant', 'chatbot'))
+<style>
+    #assistant-offcanvas.offcanvas.show ~ .assistant-fab-host .assistant-fab-btn {
+        visibility: hidden;
+    }
+    #assistant-offcanvas .offcanvas-body > .assistant-offcanvas-livewire-root {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    #assistant-offcanvas .assistant-offcanvas-livewire-root > .card {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        border: 0;
+        box-shadow: none;
+    }
+    #assistant-offcanvas .assistant-offcanvas-livewire-root .card-body {
+        flex: 1;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column;
+    }
+    #assistant-offcanvas #assistant-chat-messages {
+        max-height: none !important;
+        flex: 1;
+        min-height: 0;
+    }
+</style>
+
+<div
+    class="offcanvas offcanvas-end shadow-lg"
+    tabindex="-1"
+    id="assistant-offcanvas"
+    aria-labelledby="assistantOffcanvasLabel"
+    style="width: min(100vw, 28rem);"
+    data-bs-scroll="true"
+>
+    <div class="offcanvas-header border-bottom flex-shrink-0">
+        <h5 class="offcanvas-title mb-0" id="assistantOffcanvasLabel">{{ __('Asistente') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0 h-100 overflow-hidden">
+        <div class="assistant-offcanvas-livewire-root flex-grow-1" style="min-height: 0;">
+            @livewire('assistant-chat', ['promptKey' => null], key('layout-assistant-chat-'.(auth()->id() ?? 'guest')))
+        </div>
+    </div>
+</div>
+
+<div class="assistant-fab-host position-fixed" style="bottom: 1.5rem; right: 1.5rem; z-index: 1039;">
+    <button
+        type="button"
+        id="assistant-fab"
+        class="btn btn-primary btn-icon rounded-circle shadow-lg assistant-fab-btn"
+        style="width: 3.25rem; height: 3.25rem;"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#assistant-offcanvas"
+        aria-controls="assistant-offcanvas"
+        title="{{ __('app.assistant_fab_title') }}"
+        aria-label="{{ __('app.assistant_fab_title') }}"
+    >
+        <i class="ti ti-sparkles ti-md"></i>
+    </button>
+</div>
+@endif

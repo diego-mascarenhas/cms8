@@ -21,6 +21,8 @@ return [
     'navbar_notifications_empty' => 'You have no notifications yet.',
     'navbar_notifications_view_tasks' => 'View pending tasks',
 
+    'assistant_fab_title' => 'Open assistant panel',
+
     'performance_insights_menu' => 'Performance insights',
     'performance_insight_default_headline' => 'Your daily focus',
     'performance_insight_column_date' => 'Date',

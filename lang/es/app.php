@@ -21,6 +21,8 @@ return [
     'navbar_notifications_empty' => 'Sin notificaciones por el momento.',
     'navbar_notifications_view_tasks' => 'Ver tareas pendientes',
 
+    'assistant_fab_title' => 'Abrir panel del asistente',
+
     'performance_insights_menu' => 'Rendimiento',
     'performance_insight_default_headline' => 'Tu foco del día',
     'performance_insight_column_date' => 'Fecha',
