@@ -187,8 +187,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		$hasEffectiveTemplateForLock = $effectiveTemplateIdForLock !== null
 			&& $effectiveTemplateIdForLock !== ''
 			&& (string) $effectiveTemplateIdForLock !== '0';
-		$messageFormTypeIdDisabled = $showEmailTemplatePreview
-			|| (isset($data->hasDeliveries) && $data->hasDeliveries)
+		$messageFormTypeIdDisabled = (isset($data->hasDeliveries) && $data->hasDeliveries)
 			|| ($currentTypeIdForLock === 1 && $hasEffectiveTemplateForLock);
 
 		$storedMinHoursBetweenEmails = (float) old('min_hours_between_emails', $data->min_hours_between_emails ?? 48);
@@ -238,11 +237,7 @@ document.addEventListener('DOMContentLoaded', function ()
 		$sendWindowEndValue = old('send_window_end', $data->send_window_end ?? '');
 	@endphp
 
-	<div id="message-form-template-id-slot">
-		@if ($showEmailTemplatePreview)
-			<input type="hidden" name="template_id" value="{{ $data->template_id }}">
-		@endif
-	</div>
+	<div id="message-form-template-id-slot"></div>
 
 	<div class="card mb-4">
 		<h5 class="card-header">{{ __('Messages') }}</h5>
@@ -304,17 +299,15 @@ document.addEventListener('DOMContentLoaded', function ()
 					{{ __('Para WhatsApp o para clientes de correo sin HTML. Si usas plantilla, este texto sirve como fallback o versión corta.') }}
 				</div>
 			</div>
-			<div class="col-md-6" id="message-form-template-field-wrapper" @class(['d-none' => $showEmailTemplatePreview])>
-				@unless ($showEmailTemplatePreview)
-					<x-input-select
-						id="template_id"
-						label="{{ __('Plantilla') }}"
-						:options="$data->templates ?? []"
-						value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
-						:placeholder="__('app.message_form_template_none')"
-						:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
-					/>
-				@endunless
+			<div class="col-md-6" id="message-form-template-field-wrapper">
+				<x-input-select
+					id="template_id"
+					label="{{ __('Plantilla') }}"
+					:options="$data->templates ?? []"
+					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
+					:placeholder="__('app.message_form_template_none')"
+					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
+				/>
 			</div>
 		</div>
 		</div>
@@ -323,12 +316,6 @@ document.addEventListener('DOMContentLoaded', function ()
 	<div id="message-email-template-preview-mount">
 	@if ($showEmailTemplatePreview)
 		@php
-			$removeMailTemplateUrl = isset($data->id)
-				? route('message.edit', ['id' => $data->id, 'remove_mail_template' => 1])
-				: route('message.create', array_filter([
-					'legacy_form' => 1,
-					'name' => filled($data->name ?? null) ? $data->name : (request()->filled('name') ? request('name') : null),
-				]));
 			$rawTemplateHtmlForMailField = '';
 			if (isset($data->template->gjs_data) && is_array($data->template->gjs_data))
 			{
@@ -346,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function ()
 			'templateHashedId' => $data->template->getHashedId(),
 			'duplicateFormId' => 'message-email-template-duplicate-form',
 			'duplicateModalId' => 'message-email-template-duplicate-modal',
-			'removeTemplateUrl' => $removeMailTemplateUrl,
+			'removeTemplateUrl' => null,
 			'useMailHtmlTextarea' => true,
 			'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
 			'mailHtmlTextareaReadonly' => $mailHtmlTextareaReadonly,
@@ -560,8 +547,7 @@ document.addEventListener('DOMContentLoaded', function ()
     var previewUrl = @json(route('message.template-email-preview'));
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
     var typeLockedByDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
-    var serverRenderedPreview = @json((bool) $showEmailTemplatePreview);
-    var messageFormTypeIdServerDisabled = @json((bool) $messageFormTypeIdDisabled);
+    var messageFormTypeIdServerDisabled = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
 
     if (! mount)
     {
@@ -569,66 +555,16 @@ document.addEventListener('DOMContentLoaded', function ()
     }
 
     var templateSlot = document.getElementById('message-form-template-id-slot');
-    var templateFieldWrapper = document.getElementById('message-form-template-field-wrapper');
     var duplicateForm = document.getElementById('message-email-template-duplicate-form');
-
-    function setTemplateHiddenValue(templateId)
-    {
-        if (! templateSlot)
-        {
-            return;
-        }
-        templateSlot.innerHTML = '';
-        if (! templateId)
-        {
-            return;
-        }
-        var inp = document.createElement('input');
-        inp.type = 'hidden';
-        inp.name = 'template_id';
-        inp.value = String(templateId);
-        templateSlot.appendChild(inp);
-    }
-
-    function syncNativeTemplateSelectForSubmit(templateIdStr)
-    {
-        var sel = document.getElementById('template_id');
-        if (! sel)
-        {
-            return;
-        }
-        if (templateIdStr)
-        {
-            sel.removeAttribute('name');
-            sel.disabled = true;
-            if (window.jQuery && window.jQuery.fn.select2)
-            {
-                window.jQuery(sel).prop('disabled', true).trigger('change.select2');
-            }
-        } else
-        {
-            sel.disabled = false;
-            sel.setAttribute('name', 'template_id');
-            if (window.jQuery && window.jQuery.fn.select2)
-            {
-                window.jQuery(sel).prop('disabled', false).trigger('change.select2');
-            }
-        }
-    }
 
     function restoreTemplateFieldUi()
     {
-        if (templateFieldWrapper)
-        {
-            templateFieldWrapper.classList.remove('d-none');
-        }
         if (templateSlot)
         {
             templateSlot.innerHTML = '';
         }
-        syncNativeTemplateSelectForSubmit('');
         var typeSelect = document.getElementById('type_id');
-        if (typeSelect && ! messageFormTypeIdServerDisabled && ! typeLockedByDeliveries && ! serverRenderedPreview)
+        if (typeSelect && ! messageFormTypeIdServerDisabled && ! typeLockedByDeliveries)
         {
             typeSelect.disabled = false;
             if (window.jQuery && window.jQuery.fn.select2)
@@ -644,13 +580,13 @@ document.addEventListener('DOMContentLoaded', function ()
 
     function clearDynamicPreview()
     {
-        if (mount.dataset.dynamicPreview !== '1')
-        {
-            return;
-        }
         mount.innerHTML = '';
         mount.dataset.dynamicPreview = '0';
         delete mount.dataset.loadedTemplateId;
+        if (window.humaMessageTemplateQuillInstance)
+        {
+            window.humaMessageTemplateQuillInstance = null;
+        }
         restoreTemplateFieldUi();
     }
 
@@ -732,12 +668,6 @@ document.addEventListener('DOMContentLoaded', function ()
                 if (duplicateForm && data.duplicate_action_url)
                 {
                     duplicateForm.setAttribute('action', data.duplicate_action_url);
-                }
-                setTemplateHiddenValue(templateId);
-                syncNativeTemplateSelectForSubmit(String(templateId));
-                if (templateFieldWrapper)
-                {
-                    templateFieldWrapper.classList.add('d-none');
                 }
                 var typeSelect = document.getElementById('type_id');
                 if (typeSelect && ! typeLockedByDeliveries)

@@ -355,6 +355,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertStringContainsString('name="template_html"', $html);
         $this->assertStringContainsString('id="message-template-html-initial-json"', $html);
         $this->assertStringContainsString('\u003Cp\u003EHi\u003C\\/p\u003E', $html);
+        $this->assertStringContainsString('id="template_id"', $html);
         $this->assertMatchesRegularExpression('/<input[^>]+type=["\']hidden["\'][^>]+name=["\']type_id["\'][^>]+value=["\']1["\']/i', $html);
         $this->assertMatchesRegularExpression('/<select[^>]+id=["\']type_id["\'][^>]*disabled/si', $html);
         $this->assertStringContainsString('form="message-email-template-duplicate-form"', $html);

@@ -468,13 +468,6 @@ class MessageController extends Controller
             $returnUrl,
         );
 
-        $removeMailTemplateUrl = $messageId
-            ? route('message.edit', ['id' => $messageId, 'remove_mail_template' => 1])
-            : route('message.create', array_filter([
-                'legacy_form' => 1,
-                'name' => filled($validated['context_name'] ?? null) ? $validated['context_name'] : null,
-            ]));
-
         $html = view('message.ajax.email-template-preview-bundle', [
             'previewHtml' => $previewHtml,
             'grapesEditorUrl' => $grapesEditorUrl,
@@ -482,7 +475,7 @@ class MessageController extends Controller
             'messageId' => $messageId,
             'templateId' => $template->id,
             'templateHashedId' => $template->getHashedId(),
-            'removeTemplateUrl' => $removeMailTemplateUrl,
+            'removeTemplateUrl' => null,
             'useMailHtmlTextarea' => true,
             'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
             'mailHtmlTextareaReadonly' => false,

@@ -157,11 +157,15 @@
                         saveEl.appendChild(saveLabel);
                     }
 
-                    var parent = cancelEl.parentElement;
-                    if (parent && saveEl.parentElement === parent)
+                    if (! editor.get('_humanoToolbarReorderDone'))
                     {
-                        parent.appendChild(cancelEl);
-                        parent.appendChild(saveEl);
+                        var parent = cancelEl.parentElement;
+                        if (parent && saveEl.parentElement === parent)
+                        {
+                            parent.appendChild(cancelEl);
+                            parent.appendChild(saveEl);
+                        }
+                        editor.set('_humanoToolbarReorderDone', true);
                     }
 
                     editor.set('_humanoToolbarEnhanced', true);
@@ -277,6 +281,113 @@
                     window.location.href = returnUrl;
                 }
 
+                function blurCanvasFocus(editor)
+                {
+                    try
+                    {
+                        var frame = editor.Canvas && editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
+                        if (frame && frame.contentDocument && frame.contentDocument.activeElement)
+                        {
+                            frame.contentDocument.activeElement.blur();
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+
+                    try
+                    {
+                        if (document.activeElement && typeof document.activeElement.blur === 'function')
+                        {
+                            document.activeElement.blur();
+                        }
+                    }
+                    catch (e2)
+                    {
+                    }
+                }
+
+                /**
+                 * CKEditor (gjs-plugin-ckeditor) keeps edits in its instance until blur/updateElement.
+                 * Without this, the first Save click after editing often only blurs the RTE.
+                 */
+                function flushCkeditorInCanvas(editor)
+                {
+                    try
+                    {
+                        var frame = editor.Canvas && editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
+                        if (! frame || ! frame.contentWindow)
+                        {
+                            return;
+                        }
+
+                        var CK = frame.contentWindow.CKEDITOR;
+                        if (! CK || ! CK.instances)
+                        {
+                            return;
+                        }
+
+                        var insts = CK.instances;
+                        for (var id in insts)
+                        {
+                            if (! Object.prototype.hasOwnProperty.call(insts, id))
+                            {
+                                continue;
+                            }
+
+                            var inst = insts[id];
+                            try
+                            {
+                                if (typeof inst.updateElement === 'function')
+                                {
+                                    inst.updateElement();
+                                }
+                                if (inst.focusManager && typeof inst.focusManager.blur === 'function')
+                                {
+                                    inst.focusManager.blur(true);
+                                }
+                            }
+                            catch (inner)
+                            {
+                            }
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+                }
+
+                function deselectForStore(editor)
+                {
+                    try
+                    {
+                        if (typeof editor.select === 'function')
+                        {
+                            editor.select(null);
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+                }
+
+                function runStoreAfterFlush(editor, done)
+                {
+                    flushCkeditorInCanvas(editor);
+                    blurCanvasFocus(editor);
+                    deselectForStore(editor);
+
+                    window.requestAnimationFrame(function ()
+                    {
+                        flushCkeditorInCanvas(editor);
+                        window.requestAnimationFrame(function ()
+                        {
+                            flushCkeditorInCanvas(editor);
+                            editor.store(done);
+                        });
+                    });
+                }
+
                 function patchEditor()
                 {
                     var editor = window.gjsEditor;
@@ -285,36 +396,50 @@
                         return false;
                     }
 
+                    var cancel = null;
+                    var save = null;
+
                     try
                     {
-                        var cancel = editor.Panels.getButton('options', 'cancel');
-                        if (cancel)
-                        {
-                            cancel.set('command', function ()
-                            {
-                                goReturn();
-                            });
-                        }
-
-                        var save = editor.Panels.getButton('options', 'save');
-                        if (save)
-                        {
-                            save.set('command', function (ed)
-                            {
-                                ed.store(function (err)
-                                {
-                                    if (err)
-                                    {
-                                        return;
-                                    }
-                                    goReturn();
-                                });
-                            });
-                        }
+                        cancel = editor.Panels.getButton('options', 'cancel');
+                        save = editor.Panels.getButton('options', 'save');
                     }
                     catch (e)
                     {
                         console.error(e);
+
+                        return false;
+                    }
+
+                    if (! cancel || ! save)
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        cancel.set('command', function ()
+                        {
+                            goReturn();
+                        });
+
+                        save.set('command', function (ed)
+                        {
+                            runStoreAfterFlush(ed, function (err)
+                            {
+                                if (err)
+                                {
+                                    return;
+                                }
+                                goReturn();
+                            });
+                        });
+                    }
+                    catch (e)
+                    {
+                        console.error(e);
+
+                        return false;
                     }
 
                     return true;
