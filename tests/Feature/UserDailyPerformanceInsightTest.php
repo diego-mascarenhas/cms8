@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Contact;
-use App\Models\ContactInteraction;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
@@ -96,32 +94,11 @@ class UserDailyPerformanceInsightTest extends TestCase
         $this->assertEquals(1, UserDailyPerformanceInsight::query()->where('team_id', $team->id)->count());
     }
 
-    public function test_dashboard_persists_daily_insight_and_shows_message(): void
+    public function test_dashboard_does_not_persist_daily_insight_and_shows_assistant_prompt(): void
     {
         $this->seedInsightDependencies();
         $user = $this->createUserWithRole('admin');
         $team = $user->currentTeam;
-
-        $contact = Contact::query()->create([
-            'team_id' => $team->id,
-            'name' => 'Test Client',
-            'email' => 'client@example.com',
-            'creator_id' => $user->id,
-            'responsible_id' => $user->id,
-            'status_id' => 1,
-            'source_id' => 1,
-        ]);
-
-        ContactInteraction::query()->create([
-            'contact_id' => $contact->id,
-            'user_id' => $user->id,
-            'relatable_type' => null,
-            'relatable_id' => null,
-            'type' => 'note',
-            'subject' => 'Test',
-            'body' => 'Body',
-            'occurred_at' => now(),
-        ]);
 
         $this->actingAs($user);
         app()->setLocale('en');
@@ -129,25 +106,26 @@ class UserDailyPerformanceInsightTest extends TestCase
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $this->assertDatabaseHas('user_daily_performance_insights', [
+        $this->assertDatabaseMissing('user_daily_performance_insights', [
             'team_id' => $team->id,
             'user_id' => $user->id,
         ]);
 
-        $insight = UserDailyPerformanceInsight::query()->where('user_id', $user->id)->first();
-        $this->assertNotNull($insight);
-        $headlineParts = UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($insight->headline);
-        $response->assertSee($headlineParts['text'], false);
-        if ($headlineParts['emoji'] !== '')
-        {
-            $response->assertSee($headlineParts['emoji'], false);
-        }
-        $focusWords = preg_split('/\s+/u', str_replace("\n", ' ', $insight->focus), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $this->assertNotEmpty($focusWords);
-        $response->assertSee($focusWords[0], false);
-        $response->assertSee(mb_substr((string) $insight->message, 0, 40), false);
+        $firstName = explode(' ', (string) $user->name, 2)[0];
+        $response->assertSee(e(__('app.dashboard_assistant_greeting', ['name' => $firstName])), false);
+        $response->assertSee(e(__('app.dashboard_assistant_subtitle')), false);
         $response->assertSee(__('app.dashboard_open_assistant'), false);
         $response->assertSee('view=assistant', false);
+    }
+
+    public function test_find_today_insight_returns_null_without_row(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        $service = app(UserDailyPerformanceInsightService::class);
+        $this->assertNull($service->findTodayInsight($user, $team));
     }
 
     public function test_insight_service_first_or_create_is_idempotent_per_day(): void

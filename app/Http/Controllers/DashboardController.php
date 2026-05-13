@@ -9,7 +9,6 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
-use App\Services\UserDailyPerformanceInsightService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
@@ -366,13 +365,6 @@ class DashboardController extends Controller
             }
         }
 
-        $dailyPerformanceInsight = null;
-        if ($activeTeam && $authUser->hasAnyRole(['admin', 'root']))
-        {
-            $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
-                ->ensureTodayRecord($authUser, $activeTeam, $mentoringLevelName);
-        }
-
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -391,7 +383,6 @@ class DashboardController extends Controller
             'hasProjects',
             'analyticsChartData',
             'recentContactActivities',
-            'dailyPerformanceInsight',
         ));
     }
 }

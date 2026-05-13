@@ -77,10 +77,6 @@
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
         <div class="card-body row p-0 pb-2 align-items-stretch">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <h3 class="mb-1">{{ __('app.welcome') }}</h3>
-                @if(!empty($dailyPerformanceInsight?->message))
-                    <p class="text-muted mb-2 pb-1 small">{{ e($dailyPerformanceInsight->message) }}</p>
-                @endif
                 <div class="d-flex justify-content-between gap-3 me-5">
                     <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
                         <span class="bg-label-primary p-2 rounded">
@@ -119,26 +115,14 @@
                         <div class="col-9 min-w-0 d-flex flex-column">
                             <div class="card-body d-flex flex-column flex-grow-1">
                                 @php
-                                    $insightCardFirstName = explode(' ', auth()->user()->name)[0];
+                                    $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
-                                @if(!empty($dailyPerformanceInsight))
-                                    @php
-                                        $insightHeadlineParts = \App\Models\UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($dailyPerformanceInsight->headline);
-                                    @endphp
-                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                        @if($insightHeadlineParts['emoji'] !== '')
-                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center lh-1">{{ $insightHeadlineParts['emoji'] }}</span>
-                                        @else
-                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center" aria-hidden="true">
-                                                <i class="ti ti-sparkles ti-sm"></i>
-                                            </span>
-                                        @endif
-                                        <h5 class="card-title mb-0 fw-semibold">{{ e($insightHeadlineParts['text']) }}</h5>
-                                    </div>
-                                    <p class="mb-2 text-body"><strong>{!! nl2br(e($dailyPerformanceInsight->focus), false) !!}</strong></p>
+                                @if(auth()->user()->hasAnyRole(['admin', 'root']))
+                                    <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
+                                    <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
                                     @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
                                         <div class="mt-auto pt-2">
-                                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light">{{ __('app.dashboard_open_assistant') }}</a>
+                                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light"><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</a>
                                         </div>
                                     @endif
                                 @else

@@ -81,6 +81,7 @@ return [
      */
     'plan_team_modules' => [
         'assistant' => [
+            'today',
             'settings',
             'dashboard',
             'calendar',
@@ -88,7 +89,6 @@ return [
             'contacts',
             'tasks',
             'prospecting',
-            'prompts',
             'mailer',
             'landings',
             'chat',

@@ -101,6 +101,20 @@ PROMPT;
     }
 
     /**
+     * Existing persisted insight for the calendar day, if any. Does not create rows (use {@see ensureTodayRecord} from jobs/commands).
+     */
+    public function findTodayInsight(User $user, Team $team, ?CarbonInterface $onDate = null): ?UserDailyPerformanceInsight
+    {
+        $date = ($onDate ?? now())->toDateString();
+
+        return UserDailyPerformanceInsight::query()
+            ->where('team_id', $team->id)
+            ->where('user_id', $user->id)
+            ->whereDate('insight_date', $date)
+            ->first();
+    }
+
+    /**
      * @return array{interactions_count: int, call_minutes: float, tasks_done: int}
      */
     public function collectMetrics(User $user, Team $team): array
