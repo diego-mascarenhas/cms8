@@ -56,6 +56,16 @@ return [
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
+     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer client
+     * | enterprise id (digits only). Keys must match Stripe's field key on each Payment Link.
+     * | HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS=referente,affiliate
+     */
+    'payment_link_affiliate_custom_field_keys' => array_values(array_filter(array_map(
+        static fn (string $k): string => strtolower(trim($k)),
+        explode(',', (string) env('HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS', 'referente,affiliate')),
+    ))),
+
+    /*
      * |--------------------------------------------------------------------------
      * | Team modules after checkout (by plan id: assistant, business, foundation)
      * |--------------------------------------------------------------------------
