@@ -1,22 +1,24 @@
+<div class="card" x-data x-init="$wire.on('scroll-to-bottom', () => $nextTick(() => document.getElementById('assistant-chat-messages')?.scrollTo(0, 1e9)))">
+@unless($hideHeader)
 @php
     $lastRouted = collect($messages)->reverse()->first(fn ($m) => ($m['role'] ?? '') === 'assistant' && !empty($m['routed_to']));
     $currentFlow = $lastRouted['routed_to'] ?? __('General');
 @endphp
-<div class="card" x-data x-init="$wire.on('scroll-to-bottom', () => $nextTick(() => document.getElementById('assistant-chat-messages')?.scrollTo(0, 1e9)))">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">{{ __('Asistente') }} · <span class="text-muted fw-normal">{{ $currentFlow }}</span></h5>
-        <div class="d-flex align-items-center gap-2 ms-auto">
-            <label class="mb-0 small d-flex align-items-center gap-2">
-                <span>{{ __('Respuesta por voz') }}</span>
-                <input type="checkbox" wire:model="respondWithAudio" class="form-check-input">
-            </label>
-            @if(count($messages) > 0)
-                <button type="button" class="btn btn-sm btn-label-secondary" wire:click="clearChat">
-                    <i class="ti ti-refresh me-1"></i>{{ __('Nueva conversación') }}
-                </button>
-            @endif
-        </div>
+<div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">{{ __('Asistente') }} · <span class="text-muted fw-normal">{{ $currentFlow }}</span></h5>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+        <label class="mb-0 small d-flex align-items-center gap-2">
+            <span>{{ __('Respuesta por voz') }}</span>
+            <input type="checkbox" wire:model="respondWithAudio" class="form-check-input">
+        </label>
+        @if(count($messages) > 0)
+            <button type="button" class="btn btn-sm btn-label-secondary" wire:click="clearChat">
+                <i class="ti ti-refresh me-1"></i>{{ __('Nueva conversación') }}
+            </button>
+        @endif
     </div>
+</div>
+@endunless
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
         <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
             {{-- Welcome box: always visible --}}

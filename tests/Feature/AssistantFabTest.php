@@ -24,6 +24,7 @@ class AssistantFabTest extends TestCase
         $this->assertStringContainsString('data-bs-toggle="offcanvas"', $html);
         $this->assertStringContainsString('data-bs-target="#assistant-offcanvas"', $html);
         $this->assertStringContainsString('wire:snapshot', $html);
+        $this->assertStringNotContainsString('wire:model="respondWithAudio"', $html);
         $this->assertStringNotContainsString('href="'.route('assistant').'"', $html);
     }
 
@@ -36,5 +37,16 @@ class AssistantFabTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('id="assistant-fab"', false);
+    }
+
+    public function test_full_assistant_page_keeps_chat_header_and_voice_toggle(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+
+        $response = $this->actingAs($user->fresh())->get(route('assistant'));
+
+        $response->assertOk();
+        $this->assertStringContainsString('wire:model="respondWithAudio"', $response->getContent() ?? '');
     }
 }

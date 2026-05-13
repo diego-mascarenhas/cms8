@@ -1,5 +1,14 @@
 @if (! request()->routeIs('assistant', 'chatbot'))
 <style>
+    .assistant-fab-host {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 1094;
+    }
+    /* Debugbar is position:fixed bottom:0 with z-index ~1e10 — FAB would sit underneath and disappear */
+    body:has(div.phpdebugbar) .assistant-fab-host {
+        bottom: 6rem;
+    }
     #assistant-offcanvas.offcanvas.show ~ .assistant-fab-host .assistant-fab-btn {
         visibility: hidden;
     }
@@ -44,12 +53,13 @@
     </div>
     <div class="offcanvas-body d-flex flex-column p-0 h-100 overflow-hidden">
         <div class="assistant-offcanvas-livewire-root flex-grow-1" style="min-height: 0;">
-            @livewire('assistant-chat', ['promptKey' => null], key('layout-assistant-chat-'.(auth()->id() ?? 'guest')))
+            {{-- promptKey null = general router (default flow / system routing). --}}
+            @livewire('assistant-chat', ['promptKey' => null, 'hideHeader' => true], key('layout-assistant-chat-'.(auth()->id() ?? 'guest')))
         </div>
     </div>
 </div>
 
-<div class="assistant-fab-host position-fixed" style="bottom: 1.5rem; right: 1.5rem; z-index: 1039;">
+<div class="assistant-fab-host position-fixed">
     <button
         type="button"
         id="assistant-fab"

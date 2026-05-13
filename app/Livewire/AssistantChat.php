@@ -2,11 +2,13 @@
 
 namespace App\Livewire;
 
-use App\Models\AgentConversation;
-use App\Models\AgentConversationMessage;
 use App\Models\Team;
+use App\Services\AgentConversationContextService;
 use App\Services\AssistantChatService;
-use Illuminate\Support\Str;
+use App\Services\ChatAssistantReplyService;
+use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Audio;
+use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -14,6 +16,9 @@ class AssistantChat extends Component
 {
     use WithFileUploads;
 
+    /**
+     * Legacy agent id for {@see AssistantChatService}-only flows (guests or uploads). In-app assistant uses {@see AgentConversationContextService::AGENT_NAME}.
+     */
     public const AGENT_NAME = 'assistant_chat';
 
     /** @var array<int, array{role: string, content: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}> */
@@ -31,11 +36,19 @@ class AssistantChat extends Component
 
     public bool $respondWithAudio = false;
 
+    /** When non-null and non-blank, forces that routing key in the same way as the chat assistant (Humano Assistant). */
     public ?string $promptKey = null;
 
-    public function mount(?string $promptKey = null): void
-    {
+    /** When true (e.g. layout FAB panel), the card toolbar (flow title, voice toggle, new chat) is omitted. */
+    public bool $hideHeader = false;
+
+    public function mount(
+        AgentConversationContextService $conversationContext,
+        ?string $promptKey = null,
+        bool $hideHeader = false,
+    ): void {
         $this->promptKey = $promptKey;
+        $this->hideHeader = $hideHeader;
 
         if (! auth()->check())
         {
@@ -43,36 +56,28 @@ class AssistantChat extends Component
         }
 
         $teamId = auth()->user()->currentTeam?->id;
-        $query = AgentConversation::where('user_id', auth()->id())
-            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at');
-        if ($teamId !== null)
+        $conversation = $conversationContext->getAssistantConversationForUser(auth()->id(), $teamId);
+        if ($conversation === null)
         {
-            $query->where('team_id', $teamId);
-        } else
-        {
-            $query->whereNull('team_id');
+            return;
         }
-        $conversation = $query->first();
 
-        if ($conversation)
-        {
-            $this->conversationId = $conversation->id;
-            $this->messages = $conversation->messages()
-                ->where('agent', self::AGENT_NAME)
-                ->orderBy('created_at')
-                ->get()
-                ->map(fn (AgentConversationMessage $m) => [
-                    'role' => $m->role,
-                    'content' => $m->content,
-                    'routed_to' => $m->meta['routed_to'] ?? null,
-                ])
-                ->toArray();
-        }
+        $this->conversationId = $conversation->id;
+        $this->messages = collect($conversationContext->getMessagesForDisplay(auth()->id(), 100, $teamId))
+            ->map(fn (array $m) => [
+                'role' => $m['role'],
+                'content' => $m['content'],
+                'routed_to' => $m['routed_to'] ?? null,
+            ])
+            ->values()
+            ->all();
     }
 
-    public function sendMessage(AssistantChatService $assistant): void
-    {
+    public function sendMessage(
+        AssistantChatService $assistant,
+        AgentConversationContextService $conversationContext,
+        ChatAssistantReplyService $replyService,
+    ): void {
         $text = trim($this->input ?? '');
         $hasImage = $this->image !== null;
         $hasAudio = $this->audio !== null;
@@ -105,6 +110,125 @@ class AssistantChat extends Component
         $this->input = '';
         $this->loading = true;
 
+        $useHumanoAssistantPipeline = auth()->check() && ! $hasImage && ! $hasAudio;
+
+        if ($useHumanoAssistantPipeline)
+        {
+            $this->runHumanoAssistantTurn($text, $userContent, $conversationContext, $replyService);
+        } else
+        {
+            $this->runLegacyAssistantTurn($text, $userContent, $assistant);
+        }
+
+        $this->image = null;
+        $this->audio = null;
+        $this->loading = false;
+        $this->dispatch('scroll-to-bottom');
+    }
+
+    public function clearChat(): void
+    {
+        $this->messages = [];
+        $this->conversationId = null;
+    }
+
+    public function render()
+    {
+        return view('livewire.assistant-chat');
+    }
+
+    protected function runHumanoAssistantTurn(
+        string $text,
+        string $userContent,
+        AgentConversationContextService $conversationContext,
+        ChatAssistantReplyService $replyService,
+    ): void {
+        $user = auth()->user();
+        $teamId = $user->currentTeam?->id;
+        $history = $conversationContext->getHistoryForPrompt(
+            $user->id,
+            AgentConversationContextService::DEFAULT_HISTORY_LIMIT,
+            $teamId,
+        );
+
+        $forcedKeyRaw = $this->promptKey;
+        $forcedFlowRoutingKey = \is_string($forcedKeyRaw) && trim($forcedKeyRaw) !== ''
+            ? trim($forcedKeyRaw)
+            : null;
+
+        $replyResponse = $replyService->getReply(
+            $text,
+            $history,
+            $teamId,
+            $teamId !== null,
+            $user->id,
+            null,
+            $forcedFlowRoutingKey,
+            null,
+            false,
+        );
+
+        if (! ($replyResponse['success'] ?? false))
+        {
+            $this->messages[] = [
+                'role' => 'assistant',
+                'content' => (string) ($replyResponse['message'] ?? __('Error al comunicar con el asistente.')),
+                'routed_to' => null,
+            ];
+            Log::warning('AssistantChat Livewire: ChatAssistantReplyService failed', [
+                'message' => $replyResponse['message'] ?? null,
+            ]);
+
+            return;
+        }
+
+        $assistantText = (string) ($replyResponse['text'] ?? '');
+        $assistantMessage = [
+            'role' => 'assistant',
+            'content' => $assistantText,
+            'routed_to' => $replyResponse['routed_to'] ?? null,
+        ];
+
+        if ($this->respondWithAudio && $assistantText !== '' && config('ai.providers.eleven.key'))
+        {
+            $maxCharsForTts = 1000;
+            $textForTts = strlen($assistantText) > $maxCharsForTts ? substr($assistantText, 0, $maxCharsForTts).'…' : $assistantText;
+            try
+            {
+                $audioResponse = Audio::of($textForTts)->generate(provider: Lab::ElevenLabs);
+                $assistantMessage['audio_base64'] = $audioResponse->audio;
+                $assistantMessage['audio_mime'] = $audioResponse->mimeType() ?? 'audio/mpeg';
+            } catch (\Throwable $e)
+            {
+                Log::warning('AssistantChat Livewire TTS failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        $this->messages[] = $assistantMessage;
+
+        $conversationContext->persistMessages(
+            $user->id,
+            $userContent,
+            $assistantText,
+            $replyResponse['routed_to'] ?? null,
+            $replyResponse['usage'] ?? [],
+            $replyResponse['meta'] ?? [],
+            $replyResponse['tool_calls'] ?? [],
+            $replyResponse['tool_results'] ?? [],
+            $teamId,
+            (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
+            $replyResponse['assistant_flow_routing_key'] ?? null,
+        );
+
+        $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
+        $this->conversationId = $conversation?->id;
+    }
+
+    protected function runLegacyAssistantTurn(
+        string $text,
+        string $userContent,
+        AssistantChatService $assistant,
+    ): void {
         $teamId = null;
         if (auth()->check())
         {
@@ -134,106 +258,27 @@ class AssistantChat extends Component
             $assistantMessage['audio_mime'] = $result['audio_mime'];
         }
         $this->messages[] = $assistantMessage;
-        $this->loading = false;
-
-        $this->image = null;
-        $this->audio = null;
 
         if (auth()->check())
         {
-            $this->persistMessages(
+            app(AgentConversationContextService::class)->persistMessages(
+                auth()->id(),
                 $userContent,
                 $result['response'],
                 $result['routed_to'],
                 $result['usage'] ?? [],
+                [],
                 $result['tool_calls'] ?? [],
                 $result['tool_results'] ?? [],
+                auth()->user()->currentTeam?->id,
+                false,
+                null,
             );
+            $conversation = app(AgentConversationContextService::class)->getAssistantConversationForUser(
+                auth()->id(),
+                auth()->user()->currentTeam?->id,
+            );
+            $this->conversationId = $conversation?->id;
         }
-
-        $this->dispatch('scroll-to-bottom');
-    }
-
-    public function clearChat(): void
-    {
-        $this->messages = [];
-        $this->conversationId = null;
-    }
-
-    /**
-     * @param  array<string, int>  $usage
-     * @param  array<int, mixed>  $toolCalls
-     * @param  array<int, mixed>  $toolResults
-     */
-    protected function persistMessages(
-        string $userContent,
-        string $assistantContent,
-        ?string $routedTo,
-        array $usage = [],
-        array $toolCalls = [],
-        array $toolResults = [],
-    ): void {
-        $userId = auth()->id();
-        if (! $userId)
-        {
-            return;
-        }
-
-        if ($this->conversationId === null)
-        {
-            $teamId = auth()->user()->currentTeam?->id;
-            $payload = [
-                'id' => (string) Str::uuid(),
-                'user_id' => $userId,
-                'title' => Str::limit($userContent, 50),
-            ];
-            if ($teamId !== null)
-            {
-                $payload['team_id'] = $teamId;
-            }
-            $conversation = AgentConversation::create($payload);
-            $this->conversationId = $conversation->id;
-        }
-
-        $conversation = AgentConversation::find($this->conversationId);
-        if (! $conversation)
-        {
-            return;
-        }
-
-        $conversation->touch();
-
-        AgentConversationMessage::create([
-            'id' => (string) Str::uuid(),
-            'conversation_id' => $conversation->id,
-            'user_id' => $userId,
-            'agent' => self::AGENT_NAME,
-            'role' => 'user',
-            'content' => $userContent,
-            'attachments' => [],
-            'tool_calls' => [],
-            'tool_results' => [],
-            'usage' => [],
-            'meta' => [],
-        ]);
-
-        AgentConversationMessage::create([
-            'id' => (string) Str::uuid(),
-            'conversation_id' => $conversation->id,
-            'user_id' => $userId,
-            'agent' => self::AGENT_NAME,
-            'role' => 'assistant',
-            'content' => $assistantContent,
-            'attachments' => [],
-            'tool_calls' => $toolCalls,
-            'tool_results' => $toolResults,
-            'usage' => $usage,
-            'meta' => array_filter(['routed_to' => $routedTo]),
-        ]);
-    }
-
-    public function render()
-    {
-        return view('livewire.assistant-chat');
     }
 }
