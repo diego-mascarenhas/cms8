@@ -9,11 +9,9 @@
     </a>
     <ul class="dropdown-menu dropdown-menu-end py-0">
         <li class="dropdown-menu-header border-bottom">
-            <div class="dropdown-header d-flex align-items-center py-3">
-                <h5 class="text-body mb-0 me-auto">{{ __('My Tasks') }}</h5>
-                {{-- <a href="{{ route('task.create') }}" class="text-body">
-                    <i class="ti ti-plus fs-4"></i>
-                </a> --}}
+            <div class="dropdown-header d-flex flex-column align-items-start py-3">
+                <h5 class="text-body mb-1">{{ __('Notifications') }}</h5>
+                <p class="text-muted small mb-0">{{ __('app.navbar_notifications_lead') }}</p>
             </div>
         </li>
         <li class="dropdown-notifications-list scrollable-container">
@@ -48,7 +46,7 @@
                     <li class="list-group-item list-group-item-action dropdown-notifications-item">
                         <div class="d-flex">
                             <div class="flex-grow-1 text-center py-3">
-                                <p class="mb-0">{{ __('No pending tasks for me') }}</p>
+                                <p class="mb-0">{{ __('app.navbar_notifications_empty') }}</p>
                             </div>
                         </div>
                     </li>
@@ -56,14 +54,10 @@
             </ul>
         </li>
         <li class="dropdown-menu-footer border-top">
-            <div class="d-flex justify-content-between p-2">
-                <a href="{{ route('task.create') }}" class="dropdown-item d-flex align-items-center px-3">
-                    <i class="ti ti-plus me-2"></i>
-                    {{ __('Add task') }}
-                </a>
-                <a href="{{ route('task.index') }}" class="dropdown-item d-flex align-items-center px-3">
+            <div class="d-flex justify-content-center p-2">
+                <a href="{{ route('task.index') }}" class="dropdown-item d-flex justify-content-center align-items-center px-3">
                     <i class="ti ti-list me-2"></i>
-                    {{ __('View all') }}
+                    {{ __('app.navbar_notifications_view_tasks') }}
                 </a>
             </div>
         </li>

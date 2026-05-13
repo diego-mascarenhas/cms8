@@ -17,6 +17,10 @@ return [
     'enterprises' => 'Enterprises',
     'list60' => 'List of 60',
 
+    'navbar_notifications_lead' => 'Alerts and quick links from across the app.',
+    'navbar_notifications_empty' => 'You have no notifications yet.',
+    'navbar_notifications_view_tasks' => 'View pending tasks',
+
     'performance_insights_menu' => 'Performance insights',
     'performance_insight_default_headline' => 'Your daily focus',
     'performance_insight_column_date' => 'Date',

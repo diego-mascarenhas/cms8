@@ -17,6 +17,10 @@ return [
     'enterprises' => 'Empresas',
     'list60' => 'Lista de 60',
 
+    'navbar_notifications_lead' => 'Avisos y enlaces rápidos de toda la aplicación.',
+    'navbar_notifications_empty' => 'Sin notificaciones por el momento.',
+    'navbar_notifications_view_tasks' => 'Ver tareas pendientes',
+
     'performance_insights_menu' => 'Rendimiento',
     'performance_insight_default_headline' => 'Tu foco del día',
     'performance_insight_column_date' => 'Fecha',
