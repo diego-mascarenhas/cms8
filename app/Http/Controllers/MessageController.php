@@ -112,9 +112,13 @@ class MessageController extends Controller
             ? $validated['send_window_end']
             : null;
 
-        $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
-
         $resolvedTypeId = $this->resolveTypeIdForMessageStore($request);
+
+        $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
+        if ($resolvedTypeId === $this->whatsappMessageTypeId())
+        {
+            $templateId = null;
+        }
 
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
@@ -1133,6 +1137,29 @@ class MessageController extends Controller
      * Disabled channel controls omit type_id from the request; preserve the stored value on update,
      * otherwise default to mail (1) as a last resort.
      */
+    private function whatsappMessageTypeId(): int
+    {
+        static $cachedWhatsappMessageTypeId = null;
+
+        if ($cachedWhatsappMessageTypeId !== null)
+        {
+            return $cachedWhatsappMessageTypeId;
+        }
+
+        $cachedWhatsappMessageTypeId = 2;
+
+        foreach (MessageType::query()->cursor() as $type)
+        {
+            if (stripos((string) $type->name, 'whatsapp') !== false)
+            {
+                $cachedWhatsappMessageTypeId = (int) $type->id;
+                break;
+            }
+        }
+
+        return $cachedWhatsappMessageTypeId;
+    }
+
     private function resolveTypeIdForMessageStore(Request $request): int
     {
         $raw = $request->input('type_id');

@@ -190,7 +190,21 @@ document.addEventListener('DOMContentLoaded', function ()
 		$messageFormTypeIdDisabled = (isset($data->hasDeliveries) && $data->hasDeliveries)
 			|| ($currentTypeIdForLock === 1 && $hasEffectiveTemplateForLock);
 
+		$whatsAppTypeId = 2;
+		foreach ($data->types ?? [] as $typeRow)
+		{
+			if (is_array($typeRow) && isset($typeRow['name']) && stripos((string) $typeRow['name'], 'whatsapp') !== false)
+			{
+				$whatsAppTypeId = (int) ($typeRow['id'] ?? 2);
+				break;
+			}
+		}
+
+		$templateSelectDisabled = (isset($data->hasDeliveries) && $data->hasDeliveries)
+			|| ($currentTypeIdForLock === $whatsAppTypeId);
+
 		$storedMinHoursBetweenEmails = (float) old('min_hours_between_emails', $data->min_hours_between_emails ?? 48);
+
 		$initialTimeUnit = old('time_unit', 'days');
 		if (! in_array($initialTimeUnit, ['hours', 'days', 'weeks'], true))
 		{
@@ -306,8 +320,13 @@ document.addEventListener('DOMContentLoaded', function ()
 					:options="$data->templates ?? []"
 					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
 					:placeholder="__('app.message_form_template_none')"
-					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
+					:disabled="$templateSelectDisabled"
 				/>
+				@if ($currentTypeIdForLock === $whatsAppTypeId && ! (isset($data->hasDeliveries) && $data->hasDeliveries))
+					<div class="form-text text-muted mt-1">
+						{{ __('Los mensajes por WhatsApp no usan plantilla de correo; solo texto alternativo.') }}
+					</div>
+				@endif
 			</div>
 		</div>
 		</div>
@@ -548,6 +567,8 @@ document.addEventListener('DOMContentLoaded', function ()
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
     var typeLockedByDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
     var messageFormTypeIdServerDisabled = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
+    var whatsAppTypeId = @json((int) $whatsAppTypeId);
+    var templateLockDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
 
     if (! mount)
     {
@@ -703,13 +724,54 @@ document.addEventListener('DOMContentLoaded', function ()
     {
         var $tpl = $('#template_id');
         var $type = $('#type_id');
-        if (! $tpl.length || $tpl.prop('disabled'))
+        if (! $tpl.length)
         {
             return;
         }
 
+        function syncTemplateSelectForChannel()
+        {
+            if (templateLockDeliveries)
+            {
+                return;
+            }
+
+            var tplEl = document.getElementById('template_id');
+            if (! tplEl)
+            {
+                return;
+            }
+
+            var typeId = parseInt($type.val(), 10);
+            var lock = (typeId === whatsAppTypeId);
+
+            if (lock)
+            {
+                if (($tpl.val() || '').toString().trim() !== '')
+                {
+                    $tpl.val(null);
+                }
+                tplEl.disabled = true;
+                if (window.jQuery && window.jQuery.fn.select2)
+                {
+                    window.jQuery(tplEl).prop('disabled', true).trigger('change.select2');
+                }
+                clearDynamicPreview();
+
+                return;
+            }
+
+            tplEl.disabled = false;
+            if (window.jQuery && window.jQuery.fn.select2)
+            {
+                window.jQuery(tplEl).prop('disabled', false).trigger('change.select2');
+            }
+        }
+
         function evaluate()
         {
+            syncTemplateSelectForChannel();
+
             var typeId = parseInt($type.val(), 10);
             var tid = ($tpl.val() || '').toString().trim();
             if (typeId !== 1 || ! tid)

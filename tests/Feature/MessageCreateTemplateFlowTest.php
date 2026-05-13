@@ -9,6 +9,7 @@ use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,6 +24,7 @@ class MessageCreateTemplateFlowTest extends TestCase
             CountrySeeder::class,
             LanguageSeeder::class,
             ContactStatusSeeder::class,
+            MessageTypeSeeder::class,
         ]);
     }
 
@@ -434,5 +436,76 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertStringContainsString('id="message-email-template-duplicate-form"', $html);
         $this->assertStringContainsString('id="message-email-template-duplicate-modal"', $html);
         $this->assertStringContainsString('name="duplicate_template_name"', $html);
+    }
+
+    public function test_message_edit_form_disables_template_select_when_channel_is_whatsapp(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'WA edit',
+            'type_id' => 2,
+            'text' => 'WhatsApp body text here',
+            'team_id' => $teamId,
+            'template_id' => null,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('message.edit', $message->id));
+
+        $response->assertOk();
+        $html = $response->getContent() ?? '';
+        $this->assertMatchesRegularExpression(
+            '/<select[^>]*\bid=["\']template_id["\'][^>]*\bdisabled/si',
+            $html,
+        );
+        $this->assertStringContainsString(
+            e(__('Los mensajes por WhatsApp no usan plantilla de correo; solo texto alternativo.')),
+            $html,
+        );
+    }
+
+    public function test_message_store_clears_template_id_when_channel_is_whatsapp_even_if_submitted(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Tpl wa strip',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<html><body><p>X</p></body></html>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'WA strip tpl',
+            'type_id' => 2,
+            'text' => 'WhatsApp body text here',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => (string) $message->id,
+            'name' => 'WA strip tpl',
+            'text' => 'WhatsApp body text here',
+            'type_id' => '2',
+            'template_id' => (string) $template->id,
+            'category_id' => '',
+            'contact_status_id' => '',
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5, 6, 7],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+        $message->refresh();
+        $this->assertNull($message->template_id);
     }
 }
