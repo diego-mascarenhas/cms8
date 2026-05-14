@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\DataTables\MessageDataTable;
 use App\Enums\CampaignStatus;
 use App\Enums\MessageDeliverySendProfile;
+use App\Helpers\GrapesJsHelper;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\SyncMessageTemplateHtmlForEditorRequest;
 use App\Http\Requests\TestMessageFromTemplateRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -20,6 +22,7 @@ use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -500,6 +503,55 @@ class MessageController extends Controller
             'html' => $html,
             'duplicate_action_url' => route('template.duplicate', $template->getHashedId()),
         ]);
+    }
+
+    /**
+     * Persist Quill HTML into the linked template, then redirect to GrapesJS so the editor matches the composer.
+     */
+    public function syncTemplateHtmlOpenVisualEditor(SyncMessageTemplateHtmlForEditorRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $templateId = (int) $validated['template_id'];
+        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
+        $messageIdGate = $messageId > 0 ? $messageId : null;
+        $html = (string) $validated['template_html'];
+
+        if ($messageIdGate !== null)
+        {
+            $message = Message::query()->whereKey($messageIdGate)->first();
+            if (! $message || (int) $message->type_id !== 1)
+            {
+                abort(422, 'Invalid message for email template.');
+            }
+        }
+
+        $this->persistTemplateHtmlFromMessageComposer($templateId, $html, $messageIdGate);
+
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            $returnUrl = $messageIdGate !== null
+                ? route('message.edit', $messageIdGate)
+                : route('message.create');
+        }
+
+        if ($messageIdGate === null && $returnUrl !== null && $returnUrl !== '')
+        {
+            $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+            $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                $returnUrl,
+                $createPath,
+                ['template_id' => (string) $templateId],
+            );
+        }
+
+        $template = Template::query()->whereKey($templateId)->firstOrFail();
+        $editorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+            route('template.editor', $template->getHashedId()),
+            $returnUrl,
+        );
+
+        return redirect()->to($editorUrl);
     }
 
     /**
@@ -1455,24 +1507,24 @@ class MessageController extends Controller
     }
 
     /**
-     * Writes HTML from the message form into the linked template's GrapesJS data (same record all messages use).
-     * Skipped when the message already has deliveries (form body is readonly) or the payload is empty.
+     * Writes Quill / composer HTML into the template's GrapesJS payload. Skipped when the message
+     * already has deliveries (readonly body) or the HTML is empty.
      */
-    private function syncTemplateHtmlFromMessageForm(Request $request, int $resolvedTypeId, ?int $templateId): void
+    private function persistTemplateHtmlFromMessageComposer(int $templateId, string $rawHtml, ?int $messageIdForDeliveryGate): void
     {
-        if ($resolvedTypeId !== 1 || $templateId === null || $templateId <= 0)
+        if ($templateId <= 0)
         {
             return;
         }
 
-        $messageId = $request->filled('id') ? (int) $request->input('id') : 0;
-        if ($messageId > 0 && MessageDelivery::query()->where('message_id', $messageId)->exists())
+        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
+            && MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
         {
             return;
         }
 
-        $raw = $request->input('template_html');
-        if (! is_string($raw) || trim($raw) === '')
+        $trimmed = trim($rawHtml);
+        if ($trimmed === '')
         {
             return;
         }
@@ -1484,9 +1536,35 @@ class MessageController extends Controller
         }
 
         $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
-        $gjsData['html'] = trim($raw);
+        $gjsData['html'] = $trimmed;
 
         $template->forceFill(['gjs_data' => $gjsData])->save();
+
+        $template->refresh();
+        GrapesJsHelper::fixTemplateStructure($template);
+    }
+
+    /**
+     * Writes HTML from the message form into the linked template's GrapesJS data (same record all messages use).
+     * Skipped when the message already has deliveries (form body is readonly) or the payload is empty.
+     */
+    private function syncTemplateHtmlFromMessageForm(Request $request, int $resolvedTypeId, ?int $templateId): void
+    {
+        if ($resolvedTypeId !== 1 || $templateId === null || $templateId <= 0)
+        {
+            return;
+        }
+
+        $messageId = $request->filled('id') ? (int) $request->input('id') : 0;
+        $messageIdGate = $messageId > 0 ? $messageId : null;
+
+        $raw = $request->input('template_html');
+        if (! is_string($raw))
+        {
+            return;
+        }
+
+        $this->persistTemplateHtmlFromMessageComposer($templateId, $raw, $messageIdGate);
     }
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string

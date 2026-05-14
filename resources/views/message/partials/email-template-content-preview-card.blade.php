@@ -45,12 +45,16 @@
                 </span>
             @endif
                 @if (filled($grapesEditorUrl) && $grapesEditorUrl !== '#')
-                    <a
-                        href="{{ $grapesEditorUrl }}"
+                    <button
+                        type="button"
                         class="btn btn-sm btn-primary waves-effect waves-light"
+                        data-huma-open-visual-editor="1"
+                        data-editor-url="{{ $grapesEditorUrl }}"
+                        data-template-id="{{ (int) ($templateId ?? 0) }}"
+                        data-message-id="{{ filled($messageId) ? (int) $messageId : '' }}"
                     >
                         <i class="ti ti-edit ti-sm me-1"></i>{{ __('Abrir editor visual') }}
-                    </a>
+                    </button>
                 @else
                     <span
                         class="btn btn-sm btn-primary disabled"

@@ -333,6 +333,19 @@ document.addEventListener('DOMContentLoaded', function () {
 		@csrf
 		<input type="hidden" name="return_url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
 	</form>
+	<form
+		id="message-open-visual-editor-form"
+		method="post"
+		action="{{ route('message.sync-template-html-open-editor') }}"
+		class="d-none"
+		aria-hidden="true"
+	>
+		@csrf
+		<input type="hidden" name="template_id" id="message-open-visual-editor-template-id" value="">
+		<input type="hidden" name="message_id" id="message-open-visual-editor-message-id" value="">
+		<input type="hidden" name="return_url" id="message-open-visual-editor-return-url" value="">
+		<input type="hidden" name="template_html" id="message-open-visual-editor-template-html" value="">
+	</form>
 @push('scripts')
 @include('message.partials.email-test-send-modal-script')
 <script>
@@ -683,6 +696,60 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         }
+    });
+
+    document.addEventListener('click', function (e)
+    {
+        var btn = e.target.closest('[data-huma-open-visual-editor]');
+        if (! btn)
+        {
+            return;
+        }
+        var editorUrl = btn.getAttribute('data-editor-url') || '';
+        if (! editorUrl || editorUrl === '#')
+        {
+            return;
+        }
+        e.preventDefault();
+        var form = document.getElementById('message-open-visual-editor-form');
+        var ta = document.getElementById('message-template-html-body');
+        if (! form || ! ta)
+        {
+            window.location.href = editorUrl;
+
+            return;
+        }
+        if (window.humaSyncMessageTemplateHtmlQuill)
+        {
+            window.humaSyncMessageTemplateHtmlQuill();
+        }
+        var tid = (btn.getAttribute('data-template-id') || '').trim();
+        var mid = (btn.getAttribute('data-message-id') || '').trim();
+        var templateIdInput = document.getElementById('message-open-visual-editor-template-id');
+        var messageIdInput = document.getElementById('message-open-visual-editor-message-id');
+        var returnInput = document.getElementById('message-open-visual-editor-return-url');
+        var htmlInput = document.getElementById('message-open-visual-editor-template-html');
+        if (! templateIdInput || ! messageIdInput || ! returnInput || ! htmlInput)
+        {
+            window.location.href = editorUrl;
+
+            return;
+        }
+        templateIdInput.value = tid;
+        messageIdInput.value = mid;
+        var ru = '';
+        try
+        {
+            var u = new URL(editorUrl, window.location.origin);
+            ru = u.searchParams.get('return_url') || '';
+        }
+        catch (err1)
+        {
+            ru = '';
+        }
+        returnInput.value = ru;
+        htmlInput.value = ta.value || '';
+        form.submit();
     });
 })();
 </script>
