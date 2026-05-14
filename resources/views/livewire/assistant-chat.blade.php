@@ -77,14 +77,14 @@
         </div>
         <div class="p-3 border-top">
             <form wire:submit="sendMessage">
-                <div class="d-flex align-items-center gap-1 mb-2">
-                    <input type="file" id="assistant-chat-image" wire:model="image" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg" class="d-none">
+                <div class="d-flex align-items-center w-100 flex-grow-1 mb-2">
                     <input type="file" id="assistant-chat-audio" wire:model="audio" accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" class="d-none">
-                    <button type="button" class="btn btn-icon btn-label-secondary flex-shrink-0" onclick="document.getElementById('assistant-chat-image').click()" title="{{ __('Subir imagen') }}" aria-label="{{ __('Subir imagen') }}" @if($loading) disabled @endif>
-                        <i class="ti ti-photo"></i>
+                    <input type="file" id="assistant-chat-image" wire:model="image" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg" class="d-none">
+                    <button type="button" class="btn btn-icon flex-shrink-0 me-2 waves-effect waves-light" onclick="document.getElementById('assistant-chat-audio').click()" title="{{ __('Grabar mensaje de voz') }}" aria-label="{{ __('Grabar mensaje de voz') }}" @if($loading) disabled @endif>
+                        <i class="ti ti-microphone ti-sm"></i>
                     </button>
-                    <button type="button" class="btn btn-icon btn-label-secondary flex-shrink-0" onclick="document.getElementById('assistant-chat-audio').click()" title="{{ __('Subir audio') }}" aria-label="{{ __('Subir audio') }}" @if($loading) disabled @endif>
-                        <i class="ti ti-microphone"></i>
+                    <button type="button" class="btn btn-icon flex-shrink-0 me-2 waves-effect waves-light" onclick="document.getElementById('assistant-chat-image').click()" title="{{ __('Adjuntar archivo') }}" aria-label="{{ __('Adjuntar archivo') }}" @if($loading) disabled @endif>
+                        <i class="ti ti-paperclip ti-sm"></i>
                     </button>
                     <input type="text" id="assistant-chat-input" class="form-control flex-grow-1" wire:model="input" placeholder="{{ __('Escribe tu mensaje...') }}" @if($loading) disabled @endif>
                     <button type="submit" class="btn btn-primary btn-icon flex-shrink-0" @if($loading) disabled @endif aria-label="{{ __('Enviar') }}">
