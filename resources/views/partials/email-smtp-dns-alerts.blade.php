@@ -16,6 +16,10 @@
                         <i class="ti ti-alert-triangle me-2"></i>
                         <strong>SPF Configuration Required:</strong>
                         Add TXT record: <code>"v=spf1 include:spf.revisionalpha.com -all"</code> to domain <strong>{{ $dnsStatus['domain'] }}</strong>
+                        <p class="mb-0 mt-2 small">
+                            <a href="{{ route('help.index') }}" class="alert-link fw-semibold">{{ __('app.email_smtp_dns_help_link_label') }}</a>
+                            <span class="text-body-secondary"> {{ __('app.email_smtp_dns_help_link_description') }}</span>
+                        </p>
                     </div>
                 @endif
 
@@ -24,6 +28,10 @@
                         <i class="ti ti-x-circle me-2"></i>
                         <strong>Domain Not Authorized:</strong>
                         Your domain <strong>{{ $dnsStatus['domain'] }}</strong> is not authorized to use system SMTP. Email sending is disabled.
+                        <p class="mb-0 mt-2 small">
+                            <a href="{{ route('help.index') }}" class="alert-link fw-semibold">{{ __('app.email_smtp_dns_help_link_label') }}</a>
+                            <span class="text-body-secondary"> {{ __('app.email_smtp_dns_help_link_description') }}</span>
+                        </p>
                     </div>
                 @endif
             </div>

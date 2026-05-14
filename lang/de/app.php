@@ -94,4 +94,6 @@ return [
     'message_list_status_paused' => 'Pausiert',
     'message_list_status_sending' => 'Wird gesendet',
     'message_list_status_scheduled' => 'Geplant',
+    'email_smtp_dns_help_link_label' => 'Hilfe',
+    'email_smtp_dns_help_link_description' => '— SPF, DNS und Domain-Autorisierung für System-SMTP.',
 ];

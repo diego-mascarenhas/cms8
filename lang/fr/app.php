@@ -94,4 +94,6 @@ return [
     'message_list_status_paused' => 'En pause',
     'message_list_status_sending' => 'Envoi en cours',
     'message_list_status_scheduled' => 'Planifié',
+    'email_smtp_dns_help_link_label' => 'Aide',
+    'email_smtp_dns_help_link_description' => '— SPF, DNS et autorisation du domaine pour le SMTP système.',
 ];

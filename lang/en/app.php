@@ -107,6 +107,8 @@ return [
     'message_list_status_paused' => 'Paused',
     'message_list_status_sending' => 'Sending',
     'message_list_status_scheduled' => 'Scheduled',
+    'email_smtp_dns_help_link_label' => 'Help documentation',
+    'email_smtp_dns_help_link_description' => '— SPF, DNS, and authorizing your domain for system SMTP.',
 
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',

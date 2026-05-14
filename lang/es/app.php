@@ -106,6 +106,8 @@ return [
     'message_list_status_paused' => 'Pausada',
     'message_list_status_sending' => 'Enviando',
     'message_list_status_scheduled' => 'Programada',
+    'email_smtp_dns_help_link_label' => 'Ayuda',
+    'email_smtp_dns_help_link_description' => '— Guía sobre SPF, DNS y autorización del dominio para el envío por SMTP del sistema.',
 
     'communication_client_landing_hint' => 'Si selecciona Cliente, recibirá un email con un enlace seguro (token) para acceder a la landing del proyecto y responder.',
 
