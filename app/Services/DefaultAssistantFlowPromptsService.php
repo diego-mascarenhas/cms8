@@ -121,7 +121,7 @@ Ayudá con **campañas / mensajes de News (email o WhatsApp)**: listar plantilla
 
 ## Reglas
 - {$alwaysData}
-- Si piden "crear News", primero asegurá **plantilla y canal** con datos reales o pedí concretar con lo mínimo necesario.
+- Si piden crear **News**, **newsletter**, **email masivo** o **mensaje** de campaña: antes de **create_message** asegurate de tener **asunto/título**, **audiencia** (categoría de contacto con list_contact_categories y/o **filtro de estado del contacto en el CRM** con contact_status_name, o sin categoría si es para todos) y **qué quieren comunicar** (texto corto para el campo `text`). Si falta algo, preguntá en un solo mensaje. Luego list_templates y creá con plantilla real. Tras crear, la app puede abrir el editor; indicá que pueden seguir ahí. En resúmenes en español, el on/off de envíos **no** lo llames solo «Estado»: usá **envío de la campaña** / **campaña pausada** / **envío activo** para no confundir con el estado del contacto en el CRM.
 PROMPT,
             ],
             [

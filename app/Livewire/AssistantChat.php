@@ -6,6 +6,7 @@ use App\Models\Team;
 use App\Services\AgentConversationContextService;
 use App\Services\AssistantChatService;
 use App\Services\ChatAssistantReplyService;
+use App\Support\AssistantCreatedMessageRedirect;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
@@ -219,6 +220,18 @@ class AssistantChat extends Component
             (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
             $replyResponse['assistant_flow_routing_key'] ?? null,
         );
+
+        $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults(
+            is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [],
+        );
+        if ($createdMessageId !== null)
+        {
+            $redirectUrl = AssistantCreatedMessageRedirect::resolveMessageEditUrlForUser($user, $createdMessageId);
+            if ($redirectUrl !== null)
+            {
+                $this->js('window.location.assign('.json_encode($redirectUrl).')');
+            }
+        }
 
         $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
         $this->conversationId = $conversation?->id;
