@@ -24,12 +24,7 @@ class MessageDataTable extends DataTable
             ->rawColumns(['name', 'action', 'status_id', 'category_info', 'progress'])
             ->editColumn('name', function ($data)
             {
-                $typeBadge = '<span class="badge bg-label-primary rounded-pill mt-1">'.$data->type->name.'</span>';
-
-                return '<div class="d-flex flex-column">
-                    <span class="fw-semibold">'.$data->name.'</span>
-                    <div class="mt-1">'.$typeBadge.'</div>
-                </div>';
+                return '<span class="fw-semibold">'.e($data->name).'</span>';
             })
             ->addColumn('category_info', function ($data)
             {
@@ -48,7 +43,7 @@ class MessageDataTable extends DataTable
 
                 if ($total === 0)
                 {
-                    return '<div class="text-muted small">Sin envíos</div>';
+                    return $this->progressColumnNoDeliveriesHtml($data);
                 }
 
                 $sent = $data->sent_count ?? 0;
@@ -116,11 +111,37 @@ class MessageDataTable extends DataTable
         return '<span class="badge rounded-pill bg-label-warning">'.$label.'</span>';
     }
 
+    /**
+     * Campaign progress cell when there are no deliveries yet: show schedule hint under "no sends".
+     */
+    private function progressColumnNoDeliveriesHtml(Message $message): string
+    {
+        $block = '<div class="text-muted small">'.e(__('app.message_list_no_deliveries')).'</div>';
+        $block .= $this->progressScheduleSublineHtml($message);
+
+        return $block;
+    }
+
+    private function progressScheduleSublineHtml(Message $message): string
+    {
+        $at = $message->scheduled_send_at;
+        if ($at === null)
+        {
+            return '<div class="text-muted small mt-1">'.e(__('app.message_list_not_scheduled')).'</div>';
+        }
+
+        $formatted = $at->clone()
+            ->timezone(config('app.timezone'))
+            ->locale(app()->getLocale())
+            ->translatedFormat('d M Y H:i');
+
+        return '<div class="text-muted small mt-1">'.e(__('app.message_list_scheduled_at', ['datetime' => $formatted])).'</div>';
+    }
+
     public function query(Message $model): QueryBuilder
     {
         return $model->newQuery()
             ->with([
-                'type',
                 'category',
                 'contactStatus',
                 'deliveries',

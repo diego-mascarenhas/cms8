@@ -21,6 +21,7 @@ class MessageDataTableQueryTest extends TestCase
         $eagerLoads = $dataTable->query(new Message)->getEagerLoads();
 
         $this->assertArrayHasKey('deliveries', $eagerLoads);
-        $this->assertArrayHasKey('type', $eagerLoads);
+        $this->assertArrayHasKey('category', $eagerLoads);
+        $this->assertArrayHasKey('contactStatus', $eagerLoads);
     }
 }

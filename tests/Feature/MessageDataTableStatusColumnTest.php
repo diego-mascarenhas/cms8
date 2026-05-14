@@ -112,4 +112,51 @@ class MessageDataTableStatusColumnTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    #[Test]
+    public function message_datatable_progress_no_deliveries_shows_schedule_subline(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-01 12:00:00', 'UTC'));
+
+        $user = $this->userWithPersonalTeamResolved();
+        $this->actingAs($user);
+        app()->setLocale('es');
+
+        $teamId = (int) $user->current_team_id;
+
+        Message::create([
+            'name' => 'A sin programar',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+            'status_id' => 0,
+            'scheduled_send_at' => null,
+        ]);
+
+        Message::create([
+            'name' => 'B con hora',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+            'status_id' => 0,
+            'scheduled_send_at' => Carbon::parse('2026-07-20 14:30:00', 'UTC'),
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->getJson(route('message.index', $this->dataTablesQueryParams()));
+
+        $response->assertOk();
+        $rows = $response->json('data');
+        $this->assertCount(2, $rows);
+
+        $this->assertStringContainsString(__('app.message_list_no_deliveries'), (string) $rows[0]['progress']);
+        $this->assertStringContainsString(__('app.message_list_not_scheduled'), (string) $rows[0]['progress']);
+
+        $this->assertStringContainsString(__('app.message_list_no_deliveries'), (string) $rows[1]['progress']);
+        $this->assertStringContainsString('14:30', (string) $rows[1]['progress']);
+        $this->assertStringContainsString('Programado:', (string) $rows[1]['progress']);
+
+        Carbon::setTestNow();
+    }
 }
