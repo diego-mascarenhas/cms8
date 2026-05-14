@@ -351,6 +351,49 @@ document.addEventListener('DOMContentLoaded', function () {
     var templateSlot = document.getElementById('message-form-template-id-slot');
     var duplicateForm = document.getElementById('message-email-template-duplicate-form');
 
+    if (duplicateForm)
+    {
+        duplicateForm.addEventListener('submit', function (e)
+        {
+            var action = duplicateForm.getAttribute('action') || '';
+            if (action === '' || action === '#')
+            {
+                return;
+            }
+            if (duplicateForm.dataset.humaDupProceed === '1')
+            {
+                delete duplicateForm.dataset.humaDupProceed;
+                return;
+            }
+            var dupModal = document.getElementById('message-email-template-duplicate-modal');
+            if (! dupModal || ! dupModal.classList.contains('show'))
+            {
+                return;
+            }
+            e.preventDefault();
+            if (typeof bootstrap === 'undefined' || ! bootstrap.Modal)
+            {
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+                return;
+            }
+            var inst = bootstrap.Modal.getInstance(dupModal);
+            if (! inst)
+            {
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+                return;
+            }
+            dupModal.addEventListener('hidden.bs.modal', function onDupModalHidden()
+            {
+                dupModal.removeEventListener('hidden.bs.modal', onDupModalHidden);
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+            });
+            inst.hide();
+        });
+    }
+
     function restoreTemplateFieldUi()
     {
         if (templateSlot)

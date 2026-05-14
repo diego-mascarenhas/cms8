@@ -56,6 +56,7 @@ class TemplateDuplicateFromMessagePreviewTest extends TestCase
         $this->assertSame(2, Template::query()->count());
         $this->assertSame('Newsletter copy name', $copy->name);
         $this->assertSame('<p>Hello</p>', $copy->gjs_data['html'] ?? null);
+        $this->assertTrue((bool) $copy->status_id);
     }
 
     public function test_duplicate_template_does_not_copy_other_team_template(): void
@@ -179,13 +180,85 @@ class TemplateDuplicateFromMessagePreviewTest extends TestCase
                 'message_id' => $message->id,
             ]);
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('message.edit', $message->id));
         $copy = Template::query()->where('name', 'Linked copy tpl')->first();
         $this->assertNotNull($copy);
         $this->assertNotSame($source->id, $copy->id);
 
         $message->refresh();
         $this->assertSame($copy->id, (int) $message->template_id);
+        $this->assertTrue((bool) $copy->status_id);
+    }
+
+    public function test_duplicate_with_message_id_ignores_untrusted_return_url_and_redirects_to_message_edit(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->actingAs($user->fresh());
+
+        $source = Template::create([
+            'team_id' => (int) $team->id,
+            'name' => 'Tpl unsafe return',
+            'status_id' => true,
+            'gjs_data' => ['html' => '<p>x</p>'],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Broadcast',
+            'type_id' => 1,
+            'text' => 'Alt',
+            'team_id' => (int) $team->id,
+            'template_id' => $source->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->post(route('template.duplicate', $source->getHashedId()), [
+            '_token' => csrf_token(),
+            'duplicate_template_name' => 'Linked safe return',
+            'message_id' => $message->id,
+            'return_url' => 'https://evil.example/phish',
+        ]);
+
+        $response->assertRedirect(route('message.edit', $message->id));
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringNotContainsString('/template/', $location);
+    }
+
+    public function test_duplicate_merges_template_id_into_message_create_return_url(): void
+    {
+        Permission::firstOrCreate(['name' => 'template.store', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->givePermissionTo('template.store');
+        $this->actingAs($user->fresh());
+
+        $source = Template::create([
+            'team_id' => (int) $team->id,
+            'name' => 'Tpl for create return',
+            'status_id' => true,
+            'gjs_data' => ['html' => '<p>x</p>'],
+        ]);
+
+        $createUrl = url('/message/create');
+        $response = $this->post(route('template.duplicate', $source->getHashedId()), [
+            '_token' => csrf_token(),
+            'duplicate_template_name' => 'Copy for create flow',
+            'return_url' => $createUrl,
+        ]);
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $parts = parse_url($location);
+        parse_str($parts['query'] ?? '', $editorQuery);
+        $this->assertArrayHasKey('return_url', $editorQuery);
+        $decodedReturn = urldecode((string) $editorQuery['return_url']);
+        $this->assertStringContainsString('template_id=', $decodedReturn);
+        $copy = Template::query()->where('name', 'Copy for create flow')->first();
+        $this->assertNotNull($copy);
+        $this->assertStringContainsString('template_id='.$copy->id, $decodedReturn);
     }
 
     public function test_duplicate_redirect_appends_valid_return_url_to_editor(): void
