@@ -23,6 +23,10 @@
 
                 <h5 class="mt-4">{{ __('help_email_spf_dns.required_record_heading') }}</h5>
                 <p class="mb-2">{{ __('help_email_spf_dns.required_record_body') }}</p>
+                <pre class="mb-3"><code>{{ \App\Helpers\DnsHelper::REVISION_ALPHA_SPF_INCLUDE }}</code></pre>
+
+                <h5 class="mt-4">{{ __('help_email_spf_dns.example_heading') }}</h5>
+                <p class="mb-2">{{ __('help_email_spf_dns.example_body') }}</p>
                 <pre class="mb-0"><code>{{ \App\Helpers\DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT }}</code></pre>
 
                 <h5 class="mt-4">{{ __('help_email_spf_dns.domain_heading') }}</h5>
@@ -30,6 +34,9 @@
 
                 <h5 class="mt-4">{{ __('help_email_spf_dns.why_heading') }}</h5>
                 <p class="mb-0">{{ __('help_email_spf_dns.why_body') }}</p>
+
+                <h5 class="mt-4">{{ __('help_email_spf_dns.includes_chain_heading') }}</h5>
+                <p class="mb-0">{{ __('help_email_spf_dns.includes_chain_body') }}</p>
 
                 <h5 class="mt-4">{{ __('help_email_spf_dns.propagation_heading') }}</h5>
                 <p class="mb-0">{{ __('help_email_spf_dns.propagation_body') }}</p>

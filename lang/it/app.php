@@ -96,6 +96,8 @@ return [
     'message_list_status_scheduled' => 'Programmato',
     'email_smtp_dns_help_link_label' => 'Guida SPF e DNS',
     'email_smtp_dns_help_link_description' => '— SPF e DNS per l’invio delle e-mail.',
-    'email_smtp_dns_spf_exact_hint' => 'Il valore TXT deve coincidere esattamente (possono variare solo spazi e maiuscole/minuscole).',
-    'email_spf_record_required_exact' => 'Il TXT SPF deve essere esattamente: v=spf1 include:spf.revisionalpha.com -all',
+    'email_smtp_dns_alert_title' => 'Configurazione SPF richiesta',
+    'email_smtp_dns_alert_body' => 'Il TXT SPF apex per :domain deve contenere :include. Solo esempio (altri meccanismi consentiti): :example',
+    'email_smtp_dns_spf_exact_hint' => 'Il TXT SPF deve contenere include:spf.revisionalpha.com (sono ammessi altri meccanismi).',
+    'email_spf_record_required_include' => 'L’SPF deve includere include:spf.revisionalpha.com (direttamente o tramite una catena di include:).',
 ];

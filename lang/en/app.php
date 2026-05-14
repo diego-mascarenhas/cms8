@@ -109,8 +109,10 @@ return [
     'message_list_status_scheduled' => 'Scheduled',
     'email_smtp_dns_help_link_label' => 'SPF & DNS guide',
     'email_smtp_dns_help_link_description' => '— SPF and DNS for outgoing email.',
-    'email_smtp_dns_spf_exact_hint' => 'The TXT value must match exactly (only spacing and letter case may differ).',
-    'email_spf_record_required_exact' => 'SPF TXT must be exactly: v=spf1 include:spf.revisionalpha.com -all',
+    'email_smtp_dns_alert_title' => 'SPF configuration required',
+    'email_smtp_dns_alert_body' => 'Your apex SPF TXT for :domain must contain :include. Example only (you may add other mechanisms): :example',
+    'email_smtp_dns_spf_exact_hint' => 'Your SPF TXT must contain include:spf.revisionalpha.com (it can include other mechanisms too).',
+    'email_spf_record_required_include' => 'SPF must include include:spf.revisionalpha.com (directly or via an include: chain).',
 
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',

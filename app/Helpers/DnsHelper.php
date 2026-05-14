@@ -5,27 +5,94 @@ namespace App\Helpers;
 class DnsHelper
 {
     /**
-     * Required SPF TXT for domains sending via system SMTP (Revision Alpha).
+     * SPF mechanism that must appear on the apex SPF record or inside a followed {@code include:} chain.
+     */
+    public const REVISION_ALPHA_SPF_INCLUDE = 'include:spf.revisionalpha.com';
+
+    /**
+     * Example minimal SPF (shown in UI / help); the live record may add other mechanisms.
      */
     public const REQUIRED_REVISION_ALPHA_SPF_TXT = 'v=spf1 include:spf.revisionalpha.com -all';
 
     /**
-     * Whether a TXT record body matches {@see REQUIRED_REVISION_ALPHA_SPF_TXT} (case and inner whitespace insensitive).
+     * Whether this SPF string contains the Revision Alpha include (case-insensitive).
      */
-    public static function revisionAlphaSpfIsCanonical(string $spfTxt): bool
+    public static function spfIncludesRevisionAlpha(string $spfRecord): bool
     {
-        $trimmed = trim($spfTxt);
-
-        return self::normalizeSpfForCompare($trimmed) === self::normalizeSpfForCompare(self::REQUIRED_REVISION_ALPHA_SPF_TXT);
-    }
-
-    private static function normalizeSpfForCompare(string $spf): string
-    {
-        return strtolower(preg_replace('/\s+/', ' ', trim($spf)));
+        return stripos($spfRecord, self::REVISION_ALPHA_SPF_INCLUDE) !== false;
     }
 
     /**
-     * Check SPF TXT on the domain apex: must be exactly the Revision Alpha record.
+     * @param  list<string>  $checkedDomains
+     * @return array{ok: bool, includes_checked: list<string>}
+     */
+    private static function spfIncludesRevisionAlphaRecursive(string $spfRecord, array $checkedDomains, int $depth): array
+    {
+        if ($depth > 5)
+        {
+            return ['ok' => false, 'includes_checked' => $checkedDomains];
+        }
+
+        if (self::spfIncludesRevisionAlpha($spfRecord))
+        {
+            return ['ok' => true, 'includes_checked' => $checkedDomains];
+        }
+
+        preg_match_all('/include:([^\s]+)/i', $spfRecord, $matches);
+
+        if (empty($matches[1]))
+        {
+            return ['ok' => false, 'includes_checked' => $checkedDomains];
+        }
+
+        foreach ($matches[1] as $includeDomain)
+        {
+            if (in_array($includeDomain, $checkedDomains, true))
+            {
+                continue;
+            }
+
+            $checkedDomains[] = $includeDomain;
+
+            try
+            {
+                $includeTxtRecords = dns_get_record($includeDomain, DNS_TXT);
+
+                if (! $includeTxtRecords)
+                {
+                    continue;
+                }
+
+                foreach ($includeTxtRecords as $includeRecord)
+                {
+                    $includeTxt = trim($includeRecord['txt'] ?? '');
+
+                    if (stripos($includeTxt, 'v=spf1') !== 0)
+                    {
+                        continue;
+                    }
+
+                    $result = self::spfIncludesRevisionAlphaRecursive($includeTxt, $checkedDomains, $depth + 1);
+                    $checkedDomains = $result['includes_checked'];
+
+                    if ($result['ok'])
+                    {
+                        return ['ok' => true, 'includes_checked' => $checkedDomains];
+                    }
+
+                    break;
+                }
+            } catch (\Exception $e)
+            {
+                continue;
+            }
+        }
+
+        return ['ok' => false, 'includes_checked' => $checkedDomains];
+    }
+
+    /**
+     * Check SPF on the domain apex: must include {@see REVISION_ALPHA_SPF_INCLUDE} (directly or via {@code include:} chain).
      *
      * @return array{
      *     exists: bool,
@@ -54,12 +121,13 @@ class DnsHelper
 
             $spfFound = false;
             $firstSpfRecord = null;
+            $lastIncludesChecked = [];
 
             foreach ($txtRecords as $record)
             {
                 $txt = trim($record['txt'] ?? '');
 
-                if (strpos($txt, 'v=spf1') !== 0)
+                if (stripos($txt, 'v=spf1') !== 0)
                 {
                     continue;
                 }
@@ -71,14 +139,17 @@ class DnsHelper
                     $firstSpfRecord = $txt;
                 }
 
-                if (self::revisionAlphaSpfIsCanonical($txt))
+                $result = self::spfIncludesRevisionAlphaRecursive($txt, [], 0);
+                $lastIncludesChecked = $result['includes_checked'];
+
+                if ($result['ok'])
                 {
                     return [
                         'exists' => true,
                         'has_mailbaby' => true,
                         'record' => $txt,
                         'error' => null,
-                        'includes_checked' => [],
+                        'includes_checked' => $result['includes_checked'],
                     ];
                 }
             }
@@ -89,8 +160,8 @@ class DnsHelper
                     'exists' => true,
                     'has_mailbaby' => false,
                     'record' => $firstSpfRecord,
-                    'error' => __('app.email_spf_record_required_exact'),
-                    'includes_checked' => [],
+                    'error' => __('app.email_spf_record_required_include'),
+                    'includes_checked' => $lastIncludesChecked,
                 ];
             }
 
@@ -182,7 +253,7 @@ class DnsHelper
     }
 
     /**
-     * Whether the broadcast "Send now" UI may proceed: own SMTP, or SPF authorizes the system provider.
+     * Whether the broadcast "Send now" UI may proceed: own SMTP, or SPF includes Revision Alpha.
      * In the local environment, SPF checks are skipped so dev mail (e.g. Mailpit) works.
      *
      * @param  bool|null  $treatAsLocal  For tests: force local bypass; null uses {@see \Illuminate\Foundation\Application::isLocal()}.
