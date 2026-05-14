@@ -106,7 +106,7 @@ return [
     'message_list_status_paused' => 'Pausada',
     'message_list_status_sending' => 'Enviando',
     'message_list_status_scheduled' => 'Programada',
-    'email_smtp_dns_help_link_label' => 'Ayuda',
+    'email_smtp_dns_help_link_label' => 'Guía SPF y DNS',
     'email_smtp_dns_help_link_description' => '— Guía sobre SPF y DNS para el envío de correo.',
     'email_smtp_dns_spf_exact_hint' => 'El valor TXT debe coincidir exactamente con el indicado (solo pueden variar espacios y mayúsculas/minúsculas).',
     'email_spf_record_required_exact' => 'El TXT SPF debe ser exactamente: v=spf1 include:spf.revisionalpha.com -all',

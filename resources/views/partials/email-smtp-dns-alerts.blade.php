@@ -17,7 +17,7 @@
                     Add TXT record: <code>{{ \App\Helpers\DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT }}</code> to domain <strong>{{ $dnsStatus['domain'] }}</strong>
                     <span class="d-block text-body-secondary small mt-1">{{ __('app.email_smtp_dns_spf_exact_hint') }}</span>
                     <p class="mb-0 mt-2 small">
-                        <a href="{{ route('help.index') }}" class="alert-link fw-semibold">{{ __('app.email_smtp_dns_help_link_label') }}</a>
+                        <a href="{{ route('help.email-spf-dns') }}" class="alert-link fw-semibold">{{ __('app.email_smtp_dns_help_link_label') }}</a>
                         <span class="text-body-secondary"> {{ __('app.email_smtp_dns_help_link_description') }}</span>
                     </p>
                 </div>

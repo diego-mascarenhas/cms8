@@ -107,7 +107,7 @@ return [
     'message_list_status_paused' => 'Paused',
     'message_list_status_sending' => 'Sending',
     'message_list_status_scheduled' => 'Scheduled',
-    'email_smtp_dns_help_link_label' => 'Help documentation',
+    'email_smtp_dns_help_link_label' => 'SPF & DNS guide',
     'email_smtp_dns_help_link_description' => '— SPF and DNS for outgoing email.',
     'email_smtp_dns_spf_exact_hint' => 'The TXT value must match exactly (only spacing and letter case may differ).',
     'email_spf_record_required_exact' => 'SPF TXT must be exactly: v=spf1 include:spf.revisionalpha.com -all',

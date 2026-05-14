@@ -94,7 +94,7 @@ return [
     'message_list_status_paused' => 'Pausiert',
     'message_list_status_sending' => 'Wird gesendet',
     'message_list_status_scheduled' => 'Geplant',
-    'email_smtp_dns_help_link_label' => 'Hilfe',
+    'email_smtp_dns_help_link_label' => 'SPF- & DNS-Anleitung',
     'email_smtp_dns_help_link_description' => '— SPF und DNS für ausgehende E-Mails.',
     'email_smtp_dns_spf_exact_hint' => 'Der TXT-Wert muss exakt übereinstimmen (nur Leerzeichen und Groß-/Kleinschreibung dürfen abweichen).',
     'email_spf_record_required_exact' => 'SPF-TXT muss genau lauten: v=spf1 include:spf.revisionalpha.com -all',

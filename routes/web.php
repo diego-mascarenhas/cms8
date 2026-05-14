@@ -1315,6 +1315,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
+    Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
 });
 

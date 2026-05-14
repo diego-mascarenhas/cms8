@@ -770,6 +770,8 @@
   "No client code (add Stripe / customer ID on that company)": "No client code yet — add Stripe / customer ID on that company",
   "Stripe webhooks": "Stripe webhooks",
   "Stripe webhooks help card body": "Webhook URL (POST /stripe/webhook), recommended events for Laravel Cashier and Humano, and Stripe CLI for local testing.",
+  "help_index_email_spf_card_title": "Outgoing email: SPF & DNS",
+  "help_index_email_spf_card_body": "Required TXT record when using system SMTP, which domain is checked, propagation, and verification.",
   "View documentation": "View documentation",
   "Message sending schedule": "Sending schedule & window",
   "Help": "Help"

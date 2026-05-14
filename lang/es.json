@@ -1579,5 +1579,7 @@
   "No client code (add Stripe / customer ID on that company)": "Sin código de cliente — agregá el id. de Stripe / cliente en esa empresa",
   "Stripe webhooks": "Webhooks de Stripe",
   "Stripe webhooks help card body": "URL del webhook (POST /stripe/webhook), eventos recomendados para Laravel Cashier y Humano, y Stripe CLI para pruebas en local.",
+  "help_index_email_spf_card_title": "Correo saliente: SPF y DNS",
+  "help_index_email_spf_card_body": "Registro TXT obligatorio con SMTP del sistema, qué dominio se comprueba, propagación y verificación.",
   "Help": "Ayuda"
 }
