@@ -15,10 +15,7 @@
             <i class="ti {{ $needsBusinessConfig ? 'ti-alert-triangle' : 'ti-qrcode' }} ti-lg me-2 flex-shrink-0"></i>
             <div class="flex-grow-1 min-w-0">
                 @if ($needsBusinessConfig)
-                    @php
-                        $onboardingWelcomeFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?: auth()->user()->name;
-                    @endphp
-                    <span class="fw-medium d-block">{{ __('Welcome name to app onboarding banner', ['name' => $onboardingWelcomeFirstName, 'app' => config('app.name')]) }}</span>
+                    <span class="fw-medium d-block">{{ __('Welcome name to app onboarding banner', ['app' => config('app.name')]) }}</span>
                     <span class="small text-muted d-block mt-1">{{ __('Welcome onboarding complete business hint') }}</span>
                 @else
                     <span class="fw-medium d-block">{{ __('humano_pricing.dashboard_post_checkout_whatsapp_title') }}</span>

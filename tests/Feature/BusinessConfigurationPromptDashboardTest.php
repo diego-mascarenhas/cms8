@@ -21,9 +21,8 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $firstName = explode(' ', (string) $user->name, 2)[0] ?: $user->name;
         $response->assertSee(
-            __('Welcome name to app onboarding banner', ['name' => $firstName, 'app' => config('app.name')]),
+            __('Welcome name to app onboarding banner', ['app' => config('app.name')]),
             false,
         );
         $response->assertSee(route('registration.onboarding.qr'), false);
@@ -45,9 +44,8 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $firstName = explode(' ', (string) $user->name, 2)[0] ?: $user->name;
         $response->assertDontSee(
-            __('Welcome name to app onboarding banner', ['name' => $firstName, 'app' => config('app.name')]),
+            __('Welcome name to app onboarding banner', ['app' => config('app.name')]),
             false,
         );
     }
