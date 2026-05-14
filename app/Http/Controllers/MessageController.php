@@ -404,8 +404,6 @@ class MessageController extends Controller
             ? \App\Helpers\DnsHelper::outgoingDnsStatusForAuthUser(auth()->user())
             : null;
 
-        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
-
         return view('message.show', [
             'message' => $message,
             'stats' => $stats,
@@ -415,7 +413,6 @@ class MessageController extends Controller
             'emailConfig' => $emailConfig,
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
-            'apiUser' => $apiUser,
         ]);
     }
 

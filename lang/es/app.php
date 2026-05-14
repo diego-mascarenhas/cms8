@@ -107,7 +107,9 @@ return [
     'message_list_status_sending' => 'Enviando',
     'message_list_status_scheduled' => 'Programada',
     'email_smtp_dns_help_link_label' => 'Ayuda',
-    'email_smtp_dns_help_link_description' => '— Guía sobre SPF, DNS y autorización del dominio para el envío por SMTP del sistema.',
+    'email_smtp_dns_help_link_description' => '— Guía sobre SPF y DNS para el envío de correo.',
+    'email_smtp_dns_spf_exact_hint' => 'El valor TXT debe coincidir exactamente con el indicado (solo pueden variar espacios y mayúsculas/minúsculas).',
+    'email_spf_record_required_exact' => 'El TXT SPF debe ser exactamente: v=spf1 include:spf.revisionalpha.com -all',
 
     'communication_client_landing_hint' => 'Si selecciona Cliente, recibirá un email con un enlace seguro (token) para acceder a la landing del proyecto y responder.',
 

@@ -95,5 +95,7 @@ return [
     'message_list_status_sending' => 'Envoi en cours',
     'message_list_status_scheduled' => 'Planifié',
     'email_smtp_dns_help_link_label' => 'Aide',
-    'email_smtp_dns_help_link_description' => '— SPF, DNS et autorisation du domaine pour le SMTP système.',
+    'email_smtp_dns_help_link_description' => '— SPF et DNS pour l’envoi d’e-mails.',
+    'email_smtp_dns_spf_exact_hint' => 'La valeur TXT doit correspondre exactement (seuls espaces et casse peuvent différer).',
+    'email_spf_record_required_exact' => 'Le TXT SPF doit être exactement : v=spf1 include:spf.revisionalpha.com -all',
 ];
