@@ -69,7 +69,7 @@ return [
     'email_template_duplicate_modal_name_label' => 'Name for the new template',
     'email_template_duplicate_modal_hint' => 'If you are editing a saved email message, it will use this template. The visual editor opens next.',
     'email_template_duplicate_modal_hint_draft' => 'The visual editor opens next with the new template. Save the message when you return if you want to keep using it.',
-    'email_template_duplicate_modal_submit' => 'Duplicate and open editor',
+    'email_template_duplicate_modal_submit' => 'Save as new template',
     'email_template_copy_suffix' => 'Copy',
     'campaign_select_user_templates_heading' => 'Your templates',
     'campaign_select_user_templates_lead' => 'Copies and other team templates that are not in the catalog below.',

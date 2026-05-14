@@ -56,7 +56,7 @@ return [
     'email_template_duplicate_modal_name_label' => 'Nome do novo modelo',
     'email_template_duplicate_modal_hint' => 'Se estiver a editar uma mensagem de e-mail guardada, passará a usar este modelo. Em seguida abre-se o editor visual.',
     'email_template_duplicate_modal_hint_draft' => 'Abre-se o editor visual com o novo modelo. Ao voltar, guarde a mensagem se quiser mantê-la associada.',
-    'email_template_duplicate_modal_submit' => 'Duplicar e abrir editor',
+    'email_template_duplicate_modal_submit' => 'Guardar como novo modelo',
     'email_template_copy_suffix' => 'Cópia',
     'campaign_select_user_templates_heading' => 'Os seus modelos',
     'campaign_select_user_templates_lead' => 'Cópias e outros modelos da equipa que não estão no catálogo abaixo.',

@@ -56,7 +56,7 @@ return [
     'email_template_duplicate_modal_name_label' => 'Nom du nouveau modèle',
     'email_template_duplicate_modal_hint' => 'Si vous modifiez un message e-mail enregistré, il utilisera ce modèle. L’éditeur visuel s’ouvre ensuite.',
     'email_template_duplicate_modal_hint_draft' => 'L’éditeur visuel s’ouvre ensuite avec le nouveau modèle. Enregistrez le message au retour si vous souhaitez le conserver lié.',
-    'email_template_duplicate_modal_submit' => 'Dupliquer et ouvrir l’éditeur',
+    'email_template_duplicate_modal_submit' => 'Enregistrer comme nouveau modèle',
     'email_template_copy_suffix' => 'Copie',
     'campaign_select_user_templates_heading' => 'Vos modèles',
     'campaign_select_user_templates_lead' => 'Copies et autres modèles d’équipe absents du catalogue ci-dessous.',

@@ -56,7 +56,7 @@ return [
     'email_template_duplicate_modal_name_label' => 'Name der neuen Vorlage',
     'email_template_duplicate_modal_hint' => 'Wenn Sie eine gespeicherte E-Mail bearbeiten, wird diese Vorlage verwendet. Anschließend öffnet sich der visuelle Editor.',
     'email_template_duplicate_modal_hint_draft' => 'Als Nächstes öffnet sich der visuelle Editor mit der neuen Vorlage. Speichern Sie die Nachricht nach der Rückkehr, wenn Sie sie weiterverwenden möchten.',
-    'email_template_duplicate_modal_submit' => 'Duplizieren und Editor öffnen',
+    'email_template_duplicate_modal_submit' => 'Als neue Vorlage speichern',
     'email_template_copy_suffix' => 'Kopie',
     'campaign_select_user_templates_heading' => 'Ihre Vorlagen',
     'campaign_select_user_templates_lead' => 'Kopien und andere Team-Vorlagen, die nicht im untenstehenden Katalog stehen.',

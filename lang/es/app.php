@@ -69,7 +69,7 @@ return [
     'email_template_duplicate_modal_name_label' => 'Nombre de la nueva plantilla',
     'email_template_duplicate_modal_hint' => 'Si estás editando un mensaje guardado, pasará a usar esta plantilla. A continuación se abre el editor visual.',
     'email_template_duplicate_modal_hint_draft' => 'Se abre el editor visual con la nueva plantilla. Al volver, guarda el mensaje si quieres conservarla vinculada.',
-    'email_template_duplicate_modal_submit' => 'Duplicar y abrir editor',
+    'email_template_duplicate_modal_submit' => 'Guardar como nueva plantilla',
     'email_template_copy_suffix' => 'Copia',
     'campaign_select_user_templates_heading' => 'Tus plantillas',
     'campaign_select_user_templates_lead' => 'Copias y otras plantillas de tu equipo que no están en el catálogo de abajo.',

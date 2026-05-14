@@ -34,6 +34,6 @@ class NavbarHelpCenterChatIconTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString(route('chat.index', ['view' => 'assistant']), $html);
-        $this->assertStringContainsString('ti-headset', $html);
+        $this->assertStringContainsString('ti-messages', $html);
     }
 }
