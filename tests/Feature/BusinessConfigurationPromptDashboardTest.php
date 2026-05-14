@@ -21,7 +21,11 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee(__('Complete your business configuration'), false);
+        $firstName = explode(' ', (string) $user->name, 2)[0] ?: $user->name;
+        $response->assertSee(
+            __('Welcome name to app onboarding banner', ['name' => $firstName, 'app' => config('app.name')]),
+            false,
+        );
         $response->assertSee(route('registration.onboarding.qr'), false);
         $response->assertSee(__('Configure business'), false);
     }
@@ -41,7 +45,11 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee(__('Complete your business configuration'), false);
+        $firstName = explode(' ', (string) $user->name, 2)[0] ?: $user->name;
+        $response->assertDontSee(
+            __('Welcome name to app onboarding banner', ['name' => $firstName, 'app' => config('app.name')]),
+            false,
+        );
     }
 
     public function test_dashboard_shows_whatsapp_only_prompt_when_post_checkout_session_and_business_complete(): void

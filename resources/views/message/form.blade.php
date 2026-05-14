@@ -1,5 +1,30 @@
 @extends('layouts/layoutMaster')
 
+@php
+    $messageFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
+    $messageFpLocaleBundle = in_array($messageFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+    $scheduleMin = \Carbon\Carbon::now(config('app.timezone'))->format('Y-m-d H:i');
+    $rawScheduleAt = old('schedule_send_at');
+    if ($rawScheduleAt === null || $rawScheduleAt === '')
+    {
+        $rawScheduleAt = (isset($data->scheduled_send_at) && $data->scheduled_send_at)
+            ? \Carbon\Carbon::parse($data->scheduled_send_at)->timezone(config('app.timezone'))->format('Y-m-d H:i')
+            : '';
+    }
+    $messageScheduleInputValue = '';
+    if ($rawScheduleAt !== '')
+    {
+        try
+        {
+            $messageScheduleInputValue = \Carbon\Carbon::parse($rawScheduleAt)->timezone(config('app.timezone'))->format('Y-m-d H:i');
+        }
+        catch (\Throwable $e)
+        {
+            $messageScheduleInputValue = '';
+        }
+    }
+@endphp
+
 @section('title', __('Messages'))
 
 @section('vendor-style')
@@ -16,6 +41,9 @@
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave-phone.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
+@if ($messageFpLocaleBundle)
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/{{ $messageFpLocale }}.js"></script>
+@endif
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
@@ -69,6 +97,73 @@ function deleteMessage(messageId) {
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    var confirmBtn = document.getElementById('message-schedule-confirm-btn');
+    var scheduleInput = document.getElementById('message-schedule-at-input');
+    var storeForm = document.getElementById('message-store-form');
+    var helper = document.getElementById('message-schedule-submit-helper');
+    var scheduleModal = document.getElementById('messageScheduleModal');
+    if (!confirmBtn || !scheduleInput || !storeForm || !helper || !scheduleModal) {
+        return;
+    }
+    var fpLocaleKey = scheduleInput.getAttribute('data-fp-locale') || '';
+    var fpOpts = {
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d H:i',
+        minuteIncrement: 1,
+        allowInput: false,
+        clickOpens: true,
+        monthSelectorType: 'static'
+    };
+    var minDt = scheduleInput.getAttribute('data-min-datetime');
+    if (minDt) {
+        fpOpts.minDate = minDt;
+    }
+    if (fpLocaleKey && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns[fpLocaleKey]) {
+        fpOpts.locale = flatpickr.l10ns[fpLocaleKey];
+    }
+    if (window.jQuery && window.jQuery.fn.flatpickr) {
+        window.jQuery(scheduleInput).flatpickr(fpOpts);
+    } else if (typeof flatpickr === 'function') {
+        flatpickr(scheduleInput, fpOpts);
+    } else if (window.flatpickr) {
+        window.flatpickr(scheduleInput, fpOpts);
+    }
+    confirmBtn.addEventListener('click', function () {
+        if (!scheduleInput.value) {
+            var requiredMsg = scheduleModal.getAttribute('data-msg-required') || '';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', text: requiredMsg, buttonsStyling: false, customClass: { confirmButton: 'btn btn-primary' } });
+            } else {
+                window.alert(requiredMsg);
+            }
+            return;
+        }
+        storeForm.querySelectorAll('input[name="schedule_send_at"]').forEach(function (el) {
+            el.remove();
+        });
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'schedule_send_at';
+        hidden.value = scheduleInput.value;
+        storeForm.appendChild(hidden);
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var inst = bootstrap.Modal.getInstance(scheduleModal);
+            if (inst) {
+                scheduleModal.addEventListener('hidden.bs.modal', function onScheduleModalHidden() {
+                    scheduleModal.removeEventListener('hidden.bs.modal', onScheduleModalHidden);
+                    helper.click();
+                });
+                inst.hide();
+
+                return;
+            }
+        }
+        helper.click();
+    });
+});
 </script>
 @endsection
 
@@ -78,17 +173,46 @@ function deleteMessage(messageId) {
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }} News</h4>
         <p class="text-muted small mb-0">{{ __('app.message_form_subtitle') }}</p>
     </div>
-    @if(isset($data->id))
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
-            <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
-        </button>
+    <div class="d-flex align-content-center flex-wrap gap-3 align-items-center">
+        <div class="btn-group">
+            <button type="submit" form="message-store-form" name="save_intent" value="save" class="btn btn-primary">
+                <i class="ti ti-device-floppy me-1"></i>{{ __('Save') }}
+            </button>
+            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">{{ __('app.message_save_options_dropdown') }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button type="submit" form="message-store-form" name="save_intent" value="save_send" class="dropdown-item">
+                        <i class="ti ti-send me-1"></i>{{ __('app.message_save_and_send') }}
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#messageScheduleModal">
+                        <i class="ti ti-calendar-time me-1"></i>{{ __('app.message_save_and_schedule') }}
+                    </button>
+                </li>
+            </ul>
+        </div>
+        @if(isset($data->id))
+            <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
+                <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
+            </button>
+        @endif
+        <a href="{{ route('message.index') }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-arrow-left me-1"></i>{{ __('app.Back') }}
+        </a>
     </div>
-    @endif
 </div>
 
 <form id="message-store-form" action="{{ route('message.store') }}" method="POST">
 	@csrf
+	@if ($errors->has('save_intent'))
+		<div class="alert alert-danger mb-3" role="alert">{{ $errors->first('save_intent') }}</div>
+	@endif
+	@if ($errors->has('schedule_send_at'))
+		<div class="alert alert-danger mb-3" role="alert">{{ $errors->first('schedule_send_at') }}</div>
+	@endif
 	<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 	<input type="hidden" name="type_id" value="{{ old('type_id', $data->type_id ?? 1) }}">
 
@@ -166,12 +290,38 @@ function deleteMessage(messageId) {
 	<input type="hidden" name="show_unsubscribe" value="{{ (int) (bool) old('show_unsubscribe', data_get($data, 'show_unsubscribe', 1)) }}">
 	<input type="hidden" name="enable_open_tracking" value="{{ (int) (bool) old('enable_open_tracking', data_get($data, 'enable_open_tracking', 1)) }}">
 	<input type="hidden" name="enable_click_tracking" value="{{ (int) (bool) old('enable_click_tracking', data_get($data, 'enable_click_tracking', 1)) }}">
-
-	<div class="d-flex flex-wrap align-items-center gap-2 pt-2">
-		<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
-		<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
-	</div>
+	<button type="submit" name="save_intent" value="save_schedule" id="message-schedule-submit-helper" class="d-none" tabindex="-1" aria-hidden="true"></button>
 </form>
+
+<div class="modal fade" id="messageScheduleModal" tabindex="-1" aria-labelledby="messageScheduleModalLabel" aria-hidden="true" data-msg-required="{{ e(__('app.message_schedule_validation_required')) }}">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="messageScheduleModalLabel">{{ __('app.message_schedule_modal_title') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+			</div>
+			<div class="modal-body">
+				<label for="message-schedule-at-input" class="form-label">{{ __('app.message_schedule_modal_datetime_label') }}</label>
+				<input
+					type="text"
+					class="form-control"
+					id="message-schedule-at-input"
+					value="{{ $messageScheduleInputValue }}"
+					data-min-datetime="{{ $scheduleMin }}"
+					data-fp-locale="{{ $messageFpLocaleBundle ? $messageFpLocale : '' }}"
+					autocomplete="off"
+					readonly
+					required
+				>
+				<div class="form-text">{{ __('app.message_schedule_modal_help') }}</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('app.message_schedule_modal_cancel') }}</button>
+				<button type="button" class="btn btn-primary" id="message-schedule-confirm-btn">{{ __('app.message_schedule_modal_confirm') }}</button>
+			</div>
+		</div>
+	</div>
+</div>
 
 	<form
 		id="message-email-template-duplicate-form"
@@ -184,6 +334,7 @@ function deleteMessage(messageId) {
 		<input type="hidden" name="return_url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
 	</form>
 @push('scripts')
+@include('message.partials.email-test-send-modal-script')
 <script>
 (function ()
 {

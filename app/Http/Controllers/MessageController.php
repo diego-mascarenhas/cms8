@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\MessageDeliveryDispatcher;
 use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -77,10 +78,24 @@ class MessageController extends Controller
         $data = $request->except([
             'id',
             '_token',
+            'save_intent',
             'send_allowed_weekdays',
             'send_window_start',
             'send_window_end',
+            'schedule_send_at',
         ]);
+
+        $saveIntent = (string) $request->input('save_intent', 'save');
+        if (! in_array($saveIntent, ['save', 'save_send', 'save_schedule'], true))
+        {
+            $saveIntent = 'save';
+        }
+
+        $scheduledSendAt = null;
+        if ($saveIntent === 'save_schedule' && filled($validated['schedule_send_at'] ?? null))
+        {
+            $scheduledSendAt = Carbon::parse($validated['schedule_send_at'], config('app.timezone'))->utc();
+        }
 
         $weekdaysSorted = array_values(array_unique(array_map('intval', $validated['send_allowed_weekdays'])));
         sort($weekdaysSorted);
@@ -115,9 +130,11 @@ class MessageController extends Controller
 
         $minHours = max(0, (int) round((float) $rawMinHours));
 
-        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd): void
+        $messageModel = null;
+
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, &$messageModel): void
         {
-            Message::updateOrCreate(
+            $messageModel = Message::updateOrCreate(
                 ['id' => $request->id],
                 [
                     'name' => $validated['name'],
@@ -134,11 +151,36 @@ class MessageController extends Controller
                     'send_allowed_weekdays' => $sendAllowedWeekdays,
                     'send_window_start' => $sendWindowStart,
                     'send_window_end' => $sendWindowEnd,
+                    'scheduled_send_at' => $scheduledSendAt,
                 ],
             );
 
             $this->syncTemplateHtmlFromMessageForm($request, $resolvedTypeId, $templateId);
         });
+
+        $messageId = (int) $messageModel->id;
+
+        if ($saveIntent === 'save_send')
+        {
+            $message = Message::with(['deliveries', 'team.settings', 'campaigns'])->findOrFail($messageId);
+            $activation = $this->attemptActivateMessageCampaign($message);
+            if (! $activation['success'])
+            {
+                return redirect()->route('message.edit', $messageId)->withInput()->withErrors(['save_intent' => $activation['message']]);
+            }
+
+            return redirect()->route('message.show', $messageId)->with('success', __('app.message_save_send_success'));
+        }
+
+        if ($saveIntent === 'save_schedule')
+        {
+            $messageModel->refresh();
+            $dtLabel = $messageModel->scheduled_send_at
+                ? $messageModel->scheduled_send_at->clone()->timezone(config('app.timezone'))->locale(app()->getLocale())->translatedFormat('d M Y H:i')
+                : '';
+
+            return redirect()->route('message.index')->with('success', __('app.message_save_schedule_success', ['datetime' => $dtLabel]));
+        }
 
         return redirect()->route('message.index')->with('success', 'Record saved successfully.');
     }
@@ -567,32 +609,50 @@ class MessageController extends Controller
     /**
      * Start a message campaign
      */
-    public function startCampaign(Request $request, $id)
+    public function startCampaign(Request $request, $id): JsonResponse
     {
         try
         {
-            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings', 'campaigns'])->findOrFail($id);
+            $activation = $this->attemptActivateMessageCampaign($message);
 
-            // Validate email sender configuration
+            return response()->json([
+                'success' => $activation['success'],
+                'message' => $activation['message'],
+            ], $activation['success'] ? 200 : 400);
+        } catch (\Exception $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al iniciar campaña: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    protected function attemptActivateMessageCampaign(Message $message): array
+    {
+        try
+        {
             $team = auth()->user()->currentTeam;
             if ($team && ! $team->relationLoaded('settings'))
             {
                 $team->load('settings');
             }
-            $emailConfig = $team->getOutgoingEmailConfig();
+            $emailConfig = $team?->getOutgoingEmailConfig() ?? [];
 
             if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
             {
-                return response()->json([
+                return [
                     'success' => false,
                     'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
-                ], 400);
+                ];
             }
 
-            // Activate the message
             $updateData = ['status_id' => 1];
 
-            // Only update started_at if it's the first time starting or if it was never started
             if (! $message->started_at)
             {
                 $updateData['started_at'] = now();
@@ -610,11 +670,9 @@ class MessageController extends Controller
                 }
             }
 
-            // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();
 
-            // Check if there are pending deliveries to send
-            $pendingDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)
+            $pendingDeliveries = MessageDelivery::where('message_id', $message->id)
                 ->where(function ($query)
                 {
                     $query->whereNull('sent_at')
@@ -632,16 +690,16 @@ class MessageController extends Controller
                 $responseMessage .= "{$contactsCount} contactos serán procesados por el programador.";
             }
 
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => $responseMessage,
-            ]);
+            ];
         } catch (\Exception $e)
         {
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => 'Error al iniciar campaña: '.$e->getMessage(),
-            ], 500);
+            ];
         }
     }
 

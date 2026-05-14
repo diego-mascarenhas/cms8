@@ -22,6 +22,12 @@
         : __('app.email_template_duplicate_default_name');
 @endphp
 
+@once('message-email-test-send-modal-script')
+    @push('scripts')
+        @include('message.partials.email-test-send-modal-script')
+    @endpush
+@endonce
+
 @include('message.partials.email-template-content-preview-card', [
     'previewHtml' => $previewHtml,
     'grapesEditorUrl' => $grapesEditorUrl,

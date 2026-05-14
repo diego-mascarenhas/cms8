@@ -24,6 +24,7 @@ return new class extends Migration
             $table->integer('min_hours_between_emails')->default(48);
             $table->unsignedBigInteger('team_id');
             $table->timestamp('started_at')->nullable();
+            $table->timestamp('scheduled_send_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

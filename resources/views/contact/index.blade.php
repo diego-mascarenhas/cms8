@@ -26,6 +26,25 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    .contact-list-toolbar-filters {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: center;
+        gap: 1rem;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .contact-list-toolbar-filters .contact-list-toolbar-filter-field {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .contact-list-toolbar-filters .contact-list-toolbar-filter-field .form-group {
+        margin-bottom: 0;
+    }
 </style>
 
 @section('content')
@@ -139,8 +158,8 @@
     <div class="card">
         <div class="card-header border-bottom">
             <div
-                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-                <div class="d-flex gap-2">
+                class="d-flex flex-column flex-sm-row flex-wrap flex-sm-nowrap align-items-stretch align-items-sm-center justify-content-between gap-3">
+                <div class="d-flex flex-wrap gap-2 flex-shrink-0">
                     <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                         <i class="ti ti-plus me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Añadir contacto</span>
@@ -168,24 +187,24 @@
                         <span class="d-none d-sm-inline-block">Exportar</span>
                     </button> -->
                 </div>
-            </div>
-            <div class="d-flex flex-column flex-md-row gap-3">
-                <div class="flex-grow-1">
-                    <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
-                        placeholder="Selector de estado emocional" />
-                </div>
-                <div class="flex-grow-1">
-                    <x-module-categories-select
-                        id="CategoryFilter"
-                        label=""
-                        moduleKey="contacts"
-                        :selected="''"
-                        :listingFilter="true"
-                    />
-                </div>
-                <div class="flex-grow-1" style="visibility: hidden;">
-                    <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
-                        placeholder="Selector de tipo de contacto" />
+                <div class="contact-list-toolbar-filters w-100 w-sm-auto">
+                    <div class="contact-list-toolbar-filter-field">
+                        <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
+                            placeholder="Selector de estado emocional" />
+                    </div>
+                    <div class="contact-list-toolbar-filter-field">
+                        <x-module-categories-select
+                            id="CategoryFilter"
+                            label=""
+                            moduleKey="contacts"
+                            :selected="''"
+                            :listingFilter="true"
+                        />
+                    </div>
+                    <div class="d-none">
+                        <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
+                            placeholder="Selector de tipo de contacto" />
+                    </div>
                 </div>
             </div>
         </div>

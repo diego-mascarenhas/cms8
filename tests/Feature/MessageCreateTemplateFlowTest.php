@@ -423,6 +423,7 @@ class MessageCreateTemplateFlowTest extends TestCase
         $editHtml = $editResponse->getContent() ?? '';
         $this->assertStringContainsString('id="message-email-template-preview-mount"', $editHtml);
         $this->assertStringContainsString('template-email-preview', $editHtml);
+        $this->assertStringContainsString('humaBindEmailTestSendModals', $editHtml);
 
         $previewResponse = $this->actingAs($user)->getJson(route('message.template-email-preview', [
             'template_id' => $template->id,

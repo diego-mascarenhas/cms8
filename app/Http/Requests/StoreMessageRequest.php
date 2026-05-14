@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMessageRequest extends FormRequest
 {
@@ -34,6 +35,11 @@ class StoreMessageRequest extends FormRequest
             $this->merge(['min_hours_between_emails' => 48]);
         }
 
+        if ($this->has('schedule_send_at') && $this->input('schedule_send_at') === '')
+        {
+            $this->merge(['schedule_send_at' => null]);
+        }
+
         foreach (['show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking'] as $flag)
         {
             if (! $this->has($flag))
@@ -49,6 +55,7 @@ class StoreMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'save_intent' => ['nullable', 'string', 'in:save,save_send,save_schedule'],
             'name' => ['required', 'string', 'min:3', 'max:50'],
             'text' => ['required', 'string', 'min:3', 'max:255'],
             'contact_status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
@@ -59,6 +66,14 @@ class StoreMessageRequest extends FormRequest
             'send_allowed_weekdays.*' => ['integer', 'between:1,7', 'distinct'],
             'send_window_start' => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/', 'required_with:send_window_end'],
             'send_window_end' => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/', 'required_with:send_window_start'],
+            'schedule_send_at' => [
+                'nullable',
+                'string',
+                'max:64',
+                Rule::requiredIf(fn () => $this->input('save_intent') === 'save_schedule'),
+                'date',
+                'after:now',
+            ],
         ];
     }
 
@@ -68,6 +83,7 @@ class StoreMessageRequest extends FormRequest
             'send_allowed_weekdays' => __('Allowed sending weekdays'),
             'send_window_start' => __('Sending window start'),
             'send_window_end' => __('Sending window end'),
+            'schedule_send_at' => __('app.message_schedule_send_at_label'),
         ];
     }
 

@@ -76,10 +76,10 @@
     <!-- Hour chart  -->
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
         <div class="card-body row p-0 pb-2 align-items-stretch">
-            <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <div class="d-flex justify-content-between gap-3 me-5">
-                    <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
-                        <span class="bg-label-primary p-2 rounded">
+            <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2 d-flex align-items-center">
+                <div class="d-flex justify-content-center flex-wrap gap-4 gap-lg-5 align-items-center w-100">
+                    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                        <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
                             <i class='ti ti-device-laptop ti-xl'></i>
                         </span>
                         <div class="content-right">
@@ -87,8 +87,8 @@
                             <h4 class="text-primary mb-0">@formatMinutes($totalTeamMinutes)</h4>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="bg-label-success p-2 rounded">
+                    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                        <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
                             <i class='ti ti-target ti-xl'></i>
                         </span>
                         <div class="content-right">
@@ -96,8 +96,8 @@
                             <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="bg-label-warning p-2 rounded">
+                    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                        <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
                             <i class='ti ti-discount-check ti-xl'></i>
                         </span>
                         <div class="content-right">
@@ -122,7 +122,15 @@
                                     <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
                                     @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
                                         <div class="mt-auto pt-2">
-                                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light"><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</a>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-primary waves-effect waves-light"
+                                                data-bs-toggle="offcanvas"
+                                                data-bs-target="#assistant-offcanvas"
+                                                aria-controls="assistant-offcanvas"
+                                                title="{{ __('app.assistant_fab_title') }}"
+                                                aria-label="{{ __('app.assistant_fab_title') }}: {{ __('app.dashboard_open_assistant') }}"
+                                            ><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</button>
                                         </div>
                                     @endif
                                 @else

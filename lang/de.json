@@ -209,5 +209,6 @@
   "project_status.FINISHED": "Abgeschlossen",
   "project_status.TO_INVOICE": "Zu fakturieren",
   "project_status.INVOICED": "Fakturiert",
-  "project_status.NOT_APPROVED": "Nicht genehmigt"
+  "project_status.NOT_APPROVED": "Nicht genehmigt",
+  "Welcome onboarding complete business hint": "Vervollständigen Sie die Angaben zu Ihrem Unternehmen."
 }

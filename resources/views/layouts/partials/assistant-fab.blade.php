@@ -1,13 +1,19 @@
 @if (! request()->routeIs('assistant', 'chatbot'))
 <style>
     .assistant-fab-host {
-        bottom: 1.5rem;
+        bottom: 0.875rem;
         right: 1.5rem;
         z-index: 1094;
     }
+    .assistant-fab-host .assistant-fab-btn {
+        box-shadow:
+            0 0.5rem 1.125rem rgba(var(--bs-primary-rgb), 0.42),
+            0 0.25rem 0.5rem rgba(0, 0, 0, 0.18),
+            0 0.125rem 0.25rem rgba(0, 0, 0, 0.08) !important;
+    }
     /* Debugbar is position:fixed bottom:0 with z-index ~1e10 — FAB would sit underneath and disappear */
     body:has(div.phpdebugbar) .assistant-fab-host {
-        bottom: 6rem;
+        bottom: 5.5rem;
     }
     #assistant-offcanvas.offcanvas.show ~ .assistant-fab-host .assistant-fab-btn {
         visibility: hidden;
@@ -63,7 +69,7 @@
     <button
         type="button"
         id="assistant-fab"
-        class="btn btn-primary btn-icon rounded-circle shadow-lg assistant-fab-btn"
+        class="btn btn-primary btn-icon rounded-circle assistant-fab-btn"
         style="width: 3.25rem; height: 3.25rem;"
         data-bs-toggle="offcanvas"
         data-bs-target="#assistant-offcanvas"

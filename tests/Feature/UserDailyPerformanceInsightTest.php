@@ -115,7 +115,7 @@ class UserDailyPerformanceInsightTest extends TestCase
         $response->assertSee(e(__('app.dashboard_assistant_greeting', ['name' => $firstName])), false);
         $response->assertSee(e(__('app.dashboard_assistant_subtitle')), false);
         $response->assertSee(__('app.dashboard_open_assistant'), false);
-        $response->assertSee('view=assistant', false);
+        $response->assertSee('data-bs-target="#assistant-offcanvas"', false);
     }
 
     public function test_find_today_insight_returns_null_without_row(): void

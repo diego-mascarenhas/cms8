@@ -18,7 +18,7 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -28,6 +28,7 @@ class Message extends Model
         'min_hours_between_emails' => 'integer',
         'send_allowed_weekdays' => 'array',
         'started_at' => 'datetime',
+        'scheduled_send_at' => 'datetime',
     ];
 
     protected static function booted()

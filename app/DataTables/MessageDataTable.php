@@ -82,16 +82,38 @@ class MessageDataTable extends DataTable
             })
             ->editColumn('status_id', function ($data)
             {
-                $statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
-
-                if ($statusValue == 2)
-                {
-                    return '<span class="badge rounded-pill bg-label-success">'.__('Active').'</span>';
-                } else
-                {
-                    return '<span class="badge rounded-pill bg-label-warning">'.__('Inactive').'</span>';
-                }
+                return $this->messageListStatusBadgeHtml($data);
             });
+    }
+
+    /**
+     * Badge for the messages list: scheduled (future send), sending (active), or paused.
+     */
+    private function messageListStatusBadgeHtml(Message $message): string
+    {
+        $raw = (int) ($message->getRawOriginal('status_id') ?? 0);
+        $isActive = $raw === 1 || $raw === 2;
+
+        $scheduledAt = $message->scheduled_send_at;
+        $isScheduledFuture = $scheduledAt !== null && $scheduledAt->isFuture();
+
+        if ($isScheduledFuture)
+        {
+            $label = e(__('app.message_list_status_scheduled'));
+
+            return '<span class="badge rounded-pill bg-label-info">'.$label.'</span>';
+        }
+
+        if ($isActive)
+        {
+            $label = e(__('app.message_list_status_sending'));
+
+            return '<span class="badge rounded-pill bg-label-success">'.$label.'</span>';
+        }
+
+        $label = e(__('app.message_list_status_paused'));
+
+        return '<span class="badge rounded-pill bg-label-warning">'.$label.'</span>';
     }
 
     public function query(Message $model): QueryBuilder

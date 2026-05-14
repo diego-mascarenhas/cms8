@@ -521,6 +521,8 @@
   "Configure WordPress REST API (URL, user, Application Password) to manage posts and pages.": "Configure WordPress REST API (URL, user, Application Password) to manage posts and pages.",
   "Configure": "Configure",
   "Complete your business configuration": "Complete your business configuration",
+  "Welcome name to app onboarding banner": "Welcome, :name, to :app!",
+  "Welcome onboarding complete business hint": "Complete your business details.",
   "Add your business details in a few steps to get more out of Humano.": "Add your business details in a few steps to get more out of Humano.",
   "Configure business": "Configure business",
   "For best results, configure your business details before creating stores.": "For best results, configure your business details before creating stores.",
