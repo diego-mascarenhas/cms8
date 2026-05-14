@@ -64,6 +64,69 @@
         });
     </script>
     @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const el = document.querySelector('#dashboardContactsTrendChart');
+            if (!el || typeof ApexCharts === 'undefined' || typeof config === 'undefined') {
+                return;
+            }
+            const trend = @json($dashboardContactsCreatedTrend ?? ['labels' => [], 'values' => []]);
+            const labels = trend.labels || [];
+            const values = trend.values || [];
+            const isDark = typeof isDarkStyle !== 'undefined' && isDarkStyle;
+            const muted = isDark ? (config.colors_dark && config.colors_dark.textMuted) : (config.colors && config.colors.textMuted);
+            const primaryLabel = config.colors_label ? config.colors_label.primary : '#8592a1';
+            const primary = config.colors ? config.colors.primary : '#696cff';
+            const barColors = labels.map(function(_, i) {
+                return i === labels.length - 1 ? primary : primaryLabel;
+            });
+            new ApexCharts(el, {
+                chart: {
+                    height: 140,
+                    parentHeightOffset: 0,
+                    type: 'bar',
+                    toolbar: { show: false },
+                    sparkline: { enabled: false }
+                },
+                plotOptions: {
+                    bar: {
+                        barHeight: '62%',
+                        columnWidth: '42%',
+                        startingShape: 'rounded',
+                        endingShape: 'rounded',
+                        borderRadius: 4,
+                        distributed: true
+                    }
+                },
+                grid: { show: false, padding: { top: -12, bottom: 0, left: -8, right: -8 } },
+                colors: barColors,
+                dataLabels: { enabled: false },
+                series: [{ data: values }],
+                legend: { show: false },
+                xaxis: {
+                    categories: labels,
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: {
+                            colors: muted,
+                            fontSize: '11px',
+                            fontFamily: 'Public Sans'
+                        }
+                    }
+                },
+                yaxis: { labels: { show: false } },
+                tooltip: {
+                    y: {
+                        formatter: function(val) {
+                            return parseInt(val, 10);
+                        }
+                    }
+                }
+            }).render();
+        });
+    </script>
 @endsection
 
 @section('content')

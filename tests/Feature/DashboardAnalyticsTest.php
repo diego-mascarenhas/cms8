@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contact;
 use App\Models\Module;
 use App\Models\User;
 use Carbon\Carbon;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Analytics\Facades\Analytics;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class DashboardAnalyticsTest extends TestCase
@@ -24,6 +29,51 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
         $response->assertSee(__('Recent contact activity'), false);
+    }
+
+    public function test_dashboard_shows_contact_summary_metrics_and_trend_chart(): void
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'CRM contacts',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('contacts');
+
+        Contact::factory()->count(2)->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'created_at' => Carbon::now()->subDay(),
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('app.dashboard_contacts_row_total'), false);
+        $response->assertSee(__('app.dashboard_contacts_row_new_leads'), false);
+        $response->assertSee(__('app.dashboard_contacts_row_recent_activity'), false);
+        $response->assertSee('dashboardContactsTrendChart', false);
+        $this->assertMatchesRegularExpression('/text-primary[^>]*>2</', $response->getContent());
+        $this->assertMatchesRegularExpression('/text-success[^>]*>2</', $response->getContent());
     }
 
     public function test_dashboard_hides_ongoing_projects_card_when_projects_module_disabled(): void

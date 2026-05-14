@@ -111,6 +111,36 @@ class DashboardController extends Controller
             ->where('created_at', '>=', now()->subDays(7))
             ->count();
 
+        $authUser = auth()->user();
+        $totalContactsCount = Contact::query()->count();
+        $contactsWithRecentActivityCount = (int) ContactInteraction::query()
+            ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
+            {
+                $query->where('team_id', $activeTeam->id);
+                if ($authUser->hasRole('collaborator'))
+                {
+                    $query->where('responsible_id', $authUser->id);
+                }
+            })
+            ->where('occurred_at', '>=', now()->subDays(7))
+            ->distinct()
+            ->count('contact_id');
+
+        $dashboardContactsCreatedTrend = [
+            'labels' => [],
+            'values' => [],
+        ];
+        for ($dayOffset = 6; $dayOffset >= 0; $dayOffset--)
+        {
+            $dayStart = now()->subDays($dayOffset)->startOfDay();
+            $dayEnd = $dayStart->copy()->addDay();
+            $dashboardContactsCreatedTrend['labels'][] = $dayStart->isoFormat('ddd');
+            $dashboardContactsCreatedTrend['values'][] = Contact::query()
+                ->where('created_at', '>=', $dayStart)
+                ->where('created_at', '<', $dayEnd)
+                ->count();
+        }
+
         // Get contacts to follow up today (filtered by team)
         $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
             ->whereHas('contact', function ($query) use ($activeTeam)
@@ -318,7 +348,6 @@ class DashboardController extends Controller
         //     }
         //         }
 
-        $authUser = auth()->user();
         $recentContactActivities = ContactInteraction::query()
             ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
             {
@@ -383,6 +412,9 @@ class DashboardController extends Controller
             'hasProjects',
             'analyticsChartData',
             'recentContactActivities',
+            'totalContactsCount',
+            'contactsWithRecentActivityCount',
+            'dashboardContactsCreatedTrend',
         ));
     }
 }

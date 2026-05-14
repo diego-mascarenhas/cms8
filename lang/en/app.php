@@ -4,6 +4,12 @@ return [
     'welcome' => 'Welcome to '.config('variables.templateName').'!',
     'dashboard' => 'Dashboard',
     'dashboard_metric_new_leads' => 'New leads',
+    'dashboard_contacts_summary_subtitle' => 'Key contact metrics for your team',
+    'dashboard_contacts_row_new_leads' => 'New leads (last 7 days)',
+    'dashboard_contacts_row_total' => 'Total contacts',
+    'dashboard_contacts_row_recent_activity' => 'Contacts with logged activity (last 7 days)',
+    'dashboard_contacts_chart_subtitle' => 'New contacts by day (last 7 days)',
+    'dashboard_contacts_view_list' => 'View contacts',
     'dashboard_assistant_greeting' => 'Hello :name',
     'dashboard_assistant_subtitle' => 'How can I help you?',
     'search' => 'Search',
@@ -116,6 +122,8 @@ return [
     'email_smtp_dns_alert_body' => 'Your apex SPF TXT for :domain must contain :include. Example only (you may add other mechanisms): :example',
     'email_smtp_dns_spf_exact_hint' => 'Your SPF TXT must contain include:spf.revisionalpha.com (it can include other mechanisms too).',
     'email_spf_record_required_include' => 'SPF must include include:spf.revisionalpha.com (directly or via an include: chain).',
+
+    'communication_client_landing_hint' => 'If you select Client, they will receive an email with a secure (token) link to access the project landing page and reply.',
 
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',
