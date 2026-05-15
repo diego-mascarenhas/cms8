@@ -111,4 +111,35 @@ class AppCalendarEventTimezoneTest extends TestCase
         $this->assertNotNull($event);
         $this->assertTrue($event->all_day);
     }
+
+    public function test_update_can_disable_all_day_flag(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+
+        $this->actingAs($user);
+
+        $event = CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Holiday',
+            'start' => Carbon::parse('2026-05-15', 'UTC')->startOfDay(),
+            'end' => Carbon::parse('2026-05-16', 'UTC')->startOfDay(),
+            'all_day' => true,
+        ]);
+
+        $response = $this->putJson(route('app-calendar-events-update', $event), [
+            'title' => 'Holiday',
+            'start' => '2026-05-15T09:00:00.000Z',
+            'end' => '2026-05-15T10:00:00.000Z',
+            'all_day' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('allDay', false);
+
+        $event->refresh();
+        $this->assertFalse($event->all_day);
+        $this->assertTrue($event->start->utc()->equalTo(Carbon::parse('2026-05-15T09:00:00.000Z')->utc()));
+        $this->assertTrue($event->end->utc()->equalTo(Carbon::parse('2026-05-15T10:00:00.000Z')->utc()));
+    }
 }

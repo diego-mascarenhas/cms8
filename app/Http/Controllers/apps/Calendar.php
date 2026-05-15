@@ -84,7 +84,7 @@ class Calendar extends Controller
             'guests.*' => 'integer|exists:contacts,id',
         ]);
 
-        $allDay = (bool) ($validated['all_day'] ?? false);
+        $allDay = $request->has('all_day') ? $request->boolean('all_day') : false;
         [$eventStart, $eventEnd] = $this->resolveEventDateRange($validated['start'], $validated['end'], $allDay);
 
         $event = CalendarEvent::withoutGlobalScopes()->create([
@@ -132,7 +132,7 @@ class Calendar extends Controller
             'guests.*' => 'integer|exists:contacts,id',
         ]);
 
-        $allDay = array_key_exists('all_day', $validated) ? (bool) $validated['all_day'] : $event->all_day;
+        $allDay = $request->has('all_day') ? $request->boolean('all_day') : $event->all_day;
 
         $eventStart = $event->start;
         $eventEnd = $event->end;
@@ -213,10 +213,15 @@ class Calendar extends Controller
             return $this->normalizeAllDayEventRange($startValue, $endValue);
         }
 
-        return [
-            $this->parseEventDateTime($startValue),
-            $this->parseEventDateTime($endValue),
-        ];
+        $start = $this->parseEventDateTime($startValue);
+        $end = $this->parseEventDateTime($endValue);
+
+        if ($end->lte($start))
+        {
+            $end = $start->copy()->addHour();
+        }
+
+        return [$start, $end];
     }
 
     /**

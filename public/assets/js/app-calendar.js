@@ -208,9 +208,38 @@ document.addEventListener('DOMContentLoaded', function () {
       return date.toDate();
     }
 
+    function applyAllDayToggleToFlatpickr(isAllDay) {
+      applyFlatpickrAllDayMode(isAllDay);
+
+      var startMoment = start && start.selectedDates[0] ? moment(start.selectedDates[0]) : moment();
+      var endMoment = end && end.selectedDates[0] ? moment(end.selectedDates[0]) : startMoment.clone();
+
+      if (isAllDay) {
+        if (start) {
+          start.setDate(startMoment.clone().startOf('day').toDate(), true);
+        }
+        if (end) {
+          end.setDate(endMoment.clone().startOf('day').toDate(), true);
+        }
+        return;
+      }
+
+      var timedStart = startMoment.clone().hour(9).minute(0).second(0).millisecond(0);
+      var timedEnd = endMoment.clone().hour(10).minute(0).second(0).millisecond(0);
+      if (!timedEnd.isAfter(timedStart)) {
+        timedEnd = timedStart.clone().add(1, 'hour');
+      }
+      if (start) {
+        start.setDate(timedStart.toDate(), true);
+      }
+      if (end) {
+        end.setDate(timedEnd.toDate(), true);
+      }
+    }
+
     if (allDaySwitch) {
       allDaySwitch.addEventListener('change', function () {
-        applyFlatpickrAllDayMode(allDaySwitch.checked);
+        applyAllDayToggleToFlatpickr(allDaySwitch.checked);
       });
     }
 
@@ -563,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           };
           if (eventUrl.value) newEvent.url = eventUrl.value;
-          if (allDaySwitch.checked) newEvent.allDay = true;
+          newEvent.allDay = allDaySwitch.checked;
           addEvent(newEvent);
         } else {
           const eventDates = readEventDateRangeFromForm();
@@ -625,7 +654,7 @@ document.addEventListener('DOMContentLoaded', function () {
           title: eventData.title,
           start: eventData.start,
           end: eventData.end,
-          all_day: eventData.allDay || false,
+          all_day: Boolean(eventData.allDay),
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
@@ -650,7 +679,7 @@ document.addEventListener('DOMContentLoaded', function () {
           title: eventData.title,
           start: eventData.start,
           end: eventData.end,
-          all_day: eventData.allDay || false,
+          all_day: Boolean(eventData.allDay),
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
