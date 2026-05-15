@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (eventStartDate) {
       var start = eventStartDate.flatpickr({
         enableTime: true,
-        altFormat: 'Y-m-dTH:i:S',
+        dateFormat: 'Y-m-d H:i',
         locale: flatpickrLocale,
         onReady: function (selectedDates, dateStr, instance) {
           if (instance.isMobile) {
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (eventEndDate) {
       var end = eventEndDate.flatpickr({
         enableTime: true,
-        altFormat: 'Y-m-dTH:i:S',
+        dateFormat: 'Y-m-d H:i',
         locale: flatpickrLocale,
         onReady: function (selectedDates, dateStr, instance) {
           if (instance.isMobile) {
@@ -145,6 +145,35 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
       });
+    }
+
+    function serializeCalendarDate(flatpickrInstance, isAllDay) {
+      if (!flatpickrInstance) {
+        return '';
+      }
+      var selected = flatpickrInstance.selectedDates;
+      if (selected && selected.length > 0) {
+        if (isAllDay) {
+          return moment(selected[0]).format('YYYY-MM-DD');
+        }
+        return selected[0].toISOString();
+      }
+      var raw = flatpickrInstance.input ? flatpickrInstance.input.value : '';
+      if (!raw) {
+        return '';
+      }
+      if (isAllDay) {
+        return moment(raw, ['YYYY-MM-DD', 'Y-m-d'], true).format('YYYY-MM-DD');
+      }
+      return moment(raw).toISOString();
+    }
+
+    function readEventDateRangeFromForm() {
+      var isAllDay = allDaySwitch && allDaySwitch.checked;
+      return {
+        start: serializeCalendarDate(start, isAllDay),
+        end: serializeCalendarDate(end, isAllDay)
+      };
     }
 
     // Inline sidebar calendar (flatpickr) - week starts Monday in Spanish
@@ -173,11 +202,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
       eventTitle.value = eventToUpdate.title || '';
       eventUrl.value = eventToUpdate.url || '';
-      start.setDate(eventToUpdate.start, true, 'Y-m-d');
+      start.setDate(eventToUpdate.start, true);
       eventToUpdate.allDay === true ? (allDaySwitch.checked = true) : (allDaySwitch.checked = false);
       eventToUpdate.end !== null
-        ? end.setDate(eventToUpdate.end, true, 'Y-m-d')
-        : end.setDate(eventToUpdate.start, true, 'Y-m-d');
+        ? end.setDate(eventToUpdate.end, true)
+        : end.setDate(eventToUpdate.start, true);
       eventLabel.val(eventToUpdate.extendedProps && eventToUpdate.extendedProps.calendar ? eventToUpdate.extendedProps.calendar : 'Business').trigger('change');
       eventLocation.value = (eventToUpdate.extendedProps && eventToUpdate.extendedProps.location !== undefined) ? eventToUpdate.extendedProps.location : '';
       eventToUpdate.extendedProps && eventToUpdate.extendedProps.guests !== undefined
@@ -368,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
       firstDay: 1,
       direction: direction,
       locale: calendarLocale,
+      timeZone: 'local',
       initialDate: new Date(),
       navLinks: true,
       eventClassNames: function ({ event: calendarEvent }) {
@@ -474,13 +504,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!submitRequested) return;
         submitRequested = false;
         if (btnSubmit.classList.contains('btn-add-event')) {
+          const eventDates = readEventDateRangeFromForm();
           const newEvent = {
             id: calendar.getEvents().length + 1,
             title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
-            startStr: eventStartDate.value,
-            endStr: eventEndDate.value,
+            start: eventDates.start,
+            end: eventDates.end,
+            startStr: eventDates.start,
+            endStr: eventDates.end,
             display: 'block',
             extendedProps: {
               location: eventLocation.value,
@@ -493,11 +524,12 @@ document.addEventListener('DOMContentLoaded', function () {
           if (allDaySwitch.checked) newEvent.allDay = true;
           addEvent(newEvent);
         } else {
+          const eventDates = readEventDateRangeFromForm();
           const eventData = {
             id: eventToUpdate.id,
             title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
+            start: eventDates.start,
+            end: eventDates.end,
             url: eventUrl.value,
             extendedProps: {
               location: eventLocation.value,

@@ -84,12 +84,14 @@ class Calendar extends Controller
             'guests.*' => 'integer|exists:contacts,id',
         ]);
 
+        $allDay = (bool) ($validated['all_day'] ?? false);
+
         $event = CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'title' => $validated['title'],
-            'start' => Carbon::parse($validated['start']),
-            'end' => Carbon::parse($validated['end']),
-            'all_day' => (bool) ($validated['all_day'] ?? false),
+            'start' => $this->parseEventDateTime($validated['start'], $allDay),
+            'end' => $this->parseEventDateTime($validated['end'], $allDay),
+            'all_day' => $allDay,
             'url' => $validated['url'] ?? null,
             'label' => $validated['label'] ?? 'Business',
             'location' => $validated['location'] ?? null,
@@ -127,11 +129,13 @@ class Calendar extends Controller
             'guests.*' => 'integer|exists:contacts,id',
         ]);
 
+        $allDay = array_key_exists('all_day', $validated) ? (bool) $validated['all_day'] : $event->all_day;
+
         $event->fill([
             'title' => $validated['title'] ?? $event->title,
-            'start' => isset($validated['start']) ? Carbon::parse($validated['start']) : $event->start,
-            'end' => isset($validated['end']) ? Carbon::parse($validated['end']) : $event->end,
-            'all_day' => array_key_exists('all_day', $validated) ? (bool) $validated['all_day'] : $event->all_day,
+            'start' => isset($validated['start']) ? $this->parseEventDateTime($validated['start'], $allDay) : $event->start,
+            'end' => isset($validated['end']) ? $this->parseEventDateTime($validated['end'], $allDay) : $event->end,
+            'all_day' => $allDay,
             'url' => array_key_exists('url', $validated) ? ($validated['url'] ?: null) : $event->url,
             'label' => $validated['label'] ?? $event->label,
             'location' => array_key_exists('location', $validated) ? ($validated['location'] ?: null) : $event->location,
@@ -187,6 +191,18 @@ class Calendar extends Controller
                 'guests' => $guests,
             ],
         ];
+    }
+
+    private function parseEventDateTime(string $value, bool $allDay = false): Carbon
+    {
+        $parsed = Carbon::parse($value);
+
+        if ($allDay)
+        {
+            return $parsed->copy()->startOfDay()->utc();
+        }
+
+        return $parsed->utc();
     }
 
     private function syncEventGuests(CalendarEvent $event, int $teamId, array $contactIds): void
