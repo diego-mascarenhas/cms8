@@ -1,8 +1,20 @@
 @php
+    use App\Services\TeamWhatsAppChatPresentation;
+    use App\Support\HumanoPublicPaymentLinkCheckout;
+
     $businessCfgTeam = $team ?? auth()->user()->currentTeam ?? auth()->user()->teams->first();
     $canUpdateBusinessTeam = $businessCfgTeam && auth()->user()->can('update', $businessCfgTeam);
     $needsBusinessConfig = $canUpdateBusinessTeam && ! $businessCfgTeam->hasCompletedBusinessConfiguration();
-    $showWhatsappQrCta = $canUpdateBusinessTeam && session()->has(\App\Support\HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA);
+    $waPresentation = TeamWhatsAppChatPresentation::resolveForTeam($businessCfgTeam);
+    $isLocalWhatsAppDriver = ($waPresentation['whatsappDriver'] ?? '') === 'local';
+    $teamWhatsAppIsConnected = (bool) ($waPresentation['teamWhatsAppIsConnected'] ?? false);
+    $showWhatsappQrCtaBecauseDisconnected = $canUpdateBusinessTeam
+        && $isLocalWhatsAppDriver
+        && ! $teamWhatsAppIsConnected;
+    $showWhatsappQrCta = $canUpdateBusinessTeam && (
+        session()->has(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA)
+        || $showWhatsappQrCtaBecauseDisconnected
+    );
     $wrapInDashboardTopRow = $dashboardTopRow ?? false;
 @endphp
 @if ($needsBusinessConfig || $showWhatsappQrCta)

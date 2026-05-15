@@ -69,8 +69,8 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(__('app.dashboard_contacts_row_total'), false);
-        $response->assertSee(__('app.dashboard_contacts_row_new_leads'), false);
-        $response->assertSee(__('app.dashboard_contacts_row_recent_activity'), false);
+        $response->assertSee(__('app.dashboard_metric_new_leads'), false);
+        $response->assertSee(__('app.dashboard_metric_recent_activity'), false);
         $response->assertSee('dashboardContactsTrendChart', false);
         $this->assertMatchesRegularExpression('/text-primary[^>]*>2</', $response->getContent());
         $this->assertMatchesRegularExpression('/text-success[^>]*>2</', $response->getContent());

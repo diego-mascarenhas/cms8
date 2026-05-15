@@ -4,6 +4,7 @@ return [
     'welcome' => 'Benvenuto su '.config('variables.templateName').'!',
     'dashboard' => 'Cruscotto',
     'dashboard_metric_new_leads' => 'Nuovi lead',
+    'dashboard_metric_recent_activity' => 'Attività',
     'dashboard_contacts_summary_subtitle' => 'Metriche chiave sui contatti del team',
     'dashboard_contacts_row_new_leads' => 'Nuovi lead (ultimi 7 giorni)',
     'dashboard_contacts_row_total' => 'Contatti totali',
