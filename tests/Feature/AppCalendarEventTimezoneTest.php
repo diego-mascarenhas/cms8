@@ -142,4 +142,33 @@ class AppCalendarEventTimezoneTest extends TestCase
         $this->assertTrue($event->start->utc()->equalTo(Carbon::parse('2026-05-15T09:00:00.000Z')->utc()));
         $this->assertTrue($event->end->utc()->equalTo(Carbon::parse('2026-05-15T10:00:00.000Z')->utc()));
     }
+
+    public function test_update_accepts_drag_and_drop_datetime_payload(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+
+        $this->actingAs($user);
+
+        $event = CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Movable',
+            'start' => Carbon::parse('2026-05-15T09:00:00', 'UTC'),
+            'end' => Carbon::parse('2026-05-15T10:00:00', 'UTC'),
+            'all_day' => false,
+        ]);
+
+        $response = $this->putJson(route('app-calendar-events-update', $event), [
+            'title' => 'Movable',
+            'start' => '2026-05-15T11:00:00.000Z',
+            'end' => '2026-05-15T12:30:00.000Z',
+            'all_day' => false,
+        ]);
+
+        $response->assertOk();
+
+        $event->refresh();
+        $this->assertTrue($event->start->utc()->equalTo(Carbon::parse('2026-05-15T11:00:00.000Z')->utc()));
+        $this->assertTrue($event->end->utc()->equalTo(Carbon::parse('2026-05-15T12:30:00.000Z')->utc()));
+    }
 }

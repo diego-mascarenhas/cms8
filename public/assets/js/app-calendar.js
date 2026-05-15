@@ -434,6 +434,91 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
+    function buildPayloadFromFcEvent(fcEvent) {
+      var isAllDay = fcEvent.allDay === true;
+      var startValue;
+      var endValue;
+
+      if (isAllDay) {
+        startValue = moment(fcEvent.start).format('YYYY-MM-DD');
+        if (fcEvent.end) {
+          endValue = moment(fcEvent.end).subtract(1, 'day').format('YYYY-MM-DD');
+        } else {
+          endValue = startValue;
+        }
+      } else {
+        startValue = fcEvent.start ? fcEvent.start.toISOString() : '';
+        if (fcEvent.end) {
+          endValue = fcEvent.end.toISOString();
+        } else if (fcEvent.start) {
+          endValue = moment(fcEvent.start).add(1, 'hour').toISOString();
+        } else {
+          endValue = '';
+        }
+      }
+
+      return {
+        id: fcEvent.id,
+        title: fcEvent.title || '',
+        start: startValue,
+        end: endValue,
+        allDay: isAllDay,
+        url: fcEvent.url || '',
+        extendedProps: {
+          calendar: (fcEvent.extendedProps && fcEvent.extendedProps.calendar) || 'Business',
+          location: (fcEvent.extendedProps && fcEvent.extendedProps.location) || '',
+          description: (fcEvent.extendedProps && fcEvent.extendedProps.description) || '',
+          guests: (fcEvent.extendedProps && Array.isArray(fcEvent.extendedProps.guests) ? fcEvent.extendedProps.guests : [])
+        }
+      };
+    }
+
+    function persistCalendarEventChange(info) {
+      var fcEvent = info.event;
+      var payload = buildPayloadFromFcEvent(fcEvent);
+      var eventId = parseInt(fcEvent.id, 10);
+      var base = calendarApiBaseUrl();
+
+      if (base && eventId > 0 && !isNaN(eventId)) {
+        calendarApiFetch('PUT', base + '/' + eventId, {
+          title: payload.title,
+          start: payload.start,
+          end: payload.end,
+          all_day: Boolean(payload.allDay),
+          url: payload.url || '',
+          label: payload.extendedProps.calendar || 'Business',
+          location: payload.extendedProps.location || '',
+          description: payload.extendedProps.description || '',
+          guests: payload.extendedProps.guests || []
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              info.revert();
+              return;
+            }
+            calendar.refetchEvents();
+          })
+          .catch(function () {
+            info.revert();
+          });
+        return;
+      }
+
+      var idx = currentEvents.findIndex(function (event) {
+        return String(event.id) === String(fcEvent.id);
+      });
+      if (idx >= 0) {
+        currentEvents[idx] = Object.assign({}, currentEvents[idx], {
+          title: payload.title,
+          start: payload.start,
+          end: payload.end,
+          allDay: payload.allDay,
+          startStr: payload.start,
+          endStr: payload.end
+        });
+      }
+    }
+
     // Init FullCalendar
     // ------------------------------------------------
     const initialView = typeof window.calendarInitialView !== 'undefined' ? window.calendarInitialView : 'dayGridMonth';
@@ -494,6 +579,12 @@ document.addEventListener('DOMContentLoaded', function () {
       },
       eventClick: function (info) {
         eventClick(info);
+      },
+      eventDrop: function (info) {
+        persistCalendarEventChange(info);
+      },
+      eventResize: function (info) {
+        persistCalendarEventChange(info);
       },
       datesSet: function () {
         modifyToggler();
