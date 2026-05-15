@@ -120,6 +120,7 @@
             </p>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-3 mt-3 mt-md-0">
+            @if (auth()->user()->currentTeam->hasModule('projects'))
             <!-- Project Selector -->
             <div class="w-auto">
                 <select class="form-select select2" id="project-selector">
@@ -137,6 +138,7 @@
                 <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-primary waves-effect">
                     <i class="ti ti-external-link me-1"></i>Ir al proyecto
                 </a>
+            @endif
             @endif
 
             <!-- View List Button -->

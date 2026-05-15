@@ -27,11 +27,11 @@
 		html += `<div class="item-badges">`;
 		if (task.category)
 		{
-			html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
+			html += `<div class="badge bg-label-warning category-badge">${task.category.name}</div>`;
 		}
 		else
 		{
-			html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+			html += `<div class="badge bg-label-secondary category-badge">Sin categorizar</div>`;
 		}
 		html += `</div>`;
 
@@ -53,28 +53,7 @@
 			html += `<div class="d-flex">`;
 			if (task.due_date)
 			{
-				// Calculate days remaining
-				const today = new Date();
-				today.setHours(0, 0, 0, 0);
-				const dueDate = new Date(task.due_date);
-				dueDate.setHours(0, 0, 0, 0);
-				const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-
-				let badgeColor = 'bg-label-secondary';
-				if (daysRemaining < 2)
-				{
-					badgeColor = 'bg-label-danger';
-				}
-				else if (daysRemaining <= 7)
-				{
-					badgeColor = 'bg-label-warning';
-				}
-
-				// Format date as DD/MM/YYYY
-				const [year, month, day] = task.due_date.split('-');
-				const formattedDate = `${day}/${month}/${year}`;
-
-				html += `<span class="d-flex align-items-center me-2"><i class="ti ti-calendar ti-xs me-1"></i><span class="badge ${badgeColor} date-badge">${formattedDate}</span></span>`;
+				html += buildDueDateHtml(task.due_date);
 			}
 			html += `</div>`;
 				if (task.responsible)
@@ -130,6 +109,41 @@
         }
 
         return String(value).replace('T', ' ').slice(0, 19);
+    }
+
+    function getDueDateColorClass(daysRemaining)
+    {
+        if (daysRemaining < 2)
+        {
+            return 'text-danger';
+        }
+
+        if (daysRemaining <= 7)
+        {
+            return 'text-warning';
+        }
+
+        return 'text-muted';
+    }
+
+    function formatDueDateDisplay(dateValue)
+    {
+        const [year, month, day] = String(dateValue).slice(0, 10).split('-');
+
+        return `${day}/${month}/${year}`;
+    }
+
+    function buildDueDateHtml(dateValue)
+    {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(String(dateValue).slice(0, 10));
+        dueDate.setHours(0, 0, 0, 0);
+        const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        const dateColor = getDueDateColorClass(daysRemaining);
+        const formattedDate = formatDueDateDisplay(dateValue);
+
+        return `<span class="d-flex align-items-center me-2 date-badge ${dateColor}"><i class="ti ti-calendar ti-xs me-1"></i>${formattedDate}</span>`;
     }
 
     function applyNewTaskDataAttributes(element, taskId, meta)
@@ -242,7 +256,7 @@
 
                         // Category badge (default to "Sin categorizar")
                         html += `<div class="item-badges">`;
-                        html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+                        html += `<div class="badge bg-label-secondary category-badge">Sin categorizar</div>`;
                         html += `</div>`;
 
                         if (timesModuleEnabled)
@@ -880,13 +894,13 @@
 				{
 					// Update to selected category
 					categoryBadge.textContent = selectedOption.text;
-					categoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+					categoryBadge.className = 'badge bg-label-warning category-badge';
 				}
 				else
 				{
 					// No category selected, show "Sin categorizar"
 					categoryBadge.textContent = 'Sin categorizar';
-					categoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+					categoryBadge.className = 'badge bg-label-secondary category-badge';
 				}
 			}
 			else if (itemBadges)
@@ -895,54 +909,36 @@
 				const newCategoryBadge = document.createElement('div');
 				if (categoryId && selectedOption && selectedOption.text)
 				{
-					newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+					newCategoryBadge.className = 'badge bg-label-warning category-badge';
 					newCategoryBadge.textContent = selectedOption.text;
 				}
 				else
 				{
-					newCategoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+					newCategoryBadge.className = 'badge bg-label-secondary category-badge';
 					newCategoryBadge.textContent = 'Sin categorizar';
 				}
 				itemBadges.appendChild(newCategoryBadge);
 			}
 
-				// Update date badge with color based on days remaining
-					if (newDue)
+				if (newDue)
 				{
-					// Calculate days remaining
-					const today = new Date();
-					today.setHours(0, 0, 0, 0);
-					const dueDate = new Date(newDue);
-					dueDate.setHours(0, 0, 0, 0);
-					const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+					const dueDateHtml = buildDueDateHtml(newDue);
+					let dateEl = taskDiv.querySelector('.date-badge');
+					const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center.flex-wrap.mt-2.pt-1');
+					const leftCol = bottomRow ? bottomRow.querySelector('.d-flex') : null;
 
-					let badgeColor = 'bg-label-secondary';
-					if (daysRemaining < 2)
+					if (dateEl)
 					{
-						badgeColor = 'bg-label-danger';
+						const wrapper = document.createElement('div');
+						wrapper.innerHTML = dueDateHtml;
+						dateEl.replaceWith(wrapper.firstElementChild);
 					}
-					else if (daysRemaining <= 7)
+					else if (leftCol)
 					{
-						badgeColor = 'bg-label-warning';
+						const wrapper = document.createElement('div');
+						wrapper.innerHTML = dueDateHtml;
+						leftCol.insertBefore(wrapper.firstElementChild, leftCol.firstChild);
 					}
-
-					let badge = taskDiv.querySelector('.date-badge');
-						if (!badge)
-						{
-							badge = document.createElement('span');
-						badge.className = `badge ${badgeColor} date-badge`;
-						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
-						if (bottomRow) bottomRow.insertBefore(badge, bottomRow.firstChild);
-					}
-					else
-					{
-						// Update existing badge color classes
-						badge.className = `badge ${badgeColor} date-badge`;
-					}
-					// Format date as DD/MM/YYYY
-					const [year, month, day] = newDue.split('-');
-					const formattedDate = `${day}/${month}/${year}`;
-					if (badge) badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${formattedDate}`;
 				}
 
 					// Update responsible avatar
