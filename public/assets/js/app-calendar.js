@@ -168,12 +168,50 @@ document.addEventListener('DOMContentLoaded', function () {
       return moment(raw).toISOString();
     }
 
+    function applyFlatpickrAllDayMode(isAllDay) {
+      [start, end].forEach(function (flatpickrInstance) {
+        if (!flatpickrInstance) {
+          return;
+        }
+        flatpickrInstance.set('enableTime', !isAllDay);
+        flatpickrInstance.set('dateFormat', isAllDay ? 'Y-m-d' : 'Y-m-d H:i');
+      });
+    }
+
     function readEventDateRangeFromForm() {
       var isAllDay = allDaySwitch && allDaySwitch.checked;
+      var startValue = serializeCalendarDate(start, isAllDay);
+      var endValue = serializeCalendarDate(end, isAllDay);
+
+      if (isAllDay && startValue && endValue) {
+        var startDay = moment(startValue, 'YYYY-MM-DD', true);
+        var endDay = moment(endValue, 'YYYY-MM-DD', true);
+        if (endDay.isValid() && startDay.isValid() && endDay.isBefore(startDay)) {
+          endValue = startValue;
+        }
+      }
+
       return {
-        start: serializeCalendarDate(start, isAllDay),
-        end: serializeCalendarDate(end, isAllDay)
+        start: startValue,
+        end: endValue
       };
+    }
+
+    function flatpickrDateFromCalendarEvent(calendarEventDate, isAllDay, isExclusiveEnd) {
+      if (!calendarEventDate) {
+        return null;
+      }
+      var date = calendarEventDate instanceof Date ? moment(calendarEventDate) : moment(calendarEventDate);
+      if (isAllDay && isExclusiveEnd) {
+        date = date.clone().subtract(1, 'day');
+      }
+      return date.toDate();
+    }
+
+    if (allDaySwitch) {
+      allDaySwitch.addEventListener('change', function () {
+        applyFlatpickrAllDayMode(allDaySwitch.checked);
+      });
     }
 
     // Inline sidebar calendar (flatpickr) - week starts Monday in Spanish
@@ -202,11 +240,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       eventTitle.value = eventToUpdate.title || '';
       eventUrl.value = eventToUpdate.url || '';
-      start.setDate(eventToUpdate.start, true);
-      eventToUpdate.allDay === true ? (allDaySwitch.checked = true) : (allDaySwitch.checked = false);
-      eventToUpdate.end !== null
-        ? end.setDate(eventToUpdate.end, true)
-        : end.setDate(eventToUpdate.start, true);
+      var isAllDayEvent = eventToUpdate.allDay === true;
+      allDaySwitch.checked = isAllDayEvent;
+      applyFlatpickrAllDayMode(isAllDayEvent);
+      start.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.start, isAllDayEvent, false), true);
+      if (eventToUpdate.end !== null) {
+        end.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.end, isAllDayEvent, isAllDayEvent), true);
+      } else {
+        end.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.start, isAllDayEvent, false), true);
+      }
       eventLabel.val(eventToUpdate.extendedProps && eventToUpdate.extendedProps.calendar ? eventToUpdate.extendedProps.calendar : 'Business').trigger('change');
       eventLocation.value = (eventToUpdate.extendedProps && eventToUpdate.extendedProps.location !== undefined) ? eventToUpdate.extendedProps.location : '';
       eventToUpdate.extendedProps && eventToUpdate.extendedProps.guests !== undefined
@@ -683,12 +725,48 @@ document.addEventListener('DOMContentLoaded', function () {
       fv.validate();
     });
 
-    // Call removeEvent function
-    btnDeleteEvent.addEventListener('click', e => {
-      removeEvent(parseInt(eventToUpdate.id));
-      // eventToUpdate.remove();
+    function confirmDeleteEvent() {
+      if (!eventToUpdate || !eventToUpdate.id) {
+        return;
+      }
+      removeEvent(parseInt(eventToUpdate.id, 10));
       bsAddEventSidebar.hide();
-    });
+    }
+
+    // Call removeEvent function
+    if (btnDeleteEvent) {
+      btnDeleteEvent.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!eventToUpdate || !eventToUpdate.id) {
+          return;
+        }
+
+        if (typeof Swal === 'undefined') {
+          if (window.confirm(calendarStrings.deleteConfirmText || 'Are you sure you want to delete this record?')) {
+            confirmDeleteEvent();
+          }
+          return;
+        }
+
+        Swal.fire({
+          title: calendarStrings.deleteConfirmTitle || 'Are you sure?',
+          text: calendarStrings.deleteConfirmText || 'Are you sure you want to delete this record?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: calendarStrings.deleteConfirmYes || 'Yes, delete',
+          cancelButtonText: calendarStrings.cancel || 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-primary me-3',
+            cancelButton: 'btn btn-label-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            confirmDeleteEvent();
+          }
+        });
+      });
+    }
 
     // Reset event form inputs values
     // ------------------------------------------------
@@ -699,6 +777,7 @@ document.addEventListener('DOMContentLoaded', function () {
       eventTitle.value = '';
       eventLocation.value = '';
       allDaySwitch.checked = false;
+      applyFlatpickrAllDayMode(false);
       eventGuests.val('').trigger('change');
       eventDescription.value = '';
     }

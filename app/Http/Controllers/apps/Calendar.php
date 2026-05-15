@@ -74,7 +74,7 @@ class Calendar extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'start' => 'required|date',
-            'end' => 'required|date|after:start',
+            'end' => ['required', 'date', $request->boolean('all_day') ? 'after_or_equal:start' : 'after:start'],
             'all_day' => 'boolean',
             'url' => 'nullable|string|max:2048',
             'label' => 'nullable|string|max:64',
@@ -85,12 +85,13 @@ class Calendar extends Controller
         ]);
 
         $allDay = (bool) ($validated['all_day'] ?? false);
+        [$eventStart, $eventEnd] = $this->resolveEventDateRange($validated['start'], $validated['end'], $allDay);
 
         $event = CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'title' => $validated['title'],
-            'start' => $this->parseEventDateTime($validated['start'], $allDay),
-            'end' => $this->parseEventDateTime($validated['end'], $allDay),
+            'start' => $eventStart,
+            'end' => $eventEnd,
             'all_day' => $allDay,
             'url' => $validated['url'] ?? null,
             'label' => $validated['label'] ?? 'Business',
@@ -116,10 +117,12 @@ class Calendar extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $allDayForValidation = $request->has('all_day') ? $request->boolean('all_day') : $event->all_day;
+
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
             'start' => 'sometimes|required|date',
-            'end' => 'sometimes|required|date|after:start',
+            'end' => ['sometimes', 'required', 'date', $allDayForValidation ? 'after_or_equal:start' : 'after:start'],
             'all_day' => 'boolean',
             'url' => 'nullable|string|max:2048',
             'label' => 'nullable|string|max:64',
@@ -131,10 +134,17 @@ class Calendar extends Controller
 
         $allDay = array_key_exists('all_day', $validated) ? (bool) $validated['all_day'] : $event->all_day;
 
+        $eventStart = $event->start;
+        $eventEnd = $event->end;
+        if (isset($validated['start'], $validated['end']))
+        {
+            [$eventStart, $eventEnd] = $this->resolveEventDateRange($validated['start'], $validated['end'], $allDay);
+        }
+
         $event->fill([
             'title' => $validated['title'] ?? $event->title,
-            'start' => isset($validated['start']) ? $this->parseEventDateTime($validated['start'], $allDay) : $event->start,
-            'end' => isset($validated['end']) ? $this->parseEventDateTime($validated['end'], $allDay) : $event->end,
+            'start' => $eventStart,
+            'end' => $eventEnd,
             'all_day' => $allDay,
             'url' => array_key_exists('url', $validated) ? ($validated['url'] ?: null) : $event->url,
             'label' => $validated['label'] ?? $event->label,
@@ -180,8 +190,8 @@ class Calendar extends Controller
         return [
             'id' => $event->id,
             'title' => $event->title,
-            'start' => $event->start->toIso8601String(),
-            'end' => $event->end->toIso8601String(),
+            'start' => $event->all_day ? $event->start->utc()->toDateString() : $event->start->toIso8601String(),
+            'end' => $event->all_day ? $event->end->utc()->toDateString() : $event->end->toIso8601String(),
             'allDay' => (bool) $event->all_day,
             'url' => $event->url,
             'extendedProps' => [
@@ -193,16 +203,43 @@ class Calendar extends Controller
         ];
     }
 
-    private function parseEventDateTime(string $value, bool $allDay = false): Carbon
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function resolveEventDateRange(string $startValue, string $endValue, bool $allDay): array
     {
-        $parsed = Carbon::parse($value);
-
         if ($allDay)
         {
-            return $parsed->copy()->startOfDay()->utc();
+            return $this->normalizeAllDayEventRange($startValue, $endValue);
         }
 
-        return $parsed->utc();
+        return [
+            $this->parseEventDateTime($startValue),
+            $this->parseEventDateTime($endValue),
+        ];
+    }
+
+    /**
+     * FullCalendar all-day end dates are exclusive; form dates are inclusive.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function normalizeAllDayEventRange(string $startValue, string $endValue): array
+    {
+        $start = Carbon::parse($startValue)->startOfDay()->utc();
+        $endInclusive = Carbon::parse($endValue)->startOfDay()->utc();
+
+        if ($endInclusive->lt($start))
+        {
+            $endInclusive = $start->copy();
+        }
+
+        return [$start, $endInclusive->copy()->addDay()];
+    }
+
+    private function parseEventDateTime(string $value): Carbon
+    {
+        return Carbon::parse($value)->utc();
     }
 
     private function syncEventGuests(CalendarEvent $event, int $teamId, array $contactIds): void

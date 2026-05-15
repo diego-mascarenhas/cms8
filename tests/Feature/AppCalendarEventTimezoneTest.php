@@ -67,4 +67,48 @@ class AppCalendarEventTimezoneTest extends TestCase
         $this->assertTrue($event->start->utc()->equalTo(Carbon::parse($startIso)->utc()));
         $this->assertTrue($event->end->utc()->equalTo(Carbon::parse($endIso)->utc()));
     }
+
+    public function test_store_all_day_event_accepts_same_start_and_end_date(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+
+        $response = $this->actingAs($user)->postJson(route('app-calendar-events-store'), [
+            'title' => 'Holiday',
+            'start' => '2026-05-15',
+            'end' => '2026-05-15',
+            'all_day' => true,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('allDay', true);
+        $response->assertJsonPath('start', '2026-05-15');
+        $response->assertJsonPath('end', '2026-05-16');
+
+        $event = CalendarEvent::withoutGlobalScopes()->where('team_id', $team->id)->first();
+        $this->assertTrue($event->all_day);
+        $this->assertSame('2026-05-15', $event->start->utc()->toDateString());
+        $this->assertSame('2026-05-16', $event->end->utc()->toDateString());
+    }
+
+    public function test_store_all_day_multi_day_event_uses_exclusive_end_date(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+
+        $response = $this->actingAs($user)->postJson(route('app-calendar-events-store'), [
+            'title' => 'Multi day holiday',
+            'start' => '2026-05-15',
+            'end' => '2026-05-17',
+            'all_day' => true,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('start', '2026-05-15');
+        $response->assertJsonPath('end', '2026-05-18');
+
+        $event = CalendarEvent::withoutGlobalScopes()->where('team_id', $team->id)->first();
+        $this->assertNotNull($event);
+        $this->assertTrue($event->all_day);
+    }
 }

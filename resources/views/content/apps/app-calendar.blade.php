@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/quill/editor.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('page-style')
@@ -23,6 +24,7 @@
 <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -54,7 +56,11 @@
     fcDayTitle: @json(__('day view')),
     fcListTitle: @json(__('list view')),
     fcToday: @json(__('Today')),
-    fcAllDay: @json(__('all-day'))
+    fcAllDay: @json(__('all-day')),
+    deleteConfirmTitle: @json(__('Are you sure?')),
+    deleteConfirmText: @json(__('Are you sure you want to delete this record?')),
+    deleteConfirmYes: @json(__('Yes, delete')),
+    cancel: @json(__('Cancel'))
   };
 </script>
 <script src="{{ asset('assets/js/app-calendar-events.js') }}"></script>
