@@ -369,6 +369,17 @@ document.addEventListener('DOMContentLoaded', function () {
       return selected;
     }
 
+    function filterEventsBySelectedCalendars(eventsList) {
+      var calendars = selectedCalendars();
+      if (calendars.length === 0) {
+        return [];
+      }
+      return eventsList.filter(function (event) {
+        var cal = event.extendedProps && event.extendedProps.calendar;
+        return cal && calendars.includes(String(cal).toLowerCase());
+      });
+    }
+
     // --------------------------------------------------------------------------------------------------
     // fetchEvents
     // * When calendarEventsApiUrl is set (Google Calendar), fetch from API. Otherwise use local events.
@@ -383,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
           .then((response) => {
             if (!response.ok) {
               console.warn('Calendar API error:', response.status, response.statusText);
-              successCallback([...currentEvents]);
+              successCallback(filterEventsBySelectedCalendars([...currentEvents]));
               return null;
             }
             return response.json();
@@ -394,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
               if (apiEvents && apiEvents.error) {
                 console.warn('Calendar API error:', apiEvents.error);
               }
-              successCallback([...currentEvents]);
+              successCallback(filterEventsBySelectedCalendars([...currentEvents]));
               return;
             }
             const merged = [...currentEvents];
@@ -420,25 +431,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 merged.push(fcEv);
               }
             });
-            successCallback(merged);
+            successCallback(filterEventsBySelectedCalendars(merged));
           })
           .catch((err) => {
             console.error('Calendar API error:', err);
             if (typeof failureCallback === 'function') {
               failureCallback(err);
             }
-            successCallback([...currentEvents]);
+            successCallback(filterEventsBySelectedCalendars([...currentEvents]));
           });
         return;
       }
 
       // Local events: filter by selected calendars
-      let calendars = selectedCalendars();
-      let selectedEvents = currentEvents.filter(function (event) {
-        const cal = event.extendedProps && event.extendedProps.calendar;
-        return cal && calendars.includes(cal.toLowerCase());
-      });
-      successCallback(selectedEvents);
+      successCallback(filterEventsBySelectedCalendars(currentEvents));
     }
 
     var titleUpdateTimeoutId = null;
