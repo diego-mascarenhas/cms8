@@ -78,6 +78,8 @@
         <!-- inline calendar (flatpicker) -->
         <div class="inline-calendar"></div>
 
+        {{-- Calendar category filters: temporarily hidden; inputs stay checked so JS filtering still works --}}
+        <div class="d-none" id="app-calendar-filters" aria-hidden="true">
         <hr class="container-m-nx mb-4 mt-3">
 
         <!-- Filter -->
@@ -111,6 +113,7 @@
             <input class="form-check-input input-filter" type="checkbox" id="select-etc" data-value="etc" checked>
             <label class="form-check-label" for="select-etc">{{ __('ETC') }}</label>
           </div>
+        </div>
         </div>
       </div>
     </div>

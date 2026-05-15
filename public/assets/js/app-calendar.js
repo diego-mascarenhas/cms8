@@ -297,28 +297,41 @@ document.addEventListener('DOMContentLoaded', function () {
       if (titleUpdateTimeoutId) clearTimeout(titleUpdateTimeoutId);
       titleUpdateTimeoutId = setTimeout(function () {
         titleUpdateTimeoutId = null;
-        applyTitleAndCapitalizeLabels();
+        applyToolbarTitleCapitalization();
       }, 50);
     }
 
-    function applyTitleAndCapitalizeLabels() {
+    function capitalizeFirstLetter(text) {
+      if (!text) {
+        return text;
+      }
+      var first = text.charAt(0);
+      if (first === first.toUpperCase()) {
+        return text;
+      }
+      return first.toUpperCase() + text.slice(1);
+    }
+
+    function formatDayHeaderContent(arg) {
+      var text;
+      if (arg.view.type === 'timeGridWeek') {
+        text = moment(arg.date).format('ddd D/M');
+      } else if (arg.view.type === 'timeGridDay') {
+        text = moment(arg.date).format('dddd D/M');
+      } else {
+        text = arg.text;
+      }
+      return capitalizeFirstLetter(text);
+    }
+
+    function applyToolbarTitleCapitalization() {
       var titleEl = calendarEl.querySelector('.fc-toolbar-title');
       if (titleEl && typeof calendar !== 'undefined' && calendar.view && calendar.view.title) {
         var apiTitle = calendar.view.title;
         if (apiTitle) {
-          var normalized = apiTitle.charAt(0).toUpperCase() + apiTitle.slice(1);
-          titleEl.textContent = normalized;
+          titleEl.textContent = capitalizeFirstLetter(apiTitle);
         }
       }
-      var dayHeaders = calendarEl.querySelectorAll('.fc-col-header-cell-cushion');
-      dayHeaders.forEach(function (el) {
-        if (el.textContent) {
-          var d = el.textContent.trim();
-          if (d && d.charAt(0) !== d.charAt(0).toUpperCase()) {
-            el.textContent = d.charAt(0).toUpperCase() + d.slice(1).toLowerCase();
-          }
-        }
-      });
     }
 
     // Init FullCalendar
@@ -351,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
       allDayContent: function (arg) {
         return calendarStrings.fcAllDay || 'all-day';
       },
+      dayHeaderContent: formatDayHeaderContent,
       firstDay: 1,
       direction: direction,
       locale: calendarLocale,
