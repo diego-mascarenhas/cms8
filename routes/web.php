@@ -889,6 +889,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
+    Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
@@ -981,6 +982,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template');
     Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
     Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
+    Route::post('/notification/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notification.mark-all-as-read');
+    Route::patch('/notification/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notification.mark-as-read');
 
     // User Custom Fares
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
@@ -1028,10 +1031,10 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
-// Today: open calendar in list view
+// Today: open calendar in day view (today's date)
 Route::get('/today', function ()
 {
-    return redirect()->to(route('app-calendar').'?view=listMonth');
+    return redirect()->to(route('app-calendar').'?view=timeGridDay');
 })->name('today')->middleware('auth');
 
 // Calendar (local DB)
@@ -1095,7 +1098,13 @@ Route::get('/kanban', [KanbanController::class, 'index'])->name('kanban');
 Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
 Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 
-// Editor
+// Editor (team landing uses GrapesJS; HTML stored in team_settings)
+Route::get('pages/landing/editor', [PageController::class, 'teamLandingEditor'])
+    ->middleware('auth')
+    ->name('page.team-landing-editor');
+Route::post('pages/landing/editor', [PageController::class, 'teamLandingEditorStore'])
+    ->middleware('auth')
+    ->name('page.team-landing-editor.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
@@ -1309,6 +1318,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
+    Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
 });
 

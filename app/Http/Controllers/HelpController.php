@@ -236,6 +236,16 @@ class HelpController extends Controller
     }
 
     /**
+     * SPF / DNS for outgoing email (system SMTP).
+     */
+    public function emailSpfDns()
+    {
+        return view('help.email-spf-dns', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display tasks API documentation
      */
     public function apiTasks()

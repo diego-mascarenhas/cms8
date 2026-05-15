@@ -2,18 +2,32 @@
 
 namespace App\View\Components;
 
-use App\Models\Task;
+use App\Models\Notification;
+use Illuminate\Support\Collection;
 use Illuminate\View\Component;
 
 class TaskNotifications extends Component
 {
-    public $pendingTasks;
+    public Collection $notifications;
+
+    public int $unreadCount;
 
     public function __construct()
     {
-        $this->pendingTasks = Task::pendingForUser(auth()->id())
-            ->with(['status', 'responsible'])
-            ->get();
+        $userId = auth()->id();
+
+        $this->notifications = $userId
+            ? Notification::query()
+                ->forRecipientUser($userId)
+                ->with(['type', 'contact'])
+                ->latest()
+                ->limit(15)
+                ->get()
+            : collect();
+
+        $this->unreadCount = $userId
+            ? Notification::query()->forRecipientUser($userId)->unread()->count()
+            : 0;
     }
 
     public function render()

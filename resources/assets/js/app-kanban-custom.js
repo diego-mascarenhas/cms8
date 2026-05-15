@@ -6,7 +6,8 @@
 
 (function () {
     // Get data from Laravel
-    const { statuses, tasksByStatus, boardId, projectId, storeUrl, updateStatusUrl, updateOrderUrl, csrfToken, currentUserId, users, categories } = window.kanbanData;
+    const { statuses, tasksByStatus, boardId, projectId, storeUrl, updateStatusUrl, updateOrderUrl, csrfToken, currentUserId, users, categories, hasTimesModule } = window.kanbanData;
+    const timesModuleEnabled = hasTimesModule === true;
 
 	const kanbanWrapper = document.querySelector('.kanban-wrapper');
 
@@ -26,16 +27,18 @@
 		html += `<div class="item-badges">`;
 		if (task.category)
 		{
-			html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
+			html += `<div class="badge bg-label-warning category-badge">${task.category.name}</div>`;
 		}
 		else
 		{
-			html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+			html += `<div class="badge bg-label-secondary category-badge">Sin categorizar</div>`;
 		}
 		html += `</div>`;
 
-        // Timer button always on the right (initially gray)
-        html += renderStartTimer('text-secondary');
+        if (timesModuleEnabled)
+        {
+            html += renderStartTimer('text-secondary');
+        }
 
 	html += `</div>`;
 	html += `<span class="kanban-text">${task.title}</span>`;
@@ -50,28 +53,7 @@
 			html += `<div class="d-flex">`;
 			if (task.due_date)
 			{
-				// Calculate days remaining
-				const today = new Date();
-				today.setHours(0, 0, 0, 0);
-				const dueDate = new Date(task.due_date);
-				dueDate.setHours(0, 0, 0, 0);
-				const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-
-				let badgeColor = 'bg-label-secondary';
-				if (daysRemaining < 2)
-				{
-					badgeColor = 'bg-label-danger';
-				}
-				else if (daysRemaining <= 7)
-				{
-					badgeColor = 'bg-label-warning';
-				}
-
-				// Format date as DD/MM/YYYY
-				const [year, month, day] = task.due_date.split('-');
-				const formattedDate = `${day}/${month}/${year}`;
-
-				html += `<span class="d-flex align-items-center me-2"><i class="ti ti-calendar ti-xs me-1"></i><span class="badge ${badgeColor} date-badge">${formattedDate}</span></span>`;
+				html += buildDueDateHtml(task.due_date);
 			}
 			html += `</div>`;
 				if (task.responsible)
@@ -103,6 +85,88 @@
 			})
 		};
 	});
+
+    function toDateInputValue(value)
+    {
+        if (!value)
+        {
+            return '';
+        }
+
+        return String(value).slice(0, 10);
+    }
+
+    function toStoreDateTime(value)
+    {
+        if (!value)
+        {
+            return new Date().toISOString().slice(0, 19).replace('T', ' ');
+        }
+
+        if (String(value).length <= 10)
+        {
+            return `${value} 00:00:00`;
+        }
+
+        return String(value).replace('T', ' ').slice(0, 19);
+    }
+
+    function getDueDateColorClass(daysRemaining)
+    {
+        if (daysRemaining < 2)
+        {
+            return 'text-danger';
+        }
+
+        if (daysRemaining <= 7)
+        {
+            return 'text-warning';
+        }
+
+        return 'text-muted';
+    }
+
+    function formatDueDateDisplay(dateValue)
+    {
+        const [year, month, day] = String(dateValue).slice(0, 10).split('-');
+
+        return `${day}/${month}/${year}`;
+    }
+
+    function buildDueDateHtml(dateValue)
+    {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(String(dateValue).slice(0, 10));
+        dueDate.setHours(0, 0, 0, 0);
+        const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        const dateColor = getDueDateColorClass(daysRemaining);
+        const formattedDate = formatDueDateDisplay(dateValue);
+
+        return `<span class="d-flex align-items-center me-2 date-badge ${dateColor}"><i class="ti ti-calendar ti-xs me-1"></i>${formattedDate}</span>`;
+    }
+
+    function applyNewTaskDataAttributes(element, taskId, meta)
+    {
+        element.setAttribute('data-task-id', taskId);
+        element.setAttribute('data-category-id', meta.categoryId || '');
+        element.setAttribute('data-due-date', meta.dueDate || '');
+        element.setAttribute('data-responsible-id', meta.responsibleId || currentUserId);
+        element.setAttribute('data-estimated-hours', meta.estimatedHours || '');
+        element.setAttribute('data-description', (meta.description || '').replace(/"/g, '&quot;'));
+        element.setAttribute('data-attachment', meta.attachment || '');
+    }
+
+    function syncNewKanbanItemAttributes(elementId, taskId, meta)
+    {
+        const newTaskElement = document.querySelector(`.kanban-item[data-eid="${elementId}"]`);
+        if (newTaskElement && taskId)
+        {
+            applyNewTaskDataAttributes(newTaskElement, taskId, meta);
+        }
+
+        return newTaskElement;
+    }
 
     // Render start timer button
     function renderStartTimer(colorClass)
@@ -152,6 +216,9 @@
                 const title = form.querySelector('.add-new-item').value.trim();
                 if (!title) return;
 
+                const createStartDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                const createDueDate = createStartDate;
+
                 // Create via AJAX on backend
                 fetch(storeUrl, {
                     method: 'POST',
@@ -162,11 +229,11 @@
                     },
                     body: JSON.stringify({
                         title: title,
-                        description: title,
+                        description: '',
                         responsible_id: currentUserId,
                         // keep minimal required fields
-                        start_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
-                        due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        start_date: createStartDate,
+                        due_date: createDueDate,
                         status_id: parseInt(columnStatusId),
                         category_id: null,
                         board_id: boardId,
@@ -180,16 +247,22 @@
                         return data;
                     })
                     .then((resp) => {
+                        const taskId = resp.task?.id ?? resp.id ?? null;
+                        const elementId = taskId ? `task-${taskId}` : `new-${Date.now()}`;
+                        const dueDateForCard = toDateInputValue(resp.due_date) || toDateInputValue(createDueDate);
+
                         // Create the full HTML structure for the new task
                         let html = `<div class="d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1">`;
 
                         // Category badge (default to "Sin categorizar")
                         html += `<div class="item-badges">`;
-                        html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+                        html += `<div class="badge bg-label-secondary category-badge">Sin categorizar</div>`;
                         html += `</div>`;
 
-                        // Timer button
-                        html += renderStartTimer('text-secondary');
+                        if (timesModuleEnabled)
+                        {
+                            html += renderStartTimer('text-secondary');
+                        }
                         html += `</div>`;
 
                         // Task title
@@ -213,31 +286,16 @@
                         // Add the new task with full HTML structure
                         kanban.addElement(columnStatusId, {
                             title: html,
-                            id: resp.task?.id || `new-${Date.now()}`
+                            id: elementId
                         });
 
-                        // Add data attributes to the new task element after it's added to DOM
-                        setTimeout(() => {
-                            const newTaskElement = document.querySelector(`.kanban-item[data-eid="${resp.task?.id || `new-${Date.now()}`}"]`);
-                            if (newTaskElement && resp.task) {
-                                newTaskElement.setAttribute('data-task-id', resp.task.id);
-                                newTaskElement.setAttribute('data-category-id', '');
-                                newTaskElement.setAttribute('data-due-date', '');
-                                newTaskElement.setAttribute('data-responsible-id', currentUserId);
-                                newTaskElement.setAttribute('data-estimated-hours', '');
-                                newTaskElement.setAttribute('data-description', title);
-                                newTaskElement.setAttribute('data-attachment', '');
-                                console.log('[Kanban] Added data attributes to new task:', resp.task.id, newTaskElement);
-
-                                // Automatically open the sidebar for the new task
-                                setTimeout(() => {
-                                    console.log('[Kanban] Auto-opening sidebar for new task:', resp.task.id);
-                                    requestAnimationFrame(() => {
-                                        openOffcanvasFromItem(newTaskElement);
-                                    });
-                                }, 200); // Small delay to ensure DOM is ready
-                            }
-                        }, 100);
+                        requestAnimationFrame(() => {
+                            syncNewKanbanItemAttributes(elementId, taskId, {
+                                dueDate: dueDateForCard,
+                                responsibleId: currentUserId,
+                                description: ''
+                            });
+                        });
 
                         // close form
                         form.remove();
@@ -746,7 +804,10 @@
 	const onSave = (ev) => {
 		if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 		const newTitle = inputTitle.value.trim();
-		const newDue = inputDue.value || null;
+		const storedDueDate = taskDiv.getAttribute('data-due-date') || '';
+		const newDue = inputDue.value || storedDueDate || toDateInputValue(new Date());
+		const storeStartDate = toStoreDateTime(newDue);
+		const storeDueDate = toStoreDateTime(newDue);
 		const newDescription = inputDescription ? inputDescription.value.trim() : '';
 
 		// Combine hours and minutes into decimal
@@ -774,8 +835,8 @@
 			formData.append('description', newDescription);
 			formData.append('responsible_id', responsibleId);
 			formData.append('estimated_hours', newEstimatedHours || '');
-			formData.append('start_date', newDue);
-			formData.append('due_date', newDue);
+			formData.append('start_date', storeStartDate);
+			formData.append('due_date', storeDueDate);
 			formData.append('status_id', statusId);
 			formData.append('category_id', categoryId || '');
 			formData.append('board_id', boardId);
@@ -833,13 +894,13 @@
 				{
 					// Update to selected category
 					categoryBadge.textContent = selectedOption.text;
-					categoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+					categoryBadge.className = 'badge bg-label-warning category-badge';
 				}
 				else
 				{
 					// No category selected, show "Sin categorizar"
 					categoryBadge.textContent = 'Sin categorizar';
-					categoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+					categoryBadge.className = 'badge bg-label-secondary category-badge';
 				}
 			}
 			else if (itemBadges)
@@ -848,54 +909,36 @@
 				const newCategoryBadge = document.createElement('div');
 				if (categoryId && selectedOption && selectedOption.text)
 				{
-					newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+					newCategoryBadge.className = 'badge bg-label-warning category-badge';
 					newCategoryBadge.textContent = selectedOption.text;
 				}
 				else
 				{
-					newCategoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+					newCategoryBadge.className = 'badge bg-label-secondary category-badge';
 					newCategoryBadge.textContent = 'Sin categorizar';
 				}
 				itemBadges.appendChild(newCategoryBadge);
 			}
 
-				// Update date badge with color based on days remaining
-					if (newDue)
+				if (newDue)
 				{
-					// Calculate days remaining
-					const today = new Date();
-					today.setHours(0, 0, 0, 0);
-					const dueDate = new Date(newDue);
-					dueDate.setHours(0, 0, 0, 0);
-					const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+					const dueDateHtml = buildDueDateHtml(newDue);
+					let dateEl = taskDiv.querySelector('.date-badge');
+					const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center.flex-wrap.mt-2.pt-1');
+					const leftCol = bottomRow ? bottomRow.querySelector('.d-flex') : null;
 
-					let badgeColor = 'bg-label-secondary';
-					if (daysRemaining < 2)
+					if (dateEl)
 					{
-						badgeColor = 'bg-label-danger';
+						const wrapper = document.createElement('div');
+						wrapper.innerHTML = dueDateHtml;
+						dateEl.replaceWith(wrapper.firstElementChild);
 					}
-					else if (daysRemaining <= 7)
+					else if (leftCol)
 					{
-						badgeColor = 'bg-label-warning';
+						const wrapper = document.createElement('div');
+						wrapper.innerHTML = dueDateHtml;
+						leftCol.insertBefore(wrapper.firstElementChild, leftCol.firstChild);
 					}
-
-					let badge = taskDiv.querySelector('.date-badge');
-						if (!badge)
-						{
-							badge = document.createElement('span');
-						badge.className = `badge ${badgeColor} date-badge`;
-						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
-						if (bottomRow) bottomRow.insertBefore(badge, bottomRow.firstChild);
-					}
-					else
-					{
-						// Update existing badge color classes
-						badge.className = `badge ${badgeColor} date-badge`;
-					}
-					// Format date as DD/MM/YYYY
-					const [year, month, day] = newDue.split('-');
-					const formattedDate = `${day}/${month}/${year}`;
-					if (badge) badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${formattedDate}`;
 				}
 
 					// Update responsible avatar
@@ -1116,6 +1159,8 @@
 			bsTab.show();
 		}
 
+		if (timesModuleEnabled)
+		{
 		// Wire timer buttons inside sidebar (bind once per render)
 		const startTimerBtn = sidebarEl.querySelector('#task-start-timer');
 		const stopTimerBtn = sidebarEl.querySelector('#task-stop-timer');
@@ -1155,6 +1200,7 @@
 		// Ensure buttons carry current task id; actual click handling is delegated below
 		if (startTimerBtn) startTimerBtn.setAttribute('data-task-id', String(taskId));
 		if (stopTimerBtn) stopTimerBtn.setAttribute('data-task-id', String(taskId));
+		}
 
 		offcanvas.show();
 
@@ -1196,6 +1242,7 @@
 
 	// Timer button inside cards
 	document.addEventListener('click', function (e) {
+		if (!timesModuleEnabled) return;
 		const btn = e.target.closest('.start-timer-btn');
 		if (!btn) return;
 		e.stopPropagation();
@@ -1227,6 +1274,7 @@
     // Sidebar timer controls (single request at a time)
     let sidebarTimerBusy = false;
     document.addEventListener('click', function(e) {
+        if (!timesModuleEnabled) return;
         const startBtn = e.target.closest('#task-start-timer');
         const stopBtn = e.target.closest('#task-stop-timer');
         const sidebarEl = document.querySelector('.kanban-update-item-sidebar');

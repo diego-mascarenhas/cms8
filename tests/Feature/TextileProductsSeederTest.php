@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\TextileProductsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,15 +33,34 @@ class TextileProductsSeederTest extends TestCase
         ]);
 
         $user = User::factory()->create();
-        Team::factory()->create([
+        $team = Team::factory()->create([
             'user_id' => $user->id,
-            'name' => "Demo's Team",
+            'name' => 'Demo',
         ]);
+
+        foreach (['products', 'stores', 'orders'] as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => ucfirst($key),
+                    'icon' => 'layout',
+                    'description' => 'Test',
+                    'is_core' => false,
+                    'status' => 1,
+                ],
+            );
+        }
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'assistant');
 
         $this->seed(TextileProductsSeeder::class);
 
-        $team = Team::query()->where('name', "Demo's Team")->first();
+        $team = $team->fresh();
         $this->assertNotNull($team);
+        $this->assertFalse($team->hasModule('products'));
+        $this->assertFalse($team->hasModule('stores'));
+        $this->assertFalse($team->hasModule('orders'));
 
         $this->assertSame(
             18,

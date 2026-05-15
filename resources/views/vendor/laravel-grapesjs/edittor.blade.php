@@ -40,6 +40,17 @@
             line-height: 1;
             white-space: nowrap;
         }
+
+        /*
+         * Globally hide default GrapesJS options toolbar actions (outline, preview, fullscreen, clear canvas).
+         * Scoped to the options panel so device / code / save buttons elsewhere are unaffected.
+         */
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-square-o,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-eye,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-arrows-alt,
+        .gjs-pn-panel.gjs-pn-options .gjs-pn-btn.fa-trash {
+            display: none !important;
+        }
     </style>
     <script>
         window.grapesJsToolbarLabels = {
@@ -157,11 +168,15 @@
                         saveEl.appendChild(saveLabel);
                     }
 
-                    var parent = cancelEl.parentElement;
-                    if (parent && saveEl.parentElement === parent)
+                    if (! editor.get('_humanoToolbarReorderDone'))
                     {
-                        parent.appendChild(cancelEl);
-                        parent.appendChild(saveEl);
+                        var parent = cancelEl.parentElement;
+                        if (parent && saveEl.parentElement === parent)
+                        {
+                            parent.appendChild(cancelEl);
+                            parent.appendChild(saveEl);
+                        }
+                        editor.set('_humanoToolbarReorderDone', true);
                     }
 
                     editor.set('_humanoToolbarEnhanced', true);
@@ -212,42 +227,154 @@
     <script>
         (function ()
         {
-            function bindDefaultBlocksPanel(editor)
+            /**
+             * Match default GrapesJS "views" toolbar: only Blocks active, panel open, Basic category expanded.
+             */
+            function humaTryOpenBlocksPanel(editor)
             {
-                if (! editor || editor.get('_humanoOpenBlocksHook'))
+                if (! editor)
                 {
                     return;
                 }
 
-                editor.set('_humanoOpenBlocksHook', true);
-
-                var ran = false;
-
-                function runOpenBlocksOnce()
+                var viewButtonIds = ['open-blocks', 'open-layers', 'open-tm', 'open-sm'];
+                viewButtonIds.forEach(function (id)
                 {
-                    if (ran)
-                    {
-                        return;
-                    }
-
                     try
                     {
-                        editor.runCommand('open-blocks');
-                        ran = true;
+                        var b = editor.Panels.getButton('views', id);
+                        if (b && typeof b.set === 'function')
+                        {
+                            b.set('active', id === 'open-blocks');
+                        }
                     }
-                    catch (e)
+                    catch (e0)
                     {
-                        console.error(e);
+                    }
+                });
+
+                try
+                {
+                    editor.runCommand('open-blocks');
+                }
+                catch (e)
+                {
+                }
+
+                try
+                {
+                    var btn = editor.Panels.getButton('views', 'open-blocks');
+                    if (btn && typeof btn.set === 'function')
+                    {
+                        btn.set('active', true);
                     }
                 }
+                catch (e2)
+                {
+                }
+
+                try
+                {
+                    if (editor.Panels && typeof editor.Panels.openPanel === 'function')
+                    {
+                        editor.Panels.openPanel('blocks');
+                    }
+                }
+                catch (e3)
+                {
+                }
+
+                humaEnsureBasicBlocksCategoryOpen(editor);
+            }
+
+            /**
+             * Keep "Basic" open and collapse others (e.g. Extra), via API or DOM fallback.
+             */
+            function humaEnsureBasicBlocksCategoryOpen(editor)
+            {
+                try
+                {
+                    if (editor.BlockManager && typeof editor.BlockManager.getCategories === 'function')
+                    {
+                        var cats = editor.BlockManager.getCategories();
+                        if (cats && typeof cats.each === 'function')
+                        {
+                            cats.each(function (cat)
+                            {
+                                if (! cat || typeof cat.get !== 'function' || typeof cat.set !== 'function')
+                                {
+                                    return;
+                                }
+
+                                var id = String(cat.get('id') || '').toLowerCase();
+                                var label = String(cat.get('label') || '').toLowerCase();
+                                var isBasic = id === 'basic' || label.indexOf('basic') !== -1;
+
+                                cat.set('open', isBasic);
+                            });
+                        }
+                    }
+                }
+                catch (e)
+                {
+                }
+
+                try
+                {
+                    document.querySelectorAll('.gjs-blocks-c .gjs-block-category').forEach(function (wrap)
+                    {
+                        var t = wrap.querySelector('.gjs-title');
+                        if (! t)
+                        {
+                            t = wrap.querySelector('.gjs-block-category .gjs-title');
+                        }
+
+                        var txt = t ? String(t.textContent || '').trim() : '';
+                        if (/^basic$/i.test(txt))
+                        {
+                            wrap.classList.add('gjs-open');
+                        }
+                        else if (/^extra$/i.test(txt))
+                        {
+                            wrap.classList.remove('gjs-open');
+                        }
+                    });
+                }
+                catch (e2)
+                {
+                }
+            }
+
+            function bindDefaultBlocksPanel(editor)
+            {
+                if (! editor || editor.get('_humanoOpenBlocksScheduled'))
+                {
+                    return;
+                }
+
+                editor.set('_humanoOpenBlocksScheduled', true);
+
+                var delays = [0, 60, 150, 320, 600, 1100, 1800, 2600];
+                delays.forEach(function (ms)
+                {
+                    setTimeout(function ()
+                    {
+                        humaTryOpenBlocksPanel(editor);
+                    }, ms);
+                });
 
                 editor.on('load', function ()
                 {
-                    setTimeout(runOpenBlocksOnce, 100);
+                    humaTryOpenBlocksPanel(editor);
+                    setTimeout(function ()
+                    {
+                        humaTryOpenBlocksPanel(editor);
+                    }, 120);
+                    setTimeout(function ()
+                    {
+                        humaEnsureBasicBlocksCategoryOpen(editor);
+                    }, 400);
                 });
-
-                setTimeout(runOpenBlocksOnce, 450);
-                setTimeout(runOpenBlocksOnce, 900);
             }
 
             var blocksAttempts = 0;
@@ -266,6 +393,84 @@
             }, 50);
         })();
     </script>
+    <script>
+        (function ()
+        {
+            /**
+             * Remove built-in options buttons (component outline, preview, fullscreen) and extra-buttons canvas-clear.
+             */
+            function humaRemoveUnwantedOptionsPanelButtons(editor)
+            {
+                if (! editor)
+                {
+                    return;
+                }
+
+                var ids = [
+                    'sw-visibility',
+                    'preview',
+                    'fullscreen',
+                    'canvas-preview',
+                    'canvas-fullscreen',
+                    'canvas-clear',
+                ];
+
+                ids.forEach(function (id)
+                {
+                    try
+                    {
+                        editor.Panels.removeButton('options', id);
+                    }
+                    catch (e)
+                    {
+                    }
+                });
+            }
+
+            function bindHumaOptionsPanelButtonPurge(editor)
+            {
+                if (! editor || editor.get('_humanoOptionsPurgeBound'))
+                {
+                    return;
+                }
+
+                editor.set('_humanoOptionsPurgeBound', true);
+
+                function runRemoval()
+                {
+                    humaRemoveUnwantedOptionsPanelButtons(editor);
+                }
+
+                editor.on('load', function ()
+                {
+                    runRemoval();
+                    setTimeout(runRemoval, 200);
+                    setTimeout(runRemoval, 700);
+                    setTimeout(runRemoval, 1600);
+                });
+
+                runRemoval();
+                setTimeout(runRemoval, 120);
+                setTimeout(runRemoval, 450);
+                setTimeout(runRemoval, 1200);
+            }
+
+            var purgeAttempts = 0;
+            var purgeTimer = setInterval(function ()
+            {
+                purgeAttempts++;
+                var editor = window.gjsEditor;
+                if (editor)
+                {
+                    bindHumaOptionsPanelButtonPurge(editor);
+                }
+                if (purgeAttempts > 400)
+                {
+                    clearInterval(purgeTimer);
+                }
+            }, 50);
+        })();
+    </script>
     @if (isset($returnUrl) && filled($returnUrl))
         <script>
             (function ()
@@ -277,6 +482,113 @@
                     window.location.href = returnUrl;
                 }
 
+                function blurCanvasFocus(editor)
+                {
+                    try
+                    {
+                        var frame = editor.Canvas && editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
+                        if (frame && frame.contentDocument && frame.contentDocument.activeElement)
+                        {
+                            frame.contentDocument.activeElement.blur();
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+
+                    try
+                    {
+                        if (document.activeElement && typeof document.activeElement.blur === 'function')
+                        {
+                            document.activeElement.blur();
+                        }
+                    }
+                    catch (e2)
+                    {
+                    }
+                }
+
+                /**
+                 * CKEditor (gjs-plugin-ckeditor) keeps edits in its instance until blur/updateElement.
+                 * Without this, the first Save click after editing often only blurs the RTE.
+                 */
+                function flushCkeditorInCanvas(editor)
+                {
+                    try
+                    {
+                        var frame = editor.Canvas && editor.Canvas.getFrameEl && editor.Canvas.getFrameEl();
+                        if (! frame || ! frame.contentWindow)
+                        {
+                            return;
+                        }
+
+                        var CK = frame.contentWindow.CKEDITOR;
+                        if (! CK || ! CK.instances)
+                        {
+                            return;
+                        }
+
+                        var insts = CK.instances;
+                        for (var id in insts)
+                        {
+                            if (! Object.prototype.hasOwnProperty.call(insts, id))
+                            {
+                                continue;
+                            }
+
+                            var inst = insts[id];
+                            try
+                            {
+                                if (typeof inst.updateElement === 'function')
+                                {
+                                    inst.updateElement();
+                                }
+                                if (inst.focusManager && typeof inst.focusManager.blur === 'function')
+                                {
+                                    inst.focusManager.blur(true);
+                                }
+                            }
+                            catch (inner)
+                            {
+                            }
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+                }
+
+                function deselectForStore(editor)
+                {
+                    try
+                    {
+                        if (typeof editor.select === 'function')
+                        {
+                            editor.select(null);
+                        }
+                    }
+                    catch (e)
+                    {
+                    }
+                }
+
+                function runStoreAfterFlush(editor, done)
+                {
+                    flushCkeditorInCanvas(editor);
+                    blurCanvasFocus(editor);
+                    deselectForStore(editor);
+
+                    window.requestAnimationFrame(function ()
+                    {
+                        flushCkeditorInCanvas(editor);
+                        window.requestAnimationFrame(function ()
+                        {
+                            flushCkeditorInCanvas(editor);
+                            editor.store(done);
+                        });
+                    });
+                }
+
                 function patchEditor()
                 {
                     var editor = window.gjsEditor;
@@ -285,36 +597,50 @@
                         return false;
                     }
 
+                    var cancel = null;
+                    var save = null;
+
                     try
                     {
-                        var cancel = editor.Panels.getButton('options', 'cancel');
-                        if (cancel)
-                        {
-                            cancel.set('command', function ()
-                            {
-                                goReturn();
-                            });
-                        }
-
-                        var save = editor.Panels.getButton('options', 'save');
-                        if (save)
-                        {
-                            save.set('command', function (ed)
-                            {
-                                ed.store(function (err)
-                                {
-                                    if (err)
-                                    {
-                                        return;
-                                    }
-                                    goReturn();
-                                });
-                            });
-                        }
+                        cancel = editor.Panels.getButton('options', 'cancel');
+                        save = editor.Panels.getButton('options', 'save');
                     }
                     catch (e)
                     {
                         console.error(e);
+
+                        return false;
+                    }
+
+                    if (! cancel || ! save)
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        cancel.set('command', function ()
+                        {
+                            goReturn();
+                        });
+
+                        save.set('command', function (ed)
+                        {
+                            runStoreAfterFlush(ed, function (err)
+                            {
+                                if (err)
+                                {
+                                    return;
+                                }
+                                goReturn();
+                            });
+                        });
+                    }
+                    catch (e)
+                    {
+                        console.error(e);
+
+                        return false;
                     }
 
                     return true;

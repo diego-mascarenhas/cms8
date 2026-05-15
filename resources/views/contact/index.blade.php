@@ -26,6 +26,31 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    .contact-list-toolbar {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .contact-list-toolbar .btn {
+        flex-shrink: 0;
+    }
+
+    .contact-list-toolbar__filter {
+        flex: 1 1 0;
+        min-width: 9rem;
+    }
+
+    .contact-list-toolbar .form-group {
+        margin-bottom: 0;
+    }
+
+    .contact-list-toolbar .select2-container {
+        width: 100% !important;
+    }
 </style>
 
 @section('content')
@@ -138,43 +163,26 @@
 
     <div class="card">
         <div class="card-header border-bottom">
-            <div
-                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-                <div class="d-flex gap-2">
-                    <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
-                        <i class="ti ti-plus me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Añadir contacto</span>
-                    </a>
-                    {{-- <button id="import-button" class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-file-import me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Importar</span>
-                    </button> --}}
-                    <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-file-import me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Importar</span>
-                    </a>
-                    @can('create', \App\Models\Contact::class)
-                    <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-target me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Buscar clientes</span>
-                    </a>
-                    @endcan
-                    <a href="{{ route('integrations.google.synced-contacts') }}" class="btn btn-outline-primary btn-sm waves-effect">
-                        <i class="ti ti-brand-google me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">{{ __('Google synced') }}</span>
-                    </a>
-                    <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-file-export me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Exportar</span>
-                    </button> -->
-                </div>
-            </div>
-            <div class="d-flex flex-column flex-md-row gap-3">
-                <div class="flex-grow-1">
+            <div class="contact-list-toolbar">
+                <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+                    <i class="ti ti-plus me-sm-1"></i>
+                    <span class="d-none d-sm-inline-block">Añadir contacto</span>
+                </a>
+                <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                    <i class="ti ti-file-import me-sm-1"></i>
+                    <span class="d-none d-sm-inline-block">Importar</span>
+                </a>
+                @can('create', \App\Models\Contact::class)
+                <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                    <i class="ti ti-target me-sm-1"></i>
+                    <span class="d-none d-sm-inline-block">Buscar clientes</span>
+                </a>
+                @endcan
+                <div class="contact-list-toolbar__filter">
                     <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                         placeholder="Selector de estado emocional" />
                 </div>
-                <div class="flex-grow-1">
+                <div class="contact-list-toolbar__filter">
                     <x-module-categories-select
                         id="CategoryFilter"
                         label=""
@@ -183,7 +191,7 @@
                         :listingFilter="true"
                     />
                 </div>
-                <div class="flex-grow-1" style="visibility: hidden;">
+                <div class="d-none">
                     <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
                         placeholder="Selector de tipo de contacto" />
                 </div>

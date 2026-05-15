@@ -16,12 +16,16 @@
         : [(string) old($errorField, $selected ?? '')];
 @endphp
 
+@php
+    $showSelectHeader = ($label !== null && $label !== '')
+        || ($moduleKey && $allowManageModal && ! $disabled && ! $listingFilter);
+@endphp
+
 <div class="form-group">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
+    @if ($showSelectHeader)
+    <div class="d-flex align-items-center justify-content-between flex-nowrap gap-2 mb-1" style="min-height: 2.25rem;">
         @if($label !== null && $label !== '')
             <label for="{{ $id }}" class="form-label mb-0">{{ $label }}</label>
-        @else
-            <span class="d-none d-md-block"></span>
         @endif
         @if($moduleKey && $allowManageModal && ! $disabled)
             @can('viewAny', \App\Models\Category::class)
@@ -29,6 +33,7 @@
             @endcan
         @endif
     </div>
+    @endif
     <select
         id="{{ $id }}"
         name="{{ $selectName }}"

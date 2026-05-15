@@ -24,6 +24,7 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
@@ -1327,6 +1328,23 @@ class ChatController extends Controller
             'response' => $assistantText,
             'action_performed' => null,
         ];
+        if (! $previewOnly && auth()->check())
+        {
+            $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults(
+                is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [],
+            );
+            if ($createdMessageId !== null)
+            {
+                $redirectUrl = AssistantCreatedMessageRedirect::resolveMessageEditUrlForUser(
+                    auth()->user(),
+                    $createdMessageId,
+                );
+                if ($redirectUrl !== null)
+                {
+                    $payload['redirect_url'] = $redirectUrl;
+                }
+            }
+        }
         if ($hasAudio)
         {
             $payload['transcript'] = $message;

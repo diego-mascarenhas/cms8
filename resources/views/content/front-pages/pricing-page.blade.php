@@ -71,12 +71,14 @@ $planImages = [
         @php
           $id = $plan['id'];
           $img = $planImages[$id] ?? 'assets/img/illustrations/page-pricing-basic.png';
-          $cardBorder = ! empty($plan['popular']) ? 'border-primary border' : 'border rounded';
+          $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
+          $highlightPopular = $checkoutAvailable && ! empty($plan['popular']);
+          $cardBorder = $highlightPopular ? 'border-primary border' : 'border rounded';
         @endphp
         <div class="col-lg-4 mb-md-0 mb-4">
           <div class="card {{ $cardBorder }} shadow-none h-100 d-flex flex-column">
             <div class="card-body d-flex flex-column flex-grow-1">
-              @if (! empty($plan['popular']))
+              @if ($highlightPopular)
                 <div class="position-relative">
                   <div class="position-absolute end-0 top-0">
                     <span class="badge bg-label-primary">{{ __('humano_pricing.most_popular') }}</span>
@@ -87,19 +89,25 @@ $planImages = [
                 <img src="{{ asset($img) }}" alt="" height="140" class="img-fluid">
               </div>
               <h3 class="card-title text-center mb-1">{{ __('humano_pricing.plans.'.$id.'.name') }}</h3>
-              <p class="text-center text-muted small flex-grow-0">{{ __('humano_pricing.plans.'.$id.'.description') }}</p>
+              <div class="pricing-plan-description-slot">
+                <p class="text-center text-muted small mb-0">{{ __('humano_pricing.plans.'.$id.'.description') }}</p>
+              </div>
 
-              <div class="text-center my-3">
-                <div class="d-flex justify-content-center align-items-baseline flex-wrap gap-1">
-                  <h1 class="price-toggle price-yearly display-4 mb-0 text-primary">{{ $plan['yearly_amount'] }}</h1>
-                  <h1 class="price-toggle price-monthly display-4 mb-0 text-primary d-none">{{ $plan['monthly_amount'] }}</h1>
-                  <span class="h4 text-muted mb-0">€</span>
-                  <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-yearly">{{ __('humano_pricing.per_year_suffix') }}</span>
-                  <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-monthly d-none">{{ __('humano_pricing.per_month_suffix') }}</span>
-                </div>
-                <small class="price-yearly text-muted d-block mb-0">{{ __('humano_pricing.billed_annually') }}</small>
-                <small class="price-monthly text-muted d-none">{{ __('humano_pricing.billed_monthly') }}</small>
-                <small class="d-block text-muted mt-1 mb-0">{{ __('humano_pricing.prices_plus_vat') }}</small>
+              <div class="text-center my-2 pricing-plan-amount-slot">
+                @if ($checkoutAvailable)
+                  <div class="d-flex justify-content-center align-items-baseline flex-wrap gap-1">
+                    <h1 class="price-toggle price-yearly display-4 mb-0 text-primary">{{ $plan['yearly_amount'] }}</h1>
+                    <h1 class="price-toggle price-monthly display-4 mb-0 text-primary d-none">{{ $plan['monthly_amount'] }}</h1>
+                    <span class="h4 text-muted mb-0">€</span>
+                    <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-yearly">{{ __('humano_pricing.per_year_suffix') }}</span>
+                    <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-monthly d-none">{{ __('humano_pricing.per_month_suffix') }}</span>
+                  </div>
+                  <small class="price-yearly text-muted d-block mb-0">{{ __('humano_pricing.billed_annually') }}</small>
+                  <small class="price-monthly text-muted d-none">{{ __('humano_pricing.billed_monthly') }}</small>
+                  <small class="d-block text-muted mt-1 mb-0">{{ __('humano_pricing.prices_plus_vat') }}</small>
+                @else
+                  <p class="mb-0 text-muted fs-5 fw-semibold">{{ __('humano_pricing.coming_soon') }}</p>
+                @endif
               </div>
 
               @php
@@ -117,9 +125,15 @@ $planImages = [
               @endif
 
               <div class="mt-auto pt-2">
-                <a href="{{ $plan['checkout_href'] }}" class="btn {{ ! empty($plan['popular']) ? 'btn-primary' : 'btn-label-primary' }} d-grid w-100">
-                  <i class="ti ti-credit-card me-1" aria-hidden="true"></i>{{ __('humano_pricing.subscribe') }}
-                </a>
+                @if ($checkoutAvailable)
+                  <a href="{{ $plan['checkout_href'] }}" class="btn btn-primary d-grid w-100">
+                    {{ __('humano_pricing.subscribe') }}
+                  </a>
+                @else
+                  <span class="btn {{ $highlightPopular ? 'btn-primary' : 'btn-label-primary' }} d-grid w-100 disabled" style="cursor: not-allowed; pointer-events: none;">
+                    {{ __('humano_pricing.coming_soon') }}
+                  </span>
+                @endif
               </div>
             </div>
           </div>

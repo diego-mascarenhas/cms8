@@ -36,6 +36,10 @@ class TemplateEditorReturnRedirectTest extends TestCase
         $this->assertStringContainsString('runOpenBlocksOnce', $html);
         $this->assertStringContainsString('var returnUrl = ', $html);
         $this->assertStringContainsString('goReturn', $html);
+        $this->assertStringContainsString('blurCanvasFocus', $html);
+        $this->assertStringContainsString('flushCkeditorInCanvas', $html);
+        $this->assertStringContainsString('runStoreAfterFlush', $html);
+        $this->assertStringContainsString('requestAnimationFrame', $html);
     }
 
     public function test_template_editor_omits_return_script_for_untrusted_return_url(): void

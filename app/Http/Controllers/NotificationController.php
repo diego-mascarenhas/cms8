@@ -7,6 +7,7 @@ use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -71,6 +72,12 @@ class NotificationController extends Controller
     public function show(Notification $notification)
     {
         $notification->load(['contact', 'type', 'user', 'team']);
+
+        if ($this->userIsNotificationRecipient($notification) && ! $notification->is_read)
+        {
+            $notification->markAsRead();
+            $notification->refresh();
+        }
 
         return view('notification.show', compact('notification'));
     }
@@ -180,16 +187,70 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark notification as read
+     * Mark notification as read (navbar / recipient).
      */
-    public function markAsRead(Notification $notification)
+    public function markAsRead(Notification $notification): JsonResponse
     {
-        $notification->markAsRead();
+        $this->authorizeNotificationRecipient($notification);
+
+        if (! $notification->is_read)
+        {
+            $notification->markAsRead();
+            $notification->refresh();
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Notificación marcada como leída',
+            'message' => __('app.navbar_notification_marked_read'),
+            'is_read' => $notification->is_read,
+            'read_at' => $notification->read_at?->toIso8601String(),
+            'read_at_formatted' => $notification->formatted_read_at,
         ]);
+    }
+
+    /**
+     * Mark all unread notifications for the authenticated recipient as read.
+     */
+    public function markAllAsRead(): JsonResponse
+    {
+        $userId = auth()->id();
+        if (! $userId)
+        {
+            abort(401);
+        }
+
+        $notifications = Notification::query()
+            ->forRecipientUser($userId)
+            ->unread()
+            ->get();
+
+        foreach ($notifications as $notification)
+        {
+            $notification->markAsRead();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.navbar_notification_marked_all_read'),
+            'marked_count' => $notifications->count(),
+            'unread_count' => 0,
+            'read_at_formatted' => now()->isoFormat('D MMM YYYY, HH:mm'),
+        ]);
+    }
+
+    private function userIsNotificationRecipient(Notification $notification): bool
+    {
+        $contactUserId = $notification->contact?->user_id;
+
+        return $contactUserId !== null && (int) $contactUserId === (int) auth()->id();
+    }
+
+    private function authorizeNotificationRecipient(Notification $notification): void
+    {
+        if (! $this->userIsNotificationRecipient($notification))
+        {
+            abort(403);
+        }
     }
 
     /**

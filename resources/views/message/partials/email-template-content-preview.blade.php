@@ -10,6 +10,9 @@
     'duplicateFormId' => null,
     'duplicateModalId' => null,
     'removeTemplateUrl' => null,
+    'useMailHtmlTextarea' => false,
+    'mailHtmlTextareaValue' => '',
+    'mailHtmlTextareaReadonly' => false,
 ])
 
 @php
@@ -18,6 +21,12 @@
         ? \Illuminate\Support\Str::limit(rtrim($templateLabel).' ('.__('app.email_template_copy_suffix').')', 75, '')
         : __('app.email_template_duplicate_default_name');
 @endphp
+
+@once('message-email-test-send-modal-script')
+    @push('scripts')
+        @include('message.partials.email-test-send-modal-script')
+    @endpush
+@endonce
 
 @include('message.partials.email-template-content-preview-card', [
     'previewHtml' => $previewHtml,
@@ -31,6 +40,9 @@
     'duplicateFormId' => $duplicateFormId,
     'duplicateModalId' => $duplicateModalId,
     'removeTemplateUrl' => $removeTemplateUrl,
+    'useMailHtmlTextarea' => $useMailHtmlTextarea,
+    'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+    'mailHtmlTextareaReadonly' => $mailHtmlTextareaReadonly,
 ])
 
 @if (filled($templateHashedId) && filled($duplicateFormId))

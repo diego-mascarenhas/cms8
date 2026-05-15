@@ -14,6 +14,7 @@ return [
     'billed_monthly' => 'Facturación mensual.',
     'prices_plus_vat' => '+ I.V.A.',
     'subscribe' => 'Suscribirse',
+    'coming_soon' => 'Próximamente',
     'coupon_title' => '¿Tienes un código de amigo?',
     'coupon_body' => 'Usa el código :code en el checkout cuando aparezca el campo de promoción y obtén un descuento del 50%!!!',
     'coupon_copy' => 'Copiar código',

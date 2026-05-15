@@ -5,7 +5,102 @@ namespace App\Helpers;
 class DnsHelper
 {
     /**
-     * Check SPF record for a domain
+     * SPF mechanism that must appear on the apex SPF record or inside a followed {@code include:} chain.
+     */
+    public const REVISION_ALPHA_SPF_INCLUDE = 'include:spf.revisionalpha.com';
+
+    /**
+     * Example minimal SPF (shown in UI / help); the live record may add other mechanisms.
+     */
+    public const REQUIRED_REVISION_ALPHA_SPF_TXT = 'v=spf1 include:spf.revisionalpha.com -all';
+
+    /**
+     * Whether this SPF string contains the Revision Alpha include (case-insensitive).
+     */
+    public static function spfIncludesRevisionAlpha(string $spfRecord): bool
+    {
+        return stripos($spfRecord, self::REVISION_ALPHA_SPF_INCLUDE) !== false;
+    }
+
+    /**
+     * @param  list<string>  $checkedDomains
+     * @return array{ok: bool, includes_checked: list<string>}
+     */
+    private static function spfIncludesRevisionAlphaRecursive(string $spfRecord, array $checkedDomains, int $depth): array
+    {
+        if ($depth > 5)
+        {
+            return ['ok' => false, 'includes_checked' => $checkedDomains];
+        }
+
+        if (self::spfIncludesRevisionAlpha($spfRecord))
+        {
+            return ['ok' => true, 'includes_checked' => $checkedDomains];
+        }
+
+        preg_match_all('/include:([^\s]+)/i', $spfRecord, $matches);
+
+        if (empty($matches[1]))
+        {
+            return ['ok' => false, 'includes_checked' => $checkedDomains];
+        }
+
+        foreach ($matches[1] as $includeDomain)
+        {
+            if (in_array($includeDomain, $checkedDomains, true))
+            {
+                continue;
+            }
+
+            $checkedDomains[] = $includeDomain;
+
+            try
+            {
+                $includeTxtRecords = dns_get_record($includeDomain, DNS_TXT);
+
+                if (! $includeTxtRecords)
+                {
+                    continue;
+                }
+
+                foreach ($includeTxtRecords as $includeRecord)
+                {
+                    $includeTxt = trim($includeRecord['txt'] ?? '');
+
+                    if (stripos($includeTxt, 'v=spf1') !== 0)
+                    {
+                        continue;
+                    }
+
+                    $result = self::spfIncludesRevisionAlphaRecursive($includeTxt, $checkedDomains, $depth + 1);
+                    $checkedDomains = $result['includes_checked'];
+
+                    if ($result['ok'])
+                    {
+                        return ['ok' => true, 'includes_checked' => $checkedDomains];
+                    }
+
+                    break;
+                }
+            } catch (\Exception $e)
+            {
+                continue;
+            }
+        }
+
+        return ['ok' => false, 'includes_checked' => $checkedDomains];
+    }
+
+    /**
+     * Check SPF on the domain apex: must include {@see REVISION_ALPHA_SPF_INCLUDE} (directly or via {@code include:} chain).
+     *
+     * @return array{
+     *     exists: bool,
+     *     has_mailbaby: bool,
+     *     record: string|null,
+     *     error: string|null,
+     *     includes_checked: list<string>
+     * }
      */
     public static function checkSpfRecord($domain)
     {
@@ -24,23 +119,50 @@ class DnsHelper
                 ];
             }
 
+            $spfFound = false;
+            $firstSpfRecord = null;
+            $lastIncludesChecked = [];
+
             foreach ($txtRecords as $record)
             {
-                $txt = $record['txt'] ?? '';
+                $txt = trim($record['txt'] ?? '');
 
-                // Check if it's an SPF record
-                if (strpos($txt, 'v=spf1') === 0)
+                if (stripos($txt, 'v=spf1') !== 0)
                 {
-                    $result = self::checkSpfRecursive($txt, $domain);
+                    continue;
+                }
 
+                $spfFound = true;
+
+                if ($firstSpfRecord === null)
+                {
+                    $firstSpfRecord = $txt;
+                }
+
+                $result = self::spfIncludesRevisionAlphaRecursive($txt, [], 0);
+                $lastIncludesChecked = $result['includes_checked'];
+
+                if ($result['ok'])
+                {
                     return [
                         'exists' => true,
-                        'has_mailbaby' => $result['has_mailbaby'],
+                        'has_mailbaby' => true,
                         'record' => $txt,
                         'error' => null,
                         'includes_checked' => $result['includes_checked'],
                     ];
                 }
+            }
+
+            if ($spfFound)
+            {
+                return [
+                    'exists' => true,
+                    'has_mailbaby' => false,
+                    'record' => $firstSpfRecord,
+                    'error' => __('app.email_spf_record_required_include'),
+                    'includes_checked' => $lastIncludesChecked,
+                ];
             }
 
             return [
@@ -63,159 +185,6 @@ class DnsHelper
     }
 
     /**
-     * Recursively check SPF includes for MailBaby
-     */
-    private static function checkSpfRecursive($spfRecord, $originalDomain, $checkedDomains = [], $depth = 0)
-    {
-        // Prevent infinite recursion
-        if ($depth > 5)
-        {
-            return ['has_mailbaby' => false, 'includes_checked' => $checkedDomains];
-        }
-
-        $includesChecked = $checkedDomains;
-
-        // Check for REVISION ALPHA SPF includes
-        $hasRevisionAlpha = (
-            strpos($spfRecord, 'include:spf.revisionalpha.com') !== false ||
-            strpos($spfRecord, 'include:mail.baby') !== false ||
-            strpos($spfRecord, 'include:spf-c.mailbaby.net') !== false ||
-            strpos($spfRecord, 'include:relay.mailbaby.net') !== false
-        );
-
-        if ($hasRevisionAlpha)
-        {
-            return ['has_mailbaby' => true, 'includes_checked' => $includesChecked];
-        }
-
-        // Find all include: directives
-        preg_match_all('/include:([^\s]+)/', $spfRecord, $matches);
-
-        if (! empty($matches[1]))
-        {
-            foreach ($matches[1] as $includeDomain)
-            {
-                // Skip if we've already checked this domain
-                if (in_array($includeDomain, $checkedDomains))
-                {
-                    continue;
-                }
-
-                $includesChecked[] = $includeDomain;
-
-                try
-                {
-                    $includeTxtRecords = dns_get_record($includeDomain, DNS_TXT);
-
-                    if ($includeTxtRecords)
-                    {
-                        foreach ($includeTxtRecords as $includeRecord)
-                        {
-                            $includeTxt = $includeRecord['txt'] ?? '';
-
-                            if (strpos($includeTxt, 'v=spf1') === 0)
-                            {
-                                $result = self::checkSpfRecursive(
-                                    $includeTxt,
-                                    $originalDomain,
-                                    $includesChecked,
-                                    $depth + 1,
-                                );
-
-                                $includesChecked = $result['includes_checked'];
-
-                                if ($result['has_mailbaby'])
-                                {
-                                    return ['has_mailbaby' => true, 'includes_checked' => $includesChecked];
-                                }
-                                break;
-                            }
-                        }
-                    }
-                } catch (\Exception $e)
-                {
-                    // Continue checking other includes if one fails
-                    continue;
-                }
-            }
-        }
-
-        return ['has_mailbaby' => false, 'includes_checked' => $includesChecked];
-    }
-
-    /**
-     * Check MailBaby authorization record (_mb)
-     */
-    public static function checkMailBabyAuth($domain, $expectedUser = null)
-    {
-        try
-        {
-            // Special case: mail.baby domain doesn't need _mb record
-            if (strtolower($domain) === 'mail.baby')
-            {
-                return [
-                    'exists' => true,
-                    'authorized' => true,
-                    'users' => ['mail.baby'],
-                    'record' => 'Native MailBaby domain',
-                    'error' => null,
-                ];
-            }
-
-            $mbDomain = '_mb.'.$domain;
-            $txtRecords = dns_get_record($mbDomain, DNS_TXT);
-
-            if (! $txtRecords)
-            {
-                return [
-                    'exists' => false,
-                    'authorized' => false,
-                    'users' => [],
-                    'record' => null,
-                    'error' => 'No _mb TXT record found',
-                ];
-            }
-
-            foreach ($txtRecords as $record)
-            {
-                $txt = $record['txt'] ?? '';
-
-                // MailBaby auth records typically contain user IDs like "mb80474"
-                if (preg_match_all('/mb\d+/', $txt, $matches))
-                {
-                    $users = $matches[0];
-                    $authorized = $expectedUser ? in_array($expectedUser, $users) : ! empty($users);
-
-                    return [
-                        'exists' => true,
-                        'authorized' => $authorized,
-                        'users' => $users,
-                        'record' => $txt,
-                        'error' => null,
-                    ];
-                }
-            }
-
-            return [
-                'exists' => true,
-                'authorized' => false,
-                'users' => [],
-                'record' => $txtRecords[0]['txt'] ?? '',
-                'error' => 'Invalid MailBaby auth record format',
-            ];
-        } catch (\Exception $e)
-        {
-            return [
-                'exists' => false,
-                'authorized' => false,
-                'users' => [],
-                'record' => null,
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    /**
      * Get domain from email address
      */
     public static function getDomainFromEmail($email)
@@ -226,9 +195,11 @@ class DnsHelper
     }
 
     /**
-     * Check both SPF and MailBaby auth for an email address
+     * Check SPF for the domain of an outgoing From address.
+     *
+     * @return array{domain: string|null, spf: array<string, mixed>}
      */
-    public static function checkEmailDomainConfiguration($email, $expectedMailBabyUser = null)
+    public static function checkEmailDomainConfiguration(string $email): array
     {
         $domain = self::getDomainFromEmail($email);
 
@@ -237,19 +208,17 @@ class DnsHelper
             return [
                 'domain' => null,
                 'spf' => ['exists' => false, 'error' => 'Invalid email format'],
-                'mailbaby_auth' => ['exists' => false, 'error' => 'Invalid email format'],
             ];
         }
 
         return [
             'domain' => $domain,
             'spf' => self::checkSpfRecord($domain),
-            'mailbaby_auth' => self::checkMailBabyAuth($domain, $expectedMailBabyUser),
         ];
     }
 
     /**
-     * DNS / MailBaby checks for the current team's outgoing-from address (same logic as message detail).
+     * DNS (SPF) for the current team's outgoing From address (same logic as message detail).
      *
      * @return array<string, mixed>|null
      */
@@ -280,17 +249,12 @@ class DnsHelper
             return null;
         }
 
-        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
-
-        return self::checkEmailDomainConfiguration(
-            $emailConfig['from_address'],
-            $apiUser,
-        );
+        return self::checkEmailDomainConfiguration((string) $emailConfig['from_address']);
     }
 
     /**
-     * Whether the broadcast "Send now" UI may proceed: own SMTP, or MailBaby domain authorized.
-     * In the local environment, MailBaby/SPF checks are skipped so dev mail (e.g. Mailpit) works.
+     * Whether the broadcast "Send now" UI may proceed: own SMTP, or SPF includes Revision Alpha.
+     * In the local environment, SPF checks are skipped so dev mail (e.g. Mailpit) works.
      *
      * @param  bool|null  $treatAsLocal  For tests: force local bypass; null uses {@see \Illuminate\Foundation\Application::isLocal()}.
      */
@@ -301,10 +265,8 @@ class DnsHelper
             return true;
         }
 
-        $isAuthorized = is_array($dnsStatus)
-            && ($dnsStatus['spf']['has_mailbaby'] ?? false)
-            && ($dnsStatus['mailbaby_auth']['authorized'] ?? false);
+        $spfOk = is_array($dnsStatus) && ($dnsStatus['spf']['has_mailbaby'] ?? false);
 
-        return ! $usingSystemSmtp || $isAuthorized;
+        return ! $usingSystemSmtp || $spfOk;
     }
 }

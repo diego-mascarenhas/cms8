@@ -59,7 +59,8 @@
         csrfToken: '{{ csrf_token() }}',
         currentUserId: {{ auth()->id() }},
         users: @json($users ?? []),
-        categories: @json($categories ?? [])
+        categories: @json($categories ?? []),
+        hasTimesModule: @json(auth()->user()->currentTeam->hasModule('times'))
     };
 </script>
 <script>
@@ -119,6 +120,7 @@
             </p>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-3 mt-3 mt-md-0">
+            @if (auth()->user()->currentTeam->hasModule('projects'))
             <!-- Project Selector -->
             <div class="w-auto">
                 <select class="form-select select2" id="project-selector">
@@ -136,6 +138,7 @@
                 <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-primary waves-effect">
                     <i class="ti ti-external-link me-1"></i>Ir al proyecto
                 </a>
+            @endif
             @endif
 
             <!-- View List Button -->
@@ -181,17 +184,20 @@
                         <span class="align-middle d-none d-md-inline">{{ __('Comunicación') }}</span>
                     </button>
                 </li>
+                @if (auth()->user()->currentTeam->hasModule('times'))
                 <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity">
                         <i class="ti ti-trending-up me-md-1 me-0"></i>
                         <span class="align-middle d-none d-md-inline">{{ __('Actividad') }}</span>
                     </button>
                 </li>
+                @endif
             </ul>
             <div class="tab-content px-0 pb-0">
                 <!-- Update item/tasks -->
                 <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
                     <form>
+                        @if (auth()->user()->currentTeam->hasModule('times'))
                         <div class="d-flex gap-2 mb-3 align-items-center">
                             <button type="button" class="btn btn-success" id="task-start-timer">
                                 <i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
@@ -200,6 +206,7 @@
                                 <i class="ti ti-player-stop me-1"></i>{{ __('Stop Timer') }}
                             </button>
                         </div>
+                        @endif
                         <div class="mb-3">
                             <label class="form-label" for="title">{{ __('Título') }}</label>
                             <input type="text" id="title" class="form-control" placeholder="{{ __('Ingresa el título') }}" />
@@ -324,6 +331,7 @@
                         </div>
                     </div>
                 </div>
+                @if (auth()->user()->currentTeam->hasModule('times'))
                 <!-- Activities -->
                 <div class="tab-pane fade" id="tab-activity" role="tabpanel">
                     <div id="activity-log-container">
@@ -334,6 +342,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

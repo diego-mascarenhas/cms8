@@ -11,8 +11,8 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Textile demo: only categories Ropa, Calzado, Accesorios and their products (local DB, no WooCommerce).
@@ -65,51 +65,6 @@ class TextileProductsSeeder extends Seeder
             ->where('module_id', $productsModule->id)
             ->whereNotIn('name', self::TEXTILE_CATEGORY_NAMES)
             ->forceDelete();
-
-        $now = now();
-        DB::table('module_team')->updateOrInsert(
-            [
-                'module_id' => $productsModule->id,
-                'team_id' => $team->id,
-            ],
-            [
-                'status' => 1,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-        );
-
-        $ordersModule = Module::query()->where('key', 'orders')->first();
-        if ($ordersModule)
-        {
-            DB::table('module_team')->updateOrInsert(
-                [
-                    'module_id' => $ordersModule->id,
-                    'team_id' => $team->id,
-                ],
-                [
-                    'status' => 1,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            );
-        }
-
-        $storesModule = Module::query()->where('key', 'stores')->first();
-        if ($storesModule)
-        {
-            DB::table('module_team')->updateOrInsert(
-                [
-                    'module_id' => $storesModule->id,
-                    'team_id' => $team->id,
-                ],
-                [
-                    'status' => 1,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            );
-        }
 
         $currencyId = Currency::query()->where('code', 'ARS')->value('id')
             ?? Currency::query()->value('id');
@@ -230,6 +185,30 @@ class TextileProductsSeeder extends Seeder
         }
 
         $this->command?->info('✅ Textile seed done: '.count($catalogue).' products, 3 categories (Ropa, Calzado, Accesorios).');
+
+        $this->syncDemoTeamModulesFromPricingPlan($team);
+    }
+
+    /**
+     * Demo catalogue data is seeded without enabling commerce modules in the sidebar
+     * (assistant demo plan excludes products, stores, orders).
+     */
+    private function syncDemoTeamModulesFromPricingPlan(Team $team): void
+    {
+        if (! in_array($team->name, ['Demo', "Demo's Team"], true))
+        {
+            return;
+        }
+
+        $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
+        if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
+        {
+            $planSlug = 'assistant';
+        }
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
+
+        $this->command?->info("🔧 Demo team modules re-synced to Humano plan «{$planSlug}» (commerce modules stay off assistant).");
     }
 
     private function restoreTextileCategoriesIfTrashed(int $teamId, int $moduleId): void

@@ -197,7 +197,8 @@ class TemplateController extends Controller
     }
 
     /**
-     * Duplicate a template (same team) and redirect to the visual editor for the copy.
+     * Duplicate a template (same team). Opens the visual editor for the copy unless the copy
+     * is linked to an existing message (message_id), in which case the user returns to the message screen.
      */
     public function duplicate(DuplicateTemplateRequest $request, string $hashedId): RedirectResponse
     {
@@ -222,7 +223,7 @@ class TemplateController extends Controller
 
         $copy = Template::create([
             'name' => $newName,
-            'status_id' => false,
+            'status_id' => true,
             'gjs_data' => $gjsData,
         ]);
 
@@ -246,6 +247,32 @@ class TemplateController extends Controller
             : 'app.email_template_duplicate_success';
 
         $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+
+        if ($linkedToMessage)
+        {
+            $destination = $returnUrl;
+            if ($destination === null && $messageId > 0)
+            {
+                $destination = route('message.edit', $messageId);
+            }
+
+            if ($destination !== null)
+            {
+                return redirect()
+                    ->to($destination)
+                    ->with('success', __($successKey));
+            }
+        }
+
+        if ($returnUrl !== null && ! $linkedToMessage)
+        {
+            $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+            $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                $returnUrl,
+                $createPath,
+                ['template_id' => (string) $copy->id],
+            );
+        }
         $editorTarget = route('template.editor', $copy->getHashedId());
         if ($returnUrl !== null)
         {

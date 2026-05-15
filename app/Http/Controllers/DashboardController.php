@@ -9,7 +9,6 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
-use App\Services\UserDailyPerformanceInsightService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
@@ -111,6 +110,36 @@ class DashboardController extends Controller
         $recentLeadsCount = Contact::where('team_id', $activeTeam->id)
             ->where('created_at', '>=', now()->subDays(7))
             ->count();
+
+        $authUser = auth()->user();
+        $totalContactsCount = Contact::query()->count();
+        $contactsWithRecentActivityCount = (int) ContactInteraction::query()
+            ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
+            {
+                $query->where('team_id', $activeTeam->id);
+                if ($authUser->hasRole('collaborator'))
+                {
+                    $query->where('responsible_id', $authUser->id);
+                }
+            })
+            ->where('occurred_at', '>=', now()->subDays(7))
+            ->distinct()
+            ->count('contact_id');
+
+        $dashboardContactsCreatedTrend = [
+            'labels' => [],
+            'values' => [],
+        ];
+        for ($dayOffset = 6; $dayOffset >= 0; $dayOffset--)
+        {
+            $dayStart = now()->subDays($dayOffset)->startOfDay();
+            $dayEnd = $dayStart->copy()->addDay();
+            $dashboardContactsCreatedTrend['labels'][] = $dayStart->isoFormat('ddd');
+            $dashboardContactsCreatedTrend['values'][] = Contact::query()
+                ->where('created_at', '>=', $dayStart)
+                ->where('created_at', '<', $dayEnd)
+                ->count();
+        }
 
         // Get contacts to follow up today (filtered by team)
         $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
@@ -319,7 +348,6 @@ class DashboardController extends Controller
         //     }
         //         }
 
-        $authUser = auth()->user();
         $recentContactActivities = ContactInteraction::query()
             ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
             {
@@ -366,13 +394,6 @@ class DashboardController extends Controller
             }
         }
 
-        $dailyPerformanceInsight = null;
-        if ($activeTeam && $authUser->hasAnyRole(['admin', 'root']))
-        {
-            $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
-                ->ensureTodayRecord($authUser, $activeTeam, $mentoringLevelName);
-        }
-
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -391,7 +412,9 @@ class DashboardController extends Controller
             'hasProjects',
             'analyticsChartData',
             'recentContactActivities',
-            'dailyPerformanceInsight',
+            'totalContactsCount',
+            'contactsWithRecentActivityCount',
+            'dashboardContactsCreatedTrend',
         ));
     }
 }

@@ -25,6 +25,7 @@ class PaymentLinkSignupCompletionService
         private readonly CheckoutSessionRetriever $checkoutSessionRetriever,
         private readonly TeamStripeCustomerService $teamStripeCustomerService,
         private readonly TeamCheckoutSessionSubscriptionSyncer $teamCheckoutSessionSubscriptionSyncer,
+        private readonly PaymentLinkAffiliateEnterpriseAttributionService $paymentLinkAffiliateEnterpriseAttributionService,
     ) {}
 
     public function complete(string $sessionId): PaymentLinkSignupOutcome
@@ -186,6 +187,12 @@ class PaymentLinkSignupCompletionService
         $team->refresh();
         $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id, true);
 
+        $this->paymentLinkAffiliateEnterpriseAttributionService->syncBillingEnterpriseReferrerFromSession(
+            $team->fresh(),
+            $session,
+            (int) $user->id,
+        );
+
         Log::info('Payment link signup: Stripe checkout applied to Humano user', array_merge(
             [
                 'stripe_scope' => 'humano_platform',
@@ -265,15 +272,65 @@ class PaymentLinkSignupCompletionService
         return $personal ?? $user->ownedTeams()->orderBy('id')->first();
     }
 
-    private function createUserWithPersonalTeam(string $email, Session $session): User
+    /**
+     * Prefer the payer's person name for Humano (users.name), not the company / legal name from Stripe.
+     * Stripe Checkout exposes customer_details.individual_name and business_name; customer_details.name
+     * often mirrors the business name for B2B checkouts.
+     */
+    private function resolvePayerDisplayNameForUser(string $email, Session $session): string
     {
         $details = $session->customer_details ?? null;
-        $name = trim((string) ($details->name ?? ''));
-        if ($name === '')
+        if ($details === null)
         {
-            $local = Str::before($email, '@');
-            $name = Str::title(str_replace(['.', '_', '-'], ' ', $local));
+            return $this->displayNameFromEmailLocalPart($email);
         }
+
+        $individualName = $this->stripeCustomerDetailString($details, 'individual_name');
+        if ($individualName !== '')
+        {
+            return $individualName;
+        }
+
+        $businessName = $this->stripeCustomerDetailString($details, 'business_name');
+        $genericName = $this->stripeCustomerDetailString($details, 'name');
+
+        if ($genericName !== '' && ($businessName === '' || strcasecmp($genericName, $businessName) !== 0))
+        {
+            return $genericName;
+        }
+
+        return $this->displayNameFromEmailLocalPart($email);
+    }
+
+    /**
+     * @param  \Stripe\StripeObject|object  $details
+     */
+    private function stripeCustomerDetailString(object $details, string $key): string
+    {
+        if (! isset($details->{$key}))
+        {
+            return '';
+        }
+
+        $value = $details->{$key};
+        if (! is_string($value))
+        {
+            return '';
+        }
+
+        return trim($value);
+    }
+
+    private function displayNameFromEmailLocalPart(string $email): string
+    {
+        $local = Str::before($email, '@');
+
+        return Str::title(str_replace(['.', '_', '-'], ' ', $local));
+    }
+
+    private function createUserWithPersonalTeam(string $email, Session $session): User
+    {
+        $name = $this->resolvePayerDisplayNameForUser($email, $session);
 
         $user = DB::transaction(function () use ($name, $email)
         {
@@ -310,16 +367,10 @@ class PaymentLinkSignupCompletionService
     {
         DB::transaction(function () use ($user, $session): void
         {
-            $details = $session->customer_details ?? null;
             $displayName = trim((string) ($user->name ?? ''));
             if ($displayName === '')
             {
-                $displayName = trim((string) ($details->name ?? ''));
-            }
-            if ($displayName === '')
-            {
-                $local = Str::before((string) $user->email, '@');
-                $displayName = Str::title(str_replace(['.', '_', '-'], ' ', $local));
+                $displayName = $this->resolvePayerDisplayNameForUser((string) $user->email, $session);
             }
 
             $team = $user->ownedTeams()->save(Team::forceCreate([

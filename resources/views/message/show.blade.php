@@ -14,7 +14,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3">
-			<span class="text-muted fw-light">Mensajes/</span> {{ $message->name }}
+			<span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ $message->name }}
 		</h4>
 		<p class="text-muted">Vista detallada del mensaje y sus estadísticas</p>
 	</div>

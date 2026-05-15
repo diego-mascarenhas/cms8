@@ -304,7 +304,7 @@
         @endif
 
         <!-- Quick links  -->
-        @if ($configData['showQuickAccess'] || (Auth::check() && Auth::user()->hasRole('developer')))
+        @if ($configData['showQuickAccess'])
             <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
                     data-bs-auto-close="outside" aria-expanded="false">

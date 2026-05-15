@@ -35,5 +35,7 @@ class DemoSeeder extends Seeder
         DemoMailCampaignData::seed($team, $this->command);
 
         $this->call(DemoWhatsAppConversationsSeeder::class);
+
+        $this->call(DemoNotificationsSeeder::class);
     }
 }

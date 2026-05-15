@@ -670,6 +670,12 @@ class Contact extends Model implements HasMedia
      */
     public function mailComposeListUrl(): ?string
     {
+        $team = $this->team;
+        if ($team !== null && ! $team->hasModule('mailbox'))
+        {
+            return null;
+        }
+
         $email = $this->email;
         if (! is_string($email) || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL))
         {

@@ -78,6 +78,17 @@
                                 </div>
 
                                 <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-mail display-4 text-primary mb-3"></i>
+                                            <h5 class="card-title">{{ __('help_index_email_spf_card_title') }}</h5>
+                                            <p class="card-text">{{ __('help_index_email_spf_card_body') }}</p>
+                                            <a href="{{ route('help.email-spf-dns') }}" class="btn btn-primary">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-info">
                                         <div class="card-body text-center">
                                             <i class="ti ti-api display-4 text-info mb-3"></i>

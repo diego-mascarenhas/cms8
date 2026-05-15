@@ -148,7 +148,7 @@ class AgentConversationContextService
     /**
      * Get messages for display in the UI (e.g. web chat). Scoped to team so each team only sees its own assistant conversations.
      *
-     * @return array<int, array{role: string, content: string, created_at: \Carbon\Carbon}>
+     * @return array<int, array{role: string, content: string, created_at: \Carbon\Carbon, routed_to: string|null}>
      */
     public function getMessagesForDisplay(int $userId, int $limit = 50, ?int $teamId = null): array
     {
@@ -182,6 +182,7 @@ class AgentConversationContextService
                 'role' => $m->role,
                 'content' => $m->content,
                 'created_at' => $m->created_at,
+                'routed_to' => $m->role === 'assistant' ? ($m->meta['routed_to'] ?? null) : null,
             ])
             ->values()
             ->all();

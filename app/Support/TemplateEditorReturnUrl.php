@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final class TemplateEditorReturnUrl
 {
@@ -71,5 +72,55 @@ final class TemplateEditorReturnUrl
         $sep = str_contains($editorUrl, '?') ? '&' : '?';
 
         return $editorUrl.$sep.http_build_query(['return_url' => $returnUrl]);
+    }
+
+    /**
+     * When the return URL path matches $path (e.g. message create), merge query parameters into the URL.
+     */
+    public static function mergeQueryWhenPathMatches(?string $returnUrl, string $path, array $merge): ?string
+    {
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            return $returnUrl;
+        }
+
+        $normalizedPath = self::normalizePath($path);
+        $returnPath = self::normalizePath(parse_url($returnUrl, PHP_URL_PATH) ?? '');
+
+        if ($returnPath !== $normalizedPath)
+        {
+            return $returnUrl;
+        }
+
+        $parts = parse_url($returnUrl);
+        if ($parts === false)
+        {
+            return $returnUrl;
+        }
+
+        parse_str($parts['query'] ?? '', $query);
+        foreach ($merge as $key => $value)
+        {
+            $query[$key] = $value;
+        }
+
+        $queryString = http_build_query($query);
+        $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
+
+        if (! empty($parts['scheme']) && ! empty($parts['host']))
+        {
+            $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+
+            return $parts['scheme'].'://'.$parts['host'].$port.($parts['path'] ?? '').($queryString !== '' ? '?'.$queryString : '').$fragment;
+        }
+
+        return ($parts['path'] ?? '').($queryString !== '' ? '?'.$queryString : '').$fragment;
+    }
+
+    private static function normalizePath(string $path): string
+    {
+        $path = '/'.ltrim($path, '/');
+
+        return Str::before($path, '?') ?: '/';
     }
 }

@@ -11,6 +11,9 @@
     'duplicateModalId' => null,
     'removeTemplateUrl' => null,
     'emailTestSendModalInline' => false,
+    'useMailHtmlTextarea' => false,
+    'mailHtmlTextareaValue' => '',
+    'mailHtmlTextareaReadonly' => false,
 ])
 
 @php
@@ -42,12 +45,16 @@
                 </span>
             @endif
                 @if (filled($grapesEditorUrl) && $grapesEditorUrl !== '#')
-                    <a
-                        href="{{ $grapesEditorUrl }}"
+                    <button
+                        type="button"
                         class="btn btn-sm btn-primary waves-effect waves-light"
+                        data-huma-open-visual-editor="1"
+                        data-editor-url="{{ $grapesEditorUrl }}"
+                        data-template-id="{{ (int) ($templateId ?? 0) }}"
+                        data-message-id="{{ filled($messageId) ? (int) $messageId : '' }}"
                     >
                         <i class="ti ti-edit ti-sm me-1"></i>{{ __('Abrir editor visual') }}
-                    </a>
+                    </button>
                 @else
                     <span
                         class="btn btn-sm btn-primary disabled"
@@ -94,6 +101,22 @@
         @endif
 
         <div class="mb-3">
+            @if ($useMailHtmlTextarea)
+                <label class="form-label" for="message-template-html-quill-editor">{{ __('Contenido del correo') }}</label>
+                {{-- JSON carrier: raw HTML inside <textarea> breaks on </textarea> and confuses the HTML parser. --}}
+                <script type="application/json" id="message-template-html-initial-json">@json($mailHtmlTextareaValue)</script>
+                <textarea
+                    id="message-template-html-body"
+                    name="template_html"
+                    class="d-none"
+                    spellcheck="false"
+                    autocomplete="off"
+                    @if ($mailHtmlTextareaReadonly) readonly @endif
+                ></textarea>
+                <div class="border rounded overflow-hidden bg-white message-template-quill-wrap" style="min-height: 320px;">
+                    <div id="message-template-html-quill-editor" class="message-template-html-quill-root"></div>
+                </div>
+            @else
             <div class="border rounded overflow-hidden">
                 <iframe
                     id="{{ $iframeId }}"
@@ -117,6 +140,7 @@
                 </script>
                 @endunless
             </div>
+            @endif
         </div>
     </div>
 </div>

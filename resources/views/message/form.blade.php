@@ -1,11 +1,39 @@
 @extends('layouts/layoutMaster')
 
+@php
+    $messageFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
+    $messageFpLocaleBundle = in_array($messageFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+    $scheduleMin = \Carbon\Carbon::now(config('app.timezone'))->format('Y-m-d H:i');
+    $rawScheduleAt = old('schedule_send_at');
+    if ($rawScheduleAt === null || $rawScheduleAt === '')
+    {
+        $rawScheduleAt = (isset($data->scheduled_send_at) && $data->scheduled_send_at)
+            ? \Carbon\Carbon::parse($data->scheduled_send_at)->timezone(config('app.timezone'))->format('Y-m-d H:i')
+            : '';
+    }
+    $messageScheduleInputValue = '';
+    if ($rawScheduleAt !== '')
+    {
+        try
+        {
+            $messageScheduleInputValue = \Carbon\Carbon::parse($rawScheduleAt)->timezone(config('app.timezone'))->format('Y-m-d H:i');
+        }
+        catch (\Throwable $e)
+        {
+            $messageScheduleInputValue = '';
+        }
+    }
+@endphp
+
 @section('title', __('Messages'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -13,8 +41,13 @@
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave-phone.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
+@if ($messageFpLocaleBundle)
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/{{ $messageFpLocale }}.js"></script>
+@endif
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -64,90 +97,71 @@ function deleteMessage(messageId) {
         }
     });
 }
-</script>
 
-<script>
 document.addEventListener('DOMContentLoaded', function () {
-    const timeUnitSelect = document.getElementById('time_unit');
-    const minHoursInput = document.getElementById('min_hours_between_emails');
-    if (!timeUnitSelect || !minHoursInput) {
-        return;
-    }
-
-    if (!timeUnitSelect.dataset.prevUnit) {
-        timeUnitSelect.dataset.prevUnit = timeUnitSelect.value;
-    }
-
-    timeUnitSelect.addEventListener('change', function () {
-        const prevUnit = timeUnitSelect.dataset.prevUnit || 'days';
-        const nextUnit = timeUnitSelect.value;
-        const displayed = parseFloat(minHoursInput.value) || 0;
-
-        let hoursNow = displayed;
-        if (prevUnit === 'days') {
-            hoursNow = displayed * 24;
-        } else if (prevUnit === 'weeks') {
-            hoursNow = displayed * 24 * 7;
-        }
-
-        if (nextUnit === 'hours') {
-            minHoursInput.value = Math.round(hoursNow);
-            minHoursInput.setAttribute('step', '1');
-        } else if (nextUnit === 'days') {
-            minHoursInput.value = Math.round((hoursNow / 24) * 100) / 100;
-            minHoursInput.setAttribute('step', '0.5');
-        } else {
-            minHoursInput.value = Math.round((hoursNow / (24 * 7)) * 10) / 10;
-            minHoursInput.setAttribute('step', '0.1');
-        }
-
-        timeUnitSelect.dataset.prevUnit = nextUnit;
-    });
-});
-
-// Convert display unit to stored hours before submit (idempotent for bfcache / validation re-renders).
-document.addEventListener('DOMContentLoaded', function ()
-{
+    var confirmBtn = document.getElementById('message-schedule-confirm-btn');
+    var scheduleInput = document.getElementById('message-schedule-at-input');
     var storeForm = document.getElementById('message-store-form');
-    if (! storeForm)
-    {
+    var helper = document.getElementById('message-schedule-submit-helper');
+    var scheduleModal = document.getElementById('messageScheduleModal');
+    if (!confirmBtn || !scheduleInput || !storeForm || !helper || !scheduleModal) {
         return;
     }
-
-    storeForm.addEventListener('submit', function ()
-    {
-        var input = document.getElementById('min_hours_between_emails');
-        var unitEl = document.getElementById('time_unit');
-        if (! input || ! unitEl)
-        {
+    var fpLocaleKey = scheduleInput.getAttribute('data-fp-locale') || '';
+    var fpOpts = {
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d H:i',
+        minuteIncrement: 1,
+        allowInput: false,
+        clickOpens: true,
+        monthSelectorType: 'static'
+    };
+    var minDt = scheduleInput.getAttribute('data-min-datetime');
+    if (minDt) {
+        fpOpts.minDate = minDt;
+    }
+    if (fpLocaleKey && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns[fpLocaleKey]) {
+        fpOpts.locale = flatpickr.l10ns[fpLocaleKey];
+    }
+    if (window.jQuery && window.jQuery.fn.flatpickr) {
+        window.jQuery(scheduleInput).flatpickr(fpOpts);
+    } else if (typeof flatpickr === 'function') {
+        flatpickr(scheduleInput, fpOpts);
+    } else if (window.flatpickr) {
+        window.flatpickr(scheduleInput, fpOpts);
+    }
+    confirmBtn.addEventListener('click', function () {
+        if (!scheduleInput.value) {
+            var requiredMsg = scheduleModal.getAttribute('data-msg-required') || '';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', text: requiredMsg, buttonsStyling: false, customClass: { confirmButton: 'btn btn-primary' } });
+            } else {
+                window.alert(requiredMsg);
+            }
             return;
         }
-
-        storeForm.querySelectorAll('input[name="min_hours_between_emails"][data-min-hours-submit-synth="1"]').forEach(function (n)
-        {
-            n.remove();
+        storeForm.querySelectorAll('input[name="schedule_send_at"]').forEach(function (el) {
+            el.remove();
         });
-        input.setAttribute('name', 'min_hours_between_emails');
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'schedule_send_at';
+        hidden.value = scheduleInput.value;
+        storeForm.appendChild(hidden);
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var inst = bootstrap.Modal.getInstance(scheduleModal);
+            if (inst) {
+                scheduleModal.addEventListener('hidden.bs.modal', function onScheduleModalHidden() {
+                    scheduleModal.removeEventListener('hidden.bs.modal', onScheduleModalHidden);
+                    helper.click();
+                });
+                inst.hide();
 
-        var unit = unitEl.value;
-        var value = parseFloat(input.value) || 0;
-        var hours = value;
-        if (unit === 'days')
-        {
-            hours = value * 24;
-        } else if (unit === 'weeks')
-        {
-            hours = value * 24 * 7;
+                return;
+            }
         }
-
-        var hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'min_hours_between_emails';
-        hiddenInput.value = String(Math.round(hours));
-        hiddenInput.setAttribute('data-min-hours-submit-synth', '1');
-
-        input.removeAttribute('name');
-        storeForm.appendChild(hiddenInput);
+        helper.click();
     });
 });
 </script>
@@ -157,110 +171,64 @@ document.addEventListener('DOMContentLoaded', function ()
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }} News</h4>
-        <p class="text-muted small mb-0">{{ __('Channel, template and audience.') }}</p>
+        <p class="text-muted small mb-0">{{ __('app.message_form_subtitle') }}</p>
     </div>
-    @if(isset($data->id))
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
-            <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
-        </button>
+    <div class="d-flex align-content-center flex-wrap gap-3 align-items-center">
+        <div class="btn-group">
+            <button type="submit" form="message-store-form" name="save_intent" value="save" class="btn btn-primary">
+                <i class="ti ti-device-floppy me-1"></i>{{ __('Save') }}
+            </button>
+            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">{{ __('app.message_save_options_dropdown') }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button type="submit" form="message-store-form" name="save_intent" value="save_send" class="dropdown-item">
+                        <i class="ti ti-send me-1"></i>{{ __('app.message_save_and_send') }}
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#messageScheduleModal">
+                        <i class="ti ti-calendar-time me-1"></i>{{ __('app.message_save_and_schedule') }}
+                    </button>
+                </li>
+            </ul>
+        </div>
+        @if(isset($data->id))
+            <button type="button" class="btn btn-danger" onclick="deleteMessage({{ $data->id }})">
+                <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
+            </button>
+        @endif
+        <a href="{{ route('message.index') }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-arrow-left me-1"></i>{{ __('app.Back') }}
+        </a>
     </div>
-    @endif
 </div>
 
 <form id="message-store-form" action="{{ route('message.store') }}" method="POST">
 	@csrf
+	@if ($errors->has('save_intent'))
+		<div class="alert alert-danger mb-3" role="alert">{{ $errors->first('save_intent') }}</div>
+	@endif
+	@if ($errors->has('schedule_send_at'))
+		<div class="alert alert-danger mb-3" role="alert">{{ $errors->first('schedule_send_at') }}</div>
+	@endif
 	<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+	<input type="hidden" name="type_id" value="{{ old('type_id', $data->type_id ?? 1) }}">
 
 	@php
-		$useLegacyTemplatePicker = $data->useLegacyTemplatePicker ?? false;
 		$removeMailTemplate = $removeMailTemplate ?? false;
-		$showEmailTemplatePreview = ! $useLegacyTemplatePicker && ! $removeMailTemplate && isset($data->template, $data->emailTemplatePreviewHtml, $data->templateGrapesEditorUrl) && $data->template && (int) ($data->type_id ?? 0) === 1;
-
-		$currentTypeIdForLock = (int) old('type_id', $data->type_id ?? 0);
-		$effectiveTemplateIdForLock = old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? ''));
-		$hasEffectiveTemplateForLock = $effectiveTemplateIdForLock !== null
-			&& $effectiveTemplateIdForLock !== ''
-			&& (string) $effectiveTemplateIdForLock !== '0';
-		$messageFormTypeIdDisabled = $showEmailTemplatePreview
-			|| (isset($data->hasDeliveries) && $data->hasDeliveries)
-			|| ($currentTypeIdForLock === 1 && $hasEffectiveTemplateForLock);
-
-		$storedMinHoursBetweenEmails = (float) old('min_hours_between_emails', $data->min_hours_between_emails ?? 48);
-		$initialTimeUnit = old('time_unit', 'days');
-		if (! in_array($initialTimeUnit, ['hours', 'days', 'weeks'], true))
-		{
-			$initialTimeUnit = 'days';
-		}
-
-		$betweenEmailsInputStep = match ($initialTimeUnit)
-		{
-			'days' => '0.5',
-			'weeks' => '0.1',
-			default => '1',
-		};
-		$betweenEmailsDisplayValue = match ($initialTimeUnit)
-		{
-			'days' => round($storedMinHoursBetweenEmails / 24, 2),
-			'weeks' => round($storedMinHoursBetweenEmails / (24 * 7), 2),
-			default => fmod($storedMinHoursBetweenEmails, 1.0) === 0.0 ? (int) $storedMinHoursBetweenEmails : round($storedMinHoursBetweenEmails, 2),
-		};
-
-		$sendingScheduleWeekdayDefinitions = [
-			1 => __('Monday_short'),
-			2 => __('Tuesday_short'),
-			3 => __('Wednesday_short'),
-			4 => __('Thursday_short'),
-			5 => __('Friday_short'),
-			6 => __('Saturday_short'),
-			7 => __('Sunday_short'),
-		];
-
-		$allowedSendWeekdays = old('send_allowed_weekdays');
-		if (! is_array($allowedSendWeekdays))
-		{
-			$dbWeekdays = isset($data->send_allowed_weekdays) && $data->send_allowed_weekdays !== null
-				? array_map('intval', (array) $data->send_allowed_weekdays)
-				: null;
-			$allowedSendWeekdays = $dbWeekdays ?? range(1, 7);
-		} else {
-			$allowedSendWeekdays = array_map('intval', $allowedSendWeekdays);
-		}
-		$allowedSendWeekdays = array_values(array_unique($allowedSendWeekdays));
-		sort($allowedSendWeekdays);
-
-		$sendWindowStartValue = old('send_window_start', $data->send_window_start ?? '');
-		$sendWindowEndValue = old('send_window_end', $data->send_window_end ?? '');
+		$templateSelectDisabled = (isset($data->hasDeliveries) && $data->hasDeliveries);
 	@endphp
 
-	<div id="message-form-template-id-slot">
-		@if ($showEmailTemplatePreview)
-			<input type="hidden" name="template_id" value="{{ $data->template_id }}">
-		@endif
-	</div>
+	<div id="message-form-template-id-slot"></div>
 
 	<div class="card mb-4">
 		<h5 class="card-header">{{ __('Messages') }}</h5>
 		<div class="card-body">
 		<div class="row g-3">
-			<div class="col-md-6">
+			<div class="col-12">
 				<x-input-general id="name" label="{{ __('Subject') }} (*)" value="{{ old('name', $data->name?? '') }}" />
-			</div>
-			<div class="col-md-6">
-				<x-input-select
-					id="type_id"
-					label="{{ __('Canal') }} (*)"
-					:options="$data->types"
-					value="{{ old('type_id', $data->type_id ?? '') }}"
-					:required="false"
-					:allowClear="false"
-					:disabled="$messageFormTypeIdDisabled"
-				/>
-				@if(isset($data->hasDeliveries) && $data->hasDeliveries)
-					<div class="form-text text-warning mt-1">
-						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar el canal porque el mensaje ya tiene entregas creadas.
-					</div>
-				@endif
 			</div>
 			<div class="col-md-6">
 				<x-module-categories-select
@@ -296,330 +264,154 @@ document.addEventListener('DOMContentLoaded', function ()
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="{{ __('Texto alternativo') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">
-					{{ __('Para WhatsApp o para clientes de correo sin HTML. Si usas plantilla, este texto sirve como fallback o versión corta.') }}
+					{{ __('app.message_form_alt_text_help') }}
 				</div>
 			</div>
-			<div class="col-md-6" id="message-form-template-field-wrapper" @class(['d-none' => $showEmailTemplatePreview])>
-				@unless ($showEmailTemplatePreview)
-					<x-input-select
-						id="template_id"
-						label="{{ __('Plantilla') }}"
-						:options="$data->templates ?? []"
-						value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
-						:placeholder="__('app.message_form_template_none')"
-						:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
-					/>
-				@endunless
+			<div class="col-md-12" id="message-form-template-field-wrapper">
+				<x-input-select
+					id="template_id"
+					label="{{ __('Plantilla') }}"
+					:options="$data->templates ?? []"
+					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
+					:placeholder="__('app.message_form_template_none')"
+					:disabled="$templateSelectDisabled"
+				/>
 			</div>
 		</div>
 		</div>
 	</div>
 
 	<div id="message-email-template-preview-mount">
-	@if ($showEmailTemplatePreview)
-		@php
-			$removeMailTemplateUrl = isset($data->id)
-				? route('message.edit', ['id' => $data->id, 'remove_mail_template' => 1])
-				: route('message.create', array_filter([
-					'legacy_form' => 1,
-					'name' => filled($data->name ?? null) ? $data->name : (request()->filled('name') ? request('name') : null),
-				]));
-		@endphp
-		@include('message.partials.email-template-content-preview', [
-			'previewHtml' => $data->emailTemplatePreviewHtml,
-			'grapesEditorUrl' => $data->templateGrapesEditorUrl,
-			'templateLabel' => $data->template->name,
-			'messageId' => $data->id ?? null,
-			'templateId' => $data->template->id,
-			'templateHashedId' => $data->template->getHashedId(),
-			'duplicateFormId' => 'message-email-template-duplicate-form',
-			'duplicateModalId' => 'message-email-template-duplicate-modal',
-			'removeTemplateUrl' => $removeMailTemplateUrl,
-		])
+	</div>
+
+	@if (isset($data->id))
+		<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
 	@endif
-	</div>
-
-	@php
-		$messageFormScheduleCollapseOpen = $errors->has('send_allowed_weekdays')
-			|| $errors->has('send_window_start')
-			|| $errors->has('send_window_end')
-			|| $errors->has('min_hours_between_emails');
-	@endphp
-	<div class="card mb-4">
-		<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-			<div class="d-flex align-items-center gap-2 flex-wrap min-w-0">
-				<h5 class="mb-0">{{ __('Message sending schedule') }}</h5>
-				@env('local')
-					<span class="text-success flex-shrink-0" title="APP_ENV=local"><i class="ti ti-bug ti-sm"></i></span>
-				@endenv
-			</div>
-			<button
-				type="button"
-				class="btn btn-sm btn-icon btn-label-secondary {{ $messageFormScheduleCollapseOpen ? '' : 'collapsed' }}"
-				data-bs-toggle="collapse"
-				data-bs-target="#message-form-schedule-collapse"
-				aria-expanded="{{ $messageFormScheduleCollapseOpen ? 'true' : 'false' }}"
-				aria-controls="message-form-schedule-collapse"
-				title="{{ __('app.message_form_toggle_section') }}"
-			>
-				<i class="ti ti-chevron-down"></i>
-			</button>
-		</div>
-		<div id="message-form-schedule-collapse" class="collapse {{ $messageFormScheduleCollapseOpen ? 'show' : '' }}">
-		<div class="card-body">
-			<div class="row g-3">
-			<div class="col-md-6">
-				<div class="form-group mb-0">
-					<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
-						<label for="min_hours_between_emails" class="form-label mb-0">{{ __('Minimum Time Between Emails') }}</label>
-					</div>
-					<div class="input-group input-group-merge">
-						<input
-							type="number"
-							class="form-control"
-							id="min_hours_between_emails"
-							name="min_hours_between_emails"
-							min="0"
-							step="{{ $betweenEmailsInputStep }}"
-							value="{{ $betweenEmailsDisplayValue }}"
-						>
-						<select class="form-select" id="time_unit" name="time_unit" style="max-width: 120px;" data-prev-unit="{{ $initialTimeUnit }}">
-							<option value="hours" @selected($initialTimeUnit === 'hours')>{{ __('Hours') }}</option>
-							<option value="days" @selected($initialTimeUnit === 'days')>{{ __('Days') }}</option>
-							<option value="weeks" @selected($initialTimeUnit === 'weeks')>{{ __('Weeks') }}</option>
-						</select>
-					</div>
-					<div class="form-text mt-1">
-						{{ __('Time to wait before sending another email to the same contact') }}
-					</div>
-				</div>
-			</div>
-			<div class="col-12">
-				<div class="border rounded px-3 py-3 mb-1">
-					<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-						<div>
-							<span class="form-label d-block mb-1">{{ __('Allowed sending weekdays') }}</span>
-							<div class="form-text">{{ __('Recipients are only queued during checked days.') }}</div>
-						</div>
-					</div>
-					<div class="d-flex flex-wrap column-gap-3 row-gap-2 mb-3">
-						@foreach ($sendingScheduleWeekdayDefinitions as $isoWeekday => $shortLabel)
-							<div class="form-check mb-0">
-								<input
-									class="form-check-input"
-									type="checkbox"
-									name="send_allowed_weekdays[]"
-									id="send-allowed-{{ $isoWeekday }}"
-									value="{{ $isoWeekday }}"
-									{{ in_array((int) $isoWeekday, $allowedSendWeekdays, true) ? 'checked' : '' }}
-								>
-								<label class="form-check-label small" for="send-allowed-{{ $isoWeekday }}">{{ $shortLabel }}</label>
-							</div>
-						@endforeach
-					</div>
-					<div class="form-label">{{ __('Sending time window') }} <span class="text-muted fw-normal">({{ __('optional') }} — {{ config('app.timezone') }})</span></div>
-					<div class="row g-3 align-items-end">
-						<div class="col-auto">
-							<label for="send_window_start" class="form-label small mb-1">{{ __('Sending window start') }}</label>
-							<input
-								type="time"
-								step="300"
-								class="form-control @error('send_window_start') is-invalid @enderror"
-								id="send_window_start"
-								name="send_window_start"
-								value="{{ $sendWindowStartValue }}"
-								autocomplete="off"
-							>
-							@error('send_window_start')
-								<div class="invalid-feedback d-block">{{ $message }}</div>
-							@enderror
-						</div>
-						<div class="col-auto">
-							<label for="send_window_end" class="form-label small mb-1">{{ __('Sending window end') }}</label>
-							<input
-								type="time"
-								step="300"
-								class="form-control @error('send_window_end') is-invalid @enderror"
-								id="send_window_end"
-								name="send_window_end"
-								value="{{ $sendWindowEndValue }}"
-								autocomplete="off"
-							>
-							@error('send_window_end')
-								<div class="invalid-feedback d-block">{{ $message }}</div>
-							@enderror
-						</div>
-					</div>
-					@error('send_allowed_weekdays')
-						<div class="text-danger small mt-2">{{ $message }}</div>
-					@enderror
-					<div class="form-text mt-2 mb-0">
-						{{ __('Leave both times empty for 24h delivery.') }} {{ __('The end time must be after the start time (same calendar day).') }}
-					</div>
-				</div>
-			</div>
-			</div>
-		</div>
-		</div>
-	</div>
-
-	<div class="card mb-4">
-		<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-			<div class="d-flex align-items-center gap-2 flex-wrap min-w-0">
-				<h6 class="card-title mb-0">{{ __('Opciones generales del mensaje: enlace de baja y seguimiento') }}</h6>
-				@env('local')
-					<span class="text-success flex-shrink-0" title="APP_ENV=local"><i class="ti ti-bug ti-sm"></i></span>
-				@endenv
-			</div>
-			<button
-				type="button"
-				class="btn btn-sm btn-icon btn-label-secondary collapsed"
-				data-bs-toggle="collapse"
-				data-bs-target="#message-form-options-collapse"
-				aria-expanded="false"
-				aria-controls="message-form-options-collapse"
-				title="{{ __('app.message_form_toggle_section') }}"
-			>
-				<i class="ti ti-chevron-down"></i>
-			</button>
-		</div>
-		<div id="message-form-options-collapse" class="collapse">
-		<div class="card-body">
-			@if (isset($data->id))
-				<input type="hidden" name="status_id" value="{{ (((int) old('status_id', (int) ($data->status_id ?? 0))) === 1) ? 1 : 0 }}">
-			@endif
-			<div class="row gy-4 gx-lg-4 align-items-start">
-				<div class="col-12 col-lg-6 align-self-start">
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="show_unsubscribe">
-							<strong>{{ __('Mostrar enlace de baja') }}</strong>
-							<div class="text-muted small">{{ __('Incluye la opción para darse de baja en los correos.') }}</div>
-						</label>
-					</div>
-				</div>
-				<div class="col-12 col-lg-6 align-self-start">
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="enable_open_tracking">
-							<strong>{{ __('Habilitar seguimiento de aperturas') }}</strong>
-							<div class="text-muted small">{{ __('Rastrear cuando se abren los correos.') }}</div>
-						</label>
-					</div>
-				</div>
-				<div class="col-12 col-lg-6 offset-lg-6 align-self-start">
-					<div class="form-check form-switch mb-lg-0">
-						<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="enable_click_tracking">
-							<strong>{{ __('Habilitar seguimiento de clics') }}</strong>
-							<div class="text-muted small">{{ __('Rastrear clics en los enlaces del correo.') }}</div>
-						</label>
-					</div>
-				</div>
-			</div>
-		</div>
-		</div>
-	</div>
-
-	<div class="d-flex flex-wrap align-items-center gap-2 pt-2">
-		<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
-		<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">{{ __('Cancel') }}</button>
-	</div>
+	<input type="hidden" name="show_unsubscribe" value="{{ (int) (bool) old('show_unsubscribe', data_get($data, 'show_unsubscribe', 1)) }}">
+	<input type="hidden" name="enable_open_tracking" value="{{ (int) (bool) old('enable_open_tracking', data_get($data, 'enable_open_tracking', 1)) }}">
+	<input type="hidden" name="enable_click_tracking" value="{{ (int) (bool) old('enable_click_tracking', data_get($data, 'enable_click_tracking', 1)) }}">
+	<button type="submit" name="save_intent" value="save_schedule" id="message-schedule-submit-helper" class="d-none" tabindex="-1" aria-hidden="true"></button>
 </form>
+
+<div class="modal fade" id="messageScheduleModal" tabindex="-1" aria-labelledby="messageScheduleModalLabel" aria-hidden="true" data-msg-required="{{ e(__('app.message_schedule_validation_required')) }}">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="messageScheduleModalLabel">{{ __('app.message_schedule_modal_title') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+			</div>
+			<div class="modal-body">
+				<label for="message-schedule-at-input" class="form-label">{{ __('app.message_schedule_modal_datetime_label') }}</label>
+				<input
+					type="text"
+					class="form-control"
+					id="message-schedule-at-input"
+					value="{{ $messageScheduleInputValue }}"
+					data-min-datetime="{{ $scheduleMin }}"
+					data-fp-locale="{{ $messageFpLocaleBundle ? $messageFpLocale : '' }}"
+					autocomplete="off"
+					readonly
+					required
+				>
+				<div class="form-text">{{ __('app.message_schedule_modal_help') }}</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('app.message_schedule_modal_cancel') }}</button>
+				<button type="button" class="btn btn-primary" id="message-schedule-confirm-btn">{{ __('app.message_schedule_modal_confirm') }}</button>
+			</div>
+		</div>
+	</div>
+</div>
 
 	<form
 		id="message-email-template-duplicate-form"
 		method="post"
 		class="d-none"
 		aria-hidden="true"
-		action="{{ ($showEmailTemplatePreview && isset($data->template)) ? route('template.duplicate', $data->template->getHashedId()) : '#' }}"
+		action="#"
 	>
 		@csrf
 		<input type="hidden" name="return_url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
 	</form>
+	<form
+		id="message-open-visual-editor-form"
+		method="post"
+		action="{{ route('message.sync-template-html-open-editor') }}"
+		class="d-none"
+		aria-hidden="true"
+	>
+		@csrf
+		<input type="hidden" name="template_id" id="message-open-visual-editor-template-id" value="">
+		<input type="hidden" name="message_id" id="message-open-visual-editor-message-id" value="">
+		<input type="hidden" name="return_url" id="message-open-visual-editor-return-url" value="">
+		<input type="hidden" name="template_html" id="message-open-visual-editor-template-html" value="">
+	</form>
 @push('scripts')
+@include('message.partials.email-test-send-modal-script')
 <script>
 (function ()
 {
     var mount = document.getElementById('message-email-template-preview-mount');
     var previewUrl = @json(route('message.template-email-preview'));
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
-    var typeLockedByDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
-    var serverRenderedPreview = @json((bool) $showEmailTemplatePreview);
-    var messageFormTypeIdServerDisabled = @json((bool) $messageFormTypeIdDisabled);
+    var templateLockDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
 
-    if (! mount || ! document.getElementById('template_id'))
+    if (! mount)
     {
         return;
     }
 
     var templateSlot = document.getElementById('message-form-template-id-slot');
-    var templateFieldWrapper = document.getElementById('message-form-template-field-wrapper');
     var duplicateForm = document.getElementById('message-email-template-duplicate-form');
 
-    function setTemplateHiddenValue(templateId)
+    if (duplicateForm)
     {
-        if (! templateSlot)
+        duplicateForm.addEventListener('submit', function (e)
         {
-            return;
-        }
-        templateSlot.innerHTML = '';
-        if (! templateId)
-        {
-            return;
-        }
-        var inp = document.createElement('input');
-        inp.type = 'hidden';
-        inp.name = 'template_id';
-        inp.value = String(templateId);
-        templateSlot.appendChild(inp);
-    }
-
-    function syncNativeTemplateSelectForSubmit(templateIdStr)
-    {
-        var sel = document.getElementById('template_id');
-        if (! sel)
-        {
-            return;
-        }
-        if (templateIdStr)
-        {
-            sel.removeAttribute('name');
-            sel.disabled = true;
-            if (window.jQuery && window.jQuery.fn.select2)
+            var action = duplicateForm.getAttribute('action') || '';
+            if (action === '' || action === '#')
             {
-                window.jQuery(sel).prop('disabled', true).trigger('change.select2');
+                return;
             }
-        } else
-        {
-            sel.disabled = false;
-            sel.setAttribute('name', 'template_id');
-            if (window.jQuery && window.jQuery.fn.select2)
+            if (duplicateForm.dataset.humaDupProceed === '1')
             {
-                window.jQuery(sel).prop('disabled', false).trigger('change.select2');
+                delete duplicateForm.dataset.humaDupProceed;
+                return;
             }
-        }
+            var dupModal = document.getElementById('message-email-template-duplicate-modal');
+            if (! dupModal || ! dupModal.classList.contains('show'))
+            {
+                return;
+            }
+            e.preventDefault();
+            if (typeof bootstrap === 'undefined' || ! bootstrap.Modal)
+            {
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+                return;
+            }
+            var inst = bootstrap.Modal.getInstance(dupModal);
+            if (! inst)
+            {
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+                return;
+            }
+            dupModal.addEventListener('hidden.bs.modal', function onDupModalHidden()
+            {
+                dupModal.removeEventListener('hidden.bs.modal', onDupModalHidden);
+                duplicateForm.dataset.humaDupProceed = '1';
+                duplicateForm.submit();
+            });
+            inst.hide();
+        });
     }
 
     function restoreTemplateFieldUi()
     {
-        if (templateFieldWrapper)
-        {
-            templateFieldWrapper.classList.remove('d-none');
-        }
         if (templateSlot)
         {
             templateSlot.innerHTML = '';
-        }
-        syncNativeTemplateSelectForSubmit('');
-        var typeSelect = document.getElementById('type_id');
-        if (typeSelect && ! messageFormTypeIdServerDisabled && ! typeLockedByDeliveries && ! serverRenderedPreview)
-        {
-            typeSelect.disabled = false;
-            if (window.jQuery && window.jQuery.fn.select2)
-            {
-                window.jQuery(typeSelect).prop('disabled', false).trigger('change.select2');
-            }
         }
         if (duplicateForm)
         {
@@ -629,13 +421,13 @@ document.addEventListener('DOMContentLoaded', function ()
 
     function clearDynamicPreview()
     {
-        if (mount.dataset.dynamicPreview !== '1')
-        {
-            return;
-        }
         mount.innerHTML = '';
         mount.dataset.dynamicPreview = '0';
         delete mount.dataset.loadedTemplateId;
+        if (window.humaMessageTemplateQuillInstance)
+        {
+            window.humaMessageTemplateQuillInstance = null;
+        }
         restoreTemplateFieldUi();
     }
 
@@ -718,24 +510,13 @@ document.addEventListener('DOMContentLoaded', function ()
                 {
                     duplicateForm.setAttribute('action', data.duplicate_action_url);
                 }
-                setTemplateHiddenValue(templateId);
-                syncNativeTemplateSelectForSubmit(String(templateId));
-                if (templateFieldWrapper)
-                {
-                    templateFieldWrapper.classList.add('d-none');
-                }
-                var typeSelect = document.getElementById('type_id');
-                if (typeSelect && ! typeLockedByDeliveries)
-                {
-                    typeSelect.disabled = true;
-                    if (window.jQuery && window.jQuery.fn.select2)
-                    {
-                        window.jQuery(typeSelect).prop('disabled', true).trigger('change.select2');
-                    }
-                }
                 if (window.humaBindEmailTestSendModals)
                 {
                     window.humaBindEmailTestSendModals();
+                }
+                if (window.humaInitMessageTemplateHtmlQuill)
+                {
+                    window.humaInitMessageTemplateHtmlQuill(mount);
                 }
             })
             .catch(function ()
@@ -753,17 +534,20 @@ document.addEventListener('DOMContentLoaded', function ()
     window.jQuery(function ($)
     {
         var $tpl = $('#template_id');
-        var $type = $('#type_id');
-        if (! $tpl.length || $tpl.prop('disabled'))
+        if (! $tpl.length)
         {
             return;
         }
 
         function evaluate()
         {
-            var typeId = parseInt($type.val(), 10);
+            if (templateLockDeliveries)
+            {
+                return;
+            }
+
             var tid = ($tpl.val() || '').toString().trim();
-            if (typeId !== 1 || ! tid)
+            if (! tid)
             {
                 clearDynamicPreview();
                 return;
@@ -772,8 +556,200 @@ document.addEventListener('DOMContentLoaded', function ()
         }
 
         $tpl.on('change select2:select', evaluate);
-        $type.on('change select2:select', evaluate);
         window.setTimeout(evaluate, 0);
+    });
+})();
+</script>
+<script>
+(function ()
+{
+    window.humaMessageTemplateQuillInstance = null;
+
+    window.humaSyncMessageTemplateHtmlQuill = function ()
+    {
+        if (! window.humaMessageTemplateQuillInstance)
+        {
+            return;
+        }
+        var ta = document.getElementById('message-template-html-body');
+        if (! ta)
+        {
+            return;
+        }
+        ta.value = window.humaMessageTemplateQuillInstance.root.innerHTML;
+    };
+
+    /**
+     * @param {ParentNode|Document|null} root
+     */
+    window.humaInitMessageTemplateHtmlQuill = function (root)
+    {
+        root = root || document;
+        if (typeof Quill === 'undefined')
+        {
+            return;
+        }
+        var ta = root.querySelector('#message-template-html-body');
+        var mountEl = root.querySelector('#message-template-html-quill-editor');
+        if (! ta || ! mountEl)
+        {
+            return;
+        }
+        if (mountEl.dataset.quillBound === '1')
+        {
+            return;
+        }
+        mountEl.dataset.quillBound = '1';
+        window.humaMessageTemplateQuillInstance = null;
+
+        var readonly = ta.hasAttribute('readonly');
+        var toolbar = readonly
+            ? false
+            : [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ align: [] }],
+                ['link'],
+                [{ color: [] }, { background: [] }],
+                ['blockquote', 'code-block'],
+                ['clean'],
+            ];
+
+        var quill = new Quill(mountEl, {
+            theme: 'snow',
+            modules: {
+                toolbar: toolbar,
+            },
+            bounds: mountEl,
+        });
+
+        var jsonEl = root.querySelector('#message-template-html-initial-json');
+        var initialHtml = '';
+        if (jsonEl && jsonEl.textContent)
+        {
+            try
+            {
+                initialHtml = JSON.parse(jsonEl.textContent);
+            }
+            catch (e)
+            {
+                initialHtml = '';
+            }
+        }
+        if (typeof initialHtml !== 'string')
+        {
+            initialHtml = '';
+        }
+        if (initialHtml.trim() === '' && (ta.value || '').trim() !== '')
+        {
+            initialHtml = ta.value;
+        }
+
+        initialHtml = initialHtml.trim();
+        if (initialHtml !== '' && initialHtml !== '<p><br></p>' && initialHtml !== '<p></p>')
+        {
+            if (quill.clipboard && typeof quill.clipboard.dangerouslyPasteHTML === 'function')
+            {
+                quill.setContents([], 'silent');
+                quill.clipboard.dangerouslyPasteHTML(0, initialHtml);
+            }
+            else
+            {
+                quill.root.innerHTML = initialHtml;
+            }
+        }
+
+        if (readonly)
+        {
+            quill.enable(false);
+        }
+
+        window.humaMessageTemplateQuillInstance = quill;
+
+        quill.on('text-change', function ()
+        {
+            if (! readonly)
+            {
+                ta.value = quill.root.innerHTML;
+            }
+        });
+
+        ta.value = quill.root.innerHTML;
+    };
+
+    document.addEventListener('DOMContentLoaded', function ()
+    {
+        if (window.humaInitMessageTemplateHtmlQuill)
+        {
+            window.humaInitMessageTemplateHtmlQuill(document);
+        }
+
+        var storeForm = document.getElementById('message-store-form');
+        if (storeForm)
+        {
+            storeForm.addEventListener('submit', function ()
+            {
+                if (window.humaSyncMessageTemplateHtmlQuill)
+                {
+                    window.humaSyncMessageTemplateHtmlQuill();
+                }
+            });
+        }
+    });
+
+    document.addEventListener('click', function (e)
+    {
+        var btn = e.target.closest('[data-huma-open-visual-editor]');
+        if (! btn)
+        {
+            return;
+        }
+        var editorUrl = btn.getAttribute('data-editor-url') || '';
+        if (! editorUrl || editorUrl === '#')
+        {
+            return;
+        }
+        e.preventDefault();
+        var form = document.getElementById('message-open-visual-editor-form');
+        var ta = document.getElementById('message-template-html-body');
+        if (! form || ! ta)
+        {
+            window.location.href = editorUrl;
+
+            return;
+        }
+        if (window.humaSyncMessageTemplateHtmlQuill)
+        {
+            window.humaSyncMessageTemplateHtmlQuill();
+        }
+        var tid = (btn.getAttribute('data-template-id') || '').trim();
+        var mid = (btn.getAttribute('data-message-id') || '').trim();
+        var templateIdInput = document.getElementById('message-open-visual-editor-template-id');
+        var messageIdInput = document.getElementById('message-open-visual-editor-message-id');
+        var returnInput = document.getElementById('message-open-visual-editor-return-url');
+        var htmlInput = document.getElementById('message-open-visual-editor-template-html');
+        if (! templateIdInput || ! messageIdInput || ! returnInput || ! htmlInput)
+        {
+            window.location.href = editorUrl;
+
+            return;
+        }
+        templateIdInput.value = tid;
+        messageIdInput.value = mid;
+        var ru = '';
+        try
+        {
+            var u = new URL(editorUrl, window.location.origin);
+            ru = u.searchParams.get('return_url') || '';
+        }
+        catch (err1)
+        {
+            ru = '';
+        }
+        returnInput.value = ru;
+        htmlInput.value = ta.value || '';
+        form.submit();
     });
 })();
 </script>

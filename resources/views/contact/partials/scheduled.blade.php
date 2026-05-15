@@ -19,7 +19,7 @@ $scheduledMessages = [
 
 <div class="card mb-4 opacity-50">
     <h5 class="card-header d-flex justify-content-between align-items-center">
-        Mensajes programados
+        {{ __('Mensajes programados') }}
         <button type="button" class="btn btn-primary btn-sm">
             + Nnuevo mensaje
         </button>

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\DataTables\MessageDataTable;
 use App\Enums\CampaignStatus;
 use App\Enums\MessageDeliverySendProfile;
+use App\Helpers\GrapesJsHelper;
 use App\Http\Requests\StoreMessageRequest;
+use App\Http\Requests\SyncMessageTemplateHtmlForEditorRequest;
 use App\Http\Requests\TestMessageFromTemplateRequest;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -18,9 +20,12 @@ use App\Models\User;
 use App\Services\MessageDeliveryDispatcher;
 use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -42,40 +47,23 @@ class MessageController extends Controller
      */
     public function create(Request $request)
     {
-        $legacyForm = $request->boolean('legacy_form');
-
-        if (! $legacyForm && (! $request->filled('template_id') || $request->integer('template_id') <= 0))
-        {
-            return redirect()->route('campaigns.templates.select', [
-                'type' => 'messages',
-                'title' => $request->string('title')->toString(),
-            ]);
-        }
-
         $data = new stdClass;
-        $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
-        $data->useLegacyTemplatePicker = $legacyForm;
 
-        if (! $legacyForm && $request->integer('template_id') > 0)
+        if ($request->integer('template_id') > 0)
         {
             $template = Template::query()->whereKey($request->integer('template_id'))->first();
 
             if (! $template)
             {
                 return redirect()
-                    ->route('campaigns.templates.select', ['type' => 'messages', 'title' => ''])
+                    ->route('message.create')
                     ->with('error', __('La plantilla seleccionada no está disponible.'));
             }
 
             $data->template_id = $template->id;
             $data->template = $template;
-            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($template);
-            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-                route('template.editor', $template->getHashedId()),
-                $request->fullUrl(),
-            );
             $data->name = old('name', $request->string('name')->toString());
             $data->type_id = old('type_id', 1);
             $data->text = old('text', __('Boletín por correo'));
@@ -93,10 +81,24 @@ class MessageController extends Controller
         $data = $request->except([
             'id',
             '_token',
+            'save_intent',
             'send_allowed_weekdays',
             'send_window_start',
             'send_window_end',
+            'schedule_send_at',
         ]);
+
+        $saveIntent = (string) $request->input('save_intent', 'save');
+        if (! in_array($saveIntent, ['save', 'save_send', 'save_schedule'], true))
+        {
+            $saveIntent = 'save';
+        }
+
+        $scheduledSendAt = null;
+        if ($saveIntent === 'save_schedule' && filled($validated['schedule_send_at'] ?? null))
+        {
+            $scheduledSendAt = Carbon::parse($validated['schedule_send_at'], config('app.timezone'))->utc();
+        }
 
         $weekdaysSorted = array_values(array_unique(array_map('intval', $validated['send_allowed_weekdays'])));
         sort($weekdaysSorted);
@@ -111,14 +113,19 @@ class MessageController extends Controller
             ? $validated['send_window_end']
             : null;
 
+        $resolvedTypeId = $this->resolveTypeIdForMessageStore($request);
+
         $templateId = filled($data['template_id'] ?? null) ? (int) $data['template_id'] : null;
+        if ($resolvedTypeId === $this->whatsappMessageTypeId())
+        {
+            $templateId = null;
+        }
 
         $status_id = $request->boolean('status_id') ? 1 : 0;
 
-        // Set boolean fields based on checkbox presence
-        $show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
-        $enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
-        $enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
+        $show_unsubscribe = $request->boolean('show_unsubscribe') ? 1 : 0;
+        $enable_open_tracking = $request->boolean('enable_open_tracking') ? 1 : 0;
+        $enable_click_tracking = $request->boolean('enable_click_tracking') ? 1 : 0;
 
         $rawMinHours = isset($validated['min_hours_between_emails'])
             ? $validated['min_hours_between_emails']
@@ -126,25 +133,57 @@ class MessageController extends Controller
 
         $minHours = max(0, (int) round((float) $rawMinHours));
 
-        Message::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'name' => $validated['name'],
-                'type_id' => $this->resolveTypeIdForMessageStore($request),
-                'category_id' => ($data['category_id'] ?? '') ?: null,
-                'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
-                'template_id' => $templateId,
-                'text' => $validated['text'],
-                'status_id' => $status_id,
-                'show_unsubscribe' => $show_unsubscribe,
-                'enable_open_tracking' => $enable_open_tracking,
-                'enable_click_tracking' => $enable_click_tracking,
-                'min_hours_between_emails' => max(0, $minHours),
-                'send_allowed_weekdays' => $sendAllowedWeekdays,
-                'send_window_start' => $sendWindowStart,
-                'send_window_end' => $sendWindowEnd,
-            ],
-        );
+        $messageModel = null;
+
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, &$messageModel): void
+        {
+            $messageModel = Message::updateOrCreate(
+                ['id' => $request->id],
+                [
+                    'name' => $validated['name'],
+                    'type_id' => $resolvedTypeId,
+                    'category_id' => ($data['category_id'] ?? '') ?: null,
+                    'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
+                    'template_id' => $templateId,
+                    'text' => $validated['text'],
+                    'status_id' => $status_id,
+                    'show_unsubscribe' => $show_unsubscribe,
+                    'enable_open_tracking' => $enable_open_tracking,
+                    'enable_click_tracking' => $enable_click_tracking,
+                    'min_hours_between_emails' => max(0, $minHours),
+                    'send_allowed_weekdays' => $sendAllowedWeekdays,
+                    'send_window_start' => $sendWindowStart,
+                    'send_window_end' => $sendWindowEnd,
+                    'scheduled_send_at' => $scheduledSendAt,
+                ],
+            );
+
+            $this->syncTemplateHtmlFromMessageForm($request, $resolvedTypeId, $templateId);
+        });
+
+        $messageId = (int) $messageModel->id;
+
+        if ($saveIntent === 'save_send')
+        {
+            $message = Message::with(['deliveries', 'team.settings', 'campaigns'])->findOrFail($messageId);
+            $activation = $this->attemptActivateMessageCampaign($message);
+            if (! $activation['success'])
+            {
+                return redirect()->route('message.edit', $messageId)->withInput()->withErrors(['save_intent' => $activation['message']]);
+            }
+
+            return redirect()->route('message.show', $messageId)->with('success', __('app.message_save_send_success'));
+        }
+
+        if ($saveIntent === 'save_schedule')
+        {
+            $messageModel->refresh();
+            $dtLabel = $messageModel->scheduled_send_at
+                ? $messageModel->scheduled_send_at->clone()->timezone(config('app.timezone'))->locale(app()->getLocale())->translatedFormat('d M Y H:i')
+                : '';
+
+            return redirect()->route('message.index')->with('success', __('app.message_save_schedule_success', ['datetime' => $dtLabel]));
+        }
 
         return redirect()->route('message.index')->with('success', 'Record saved successfully.');
     }
@@ -368,8 +407,6 @@ class MessageController extends Controller
             ? \App\Helpers\DnsHelper::outgoingDnsStatusForAuthUser(auth()->user())
             : null;
 
-        $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
-
         return view('message.show', [
             'message' => $message,
             'stats' => $stats,
@@ -379,7 +416,6 @@ class MessageController extends Controller
             'emailConfig' => $emailConfig,
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
-            'apiUser' => $apiUser,
         ]);
     }
 
@@ -397,19 +433,8 @@ class MessageController extends Controller
 
         $removeMailTemplate = $request->boolean('remove_mail_template');
 
-        $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
-        $data->useLegacyTemplatePicker = false;
-
-        if (! $removeMailTemplate && $data->template_id && $data->template && (int) $data->type_id === 1)
-        {
-            $data->emailTemplatePreviewHtml = $this->iframePreviewHtmlForTemplate($data->template);
-            $data->templateGrapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-                route('template.editor', $data->template->getHashedId()),
-                route('message.edit', $data->id),
-            );
-        }
 
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
@@ -450,21 +475,15 @@ class MessageController extends Controller
         }
         if ($returnUrl === null || $returnUrl === '')
         {
-            $returnUrl = route('message.create', ['legacy_form' => 1]);
+            $returnUrl = route('message.create');
         }
 
         $previewHtml = $this->iframePreviewHtmlForTemplate($template);
+        $mailHtmlTextareaValue = $this->rawTemplateHtmlFromModel($template);
         $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
             route('template.editor', $template->getHashedId()),
             $returnUrl,
         );
-
-        $removeMailTemplateUrl = $messageId
-            ? route('message.edit', ['id' => $messageId, 'remove_mail_template' => 1])
-            : route('message.create', array_filter([
-                'legacy_form' => 1,
-                'name' => filled($validated['context_name'] ?? null) ? $validated['context_name'] : null,
-            ]));
 
         $html = view('message.ajax.email-template-preview-bundle', [
             'previewHtml' => $previewHtml,
@@ -473,7 +492,10 @@ class MessageController extends Controller
             'messageId' => $messageId,
             'templateId' => $template->id,
             'templateHashedId' => $template->getHashedId(),
-            'removeTemplateUrl' => $removeMailTemplateUrl,
+            'removeTemplateUrl' => null,
+            'useMailHtmlTextarea' => true,
+            'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+            'mailHtmlTextareaReadonly' => false,
         ])->render();
 
         return response()->json([
@@ -481,6 +503,55 @@ class MessageController extends Controller
             'html' => $html,
             'duplicate_action_url' => route('template.duplicate', $template->getHashedId()),
         ]);
+    }
+
+    /**
+     * Persist Quill HTML into the linked template, then redirect to GrapesJS so the editor matches the composer.
+     */
+    public function syncTemplateHtmlOpenVisualEditor(SyncMessageTemplateHtmlForEditorRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $templateId = (int) $validated['template_id'];
+        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
+        $messageIdGate = $messageId > 0 ? $messageId : null;
+        $html = (string) $validated['template_html'];
+
+        if ($messageIdGate !== null)
+        {
+            $message = Message::query()->whereKey($messageIdGate)->first();
+            if (! $message || (int) $message->type_id !== 1)
+            {
+                abort(422, 'Invalid message for email template.');
+            }
+        }
+
+        $this->persistTemplateHtmlFromMessageComposer($templateId, $html, $messageIdGate);
+
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            $returnUrl = $messageIdGate !== null
+                ? route('message.edit', $messageIdGate)
+                : route('message.create');
+        }
+
+        if ($messageIdGate === null && $returnUrl !== null && $returnUrl !== '')
+        {
+            $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+            $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                $returnUrl,
+                $createPath,
+                ['template_id' => (string) $templateId],
+            );
+        }
+
+        $template = Template::query()->whereKey($templateId)->firstOrFail();
+        $editorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+            route('template.editor', $template->getHashedId()),
+            $returnUrl,
+        );
+
+        return redirect()->to($editorUrl);
     }
 
     /**
@@ -587,32 +658,50 @@ class MessageController extends Controller
     /**
      * Start a message campaign
      */
-    public function startCampaign(Request $request, $id)
+    public function startCampaign(Request $request, $id): JsonResponse
     {
         try
         {
-            $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
+            $message = Message::with(['deliveries', 'team.settings', 'campaigns'])->findOrFail($id);
+            $activation = $this->attemptActivateMessageCampaign($message);
 
-            // Validate email sender configuration
+            return response()->json([
+                'success' => $activation['success'],
+                'message' => $activation['message'],
+            ], $activation['success'] ? 200 : 400);
+        } catch (\Exception $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al iniciar campaña: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    protected function attemptActivateMessageCampaign(Message $message): array
+    {
+        try
+        {
             $team = auth()->user()->currentTeam;
             if ($team && ! $team->relationLoaded('settings'))
             {
                 $team->load('settings');
             }
-            $emailConfig = $team->getOutgoingEmailConfig();
+            $emailConfig = $team?->getOutgoingEmailConfig() ?? [];
 
             if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
             {
-                return response()->json([
+                return [
                     'success' => false,
                     'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
-                ], 400);
+                ];
             }
 
-            // Activate the message
             $updateData = ['status_id' => 1];
 
-            // Only update started_at if it's the first time starting or if it was never started
             if (! $message->started_at)
             {
                 $updateData['started_at'] = now();
@@ -630,11 +719,9 @@ class MessageController extends Controller
                 }
             }
 
-            // Count potential contacts for this campaign
             $contactsCount = $this->getContactsForMessage($message)->count();
 
-            // Check if there are pending deliveries to send
-            $pendingDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)
+            $pendingDeliveries = MessageDelivery::where('message_id', $message->id)
                 ->where(function ($query)
                 {
                     $query->whereNull('sent_at')
@@ -652,16 +739,16 @@ class MessageController extends Controller
                 $responseMessage .= "{$contactsCount} contactos serán procesados por el programador.";
             }
 
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => $responseMessage,
-            ]);
+            ];
         } catch (\Exception $e)
         {
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => 'Error al iniciar campaña: '.$e->getMessage(),
-            ], 500);
+            ];
         }
     }
 
@@ -1082,12 +1169,7 @@ class MessageController extends Controller
             $templateHtml = '<p>'.e($message->text ?? '').'</p>';
         }
 
-        // Replace variables
-        $html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);
-        $html = str_replace('{{contact_name}}', $testContact->name ?? '', $html);
-        $html = str_replace('{{email}}', $testContact->email ?? '', $html);
-
-        return $html;
+        return $this->replaceEmailVariables($templateHtml, $testContact, $message);
     }
 
     /**
@@ -1133,24 +1215,52 @@ class MessageController extends Controller
      * Disabled channel controls omit type_id from the request; preserve the stored value on update,
      * otherwise default to mail (1) as a last resort.
      */
+    private function whatsappMessageTypeId(): int
+    {
+        static $cachedWhatsappMessageTypeId = null;
+
+        if ($cachedWhatsappMessageTypeId !== null)
+        {
+            return $cachedWhatsappMessageTypeId;
+        }
+
+        $cachedWhatsappMessageTypeId = 2;
+
+        foreach (MessageType::query()->cursor() as $type)
+        {
+            if (stripos((string) $type->name, 'whatsapp') !== false)
+            {
+                $cachedWhatsappMessageTypeId = (int) $type->id;
+                break;
+            }
+        }
+
+        return $cachedWhatsappMessageTypeId;
+    }
+
     private function resolveTypeIdForMessageStore(Request $request): int
     {
         $raw = $request->input('type_id');
+        $resolved = 1;
+
         if ($raw !== null && $raw !== '')
         {
-            return (int) $raw;
-        }
-
-        if ($request->filled('id'))
+            $resolved = (int) $raw;
+        } elseif ($request->filled('id'))
         {
             $existing = Message::query()->whereKey((int) $request->id)->value('type_id');
             if ($existing !== null)
             {
-                return (int) $existing;
+                $resolved = (int) $existing;
             }
         }
 
-        return 1;
+        if (! $request->filled('id') && $resolved === $this->whatsappMessageTypeId())
+        {
+            return 1;
+        }
+
+        return $resolved;
     }
 
     /**
@@ -1387,6 +1497,74 @@ class MessageController extends Controller
         ];
 
         return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+    }
+
+    private function rawTemplateHtmlFromModel(Template $template): string
+    {
+        $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
+
+        return (string) ($gjsData['html'] ?? '');
+    }
+
+    /**
+     * Writes Quill / composer HTML into the template's GrapesJS payload. Skipped when the message
+     * already has deliveries (readonly body) or the HTML is empty.
+     */
+    private function persistTemplateHtmlFromMessageComposer(int $templateId, string $rawHtml, ?int $messageIdForDeliveryGate): void
+    {
+        if ($templateId <= 0)
+        {
+            return;
+        }
+
+        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
+            && MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
+        {
+            return;
+        }
+
+        $trimmed = trim($rawHtml);
+        if ($trimmed === '')
+        {
+            return;
+        }
+
+        $template = Template::query()->whereKey($templateId)->first();
+        if (! $template instanceof Template)
+        {
+            return;
+        }
+
+        $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
+        $gjsData['html'] = $trimmed;
+
+        $template->forceFill(['gjs_data' => $gjsData])->save();
+
+        $template->refresh();
+        GrapesJsHelper::fixTemplateStructure($template);
+    }
+
+    /**
+     * Writes HTML from the message form into the linked template's GrapesJS data (same record all messages use).
+     * Skipped when the message already has deliveries (form body is readonly) or the payload is empty.
+     */
+    private function syncTemplateHtmlFromMessageForm(Request $request, int $resolvedTypeId, ?int $templateId): void
+    {
+        if ($resolvedTypeId !== 1 || $templateId === null || $templateId <= 0)
+        {
+            return;
+        }
+
+        $messageId = $request->filled('id') ? (int) $request->input('id') : 0;
+        $messageIdGate = $messageId > 0 ? $messageId : null;
+
+        $raw = $request->input('template_html');
+        if (! is_string($raw))
+        {
+            return;
+        }
+
+        $this->persistTemplateHtmlFromMessageComposer($templateId, $raw, $messageIdGate);
     }
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string

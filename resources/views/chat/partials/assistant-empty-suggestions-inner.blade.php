@@ -67,9 +67,10 @@
         </div>
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
-                <strong class="d-block mb-1"><i class="ti ti-send me-1"></i>Campañas</strong>
+                <strong class="d-block mb-1"><i class="ti ti-broadcast me-1"></i>Campañas</strong>
                 <div class="d-flex flex-wrap gap-1">
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista las campañas o mensajes de News">Listar campañas</button>
+                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Quiero crear un newsletter o mensaje de campaña por email">Crear newsletter</button>
                 </div>
             </div>
         </div>

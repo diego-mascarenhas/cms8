@@ -13,7 +13,10 @@ class Pricing extends Controller
         $plans = collect(config('humano_pricing.plans', []))
             ->map(function (array $plan): array
             {
-                $plan['checkout_href'] = (string) $plan['checkout_url'];
+                $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
+                $plan['checkout_href'] = $checkoutAvailable
+                    ? (string) $plan['checkout_url']
+                    : '';
 
                 return $plan;
             })

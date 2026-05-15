@@ -8,6 +8,9 @@
     'duplicateFormId' => 'message-email-template-duplicate-form',
     'duplicateModalId' => 'message-email-template-duplicate-modal',
     'removeTemplateUrl' => null,
+    'useMailHtmlTextarea' => false,
+    'mailHtmlTextareaValue' => '',
+    'mailHtmlTextareaReadonly' => false,
 ])
 
 @php
@@ -30,6 +33,9 @@
     'duplicateModalId' => $duplicateModalId,
     'removeTemplateUrl' => $removeTemplateUrl,
     'emailTestSendModalInline' => true,
+    'useMailHtmlTextarea' => $useMailHtmlTextarea,
+    'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+    'mailHtmlTextareaReadonly' => $mailHtmlTextareaReadonly,
 ])
 
 @if (filled($templateHashedId) && filled($duplicateFormId))

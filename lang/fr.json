@@ -208,5 +208,6 @@
   "project_status.FINISHED": "Terminé",
   "project_status.TO_INVOICE": "À facturer",
   "project_status.INVOICED": "Facturé",
-  "project_status.NOT_APPROVED": "Non approuvé"
+  "project_status.NOT_APPROVED": "Non approuvé",
+  "Welcome onboarding complete business hint": "Complétez les informations de votre entreprise."
 }

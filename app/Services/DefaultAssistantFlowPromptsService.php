@@ -117,11 +117,11 @@ PROMPT,
                 'prompt_instruction' => <<<PROMPT
 # Flujo: campañas y News (Herramientas)
 
-Ayudá con **campañas / mensajes de News (email o WhatsApp)**: listar plantillas, listar mensajes existentes, y guiar la creación o actualización de campañas con plantilla real (list_templates, list_messages, create_message, update_message, update_message_status). No inventes template_id: obtené ids con list_templates / list_messages.
+Ayudá con **campañas / mensajes de News (email o WhatsApp)**: listar plantillas, listar mensajes existentes, y guiar la creación o actualización de campañas con plantilla real (list_templates, list_messages, list_contact_categories, list_contact_statuses, create_message, update_message, update_message_status). No inventes template_id: obtené ids con list_templates / list_messages.
 
 ## Reglas
 - {$alwaysData}
-- Si piden "crear News", primero asegurá **plantilla y canal** con datos reales o pedí concretar con lo mínimo necesario.
+- Si piden crear **News**, **newsletter**, **email masivo** o **mensaje** de campaña: antes de **create_message** asegurate de tener **asunto/título**, **a quién va dirigido** como filtros separados (no uses solo «audiencia» sin matizar): **categoría de contactos** opcional (`list_contact_categories` → `category_name`) y/o **estado del contacto en el CRM** opcional (Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado — nombres exactos con `list_contact_statuses` → `contact_status_name`), o **todos los contactos** sin esos filtros; y **qué quieren comunicar** (texto corto para el campo `text`). Si falta algo, preguntá en un solo mensaje. Luego list_templates y creá con plantilla real. Tras crear, la app puede abrir el editor; indicá que pueden seguir ahí. En resúmenes en español, el on/off de envíos **no** lo llames solo «Estado»: usá **envío de la campaña** / **campaña pausada** / **envío activo** para no confundir con el estado del contacto en el CRM.
 PROMPT,
             ],
             [

@@ -118,32 +118,193 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var flatpickrLocale = calendarLocale === 'es' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.es ? 'es' : undefined;
+    var flatpickrDateStorageFormat = 'Y-m-d';
+    var flatpickrDateTimeStorageFormat = 'Y-m-d H:i';
+    var flatpickrDateDisplayFormat = calendarLocale === 'es' ? 'd-m-Y' : 'm-d-Y';
+    var flatpickrDateTimeDisplayFormat = calendarLocale === 'es' ? 'd-m-Y H:i' : 'm-d-Y h:i K';
 
-    // Event start (flatpicker)
-    if (eventStartDate) {
-      var start = eventStartDate.flatpickr({
-        enableTime: true,
-        altFormat: 'Y-m-dTH:i:S',
+    function setFlatpickrAltPlaceholder(flatpickrInstance, isAllDay) {
+      if (!flatpickrInstance || !flatpickrInstance.altInput) {
+        return;
+      }
+      flatpickrInstance.altInput.placeholder = isAllDay
+        ? calendarStrings.datePlaceholder || 'Selecciona una fecha'
+        : calendarStrings.dateTimePlaceholder || 'dd-mm-aaaa hh:mm';
+      flatpickrInstance.altInput.removeAttribute('readonly');
+    }
+
+    function getEventFlatpickrOptions(isAllDay) {
+      return {
+        enableTime: !isAllDay,
+        allowInput: true,
+        altInput: true,
+        altFormat: isAllDay ? flatpickrDateDisplayFormat : flatpickrDateTimeDisplayFormat,
+        dateFormat: isAllDay ? flatpickrDateStorageFormat : flatpickrDateTimeStorageFormat,
         locale: flatpickrLocale,
+        monthSelectorType: 'static',
+        time_24hr: true,
         onReady: function (selectedDates, dateStr, instance) {
+          setFlatpickrAltPlaceholder(instance, isAllDay);
           if (instance.isMobile) {
             instance.mobileInput.setAttribute('step', null);
           }
         }
+      };
+    }
+
+    function bindFlatpickrOpenButton(buttonEl, flatpickrInstance) {
+      if (!buttonEl || !flatpickrInstance || buttonEl.dataset.fpBound) {
+        return;
+      }
+      buttonEl.addEventListener('click', function () {
+        if (typeof flatpickrInstance.open === 'function') {
+          flatpickrInstance.open();
+        }
       });
+      buttonEl.dataset.fpBound = '1';
+    }
+
+    function parseManualCalendarInput(raw, isAllDay) {
+      if (!raw || !String(raw).trim()) {
+        return null;
+      }
+      var value = String(raw).trim();
+      if (isAllDay) {
+        return moment(
+          value,
+          ['DD/MM/YYYY', 'D/M/YYYY', 'DD-MM-YYYY', 'D-M-YYYY', 'YYYY-MM-DD', 'Y-m-d'],
+          true
+        );
+      }
+      return moment(
+        value,
+        [
+          'DD/MM/YYYY HH:mm',
+          'D/M/YYYY H:mm',
+          'DD-MM-YYYY HH:mm',
+          'D-M-YYYY H:mm',
+          'Y-m-d H:i',
+          'YYYY-MM-DDTHH:mm:ss.SSSZ'
+        ],
+        true
+      );
+    }
+
+    // Event start (flatpicker)
+    if (eventStartDate) {
+      var start = eventStartDate.flatpickr(getEventFlatpickrOptions(false));
+      bindFlatpickrOpenButton(document.getElementById('event-start-date-settings'), start);
     }
 
     // Event end (flatpicker)
     if (eventEndDate) {
-      var end = eventEndDate.flatpickr({
-        enableTime: true,
-        altFormat: 'Y-m-dTH:i:S',
-        locale: flatpickrLocale,
-        onReady: function (selectedDates, dateStr, instance) {
-          if (instance.isMobile) {
-            instance.mobileInput.setAttribute('step', null);
-          }
+      var end = eventEndDate.flatpickr(getEventFlatpickrOptions(false));
+      bindFlatpickrOpenButton(document.getElementById('event-end-date-settings'), end);
+    }
+
+    function serializeCalendarDate(flatpickrInstance, isAllDay) {
+      if (!flatpickrInstance) {
+        return '';
+      }
+      var selected = flatpickrInstance.selectedDates;
+      if (selected && selected.length > 0) {
+        if (isAllDay) {
+          return moment(selected[0]).format('YYYY-MM-DD');
         }
+        return selected[0].toISOString();
+      }
+      var raw = flatpickrInstance.altInput
+        ? flatpickrInstance.altInput.value
+        : flatpickrInstance.input
+          ? flatpickrInstance.input.value
+          : '';
+      if (!raw) {
+        return '';
+      }
+      var parsed = parseManualCalendarInput(raw, isAllDay);
+      if (!parsed || !parsed.isValid()) {
+        return '';
+      }
+      if (isAllDay) {
+        return parsed.format('YYYY-MM-DD');
+      }
+      return parsed.toISOString();
+    }
+
+    function applyFlatpickrAllDayMode(isAllDay) {
+      [start, end].forEach(function (flatpickrInstance) {
+        if (!flatpickrInstance) {
+          return;
+        }
+        flatpickrInstance.set('enableTime', !isAllDay);
+        flatpickrInstance.set('dateFormat', isAllDay ? flatpickrDateStorageFormat : flatpickrDateTimeStorageFormat);
+        flatpickrInstance.set('altFormat', isAllDay ? flatpickrDateDisplayFormat : flatpickrDateTimeDisplayFormat);
+        setFlatpickrAltPlaceholder(flatpickrInstance, isAllDay);
+      });
+    }
+
+    function readEventDateRangeFromForm() {
+      var isAllDay = allDaySwitch && allDaySwitch.checked;
+      var startValue = serializeCalendarDate(start, isAllDay);
+      var endValue = serializeCalendarDate(end, isAllDay);
+
+      if (isAllDay && startValue && endValue) {
+        var startDay = moment(startValue, 'YYYY-MM-DD', true);
+        var endDay = moment(endValue, 'YYYY-MM-DD', true);
+        if (endDay.isValid() && startDay.isValid() && endDay.isBefore(startDay)) {
+          endValue = startValue;
+        }
+      }
+
+      return {
+        start: startValue,
+        end: endValue
+      };
+    }
+
+    function flatpickrDateFromCalendarEvent(calendarEventDate, isAllDay, isExclusiveEnd) {
+      if (!calendarEventDate) {
+        return null;
+      }
+      var date = calendarEventDate instanceof Date ? moment(calendarEventDate) : moment(calendarEventDate);
+      if (isAllDay && isExclusiveEnd) {
+        date = date.clone().subtract(1, 'day');
+      }
+      return date.toDate();
+    }
+
+    function applyAllDayToggleToFlatpickr(isAllDay) {
+      applyFlatpickrAllDayMode(isAllDay);
+
+      var startMoment = start && start.selectedDates[0] ? moment(start.selectedDates[0]) : moment();
+      var endMoment = end && end.selectedDates[0] ? moment(end.selectedDates[0]) : startMoment.clone();
+
+      if (isAllDay) {
+        if (start) {
+          start.setDate(startMoment.clone().startOf('day').toDate(), true);
+        }
+        if (end) {
+          end.setDate(endMoment.clone().startOf('day').toDate(), true);
+        }
+        return;
+      }
+
+      var timedStart = startMoment.clone().hour(9).minute(0).second(0).millisecond(0);
+      var timedEnd = endMoment.clone().hour(10).minute(0).second(0).millisecond(0);
+      if (!timedEnd.isAfter(timedStart)) {
+        timedEnd = timedStart.clone().add(1, 'hour');
+      }
+      if (start) {
+        start.setDate(timedStart.toDate(), true);
+      }
+      if (end) {
+        end.setDate(timedEnd.toDate(), true);
+      }
+    }
+
+    if (allDaySwitch) {
+      allDaySwitch.addEventListener('change', function () {
+        applyAllDayToggleToFlatpickr(allDaySwitch.checked);
       });
     }
 
@@ -173,11 +334,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       eventTitle.value = eventToUpdate.title || '';
       eventUrl.value = eventToUpdate.url || '';
-      start.setDate(eventToUpdate.start, true, 'Y-m-d');
-      eventToUpdate.allDay === true ? (allDaySwitch.checked = true) : (allDaySwitch.checked = false);
-      eventToUpdate.end !== null
-        ? end.setDate(eventToUpdate.end, true, 'Y-m-d')
-        : end.setDate(eventToUpdate.start, true, 'Y-m-d');
+      var isAllDayEvent = eventToUpdate.allDay === true;
+      allDaySwitch.checked = isAllDayEvent;
+      applyFlatpickrAllDayMode(isAllDayEvent);
+      start.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.start, isAllDayEvent, false), true);
+      if (eventToUpdate.end !== null) {
+        end.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.end, isAllDayEvent, isAllDayEvent), true);
+      } else {
+        end.setDate(flatpickrDateFromCalendarEvent(eventToUpdate.start, isAllDayEvent, false), true);
+      }
       eventLabel.val(eventToUpdate.extendedProps && eventToUpdate.extendedProps.calendar ? eventToUpdate.extendedProps.calendar : 'Business').trigger('change');
       eventLocation.value = (eventToUpdate.extendedProps && eventToUpdate.extendedProps.location !== undefined) ? eventToUpdate.extendedProps.location : '';
       eventToUpdate.extendedProps && eventToUpdate.extendedProps.guests !== undefined
@@ -219,6 +384,17 @@ document.addEventListener('DOMContentLoaded', function () {
       return selected;
     }
 
+    function filterEventsBySelectedCalendars(eventsList) {
+      var calendars = selectedCalendars();
+      if (calendars.length === 0) {
+        return [];
+      }
+      return eventsList.filter(function (event) {
+        var cal = event.extendedProps && event.extendedProps.calendar;
+        return cal && calendars.includes(String(cal).toLowerCase());
+      });
+    }
+
     // --------------------------------------------------------------------------------------------------
     // fetchEvents
     // * When calendarEventsApiUrl is set (Google Calendar), fetch from API. Otherwise use local events.
@@ -233,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
           .then((response) => {
             if (!response.ok) {
               console.warn('Calendar API error:', response.status, response.statusText);
-              successCallback([...currentEvents]);
+              successCallback(filterEventsBySelectedCalendars([...currentEvents]));
               return null;
             }
             return response.json();
@@ -244,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function () {
               if (apiEvents && apiEvents.error) {
                 console.warn('Calendar API error:', apiEvents.error);
               }
-              successCallback([...currentEvents]);
+              successCallback(filterEventsBySelectedCalendars([...currentEvents]));
               return;
             }
             const merged = [...currentEvents];
@@ -270,25 +446,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 merged.push(fcEv);
               }
             });
-            successCallback(merged);
+            successCallback(filterEventsBySelectedCalendars(merged));
           })
           .catch((err) => {
             console.error('Calendar API error:', err);
             if (typeof failureCallback === 'function') {
               failureCallback(err);
             }
-            successCallback([...currentEvents]);
+            successCallback(filterEventsBySelectedCalendars([...currentEvents]));
           });
         return;
       }
 
       // Local events: filter by selected calendars
-      let calendars = selectedCalendars();
-      let selectedEvents = currentEvents.filter(function (event) {
-        const cal = event.extendedProps && event.extendedProps.calendar;
-        return cal && calendars.includes(cal.toLowerCase());
-      });
-      successCallback(selectedEvents);
+      successCallback(filterEventsBySelectedCalendars(currentEvents));
     }
 
     var titleUpdateTimeoutId = null;
@@ -297,28 +468,126 @@ document.addEventListener('DOMContentLoaded', function () {
       if (titleUpdateTimeoutId) clearTimeout(titleUpdateTimeoutId);
       titleUpdateTimeoutId = setTimeout(function () {
         titleUpdateTimeoutId = null;
-        applyTitleAndCapitalizeLabels();
+        applyToolbarTitleCapitalization();
       }, 50);
     }
 
-    function applyTitleAndCapitalizeLabels() {
+    function capitalizeFirstLetter(text) {
+      if (!text) {
+        return text;
+      }
+      var first = text.charAt(0);
+      if (first === first.toUpperCase()) {
+        return text;
+      }
+      return first.toUpperCase() + text.slice(1);
+    }
+
+    function formatDayHeaderContent(arg) {
+      var text;
+      if (arg.view.type === 'timeGridWeek') {
+        text = moment(arg.date).format('ddd D/M');
+      } else if (arg.view.type === 'timeGridDay') {
+        text = moment(arg.date).format('dddd D/M');
+      } else {
+        text = arg.text;
+      }
+      return capitalizeFirstLetter(text);
+    }
+
+    function applyToolbarTitleCapitalization() {
       var titleEl = calendarEl.querySelector('.fc-toolbar-title');
       if (titleEl && typeof calendar !== 'undefined' && calendar.view && calendar.view.title) {
         var apiTitle = calendar.view.title;
         if (apiTitle) {
-          var normalized = apiTitle.charAt(0).toUpperCase() + apiTitle.slice(1);
-          titleEl.textContent = normalized;
+          titleEl.textContent = capitalizeFirstLetter(apiTitle);
         }
       }
-      var dayHeaders = calendarEl.querySelectorAll('.fc-col-header-cell-cushion');
-      dayHeaders.forEach(function (el) {
-        if (el.textContent) {
-          var d = el.textContent.trim();
-          if (d && d.charAt(0) !== d.charAt(0).toUpperCase()) {
-            el.textContent = d.charAt(0).toUpperCase() + d.slice(1).toLowerCase();
-          }
+    }
+
+    function buildPayloadFromFcEvent(fcEvent) {
+      var isAllDay = fcEvent.allDay === true;
+      var startValue;
+      var endValue;
+
+      if (isAllDay) {
+        startValue = moment(fcEvent.start).format('YYYY-MM-DD');
+        if (fcEvent.end) {
+          endValue = moment(fcEvent.end).subtract(1, 'day').format('YYYY-MM-DD');
+        } else {
+          endValue = startValue;
         }
+      } else {
+        startValue = fcEvent.start ? fcEvent.start.toISOString() : '';
+        if (fcEvent.end) {
+          endValue = fcEvent.end.toISOString();
+        } else if (fcEvent.start) {
+          endValue = moment(fcEvent.start).add(1, 'hour').toISOString();
+        } else {
+          endValue = '';
+        }
+      }
+
+      return {
+        id: fcEvent.id,
+        title: fcEvent.title || '',
+        start: startValue,
+        end: endValue,
+        allDay: isAllDay,
+        url: fcEvent.url || '',
+        extendedProps: {
+          calendar: (fcEvent.extendedProps && fcEvent.extendedProps.calendar) || 'Business',
+          location: (fcEvent.extendedProps && fcEvent.extendedProps.location) || '',
+          description: (fcEvent.extendedProps && fcEvent.extendedProps.description) || '',
+          guests: (fcEvent.extendedProps && Array.isArray(fcEvent.extendedProps.guests) ? fcEvent.extendedProps.guests : [])
+        }
+      };
+    }
+
+    function persistCalendarEventChange(info) {
+      var fcEvent = info.event;
+      var payload = buildPayloadFromFcEvent(fcEvent);
+      var eventId = parseInt(fcEvent.id, 10);
+      var base = calendarApiBaseUrl();
+
+      if (base && eventId > 0 && !isNaN(eventId)) {
+        calendarApiFetch('PUT', base + '/' + eventId, {
+          title: payload.title,
+          start: payload.start,
+          end: payload.end,
+          all_day: Boolean(payload.allDay),
+          url: payload.url || '',
+          label: payload.extendedProps.calendar || 'Business',
+          location: payload.extendedProps.location || '',
+          description: payload.extendedProps.description || '',
+          guests: payload.extendedProps.guests || []
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              info.revert();
+              return;
+            }
+            calendar.refetchEvents();
+          })
+          .catch(function () {
+            info.revert();
+          });
+        return;
+      }
+
+      var idx = currentEvents.findIndex(function (event) {
+        return String(event.id) === String(fcEvent.id);
       });
+      if (idx >= 0) {
+        currentEvents[idx] = Object.assign({}, currentEvents[idx], {
+          title: payload.title,
+          start: payload.start,
+          end: payload.end,
+          allDay: payload.allDay,
+          startStr: payload.start,
+          endStr: payload.end
+        });
+      }
     }
 
     // Init FullCalendar
@@ -351,9 +620,11 @@ document.addEventListener('DOMContentLoaded', function () {
       allDayContent: function (arg) {
         return calendarStrings.fcAllDay || 'all-day';
       },
+      dayHeaderContent: formatDayHeaderContent,
       firstDay: 1,
       direction: direction,
       locale: calendarLocale,
+      timeZone: 'local',
       initialDate: new Date(),
       navLinks: true,
       eventClassNames: function ({ event: calendarEvent }) {
@@ -374,11 +645,21 @@ document.addEventListener('DOMContentLoaded', function () {
         btnSubmit.classList.remove('btn-update-event');
         btnSubmit.classList.add('btn-add-event');
         btnDeleteEvent.classList.add('d-none');
-        eventStartDate.value = date;
-        eventEndDate.value = date;
+        if (start) {
+          start.setDate(info.date, true);
+        }
+        if (end) {
+          end.setDate(info.date, true);
+        }
       },
       eventClick: function (info) {
         eventClick(info);
+      },
+      eventDrop: function (info) {
+        persistCalendarEventChange(info);
+      },
+      eventResize: function (info) {
+        persistCalendarEventChange(info);
       },
       datesSet: function () {
         modifyToggler();
@@ -460,13 +741,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!submitRequested) return;
         submitRequested = false;
         if (btnSubmit.classList.contains('btn-add-event')) {
+          const eventDates = readEventDateRangeFromForm();
           const newEvent = {
             id: calendar.getEvents().length + 1,
             title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
-            startStr: eventStartDate.value,
-            endStr: eventEndDate.value,
+            start: eventDates.start,
+            end: eventDates.end,
+            startStr: eventDates.start,
+            endStr: eventDates.end,
             display: 'block',
             extendedProps: {
               location: eventLocation.value,
@@ -476,14 +758,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           };
           if (eventUrl.value) newEvent.url = eventUrl.value;
-          if (allDaySwitch.checked) newEvent.allDay = true;
+          newEvent.allDay = allDaySwitch.checked;
           addEvent(newEvent);
         } else {
+          const eventDates = readEventDateRangeFromForm();
           const eventData = {
             id: eventToUpdate.id,
             title: eventTitle.value,
-            start: eventStartDate.value,
-            end: eventEndDate.value,
+            start: eventDates.start,
+            end: eventDates.end,
             url: eventUrl.value,
             extendedProps: {
               location: eventLocation.value,
@@ -537,7 +820,7 @@ document.addEventListener('DOMContentLoaded', function () {
           title: eventData.title,
           start: eventData.start,
           end: eventData.end,
-          all_day: eventData.allDay || false,
+          all_day: Boolean(eventData.allDay),
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
@@ -562,7 +845,7 @@ document.addEventListener('DOMContentLoaded', function () {
           title: eventData.title,
           start: eventData.start,
           end: eventData.end,
-          all_day: eventData.allDay || false,
+          all_day: Boolean(eventData.allDay),
           url: eventData.url || '',
           label: (eventData.extendedProps && eventData.extendedProps.calendar) || 'Business',
           location: (eventData.extendedProps && eventData.extendedProps.location) || '',
@@ -637,22 +920,63 @@ document.addEventListener('DOMContentLoaded', function () {
       fv.validate();
     });
 
-    // Call removeEvent function
-    btnDeleteEvent.addEventListener('click', e => {
-      removeEvent(parseInt(eventToUpdate.id));
-      // eventToUpdate.remove();
+    function confirmDeleteEvent() {
+      if (!eventToUpdate || !eventToUpdate.id) {
+        return;
+      }
+      removeEvent(parseInt(eventToUpdate.id, 10));
       bsAddEventSidebar.hide();
-    });
+    }
+
+    // Call removeEvent function
+    if (btnDeleteEvent) {
+      btnDeleteEvent.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!eventToUpdate || !eventToUpdate.id) {
+          return;
+        }
+
+        if (typeof Swal === 'undefined') {
+          if (window.confirm(calendarStrings.deleteConfirmText || 'Are you sure you want to delete this record?')) {
+            confirmDeleteEvent();
+          }
+          return;
+        }
+
+        Swal.fire({
+          title: calendarStrings.deleteConfirmTitle || 'Are you sure?',
+          text: calendarStrings.deleteConfirmText || 'Are you sure you want to delete this record?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: calendarStrings.deleteConfirmYes || 'Yes, delete',
+          cancelButtonText: calendarStrings.cancel || 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-primary me-3',
+            cancelButton: 'btn btn-label-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            confirmDeleteEvent();
+          }
+        });
+      });
+    }
 
     // Reset event form inputs values
     // ------------------------------------------------
     function resetValues() {
-      eventEndDate.value = '';
+      if (start && typeof start.clear === 'function') {
+        start.clear();
+      }
+      if (end && typeof end.clear === 'function') {
+        end.clear();
+      }
       eventUrl.value = '';
-      eventStartDate.value = '';
       eventTitle.value = '';
       eventLocation.value = '';
       allDaySwitch.checked = false;
+      applyFlatpickrAllDayMode(false);
       eventGuests.val('').trigger('change');
       eventDescription.value = '';
     }

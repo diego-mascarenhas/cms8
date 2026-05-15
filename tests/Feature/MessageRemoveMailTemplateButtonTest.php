@@ -34,7 +34,7 @@ class MessageRemoveMailTemplateButtonTest extends TestCase
         return $user->fresh();
     }
 
-    public function test_message_create_with_template_shows_remove_template_link(): void
+    public function test_message_create_with_template_shows_template_select_and_no_remove_mail_template_link(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -58,12 +58,11 @@ class MessageRemoveMailTemplateButtonTest extends TestCase
 
         $response->assertOk();
         $html = $response->getContent();
-        $this->assertStringContainsString('legacy_form=1', $html);
-        $response->assertSee(__('app.message_remove_mail_template'), false);
-        $this->assertStringContainsString('data-message-remove-template-confirm="1"', $html);
+        $this->assertStringContainsString('id="template_id"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<a[^>]+href="[^"]*remove_mail_template=1[^"]*"/', $html);
     }
 
-    public function test_message_edit_shows_remove_template_link(): void
+    public function test_message_edit_with_template_shows_template_select_and_no_remove_mail_template_link(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -93,9 +92,8 @@ class MessageRemoveMailTemplateButtonTest extends TestCase
 
         $response->assertOk();
         $html = $response->getContent();
-        $this->assertStringContainsString('remove_mail_template=1', $html);
-        $response->assertSee(__('app.message_remove_mail_template'), false);
-        $this->assertStringContainsString('data-message-remove-template-confirm="1"', $html);
+        $this->assertStringContainsString('id="template_id"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<a[^>]+href="[^"]*remove_mail_template=1[^"]*"/', $html);
     }
 
     public function test_message_edit_remove_mail_template_hides_preview_and_shows_template_select(): void

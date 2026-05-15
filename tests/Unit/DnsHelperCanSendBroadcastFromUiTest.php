@@ -22,13 +22,21 @@ class DnsHelperCanSendBroadcastFromUiTest extends TestCase
         $this->assertTrue(DnsHelper::canSendBroadcastFromUi(null, false, false));
     }
 
-    public function test_system_smtp_with_authorized_dns(): void
+    public function test_system_smtp_with_valid_spf_dns(): void
     {
         $dns = [
             'spf' => ['has_mailbaby' => true],
-            'mailbaby_auth' => ['authorized' => true],
         ];
 
         $this->assertTrue(DnsHelper::canSendBroadcastFromUi($dns, true, false));
+    }
+
+    public function test_system_smtp_with_spf_only_false_denies(): void
+    {
+        $dns = [
+            'spf' => ['has_mailbaby' => false],
+        ];
+
+        $this->assertFalse(DnsHelper::canSendBroadcastFromUi($dns, true, false));
     }
 }

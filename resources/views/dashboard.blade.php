@@ -64,6 +64,69 @@
         });
     </script>
     @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const el = document.querySelector('#dashboardContactsTrendChart');
+            if (!el || typeof ApexCharts === 'undefined' || typeof config === 'undefined') {
+                return;
+            }
+            const trend = @json($dashboardContactsCreatedTrend ?? ['labels' => [], 'values' => []]);
+            const labels = trend.labels || [];
+            const values = trend.values || [];
+            const isDark = typeof isDarkStyle !== 'undefined' && isDarkStyle;
+            const muted = isDark ? (config.colors_dark && config.colors_dark.textMuted) : (config.colors && config.colors.textMuted);
+            const primaryLabel = config.colors_label ? config.colors_label.primary : '#8592a1';
+            const primary = config.colors ? config.colors.primary : '#696cff';
+            const barColors = labels.map(function(_, i) {
+                return i === labels.length - 1 ? primary : primaryLabel;
+            });
+            new ApexCharts(el, {
+                chart: {
+                    height: 140,
+                    parentHeightOffset: 0,
+                    type: 'bar',
+                    toolbar: { show: false },
+                    sparkline: { enabled: false }
+                },
+                plotOptions: {
+                    bar: {
+                        barHeight: '62%',
+                        columnWidth: '42%',
+                        startingShape: 'rounded',
+                        endingShape: 'rounded',
+                        borderRadius: 4,
+                        distributed: true
+                    }
+                },
+                grid: { show: false, padding: { top: -12, bottom: 0, left: -8, right: -8 } },
+                colors: barColors,
+                dataLabels: { enabled: false },
+                series: [{ data: values }],
+                legend: { show: false },
+                xaxis: {
+                    categories: labels,
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: {
+                            colors: muted,
+                            fontSize: '11px',
+                            fontFamily: 'Public Sans'
+                        }
+                    }
+                },
+                yaxis: { labels: { show: false } },
+                tooltip: {
+                    y: {
+                        formatter: function(val) {
+                            return parseInt(val, 10);
+                        }
+                    }
+                }
+            }).render();
+        });
+    </script>
 @endsection
 
 @section('content')
@@ -77,36 +140,96 @@
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
         <div class="card-body row p-0 pb-2 align-items-stretch">
             <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <h3 class="mb-1">{{ __('app.welcome') }}</h3>
-                @if(!empty($dailyPerformanceInsight?->message))
-                    <p class="text-muted mb-2 pb-1 small">{{ e($dailyPerformanceInsight->message) }}</p>
-                @endif
-                <div class="d-flex justify-content-between gap-3 me-5">
-                    <div class="d-flex align-items-center gap-3 me-4 me-sm-0">
-                        <span class="bg-label-primary p-2 rounded">
-                            <i class='ti ti-device-laptop ti-xl'></i>
-                        </span>
-                        <div class="content-right">
-                            <p class="mb-0">Horas invertidas</p>
-                            <h4 class="text-primary mb-0">@formatMinutes($totalTeamMinutes)</h4>
+                <div class="row g-3 g-lg-4 w-100">
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <div class="d-flex align-items-center gap-3 h-100">
+                            <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                <i class="ti ti-device-laptop ti-xl"></i>
+                            </span>
+                            <div class="content-right min-w-0">
+                                <p class="mb-0">Horas invertidas</p>
+                                <h4 class="text-primary mb-0">@formatMinutes($totalTeamMinutes)</h4>
+                            </div>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="bg-label-success p-2 rounded">
-                            <i class='ti ti-target ti-xl'></i>
-                        </span>
-                        <div class="content-right">
-                            <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
-                            <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
+                    @can('contact.list')
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
+                                <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-target ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
+                                    <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
+                                </div>
+                            </a>
                         </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="bg-label-warning p-2 rounded">
-                            <i class='ti ti-discount-check ti-xl'></i>
-                        </span>
-                        <div class="content-right">
-                            <p class="mb-0">Para hablar hoy</p>
-                            <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
+                                <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-users ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
+                                    <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
+                                <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-activity ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
+                                    <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
+                                </div>
+                            </a>
+                        </div>
+                    @else
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="d-flex align-items-center gap-3 h-100">
+                                <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-target ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
+                                    <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="d-flex align-items-center gap-3 h-100">
+                                <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-users ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
+                                    <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="d-flex align-items-center gap-3 h-100">
+                                <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                    <i class="ti ti-activity ti-xl"></i>
+                                </span>
+                                <div class="content-right min-w-0">
+                                    <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
+                                    <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    @endcan
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <div class="d-flex align-items-center gap-3 h-100">
+                            <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                <i class="ti ti-discount-check ti-xl"></i>
+                            </span>
+                            <div class="content-right min-w-0">
+                                <p class="mb-0">Para hablar hoy</p>
+                                <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -119,26 +242,22 @@
                         <div class="col-9 min-w-0 d-flex flex-column">
                             <div class="card-body d-flex flex-column flex-grow-1">
                                 @php
-                                    $insightCardFirstName = explode(' ', auth()->user()->name)[0];
+                                    $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
-                                @if(!empty($dailyPerformanceInsight))
-                                    @php
-                                        $insightHeadlineParts = \App\Models\UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($dailyPerformanceInsight->headline);
-                                    @endphp
-                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                        @if($insightHeadlineParts['emoji'] !== '')
-                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center lh-1">{{ $insightHeadlineParts['emoji'] }}</span>
-                                        @else
-                                            <span class="text-primary flex-shrink-0 d-inline-flex align-items-center" aria-hidden="true">
-                                                <i class="ti ti-sparkles ti-sm"></i>
-                                            </span>
-                                        @endif
-                                        <h5 class="card-title mb-0 fw-semibold">{{ e($insightHeadlineParts['text']) }}</h5>
-                                    </div>
-                                    <p class="mb-2 text-body"><strong>{!! nl2br(e($dailyPerformanceInsight->focus), false) !!}</strong></p>
+                                @if(auth()->user()->hasAnyRole(['admin', 'root']))
+                                    <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
+                                    <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
                                     @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
                                         <div class="mt-auto pt-2">
-                                            <a href="{{ route('chat.index', ['view' => 'assistant']) }}" class="btn btn-sm btn-primary waves-effect waves-light">{{ __('app.dashboard_open_assistant') }}</a>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-primary waves-effect waves-light"
+                                                data-bs-toggle="offcanvas"
+                                                data-bs-target="#assistant-offcanvas"
+                                                aria-controls="assistant-offcanvas"
+                                                title="{{ __('app.assistant_fab_title') }}"
+                                                aria-label="{{ __('app.assistant_fab_title') }}: {{ __('app.dashboard_open_assistant') }}"
+                                            ><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</button>
                                         </div>
                                     @endif
                                 @else

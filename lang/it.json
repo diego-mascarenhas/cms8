@@ -209,5 +209,6 @@
   "project_status.FINISHED": "Terminato",
   "project_status.TO_INVOICE": "Da fatturare",
   "project_status.INVOICED": "Fatturato",
-  "project_status.NOT_APPROVED": "Non approvato"
+  "project_status.NOT_APPROVED": "Non approvato",
+  "Welcome onboarding complete business hint": "Completa i dati della tua attività."
 }

@@ -42,11 +42,11 @@ return [
      * | with this value (assistant, business, or foundation). Foundation = business modules plus enterprise extras below.
      * | Override with HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG.
      */
-    'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'business'))))
+    'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'assistant'))))
     {
-        'assistant' => 'assistant',
+        'business' => 'business',
         'foundation' => 'foundation',
-        default => 'business',
+        default => 'assistant',
     },
 
     /*
@@ -56,6 +56,17 @@ return [
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
+     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer client
+     * | enterprise id (digits only). Keys must match Stripe's field key on each Payment Link.
+     * | If the custom field is empty, the same id may be passed as Stripe client_reference_id on the link URL.
+     * | HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS=referente,affiliate
+     */
+    'payment_link_affiliate_custom_field_keys' => array_values(array_filter(array_map(
+        static fn (string $k): string => strtolower(trim($k)),
+        explode(',', (string) env('HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS', 'referente,affiliate')),
+    ))),
+
+    /*
      * |--------------------------------------------------------------------------
      * | Team modules after checkout (by plan id: assistant, business, foundation)
      * |--------------------------------------------------------------------------
@@ -63,21 +74,20 @@ return [
      * | Matched via stripe_product_id on the subscription vs plans below.
      * | Each plan lists every module key to enable (business repeats assistant + extras).
      * | foundation is business plus org, CRM, API, files, support, extended billing, and commerce keys.
-     * | Demo team modules follow demo_team_plan_slug above (default: business).
+     * | Demo team modules follow demo_team_plan_slug above (default: assistant).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
      * |
      */
     'plan_team_modules' => [
         'assistant' => [
+            'today',
             'settings',
-            'dashboard',
             'calendar',
             'clients',
             'contacts',
             'tasks',
             'prospecting',
-            'prompts',
             'mailer',
             'landings',
             'chat',
@@ -153,6 +163,9 @@ return [
      * | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
      * |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
      * |
+     * | checkout_available (per plan): when false, the public pricing card hides amounts and shows
+     * | "Coming soon" instead of the Stripe subscribe button. Override with HUMANO_PRICING_*_CHECKOUT_AVAILABLE.
+     * |
      */
     'plans' => [
         [
@@ -167,6 +180,10 @@ return [
             'monthly_amount' => '99',
             'yearly_amount' => '990',
             'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_ASSISTANT_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
         [
             'id' => 'business',
@@ -180,6 +197,10 @@ return [
             'monthly_amount' => '299',
             'yearly_amount' => '2990',
             'popular' => true,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_BUSINESS_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
         [
             'id' => 'foundation',
@@ -193,6 +214,10 @@ return [
             'monthly_amount' => '999',
             'yearly_amount' => '9990',
             'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_FOUNDATION_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
     ],
 ];

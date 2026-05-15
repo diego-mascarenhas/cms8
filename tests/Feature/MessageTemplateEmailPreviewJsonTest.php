@@ -77,7 +77,12 @@ class MessageTemplateEmailPreviewJsonTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['html', 'preview_html', 'duplicate_action_url']);
-        $this->assertStringContainsString('email-template-content-preview', $response->json('html'));
+        $html = $response->json('html');
+        $this->assertStringContainsString('email-template-content-preview', $html);
+        $this->assertStringContainsString('name="template_html"', $html);
+        $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
+        $this->assertStringContainsString('data-huma-open-visual-editor', $html);
+        $this->assertStringContainsString('Preview body', $html);
         $this->assertStringContainsString('Preview body', $response->json('preview_html'));
         $this->assertStringContainsString('/template/', $response->json('duplicate_action_url'));
     }

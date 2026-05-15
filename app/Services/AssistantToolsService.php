@@ -26,6 +26,7 @@ use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Support\AssistantCreatedMessageRedirect;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -143,6 +144,15 @@ class AssistantToolsService
             [
                 'name' => 'list_contact_categories',
                 'description' => 'List all contact categories for the current team. Use this to show categories or to find a category name before creating or assigning contacts.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'list_contact_statuses',
+                'description' => 'List CRM contact lifecycle statuses (estado del contacto), e.g. Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado. Use before create_message or update_message when the user wants to filter recipients by status; pass the exact name as contact_status_name.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],
@@ -451,35 +461,35 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_message',
-                'description' => 'Create a NEW campaign message (News) only. Use ONLY when the user explicitly asks to create a new campaign ("crear mensaje", "crear campaña", "crear News"). Do NOT use for changing an existing campaign — use update_message or update_message_status instead. Provide name, template_id (from list_templates), channel (email or whatsapp), text (alternative text, required). Optionally: category_name, contact_status_name, active.',
+                'description' => 'Create a NEW campaign message (News / newsletter / bulk email or WhatsApp) only. Use ONLY when the user explicitly wants a new campaign ("crear mensaje", "crear newsletter", "crear email masivo", "crear campaña", "crear News"). Do NOT use to change an existing campaign — use update_message or update_message_status. BEFORE calling this tool: if the user has not already given all of (1) subject/title for the campaign, (2) recipient filters — optional contact category (category_name from list_contact_categories) and/or optional CRM contact status (contact_status_name from list_contact_statuses: Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado, etc.), or they clearly want all contacts with neither filter, and (3) what they want to communicate (short summary for the text / preview field), ask them in one friendly message — do not guess names. Map (1) to name, (3) to text (min 3 chars). Call list_templates first; pick template_id from the list (match channel to email vs whatsapp). If the user did not choose a template, you may use the first suitable active template for that channel after listing. Optional: category_name, contact_status_name, active (default false). After success, say they are being taken to the editor to continue. In user-facing summaries (especially Spanish), never label sending on/off as bare "Estado" — that is ambiguous with CRM contact status; say campaign sending on/off, envío activo/pausado, or campaña pausada.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
-                        'name' => ['type' => 'string', 'description' => 'Campaign/News name'],
+                        'name' => ['type' => 'string', 'description' => 'Campaign subject/title (asunto del envío)'],
                         'template_id' => ['type' => 'integer', 'description' => 'Template ID (from list_templates)'],
                         'channel' => [
                             'type' => 'string',
                             'description' => 'Channel: email or whatsapp',
                             'enum' => ['email', 'whatsapp'],
                         ],
-                        'text' => ['type' => 'string', 'description' => 'Alternative text (for WhatsApp or email fallback); required'],
-                        'category_name' => ['type' => 'string', 'description' => 'Contact category name as target audience (optional; use list_contact_categories to see names)'],
-                        'contact_status_name' => ['type' => 'string', 'description' => 'Contact status name, e.g. "En seguimiento" (optional)'],
-                        'active' => ['type' => 'boolean', 'description' => 'If true, campaign is created active (default false)'],
+                        'text' => ['type' => 'string', 'description' => 'What to communicate: short summary or alternative/preview text (required, min 3 chars; user may refine in the editor after)'],
+                        'category_name' => ['type' => 'string', 'description' => 'Optional audience filter: contact category/segment (use list_contact_categories for exact names). Independent from CRM contact status.'],
+                        'contact_status_name' => ['type' => 'string', 'description' => 'Optional audience filter: CRM contact lifecycle status — exact name from list_contact_statuses (e.g. Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado). Not campaign sending on/off.'],
+                        'active' => ['type' => 'boolean', 'description' => 'If true, campaign sending is enabled (default false: sending paused until enabled in Messages/News)'],
                     ],
                     'required' => ['name', 'template_id', 'channel', 'text'],
                 ],
             ],
             [
                 'name' => 'update_message_status',
-                'description' => 'Activate or pause a campaign message. Use when the user says "detener la campaña X", "pausar mensaje", "activar la campaña Y", "parar el mensaje". Pass message_id (from list_messages) and status: active or paused. Paused campaigns stop sending; active campaigns can send.',
+                'description' => 'Enable or pause campaign sending (whether the newsletter/campaign delivers). Not the same as CRM contact status. Use when the user says "detener la campaña X", "pausar mensaje", "activar la campaña Y", "parar el mensaje". Pass message_id (from list_messages) and status: active or paused. Paused stops deliveries; active allows sending per rules.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'message_id' => ['type' => 'integer', 'description' => 'Campaign message ID (from list_messages)'],
                         'status' => [
                             'type' => 'string',
-                            'description' => 'active or paused',
+                            'description' => 'Campaign sending: active (deliveries allowed) or paused (stopped)',
                             'enum' => ['active', 'paused'],
                         ],
                     ],
@@ -488,16 +498,16 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_message',
-                'description' => 'Update an EXISTING campaign message (category, contact status, active/paused). Use when the user asks to change the current/last campaign: "enviar a categoría Staff y activarlo", "cambiar la campaña a categoría X", "activar la campaña", "poner la campaña en categoría Y". Do NOT use create_message for these — use list_messages to get message_id, then update_message. Pass message_id (required); optionally category_name, contact_status_name, status (active or paused).',
+                'description' => 'Update an EXISTING campaign message: optional contact category, optional CRM contact-status filter (estado del contacto: Lead, En seguimiento, etc. from list_contact_statuses), and/or campaign sending on/off. "Contact status" in tool args is the CRM lifecycle audience filter, not whether the campaign sends. Use when the user asks to change the current/last campaign. Do NOT use create_message for these — use list_messages to get message_id, then update_message. Pass message_id (required); optionally category_name, contact_status_name, status (active = sending on, paused = sending off).',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'message_id' => ['type' => 'integer', 'description' => 'Campaign message ID to update (from list_messages)'],
-                        'category_name' => ['type' => 'string', 'description' => 'Contact category name as new audience (optional)'],
-                        'contact_status_name' => ['type' => 'string', 'description' => 'Contact status name, e.g. "En seguimiento" (optional)'],
+                        'category_name' => ['type' => 'string', 'description' => 'Optional new contact category audience filter (use list_contact_categories)'],
+                        'contact_status_name' => ['type' => 'string', 'description' => 'Optional CRM contact lifecycle filter; exact name from list_contact_statuses (e.g. Lead, Perdido). Not campaign sending on/off'],
                         'status' => [
                             'type' => 'string',
-                            'description' => 'active or paused (optional)',
+                            'description' => 'Campaign sending: active or paused (optional; not CRM contact status)',
                             'enum' => ['active', 'paused'],
                         ],
                     ],
@@ -580,6 +590,7 @@ class AssistantToolsService
             return match ($name)
             {
                 'list_contact_categories' => $this->listContactCategories($teamId),
+                'list_contact_statuses' => $this->listContactStatuses(),
                 'get_contact_categories' => $this->getContactCategories($teamId, $user, $input),
                 'create_contact' => $this->createContact($teamId, $user, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $user, $input),
@@ -639,6 +650,20 @@ class AssistantToolsService
         $lines = $categories->map(fn ($c) => "  - {$c->name} (id: {$c->id})")->implode("\n");
 
         return "Contact categories:\n".$lines;
+    }
+
+    private function listContactStatuses(): string
+    {
+        $rows = ContactStatus::query()->orderBy('id')->get(['id', 'name']);
+
+        if ($rows->isEmpty())
+        {
+            return 'No CRM contact statuses are configured yet.';
+        }
+
+        $lines = $rows->map(fn ($s) => "  - {$s->name} (id: {$s->id})")->implode("\n");
+
+        return "CRM contact statuses (estado del contacto / lifecycle; use contact_status_name in create_message or update_message — exact name):\n".$lines;
     }
 
     private function createContact(int $teamId, User $user, array $input): string
@@ -1636,9 +1661,9 @@ class AssistantToolsService
             $type = $m->type ? $m->type->name : '?';
             $tpl = $m->template ? $m->template->name : '—';
             $cat = $m->category ? $m->category->name : '—';
-            $status = (int) $m->status_id === 1 ? 'active' : 'inactive';
+            $sending = (int) $m->status_id === 1 ? 'sending: enabled' : 'sending: paused';
 
-            return sprintf('  - %s (id: %d, channel: %s, template: %s, category: %s, %s)', $m->name, $m->id, $type, $tpl, $cat, $status);
+            return sprintf('  - %s (id: %d, channel: %s, template: %s, category: %s, %s)', $m->name, $m->id, $type, $tpl, $cat, $sending);
         })->implode("\n");
 
         return "Campaign messages (News):\n".$lines;
@@ -1715,6 +1740,11 @@ class AssistantToolsService
             }
         }
 
+        if ($contactStatusName !== null && $contactStatusName !== '' && $contactStatusId === null)
+        {
+            return "CRM contact status \"{$contactStatusName}\" not found. Use list_contact_statuses for exact names (Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado, etc.).";
+        }
+
         $active = ! empty($input['active']);
         $statusId = $active ? 1 : 0;
 
@@ -1743,12 +1773,22 @@ class AssistantToolsService
         }
         if ($contactStatusId)
         {
-            $out .= " Contact status: {$contactStatusName}.";
+            $out .= " Audience filter (CRM contact status): {$contactStatusName}.";
         }
-        $out .= ' '.($active ? 'Campaign is active.' : 'Campaign is inactive (activate from the platform to send).');
+        $out .= ' '.($active
+            ? 'Campaign sending is ON (deliveries allowed per schedule/rules).'
+            : 'Campaign sending is OFF (no deliveries yet); enable sending in Messages/News when ready.');
         $out .= " Edit: {$editUrl} — View/send: {$showUrl}";
 
-        return $this->truncate($out);
+        $suffix = "\n".AssistantCreatedMessageRedirect::SENTINEL_LINE_PREFIX.$message->id;
+        $suffixLen = mb_strlen($suffix);
+        $maxMain = max(0, self::MAX_TOOL_RESULT_LENGTH - $suffixLen);
+        if (mb_strlen($out) > $maxMain)
+        {
+            $out = mb_substr($out, 0, max(0, $maxMain - 20))."\n...(truncated)";
+        }
+
+        return $out.$suffix;
     }
 
     private function updateMessageStatus(int $teamId, User $user, array $input): string
@@ -1782,9 +1822,9 @@ class AssistantToolsService
 
         $message->update(['status_id' => $status === 'active' ? 1 : 0]);
 
-        $label = $status === 'active' ? 'active' : 'paused (stopped)';
+        $label = $status === 'active' ? 'sending enabled' : 'sending paused (deliveries stopped)';
 
-        return $this->truncate("Campaign \"{$message->name}\" (id: {$message->id}) is now {$label}.");
+        return $this->truncate("Campaign \"{$message->name}\" (id: {$message->id}): {$label}.");
     }
 
     private function updateMessage(int $teamId, User $user, array $input): string
@@ -1818,7 +1858,7 @@ class AssistantToolsService
         {
             if ($hasDeliveries)
             {
-                return 'Cannot change audience (category) because this campaign already has deliveries. You can only change status (active/paused).';
+                return 'Cannot change audience (category) because this campaign already has deliveries. You can only change campaign sending (enabled vs paused).';
             }
             $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
             if ($categoryId === null)
@@ -1833,14 +1873,15 @@ class AssistantToolsService
         {
             if ($hasDeliveries)
             {
-                return 'Cannot change contact status filter because this campaign already has deliveries. You can only change status (active/paused).';
+                return 'Cannot change the CRM contact-status audience filter because this campaign already has deliveries. You can only change campaign sending (enabled vs paused).';
             }
             $contactStatus = ContactStatus::where('name', $contactStatusName)->first()
                 ?? ContactStatus::whereRaw('LOWER(name) = ?', [strtolower($contactStatusName)])->first();
-            if ($contactStatus)
+            if (! $contactStatus)
             {
-                $updates['contact_status_id'] = $contactStatus->id;
+                return "CRM contact status \"{$contactStatusName}\" not found. Use list_contact_statuses for exact names.";
             }
+            $updates['contact_status_id'] = $contactStatus->id;
         }
 
         $status = isset($input['status']) ? strtolower(trim((string) $input['status'])) : null;
@@ -1848,14 +1889,14 @@ class AssistantToolsService
         {
             if (! in_array($status, ['active', 'paused'], true))
             {
-                return 'status must be "active" or "paused".';
+                return 'status must be "active" (sending on) or "paused" (sending off).';
             }
             $updates['status_id'] = $status === 'active' ? 1 : 0;
         }
 
         if ($updates === [])
         {
-            return 'No changes provided. Pass at least one of: category_name, contact_status_name, status.';
+            return 'No changes provided. Pass at least one of: category_name, contact_status_name, status (campaign sending: active or paused).';
         }
 
         $message->update($updates);
@@ -1867,11 +1908,11 @@ class AssistantToolsService
         }
         if (isset($updates['contact_status_id']))
         {
-            $parts[] = "Contact status: {$contactStatusName}.";
+            $parts[] = "Audience filter (CRM contact status): {$contactStatusName}.";
         }
         if (isset($updates['status_id']))
         {
-            $parts[] = 'Status: '.(($updates['status_id'] ?? 0) === 1 ? 'active' : 'paused').'.';
+            $parts[] = 'Campaign sending: '.(($updates['status_id'] ?? 0) === 1 ? 'enabled.' : 'paused.');
         }
         $parts[] = 'Edit: '.url()->route('message.edit', $message->id).' — View/send: '.url()->route('message.show', $message->id);
 
