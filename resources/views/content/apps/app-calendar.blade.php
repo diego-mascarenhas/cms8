@@ -86,8 +86,7 @@
         <!-- inline calendar (flatpicker) -->
         <div class="inline-calendar"></div>
 
-        {{-- Calendar category filters: temporarily hidden; inputs stay checked so JS filtering still works --}}
-        <div class="d-none" id="app-calendar-filters" aria-hidden="true">
+        <div id="app-calendar-filters">
         <hr class="container-m-nx mb-4 mt-3">
 
         <!-- Filter -->
