@@ -24,9 +24,14 @@ return [
     'enterprises' => 'Empresas',
     'list60' => 'Lista de 60',
 
-    'navbar_notifications_lead' => 'Avisos y enlaces rápidos de toda la aplicación.',
+    'navbar_notifications_lead' => 'Notificaciones enviadas a tu contacto.',
     'navbar_notifications_empty' => 'Sin notificaciones por el momento.',
-    'navbar_notifications_view_tasks' => 'Ver tareas pendientes',
+    'navbar_notifications_view_all' => 'Ver todas las notificaciones',
+    'navbar_notification_mark_read' => 'Marcar como leída',
+    'navbar_notification_mark_all_read' => 'Marcar todas como leídas',
+    'navbar_notification_marked_read' => 'Notificación marcada como leída',
+    'navbar_notification_marked_all_read' => 'Todas las notificaciones marcadas como leídas',
+    'navbar_notification_read_at' => 'Leída :date',
 
     'assistant_fab_title' => 'Abrir panel del asistente',
 

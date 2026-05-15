@@ -8,6 +8,7 @@ use App\Models\ContentFieldConfig;
 use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\ContentsSectionCategoryData;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,15 @@ class DemoObaContentsSectionSeeder extends Seeder
         $this->command?->info('📌 OBA contents seed target team: '.$team->name.' (id '.$team->id.')');
 
         $this->seedDemoTeamApiToken($team);
+
+        if (! $this->shouldSeedContentsForTeam($team))
+        {
+            $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
+            $this->command?->info("⏭️  Skipping contents module and OBA timeline (not in Humano plan «{$planSlug}» for demo team).");
+            $this->syncDemoTeamModulesFromPricingPlanWhenApplicable($team);
+
+            return;
+        }
 
         if (! $this->ensureContentsModuleEnabledForTeam($team))
         {
@@ -102,6 +112,41 @@ class DemoObaContentsSectionSeeder extends Seeder
         ]);
 
         $this->command?->info('✅ Demo API token configured (override with DEMO_TEAM_API_TOKEN in .env)');
+    }
+
+    private function syncDemoTeamModulesFromPricingPlanWhenApplicable(Team $team): void
+    {
+        if (! in_array($team->name, ['Demo', "Demo's Team"], true))
+        {
+            return;
+        }
+
+        $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
+        if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
+        {
+            $planSlug = 'assistant';
+        }
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
+    }
+
+    private function shouldSeedContentsForTeam(Team $team): bool
+    {
+        $configuredTeamId = env('DEMO_OBA_CONTENTS_TEAM_ID');
+        if ($configuredTeamId !== null && $configuredTeamId !== '' && is_numeric($configuredTeamId))
+        {
+            return true;
+        }
+
+        if (! in_array($team->name, ['Demo', "Demo's Team"], true))
+        {
+            return true;
+        }
+
+        $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
+        $enabledKeys = config("humano_pricing.plan_team_modules.{$planSlug}", []);
+
+        return in_array('contents', $enabledKeys, true);
     }
 
     private function ensureContentsModuleEnabledForTeam(Team $team): bool

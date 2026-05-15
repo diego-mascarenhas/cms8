@@ -206,11 +206,112 @@ if (document.getElementById('layout-menu')) {
   const notificationMarkAsReadAll = document.querySelector('.dropdown-notifications-all');
   const notificationMarkAsReadList = document.querySelectorAll('.dropdown-notifications-read');
 
+  const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+  const getNavbarReadAtLabel = formattedDate => {
+    const dropdown = document.querySelector('.dropdown-notifications[data-read-at-template]');
+    const template = dropdown?.getAttribute('data-read-at-template') || 'Read __DATE__';
+    return template.replace('__DATE__', formattedDate);
+  };
+
+  const updateNavbarNotificationBadge = () => {
+    const unreadItems = document.querySelectorAll(
+      '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
+    );
+    const badge = document.querySelector('.dropdown-notifications .badge-notifications');
+    if (!badge) {
+      return;
+    }
+    const count = unreadItems.length;
+    if (count <= 0) {
+      badge.remove();
+    } else {
+      badge.textContent = String(count);
+    }
+  };
+
+  const applyNavbarNotificationReadState = listItem => {
+    if (!listItem) {
+      return;
+    }
+    listItem.classList.add('marked-as-read');
+    const actions = listItem.querySelector('.dropdown-notifications-actions');
+    if (actions) {
+      actions.remove();
+    }
+  };
+
+  const markNavbarNotificationRead = (url, listItem) => {
+    if (!url || !listItem || listItem.classList.contains('marked-as-read')) {
+      return Promise.resolve();
+    }
+    return fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken(),
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          return;
+        }
+        applyNavbarNotificationReadState(listItem);
+        const dateEl = listItem.querySelector('[data-notification-date]');
+        if (dateEl && data.read_at_formatted) {
+          dateEl.textContent = getNavbarReadAtLabel(data.read_at_formatted);
+        }
+        updateNavbarNotificationBadge();
+      })
+      .catch(() => {});
+  };
+
   // Notification: Mark as all as read
   if (notificationMarkAsReadAll) {
     notificationMarkAsReadAll.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const markAllUrl = notificationMarkAsReadAll.getAttribute('data-mark-all-read-url');
+      if (markAllUrl) {
+        fetch(markAllUrl, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': getCsrfToken(),
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (!data.success) {
+              return;
+            }
+            document
+              .querySelectorAll(
+                '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
+              )
+              .forEach(listItem => {
+                applyNavbarNotificationReadState(listItem);
+                const dateEl = listItem.querySelector('[data-notification-date]');
+                if (dateEl && data.read_at_formatted) {
+                  dateEl.textContent = getNavbarReadAtLabel(data.read_at_formatted);
+                }
+              });
+            const markAllLink = document.querySelector('.dropdown-notifications-all');
+            if (markAllLink) {
+              markAllLink.remove();
+            }
+            updateNavbarNotificationBadge();
+          })
+          .catch(() => {});
+        return;
+      }
       notificationMarkAsReadList.forEach(item => {
-        item.closest('.dropdown-notifications-item').classList.add('marked-as-read');
+        item.closest('.dropdown-notifications-item')?.classList.add('marked-as-read');
       });
     });
   }
@@ -218,7 +319,15 @@ if (document.getElementById('layout-menu')) {
   if (notificationMarkAsReadList) {
     notificationMarkAsReadList.forEach(item => {
       item.addEventListener('click', event => {
-        item.closest('.dropdown-notifications-item').classList.toggle('marked-as-read');
+        event.preventDefault();
+        event.stopPropagation();
+        const url = item.getAttribute('data-mark-read-url');
+        const listItem = item.closest('.dropdown-notifications-item');
+        if (url && listItem) {
+          markNavbarNotificationRead(url, listItem);
+          return;
+        }
+        listItem?.classList.toggle('marked-as-read');
       });
     });
   }

@@ -27,23 +27,26 @@
         transition: opacity 0.5s ease-out;
     }
 
-    .contact-list-toolbar-filters {
+    .contact-list-toolbar {
         display: flex;
         flex-flow: row nowrap;
         align-items: center;
-        gap: 1rem;
-        flex: 1 1 auto;
-        min-width: 0;
+        gap: 0.5rem;
+        overflow-x: auto;
     }
 
-    .contact-list-toolbar-filters .contact-list-toolbar-filter-field {
-        flex: 1 1 0;
-        min-width: 0;
-        max-width: 100%;
+    .contact-list-toolbar-filter-field {
+        flex: 0 0 auto;
+        width: 13rem;
+        min-width: 11rem;
     }
 
-    .contact-list-toolbar-filters .contact-list-toolbar-filter-field .form-group {
+    .contact-list-toolbar-filter-field .form-group {
         margin-bottom: 0;
+    }
+
+    .contact-list-toolbar-filter-field .select2-container {
+        width: 100% !important;
     }
 </style>
 
@@ -157,10 +160,8 @@
 
     <div class="card">
         <div class="card-header border-bottom">
-            <div
-                class="d-flex flex-column flex-sm-row flex-wrap flex-sm-nowrap align-items-stretch align-items-sm-center justify-content-between gap-3">
-                <div class="d-flex flex-wrap gap-2 flex-shrink-0">
-                    <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+            <div class="contact-list-toolbar">
+                    <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light flex-shrink-0">
                         <i class="ti ti-plus me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Añadir contacto</span>
                     </a>
@@ -168,27 +169,21 @@
                         <i class="ti ti-file-import me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Importar</span>
                     </button> --}}
-                    <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                    <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect flex-shrink-0">
                         <i class="ti ti-file-import me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Importar</span>
                     </a>
                     @can('create', \App\Models\Contact::class)
-                    <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                    <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect flex-shrink-0">
                         <i class="ti ti-target me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Buscar clientes</span>
                     </a>
                     @endcan
-                    <a href="{{ route('integrations.google.synced-contacts') }}" class="btn btn-outline-primary btn-sm waves-effect">
-                        <i class="ti ti-brand-google me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">{{ __('Google synced') }}</span>
-                    </a>
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-export me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Exportar</span>
                     </button> -->
-                </div>
-                <div class="contact-list-toolbar-filters w-100 w-sm-auto">
-                    <div class="contact-list-toolbar-filter-field">
+                <div class="contact-list-toolbar-filter-field">
                         <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                             placeholder="Selector de estado emocional" />
                     </div>
@@ -201,10 +196,9 @@
                             :listingFilter="true"
                         />
                     </div>
-                    <div class="d-none">
-                        <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
-                            placeholder="Selector de tipo de contacto" />
-                    </div>
+                <div class="d-none">
+                    <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
+                        placeholder="Selector de tipo de contacto" />
                 </div>
             </div>
         </div>

@@ -48,10 +48,13 @@ class TeamDemoSeeder extends Seeder
         $team = $this->ensureDemoTeamExists();
         $this->teamId = $team->id;
 
-        // 2. Assign core modules to team
+        // 2. Assign modules from Humano demo plan (assistant by default)
         $this->assignCoreModules($team);
 
         $this->call(DemoObaContentsSectionSeeder::class);
+
+        // Re-sync after optional OBA seeder so contents stays off assistant demo plan
+        $this->assignCoreModules($team->fresh());
 
         // 3. Create demo categories
         $this->createDemoCategories();
@@ -88,6 +91,9 @@ class TeamDemoSeeder extends Seeder
 
         // 12. Create demo users with different roles
         $this->createDemoUsers($team);
+
+        // 12.1. Demo notifications (navbar + módulo notificaciones)
+        $this->call(DemoNotificationsSeeder::class);
 
         // 13. Seed demo data
         $this->seedDemoEnterprises();
@@ -169,10 +175,10 @@ class TeamDemoSeeder extends Seeder
      */
     private function assignCoreModules(Team $team): void
     {
-        $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'business');
+        $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
         if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
         {
-            $planSlug = 'business';
+            $planSlug = 'assistant';
         }
 
         $this->command->info("🔧 Syncing Demo team modules to Humano plan «{$planSlug}» (humano_pricing.plan_team_modules.{$planSlug})...");

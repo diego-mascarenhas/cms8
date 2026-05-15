@@ -35,6 +35,13 @@ class DemoObaContentsSectionSeederTest extends TestCase
             ],
         );
 
+        config([
+            'humano_pricing.plan_team_modules.assistant' => array_values(array_unique(array_merge(
+                config('humano_pricing.plan_team_modules.assistant', []),
+                ['contents'],
+            ))),
+        ]);
+
         $this->seed(DemoObaContentsSectionSeeder::class);
 
         $demoTeam = Team::query()->where('name', 'Demo')->firstOrFail();
@@ -61,5 +68,40 @@ class DemoObaContentsSectionSeederTest extends TestCase
         $section = $first->sectionCategory;
         $this->assertNotNull($section);
         $this->assertSame(ContentsSectionCategoryData::DEMO_SLUG_OBA_ABOUT, $section->data['slug'] ?? null);
+    }
+
+    public function test_seeder_skips_contents_module_on_assistant_demo_plan(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create([
+            'name' => 'Demo',
+            'user_id' => $user->id,
+            'personal_team' => true,
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contents'],
+            [
+                'name' => 'Contents',
+                'icon' => 'file-text',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $team->enableModule('contents');
+        $this->assertTrue($team->fresh()->hasModule('contents'));
+
+        $this->seed(DemoObaContentsSectionSeeder::class);
+
+        $this->assertFalse($team->fresh()->hasModule('contents'));
+        $this->assertSame(
+            0,
+            Content::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('template', 'timeline_item')
+                ->count(),
+        );
     }
 }

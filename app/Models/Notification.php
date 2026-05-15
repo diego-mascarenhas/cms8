@@ -103,6 +103,19 @@ class Notification extends Model
     }
 
     /**
+     * Notifications addressed to the authenticated user (via linked contact).
+     */
+    public function scopeForRecipientUser(Builder $query, ?int $userId = null): Builder
+    {
+        $userId ??= auth()->id();
+
+        return $query->whereHas('contact', function (Builder $contactQuery) use ($userId): void
+        {
+            $contactQuery->where('user_id', $userId);
+        });
+    }
+
+    /**
      * Scope for unread notifications
      */
     public function scopeUnread($query)
@@ -174,6 +187,11 @@ class Notification extends Model
     public function getFormattedCreatedDateAttribute()
     {
         return $this->created_at->format('d/m/Y H:i');
+    }
+
+    public function getFormattedReadAtAttribute(): ?string
+    {
+        return $this->read_at?->isoFormat('D MMM YYYY, HH:mm');
     }
 
     /**

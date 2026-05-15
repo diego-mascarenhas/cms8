@@ -68,8 +68,10 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $team = $team->fresh();
         $this->assertFalse($team->hasModule('invoices'));
         $this->assertFalse($team->hasModule('funnel'));
-        $this->assertTrue($team->hasModule('dashboard'));
+        $this->assertFalse($team->hasModule('dashboard'));
+        $this->assertTrue($team->hasModule('today'));
         $this->assertTrue($team->hasModule('mailer'));
+        $this->assertTrue($team->hasModule('chat'));
     }
 
     public function test_business_plan_enables_assistant_and_addon_modules(): void
@@ -104,10 +106,23 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         ], $keys));
     }
 
-    public function test_demo_team_plan_slug_is_configured(): void
+    public function test_demo_team_plan_slug_defaults_to_assistant(): void
     {
-        $slug = config('humano_pricing.demo_team_plan_slug');
-        $this->assertContains($slug, ['assistant', 'business', 'foundation']);
+        $this->assertSame('assistant', config('humano_pricing.demo_team_plan_slug'));
+        $this->assertSame(
+            config('humano_pricing.plan_team_modules.assistant'),
+            config('humano_pricing.plan_team_modules.'.config('humano_pricing.demo_team_plan_slug')),
+        );
+    }
+
+    public function test_assistant_demo_plan_excludes_commerce_and_contents_modules(): void
+    {
+        $keys = config('humano_pricing.plan_team_modules.assistant', []);
+
+        foreach (['products', 'stores', 'orders', 'contents'] as $excluded)
+        {
+            $this->assertNotContains($excluded, $keys, "Assistant demo plan must not include «{$excluded}».");
+        }
     }
 
     public function test_business_plan_sync_disables_modules_outside_bundle(): void

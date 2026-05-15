@@ -982,6 +982,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template');
     Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
     Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
+    Route::post('/notification/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notification.mark-all-as-read');
+    Route::patch('/notification/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notification.mark-as-read');
 
     // User Custom Fares
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');

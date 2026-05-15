@@ -72,10 +72,6 @@
             <i class="ti ti-plus me-1"></i>
             <span class="align-middle">{{ __('Add Event') }}</span>
           </button>
-          <a href="{{ route('integrations.google.synced-calendar') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="ti ti-brand-google me-1"></i>
-            <span class="align-middle">{{ __('Google synced') }}</span>
-          </a>
         </div>
       </div>
       <div class="p-3">

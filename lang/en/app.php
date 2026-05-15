@@ -24,9 +24,14 @@ return [
     'enterprises' => 'Enterprises',
     'list60' => 'List of 60',
 
-    'navbar_notifications_lead' => 'Alerts and quick links from across the app.',
+    'navbar_notifications_lead' => 'Notifications sent to your contact profile.',
     'navbar_notifications_empty' => 'You have no notifications yet.',
-    'navbar_notifications_view_tasks' => 'View pending tasks',
+    'navbar_notifications_view_all' => 'View all notifications',
+    'navbar_notification_mark_read' => 'Mark as read',
+    'navbar_notification_mark_all_read' => 'Mark all as read',
+    'navbar_notification_marked_read' => 'Notification marked as read',
+    'navbar_notification_marked_all_read' => 'All notifications marked as read',
+    'navbar_notification_read_at' => 'Read :date',
 
     'assistant_fab_title' => 'Open assistant panel',
 

@@ -12,9 +12,9 @@ class NavbarNotificationsCopyTest extends TestCase
         App::setLocale('en');
 
         $this->assertSame('Notifications', __('Notifications'));
-        $this->assertStringContainsString('Alerts', __('app.navbar_notifications_lead'));
+        $this->assertStringContainsString('contact profile', strtolower(__('app.navbar_notifications_lead')));
         $this->assertStringContainsString('notifications', strtolower(__('app.navbar_notifications_empty')));
-        $this->assertStringContainsString('tasks', strtolower(__('app.navbar_notifications_view_tasks')));
+        $this->assertStringContainsString('notification', strtolower(__('app.navbar_notifications_view_all')));
         $this->assertSame('Open assistant panel', __('app.assistant_fab_title'));
     }
 
@@ -23,9 +23,9 @@ class NavbarNotificationsCopyTest extends TestCase
         App::setLocale('es');
 
         $this->assertSame('Notificaciones', __('Notifications'));
-        $this->assertStringContainsString('Avisos', __('app.navbar_notifications_lead'));
+        $this->assertStringContainsString('contacto', strtolower(__('app.navbar_notifications_lead')));
         $this->assertStringContainsString('notificaciones', strtolower(__('app.navbar_notifications_empty')));
-        $this->assertStringContainsString('tareas', strtolower(__('app.navbar_notifications_view_tasks')));
+        $this->assertStringContainsString('notificaciones', strtolower(__('app.navbar_notifications_view_all')));
         $this->assertSame('Abrir panel del asistente', __('app.assistant_fab_title'));
     }
 }
