@@ -60,7 +60,9 @@
     deleteConfirmTitle: @json(__('Are you sure?')),
     deleteConfirmText: @json(__('Are you sure you want to delete this record?')),
     deleteConfirmYes: @json(__('Yes, delete')),
-    cancel: @json(__('Cancel'))
+    cancel: @json(__('Cancel')),
+    dateTimePlaceholder: @json(app()->getLocale() === 'es' ? 'dd/mm/aaaa hh:mm' : 'yyyy-mm-dd hh:mm'),
+    datePlaceholder: @json(app()->getLocale() === 'es' ? 'dd/mm/aaaa' : 'yyyy-mm-dd')
   };
 </script>
 <script src="{{ asset('assets/js/app-calendar-events.js') }}"></script>

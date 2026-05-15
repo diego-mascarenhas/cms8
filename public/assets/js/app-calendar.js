@@ -118,33 +118,73 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var flatpickrLocale = calendarLocale === 'es' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.es ? 'es' : undefined;
+    var flatpickrDateStorageFormat = 'Y-m-d';
+    var flatpickrDateTimeStorageFormat = 'Y-m-d H:i';
+    var flatpickrDateDisplayFormat = calendarLocale === 'es' ? 'd/m/Y' : 'm/d/Y';
+    var flatpickrDateTimeDisplayFormat = calendarLocale === 'es' ? 'd/m/Y H:i' : 'm/d/Y h:i K';
 
-    // Event start (flatpicker)
-    if (eventStartDate) {
-      var start = eventStartDate.flatpickr({
-        enableTime: true,
-        dateFormat: 'Y-m-d H:i',
+    function setFlatpickrAltPlaceholder(flatpickrInstance, isAllDay) {
+      if (!flatpickrInstance || !flatpickrInstance.altInput) {
+        return;
+      }
+      flatpickrInstance.altInput.placeholder = isAllDay
+        ? calendarStrings.datePlaceholder || 'dd/mm/aaaa'
+        : calendarStrings.dateTimePlaceholder || 'dd/mm/aaaa hh:mm';
+      flatpickrInstance.altInput.removeAttribute('readonly');
+    }
+
+    function getEventFlatpickrOptions(isAllDay) {
+      return {
+        enableTime: !isAllDay,
+        allowInput: true,
+        altInput: true,
+        altFormat: isAllDay ? flatpickrDateDisplayFormat : flatpickrDateTimeDisplayFormat,
+        dateFormat: isAllDay ? flatpickrDateStorageFormat : flatpickrDateTimeStorageFormat,
         locale: flatpickrLocale,
+        time_24hr: true,
         onReady: function (selectedDates, dateStr, instance) {
+          setFlatpickrAltPlaceholder(instance, isAllDay);
           if (instance.isMobile) {
             instance.mobileInput.setAttribute('step', null);
           }
         }
-      });
+      };
+    }
+
+    function parseManualCalendarInput(raw, isAllDay) {
+      if (!raw || !String(raw).trim()) {
+        return null;
+      }
+      var value = String(raw).trim();
+      if (isAllDay) {
+        return moment(
+          value,
+          ['DD/MM/YYYY', 'D/M/YYYY', 'DD-MM-YYYY', 'D-M-YYYY', 'YYYY-MM-DD', 'Y-m-d'],
+          true
+        );
+      }
+      return moment(
+        value,
+        [
+          'DD/MM/YYYY HH:mm',
+          'D/M/YYYY H:mm',
+          'DD-MM-YYYY HH:mm',
+          'D-M-YYYY H:mm',
+          'Y-m-d H:i',
+          'YYYY-MM-DDTHH:mm:ss.SSSZ'
+        ],
+        true
+      );
+    }
+
+    // Event start (flatpicker)
+    if (eventStartDate) {
+      var start = eventStartDate.flatpickr(getEventFlatpickrOptions(false));
     }
 
     // Event end (flatpicker)
     if (eventEndDate) {
-      var end = eventEndDate.flatpickr({
-        enableTime: true,
-        dateFormat: 'Y-m-d H:i',
-        locale: flatpickrLocale,
-        onReady: function (selectedDates, dateStr, instance) {
-          if (instance.isMobile) {
-            instance.mobileInput.setAttribute('step', null);
-          }
-        }
-      });
+      var end = eventEndDate.flatpickr(getEventFlatpickrOptions(false));
     }
 
     function serializeCalendarDate(flatpickrInstance, isAllDay) {
@@ -158,14 +198,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return selected[0].toISOString();
       }
-      var raw = flatpickrInstance.input ? flatpickrInstance.input.value : '';
+      var raw = flatpickrInstance.altInput
+        ? flatpickrInstance.altInput.value
+        : flatpickrInstance.input
+          ? flatpickrInstance.input.value
+          : '';
       if (!raw) {
         return '';
       }
-      if (isAllDay) {
-        return moment(raw, ['YYYY-MM-DD', 'Y-m-d'], true).format('YYYY-MM-DD');
+      var parsed = parseManualCalendarInput(raw, isAllDay);
+      if (!parsed || !parsed.isValid()) {
+        return '';
       }
-      return moment(raw).toISOString();
+      if (isAllDay) {
+        return parsed.format('YYYY-MM-DD');
+      }
+      return parsed.toISOString();
     }
 
     function applyFlatpickrAllDayMode(isAllDay) {
@@ -174,7 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
         flatpickrInstance.set('enableTime', !isAllDay);
-        flatpickrInstance.set('dateFormat', isAllDay ? 'Y-m-d' : 'Y-m-d H:i');
+        flatpickrInstance.set('dateFormat', isAllDay ? flatpickrDateStorageFormat : flatpickrDateTimeStorageFormat);
+        flatpickrInstance.set('altFormat', isAllDay ? flatpickrDateDisplayFormat : flatpickrDateTimeDisplayFormat);
+        setFlatpickrAltPlaceholder(flatpickrInstance, isAllDay);
       });
     }
 
@@ -574,8 +624,12 @@ document.addEventListener('DOMContentLoaded', function () {
         btnSubmit.classList.remove('btn-update-event');
         btnSubmit.classList.add('btn-add-event');
         btnDeleteEvent.classList.add('d-none');
-        eventStartDate.value = date;
-        eventEndDate.value = date;
+        if (start) {
+          start.setDate(info.date, true);
+        }
+        if (end) {
+          end.setDate(info.date, true);
+        }
       },
       eventClick: function (info) {
         eventClick(info);
@@ -891,9 +945,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Reset event form inputs values
     // ------------------------------------------------
     function resetValues() {
-      eventEndDate.value = '';
+      if (start && typeof start.clear === 'function') {
+        start.clear();
+      }
+      if (end && typeof end.clear === 'function') {
+        end.clear();
+      }
       eventUrl.value = '';
-      eventStartDate.value = '';
       eventTitle.value = '';
       eventLocation.value = '';
       allDaySwitch.checked = false;
