@@ -1031,10 +1031,10 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
-// Today: open calendar in list view
+// Today: open calendar in day view (today's date)
 Route::get('/today', function ()
 {
-    return redirect()->to(route('app-calendar').'?view=listMonth');
+    return redirect()->to(route('app-calendar').'?view=timeGridDay');
 })->name('today')->middleware('auth');
 
 // Calendar (local DB)
