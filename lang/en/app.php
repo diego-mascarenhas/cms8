@@ -129,7 +129,7 @@ return [
     'email_smtp_dns_spf_exact_hint' => 'Your SPF TXT must contain include:spf.revisionalpha.com (it can include other mechanisms too).',
     'email_spf_record_required_include' => 'SPF must include include:spf.revisionalpha.com (directly or via an include: chain).',
 
-    'communication_client_landing_hint' => 'If you select Client, they will receive an email with a secure (token) link to access the project landing page and reply.',
+    'communication_client_landing_hint' => 'If you select Client, they will receive an email with a secure link to access the project landing page and reply.',
 
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',

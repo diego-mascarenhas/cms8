@@ -120,16 +120,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var flatpickrLocale = calendarLocale === 'es' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.es ? 'es' : undefined;
     var flatpickrDateStorageFormat = 'Y-m-d';
     var flatpickrDateTimeStorageFormat = 'Y-m-d H:i';
-    var flatpickrDateDisplayFormat = calendarLocale === 'es' ? 'd/m/Y' : 'm/d/Y';
-    var flatpickrDateTimeDisplayFormat = calendarLocale === 'es' ? 'd/m/Y H:i' : 'm/d/Y h:i K';
+    var flatpickrDateDisplayFormat = calendarLocale === 'es' ? 'd-m-Y' : 'm-d-Y';
+    var flatpickrDateTimeDisplayFormat = calendarLocale === 'es' ? 'd-m-Y H:i' : 'm-d-Y h:i K';
 
     function setFlatpickrAltPlaceholder(flatpickrInstance, isAllDay) {
       if (!flatpickrInstance || !flatpickrInstance.altInput) {
         return;
       }
       flatpickrInstance.altInput.placeholder = isAllDay
-        ? calendarStrings.datePlaceholder || 'dd/mm/aaaa'
-        : calendarStrings.dateTimePlaceholder || 'dd/mm/aaaa hh:mm';
+        ? calendarStrings.datePlaceholder || 'Selecciona una fecha'
+        : calendarStrings.dateTimePlaceholder || 'dd-mm-aaaa hh:mm';
       flatpickrInstance.altInput.removeAttribute('readonly');
     }
 
@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
         altFormat: isAllDay ? flatpickrDateDisplayFormat : flatpickrDateTimeDisplayFormat,
         dateFormat: isAllDay ? flatpickrDateStorageFormat : flatpickrDateTimeStorageFormat,
         locale: flatpickrLocale,
+        monthSelectorType: 'static',
         time_24hr: true,
         onReady: function (selectedDates, dateStr, instance) {
           setFlatpickrAltPlaceholder(instance, isAllDay);
@@ -149,6 +150,18 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
       };
+    }
+
+    function bindFlatpickrOpenButton(buttonEl, flatpickrInstance) {
+      if (!buttonEl || !flatpickrInstance || buttonEl.dataset.fpBound) {
+        return;
+      }
+      buttonEl.addEventListener('click', function () {
+        if (typeof flatpickrInstance.open === 'function') {
+          flatpickrInstance.open();
+        }
+      });
+      buttonEl.dataset.fpBound = '1';
     }
 
     function parseManualCalendarInput(raw, isAllDay) {
@@ -180,11 +193,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Event start (flatpicker)
     if (eventStartDate) {
       var start = eventStartDate.flatpickr(getEventFlatpickrOptions(false));
+      bindFlatpickrOpenButton(document.getElementById('event-start-date-settings'), start);
     }
 
     // Event end (flatpicker)
     if (eventEndDate) {
       var end = eventEndDate.flatpickr(getEventFlatpickrOptions(false));
+      bindFlatpickrOpenButton(document.getElementById('event-end-date-settings'), end);
     }
 
     function serializeCalendarDate(flatpickrInstance, isAllDay) {

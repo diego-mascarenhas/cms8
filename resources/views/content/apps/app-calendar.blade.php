@@ -61,8 +61,9 @@
     deleteConfirmText: @json(__('Are you sure you want to delete this record?')),
     deleteConfirmYes: @json(__('Yes, delete')),
     cancel: @json(__('Cancel')),
-    dateTimePlaceholder: @json(app()->getLocale() === 'es' ? 'dd/mm/aaaa hh:mm' : 'yyyy-mm-dd hh:mm'),
-    datePlaceholder: @json(app()->getLocale() === 'es' ? 'dd/mm/aaaa' : 'yyyy-mm-dd')
+    dateTimePlaceholder: @json(app()->getLocale() === 'es' ? 'dd-mm-aaaa hh:mm' : 'mm-dd-yyyy hh:mm'),
+    datePlaceholder: @json(__('Selecciona una fecha')),
+    calendar: @json(__('Calendario'))
   };
 </script>
 <script src="{{ asset('assets/js/app-calendar-events.js') }}"></script>
@@ -159,11 +160,21 @@
             </div>
             <div class="mb-3">
               <label class="form-label" for="eventStartDate">{{ __('Start Date') }}</label>
-              <input type="text" class="form-control" id="eventStartDate" name="eventStartDate" placeholder="{{ __('Start Date') }}" />
+              <div class="input-group">
+                <input type="text" class="form-control input" id="eventStartDate" name="eventStartDate" placeholder="{{ __('Selecciona una fecha') }}" />
+                <button type="button" class="btn btn-icon btn-label-primary waves-effect" id="event-start-date-settings" title="{{ __('Calendario') }}">
+                  <i class="ti ti-calendar"></i>
+                </button>
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="eventEndDate">{{ __('End Date') }}</label>
-              <input type="text" class="form-control" id="eventEndDate" name="eventEndDate" placeholder="{{ __('End Date') }}" />
+              <div class="input-group">
+                <input type="text" class="form-control input" id="eventEndDate" name="eventEndDate" placeholder="{{ __('Selecciona una fecha') }}" />
+                <button type="button" class="btn btn-icon btn-label-primary waves-effect" id="event-end-date-settings" title="{{ __('Calendario') }}">
+                  <i class="ti ti-calendar"></i>
+                </button>
+              </div>
             </div>
             <div class="mb-3">
               <label class="switch">

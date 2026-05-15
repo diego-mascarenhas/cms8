@@ -388,6 +388,8 @@ class TaskController extends Controller
             return response()->json([
                 'success' => true,
                 'id' => $task->id,
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'start_date' => $task->start_date?->format('Y-m-d'),
                 'attachment' => $attachmentUrl ?: null,
             ]);
         }
