@@ -312,13 +312,17 @@
             @php
                 $storedShortcuts = $shortcutTeam->getSetting('team_shortcuts', []) ?? [];
 
-                $defaultShortcutMeta = [
-                    'calendar'    => ['route' => 'app-calendar',      'module' => 'calendar',    'title' => __('Calendario'),       'subtitle' => __('app.shortcuts.appointments'), 'icon' => 'ti ti-calendar'],
-                    'prospecting' => ['route' => 'prospect.search',   'module' => 'prospecting', 'title' => __('Buscar clientes'),  'subtitle' => __('Prospección'),                'icon' => 'ti ti-target'],
-                    'team_files'  => ['route' => 'team-file.index',   'module' => 'team_files',  'title' => __('Team files'),       'subtitle' => __('app.shortcuts.team_files'),   'icon' => 'ti ti-folders'],
-                    'times'       => ['route' => 'time.index',        'module' => 'times',       'title' => __('Times'),            'subtitle' => __('app.shortcuts.times'),        'icon' => 'ti ti-hourglass'],
-                    'passwords'   => ['route' => 'passwords.index',   'module' => 'passwords',   'title' => 'Contraseñas',          'subtitle' => 'Cofre',                          'icon' => 'ti ti-lock'],
-                ];
+                $defaultShortcutMeta = collect(\App\Support\TeamDefaultShortcuts::definitions())
+                    ->mapWithKeys(fn (array $definition, string $key): array => [
+                        $key => [
+                            'route' => $definition['route'],
+                            'module' => $definition['module'],
+                            'title' => $definition['title'],
+                            'subtitle' => $definition['subtitle'],
+                            'icon' => $definition['icon'],
+                        ],
+                    ])
+                    ->all();
 
                 $renderedShortcuts = [];
                 foreach ($storedShortcuts as $sc) {
@@ -332,6 +336,7 @@
 
                         // Module & permission checks
                         if (! $shortcutTeam->hasModule($meta['module'])) { continue; }
+                        if (! \App\Support\TeamDefaultShortcuts::userCanSeeShortcut($key, auth()->user())) { continue; }
                         if ($key === 'team_files' && ! auth()->user()->can('viewAny', \App\Models\TeamFile::class)) { continue; }
                         if ($key === 'passwords'
                             && ! $shortcutTeam->hasModule('passwords')

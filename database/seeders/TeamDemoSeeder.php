@@ -107,6 +107,9 @@ class TeamDemoSeeder extends Seeder
 
         $this->seedDemoCalendarEvents();
 
+        // 13.1. Daily performance insight + mailbox demo emails (informe diario + notificación in-app)
+        $this->call(DemoPerformanceInsightsSeeder::class);
+
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
 

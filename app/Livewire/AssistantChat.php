@@ -43,6 +43,10 @@ class AssistantChat extends Component
     /** When true (e.g. layout FAB panel), the card toolbar (flow title, voice toggle, new chat) is omitted. */
     public bool $hideHeader = false;
 
+    protected $listeners = [
+        'assistant-reset-context' => 'clearChat',
+    ];
+
     public function mount(
         AgentConversationContextService $conversationContext,
         ?string $promptKey = null,
@@ -127,8 +131,16 @@ class AssistantChat extends Component
         $this->dispatch('scroll-to-bottom');
     }
 
-    public function clearChat(): void
+    public function clearChat(AgentConversationContextService $conversationContext): void
     {
+        if (auth()->check())
+        {
+            $conversationContext->startFreshAssistantContext(
+                auth()->id(),
+                auth()->user()->currentTeam?->id,
+            );
+        }
+
         $this->messages = [];
         $this->conversationId = null;
     }

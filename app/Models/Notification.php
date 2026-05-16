@@ -162,10 +162,10 @@ class Notification extends Model
     {
         if ($this->is_sent)
         {
-            return '<span class="badge bg-success">Enviado</span>';
+            return '<span class="badge rounded-pill bg-success">Enviado</span>';
         }
 
-        return '<span class="badge bg-warning">Pendiente</span>';
+        return '<span class="badge rounded-pill bg-warning">Pendiente</span>';
     }
 
     /**
@@ -175,10 +175,10 @@ class Notification extends Model
     {
         if ($this->is_read)
         {
-            return '<span class="badge bg-info">Leído</span>';
+            return '<span class="badge rounded-pill bg-info">Leído</span>';
         }
 
-        return '<span class="badge bg-secondary">No leído</span>';
+        return '<span class="badge rounded-pill bg-secondary">No leído</span>';
     }
 
     /**
@@ -187,6 +187,26 @@ class Notification extends Model
     public function getFormattedCreatedDateAttribute()
     {
         return $this->created_at->format('d/m/Y H:i');
+    }
+
+    /**
+     * Plain-text notification body with line breaks for HTML display.
+     */
+    public function getFormattedMessageAttribute(): string
+    {
+        $message = trim(strip_tags((string) $this->message));
+
+        if ($message === '')
+        {
+            return '';
+        }
+
+        return nl2br(e($message));
+    }
+
+    public function isDailyPerformanceInsight(): bool
+    {
+        return $this->type?->name === 'Daily Performance Insight';
     }
 
     public function getFormattedReadAtAttribute(): ?string

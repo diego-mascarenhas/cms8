@@ -1142,7 +1142,9 @@
             if (!list) return;
             var assistantUserId = {!! json_encode(optional($selectedAssistantUser)->id) !!};
             var historyUrl = '{{ route("chat.assistant-history") }}' + (assistantUserId ? '?user_id=' + assistantUserId : '');
+            var resetContextUrl = '{{ route("chat.assistant-reset-context") }}' + (assistantUserId ? '?user_id=' + assistantUserId : '');
             var refreshBtn = document.getElementById('assistant-refresh-btn');
+            var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             var assistantHistoryInitialSyncDone = false;
 
             function escapeHtml(text) {
@@ -1209,8 +1211,25 @@
                     .then(function(data) { renderMessages(data.messages || []); })
                     .catch(function() {});
             }
+            function resetAssistantContext() {
+                fetch(resetContextUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data && data.success) {
+                            renderMessages([]);
+                        }
+                    })
+                    .catch(function() {});
+            }
             setInterval(fetchHistory, 5000);
-            if (refreshBtn) refreshBtn.addEventListener('click', fetchHistory);
+            if (refreshBtn) refreshBtn.addEventListener('click', resetAssistantContext);
             window.addEventListener('focus', fetchHistory);
             window.refreshAssistantHistory = fetchHistory;
         })();
@@ -2469,7 +2488,7 @@
                                     </small>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="Actualizar mensajes del terminal" aria-label="Recargar">
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}" aria-label="{{ __('New assistant conversation') }}">
                                 <i class="ti ti-refresh"></i>
                             </button>
                         </div>

@@ -43,6 +43,10 @@
         flex: 1;
         min-height: 0;
     }
+    #assistant-offcanvas .assistant-empty-suggestions {
+        max-height: none;
+        overflow-y: visible;
+    }
 </style>
 
 <div
@@ -54,8 +58,24 @@
     data-bs-scroll="true"
 >
     <div class="offcanvas-header border-bottom flex-shrink-0">
-        <h5 class="offcanvas-title mb-0" id="assistantOffcanvasLabel">{{ __('Asistente') }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}"></button>
+        <div class="d-flex align-items-center justify-content-between w-100 gap-2">
+            <h5 class="offcanvas-title mb-0" id="assistantOffcanvasLabel">{{ __('Asistente') }}</h5>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                @auth
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary btn-icon waves-effect"
+                        id="assistant-offcanvas-reset-btn"
+                        title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}"
+                        aria-label="{{ __('New assistant conversation') }}"
+                        onclick="Livewire.dispatch('assistant-reset-context')"
+                    >
+                        <i class="ti ti-refresh"></i>
+                    </button>
+                @endauth
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}"></button>
+            </div>
+        </div>
     </div>
     <div class="offcanvas-body d-flex flex-column p-0 h-100 overflow-hidden">
         <div class="assistant-offcanvas-livewire-root flex-grow-1" style="min-height: 0;">

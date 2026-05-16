@@ -1,3 +1,6 @@
+@php
+    $showTerminalHint = $showTerminalHint ?? true;
+@endphp
 {{-- Suggested prompts align with App\Services\AssistantToolsService --}}
 <div class="assistant-empty-suggestions">
     <p class="text-muted small mb-3 mb-md-2">
@@ -102,14 +105,16 @@
             </div>
         </div>
     </div>
-    <p class="text-muted small mt-3 mb-0">
-        <i class="ti ti-terminal ti-xs me-1"></i>
-        Opcional:
-        @if (! empty($selectedPhone ?? null))
-            <code>php artisan chat:simulate --phone={{ $selectedPhone }}</code>
-        @else
-            <code>php artisan chat:simulate</code>
-        @endif
-        — misma sesión que este chat si usas el mismo usuario en la terminal.
-    </p>
+    @if ($showTerminalHint)
+        <p class="text-muted small mt-3 mb-0">
+            <i class="ti ti-terminal ti-xs me-1"></i>
+            Opcional:
+            @if (! empty($selectedPhone ?? null))
+                <code>php artisan chat:simulate --phone={{ $selectedPhone }}</code>
+            @else
+                <code>php artisan chat:simulate</code>
+            @endif
+            — misma sesión que este chat si usas el mismo usuario en la terminal.
+        </p>
+    @endif
 </div>

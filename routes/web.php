@@ -547,6 +547,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat/list', [ChatController::class, 'getChatList'])->name('chat.list');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/chat/assistant-history', [ChatController::class, 'assistantHistory'])->name('chat.assistant-history');
+    Route::post('/chat/assistant-reset-context', [ChatController::class, 'resetAssistantContext'])->name('chat.assistant-reset-context');
     Route::patch('/chat/ai-toggle-preference', [ChatController::class, 'updateAiTogglePreference'])->name('chat.ai-toggle-preference');
     Route::patch('/chat/team-settings-sidebar', [ChatController::class, 'updateChatTeamSettingsSidebar'])->name('chat.team-settings-sidebar');
     Route::patch('/chat/assistant-auto-respond', [ChatController::class, 'updateAssistantAutoRespond'])->name('chat.assistant-auto-respond');

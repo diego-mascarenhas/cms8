@@ -20,14 +20,34 @@
 </div>
 @endunless
     <div class="card-body p-0 d-flex flex-column" style="min-height: 360px;">
-        <div class="flex-grow-1 overflow-auto p-3" style="max-height: 420px;" id="assistant-chat-messages">
+        <div
+            class="flex-grow-1 overflow-auto p-3"
+            style="max-height: 420px;"
+            id="assistant-chat-messages"
+            @click="(e) => {
+                const btn = e.target.closest('.assistant-suggestion-example');
+                if (! btn?.dataset.prompt) return;
+                $wire.set('input', btn.dataset.prompt);
+                $nextTick(() => document.getElementById('assistant-chat-input')?.focus());
+            }"
+        >
             {{-- Welcome box: always visible --}}
             @if(count($messages) === 0)
-                <div class="mb-3 d-flex justify-content-start" x-data="{ step: 'waiting' }" x-init="setTimeout(() => step = 'welcome', 2000); setTimeout(() => step = 'ready', 4500)">
-                    <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">
-                        <p class="mb-0 small text-body" x-show="step === 'waiting'" x-transition style="display: none;">...</p>
-                        <p class="mb-1 fw-medium text-body" x-show="step === 'welcome' || step === 'ready'" x-transition style="display: none;">{{ __('¡Bienvenido!') }}</p>
-                        <p class="mb-0 small text-body" x-show="step === 'ready'" x-transition style="display: none;">{{ __('Puedes consultarme lo que necesites, que intentaré ayudarte en lo que pueda.') }}</p>
+                <div class="mb-3" x-data="{ step: 'waiting' }" x-init="setTimeout(() => step = 'welcome', 2000); setTimeout(() => step = 'ready', 4500)">
+                    <div class="d-flex justify-content-start mb-3">
+                        <div class="bg-label-primary rounded p-3 shadow-sm me-md-5" style="max-width: 85%;">
+                            <p class="mb-0 small text-body" x-show="step === 'waiting'" x-transition style="display: none;">...</p>
+                            <p class="mb-1 fw-medium text-body" x-show="step === 'welcome' || step === 'ready'" x-transition style="display: none;">{{ __('¡Bienvenido!') }}</p>
+                            <p class="mb-0 small text-body" x-show="step === 'ready'" x-transition style="display: none;">{{ __('Puedes consultarme lo que necesites, que intentaré ayudarte en lo que pueda.') }}</p>
+                        </div>
+                    </div>
+                    <div x-show="step === 'welcome' || step === 'ready'" x-transition style="display: none;">
+                        @include('chat.partials.assistant-empty-suggestions-inner', ['showTerminalHint' => false])
+                        @auth
+                            <p class="text-muted small mt-2 mb-0">
+                                {{ __('Same user as in the terminal (:email) to see the same conversation.', ['email' => auth()->user()->email]) }}
+                            </p>
+                        @endauth
                     </div>
                 </div>
             @else

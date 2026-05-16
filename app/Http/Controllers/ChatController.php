@@ -896,6 +896,33 @@ class ChatController extends Controller
     }
 
     /**
+     * Archive the active assistant thread and start a blank one (history kept in DB, hidden from UI/context).
+     */
+    public function resetAssistantContext(AgentConversationContextService $contextService)
+    {
+        if (! auth()->check())
+        {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $userId = request()->integer('user_id', 0) ?: null;
+        if ($userId && ! $this->canViewAssistantConversation($userId))
+        {
+            return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+        }
+
+        $targetUserId = $userId ?? auth()->id();
+        $teamId = auth()->user()->currentTeam?->id;
+
+        $contextService->startFreshAssistantContext($targetUserId, $teamId);
+
+        return response()->json([
+            'success' => true,
+            'messages' => [],
+        ]);
+    }
+
+    /**
      * Save per-contact AI assistance preference in {@see Contact::$data} when contact_id is sent;
      * otherwise persist team-level opt-out in team settings (group chat, key chat_ai_assistance_blocked).
      */

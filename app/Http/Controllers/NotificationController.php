@@ -7,6 +7,7 @@ use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
+use App\Models\UserDailyPerformanceInsight;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -79,7 +80,28 @@ class NotificationController extends Controller
             $notification->refresh();
         }
 
-        return view('notification.show', compact('notification'));
+        $dailyPerformanceInsight = $this->resolveDailyPerformanceInsightForNotification($notification);
+
+        return view('notification.show', compact('notification', 'dailyPerformanceInsight'));
+    }
+
+    private function resolveDailyPerformanceInsightForNotification(Notification $notification): ?UserDailyPerformanceInsight
+    {
+        if (! $notification->isDailyPerformanceInsight())
+        {
+            return null;
+        }
+
+        $insightId = (int) ($notification->metadata['performance_insight_id'] ?? $notification->reference ?? 0);
+
+        if ($insightId <= 0)
+        {
+            return null;
+        }
+
+        return UserDailyPerformanceInsight::query()
+            ->where('team_id', $notification->team_id)
+            ->find($insightId);
     }
 
     /**

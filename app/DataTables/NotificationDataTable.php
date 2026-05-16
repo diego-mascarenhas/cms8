@@ -143,8 +143,8 @@ class NotificationDataTable extends DataTable
             Column::make('subject')->title('Asunto'),
             Column::make('contact_name')->title('Contacto')->searchable(false)->orderable(false),
             Column::make('type_name')->title('Tipo')->searchable(false)->orderable(false),
-            Column::make('status')->title('Estado')->searchable(false)->orderable(false),
-            Column::make('read_status')->title('Leído')->searchable(false)->orderable(false),
+            Column::make('status')->title('Estado')->searchable(false)->orderable(false)->addClass('text-center'),
+            Column::make('read_status')->title('Leído')->searchable(false)->orderable(false)->addClass('text-center'),
             Column::make('sent_date')->title('Enviado')->searchable(false)->orderable(false),
             Column::make('created_at')->title('Creado'),
             Column::computed('action')

@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Support\TeamDefaultShortcuts;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -1779,7 +1780,7 @@ class TeamSettingController extends Controller
         }, $savedShortcuts);
 
         // Inject any default shortcuts not yet stored so they appear in the UI (disabled)
-        $availableDefaults = $this->getAvailableDefaultShortcuts();
+        $availableDefaults = $this->getAvailableDefaultShortcuts($team);
         $savedDefaultKeys = array_column(
             array_filter($savedShortcuts, fn ($sc) => ($sc['type'] ?? '') === 'default'),
             'key',
@@ -1789,7 +1790,11 @@ class TeamSettingController extends Controller
         {
             if (! in_array($key, $savedDefaultKeys, true))
             {
-                $savedShortcuts[] = ['type' => 'default', 'key' => $key, 'enabled' => false];
+                $savedShortcuts[] = [
+                    'type' => 'default',
+                    'key' => $key,
+                    'enabled' => TeamDefaultShortcuts::isEnabledByDefault($key, $team),
+                ];
             }
         }
 
@@ -1881,14 +1886,17 @@ class TeamSettingController extends Controller
      *
      * @return array<string, array<string, string>>
      */
-    private function getAvailableDefaultShortcuts(): array
+    private function getAvailableDefaultShortcuts(Team $team): array
     {
-        return [
-            'calendar' => ['title' => 'Calendario',      'subtitle' => 'Citas',           'icon' => 'ti ti-calendar'],
-            'prospecting' => ['title' => 'Buscar clientes', 'subtitle' => 'Prospección',     'icon' => 'ti ti-target'],
-            'team_files' => ['title' => 'Team Files',      'subtitle' => 'Company & brand', 'icon' => 'ti ti-folders'],
-            'times' => ['title' => 'Times',           'subtitle' => 'Time tracking',   'icon' => 'ti ti-hourglass'],
-            'passwords' => ['title' => 'Contraseñas',     'subtitle' => 'Cofre',           'icon' => 'ti ti-lock'],
-        ];
+        return collect(TeamDefaultShortcuts::definitions())
+            ->filter(fn (array $definition): bool => $team->hasModule($definition['module']))
+            ->mapWithKeys(fn (array $definition, string $key): array => [
+                $key => [
+                    'title' => $definition['title'],
+                    'subtitle' => $definition['subtitle'],
+                    'icon' => $definition['icon'],
+                ],
+            ])
+            ->all();
     }
 }

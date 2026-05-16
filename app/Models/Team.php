@@ -291,6 +291,12 @@ class Team extends JetstreamTeam
             ]);
         }
 
+        if ($moduleKey === 'performance_insights')
+        {
+            $this->load('modules');
+            \App\Support\TeamDefaultShortcuts::applyPerformanceInsightsTeamDefaults($this);
+        }
+
         return true;
     }
 

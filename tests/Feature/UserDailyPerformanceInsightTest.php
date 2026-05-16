@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Notification;
+use App\Models\NotificationType;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
 use App\Services\DailyTeamDigestMetricsCollector;
+use App\Services\UserDailyPerformanceInsightNotificationService;
 use App\Services\UserDailyPerformanceInsightService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -166,6 +169,38 @@ class UserDailyPerformanceInsightTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('recordsTotal', 1);
         $this->assertNotEmpty($response->json('data'));
+    }
+
+    public function test_enable_module_applies_performance_shortcut_and_notification_defaults(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        $this->assertTrue($team->fresh()->getSetting('shortcuts_icon_visible'));
+        $shortcuts = $team->getSetting('team_shortcuts', []);
+        $performanceShortcut = collect($shortcuts)->first(
+            fn (array $shortcut): bool => ($shortcut['type'] ?? '') === 'default'
+                && ($shortcut['key'] ?? '') === 'performance_insights',
+        );
+
+        $this->assertNotNull($performanceShortcut);
+        $this->assertTrue($performanceShortcut['enabled'] ?? false);
+        $this->assertTrue(
+            filter_var($team->getSetting('performance_insights_in_app_notification'), FILTER_VALIDATE_BOOLEAN),
+        );
+    }
+
+    public function test_performance_insights_shortcut_visible_in_navbar_for_admin(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(route('performance-insights.index'), false);
+        $response->assertSee(__('app.performance_insights_menu'), false);
     }
 
     public function test_generate_command_creates_in_app_notification_for_recipient(): void
@@ -427,6 +462,79 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame('Phase B', $second->context_snapshot['mentoring_phase_label'] ?? null);
+    }
+
+    public function test_performance_insight_notification_show_displays_insight_body(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'email' => $user->email,
+            'name' => 'Admin',
+            'surname' => 'User',
+            'phone' => '34600000001',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+            'country' => 724,
+            'language' => 'es',
+            'engagment' => 'temperate',
+            'user_id' => $user->id,
+        ]);
+
+        $insight = app(UserDailyPerformanceInsightService::class)->ensureTodayRecord($user, $team, null, null, true, 'es');
+        $notification = app(UserDailyPerformanceInsightNotificationService::class)->syncForInsight($insight, $team);
+
+        $this->assertNotNull($notification);
+        $this->assertStringContainsString('Ratio:', $notification->formatted_message);
+
+        $this->actingAs($user)
+            ->get(route('notification.show', $notification))
+            ->assertOk()
+            ->assertSee($insight->headline, false)
+            ->assertSee($insight->message, false);
+    }
+
+    public function test_notification_formatted_message_renders_line_breaks(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        $typeId = NotificationType::query()->firstOrCreate(
+            ['name' => 'General Message'],
+            ['template_subject' => 'Test', 'template_body' => 'Test', 'is_customizable' => true, 'is_active' => true],
+        )->id;
+
+        $notification = Notification::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => $typeId,
+            'contact_id' => Contact::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'email' => $user->email,
+                'name' => 'Admin',
+                'surname' => 'User',
+                'phone' => '34600000001',
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+                'status_id' => 1,
+                'country' => 724,
+                'language' => 'es',
+                'engagment' => 'temperate',
+                'user_id' => $user->id,
+            ])->id,
+            'user_id' => $user->id,
+            'subject' => 'Test subject',
+            'message' => "Line one\n\nLine two",
+            'is_sent' => true,
+            'sent_at' => now(),
+        ]);
+
+        $this->assertStringContainsString('<br />', $notification->formatted_message);
+        $this->assertStringContainsString('Line one', $notification->formatted_message);
     }
 
     public function test_split_headline_word_and_trailing_emoji_for_dashboard(): void
