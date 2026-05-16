@@ -86,6 +86,46 @@ class NotificationMarkAsReadTest extends TestCase
         $this->assertNotNull($notification->read_at);
     }
 
+    public function test_recipient_can_mark_notification_as_unread_from_navbar(): void
+    {
+        [$user, $notification] = $this->createRecipientNotification();
+        $notification->markAsRead();
+
+        $this->actingAs($user)
+            ->patchJson(route('notification.mark-as-unread', $notification))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $notification->refresh();
+        $this->assertFalse($notification->is_read);
+        $this->assertNull($notification->read_at);
+    }
+
+    public function test_recipient_can_dismiss_notification_from_navbar(): void
+    {
+        [$user, $notification] = $this->createRecipientNotification();
+
+        $this->actingAs($user)
+            ->deleteJson(route('notification.dismiss', $notification))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSoftDeleted('notifications', ['id' => $notification->id]);
+    }
+
+    public function test_non_recipient_cannot_dismiss_notification_from_navbar(): void
+    {
+        [$user, $notification] = $this->createRecipientNotification();
+
+        $otherUser = User::factory()->create();
+        $otherUser->teams()->attach($user->current_team_id, ['role' => 'admin']);
+        $otherUser->forceFill(['current_team_id' => $user->current_team_id])->save();
+
+        $this->actingAs($otherUser)
+            ->deleteJson(route('notification.dismiss', $notification))
+            ->assertForbidden();
+    }
+
     /**
      * @return array{0: User, 1: Notification}
      */

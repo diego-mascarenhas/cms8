@@ -103,13 +103,13 @@ class TaskDataTable extends DataTable
                 ->searchable(true)
                 ->orderable(false),
             Column::make('start_date')
-                ->title(__('Start date'))
+                ->title(__('app.task_table_start'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('due_date')
-                ->title(__('Due date'))
+                ->title(__('app.task_table_due'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)

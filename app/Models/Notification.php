@@ -94,11 +94,19 @@ class Notification extends Model
     /**
      * Mark notification as read
      */
-    public function markAsRead()
+    public function markAsRead(): void
     {
         $this->update([
             'is_read' => true,
             'read_at' => now(),
+        ]);
+    }
+
+    public function markAsUnread(): void
+    {
+        $this->update([
+            'is_read' => false,
+            'read_at' => null,
         ]);
     }
 

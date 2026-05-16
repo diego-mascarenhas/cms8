@@ -240,7 +240,7 @@
     {
       "url": "notification/list",
       "name": "Notificaciones",
-      "icon": "menu-icon tf-icons ti ti-bell-ringing",
+      "icon": "menu-icon tf-icons ti ti-speakerphone",
       "slug": "notification-list",
       "module_key": "notifications"
     },

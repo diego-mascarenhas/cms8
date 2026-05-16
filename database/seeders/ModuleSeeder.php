@@ -76,7 +76,7 @@ class ModuleSeeder extends Seeder
         ],
         'notifications' => [
             'name' => 'Notifications',
-            'icon' => 'bell-ringing',
+            'icon' => 'speakerphone',
             'description' => 'Notifications and alerts module',
             'is_enabled' => true,  // On by default
         ],

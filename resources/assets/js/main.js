@@ -203,8 +203,8 @@ if (document.getElementById('layout-menu')) {
 
   // Notification
   // ------------
+  const notificationsDropdown = document.querySelector('.dropdown-notifications');
   const notificationMarkAsReadAll = document.querySelector('.dropdown-notifications-all');
-  const notificationMarkAsReadList = document.querySelectorAll('.dropdown-notifications-read');
 
   const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -218,27 +218,78 @@ if (document.getElementById('layout-menu')) {
     const unreadItems = document.querySelectorAll(
       '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
     );
-    const badge = document.querySelector('.dropdown-notifications .badge-notifications');
-    if (!badge) {
+    const navLink = document.querySelector('.dropdown-notifications .nav-link');
+    let badge = document.querySelector('.dropdown-notifications .badge-notifications');
+    const count = unreadItems.length;
+
+    if (count <= 0) {
+      badge?.remove();
       return;
     }
-    const count = unreadItems.length;
-    if (count <= 0) {
-      badge.remove();
-    } else {
+
+    if (!badge && navLink) {
+      badge = document.createElement('span');
+      badge.className = 'badge bg-danger rounded-pill badge-notifications';
+      navLink.appendChild(badge);
+    }
+
+    if (badge) {
       badge.textContent = String(count);
     }
   };
 
-  const applyNavbarNotificationReadState = listItem => {
+  const disposeNavbarNotificationTooltip = element => {
+    if (!element || typeof bootstrap === 'undefined') {
+      return;
+    }
+    const instance = bootstrap.Tooltip.getInstance(element);
+    if (instance) {
+      instance.hide();
+      instance.dispose();
+    }
+  };
+
+  const initNavbarNotificationTooltips = root => {
+    if (!root || typeof bootstrap === 'undefined') {
+      return;
+    }
+    root.querySelectorAll('[data-navbar-notification-tooltip]').forEach(element => {
+      disposeNavbarNotificationTooltip(element);
+      const title = element.getAttribute('data-bs-title');
+      if (!title) {
+        return;
+      }
+      new bootstrap.Tooltip(element, {
+        container: 'body',
+        trigger: 'hover',
+        boundary: 'window'
+      });
+    });
+  };
+
+  const setNavbarNotificationReadUi = (listItem, isRead, options = {}) => {
     if (!listItem) {
       return;
     }
-    listItem.classList.add('marked-as-read');
-    const actions = listItem.querySelector('.dropdown-notifications-actions');
-    if (actions) {
-      actions.remove();
+
+    listItem.classList.toggle('marked-as-read', isRead);
+
+    const readBtn = listItem.querySelector('.dropdown-notifications-read');
+    const unreadBtn = listItem.querySelector('.dropdown-notifications-unread');
+    readBtn?.classList.toggle('d-none', isRead);
+    unreadBtn?.classList.toggle('d-none', !isRead);
+
+    const dateEl = listItem.querySelector('[data-notification-date]');
+    if (dateEl) {
+      if (isRead && options.readAtFormatted) {
+        dateEl.textContent = getNavbarReadAtLabel(options.readAtFormatted);
+      } else if (!isRead) {
+        dateEl.textContent =
+          options.createdAtFormatted || listItem.getAttribute('data-created-at-label') || dateEl.textContent;
+      }
     }
+
+    initNavbarNotificationTooltips(listItem);
   };
 
   const markNavbarNotificationRead = (url, listItem) => {
@@ -259,92 +310,141 @@ if (document.getElementById('layout-menu')) {
         if (!data.success) {
           return;
         }
-        applyNavbarNotificationReadState(listItem);
-        const dateEl = listItem.querySelector('[data-notification-date]');
-        if (dateEl && data.read_at_formatted) {
-          dateEl.textContent = getNavbarReadAtLabel(data.read_at_formatted);
-        }
+        setNavbarNotificationReadUi(listItem, true, { readAtFormatted: data.read_at_formatted });
         updateNavbarNotificationBadge();
       })
       .catch(() => {});
   };
 
-  // Notification: Mark as all as read
+  const markNavbarNotificationUnread = (url, listItem) => {
+    if (!url || !listItem || !listItem.classList.contains('marked-as-read')) {
+      return Promise.resolve();
+    }
+    return fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken(),
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          return;
+        }
+        setNavbarNotificationReadUi(listItem, false, { createdAtFormatted: data.created_at_formatted });
+        updateNavbarNotificationBadge();
+      })
+      .catch(() => {});
+  };
+
+  const dismissNavbarNotification = (url, listItem) => {
+    if (!url || !listItem) {
+      return Promise.resolve();
+    }
+    return fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-TOKEN': getCsrfToken(),
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          return;
+        }
+        listItem.querySelectorAll('[data-navbar-notification-tooltip]').forEach(disposeNavbarNotificationTooltip);
+        listItem.remove();
+        updateNavbarNotificationBadge();
+      })
+      .catch(() => {});
+  };
+
   if (notificationMarkAsReadAll) {
     notificationMarkAsReadAll.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
       const markAllUrl = notificationMarkAsReadAll.getAttribute('data-mark-all-read-url');
-      if (markAllUrl) {
-        fetch(markAllUrl, {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': getCsrfToken(),
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          credentials: 'same-origin'
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (!data.success) {
-              return;
-            }
-            document
-              .querySelectorAll(
-                '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
-              )
-              .forEach(listItem => {
-                applyNavbarNotificationReadState(listItem);
-                const dateEl = listItem.querySelector('[data-notification-date]');
-                if (dateEl && data.read_at_formatted) {
-                  dateEl.textContent = getNavbarReadAtLabel(data.read_at_formatted);
-                }
-              });
-            const markAllLink = document.querySelector('.dropdown-notifications-all');
-            if (markAllLink) {
-              markAllLink.remove();
-            }
-            updateNavbarNotificationBadge();
-          })
-          .catch(() => {});
+      if (!markAllUrl) {
         return;
       }
-      notificationMarkAsReadList.forEach(item => {
-        item.closest('.dropdown-notifications-item')?.classList.add('marked-as-read');
-      });
-    });
-  }
-  // Notification: Mark as read/unread onclick of dot
-  if (notificationMarkAsReadList) {
-    notificationMarkAsReadList.forEach(item => {
-      item.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const url = item.getAttribute('data-mark-read-url');
-        const listItem = item.closest('.dropdown-notifications-item');
-        if (url && listItem) {
-          markNavbarNotificationRead(url, listItem);
-          return;
-        }
-        listItem?.classList.toggle('marked-as-read');
-      });
+      fetch(markAllUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': getCsrfToken(),
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            return;
+          }
+          document
+            .querySelectorAll(
+              '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
+            )
+            .forEach(listItem => {
+              setNavbarNotificationReadUi(listItem, true, { readAtFormatted: data.read_at_formatted });
+            });
+          notificationMarkAsReadAll.remove();
+          updateNavbarNotificationBadge();
+        })
+        .catch(() => {});
     });
   }
 
-  // Notification: Mark as read/unread onclick of dot
-  const notificationArchiveMessageList = document.querySelectorAll('.dropdown-notifications-archive');
-  notificationArchiveMessageList.forEach(item => {
-    item.addEventListener('click', event => {
-      item.closest('.dropdown-notifications-item').remove();
+  if (notificationsDropdown) {
+    initNavbarNotificationTooltips(notificationsDropdown);
+
+    notificationsDropdown.addEventListener('click', event => {
+      const archiveBtn = event.target.closest('.dropdown-notifications-archive');
+      const readBtn = event.target.closest('.dropdown-notifications-read');
+      const unreadBtn = event.target.closest('.dropdown-notifications-unread');
+
+      if (!archiveBtn && !readBtn && !unreadBtn) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const listItem = (archiveBtn || readBtn || unreadBtn).closest('.dropdown-notifications-item');
+      if (!listItem) {
+        return;
+      }
+
+      if (archiveBtn) {
+        const dismissUrl = archiveBtn.getAttribute('data-dismiss-url');
+        dismissNavbarNotification(dismissUrl, listItem);
+        return;
+      }
+
+      if (readBtn) {
+        markNavbarNotificationRead(readBtn.getAttribute('data-mark-read-url'), listItem);
+        return;
+      }
+
+      if (unreadBtn) {
+        markNavbarNotificationUnread(unreadBtn.getAttribute('data-mark-unread-url'), listItem);
+      }
     });
-  });
+  }
 
   // Init helpers & misc
   // --------------------
 
-  // Init BS Tooltip
-  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  // Init BS Tooltip (exclude navbar notification actions — initialized separately above)
+  const tooltipTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]:not([data-navbar-notification-tooltip])')
+  );
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });

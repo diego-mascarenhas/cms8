@@ -28,10 +28,18 @@ return [
     'navbar_notifications_empty' => 'Sin notificaciones por el momento.',
     'navbar_notifications_view_all' => 'Ver todas las notificaciones',
     'navbar_notification_mark_read' => 'Marcar como leída',
+    'navbar_notification_mark_unread' => 'Marcar como no leída',
+    'navbar_notification_marked_unread' => 'Notificación marcada como no leída',
+    'navbar_notification_dismiss' => 'Descartar',
+    'navbar_notification_dismissed' => 'Notificación descartada',
+    'navbar_notifications_view_all_tasks' => 'Ver todas las tareas',
     'navbar_notification_mark_all_read' => 'Marcar todas como leídas',
     'navbar_notification_marked_read' => 'Notificación marcada como leída',
     'navbar_notification_marked_all_read' => 'Todas las notificaciones marcadas como leídas',
     'navbar_notification_read_at' => 'Leída :date',
+
+    'task_table_start' => 'Inicio',
+    'task_table_due' => 'Finalización',
 
     'assistant_fab_title' => 'Abrir panel del asistente',
 

@@ -231,6 +231,42 @@ class NotificationController extends Controller
     }
 
     /**
+     * Mark notification as unread (navbar / recipient).
+     */
+    public function markAsUnread(Notification $notification): JsonResponse
+    {
+        $this->authorizeNotificationRecipient($notification);
+
+        if ($notification->is_read)
+        {
+            $notification->markAsUnread();
+            $notification->refresh();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.navbar_notification_marked_unread'),
+            'is_read' => $notification->is_read,
+            'created_at_formatted' => $notification->created_at->isoFormat('D MMM YYYY, HH:mm'),
+        ]);
+    }
+
+    /**
+     * Dismiss a notification from the navbar dropdown (recipient only).
+     */
+    public function dismiss(Notification $notification): JsonResponse
+    {
+        $this->authorizeNotificationRecipient($notification);
+
+        $notification->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.navbar_notification_dismissed'),
+        ]);
+    }
+
+    /**
      * Mark all unread notifications for the authenticated recipient as read.
      */
     public function markAllAsRead(): JsonResponse

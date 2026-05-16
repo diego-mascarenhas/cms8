@@ -28,10 +28,18 @@ return [
     'navbar_notifications_empty' => 'You have no notifications yet.',
     'navbar_notifications_view_all' => 'View all notifications',
     'navbar_notification_mark_read' => 'Mark as read',
+    'navbar_notification_mark_unread' => 'Mark as unread',
+    'navbar_notification_marked_unread' => 'Notification marked as unread',
+    'navbar_notification_dismiss' => 'Dismiss',
+    'navbar_notification_dismissed' => 'Notification dismissed',
+    'navbar_notifications_view_all_tasks' => 'View all tasks',
     'navbar_notification_mark_all_read' => 'Mark all as read',
     'navbar_notification_marked_read' => 'Notification marked as read',
     'navbar_notification_marked_all_read' => 'All notifications marked as read',
     'navbar_notification_read_at' => 'Read :date',
+
+    'task_table_start' => 'Start',
+    'task_table_due' => 'Due',
 
     'assistant_fab_title' => 'Open assistant panel',
 

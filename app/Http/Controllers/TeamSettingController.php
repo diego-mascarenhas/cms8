@@ -408,7 +408,7 @@ class TeamSettingController extends Controller
             ],
             'notifications' => [
                 'title' => 'Notification Settings',
-                'icon' => 'ti ti-bell',
+                'icon' => 'ti ti-speakerphone',
                 'settings' => array_merge([
                     'notifications_email_enabled' => [
                         'label' => 'Email Notifications',
