@@ -83,7 +83,7 @@ class MailController extends Controller
                 ]);
         }
 
-        return view('mail.index', compact('sources', 'emails', 'mailComposePrefill', 'mailComposeContactId', 'assistantFlowPrompts'));
+        return view('mail.index', compact('sources', 'mailComposePrefill', 'mailComposeContactId', 'assistantFlowPrompts'));
     }
 
     /**

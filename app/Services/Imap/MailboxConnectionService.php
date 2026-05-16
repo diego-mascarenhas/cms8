@@ -2,9 +2,12 @@
 
 namespace App\Services\Imap;
 
+use App\Enums\EmailFolder;
+use App\Jobs\ClassifyEmailSpamJob;
 use App\Jobs\ProcessEmailSentimentJob;
 use App\Models\Email;
 use App\Models\Mailbox;
+use App\Services\Mail\MailInboxService;
 use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Client;
 use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
@@ -116,6 +119,18 @@ class MailboxConnectionService
         $dateAttr = $message->getDate();
         $carbonDate = $dateAttr && method_exists($dateAttr, 'toDate') ? $dateAttr->toDate() : null;
 
+        $inboxService = app(MailInboxService::class);
+        $folder = $inboxService->detectFolderForIncoming($from ?: '', $mailbox->username ?? '');
+
+        $existing = Email::query()
+            ->where('mailbox_id', $mailbox->id)
+            ->where('message_id', $messageId)
+            ->first();
+
+        $folderValue = $existing?->folder instanceof EmailFolder
+            ? $existing->folder->value
+            : ($existing?->folder ?? $folder->value);
+
         $email = Email::updateOrCreate(
             [
                 'mailbox_id' => $mailbox->id,
@@ -131,6 +146,7 @@ class MailboxConnectionService
                 'message_date' => $carbonDate,
                 'seen' => $message->hasFlag('Seen'),
                 'flagged' => $message->hasFlag('Flagged'),
+                'folder' => $folderValue,
             ],
         );
 
@@ -142,6 +158,14 @@ class MailboxConnectionService
             } catch (\Throwable $e)
             {
                 Log::warning('Mail sync: could not dispatch sentiment job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
+            }
+
+            try
+            {
+                ClassifyEmailSpamJob::dispatch($email->id);
+            } catch (\Throwable $e)
+            {
+                Log::warning('Mail sync: could not dispatch spam classification job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
             }
         }
 
