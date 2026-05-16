@@ -15,9 +15,25 @@ class UserDailyPerformanceInsightDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->only([
+                'id',
+                'insight_date',
+                'performance_ratio',
+                'headline',
+                'focus',
+                'message',
+                'user_name',
+            ])
             ->addColumn('user_name', function (UserDailyPerformanceInsight $row)
             {
                 return e($row->user?->name ?? '—');
+            })
+            ->filterColumn('user_name', function ($query, $keyword): void
+            {
+                $query->whereHas('user', function ($userQuery) use ($keyword): void
+                {
+                    $userQuery->where('name', 'like', '%'.$keyword.'%');
+                });
             })
             ->editColumn('insight_date', function (UserDailyPerformanceInsight $row)
             {
@@ -54,7 +70,7 @@ class UserDailyPerformanceInsightDataTable extends DataTable
             ]);
 
         $date = request('insight_date');
-        if ($date)
+        if (is_string($date) && $date !== '')
         {
             $query->whereDate('insight_date', $date);
         } else
@@ -62,15 +78,19 @@ class UserDailyPerformanceInsightDataTable extends DataTable
             $query->where('insight_date', '>=', now()->subDays(60)->toDateString());
         }
 
-        return $query->orderByDesc('insight_date')->orderByDesc('performance_ratio');
+        return $query->orderByDesc('insight_date')->orderByDesc('id');
     }
 
     public function html(): HtmlBuilder
     {
+        $ajaxUrl = route('performance-insights.index', array_filter([
+            'insight_date' => request('insight_date'),
+        ]));
+
         return $this->builder()
             ->setTableId('user-daily-performance-insights-table')
             ->columns($this->getColumns())
-            ->minifiedAjax(url()->full())
+            ->minifiedAjax($ajaxUrl)
             ->dom('frtip')
             ->orderBy(1, 'desc')
             ->responsive(true)

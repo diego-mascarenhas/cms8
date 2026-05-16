@@ -209,6 +209,7 @@ class Notification extends Model
                 'Payment Reminder' => 'warning',
                 'Task Assignment' => 'success',
                 'Welcome Message' => 'primary',
+                'Daily Performance Insight' => 'warning',
             ];
 
             return $colorMap[$this->type->name] ?? 'secondary';

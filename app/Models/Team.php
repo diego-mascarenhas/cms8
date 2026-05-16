@@ -411,6 +411,22 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Whether daily performance insights create an in-app notification (navbar bell).
+     */
+    public function performanceInsightsInAppNotificationEnabled(): bool
+    {
+        if (! $this->hasModule('performance_insights'))
+        {
+            return false;
+        }
+
+        return filter_var(
+            $this->getSetting('performance_insights_in_app_notification', true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+    }
+
+    /**
      * When the HTTP webhook has no resolved team ($team is null), infer receiving team from
      * {@see findByWhatsAppNumber} (team_settings: whatsapp_from / twilio_whatsapp_from).
      * Local Baileys webhooks normally send team_id so $team is set.

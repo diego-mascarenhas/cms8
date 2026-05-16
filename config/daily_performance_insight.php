@@ -14,4 +14,16 @@ return [
 
     'use_llm' => (bool) env('DAILY_PERFORMANCE_INSIGHT_USE_LLM', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email daily digest
+    |--------------------------------------------------------------------------
+    |
+    | When true, admin/root users receive an email after the scheduled command
+    | generates their daily insight (requires performance_insights module).
+    |
+    */
+
+    'send_email' => (bool) env('DAILY_PERFORMANCE_INSIGHT_SEND_EMAIL', true),
+
 ];

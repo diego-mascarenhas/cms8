@@ -245,8 +245,30 @@
                                     $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
                                 @if(auth()->user()->hasAnyRole(['admin', 'root']))
-                                    <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
-                                    <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
+                                    @if($dailyPerformanceInsight ?? null)
+                                        @php
+                                            $headlineParts = \App\Models\UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($dailyPerformanceInsight->headline);
+                                        @endphp
+                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                            <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-bell ti-sm"></i></span>
+                                            <h5 class="card-title mb-0 fw-semibold">
+                                                {{ __('app.dashboard_daily_digest_title') }}:
+                                                {{ e($headlineParts['text']) }}{{ $headlineParts['emoji'] }}
+                                            </h5>
+                                        </div>
+                                        <p class="mb-1 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
+                                        <p class="mb-2 text-body">{{ e($dailyPerformanceInsight->message) }}</p>
+                                        @if(!empty($dailyPerformanceInsight->context_snapshot['highlights'] ?? []))
+                                            <ul class="list-unstyled mb-2 small text-muted">
+                                                @foreach(array_slice($dailyPerformanceInsight->context_snapshot['highlights'], 0, 4) as $highlight)
+                                                    <li class="mb-1"><i class="ti ti-point-filled ti-xs me-1"></i>{{ $highlight }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    @else
+                                        <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
+                                        <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
+                                    @endif
                                     @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
                                         <div class="mt-auto pt-2">
                                             <button

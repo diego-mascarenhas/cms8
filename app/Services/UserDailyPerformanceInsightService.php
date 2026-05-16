@@ -2,12 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\ContactInteraction;
-use App\Models\Task;
-use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
-use App\Models\UserContactAction;
 use App\Models\UserDailyPerformanceInsight;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
@@ -17,12 +13,17 @@ use function Laravel\Ai\agent;
 
 class UserDailyPerformanceInsightService
 {
+    public function __construct(
+        private readonly DailyTeamDigestMetricsCollector $digestCollector,
+    ) {}
+
     private const LLM_INSTRUCTIONS = <<<'PROMPT'
-You write a daily CRM performance insight for one user.
+You write a daily team operations digest notification for one admin user.
+The context JSON includes team_digest (WhatsApp, email, appointments, client sentiment, tasks, projects, services, invoices, payments when present) and digest_highlights (priority bullets).
 Reply with ONLY a JSON object (no markdown code fences, no extra text). Keys:
 - "headline": exactly one word in the requested output language, optionally immediately followed by one emoji (no space) that fits the tone. Sharp stance (noun, imperative verb, or adjective). Never greetings or empty praise. Forbidden examples for the word part (any language): congratulations, bravo, hola, hello, welcome, felicidades, bienvenido, awesome, perfect, great job.
-- "focus": exactly five words (single spaces), same language, the single priority to tackle today from the metrics. You may use at most one line break inside "focus" between words; total word count remains five across both lines.
-- "message": exactly one short, upbeat paragraph in the same language (no bullets, no markdown). Aim for roughly 18–32 words—about half the length of a typical coaching note: warm, encouraging, never preachy or guilt-tripping. Weave the metrics lightly; do not open with dry score language (avoid leading with "ratio" or "0/100"). If "mentoring_phase" in the context JSON is non-null and non-empty, mention that phase once in a friendly way. Encourage one small concrete step aligned with "focus". No ALL CAPS.
+- "focus": exactly five words (single spaces), same language, the single priority to tackle today from digest_highlights and team_digest. You may use at most one line break inside "focus" between words; total word count remains five across both lines.
+- "message": exactly one short, upbeat paragraph in the same language (no bullets, no markdown). Aim for roughly 28–45 words: warm, actionable, never preachy. Mention the most urgent signals from digest_highlights (unread WhatsApp, overdue invoices, stressed clients, overdue tasks, appointments today, etc.) without listing every number. If mentoring_phase is set, mention it once. End with one concrete next step aligned with "focus". No ALL CAPS.
 Use letters (unicode) and digits inside words; "headline" has no spaces between word and optional emoji.
 PROMPT;
 
@@ -58,12 +59,13 @@ PROMPT;
         }
 
         $locale = $outputLocale ?? app()->getLocale();
-        $metrics = $this->collectMetrics($user, $team);
-        $ratio = $this->computePerformanceRatio($metrics);
+        $digest = $this->digestCollector->collect($user, $team, $onDate);
+        $metrics = $digest['user_activity'];
+        $ratio = $this->computePerformanceRatio($digest);
 
-        $insight = $this->resolveInsightPayload($user, $team, $metrics, $ratio, $mentoringHeadline, $locale);
+        $insight = $this->resolveInsightPayload($user, $team, $digest, $ratio, $mentoringHeadline, $locale);
 
-        $snapshot = array_merge($metrics, array_filter([
+        $snapshot = array_merge($digest, array_filter([
             'mentoring_phase_label' => $mentoringHeadline,
             'insight_source' => $insight['source'],
             'output_locale' => $locale,
@@ -119,62 +121,47 @@ PROMPT;
      */
     public function collectMetrics(User $user, Team $team): array
     {
-        $since = now()->subDays(7)->startOfDay();
-
-        $interactionsCount = ContactInteraction::query()
-            ->where('user_id', $user->id)
-            ->where('occurred_at', '>=', $since)
-            ->whereHas('contact', function ($q) use ($team): void
-            {
-                $q->where('team_id', $team->id);
-            })
-            ->count();
-
-        $seconds = (int) UserContactAction::query()
-            ->where('user_id', $user->id)
-            ->where('start_time', '>=', $since)
-            ->whereHas('contact', function ($q) use ($team): void
-            {
-                $q->where('team_id', $team->id);
-            })
-            ->sum('duration_seconds');
-
-        $doneStatusId = TaskStatus::query()->where('name', 'DONE')->value('id');
-        $tasksDone = 0;
-        if ($doneStatusId)
-        {
-            $tasksDone = (int) Task::withoutGlobalScopes()
-                ->where('team_id', $team->id)
-                ->where('responsible_id', $user->id)
-                ->where('status_id', $doneStatusId)
-                ->where('updated_at', '>=', $since)
-                ->count();
-        }
-
-        return [
-            'interactions_count' => $interactionsCount,
-            'call_minutes' => max(0, $seconds / 60),
-            'tasks_done' => $tasksDone,
-        ];
+        return $this->digestCollector->collect($user, $team)['user_activity'];
     }
 
-    public function computePerformanceRatio(array $metrics): float
+    /**
+     * @param  array<string, mixed>  $digest
+     */
+    public function computePerformanceRatio(array $digest): float
     {
-        $interactions = (int) $metrics['interactions_count'];
-        $minutes = (float) $metrics['call_minutes'];
-        $tasks = (int) $metrics['tasks_done'];
+        $activity = $digest['user_activity'] ?? [];
+        $interactions = (int) ($activity['interactions_count'] ?? 0);
+        $minutes = (float) ($activity['call_minutes'] ?? 0);
+        $tasks = (int) ($activity['tasks_done'] ?? 0);
 
         $score = min(40, $interactions * 4) + min(35, ($minutes / 60) * 10) + min(25, $tasks * 8);
 
-        return round(min(100, $score), 2);
+        if (isset($digest['whatsapp']))
+        {
+            $score += min(10, (int) ($digest['whatsapp']['inbound_7d'] ?? 0));
+            $score += min(5, (int) ($digest['whatsapp']['unread_inbound'] ?? 0) * 2);
+        }
+
+        if (isset($digest['tasks']))
+        {
+            $score -= min(15, (int) ($digest['tasks']['overdue'] ?? 0) * 3);
+        }
+
+        if (isset($digest['invoices']))
+        {
+            $score -= min(10, (int) ($digest['invoices']['overdue_count'] ?? 0) * 2);
+        }
+
+        return round(max(0, min(100, $score)), 2);
     }
 
     public function buildMessage(array $metrics, float $ratio): string
     {
+        $activity = $metrics['user_activity'] ?? $metrics;
         $replacements = [
-            'interactions' => (int) $metrics['interactions_count'],
-            'minutes' => (int) round($metrics['call_minutes']),
-            'tasks' => (int) $metrics['tasks_done'],
+            'interactions' => (int) ($activity['interactions_count'] ?? 0),
+            'minutes' => (int) round((float) ($activity['call_minutes'] ?? 0)),
+            'tasks' => (int) ($activity['tasks_done'] ?? 0),
         ];
 
         if ($ratio >= 70.0)
@@ -195,10 +182,11 @@ PROMPT;
      */
     public function buildDailyHeadline(array $metrics, float $ratio): string
     {
+        $activity = $metrics['user_activity'] ?? $metrics;
         $replacements = [
-            'interactions' => (int) $metrics['interactions_count'],
-            'minutes' => (int) round($metrics['call_minutes']),
-            'tasks' => (int) $metrics['tasks_done'],
+            'interactions' => (int) ($activity['interactions_count'] ?? 0),
+            'minutes' => (int) round((float) ($activity['call_minutes'] ?? 0)),
+            'tasks' => (int) ($activity['tasks_done'] ?? 0),
         ];
 
         if ($ratio >= 70.0)
@@ -217,36 +205,39 @@ PROMPT;
     /**
      * @return array{headline: string, focus: string, message: string, source: string}
      */
-    private function resolveInsightPayload(User $user, Team $team, array $metrics, float $ratio, ?string $mentoringHeadline, string $locale): array
+    private function resolveInsightPayload(User $user, Team $team, array $digest, float $ratio, ?string $mentoringHeadline, string $locale): array
     {
         if (config('daily_performance_insight.use_llm', true))
         {
-            $fromLlm = $this->tryBuildInsightWithLlm($user, $team, $metrics, $ratio, $mentoringHeadline, $locale);
+            $fromLlm = $this->tryBuildInsightWithLlm($user, $team, $digest, $ratio, $mentoringHeadline, $locale);
             if ($fromLlm !== null)
             {
                 return $fromLlm;
             }
         }
 
-        return $this->buildEmergencyInsight($ratio, $locale, $metrics, $mentoringHeadline);
+        return $this->buildEmergencyInsight($ratio, $locale, $digest, $mentoringHeadline);
     }
 
     /**
      * @return ?array{headline: string, focus: string, message: string, source: 'llm'}
      */
-    private function tryBuildInsightWithLlm(User $user, Team $team, array $metrics, float $ratio, ?string $mentoringHeadline, string $locale): ?array
+    private function tryBuildInsightWithLlm(User $user, Team $team, array $digest, float $ratio, ?string $mentoringHeadline, string $locale): ?array
     {
         try
         {
+            $activity = $digest['user_activity'] ?? [];
             $context = [
                 'user_first_name' => preg_split('/\s+/u', trim($user->name), 2, PREG_SPLIT_NO_EMPTY)[0] ?? '',
                 'user_full_name' => $user->name,
                 'team_name' => $team->name,
                 'mentoring_phase' => $mentoringHeadline,
-                'rolling_7d_interactions' => $metrics['interactions_count'],
-                'rolling_7d_call_minutes' => round((float) $metrics['call_minutes'], 1),
-                'rolling_7d_tasks_done' => $metrics['tasks_done'],
+                'rolling_7d_interactions' => $activity['interactions_count'] ?? 0,
+                'rolling_7d_call_minutes' => round((float) ($activity['call_minutes'] ?? 0), 1),
+                'rolling_7d_tasks_done' => $activity['tasks_done'] ?? 0,
                 'performance_ratio_0_100' => $ratio,
+                'team_digest' => array_diff_key($digest, array_flip(['highlights', 'user_activity', 'digest_version', 'insight_date'])),
+                'digest_highlights' => $digest['highlights'] ?? [],
             ];
             $userPrompt = 'Output language (locale): '.$locale."\nContext JSON:\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
@@ -303,6 +294,12 @@ PROMPT;
      */
     private function storedInsightNeedsMicroUpgrade(UserDailyPerformanceInsight $row): bool
     {
+        $snapshot = $row->context_snapshot ?? [];
+        if (($snapshot['digest_version'] ?? 0) < DailyTeamDigestMetricsCollector::DIGEST_VERSION)
+        {
+            return true;
+        }
+
         if (trim((string) ($row->focus ?? '')) === '')
         {
             return true;
@@ -484,7 +481,7 @@ PROMPT;
     /**
      * @return array{headline: string, focus: string, message: string, source: 'emergency'}
      */
-    private function buildEmergencyInsight(float $ratio, string $locale, array $metrics, ?string $mentoringHeadline): array
+    private function buildEmergencyInsight(float $ratio, string $locale, array $digest, ?string $mentoringHeadline): array
     {
         $tier = $this->performanceTier($ratio);
         $previous = app()->getLocale();
@@ -492,20 +489,37 @@ PROMPT;
 
         try
         {
+            $activity = $digest['user_activity'] ?? [];
             $mentoringLabel = ($mentoringHeadline !== null && trim($mentoringHeadline) !== '')
                 ? trim($mentoringHeadline)
                 : (string) __('app.performance_insight_emergency_mentoring_default');
 
             $replacements = [
-                'interactions' => (int) $metrics['interactions_count'],
-                'minutes' => (int) round($metrics['call_minutes']),
-                'tasks' => (int) $metrics['tasks_done'],
+                'interactions' => (int) ($activity['interactions_count'] ?? 0),
+                'minutes' => (int) round((float) ($activity['call_minutes'] ?? 0)),
+                'tasks' => (int) ($activity['tasks_done'] ?? 0),
                 'mentoring_label' => $mentoringLabel,
             ];
 
-            $idleWeek = (int) $metrics['interactions_count'] === 0
-                && (int) round((float) $metrics['call_minutes']) === 0
-                && (int) $metrics['tasks_done'] === 0;
+            $highlights = $digest['highlights'] ?? [];
+            if ($highlights !== [])
+            {
+                $focus = $this->normalizeFocusPhrase(implode(' ', array_slice(preg_split('/\s+/u', (string) $highlights[0], -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 5))) ?? (string) __('app.performance_insight_emergency_focus_'.$tier);
+
+                return [
+                    'headline' => (string) __('app.performance_insight_emergency_headline_'.$tier),
+                    'focus' => $focus,
+                    'message' => (string) __('app.performance_insight_emergency_message_digest', [
+                        'highlight' => $highlights[0],
+                        'mentoring_label' => $mentoringLabel,
+                    ]),
+                    'source' => 'emergency',
+                ];
+            }
+
+            $idleWeek = (int) ($activity['interactions_count'] ?? 0) === 0
+                && (int) round((float) ($activity['call_minutes'] ?? 0)) === 0
+                && (int) ($activity['tasks_done'] ?? 0) === 0;
 
             if ($tier === 'low' && $idleWeek)
             {

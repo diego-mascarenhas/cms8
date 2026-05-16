@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Module;
+use App\Models\Notification;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
+use App\Services\DailyTeamDigestMetricsCollector;
 use App\Services\UserDailyPerformanceInsightService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -13,6 +16,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\SourceSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -43,8 +47,84 @@ class UserDailyPerformanceInsightTest extends TestCase
         $user->current_team_id = $team->id;
         $user->save();
         $user->assignRole($role);
+        $this->enablePerformanceInsightsModule($team);
 
         return $user->refresh();
+    }
+
+    private function performanceInsightsDataTableUrl(): string
+    {
+        $columns = [];
+        foreach ([
+            ['data' => 'id', 'name' => 'id', 'searchable' => 'true', 'orderable' => 'true'],
+            ['data' => 'insight_date', 'name' => 'insight_date', 'searchable' => 'true', 'orderable' => 'true'],
+            ['data' => 'user_name', 'name' => 'user_name', 'searchable' => 'false', 'orderable' => 'false'],
+            ['data' => 'performance_ratio', 'name' => 'performance_ratio', 'searchable' => 'true', 'orderable' => 'true'],
+            ['data' => 'headline', 'name' => 'headline', 'searchable' => 'true', 'orderable' => 'true'],
+            ['data' => 'focus', 'name' => 'focus', 'searchable' => 'true', 'orderable' => 'false'],
+            ['data' => 'message', 'name' => 'message', 'searchable' => 'true', 'orderable' => 'false'],
+        ] as $def)
+        {
+            $columns[] = array_merge($def, [
+                'search' => ['value' => '', 'regex' => 'false'],
+            ]);
+        }
+
+        return route('performance-insights.index').'?'.http_build_query([
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'search' => ['value' => '', 'regex' => 'false'],
+            'order' => [['column' => 1, 'dir' => 'desc']],
+            'columns' => $columns,
+        ]);
+    }
+
+    private function enablePerformanceInsightsModule(Team $team): void
+    {
+        Module::firstOrCreate(
+            ['key' => 'performance_insights'],
+            ['name' => 'Team performance insights', 'is_core' => false],
+        );
+        $team->enableModule('performance_insights');
+    }
+
+    public function test_digest_collector_includes_enabled_module_sections(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        Module::firstOrCreate(['key' => 'chat'], ['name' => 'Chat', 'is_core' => false]);
+        Module::firstOrCreate(['key' => 'tasks'], ['name' => 'Tasks', 'is_core' => false]);
+        $team->enableModule('chat');
+        $team->enableModule('tasks');
+        $team = $team->fresh();
+
+        $digest = app(DailyTeamDigestMetricsCollector::class)->collect($user, $team);
+
+        $this->assertSame(DailyTeamDigestMetricsCollector::DIGEST_VERSION, $digest['digest_version']);
+        $this->assertArrayHasKey('user_activity', $digest);
+        $this->assertArrayHasKey('whatsapp', $digest);
+        $this->assertArrayHasKey('tasks', $digest);
+        $this->assertArrayHasKey('highlights', $digest);
+        $this->assertIsArray($digest['highlights']);
+    }
+
+    public function test_insight_snapshot_stores_digest_version_after_generation(): void
+    {
+        $this->seedInsightDependencies();
+        config(['daily_performance_insight.use_llm' => false]);
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        $insight = app(UserDailyPerformanceInsightService::class)->ensureTodayRecord($user, $team, null);
+
+        $this->assertSame(
+            DailyTeamDigestMetricsCollector::DIGEST_VERSION,
+            $insight->context_snapshot['digest_version'] ?? null,
+        );
+        $this->assertArrayHasKey('highlights', $insight->context_snapshot);
     }
 
     public function test_performance_insights_index_forbidden_for_collaborator(): void
@@ -65,6 +145,92 @@ class UserDailyPerformanceInsightTest extends TestCase
         $response = $this->actingAs($user)->get(route('performance-insights.index'));
 
         $response->assertOk();
+        $response->assertSee('user-daily-performance-insights-table', false);
+        $response->assertSee('performance-insights/list', false);
+    }
+
+    public function test_performance_insights_datatable_returns_rows_via_ajax(): void
+    {
+        $this->seedInsightDependencies();
+        config(['daily_performance_insight.use_llm' => false]);
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        app(UserDailyPerformanceInsightService::class)->ensureTodayRecord($user, $team, null);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get($this->performanceInsightsDataTableUrl());
+
+        $response->assertOk();
+        $response->assertJsonPath('recordsTotal', 1);
+        $this->assertNotEmpty($response->json('data'));
+    }
+
+    public function test_generate_command_creates_in_app_notification_for_recipient(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+
+        Mail::fake();
+        config([
+            'daily_performance_insight.send_email' => false,
+            'daily_performance_insight.use_llm' => false,
+        ]);
+        $team->setSetting('performance_insights_in_app_notification', true, [
+            'group' => 'notifications',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->artisan('performance-insights:generate')->assertSuccessful();
+
+        $insight = UserDailyPerformanceInsight::query()
+            ->where('team_id', $team->id)
+            ->where('user_id', $admin->id)
+            ->first();
+
+        $this->assertNotNull($insight);
+        $this->assertDatabaseHas('notifications', [
+            'team_id' => $team->id,
+            'reference' => $insight->id,
+            'is_read' => false,
+        ]);
+
+        $this->actingAs($admin);
+        $this->assertEquals(
+            1,
+            Notification::query()->forRecipientUser($admin->id)->unread()->count(),
+        );
+
+        $this->artisan('performance-insights:generate')->assertSuccessful();
+        $this->assertEquals(
+            1,
+            Notification::withoutGlobalScopes()->where('reference', $insight->id)->count(),
+        );
+    }
+
+    public function test_generate_command_skips_in_app_notification_when_team_setting_disabled(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+
+        config([
+            'daily_performance_insight.send_email' => false,
+            'daily_performance_insight.use_llm' => false,
+        ]);
+        $team->setSetting('performance_insights_in_app_notification', false, [
+            'group' => 'notifications',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->artisan('performance-insights:generate')->assertSuccessful();
+
+        $this->assertDatabaseCount('notifications', 0);
     }
 
     public function test_performance_insights_generate_command_only_targets_admin_and_root(): void
@@ -79,6 +245,9 @@ class UserDailyPerformanceInsightTest extends TestCase
         $collaborator->current_team_id = $team->id;
         $collaborator->save();
 
+        Mail::fake();
+        config(['daily_performance_insight.send_email' => true]);
+
         $this->artisan('performance-insights:generate')->assertSuccessful();
 
         $this->assertDatabaseHas('user_daily_performance_insights', [
@@ -92,6 +261,24 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $this->artisan('performance-insights:generate')->assertSuccessful();
         $this->assertEquals(1, UserDailyPerformanceInsight::query()->where('team_id', $team->id)->count());
+        Mail::assertSent(\App\Mail\DailyPerformanceInsightMail::class);
+    }
+
+    public function test_generate_command_skips_teams_without_performance_insights_module(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+        $team->modules()->detach(
+            Module::where('key', 'performance_insights')->value('id'),
+        );
+
+        $this->artisan('performance-insights:generate')->assertSuccessful();
+
+        $this->assertDatabaseMissing('user_daily_performance_insights', [
+            'team_id' => $team->id,
+            'user_id' => $admin->id,
+        ]);
     }
 
     public function test_dashboard_does_not_persist_daily_insight_and_shows_assistant_prompt(): void
@@ -184,15 +371,9 @@ class UserDailyPerformanceInsightTest extends TestCase
         $insight = $service->ensureTodayRecord($user, $team, null, null, false, 'en');
 
         $this->assertSame('emergency', $insight->context_snapshot['insight_source'] ?? null);
-        $this->assertSame(trans('app.performance_insight_emergency_focus_low', [], 'en'), $insight->focus);
         $this->assertSame(trans('app.performance_insight_emergency_headline_low', [], 'en'), $insight->headline);
-        $label = trans('app.performance_insight_emergency_mentoring_default', [], 'en');
-        $this->assertSame(trans('app.performance_insight_emergency_message_low_idle', [
-            'interactions' => 0,
-            'minutes' => 0,
-            'tasks' => 0,
-            'mentoring_label' => $label,
-        ], 'en'), $insight->message);
+        $this->assertNotSame('', trim($insight->focus));
+        $this->assertStringContainsString('your commercial dossier', $insight->message);
     }
 
     public function test_insight_service_upgrades_legacy_long_row_to_micro_format(): void

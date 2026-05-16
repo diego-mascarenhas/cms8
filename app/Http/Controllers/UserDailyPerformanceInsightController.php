@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\DataTables\UserDailyPerformanceInsightDataTable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 
 class UserDailyPerformanceInsightController extends Controller
 {
-    public function index(UserDailyPerformanceInsightDataTable $dataTable): View|RedirectResponse
+    public function index(UserDailyPerformanceInsightDataTable $dataTable): View|RedirectResponse|JsonResponse
     {
         $this->authorize('viewAny', \App\Models\UserDailyPerformanceInsight::class);
 

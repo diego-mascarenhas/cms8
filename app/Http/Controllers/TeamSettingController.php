@@ -239,6 +239,25 @@ class TeamSettingController extends Controller
                     'is_encrypted' => false,
                 ]);
             }
+
+            if ($group === 'notifications')
+            {
+                foreach ([
+                    'notifications_email_enabled',
+                    'notifications_sms_enabled',
+                    'performance_insights_in_app_notification',
+                ] as $notificationBooleanKey)
+                {
+                    if (! array_key_exists($notificationBooleanKey, $settings))
+                    {
+                        $team->setSetting($notificationBooleanKey, false, [
+                            'group' => 'notifications',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -284,6 +303,8 @@ class TeamSettingController extends Controller
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
+            'notifications_sms_enabled',
+            'performance_insights_in_app_notification',
             'assistant_auto_respond',
             'assistant_auto_respond_admins_when_off',
             'assistant_chat_stub',
@@ -387,7 +408,7 @@ class TeamSettingController extends Controller
             'notifications' => [
                 'title' => 'Notification Settings',
                 'icon' => 'ti ti-bell',
-                'settings' => [
+                'settings' => array_merge([
                     'notifications_email_enabled' => [
                         'label' => 'Email Notifications',
                         'type' => 'checkbox',
@@ -404,6 +425,16 @@ class TeamSettingController extends Controller
                         'section' => 'general',
                         'row' => 1,
                     ],
+                ], $team->hasModule('performance_insights') ? [
+                    'performance_insights_in_app_notification' => [
+                        'label' => __('app.team_setting_performance_insights_in_app_notification'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('performance_insights_in_app_notification', '1'),
+                        'is_encrypted' => false,
+                        'section' => 'performance_insights',
+                        'row' => 3,
+                    ],
+                ] : [], [
                     'notifications_from_name' => [
                         'label' => 'From Name',
                         'type' => 'text',
@@ -422,7 +453,7 @@ class TeamSettingController extends Controller
                         'row' => 2,
                         'placeholder' => 'notifications@yourdomain.com',
                     ],
-                ],
+                ]),
             ],
             'api' => [
                 'title' => 'API Access Token',

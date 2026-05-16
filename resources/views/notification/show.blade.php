@@ -36,6 +36,11 @@
             </form>
             @endcan
         @endif
+        @if(! empty($notification->metadata['action_url']))
+        <a href="{{ $notification->metadata['action_url'] }}" class="btn btn-primary waves-effect waves-light">
+            <i class="ti ti-chart-bar me-1"></i>{{ __('app.performance_insight_notification_view') }}
+        </a>
+        @endif
         @if($notification->contact)
         <a href="{{ route('collaborator.notifications', $notification->contact->id) }}" class="btn btn-info waves-effect waves-light">
             <i class="ti ti-bell me-1"></i>Ver notificaciones del colaborador

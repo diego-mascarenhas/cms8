@@ -82,6 +82,10 @@
                                                     <i class="ti ti-webhook me-1"></i>{{ __('How flows are chosen: AI asks vs automatic keyword routing.') }}
                                                 </p>
                                             </div>
+                                        @elseif($setting['section'] === 'performance_insights')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-0">{{ __('app.performance_insights_menu') }}</h6>
+                                            </div>
                                         @endif
                                     @endif
 
