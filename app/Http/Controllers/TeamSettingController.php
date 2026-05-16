@@ -6,6 +6,7 @@ use App\Enums\ExternalProvider;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
+use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Services\AssistantChatService;
@@ -39,7 +40,20 @@ class TeamSettingController extends Controller
             ->latest('id')
             ->first();
 
-        return view('team-settings.index', compact('team', 'groupedSettings', 'googleExternalAccount'));
+        $performanceInsightsModule = Module::query()
+            ->where('key', 'performance_insights')
+            ->where('status', 1)
+            ->first();
+
+        $performanceInsightsEnabled = $team->hasModule('performance_insights');
+
+        return view('team-settings.index', compact(
+            'team',
+            'groupedSettings',
+            'googleExternalAccount',
+            'performanceInsightsModule',
+            'performanceInsightsEnabled',
+        ));
     }
 
     public function businessConfig(Team $team)
