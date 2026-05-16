@@ -1731,12 +1731,17 @@ class TeamSettingController extends Controller
         $shortcutsIconVisible = (bool) $team->getSetting('shortcuts_icon_visible', false);
         $savedShortcuts = $team->getSetting('team_shortcuts', []) ?? [];
 
-        // Normalize legacy custom shortcuts (no type field)
+        // Normalize legacy custom shortcuts (no type / enabled field)
         $savedShortcuts = array_map(function ($sc)
         {
             if (! isset($sc['type']))
             {
                 $sc['type'] = 'custom';
+            }
+
+            if (($sc['type'] ?? '') === 'custom' && ! array_key_exists('enabled', $sc))
+            {
+                $sc['enabled'] = true;
             }
 
             return $sc;
@@ -1813,6 +1818,7 @@ class TeamSettingController extends Controller
                         'subtitle' => $sc['subtitle'] ?? null,
                         'url' => $sc['url'],
                         'icon' => $sc['icon'],
+                        'enabled' => (bool) ($sc['enabled'] ?? false),
                         'open_in_new_tab' => (bool) ($sc['open_in_new_tab'] ?? false),
                         'order' => (int) ($sc['order'] ?? 99),
                     ];

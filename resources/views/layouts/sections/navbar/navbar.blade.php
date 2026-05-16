@@ -341,6 +341,7 @@
 
                         $renderedShortcuts[] = ['_type' => 'default', 'meta' => $meta];
                     } else {
+                        if (! ($sc['enabled'] ?? true)) { continue; }
                         if (empty($sc['title']) || empty($sc['url']) || empty($sc['icon'])) { continue; }
                         $renderedShortcuts[] = ['_type' => 'custom', 'sc' => $sc];
                     }

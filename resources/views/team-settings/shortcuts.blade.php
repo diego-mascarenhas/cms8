@@ -152,9 +152,8 @@
 
                                         <div class="form-check form-switch mb-0">
                                             <input type="hidden" name="shortcuts[{{ $index }}][enabled]" value="0">
-                                            <input class="form-check-input default-enabled-toggle" type="checkbox"
+                                            <input class="form-check-input shortcut-enabled-toggle" type="checkbox"
                                                    name="shortcuts[{{ $index }}][enabled]" value="1" role="switch"
-                                                   data-card="{{ $index }}"
                                                    {{ ($shortcut['enabled'] ?? false) ? 'checked' : '' }}>
                                         </div>
                                     </div>
@@ -167,16 +166,26 @@
                         @endif
                     @else
                         {{-- Custom shortcut card --}}
-                        <div class="shortcut-item card mb-3" data-index="{{ $index }}" data-type="custom">
+                        @php $customEnabled = $shortcut['enabled'] ?? true; @endphp
+                        <div class="shortcut-item card mb-3 {{ $customEnabled ? 'border-primary' : '' }}" data-index="{{ $index }}" data-type="custom">
                             <div class="card-body">
                                 <div class="row align-items-center mb-3">
                                     <div class="col-auto">
                                         <i class="ti ti-grip-vertical drag-handle fs-5"></i>
                                     </div>
                                     <div class="col">
-                                        <h6 class="mb-0 custom-shortcut-label">Custom shortcut</h6>
+                                        <h6 class="mb-0 custom-shortcut-label">{{ $shortcut['title'] ?? 'Custom shortcut' }}</h6>
+                                        @if (! $customEnabled)
+                                            <small class="text-muted">Hidden from navbar</small>
+                                        @endif
                                     </div>
-                                    <div class="col-auto">
+                                    <div class="col-auto d-flex align-items-center gap-2">
+                                        <div class="form-check form-switch mb-0" title="Show in navbar">
+                                            <input type="hidden" name="shortcuts[{{ $index }}][enabled]" value="0">
+                                            <input class="form-check-input shortcut-enabled-toggle" type="checkbox"
+                                                   name="shortcuts[{{ $index }}][enabled]" value="1" role="switch"
+                                                   {{ $customEnabled ? 'checked' : '' }}>
+                                        </div>
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
                                             <i class="ti ti-trash me-1"></i>Remove
                                         </button>
@@ -339,11 +348,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Default shortcut toggle: highlight card border
+    // Shortcut enable toggle: highlight card border
     container.addEventListener('change', function (e) {
-        if (e.target.classList.contains('default-enabled-toggle')) {
+        if (e.target.classList.contains('shortcut-enabled-toggle')) {
             const card = e.target.closest('.shortcut-item');
             card.classList.toggle('border-primary', e.target.checked);
+            const label = card.querySelector('.custom-shortcut-label');
+            if (label) {
+                let hint = card.querySelector('.shortcut-hidden-hint');
+                if (e.target.checked) {
+                    hint?.remove();
+                } else if (!hint) {
+                    hint = document.createElement('small');
+                    hint.className = 'text-muted shortcut-hidden-hint';
+                    hint.textContent = 'Hidden from navbar';
+                    label.after(hint);
+                }
+            }
         }
     });
 
@@ -362,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function buildCustomCard(index) {
         return `
-        <div class="shortcut-item card mb-3" data-index="${index}" data-type="custom">
+        <div class="shortcut-item card mb-3 border-primary" data-index="${index}" data-type="custom">
             <div class="card-body">
                 <div class="row align-items-center mb-3">
                     <div class="col-auto">
@@ -371,7 +392,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="col">
                         <h6 class="mb-0 custom-shortcut-label">Custom shortcut</h6>
                     </div>
-                    <div class="col-auto">
+                    <div class="col-auto d-flex align-items-center gap-2">
+                        <div class="form-check form-switch mb-0" title="Show in navbar">
+                            <input type="hidden" name="shortcuts[${index}][enabled]" value="0">
+                            <input class="form-check-input shortcut-enabled-toggle" type="checkbox"
+                                   name="shortcuts[${index}][enabled]" value="1" role="switch" checked>
+                        </div>
                         <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
                             <i class="ti ti-trash me-1"></i>Remove
                         </button>
