@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Mail\DailyPerformanceInsightMail;
 use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Notification;
 use App\Models\NotificationType;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
@@ -112,6 +115,82 @@ class UserDailyPerformanceInsightTest extends TestCase
         $this->assertArrayHasKey('tasks', $digest);
         $this->assertArrayHasKey('highlights', $digest);
         $this->assertIsArray($digest['highlights']);
+    }
+
+    public function test_digest_includes_daily_task_items_for_open_and_overdue_tasks(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+
+        Module::firstOrCreate(['key' => 'tasks'], ['name' => 'Tasks', 'is_core' => false]);
+        $team->enableModule('tasks');
+        $team = $team->fresh();
+
+        $toDoStatus = TaskStatus::query()->where('name', 'TO_DO')->first();
+        $this->assertNotNull($toDoStatus);
+
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'title' => 'Responder mensajes de WhatsApp',
+            'status_id' => $toDoStatus->id,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->toDateString(),
+        ]);
+
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'title' => 'Tarea vencida ayer',
+            'status_id' => $toDoStatus->id,
+            'start_date' => now()->subDays(2)->toDateString(),
+            'due_date' => now()->subDay()->toDateString(),
+        ]);
+
+        $digest = app(DailyTeamDigestMetricsCollector::class)->collect($user, $team);
+
+        $this->assertSame(1, $digest['tasks']['due_today'] ?? 0);
+        $this->assertSame(1, $digest['tasks']['overdue'] ?? 0);
+        $this->assertCount(2, $digest['tasks']['daily_items'] ?? []);
+        $this->assertStringContainsString(
+            'Responder mensajes de WhatsApp',
+            collect($digest['tasks']['daily_items'])->pluck('title')->implode(' '),
+        );
+    }
+
+    public function test_daily_performance_insight_email_includes_tasks_and_highlights(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+
+        Module::firstOrCreate(['key' => 'tasks'], ['name' => 'Tasks', 'is_core' => false]);
+        $team->enableModule('tasks');
+
+        $toDoStatus = TaskStatus::query()->where('name', 'TO_DO')->first();
+        $this->assertNotNull($toDoStatus);
+
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $admin->id,
+            'title' => 'Preparar informe semanal',
+            'status_id' => $toDoStatus->id,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->toDateString(),
+        ]);
+
+        config(['daily_performance_insight.use_llm' => false]);
+
+        $insight = app(UserDailyPerformanceInsightService::class)->ensureTodayRecord($admin, $team, null, null, true);
+
+        $this->assertNotNull($insight);
+        $this->assertNotEmpty($insight->context_snapshot['tasks']['daily_items'] ?? []);
+
+        $html = (new DailyPerformanceInsightMail($insight))->render();
+        $this->assertStringContainsString('Preparar informe semanal', $html);
+        $this->assertStringContainsString(__('app.performance_digest_email_tasks_heading'), $html);
+        $this->assertStringContainsString(__('app.performance_insight_notification_highlights'), $html);
     }
 
     public function test_insight_snapshot_stores_digest_version_after_generation(): void

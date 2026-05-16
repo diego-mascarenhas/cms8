@@ -62,6 +62,11 @@ class AppServiceProvider extends ServiceProvider
         Builder::useVite();
         JsonResource::withoutWrapping();
 
+        $this->app->resolving(Builder::class, function (Builder $builder): void
+        {
+            $builder->addTableClass('table-hover');
+        });
+
         // Register SubscriptionProduct Observer
         SubscriptionProduct::observe(SubscriptionProductObserver::class);
         TicketResponse::observe(TicketResponseObserver::class);

@@ -70,6 +70,14 @@ class BusinessCreationSummaryService
                 $agent = agent(instructions: $defaultInstruction, messages: [], tools: []);
                 $response = $agent->prompt($userMessage, [], Lab::Anthropic);
                 $summary = $response->text ?? '';
+
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: (int) $session->team_id,
+                    service: 'BusinessCreationSummaryService',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'landings',
+                    inputSize: strlen($userMessage),
+                );
             }
             $aiFinishedAt = now();
 

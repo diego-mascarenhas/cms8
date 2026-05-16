@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -20,6 +21,10 @@ class ProductDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($product)
+            {
+                return DataTableFormatter::showLink($product, 'product.show', $product->name, 'view', [$product->id]);
+            })
             ->editColumn('status', function ($product)
             {
                 $catalog = $product->catalog_status;
@@ -61,6 +66,7 @@ class ProductDataTable extends DataTable
             {
                 return $product->category ? $product->category->name : '—';
             })
+            ->rawColumns(['name', 'status', 'price', 'store.name', 'category.name', 'action'])
             ->addColumn('action', function ($product)
             {
                 $user = auth()->user();
@@ -86,8 +92,7 @@ class ProductDataTable extends DataTable
 
                 return $html;
             })
-            ->setRowId('id')
-            ->rawColumns(['status', 'price', 'action']);
+            ->setRowId('id');
     }
 
     public function query(Product $model): QueryBuilder

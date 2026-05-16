@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as BaseQueryBuilder;
 use Illuminate\Support\Str;
@@ -19,7 +20,7 @@ class StripeSubscriptionDataTable extends DataTable
     {
         return (new EloquentDataTable($query))
             ->setRowId('id')
-            ->rawColumns(['status', 'action'])
+            ->rawColumns(['customer_name', 'status', 'action'])
             ->filterColumn('customer_name', function (Builder $builder, string $keyword)
             {
                 $builder->where('service_syncs.customer_name', 'like', '%'.$keyword.'%');
@@ -109,7 +110,37 @@ class StripeSubscriptionDataTable extends DataTable
             })
             ->editColumn('customer_name', function (StripeSubscription $sub)
             {
-                return $sub->customer_name ?: '—';
+                $label = $sub->customer_name ?: '—';
+                $user = auth()->user();
+
+                if (! $user || $label === '—')
+                {
+                    return e($label);
+                }
+
+                $service = Service::withoutGlobalScopes()
+                    ->where('subscription_id', $sub->id)
+                    ->whereNull('deleted_at')
+                    ->orderBy('id')
+                    ->get()
+                    ->first(fn (Service $service) => $user->can('view', $service));
+
+                if ($service)
+                {
+                    return DataTableFormatter::link(route('service.show', $service->id), $label, 'fw-medium text-body');
+                }
+
+                $enterpriseId = $sub->getAttribute('enterprise_match_id');
+                if ($enterpriseId)
+                {
+                    $enterprise = Enterprise::query()->find($enterpriseId);
+                    if ($enterprise && $user->can('view', $enterprise))
+                    {
+                        return DataTableFormatter::link(route('client.show', $enterprise->id), $label, 'fw-medium text-body');
+                    }
+                }
+
+                return e($label);
             })
             ->editColumn('plan_name', function (StripeSubscription $sub)
             {

@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\List60;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -34,10 +35,15 @@ class List60DataTable extends DataTable
                 // Mostrar la primera empresa asociada al contacto (si existe)
                 $companyName = $row->contact->enterprises->first() ? e($row->contact->enterprises->first()->name) : '';
 
-                return '<div class="d-flex flex-column">
-							<span class="fw-medium text-body text-truncate">'.e($row->contact->name).'</span>
-							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
-						</div>';
+                $nameHtml = DataTableFormatter::showLink(
+                    $row->contact,
+                    'contact.show',
+                    $row->contact->name,
+                    'view',
+                    [$row->contact->id],
+                );
+
+                return DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
             })
             ->editColumn('status_id', function ($row)
             {

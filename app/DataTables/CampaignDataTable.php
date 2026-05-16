@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Enums\CampaignType;
 use App\Models\Campaign;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
@@ -148,13 +149,13 @@ class CampaignDataTable extends DataTable
 
     private function campaignCell(Campaign $row): string
     {
-        $name = e($row->name);
+        $nameHtml = DataTableFormatter::showLink($row, 'campaigns.show', $row->name, 'view', [$row], 'fw-semibold');
         $summary = $row->summary ? e($row->summary) : '&mdash;';
 
         return <<<HTML
 <div class="d-flex align-items-start gap-3">
     <div>
-        <div class="fw-semibold">{$name}</div>
+        {$nameHtml}
         <small class="text-muted d-block mt-75">{$summary}</small>
     </div>
 </div>

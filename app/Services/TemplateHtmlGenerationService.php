@@ -87,6 +87,17 @@ TEXT;
 
             $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
 
+            if ($team !== null)
+            {
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: (int) $team->id,
+                    service: 'TemplateHtmlGenerationService',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'templates',
+                    inputSize: strlen($userPrompt),
+                );
+            }
+
             $text = trim($response->text ?? '');
 
             if ($text === '')

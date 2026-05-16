@@ -90,6 +90,8 @@ class TokenUsageLog extends Model
                     'invoice' => 'invoices',
                     'payment' => 'payments',
                     'prompt' => 'prompts',
+                    'performance-insight' => 'performance_insights',
+                    'performance_insights' => 'performance_insights',
                 ];
                 $moduleKey = $pluralMap[$moduleKey] ?? $moduleKey;
 

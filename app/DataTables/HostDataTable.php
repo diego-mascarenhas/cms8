@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Host;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -21,6 +22,10 @@ class HostDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'host.action')
             ->setRowId('id')
+            ->editColumn('name', function ($data)
+            {
+                return DataTableFormatter::showLink($data, 'host.edit', $data->name, 'update', [$data->id]);
+            })
             ->rawColumns(['name', 'power_state', 'action'])
             ->editColumn('type_id', function ($data)
             {

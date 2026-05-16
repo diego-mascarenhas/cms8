@@ -86,6 +86,29 @@ class UserDailyPerformanceInsightNotificationService
 
         $parts = array_filter([$focus, $body, $ratioLine]);
 
+        $snapshot = $insight->context_snapshot ?? [];
+        $highlights = $snapshot['highlights'] ?? [];
+        if ($highlights !== [])
+        {
+            $parts[] = __('app.performance_insight_notification_highlights').': '."\n"
+                .implode("\n", array_map(static fn (string $line): string => '• '.$line, $highlights));
+        }
+
+        $dailyTasks = $snapshot['tasks']['daily_items'] ?? [];
+        if ($dailyTasks !== [])
+        {
+            $taskLines = array_map(static function (array $task): string
+            {
+                $prefix = ! empty($task['is_overdue'])
+                    ? __('app.performance_digest_task_overdue').': '
+                    : (! empty($task['is_due_today']) ? __('app.performance_digest_task_due_today').': ' : '');
+
+                return '• '.$prefix.$task['title'].' — '.$task['due_label'];
+            }, array_slice($dailyTasks, 0, 10));
+
+            $parts[] = __('app.performance_digest_email_tasks_heading').': '."\n".implode("\n", $taskLines);
+        }
+
         return implode("\n\n", $parts);
     }
 

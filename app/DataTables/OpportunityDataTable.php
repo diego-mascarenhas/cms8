@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Opportunity;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
@@ -24,12 +25,17 @@ class OpportunityDataTable extends DataTable
                 ])->render();
             })
             ->setRowId('id')
+            ->editColumn('name', function (Opportunity $row)
+            {
+                return DataTableFormatter::showLink($row, 'opportunity.show', $row->name, 'view', [$row->id]);
+            })
             ->editColumn('contact_id', function (Opportunity $row)
             {
                 $c = $row->contact;
+                $contactName = trim($c->name.' '.(string) $c->surname);
+                $nameHtml = DataTableFormatter::showLink($c, 'contact.show', $contactName, 'view', [$c->id], 'fw-medium');
 
-                return '<div class="d-flex flex-column"><span class="fw-medium">'.e($c->name).' '.e((string) $c->surname).'</span>'
-                    .'<small class="text-muted">'.e((string) $c->email).'</small></div>';
+                return DataTableFormatter::nameColumn($nameHtml, (string) $c->email);
             })
             ->filterColumn('contact_id', function ($query, $keyword)
             {
@@ -70,7 +76,7 @@ class OpportunityDataTable extends DataTable
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->rawColumns(['action', 'contact_id']);
+            ->rawColumns(['action', 'name', 'contact_id']);
     }
 
     public function query(Opportunity $model): QueryBuilder

@@ -33,7 +33,7 @@ PROMPT;
      *
      * @return array{id: int, name: string, reason: string}|null
      */
-    public function analyzeWithAi(string $text): ?array
+    public function analyzeWithAi(string $text, ?int $teamId = null): ?array
     {
         $text = trim(strip_tags($text));
         if ($text === '')
@@ -49,6 +49,17 @@ PROMPT;
                 tools: [],
             );
             $response = $agent->prompt($text, [], Lab::Anthropic);
+
+            if ($teamId !== null)
+            {
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: $teamId,
+                    service: 'ContactSentimentAnalysisService',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'contacts',
+                    inputSize: strlen($text),
+                );
+            }
 
             $raw = trim($response->text ?? '');
             if ($raw === '')
@@ -97,7 +108,7 @@ PROMPT;
      */
     public function recordForContact(Contact $contact, string $text, string $channel): void
     {
-        $result = $this->analyzeWithAi($text);
+        $result = $this->analyzeWithAi($text, (int) $contact->team_id);
 
         if ($result === null)
         {

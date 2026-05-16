@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Domain;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -24,6 +25,10 @@ class DomainDataTable extends DataTable
                 return view('domain.action', ['id' => $domain->id])->render();
             })
             ->setRowId('id')
+            ->editColumn('domain', function ($domain)
+            {
+                return DataTableFormatter::showLink($domain, 'domain.show', $domain->domain, 'view', [$domain->id]);
+            })
             ->editColumn('suspended', function ($domain)
             {
                 $statusClass = $domain->suspended ? 'danger' : 'success';
@@ -43,7 +48,7 @@ class DomainDataTable extends DataTable
             {
                 return $domain->server ? $domain->server->server_url : 'N/A';
             })
-            ->rawColumns(['suspended', 'action']);
+            ->rawColumns(['domain', 'suspended', 'action']);
     }
 
     public function query(): QueryBuilder

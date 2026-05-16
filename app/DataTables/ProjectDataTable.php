@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Project;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,12 @@ class ProjectDataTable extends DataTable
 
         return $table
             ->setRowId('id')
+            ->editColumn('name', function ($data)
+            {
+                $label = $data->real_name ?: $data->name;
+
+                return DataTableFormatter::showLink($data, 'project.show', $label, 'view', [$data->id]);
+            })
             ->editColumn('enterprise_id', function ($data)
             {
                 return $data->client?->name ?? '<span class="text-muted">Sin cliente</span>';
@@ -67,7 +74,7 @@ class ProjectDataTable extends DataTable
             {
                 return $row->status_label;
             })
-            ->rawColumns(['action', 'status_id', 'enterprise_id', 'category_id', 'responsible_name']);
+            ->rawColumns(['action', 'name', 'status_id', 'enterprise_id', 'category_id', 'responsible_name']);
     }
 
     public function query(Project $model): QueryBuilder

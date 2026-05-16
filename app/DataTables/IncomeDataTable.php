@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Enums\TransactionType;
 use App\Models\Payment;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -39,7 +40,19 @@ class IncomeDataTable extends DataTable
             })
             ->editColumn('enterprise_id', function ($data)
             {
-                return $data->enterprise?->name ?? '<span class="text-muted">-</span>';
+                if (! $data->enterprise)
+                {
+                    return '<span class="text-muted">-</span>';
+                }
+
+                return DataTableFormatter::showLink(
+                    $data,
+                    'payments.show',
+                    $data->enterprise->name,
+                    'view',
+                    [$data->id],
+                    'fw-medium text-body',
+                );
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {

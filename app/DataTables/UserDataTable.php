@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\User;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
@@ -20,6 +21,10 @@ class UserDataTable extends DataTable
                 return view('user.action', ['id' => $user->id])->render();
             })
             ->setRowId('id')
+            ->editColumn('name', function ($user)
+            {
+                return DataTableFormatter::showLink($user, 'user.show', $user->name, 'view', [$user->id]);
+            })
             ->editColumn('email_verified_at', function ($user)
             {
                 if ($user->email_verified_at)
@@ -49,7 +54,7 @@ class UserDataTable extends DataTable
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->rawColumns(['email_verified_at', 'roles', 'action']);
+            ->rawColumns(['name', 'email_verified_at', 'roles', 'action']);
     }
 
     public function query(): QueryBuilder

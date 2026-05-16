@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Services\TokenUsageLogService;
 use App\Support\TeamDefaultShortcuts;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -133,6 +134,14 @@ class TeamSettingController extends Controller
                 );
                 $response = $agent->prompt($userMessage, [], Lab::Anthropic);
                 $summary = $response->text ?: '';
+
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: (int) $team->id,
+                    service: 'TeamSettingController::businessSummary',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'landings',
+                    inputSize: strlen($userMessage),
+                );
             } catch (\Throwable $e)
             {
                 Log::error('Business summary AI fallback failed', ['error' => $e->getMessage()]);

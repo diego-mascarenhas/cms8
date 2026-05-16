@@ -3,8 +3,8 @@
 namespace App\DataTables;
 
 use App\Models\Order;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
-use Illuminate\Support\Facades\Gate;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -31,7 +31,14 @@ class OrderDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('order_number', function ($row)
             {
-                return '<a href="'.route('order.show', $row->id).'" class="fw-medium text-primary">#'.$row->order_number.'</a>';
+                return DataTableFormatter::showLink(
+                    $row,
+                    'order.show',
+                    '#'.$row->order_number,
+                    'view',
+                    [$row->id],
+                    'fw-medium text-primary',
+                );
             })
             ->editColumn('contact_id', function ($row)
             {
@@ -40,9 +47,7 @@ class OrderDataTable extends DataTable
                     $contact = $row->contact;
                     $name = e($contact->name);
                     $avatar = \App\Helpers\AvatarHelper::generate($contact->name, 32);
-                    $nameHtml = Gate::allows('view', $contact)
-                        ? '<a href="'.route('contact.show', $contact->id).'" class="fw-medium text-primary">'.$name.'</a>'
-                        : '<span class="fw-medium">'.$name.'</span>';
+                    $nameHtml = DataTableFormatter::showLink($contact, 'contact.show', $contact->name, 'view', [$contact->id], 'fw-medium text-primary');
 
                     return '<div class="d-flex justify-content-start align-items-center">
                                 <div class="avatar-wrapper">

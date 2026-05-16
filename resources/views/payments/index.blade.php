@@ -25,7 +25,7 @@
 
 <div class="card">
     <div class="card-body">
-        {!! $dataTable->table(['class' => 'table']) !!}
+        {!! $dataTable->table(['class' => 'table table-hover']) !!}
     </div>
 </div>
 @endsection

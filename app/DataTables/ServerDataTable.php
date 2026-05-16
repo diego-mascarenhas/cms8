@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Server;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -19,6 +20,10 @@ class ServerDataTable extends DataTable
                 return view('server.action', ['id' => $server->id])->render();
             })
             ->setRowId('id')
+            ->editColumn('name', function ($server)
+            {
+                return DataTableFormatter::showLink($server, 'server.show', $server->name, 'view', [$server->id]);
+            })
             ->editColumn('status_id', function ($server)
             {
                 $statusClass = $server->status_id->color();
@@ -26,7 +31,7 @@ class ServerDataTable extends DataTable
 
                 return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
             })
-            ->rawColumns(['status_id', 'action']);
+            ->rawColumns(['name', 'status_id', 'action']);
     }
 
     public function query(): QueryBuilder

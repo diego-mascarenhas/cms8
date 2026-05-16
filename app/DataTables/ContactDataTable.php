@@ -3,10 +3,10 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Support\DataTableFormatter;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -40,14 +40,9 @@ class ContactDataTable extends DataTable
                 }
                 $companyName = $row->enterprises->first() ? e($row->enterprises->first()->name) : '';
 
-                $nameHtml = Gate::allows('view', $row)
-                    ? '<a href="'.route('contact.show', $row->id).'" class="fw-medium text-body text-truncate">'.$fullName.'</a>'
-                    : '<span class="fw-medium text-body text-truncate">'.$fullName.'</span>';
+                $nameHtml = DataTableFormatter::showLink($row, 'contact.show', $fullName, 'view', [$row->id]);
 
-                return '<div class="d-flex flex-column">
-							'.$nameHtml.'
-							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
-						</div>';
+                return DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
             })
             ->filterColumn('name', function ($query, $keyword)
             {

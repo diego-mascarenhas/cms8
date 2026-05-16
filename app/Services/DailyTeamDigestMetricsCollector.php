@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DailyTeamDigestMetricsCollector
 {
-    public const DIGEST_VERSION = 2;
+    public const DIGEST_VERSION = 3;
 
     /**
      * Team-wide operational digest plus user activity (calls, interactions, tasks).
@@ -207,23 +207,31 @@ class DailyTeamDigestMetricsCollector
     }
 
     /**
-     * @return array<string, int>
+     * @return array{pending: int, overdue: int, due_today: int, done_7d: int, daily_items: list<array{id: int, title: string, due_date: ?string, due_label: string, is_overdue: bool, is_due_today: bool, status: string}>}
      */
     private function collectTaskMetrics(User $user, Team $team, CarbonInterface $since7d, CarbonInterface $todayStart): array
     {
+        $todayEnd = $todayStart->copy()->endOfDay();
         $doneStatusId = TaskStatus::query()->where('name', 'DONE')->value('id');
 
         $base = Task::withoutGlobalScopes()
             ->where('team_id', $team->id)
             ->where('responsible_id', $user->id);
 
-        $pending = $doneStatusId
-            ? (clone $base)->where('status_id', '!=', $doneStatusId)->count()
-            : (clone $base)->count();
+        $openQuery = $doneStatusId
+            ? (clone $base)->where('status_id', '!=', $doneStatusId)
+            : clone $base;
+
+        $pending = (clone $openQuery)->count();
 
         $overdue = $doneStatusId
-            ? (clone $base)->where('status_id', '!=', $doneStatusId)->whereNotNull('due_date')->whereDate('due_date', '<', $todayStart)->count()
+            ? (clone $openQuery)->whereNotNull('due_date')->whereDate('due_date', '<', $todayStart)->count()
             : 0;
+
+        $dueToday = (clone $openQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', $todayStart)
+            ->count();
 
         $done7d = $doneStatusId
             ? (clone $base)->where('status_id', $doneStatusId)->where('updated_at', '>=', $since7d)->count()
@@ -232,8 +240,53 @@ class DailyTeamDigestMetricsCollector
         return [
             'pending' => $pending,
             'overdue' => $overdue,
+            'due_today' => $dueToday,
             'done_7d' => $done7d,
+            'daily_items' => $this->collectDailyTaskItems($openQuery, $todayStart, $todayEnd),
         ];
+    }
+
+    /**
+     * Open tasks relevant for the digest day: overdue, due today, or without due date.
+     *
+     * @return list<array{id: int, title: string, due_date: ?string, due_label: string, is_overdue: bool, is_due_today: bool, status: string}>
+     */
+    private function collectDailyTaskItems(Builder $openQuery, CarbonInterface $todayStart, CarbonInterface $todayEnd): array
+    {
+        $tasks = (clone $openQuery)
+            ->with('status:id,name')
+            ->where(function ($query) use ($todayEnd): void
+            {
+                $query->whereNull('due_date')
+                    ->orWhereDate('due_date', '<=', $todayEnd);
+            })
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderBy('title')
+            ->limit(20)
+            ->get(['id', 'title', 'due_date', 'status_id']);
+
+        $items = [];
+        foreach ($tasks as $task)
+        {
+            $dueDate = $task->due_date;
+            $isOverdue = $dueDate !== null && $dueDate->lt($todayStart);
+            $isDueToday = $dueDate !== null && $dueDate->between($todayStart, $todayEnd);
+
+            $items[] = [
+                'id' => (int) $task->id,
+                'title' => (string) $task->title,
+                'due_date' => $dueDate?->toDateString(),
+                'due_label' => $dueDate !== null
+                    ? $dueDate->isoFormat('D MMM YYYY')
+                    : (string) __('app.performance_digest_task_no_due_date'),
+                'is_overdue' => $isOverdue,
+                'is_due_today' => $isDueToday,
+                'status' => (string) ($task->status?->translated_name ?? __('task_status.UNKNOWN')),
+            ];
+        }
+
+        return $items;
     }
 
     /**
@@ -345,7 +398,12 @@ class DailyTeamDigestMetricsCollector
             if (($digest['tasks']['overdue'] ?? 0) > 0)
             {
                 $lines[] = __('app.performance_digest_highlight_tasks_overdue', ['count' => $digest['tasks']['overdue']]);
-            } elseif (($digest['tasks']['pending'] ?? 0) > 0)
+            }
+            if (($digest['tasks']['due_today'] ?? 0) > 0)
+            {
+                $lines[] = __('app.performance_digest_highlight_tasks_due_today', ['count' => $digest['tasks']['due_today']]);
+            }
+            if (($digest['tasks']['pending'] ?? 0) > 0)
             {
                 $lines[] = __('app.performance_digest_highlight_tasks_pending', ['count' => $digest['tasks']['pending']]);
             }
@@ -382,7 +440,7 @@ class DailyTeamDigestMetricsCollector
             $lines[] = __('app.performance_digest_highlight_quiet_day');
         }
 
-        return array_slice($lines, 0, 8);
+        return array_slice($lines, 0, 12);
     }
 
     private function whatsappConversationQuery(Team $team): Builder

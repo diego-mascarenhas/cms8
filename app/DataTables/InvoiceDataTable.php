@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Invoice;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -48,7 +49,9 @@ class InvoiceDataTable extends DataTable
                     $dot = '<span class="badge rounded-circle bg-success" style="width:10px;height:10px;padding:0;display:inline-block;margin-right:8px;"></span>';
                 }
 
-                return $dot.$data->number;
+                $numberHtml = DataTableFormatter::showLink($data, 'invoice.show', $data->number, 'view', [$data->id], 'text-body');
+
+                return $dot.$numberHtml;
             })
             ->editColumn('enterprise_id', function ($data)
             {

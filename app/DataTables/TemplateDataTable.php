@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Template;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -25,6 +26,16 @@ class TemplateDataTable extends DataTable
                 return view('template.action', ['hashedId' => $template->getHashedId()])->render();
             })
             ->setRowId('id')
+            ->editColumn('name', function ($data)
+            {
+                return DataTableFormatter::showLink(
+                    $data,
+                    'template.show',
+                    $data->name,
+                    'view',
+                    ['hashedId' => $data->getHashedId()],
+                );
+            })
             ->rawColumns(['name', 'action', 'status_id'])
             ->editColumn('updated_at', function ($data)
             {

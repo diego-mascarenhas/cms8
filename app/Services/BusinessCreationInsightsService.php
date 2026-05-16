@@ -32,6 +32,7 @@ class BusinessCreationInsightsService
             $session->config ?? [],
             $session,
             fn (string $phase) => $this->setInsightsPhase($session, $phase),
+            (int) $session->team_id,
         );
 
         $existing = $session->fresh()->config ?? [];
@@ -56,6 +57,7 @@ class BusinessCreationInsightsService
             $config,
             null,
             fn (string $phase) => $this->setTeamInsightsPhase($team, $phase),
+            (int) $team->id,
         );
         $this->finalizeTeamInsights($team, $insights);
 
@@ -66,7 +68,7 @@ class BusinessCreationInsightsService
      * @param  callable(string): void  $setPhase
      * @return array<string, mixed>
      */
-    private function buildInsightsArray(array $config, ?BusinessCreationSession $sessionForLog, callable $setPhase): array
+    private function buildInsightsArray(array $config, ?BusinessCreationSession $sessionForLog, callable $setPhase, ?int $teamId = null): array
     {
         $location = $this->normalizeLocationForSearch($config);
         $industry = trim((string) ($config['business_industry'] ?? ''));
@@ -173,6 +175,7 @@ class BusinessCreationInsightsService
                 $aiPhaseTimeline,
                 $apolloStartedAt,
                 $apolloFinishedAt,
+                $teamId ?? $sessionForLog?->team_id,
             );
 
             return array_filter([
@@ -195,7 +198,24 @@ class BusinessCreationInsightsService
             {
                 $websiteContent = $this->fetchWebsiteContent($website);
                 $linksContext = $this->buildLinksContext($config);
-                $fallbackReport = $this->generateMarketReport($sessionForLog, $config, $description, $website, $websiteContent, $linksContext, $industry, $location, 0, 0, [], 0, [], null, null);
+                $fallbackReport = $this->generateMarketReport(
+                    $sessionForLog,
+                    $config,
+                    $description,
+                    $website,
+                    $websiteContent,
+                    $linksContext,
+                    $industry,
+                    $location,
+                    0,
+                    0,
+                    [],
+                    0,
+                    [],
+                    null,
+                    null,
+                    $teamId ?? $sessionForLog?->team_id,
+                );
 
                 return ['potential_clients_summary' => $fallbackReport];
             } catch (\Throwable $inner)
@@ -406,6 +426,7 @@ class BusinessCreationInsightsService
         array $aiPhaseTimeline = [],
         ?Carbon $apolloStartedAt = null,
         ?Carbon $apolloFinishedAt = null,
+        ?int $teamId = null,
     ): ?string {
         $locationStr = implode(', ', array_filter($location['organization_locations'] ?? []));
         $industryCount = array_sum($byIndustry);
@@ -503,6 +524,19 @@ PROMPT;
             $agent = agent(instructions: $instruction, messages: [], tools: []);
             $response = $agent->prompt($fullContext, [], Lab::Anthropic);
             $aiFinishedAt = now();
+
+            $teamId = $teamId ?? $session?->team_id;
+            if ($teamId !== null)
+            {
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: (int) $teamId,
+                    service: 'BusinessCreationInsightsService',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'landings',
+                    inputSize: strlen($fullContext),
+                );
+            }
+
             $text = $response->text ? trim($response->text) : null;
 
             if ($text !== null && $session !== null)

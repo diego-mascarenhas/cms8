@@ -247,6 +247,15 @@ PROMPT;
                 tools: [],
             );
             $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
+
+            TokenUsageLogService::logFromAiResponse(
+                teamId: (int) $team->id,
+                service: 'UserDailyPerformanceInsightService',
+                usage: $response->usage ?? null,
+                moduleKey: 'performance_insights',
+                inputSize: strlen($userPrompt),
+            );
+
             $raw = trim((string) ($response->text ?? ''));
             if ($raw === '')
             {

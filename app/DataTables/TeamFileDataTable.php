@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Enums\MultimediaVisibility;
 use App\Models\TeamFile;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -22,7 +23,7 @@ class TeamFileDataTable extends DataTable
             })
             ->editColumn('title', function (TeamFile $teamFile)
             {
-                return e($teamFile->title);
+                return DataTableFormatter::showLink($teamFile, 'team-file.show', $teamFile->title, 'view', [$teamFile]);
             })
             ->editColumn('visibility', function (TeamFile $teamFile)
             {
@@ -49,7 +50,7 @@ class TeamFileDataTable extends DataTable
                     ? Carbon::parse($teamFile->updated_at)->format('d-m-Y H:i')
                     : '—';
             })
-            ->rawColumns(['visibility', 'category_id', 'file_name', 'action'])
+            ->rawColumns(['title', 'visibility', 'category_id', 'file_name', 'action'])
             ->setRowId('id');
     }
 

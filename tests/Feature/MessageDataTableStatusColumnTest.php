@@ -159,4 +159,30 @@ class MessageDataTableStatusColumnTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    #[Test]
+    public function message_datatable_name_column_links_to_show(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $message = Message::create([
+            'name' => '[Demo] Secuencia — Paso 1 bienvenida',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+            'status_id' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->getJson(route('message.index', $this->dataTablesQueryParams()));
+
+        $response->assertOk();
+
+        $row = collect($response->json('data'))->firstWhere('DT_RowId', (string) $message->id);
+        $this->assertNotNull($row);
+        $this->assertStringContainsString(route('message.show', $message->id), $row['name']);
+        $this->assertStringContainsString('<a href', $row['name']);
+    }
 }
