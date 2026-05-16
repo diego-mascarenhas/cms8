@@ -2,13 +2,6 @@
 @once
 @push('page-style')
 <style>
-    /* Override Vuexy theme: archive/read actions hidden until hover */
-    .dropdown-notifications .dropdown-notifications-item .dropdown-notifications-archive,
-    .dropdown-notifications .dropdown-notifications-item .dropdown-notifications-read:not(.d-none),
-    .dropdown-notifications .dropdown-notifications-item .dropdown-notifications-unread:not(.d-none) {
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
     .dropdown-notifications-item .dropdown-notifications-actions-group {
         opacity: 1;
         visibility: visible;
@@ -16,16 +9,33 @@
     .dropdown-notifications-item:not(.marked-as-read) .dropdown-notifications-unread-dot {
         display: none;
     }
+    .dropdown-notifications-actions > .dropdown-notifications-actions-group > a {
+        display: flex !important;
+        visibility: visible !important;
+    }
     .dropdown-notifications-action-btn {
         display: flex;
         align-items: center;
         justify-content: center;
+        min-width: 2rem;
+        min-height: 2rem;
         padding: 0.35rem 0.5rem;
         color: var(--bs-body-color);
+        text-decoration: none;
+    }
+    .dropdown-notifications-action-btn i {
+        display: inline-block;
+        font-size: 1.125rem;
+        line-height: 1;
+        pointer-events: none;
     }
     .dropdown-notifications-action-btn:hover {
         background-color: rgba(var(--bs-primary-rgb), 0.08);
         color: var(--bs-primary);
+    }
+    .dropdown-notifications-item.marked-as-read .dropdown-notifications-read:not(.d-none),
+    .dropdown-notifications-item:not(.marked-as-read) .dropdown-notifications-unread:not(.d-none) {
+        visibility: visible !important;
     }
     .dropdown-notifications-footer-links {
         display: flex !important;
@@ -44,7 +54,8 @@
 @endpush
 @endonce
 <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1"
-    data-read-at-template="{{ __('app.navbar_notification_read_at', ['date' => '__DATE__']) }}">
+    data-read-at-template="{{ __('app.navbar_notification_read_at', ['date' => '__DATE__']) }}"
+    data-created-at-template="{{ __('app.navbar_notification_created_at', ['date' => '__DATE__']) }}">
     <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
         data-bs-auto-close="outside" aria-expanded="false">
         <i class="ti ti-bell ti-md"></i>
@@ -61,10 +72,10 @@
                 </div>
                 @if($unreadCount > 0)
                     <a href="javascript:void(0);"
-                        class="dropdown-notifications-all small text-primary text-nowrap ms-3"
-                        data-mark-all-read-url="{{ route('notification.mark-all-as-read') }}"
-                        title="{{ __('app.navbar_notification_mark_all_read') }}">
-                        {{ __('app.navbar_notification_mark_all_read') }}
+                        class="dropdown-notifications-all small text-primary text-nowrap ms-3 d-inline-flex align-items-center gap-1"
+                        data-mark-all-read-url="{{ route('notification.mark-all-as-read') }}">
+                        <i class="ti ti-circle-check"></i>
+                        <span>{{ __('app.navbar_notification_mark_all_read') }}</span>
                     </a>
                 @endif
             </div>
@@ -87,42 +98,36 @@
                                     </div>
                                     <div class="flex-grow-1 min-w-0">
                                         <h6 class="mb-1 text-truncate">{{ $notification->subject }}</h6>
-                                        <p class="mb-1 small text-muted text-truncate">{{ Str::limit(strip_tags($notification->message), 80) }}</p>
+                                        <p class="mb-0 small text-muted text-truncate">{{ Str::limit(strip_tags($notification->message), 80) }}</p>
+                                        <small class="text-muted d-block fst-italic navbar-notification-date" data-notification-date>
+                                            @if($notification->is_read && $notification->read_at)
+                                                {{ __('app.navbar_notification_read_at', ['date' => $notification->formatted_read_at]) }}
+                                            @else
+                                                {{ __('app.navbar_notification_created_at', ['date' => $notification->created_at->isoFormat('D MMM YYYY, HH:mm')]) }}
+                                            @endif
+                                        </small>
                                     </div>
                                 </a>
-                                <small class="text-muted d-block ps-5 ms-3 navbar-notification-date" data-notification-date>
-                                    @if($notification->is_read && $notification->read_at)
-                                        {{ __('app.navbar_notification_read_at', ['date' => $notification->formatted_read_at]) }}
-                                    @else
-                                        {{ $notification->created_at->isoFormat('D MMM YYYY, HH:mm') }}
-                                    @endif
-                                </small>
                             </div>
                             <div class="dropdown-notifications-actions ms-2 flex-shrink-0 align-self-center">
                                 <div class="dropdown-notifications-actions-group d-flex border rounded bg-body">
                                     <a href="javascript:void(0);"
-                                        class="dropdown-notifications-archive dropdown-notifications-action-btn"
+                                        class="dropdown-notifications-dismiss dropdown-notifications-action-btn"
                                         data-dismiss-url="{{ route('notification.dismiss', $notification) }}"
-                                        data-navbar-notification-tooltip="1"
-                                        data-bs-title="{{ __('app.navbar_notification_dismiss') }}"
                                         aria-label="{{ __('app.navbar_notification_dismiss') }}">
-                                        <i class="ti ti-trash ti-sm"></i>
+                                        <i class="ti ti-trash ti-sm" aria-hidden="true"></i>
                                     </a>
                                     <a href="javascript:void(0);"
                                         class="dropdown-notifications-read dropdown-notifications-action-btn border-start {{ $notification->is_read ? 'd-none' : '' }}"
                                         data-mark-read-url="{{ route('notification.mark-as-read', $notification) }}"
-                                        data-navbar-notification-tooltip="1"
-                                        data-bs-title="{{ __('app.navbar_notification_mark_read') }}"
                                         aria-label="{{ __('app.navbar_notification_mark_read') }}">
-                                        <i class="ti ti-circle-check ti-sm"></i>
+                                        <i class="ti ti-circle-check ti-sm" aria-hidden="true"></i>
                                     </a>
                                     <a href="javascript:void(0);"
                                         class="dropdown-notifications-unread dropdown-notifications-action-btn border-start {{ $notification->is_read ? '' : 'd-none' }}"
                                         data-mark-unread-url="{{ route('notification.mark-as-unread', $notification) }}"
-                                        data-navbar-notification-tooltip="1"
-                                        data-bs-title="{{ __('app.navbar_notification_mark_unread') }}"
                                         aria-label="{{ __('app.navbar_notification_mark_unread') }}">
-                                        <i class="ti ti-mail ti-sm"></i>
+                                        <i class="ti ti-mail ti-sm" aria-hidden="true"></i>
                                     </a>
                                 </div>
                             </div>

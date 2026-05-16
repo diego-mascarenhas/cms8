@@ -84,6 +84,33 @@ class ContactDataTableSearchNormalizationTest extends TestCase
         $this->assertSame((string) $matching->id, (string) $response->json('data.0.DT_RowId'));
     }
 
+    public function test_contact_datatable_name_column_links_to_show_when_user_can_view(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'López Fernández',
+            'email' => 'ana.lopez-link@example.test',
+            'profile' => '',
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('contact-list').'?'.http_build_query($this->contactDataTableBaseQuery()));
+
+        $response->assertOk();
+
+        $row = collect($response->json('data'))->firstWhere('DT_RowId', (string) $contact->id);
+        $this->assertNotNull($row);
+        $this->assertStringContainsString(route('contact.show', $contact->id), $row['name']);
+        $this->assertStringContainsString('<a href', $row['name']);
+    }
+
     public function test_contact_datatable_search_matches_linked_enterprise_name_without_accents(): void
     {
         $this->seed([

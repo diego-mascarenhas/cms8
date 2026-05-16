@@ -214,6 +214,12 @@ if (document.getElementById('layout-menu')) {
     return template.replace('__DATE__', formattedDate);
   };
 
+  const getNavbarCreatedAtLabel = formattedDate => {
+    const dropdown = document.querySelector('.dropdown-notifications[data-created-at-template]');
+    const template = dropdown?.getAttribute('data-created-at-template') || 'Created __DATE__';
+    return template.replace('__DATE__', formattedDate);
+  };
+
   const updateNavbarNotificationBadge = () => {
     const unreadItems = document.querySelectorAll(
       '.dropdown-notifications .dropdown-notifications-item:not(.marked-as-read)[data-notification-id]'
@@ -238,35 +244,6 @@ if (document.getElementById('layout-menu')) {
     }
   };
 
-  const disposeNavbarNotificationTooltip = element => {
-    if (!element || typeof bootstrap === 'undefined') {
-      return;
-    }
-    const instance = bootstrap.Tooltip.getInstance(element);
-    if (instance) {
-      instance.hide();
-      instance.dispose();
-    }
-  };
-
-  const initNavbarNotificationTooltips = root => {
-    if (!root || typeof bootstrap === 'undefined') {
-      return;
-    }
-    root.querySelectorAll('[data-navbar-notification-tooltip]').forEach(element => {
-      disposeNavbarNotificationTooltip(element);
-      const title = element.getAttribute('data-bs-title');
-      if (!title) {
-        return;
-      }
-      new bootstrap.Tooltip(element, {
-        container: 'body',
-        trigger: 'hover',
-        boundary: 'window'
-      });
-    });
-  };
-
   const setNavbarNotificationReadUi = (listItem, isRead, options = {}) => {
     if (!listItem) {
       return;
@@ -284,12 +261,14 @@ if (document.getElementById('layout-menu')) {
       if (isRead && options.readAtFormatted) {
         dateEl.textContent = getNavbarReadAtLabel(options.readAtFormatted);
       } else if (!isRead) {
-        dateEl.textContent =
-          options.createdAtFormatted || listItem.getAttribute('data-created-at-label') || dateEl.textContent;
+        const createdDate =
+          options.createdAtFormatted || listItem.getAttribute('data-created-at-label');
+        if (createdDate) {
+          dateEl.textContent = getNavbarCreatedAtLabel(createdDate);
+        }
       }
     }
 
-    initNavbarNotificationTooltips(listItem);
   };
 
   const markNavbarNotificationRead = (url, listItem) => {
@@ -358,7 +337,6 @@ if (document.getElementById('layout-menu')) {
         if (!data.success) {
           return;
         }
-        listItem.querySelectorAll('[data-navbar-notification-tooltip]').forEach(disposeNavbarNotificationTooltip);
         listItem.remove();
         updateNavbarNotificationBadge();
       })
@@ -402,10 +380,8 @@ if (document.getElementById('layout-menu')) {
   }
 
   if (notificationsDropdown) {
-    initNavbarNotificationTooltips(notificationsDropdown);
-
     notificationsDropdown.addEventListener('click', event => {
-      const archiveBtn = event.target.closest('.dropdown-notifications-archive');
+      const archiveBtn = event.target.closest('.dropdown-notifications-dismiss');
       const readBtn = event.target.closest('.dropdown-notifications-read');
       const unreadBtn = event.target.closest('.dropdown-notifications-unread');
 
@@ -441,10 +417,8 @@ if (document.getElementById('layout-menu')) {
   // Init helpers & misc
   // --------------------
 
-  // Init BS Tooltip (exclude navbar notification actions — initialized separately above)
-  const tooltipTriggerList = [].slice.call(
-    document.querySelectorAll('[data-bs-toggle="tooltip"]:not([data-navbar-notification-tooltip])')
-  );
+  // Init BS Tooltip
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });

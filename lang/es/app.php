@@ -37,6 +37,7 @@ return [
     'navbar_notification_marked_read' => 'Notificación marcada como leída',
     'navbar_notification_marked_all_read' => 'Todas las notificaciones marcadas como leídas',
     'navbar_notification_read_at' => 'Leída :date',
+    'navbar_notification_created_at' => 'Creada :date',
 
     'task_table_start' => 'Inicio',
     'task_table_due' => 'Finalización',

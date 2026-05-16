@@ -37,6 +37,7 @@ return [
     'navbar_notification_marked_read' => 'Notification marked as read',
     'navbar_notification_marked_all_read' => 'All notifications marked as read',
     'navbar_notification_read_at' => 'Read :date',
+    'navbar_notification_created_at' => 'Created :date',
 
     'task_table_start' => 'Start',
     'task_table_due' => 'Due',

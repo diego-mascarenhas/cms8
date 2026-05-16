@@ -90,13 +90,19 @@ class NavbarNotificationsDropdownTest extends TestCase
         $response->assertSee('Notificación para mí', false);
         $response->assertDontSee('Notificación de otro', false);
         $response->assertDontSee('Diseño de vistas y componentes', false);
-        $response->assertSee('dropdown-notifications-archive', false);
+        $response->assertSee('dropdown-notifications-dismiss', false);
         $response->assertSee('ti-trash', false);
         $response->assertSee('ti-circle-check', false);
         $response->assertSee('dropdown-notifications-unread', false);
         $response->assertSee(__('app.navbar_notifications_view_all_tasks'), false);
         $response->assertSee('ti-speakerphone', false);
         $response->assertSee('ti-layout-kanban', false);
-        $response->assertSee('data-navbar-notification-tooltip', false);
+        $response->assertSee('aria-label="'.__('app.navbar_notification_dismiss').'"', false);
+        $response->assertDontSee('title="'.__('app.navbar_notification_dismiss').'"', false);
+        $response->assertSee('fst-italic', false);
+        $response->assertSee(
+            __('app.navbar_notification_created_at', ['date' => $mine->created_at->isoFormat('D MMM YYYY, HH:mm')]),
+            false,
+        );
     }
 }
