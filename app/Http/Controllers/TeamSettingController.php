@@ -1724,55 +1724,112 @@ class TeamSettingController extends Controller
     /**
      * Show team shortcuts configuration
      */
-    public function shortcuts(Team $team)
+    public function shortcuts(Team $team): \Illuminate\View\View
     {
         $this->authorize('update', $team);
 
-        $shortcuts = $team->getSetting('team_shortcuts', []);
+        $shortcutsIconVisible = (bool) $team->getSetting('shortcuts_icon_visible', false);
+        $savedShortcuts = $team->getSetting('team_shortcuts', []) ?? [];
 
-        return view('team-settings.shortcuts', compact('team', 'shortcuts'));
+        // Normalize legacy custom shortcuts (no type field)
+        $savedShortcuts = array_map(function ($sc)
+        {
+            if (! isset($sc['type']))
+            {
+                $sc['type'] = 'custom';
+            }
+
+            return $sc;
+        }, $savedShortcuts);
+
+        // Inject any default shortcuts not yet stored so they appear in the UI (disabled)
+        $availableDefaults = $this->getAvailableDefaultShortcuts();
+        $savedDefaultKeys = array_column(
+            array_filter($savedShortcuts, fn ($sc) => ($sc['type'] ?? '') === 'default'),
+            'key',
+        );
+
+        foreach (array_keys($availableDefaults) as $key)
+        {
+            if (! in_array($key, $savedDefaultKeys, true))
+            {
+                $savedShortcuts[] = ['type' => 'default', 'key' => $key, 'enabled' => false];
+            }
+        }
+
+        $shortcuts = array_values($savedShortcuts);
+
+        return view('team-settings.shortcuts', compact('team', 'shortcuts', 'shortcutsIconVisible', 'availableDefaults'));
     }
 
     /**
      * Store team shortcuts configuration
      */
-    public function storeShortcuts(Request $request, Team $team)
+    public function storeShortcuts(Request $request, Team $team): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('update', $team);
 
         $request->validate([
-            'shortcuts' => 'array|max:6',
-            'shortcuts.*.title' => 'required|string|max:50',
+            'shortcuts_icon_visible' => 'nullable|boolean',
+            'shortcuts' => 'nullable|array|max:11',
+            'shortcuts.*.type' => 'required|in:default,custom',
+            'shortcuts.*.key' => 'nullable|string|max:50',
+            'shortcuts.*.enabled' => 'nullable|boolean',
+            'shortcuts.*.title' => 'nullable|string|max:50',
             'shortcuts.*.subtitle' => 'nullable|string|max:100',
-            'shortcuts.*.url' => 'required|string|max:255',
-            'shortcuts.*.icon' => 'required|string|max:50',
-            'shortcuts.*.open_in_new_tab' => 'boolean',
-            'shortcuts.*.order' => 'integer|min:0',
+            'shortcuts.*.url' => 'nullable|string|max:255',
+            'shortcuts.*.icon' => 'nullable|string|max:50',
+            'shortcuts.*.open_in_new_tab' => 'nullable|boolean',
+            'shortcuts.*.order' => 'nullable|integer|min:0',
         ]);
 
-        $shortcuts = $request->input('shortcuts', []);
+        $team->setSetting('shortcuts_icon_visible', $request->boolean('shortcuts_icon_visible'), [
+            'type' => 'boolean',
+            'group' => 'shortcuts',
+        ]);
 
-        // Filter out empty shortcuts
-        $shortcuts = array_filter($shortcuts, function ($shortcut)
+        $raw = $request->input('shortcuts', []);
+        $processed = [];
+
+        foreach ($raw as $sc)
         {
-            return ! empty($shortcut['title']) && ! empty($shortcut['url']) && ! empty($shortcut['icon']);
-        });
+            $type = $sc['type'] ?? 'custom';
 
-        // Sort shortcuts by order
-        usort($shortcuts, function ($a, $b)
+            if ($type === 'default')
+            {
+                $processed[] = [
+                    'type' => 'default',
+                    'key' => $sc['key'],
+                    'enabled' => (bool) ($sc['enabled'] ?? false),
+                    'order' => (int) ($sc['order'] ?? 99),
+                ];
+            } else
+            {
+                if (! empty($sc['title']) && ! empty($sc['url']) && ! empty($sc['icon']))
+                {
+                    $processed[] = [
+                        'type' => 'custom',
+                        'title' => $sc['title'],
+                        'subtitle' => $sc['subtitle'] ?? null,
+                        'url' => $sc['url'],
+                        'icon' => $sc['icon'],
+                        'open_in_new_tab' => (bool) ($sc['open_in_new_tab'] ?? false),
+                        'order' => (int) ($sc['order'] ?? 99),
+                    ];
+                }
+            }
+        }
+
+        usort($processed, fn ($a, $b) => $a['order'] - $b['order']);
+
+        $processed = array_map(function ($sc)
         {
-            return ($a['order'] ?? 0) - ($b['order'] ?? 0);
-        });
+            unset($sc['order']);
 
-        // Remove order field from final data
-        $shortcuts = array_map(function ($shortcut)
-        {
-            unset($shortcut['order']);
+            return $sc;
+        }, $processed);
 
-            return $shortcut;
-        }, $shortcuts);
-
-        $team->setSetting('team_shortcuts', $shortcuts, [
+        $team->setSetting('team_shortcuts', array_values($processed), [
             'type' => 'json',
             'group' => 'shortcuts',
         ]);
@@ -1780,5 +1837,21 @@ class TeamSettingController extends Controller
         return redirect()
             ->back()
             ->with('success', 'Team shortcuts updated successfully');
+    }
+
+    /**
+     * Default system shortcuts available for all teams.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function getAvailableDefaultShortcuts(): array
+    {
+        return [
+            'calendar' => ['title' => 'Calendario',      'subtitle' => 'Citas',           'icon' => 'ti ti-calendar'],
+            'prospecting' => ['title' => 'Buscar clientes', 'subtitle' => 'Prospección',     'icon' => 'ti ti-target'],
+            'team_files' => ['title' => 'Team Files',      'subtitle' => 'Company & brand', 'icon' => 'ti ti-folders'],
+            'times' => ['title' => 'Times',           'subtitle' => 'Time tracking',   'icon' => 'ti ti-hourglass'],
+            'passwords' => ['title' => 'Contraseñas',     'subtitle' => 'Cofre',           'icon' => 'ti ti-lock'],
+        ];
     }
 }
