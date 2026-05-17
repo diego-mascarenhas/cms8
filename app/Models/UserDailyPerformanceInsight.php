@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,21 @@ class UserDailyPerformanceInsight extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected function focus(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string
+            {
+                if ($value === null || $value === '')
+                {
+                    return $value;
+                }
+
+                return mb_strtoupper(mb_substr($value, 0, 1)).mb_substr($value, 1);
+            },
+        );
     }
 
     /**

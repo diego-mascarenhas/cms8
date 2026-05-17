@@ -30,6 +30,13 @@ class PerformanceDigestHighlightSuggestionServiceTest extends TestCase
         $this->assertCount(1, $enriched);
         $this->assertSame('whatsapp_unread', $enriched[0]['key']);
         $this->assertStringContainsString('2', $enriched[0]['label']);
+        $this->assertStringNotContainsString('(s)', $enriched[0]['label']);
+        app()->setLocale('es');
+        $itemsEs = app(DailyTeamDigestMetricsCollector::class)->buildHighlightItems([
+            'whatsapp' => ['unread_inbound' => 2, 'inbound_24h' => 0, 'inbound_7d' => 2],
+            'user_activity' => ['interactions_count' => 1, 'call_minutes' => 0, 'tasks_done' => 0],
+        ], $team);
+        $this->assertStringContainsString('mensajes', $itemsEs[0]['label']);
         $this->assertNotSame('', $enriched[0]['suggestion']);
         $this->assertNotNull($enriched[0]['action_url']);
         $this->assertArrayHasKey('detail_mode', $enriched[0]);

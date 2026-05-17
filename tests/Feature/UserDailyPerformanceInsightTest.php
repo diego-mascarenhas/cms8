@@ -467,7 +467,7 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $this->assertSame('llm', $insight->context_snapshot['insight_source'] ?? null);
         $this->assertSame('Glow✨', $insight->headline);
-        $this->assertSame("one two three\nfour five", $insight->focus);
+        $this->assertSame("One two three\nfour five", $insight->focus);
         $this->assertSame($longMessage, $insight->message);
         $this->assertCount(1, preg_split('/\s+/u', $insight->headline, -1, PREG_SPLIT_NO_EMPTY));
         $focusWords = preg_split('/\s+/u', str_replace("\n", ' ', $insight->focus), -1, PREG_SPLIT_NO_EMPTY) ?: [];

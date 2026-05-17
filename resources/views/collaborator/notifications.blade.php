@@ -47,7 +47,7 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1 me-3">
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <h6 class="mb-0">{{ $notification->subject }}</h6>
+                                    <h6 class="mb-0"><x-notification-subject :subject="$notification->subject" /></h6>
                                     @if(!$notification->is_sent)
                                         <span class="bg-warning rounded-circle d-inline-block" style="width: 8px; height: 8px;" title="Pendiente de envío"></span>
                                     @elseif($notification->is_sent && !$notification->is_read)

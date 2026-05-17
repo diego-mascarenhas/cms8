@@ -458,7 +458,9 @@ class DailyTeamDigestMetricsCollector
     {
         return [
             'key' => $key,
-            'label' => (string) __('app.performance_digest_highlight_'.$key, ['count' => $count]),
+            'label' => $key === 'quiet_day'
+                ? (string) __('app.performance_digest_highlight_quiet_day')
+                : (string) trans_choice('app.performance_digest_highlight_'.$key, $count, ['count' => $count]),
             'count' => $count,
         ];
     }

@@ -97,7 +97,7 @@
                                         </div>
                                     </div>
                                     <div class="flex-grow-1 min-w-0">
-                                        <h6 class="mb-1 text-truncate">{{ $notification->subject }}</h6>
+                                        <h6 class="mb-1 text-truncate"><x-notification-subject :subject="$notification->subject" /></h6>
                                         <p class="mb-0 small text-muted text-truncate">{{ Str::limit(strip_tags($notification->message), 80) }}</p>
                                         <small class="text-muted d-block fst-italic navbar-notification-date" data-notification-date>
                                             @if($notification->is_read && $notification->read_at)

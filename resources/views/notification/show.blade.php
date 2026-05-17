@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- Header -->
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Notifications') }}/</span> {{ $notification->subject }}</h4>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Notifications') }}/</span> <x-notification-subject :subject="$notification->subject" /></h4>
         <p class="text-muted">{{ __('Notification Details') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 @if($dailyPerformanceInsight ?? null)
                     <div class="mb-3">
                         <label class="form-label fw-medium">{{ __('app.performance_insight_column_headline') }}</label>
-                        <p class="text-body mb-0">{{ $dailyPerformanceInsight->headline }}</p>
+                        <p class="text-body mb-0"><x-notification-subject :subject="$dailyPerformanceInsight->headline" /></p>
                     </div>
                     @if(filled($dailyPerformanceInsight->focus))
                     <div class="mb-3">
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 @else
                     <div class="mb-3">
                         <label class="form-label fw-medium">{{ __('Asunto') }}</label>
-                        <p class="text-body mb-0">{{ $notification->subject }}</p>
+                        <p class="text-body mb-0"><x-notification-subject :subject="$notification->subject" /></p>
                     </div>
                     <div class="mb-0">
                         <label class="form-label fw-medium">{{ __('Mensaje') }}</label>

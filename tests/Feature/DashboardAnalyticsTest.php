@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Contact;
+use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Analytics\Facades\Analytics;
@@ -74,6 +77,47 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('dashboardContactsTrendChart', false);
         $this->assertMatchesRegularExpression('/text-primary[^>]*>2</', $response->getContent());
         $this->assertMatchesRegularExpression('/text-success[^>]*>2</', $response->getContent());
+    }
+
+    public function test_dashboard_shows_clients_metric_when_clients_module_enabled(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'clients'],
+            [
+                'name' => 'Clients',
+                'icon' => 'user-heart',
+                'description' => 'CRM clients',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('clients');
+
+        Enterprise::withoutEvents(fn () => Enterprise::factory()->count(3)->forTeam($team->id)->create([
+            'type_id' => 1,
+            'status_id' => 1,
+            'payment_type_id' => null,
+            'invoice_type_id' => null,
+        ]));
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('app.clients'), false);
+        $response->assertSee('ti-user-heart', false);
+        $this->assertMatchesRegularExpression('/text-danger[^>]*>3</', $response->getContent());
     }
 
     public function test_dashboard_hides_ongoing_projects_card_when_projects_module_disabled(): void
