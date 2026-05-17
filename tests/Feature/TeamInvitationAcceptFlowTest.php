@@ -46,7 +46,12 @@ class TeamInvitationAcceptFlowTest extends TestCase
 
         $this->get(route('register'))
             ->assertOk()
-            ->assertSee('invited@example.com', false);
+            ->assertSee('invited@example.com', false)
+            ->assertSee('Te han invitado a unirte a', false)
+            ->assertSee(__('auth.register.invitation_description'), false)
+            ->assertDontSee(__('auth.register.description'), false)
+            ->assertDontSee('alert alert-primary', false)
+            ->assertDontSee('Create your account to join', false);
     }
 
     public function test_registering_via_admin_invitation_syncs_admin_team_and_spatie_roles(): void

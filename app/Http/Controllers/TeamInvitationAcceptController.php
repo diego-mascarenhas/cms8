@@ -35,9 +35,7 @@ class TeamInvitationAcceptController extends Controller
                 ->withInput(['email' => $invitation->email]);
         }
 
-        return redirect()
-            ->route('register')
-            ->with('status', __('Create your account to join :team.', ['team' => $invitation->team->name]));
+        return redirect()->route('register');
     }
 
     private function acceptForAuthenticatedUser(User $user, TeamInvitation $invitation): RedirectResponse
