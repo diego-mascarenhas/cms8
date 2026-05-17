@@ -1450,6 +1450,8 @@
   "Inbox": "Bandeja de entrada",
   "Starred": "Destacados",
   "Spam": "Spam",
+  "Mark as spam": "Marcar como spam",
+  "Not spam": "No es spam",
   "Trash": "Papelera",
   "Select recipients": "Seleccionar destinatarios",
   "Select visibility": "Seleccionar visibilidad",
