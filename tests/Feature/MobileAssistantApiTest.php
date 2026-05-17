@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Email;
+use App\Models\List60;
+use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\Notification;
 use App\Models\NotificationType;
@@ -13,6 +15,8 @@ use App\Services\TeamModulesByPricingPlanSyncer;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -138,6 +142,51 @@ class MobileAssistantApiTest extends TestCase
         $response->assertJsonPath('success', true);
         $this->assertNotEmpty($response->json('data'));
         $response->assertJsonStructure(['folder_counts', 'pagination']);
+    }
+
+    public function test_dashboard_returns_today_contacts_when_list60_enabled(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'List 60',
+                'icon' => 'list',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('list60');
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            List60StatusesSeeder::class,
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'García',
+        ]);
+
+        $status = List60Status::query()->first();
+
+        List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->startOfDay(),
+            'status_id' => $status->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/dashboard');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('today_contacts.count', 1);
+        $response->assertJsonPath('today_contacts.items.0.contact.name', 'Ana García');
     }
 
     public function test_notifications_inbox_for_linked_contact_user(): void

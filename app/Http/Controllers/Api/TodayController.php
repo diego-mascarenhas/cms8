@@ -31,7 +31,11 @@ class TodayController extends Controller
         }
 
         $user = $request->user();
-        $today = now()->startOfDay();
+
+        $dateInput = $request->query('date');
+        $today = is_string($dateInput) && $dateInput !== ''
+            ? Carbon::parse($dateInput)->startOfDay()
+            : now()->startOfDay();
         $tomorrow = $today->copy()->addDay();
 
         $events = CalendarEvent::query()

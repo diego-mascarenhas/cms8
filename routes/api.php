@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContentController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LandingEmbedDemoController;
@@ -402,6 +403,9 @@ Route::middleware('auth:sanctum')->group(function ()
 {
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
+
+    // Mobile dashboard summary
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');
 
     // Today / Hoy (calendar events + tasks for the current day)
     Route::get('today', [TodayController::class, 'index'])->name('api.today.index');
