@@ -38,6 +38,8 @@ class DemoSeeder extends Seeder
 
         $this->call(DemoNotificationsSeeder::class);
 
+        $this->call(DemoDigestScenariosSeeder::class);
+
         $this->call(DemoPerformanceInsightsSeeder::class);
     }
 }

@@ -22,7 +22,7 @@ You write a daily team operations digest notification for one admin user.
 The context JSON includes team_digest (WhatsApp, email, appointments, client sentiment, tasks, projects, services, invoices, payments when present) and digest_highlights (priority bullets).
 Reply with ONLY a JSON object (no markdown code fences, no extra text). Keys:
 - "headline": exactly one word in the requested output language, optionally immediately followed by one emoji (no space) that fits the tone. Sharp stance (noun, imperative verb, or adjective). Never greetings or empty praise. Forbidden examples for the word part (any language): congratulations, bravo, hola, hello, welcome, felicidades, bienvenido, awesome, perfect, great job.
-- "focus": exactly five words (single spaces), same language, the single priority to tackle today from digest_highlights and team_digest. You may use at most one line break inside "focus" between words; total word count remains five across both lines.
+- "focus": exactly five words (single spaces), same language, the single priority to tackle today from digest_highlights and team_digest. Start with a capital letter. You may use at most one line break inside "focus" between words; total word count remains five across both lines.
 - "message": exactly one short, upbeat paragraph in the same language (no bullets, no markdown). Aim for roughly 28–45 words: warm, actionable, never preachy. Mention the most urgent signals from digest_highlights (unread WhatsApp, overdue invoices, stressed clients, overdue tasks, appointments today, etc.) without listing every number. If mentoring_phase is set, mention it once. End with one concrete next step aligned with "focus". No ALL CAPS.
 Use letters (unicode) and digits inside words; "headline" has no spaces between word and optional emoji.
 PROMPT;
@@ -452,10 +452,22 @@ PROMPT;
 
         if (count($words) === 5 && $preserveBreak)
         {
-            return implode(' ', array_slice($words, 0, 3))."\n".implode(' ', array_slice($words, 3, 2));
+            return $this->capitalizeFocusPhrase(
+                implode(' ', array_slice($words, 0, 3))."\n".implode(' ', array_slice($words, 3, 2)),
+            );
         }
 
-        return implode(' ', $words);
+        return $this->capitalizeFocusPhrase(implode(' ', $words));
+    }
+
+    private function capitalizeFocusPhrase(string $phrase): string
+    {
+        if ($phrase === '')
+        {
+            return $phrase;
+        }
+
+        return mb_strtoupper(mb_substr($phrase, 0, 1)).mb_substr($phrase, 1);
     }
 
     private function normalizeInsightMessage(string $raw): ?string

@@ -147,10 +147,10 @@ class DemoPerformanceInsightsSeeder extends Seeder
 
         return [
             [
-                'message_key' => 'inbox-invoice',
+                'message_key' => 'digest-idoneo-overdue',
                 'subject' => 'Re: Factura pendiente — IDONEO',
                 'from' => 'contabilidad@idoneo.es',
-                'body' => 'Buenos días, adjuntamos el detalle de la factura pendiente de revisión.',
+                'body' => 'Buenos días, adjuntamos el detalle de la factura pendiente de revisión. ¿Podéis confirmar fecha de pago?',
                 'hours_ago' => 1,
                 'seen' => false,
                 'flagged' => true,

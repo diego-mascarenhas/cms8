@@ -137,4 +137,46 @@ class MailInboxTest extends TestCase
 
         $this->assertTrue($email->fresh()->seen);
     }
+
+    public function test_move_selected_to_spam_and_back_to_inbox(): void
+    {
+        $user = $this->userWithTeam();
+        $email = $this->createEmail($user->currentTeam, ['folder' => EmailFolder::Inbox]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class, ['sources' => collect()])
+            ->set('selectedIds', [$email->id])
+            ->call('moveSelectedToSpam');
+
+        $this->assertSame(EmailFolder::Spam->value, $email->fresh()->folder->value);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class, ['sources' => collect()])
+            ->set('folder', 'spam')
+            ->set('selectedIds', [$email->id])
+            ->call('moveSelectedFromSpam');
+
+        $this->assertSame(EmailFolder::Inbox->value, $email->fresh()->folder->value);
+    }
+
+    public function test_spam_folder_shows_not_spam_toolbar_icon(): void
+    {
+        $user = $this->userWithTeam();
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class, ['sources' => collect()])
+            ->set('folder', 'spam')
+            ->assertSee('ti-inbox', false)
+            ->assertDontSee('wire:click="moveSelectedToSpam"', false);
+    }
+
+    public function test_inbox_shows_mark_as_spam_toolbar_icon(): void
+    {
+        $user = $this->userWithTeam();
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class, ['sources' => collect()])
+            ->assertSee('ti-shield-x', false)
+            ->assertSee('wire:click="moveSelectedToSpam"', false);
+    }
 }

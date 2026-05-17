@@ -39,6 +39,8 @@ return [
         'description' => '¡Haz que la gestión de tu aplicación sea fácil y divertida!',
         'email' => 'Correo electrónico',
         'email_placeholder' => 'juan@ejemplo.com',
+        'invitation_description' => 'Completa el formulario para crear tu cuenta y aceptar la invitación.',
+        'invitation_heading' => 'Te han invitado a unirte a :team',
         'heading' => 'La aventura comienza aquí 🚀',
         'password' => 'Contraseña',
         'privacy_policy' => 'política de privacidad',

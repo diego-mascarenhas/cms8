@@ -195,6 +195,19 @@ class MailInbox extends Component
         $this->afterBulkAction();
     }
 
+    public function moveSelectedFromSpam(): void
+    {
+        $team = $this->currentTeam();
+        if (! $team || $this->selectedIds === [])
+        {
+            return;
+        }
+
+        $this->inboxService->moveToFolder($team, $this->selectedIds, EmailFolder::Inbox);
+        $this->flashStatus(__('Mensajes movidos a la bandeja de entrada.'), 'success');
+        $this->afterBulkAction();
+    }
+
     public function moveSelectedToDraft(): void
     {
         $team = $this->currentTeam();
@@ -263,6 +276,18 @@ class MailInbox extends Component
     {
         $this->selectedIds = [$emailId];
         $this->archiveSelected();
+    }
+
+    public function moveSingleToSpam(int $emailId): void
+    {
+        $this->selectedIds = [$emailId];
+        $this->moveSelectedToSpam();
+    }
+
+    public function moveSingleFromSpam(int $emailId): void
+    {
+        $this->selectedIds = [$emailId];
+        $this->moveSelectedFromSpam();
     }
 
     public function goToPreviousPage(): void

@@ -12,6 +12,25 @@ class AppCalendarEventTimezoneTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_store_rejects_timed_event_when_end_equals_start(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->refresh();
+        $this->assertNotNull($user->currentTeam, 'Test user must have a current team.');
+
+        $startIso = '2026-05-15T09:00:00.000Z';
+
+        $response = $this->actingAs($user)->postJson(route('app-calendar-events-store'), [
+            'title' => 'Slot click bug',
+            'start' => $startIso,
+            'end' => $startIso,
+            'all_day' => false,
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['end']);
+    }
+
     public function test_store_preserves_utc_instant_from_iso8601_payload(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

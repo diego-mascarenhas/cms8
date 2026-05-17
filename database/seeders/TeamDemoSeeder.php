@@ -100,6 +100,7 @@ class TeamDemoSeeder extends Seeder
         $this->createServiceCategoriesAndTypes();
         $this->seedDemoServices();
         $this->createClientContactsWithInvoicesAndPayments();
+        $this->call(DemoDigestScenariosSeeder::class);
         $this->createFinalizedContacts();
         $this->seedDemoList60();
         $this->createProjectCategoriesAndProjects();
@@ -1241,13 +1242,13 @@ class TeamDemoSeeder extends Seeder
         $invoiceStatuses = [1, 2];  // Paid, Pending
         $clientsCreated = 0;
 
-        foreach ($clientContacts as $contact)
+        foreach ($clientContacts as $index => $contact)
         {
             // 1. Update contact to status 5 (Cliente)
             $contact->update(['status_id' => 5]);
 
-            // 2. Assign or create an enterprise for this contact
-            $enterprise = $enterprises->random();
+            // 2. Assign enterprise deterministically (digest scenarios refine key clients later)
+            $enterprise = $enterprises[$index % $enterprises->count()];
             $contact->update(['current_enterprise_id' => $enterprise->id]);
 
             // Update pivot table
@@ -1284,8 +1285,8 @@ class TeamDemoSeeder extends Seeder
                 $discount = rand(0, $grossAmount * 0.1);
                 $taxRate = 21;  // 21% IVA
                 $totalAmount = ($grossAmount - $discount) * (1 + $taxRate / 100);
-                $status = collect($invoiceStatuses)->random();
-                $balance = $status == 1 ? 0 : $totalAmount;  // If paid, balance is 0
+                $status = ($i + $index) % 3 === 0 ? 2 : collect($invoiceStatuses)->random();
+                $balance = $status == 1 ? 0 : $totalAmount;
 
                 $invoice = Invoice::withoutGlobalScopes()->firstOrCreate(
                     ['number' => $invoiceNumber, 'enterprise_id' => $enterprise->id],

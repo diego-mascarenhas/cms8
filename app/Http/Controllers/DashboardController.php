@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EmailPlan;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
+use App\Models\Enterprise;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
@@ -114,6 +115,9 @@ class DashboardController extends Controller
 
         $authUser = auth()->user();
         $totalContactsCount = Contact::query()->count();
+        $totalClientsCount = $activeTeam->hasModule('clients')
+            ? Enterprise::query()->where('team_id', $activeTeam->id)->count()
+            : 0;
         $contactsWithRecentActivityCount = (int) ContactInteraction::query()
             ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
             {
@@ -421,6 +425,7 @@ class DashboardController extends Controller
             'analyticsChartData',
             'recentContactActivities',
             'totalContactsCount',
+            'totalClientsCount',
             'contactsWithRecentActivityCount',
             'dashboardContactsCreatedTrend',
             'dailyPerformanceInsight',

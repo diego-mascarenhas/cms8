@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', __('auth.register.title'))
+@section('title', ! empty($teamInvitation) ? __('auth.register.invitation_heading', ['team' => $teamInvitation->team->name]) : __('auth.register.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -30,16 +30,15 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
+        @if (! empty($teamInvitation))
+        <h3 class="mb-1">{{ __('auth.register.invitation_heading', ['team' => $teamInvitation->team->name]) }}</h3>
+        <p class="mb-4">{{ __('auth.register.invitation_description') }}</p>
+        @else
         <h3 class="mb-1">{{ __('auth.register.heading') }}</h3>
         <p class="mb-4">{{ __('auth.register.description') }}</p>
-
-        @if (! empty($teamInvitation))
-        <div class="alert alert-primary mb-4" role="alert">
-            {{ __('You have been invited to join the :team team. Create your account to accept.', ['team' => $teamInvitation->team->name]) }}
-        </div>
         @endif
 
-        @if (session('status'))
+        @if (session('status') && empty($teamInvitation))
         <div class="alert alert-info mb-4" role="alert">
             {{ session('status') }}
         </div>

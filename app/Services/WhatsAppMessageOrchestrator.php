@@ -1087,6 +1087,22 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                                 'auto_ai' => 'admin_proactive_outreach_slash',
                             ]);
                         }
+
+                        $waInsightSlash = app(PerformanceInsightSlashDispatcher::class)->tryWhatsAppInbound(
+                            (string) $body,
+                            $contextUser,
+                            (int) $assistantTeamId,
+                        );
+                        if ($waInsightSlash !== null)
+                        {
+                            $this->sendWhatsApp($cleanFrom, $waInsightSlash['whatsapp_reply']);
+
+                            return response()->json([
+                                'status' => 'success',
+                                'conversation_id' => $conversation->id,
+                                'auto_ai' => 'performance_insight_slash',
+                            ]);
+                        }
                     }
 
                     if ($assistantTeamId !== null && trim((string) $body) !== '')

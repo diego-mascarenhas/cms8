@@ -256,9 +256,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
 
+      if (!isAllDay && startValue && endValue) {
+        var timedStart = moment(startValue);
+        var timedEnd = moment(endValue);
+        if (timedStart.isValid() && timedEnd.isValid() && !timedEnd.isAfter(timedStart)) {
+          endValue = timedStart.clone().add(1, 'hour').toISOString();
+        }
+      }
+
       return {
         start: startValue,
         end: endValue
+      };
+    }
+
+    function isTimedCalendarView(viewType) {
+      return viewType === 'timeGridWeek' || viewType === 'timeGridDay';
+    }
+
+    function buildDateClickRange(clickedDate, viewType) {
+      var clickedMoment = moment(clickedDate);
+
+      if (isTimedCalendarView(viewType)) {
+        return {
+          start: clickedDate,
+          end: clickedMoment.clone().add(1, 'hour').toDate()
+        };
+      }
+
+      if (
+        clickedMoment.hour() === 0 &&
+        clickedMoment.minute() === 0 &&
+        clickedMoment.second() === 0 &&
+        clickedMoment.millisecond() === 0
+      ) {
+        return {
+          start: clickedMoment.clone().hour(9).minute(0).second(0).millisecond(0).toDate(),
+          end: clickedMoment.clone().hour(10).minute(0).second(0).millisecond(0).toDate()
+        };
+      }
+
+      return {
+        start: clickedDate,
+        end: clickedMoment.clone().add(1, 'hour').toDate()
       };
     }
 
@@ -633,7 +673,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return ['fc-event-' + colorName];
       },
       dateClick: function (info) {
-        let date = moment(info.date).format('YYYY-MM-DD');
         resetValues();
         bsAddEventSidebar.show();
 
@@ -645,11 +684,13 @@ document.addEventListener('DOMContentLoaded', function () {
         btnSubmit.classList.remove('btn-update-event');
         btnSubmit.classList.add('btn-add-event');
         btnDeleteEvent.classList.add('d-none');
+
+        var clickedRange = buildDateClickRange(info.date, info.view.type);
         if (start) {
-          start.setDate(info.date, true);
+          start.setDate(clickedRange.start, true);
         }
         if (end) {
-          end.setDate(info.date, true);
+          end.setDate(clickedRange.end, true);
         }
       },
       eventClick: function (info) {
@@ -827,8 +868,18 @@ document.addEventListener('DOMContentLoaded', function () {
           description: (eventData.extendedProps && eventData.extendedProps.description) || '',
           guests: (eventData.extendedProps && eventData.extendedProps.guests) || []
         }).then(function (res) {
-          if (res.ok) calendar.refetchEvents();
-        }).catch(function () { calendar.refetchEvents(); });
+          if (res.ok) {
+            calendar.refetchEvents();
+            return;
+          }
+          res.json().then(function (body) {
+            console.warn('Calendar create failed:', res.status, body);
+          }).catch(function () {
+            console.warn('Calendar create failed:', res.status);
+          });
+        }).catch(function (err) {
+          console.error('Calendar create error:', err);
+        });
         return;
       }
       currentEvents.push(eventData);

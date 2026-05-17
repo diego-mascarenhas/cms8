@@ -36,6 +36,8 @@ return [
         'title' => 'Register Page',
         'heading' => 'Adventure starts here 🚀',
         'description' => 'Make your app management easy and fun!',
+        'invitation_heading' => 'You have been invited to join :team',
+        'invitation_description' => 'Complete the form below to create your account and accept the invitation.',
         'username' => 'Username',
         'username_placeholder' => 'johndoe',
         'email' => 'Email',

@@ -115,6 +115,8 @@ class UserDailyPerformanceInsightTest extends TestCase
         $this->assertArrayHasKey('tasks', $digest);
         $this->assertArrayHasKey('highlights', $digest);
         $this->assertIsArray($digest['highlights']);
+        $this->assertArrayHasKey('highlight_items', $digest);
+        $this->assertNotEmpty($digest['highlight_items'][0]['key'] ?? null);
     }
 
     public function test_digest_includes_daily_task_items_for_open_and_overdue_tasks(): void
@@ -465,7 +467,7 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $this->assertSame('llm', $insight->context_snapshot['insight_source'] ?? null);
         $this->assertSame('Glow✨', $insight->headline);
-        $this->assertSame("one two three\nfour five", $insight->focus);
+        $this->assertSame("One two three\nfour five", $insight->focus);
         $this->assertSame($longMessage, $insight->message);
         $this->assertCount(1, preg_split('/\s+/u', $insight->headline, -1, PREG_SPLIT_NO_EMPTY));
         $focusWords = preg_split('/\s+/u', str_replace("\n", ' ', $insight->focus), -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -574,7 +576,10 @@ class UserDailyPerformanceInsightTest extends TestCase
             ->get(route('notification.show', $notification))
             ->assertOk()
             ->assertSee($insight->headline, false)
-            ->assertSee($insight->message, false);
+            ->assertSee($insight->message, false)
+            ->assertSee(__('app.performance_digest_suggestion_card_title'), false)
+            ->assertSee('data-digest-highlight-key', false)
+            ->assertSee('digest-suggestion-card', false);
     }
 
     public function test_notification_formatted_message_renders_line_breaks(): void

@@ -3,9 +3,11 @@
 namespace App\Livewire;
 
 use App\Models\Team;
+use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\AssistantChatService;
 use App\Services\ChatAssistantReplyService;
+use App\Services\PerformanceInsightSlashDispatcher;
 use App\Support\AssistantCreatedMessageRedirect;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
@@ -169,6 +171,17 @@ class AssistantChat extends Component
             ? trim($forcedKeyRaw)
             : null;
 
+        if ($teamId !== null && $text !== '')
+        {
+            if ($this->tryWebSlashCommands($text, $user, (int) $teamId, $conversationContext))
+            {
+                $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
+                $this->conversationId = $conversation?->id;
+
+                return;
+            }
+        }
+
         $replyResponse = $replyService->getReply(
             $text,
             $history,
@@ -247,6 +260,81 @@ class AssistantChat extends Component
 
         $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
         $this->conversationId = $conversation?->id;
+    }
+
+    protected function tryWebSlashCommands(
+        string $text,
+        \App\Models\User $user,
+        int $teamId,
+        AgentConversationContextService $conversationContext,
+    ): bool {
+        $slashOutreach = app(AdminProactiveOutreachSlashDispatcher::class)->tryWebAssistantMessage(
+            $text,
+            $user,
+            $teamId,
+            $user,
+            false,
+        );
+        if ($slashOutreach !== null)
+        {
+            $this->appendSlashCommandResult($slashOutreach, $text, $user->id, $teamId, $conversationContext);
+
+            return true;
+        }
+
+        $slashInsight = app(PerformanceInsightSlashDispatcher::class)->tryWebAssistantMessage(
+            $text,
+            $user,
+            $teamId,
+            $user,
+            false,
+        );
+        if ($slashInsight !== null)
+        {
+            $this->appendSlashCommandResult($slashInsight, $text, $user->id, $teamId, $conversationContext);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    protected function appendSlashCommandResult(
+        array $result,
+        string $userMessage,
+        int $userId,
+        int $teamId,
+        AgentConversationContextService $conversationContext,
+    ): void {
+        $assistantText = ($result['success'] ?? false)
+            ? (string) ($result['response'] ?? '')
+            : (string) ($result['message'] ?? __('Error al procesar el comando.'));
+
+        $this->messages[] = [
+            'role' => 'assistant',
+            'content' => $assistantText,
+            'routed_to' => null,
+        ];
+
+        if (! ($result['success'] ?? false))
+        {
+            $conversationContext->persistMessages(
+                $userId,
+                $userMessage,
+                $assistantText,
+                null,
+                [],
+                [],
+                [],
+                [],
+                $teamId,
+                false,
+                null,
+            );
+        }
     }
 
     protected function runLegacyAssistantTurn(

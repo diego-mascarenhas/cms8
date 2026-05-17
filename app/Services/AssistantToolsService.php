@@ -25,6 +25,7 @@ use App\Models\Template;
 use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
+use App\Services\Contacts\TeamContactMatcher;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
@@ -161,7 +162,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_contact',
-                'description' => 'Create a new contact. Provide at least name; optionally email, phone, and category name (creates the category if it does not exist).',
+                'description' => 'Create a new contact. Provide at least name; optionally email, phone, category name (created if missing), notes (stored in contact data JSON), and birthday (Y-m-d). If a contact with the same email, phone, or name already exists in the team, returns that contact instead of creating a duplicate.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -169,6 +170,8 @@ class AssistantToolsService
                         'email' => ['type' => 'string', 'description' => 'Email address (optional)'],
                         'phone' => ['type' => 'string', 'description' => 'Phone number (optional)'],
                         'category_name' => ['type' => 'string', 'description' => 'Category name to assign; created if missing (optional)'],
+                        'notes' => ['type' => 'string', 'description' => 'Free-text notes stored in contact data.notes (optional)'],
+                        'birthday' => ['type' => 'string', 'description' => 'Birthday date Y-m-d (optional)'],
                     ],
                     'required' => ['name'],
                 ],
@@ -198,7 +201,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_contact',
-                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name. Use this to add or change the phone number, email, or name of a contact.',
+                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name, notes (contact data.notes JSON), birthday (Y-m-d).',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -206,6 +209,8 @@ class AssistantToolsService
                         'phone' => ['type' => 'string', 'description' => 'Phone number (with country code, digits only). Optional.'],
                         'email' => ['type' => 'string', 'description' => 'Email address. Optional.'],
                         'name' => ['type' => 'string', 'description' => 'Full name. Optional.'],
+                        'notes' => ['type' => 'string', 'description' => 'Free-text notes stored in contact data.notes. Optional.'],
+                        'birthday' => ['type' => 'string', 'description' => 'Birthday date Y-m-d. Optional.'],
                     ],
                     'required' => ['contact_id'],
                 ],
@@ -298,7 +303,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_calendar_event',
-                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end in Y-m-d H:i or ISO 8601. When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it.',
+                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end in Y-m-d H:i or ISO 8601. Refuses creation if another event overlaps that time (use check_calendar_availability first to suggest free slots). When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -680,17 +685,34 @@ class AssistantToolsService
         }
 
         $email = isset($input['email']) ? trim((string) $input['email']) : null;
+        $email = $email !== '' ? $email : null;
         $phone = isset($input['phone']) ? preg_replace('/[^0-9]/', '', (string) $input['phone']) : null;
         $phone = $phone !== '' ? (int) $phone : null;
         $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
 
-        if (! $email && ! $phone)
+        $matcher = app(TeamContactMatcher::class);
+        $existing = $matcher->findExisting($teamId, $email, $phone, $name);
+
+        if ($existing)
         {
-            $email = null;
-            $phone = null;
+            if (! Gate::forUser($user)->allows('update', $existing))
+            {
+                return "A contact matching this data already exists (id: {$existing->id}) but you cannot update it.";
+            }
+
+            $this->applyContactOptionalFields($existing, $input);
+            $categoryId = $this->attachContactToCategoryName($existing, $teamId, $categoryName);
+
+            $out = "Contact already exists: {$existing->name} (id: {$existing->id}). No duplicate was created.";
+            if ($categoryId && $categoryName)
+            {
+                $out .= " Assigned to category: {$categoryName}.";
+            }
+
+            return $this->truncate($out);
         }
 
-        $contact = Contact::withoutGlobalScopes()->create([
+        $payload = [
             'team_id' => $teamId,
             'creator_id' => $user->id,
             'name' => $name,
@@ -698,20 +720,15 @@ class AssistantToolsService
             'email' => $email,
             'phone' => $phone,
             'status_id' => 1,
-        ]);
+        ];
 
-        $categoryId = null;
-        if ($categoryName !== null && $categoryName !== '')
-        {
-            $categoryId = $this->resolveOrCreateContactCategory($teamId, $categoryName);
-            if ($categoryId)
-            {
-                $contact->categories()->attach($categoryId);
-            }
-        }
+        $optional = $this->buildContactOptionalAttributes($input);
+        $contact = Contact::withoutGlobalScopes()->create(array_merge($payload, $optional));
+
+        $categoryId = $this->attachContactToCategoryName($contact, $teamId, $categoryName);
 
         $out = "Contact created: {$contact->name} (id: {$contact->id}).";
-        if ($categoryId)
+        if ($categoryId && $categoryName)
         {
             $out .= " Assigned to category: {$categoryName}.";
         }
@@ -825,15 +842,45 @@ class AssistantToolsService
             $updates['name'] = trim((string) $input['name']);
         }
 
+        if (array_key_exists('birthday', $input))
+        {
+            $birthdayRaw = trim((string) $input['birthday']);
+            if ($birthdayRaw !== '')
+            {
+                try
+                {
+                    $updates['birthday'] = Carbon::parse($birthdayRaw)->format('Y-m-d');
+                } catch (\Throwable)
+                {
+                    return 'Invalid birthday date format. Use Y-m-d.';
+                }
+            }
+        }
+
+        if (array_key_exists('notes', $input))
+        {
+            $notes = trim((string) $input['notes']);
+            if ($notes !== '')
+            {
+                $data = (array) ($contact->data ?? []);
+                $data['notes'] = $notes;
+                $updates['data'] = (object) $data;
+            }
+        }
+
         if (empty($updates))
         {
-            return 'Provide at least one field to update: phone, email, or name.';
+            return 'Provide at least one field to update: phone, email, name, notes, or birthday.';
         }
 
         $contact->update($updates);
         $updated = array_keys($updates);
+        if (array_key_exists('notes', $input) && trim((string) $input['notes']) !== '')
+        {
+            $updated[] = 'notes';
+        }
 
-        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) updated: ".implode(', ', $updated).'.');
+        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) updated: ".implode(', ', array_unique($updated)).'.');
     }
 
     private function getAccountReport(int $teamId, array $input): string
@@ -1102,32 +1149,14 @@ class AssistantToolsService
             return 'End must be after start.';
         }
 
-        $busy = CalendarEvent::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->whereNull('deleted_at')
-            ->where(function ($q) use ($start, $end)
-            {
-                $q->whereBetween('start', [$start, $end])
-                    ->orWhereBetween('end', [$start, $end])
-                    ->orWhere(function ($inner) use ($start, $end)
-                    {
-                        $inner->where('start', '<=', $start)->where('end', '>=', $end);
-                    });
-            })
-            ->orderBy('start')
-            ->get();
+        $busy = $this->calendarEventsOverlapping($teamId, $start, $end);
 
         if ($busy->isEmpty())
         {
             return $this->truncate('The calendar is free between '.$start->toDateTimeString().' and '.$end->toDateTimeString().'.');
         }
 
-        $lines = $busy->map(function (CalendarEvent $event)
-        {
-            return '- '.$event->title.' ('.$event->start?->format('Y-m-d H:i').' → '.$event->end?->format('Y-m-d H:i').')';
-        })->implode("\n");
-
-        return $this->truncate("There are events in that range:\n".$lines);
+        return $this->truncate("There are events in that range:\n".$this->formatBusyCalendarLines($busy));
     }
 
     private function createCalendarEvent(int $teamId, array $input): string
@@ -1157,6 +1186,15 @@ class AssistantToolsService
         if ($end->lessThanOrEqualTo($start))
         {
             return 'End must be after start.';
+        }
+
+        $busy = $this->calendarEventsOverlapping($teamId, $start, $end);
+        if ($busy->isNotEmpty())
+        {
+            return $this->truncate(
+                "Cannot create the event: the calendar is busy in that time slot. Use check_calendar_availability or pick another time.\n"
+                .$this->formatBusyCalendarLines($busy),
+            );
         }
 
         $event = CalendarEvent::withoutGlobalScopes()->create([
@@ -1936,6 +1974,119 @@ class AssistantToolsService
         return $category?->id;
     }
 
+    /**
+     * @return array{birthday?: string, data?: object}
+     */
+    private function buildContactOptionalAttributes(array $input): array
+    {
+        $out = [];
+
+        if (array_key_exists('birthday', $input))
+        {
+            $birthdayRaw = trim((string) $input['birthday']);
+            if ($birthdayRaw !== '')
+            {
+                try
+                {
+                    $out['birthday'] = Carbon::parse($birthdayRaw)->format('Y-m-d');
+                } catch (\Throwable)
+                {
+                    // Ignored; caller may validate elsewhere if needed.
+                }
+            }
+        }
+
+        if (array_key_exists('notes', $input))
+        {
+            $notes = trim((string) $input['notes']);
+            if ($notes !== '')
+            {
+                $out['data'] = (object) ['notes' => $notes];
+            }
+        }
+
+        return $out;
+    }
+
+    private function applyContactOptionalFields(Contact $contact, array $input): void
+    {
+        $optional = $this->buildContactOptionalAttributes($input);
+        if ($optional === [])
+        {
+            return;
+        }
+
+        $updates = [];
+        if (isset($optional['birthday']))
+        {
+            $updates['birthday'] = $optional['birthday'];
+        }
+
+        if (isset($optional['data']))
+        {
+            $data = (array) ($contact->data ?? []);
+            $incoming = (array) $optional['data'];
+            if (isset($incoming['notes']))
+            {
+                $data['notes'] = $incoming['notes'];
+            }
+            $updates['data'] = (object) $data;
+        }
+
+        if ($updates !== [])
+        {
+            $contact->update($updates);
+        }
+    }
+
+    private function attachContactToCategoryName(Contact $contact, int $teamId, ?string $categoryName): ?int
+    {
+        if ($categoryName === null || trim($categoryName) === '')
+        {
+            return null;
+        }
+
+        $categoryId = $this->resolveOrCreateContactCategory($teamId, $categoryName);
+        if ($categoryId)
+        {
+            $contact->categories()->syncWithoutDetaching([$categoryId]);
+        }
+
+        return $categoryId;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, CalendarEvent>
+     */
+    private function calendarEventsOverlapping(int $teamId, \Carbon\Carbon $start, \Carbon\Carbon $end): \Illuminate\Support\Collection
+    {
+        return CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($start, $end)
+            {
+                $q->whereBetween('start', [$start, $end])
+                    ->orWhereBetween('end', [$start, $end])
+                    ->orWhere(function ($inner) use ($start, $end)
+                    {
+                        $inner->where('start', '<=', $start)->where('end', '>=', $end);
+                    });
+            })
+            ->orderBy('start')
+            ->get();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, CalendarEvent>  $busy
+     */
+    private function formatBusyCalendarLines(\Illuminate\Support\Collection $busy): string
+    {
+        return $busy->map(function (CalendarEvent $event)
+        {
+            return '- '.$event->title.' ('.$event->start?->format('Y-m-d H:i').' → '.$event->end?->format('Y-m-d H:i').')';
+        })->implode("\n");
+    }
+
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int
     {
         $module = Module::where('key', 'contacts')->first();
@@ -1944,10 +2095,12 @@ class AssistantToolsService
             return null;
         }
 
+        $normalizedName = mb_strtolower(trim($categoryName));
+
         $category = Category::withoutGlobalScopes()
             ->where('module_id', $module->id)
             ->where('team_id', $teamId)
-            ->where('name', $categoryName)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
             ->first();
 
         if ($category)
@@ -1956,7 +2109,7 @@ class AssistantToolsService
         }
 
         $category = Category::withoutGlobalScopes()->create([
-            'name' => $categoryName,
+            'name' => trim($categoryName),
             'module_id' => $module->id,
             'team_id' => $teamId,
             'status' => true,
