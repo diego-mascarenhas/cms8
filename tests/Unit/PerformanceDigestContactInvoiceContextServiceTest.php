@@ -156,4 +156,71 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
         $this->assertStringContainsString('factura', mb_strtolower($details[0]['suggestion']));
         $this->assertStringContainsString('/invoices/', $details[0]['action_url'] ?? '');
     }
+
+    public function test_billing_inquiry_uses_invoice_history_when_no_unpaid_balance(): void
+    {
+        $this->seedInvoiceAndContactDependencies();
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34999000111');
+        Module::firstOrCreate(['key' => 'chat'], ['name' => 'Chat', 'is_core' => false]);
+        Module::firstOrCreate(['key' => 'invoices'], ['name' => 'Invoices', 'is_core' => false]);
+        $team->enableModule('chat');
+        $team->enableModule('invoices');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente SA',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'García',
+            'phone' => '34600111222',
+            'current_enterprise_id' => $enterprise->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+            'country' => 724,
+            'language' => 'es',
+            'engagment' => 'temperate',
+            'user_id' => $user->id,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-2025-01',
+            'date' => now()->subMonth()->toDateString(),
+            'due_date' => now()->subMonth()->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        \App\Models\Conversation::create([
+            'message_sid' => 'SM_billing_inquiry',
+            'channel' => 'whatsapp',
+            'from' => '34600111222',
+            'to' => '34999000111',
+            'body' => 'Hola, querría información sobre facturación.',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $details = app(PerformanceDigestUnreadMessageDetailService::class)->forHighlightKey('whatsapp_unread', $team->fresh());
+
+        $this->assertCount(1, $details);
+        $this->assertStringContainsString('Cliente SA', $details[0]['suggestion']);
+        $this->assertStringContainsString('F-2025-01', $details[0]['suggestion']);
+        $this->assertStringContainsString('no hay pendientes', mb_strtolower($details[0]['suggestion']));
+        $this->assertStringContainsString('f-2025-01', mb_strtolower($details[0]['response_hint']));
+    }
 }

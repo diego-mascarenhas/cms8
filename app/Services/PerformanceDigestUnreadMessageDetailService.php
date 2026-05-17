@@ -622,8 +622,8 @@ class PerformanceDigestUnreadMessageDetailService
     {
         if ($invoiceContext !== null)
         {
-            $hintKey = 'performance_digest_response_hint_invoices_'.$invoiceContext['variant'];
-            if (trans($hintKey) !== $hintKey)
+            $hintKey = 'app.performance_digest_response_hint_invoices_'.$invoiceContext['variant'];
+            if (\Illuminate\Support\Facades\Lang::has($hintKey))
             {
                 return (string) __($hintKey, $invoiceContext);
             }
