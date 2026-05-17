@@ -42,6 +42,11 @@ PROMPT;
      */
     public function ensureTodayRecord(User $user, Team $team, ?string $mentoringHeadline, ?CarbonInterface $onDate = null, bool $forceRegenerate = false, ?string $outputLocale = null): UserDailyPerformanceInsight
     {
+        if (! UserDailyPerformanceInsight::userEligibleForEvaluation($user))
+        {
+            throw new \InvalidArgumentException('Daily performance insights are only generated for users with the admin role.');
+        }
+
         $date = ($onDate ?? now())->toDateString();
 
         if (! $forceRegenerate)

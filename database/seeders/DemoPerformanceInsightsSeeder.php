@@ -6,6 +6,7 @@ use App\Enums\EmailFolder;
 use App\Models\Email;
 use App\Models\Mailbox;
 use App\Models\Team;
+use App\Models\UserDailyPerformanceInsight;
 use App\Services\UserDailyPerformanceInsightNotificationService;
 use App\Services\UserDailyPerformanceInsightService;
 use Illuminate\Database\Seeder;
@@ -60,7 +61,7 @@ class DemoPerformanceInsightsSeeder extends Seeder
 
         foreach ($team->allUsers()->unique('id') as $user)
         {
-            if (! $user->hasAnyRole(['admin', 'root']))
+            if (! UserDailyPerformanceInsight::userEligibleForEvaluation($user))
             {
                 continue;
             }

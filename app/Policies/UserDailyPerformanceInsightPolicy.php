@@ -12,7 +12,7 @@ class UserDailyPerformanceInsightPolicy
 
     /**
      * Daily insights are not gated by the performance_insights module (hidden from the sidebar);
-     * admin and root may open the list route and the scheduled job runs for all teams.
+     * admin and root may open the list route; insights are generated and listed for admin users only.
      */
     public function viewAny(User $user): bool
     {

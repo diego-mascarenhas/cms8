@@ -38,6 +38,11 @@ class UserDailyPerformanceInsight extends Model
         return $this->belongsTo(User::class);
     }
 
+    public static function userEligibleForEvaluation(User $user): bool
+    {
+        return $user->hasRole('admin');
+    }
+
     protected function focus(): Attribute
     {
         return Attribute::make(

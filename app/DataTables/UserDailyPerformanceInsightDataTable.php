@@ -65,6 +65,7 @@ class UserDailyPerformanceInsightDataTable extends DataTable
 
         $query = $model->newQuery()
             ->where('team_id', $teamId)
+            ->whereHas('user', fn ($userQuery) => $userQuery->role('admin'))
             ->with([
                 'user:id,name',
             ]);
