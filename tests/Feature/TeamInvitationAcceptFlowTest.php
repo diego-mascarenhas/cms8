@@ -80,6 +80,8 @@ class TeamInvitationAcceptFlowTest extends TestCase
         $this->assertTrue($user->hasTeamRole($team, 'admin'));
         $this->assertTrue($user->hasRole('admin'));
         $this->assertFalse($user->hasRole('editor'));
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertTrue($user->hasVerifiedEmail());
     }
 
     public function test_registering_via_invitation_joins_team_without_personal_team(): void
@@ -116,6 +118,8 @@ class TeamInvitationAcceptFlowTest extends TestCase
         $this->assertCount(0, $team->fresh()->teamInvitations);
         $this->assertTrue($user->hasRole('collaborator'));
         $this->assertFalse($user->hasRole('editor'));
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertTrue($user->hasVerifiedEmail());
     }
 
     public function test_existing_user_is_sent_to_login_then_accepts_on_sign_in(): void
@@ -127,7 +131,7 @@ class TeamInvitationAcceptFlowTest extends TestCase
 
         $owner = User::factory()->withPersonalTeam()->create();
         $team = Team::factory()->create(['user_id' => $owner->id, 'personal_team' => false]);
-        $member = User::factory()->create(['email' => 'existing@example.com']);
+        $member = User::factory()->unverified()->create(['email' => 'existing@example.com']);
         $member->ownedTeams()->save(Team::factory()->make(['personal_team' => true]));
         $member->forceFill(['current_team_id' => $member->ownedTeams()->first()->id])->save();
 
@@ -148,5 +152,7 @@ class TeamInvitationAcceptFlowTest extends TestCase
         $this->assertTrue($team->fresh()->hasUserWithEmail('existing@example.com'));
         $this->assertSame($team->id, $member->current_team_id);
         $this->assertCount(0, $team->fresh()->teamInvitations);
+        $this->assertNotNull($member->email_verified_at);
+        $this->assertTrue($member->hasVerifiedEmail());
     }
 }

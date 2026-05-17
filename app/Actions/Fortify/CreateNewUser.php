@@ -53,6 +53,8 @@ class CreateNewUser implements CreatesNewUsers
 
             if ($pendingInvitation)
             {
+                $user->forceFill(['email_verified_at' => now()])->save();
+
                 PendingTeamInvitation::pull(request());
                 $this->acceptTeamInvitation->accept($user, $pendingInvitation);
             } else

@@ -41,7 +41,14 @@ class AcceptTeamInvitation
                 TeamMemberAdded::dispatch($team, $user);
             }
 
-            $user->forceFill(['current_team_id' => $team->id])->save();
+            $attributes = ['current_team_id' => $team->id];
+
+            if (! $user->hasVerifiedEmail())
+            {
+                $attributes['email_verified_at'] = now();
+            }
+
+            $user->forceFill($attributes)->save();
 
             $invitation->delete();
         });
