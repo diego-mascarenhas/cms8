@@ -19,6 +19,11 @@ class SendNewUserWelcomeEmailListener
             return;
         }
 
+        if (! $user->ownedTeams()->where('personal_team', true)->exists())
+        {
+            return;
+        }
+
         NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
     }
 }

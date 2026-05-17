@@ -79,7 +79,7 @@
       </x-slot>
 
       <x-slot name="actions">
-        <x-button wire:click="$set('addTeamMemberForm.role', $addTeamMemberForm['role'] ?? 'editor')">
+        <x-button>
           {{ __('Add') }}
         </x-button>
       </x-slot>

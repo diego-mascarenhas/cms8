@@ -33,6 +33,18 @@ $configData = Helper::appClasses();
         <h3 class="mb-1">{{ __('auth.register.heading') }}</h3>
         <p class="mb-4">{{ __('auth.register.description') }}</p>
 
+        @if (! empty($teamInvitation))
+        <div class="alert alert-primary mb-4" role="alert">
+            {{ __('You have been invited to join the :team team. Create your account to accept.', ['team' => $teamInvitation->team->name]) }}
+        </div>
+        @endif
+
+        @if (session('status'))
+        <div class="alert alert-info mb-4" role="alert">
+            {{ session('status') }}
+        </div>
+        @endif
+
         <form id="formAuthentication" class="mb-3" action="{{ route('register') }}" method="POST">
           @csrf
           <div class="mb-3">
@@ -46,7 +58,7 @@ $configData = Helper::appClasses();
           </div>
           <div class="mb-3">
             <label for="email" class="form-label">{{ __('auth.register.email') }}</label>
-            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="{{ __('auth.register.email_placeholder') }}" value="{{ old('email') }}" />
+            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="{{ __('auth.register.email_placeholder') }}" value="{{ old('email', $teamInvitation->email ?? '') }}" @if (! empty($lockInvitationEmail)) readonly @endif />
             @error('email')
             <span class="invalid-feedback" role="alert">
               <span class="fw-medium">{{ $message }}</span>

@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Contracts\CheckoutSessionRetriever;
 use App\Contracts\WhatsAppGateway;
+use App\Http\Controllers\TeamInvitationAcceptController;
+use App\Livewire\Teams\TeamMemberManager;
 use App\Models\Contact;
 use App\Models\SubscriptionProduct;
 use App\Models\TicketResponse;
@@ -17,7 +19,9 @@ use App\Services\WhatsApp\CloudWhatsAppGateway;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Stripe\StripeClient;
 use Yajra\DataTables\Html\Builder;
 
@@ -72,6 +76,9 @@ class AppServiceProvider extends ServiceProvider
         TicketResponse::observe(TicketResponseObserver::class);
         Contact::observe(ContactGoogleOutboundObserver::class);
 
+        $this->registerPublicTeamInvitationAcceptRoute();
+        $this->registerLivewireComponentOverrides();
+
         // Only register CustomTranslator when not in console mode to prevent bootstrap issues
         if (! $this->app->runningInConsole())
         {
@@ -87,5 +94,21 @@ class AppServiceProvider extends ServiceProvider
                 return $customTranslator;
             });
         }
+    }
+
+    /**
+     * Override Jetstream's authenticated-only invitation route with a public signed URL.
+     */
+    private function registerPublicTeamInvitationAcceptRoute(): void
+    {
+        Route::middleware(config('jetstream.middleware', ['web']))
+            ->get('/team-invitations/{invitation}', TeamInvitationAcceptController::class)
+            ->middleware('signed')
+            ->name('team-invitations.accept');
+    }
+
+    private function registerLivewireComponentOverrides(): void
+    {
+        Livewire::component('teams.team-member-manager', TeamMemberManager::class);
     }
 }

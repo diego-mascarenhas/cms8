@@ -24,6 +24,7 @@ class TeamInvitationEmailTest extends TestCase
         $this->assertStringNotContainsString('<table class="action"', $html);
         $this->assertStringContainsString('logo', $html);
         $this->assertStringContainsString(__('Accept Invitation'), $html);
+        $this->assertStringNotContainsString(__('Create Account'), $html);
         $this->assertStringContainsString(__('All rights reserved.'), $html);
         $this->assertStringContainsString('Revision Alpha', $html);
     }

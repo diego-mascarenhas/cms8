@@ -24,20 +24,30 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Favicon -->
   <link rel="icon" href="{{ asset('assets/logo.png') }}" type="image/png">
 
+  @php
+    $ogImagePath = config('variables.ogImage', 'assets/logo.png');
+    $ogImageUrl = str_starts_with($ogImagePath, 'http') ? $ogImagePath : url('/'.ltrim($ogImagePath, '/'));
+  @endphp
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ url()->current() }}" />
   <meta property="og:title" content="@yield('title') | {{ config('variables.templateName') }}" />
   <meta property="og:description" content="{{ config('variables.templateDescription') }}" />
-  <meta property="og:image" content="{{ asset('assets/logo.png') }}" />
+  <meta property="og:image" content="{{ $ogImageUrl }}" />
+  <meta property="og:image:secure_url" content="{{ $ogImageUrl }}" />
+  <meta property="og:image:width" content="{{ config('variables.ogImageWidth', 552) }}" />
+  <meta property="og:image:height" content="{{ config('variables.ogImageHeight', 552) }}" />
+  <meta property="og:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}" />
   <meta property="og:site_name" content="{{ config('variables.templateName') }}" />
+  <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="{{ url()->current() }}" />
   <meta name="twitter:title" content="@yield('title') | {{ config('variables.templateName') }}" />
   <meta name="twitter:description" content="{{ config('variables.templateDescription') }}" />
-  <meta name="twitter:image" content="{{ asset('assets/logo.png') }}" />
+  <meta name="twitter:image" content="{{ $ogImageUrl }}" />
+  <meta name="twitter:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}" />
   @if(config('variables.twitterUrl'))
   <meta name="twitter:site" content="{{ config('variables.twitterUrl') }}" />
   @endif
