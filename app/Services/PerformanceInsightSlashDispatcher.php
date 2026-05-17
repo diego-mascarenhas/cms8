@@ -6,6 +6,7 @@ use App\Mail\DailyPerformanceInsightMail;
 use App\Models\Notification;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\UserDailyPerformanceInsight;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -128,7 +129,7 @@ class PerformanceInsightSlashDispatcher
             ];
         }
 
-        if (! $contextUser->hasAnyRole(['admin', 'root']))
+        if (! UserDailyPerformanceInsight::userEligibleForEvaluation($contextUser))
         {
             return [
                 'whatsapp_reply' => (string) __('app.assistant_slash_performance_insight_forbidden'),
@@ -217,7 +218,7 @@ class PerformanceInsightSlashDispatcher
      */
     public function generate(User $user, Team $team, bool $force = false, ?string $dateString = null): array
     {
-        if (! $user->hasAnyRole(['admin', 'root']))
+        if (! UserDailyPerformanceInsight::userEligibleForEvaluation($user))
         {
             return [
                 'success' => false,

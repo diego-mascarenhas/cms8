@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\DailyPerformanceInsightMail;
 use App\Models\Team;
+use App\Models\UserDailyPerformanceInsight;
 use App\Services\UserDailyPerformanceInsightNotificationService;
 use App\Services\UserDailyPerformanceInsightService;
 use Illuminate\Console\Command;
@@ -13,7 +14,7 @@ class GenerateDailyPerformanceInsightsCommand extends Command
 {
     protected $signature = 'performance-insights:generate {--date=} {--team=} {--user=} {--force}';
 
-    protected $description = 'Create or refresh daily performance insight rows for admin and root users only (per team). Without --force, existing rows for that calendar day are left unchanged.';
+    protected $description = 'Create or refresh daily performance insight rows for admin users only (per team). Without --force, existing rows for that calendar day are left unchanged.';
 
     public function handle(
         UserDailyPerformanceInsightService $service,
@@ -43,7 +44,7 @@ class GenerateDailyPerformanceInsightsCommand extends Command
                 {
                     continue;
                 }
-                if (! $user->hasAnyRole(['admin', 'root']))
+                if (! UserDailyPerformanceInsight::userEligibleForEvaluation($user))
                 {
                     $skippedNonPrivileged++;
 
@@ -70,7 +71,7 @@ class GenerateDailyPerformanceInsightsCommand extends Command
 
         if ($skippedNonPrivileged > 0)
         {
-            $this->line("Skipped {$skippedNonPrivileged} user-team pair(s) (not admin/root).");
+            $this->line("Skipped {$skippedNonPrivileged} user-team pair(s) (not admin).");
         }
 
         $this->info("Processed {$count} user-team pairs".($force ? ' (force refresh).' : '.'));

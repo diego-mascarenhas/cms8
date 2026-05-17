@@ -37,7 +37,9 @@
                         height: 280,
                         fontFamily: 'Public Sans',
                         toolbar: { show: false },
-                        zoom: { enabled: false }
+                        zoom: { enabled: false },
+                        parentHeightOffset: 0,
+                        offsetX: 0,
                     },
                     stroke: { curve: 'smooth', width: 2 },
                     series: [
@@ -55,10 +57,14 @@
                     yaxis: {
                         labels: { formatter: function(val) { return val ? parseInt(val, 10) : val; } }
                     },
-                    legend: { position: 'top', horizontalAlign: 'right' },
+                    legend: { position: 'top', horizontalAlign: 'left', offsetX: 0 },
                     colors: ['#696cff', '#71dd37'],
                     dataLabels: { enabled: false },
-                    grid: { borderColor: '#e7e7e7', strokeDashArray: 4 }
+                    grid: {
+                        borderColor: '#e7e7e7',
+                        strokeDashArray: 4,
+                        padding: { right: 16, left: 4, top: 4 },
+                    },
                 }).render();
             }
         });
@@ -281,10 +287,8 @@
 
             <!-- View sales -->
             <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2 d-flex flex-column">
-                <div class="card w-100 h-100 d-flex flex-column dashboard-insight-card">
-                    <div class="row g-0 flex-grow-1 align-items-stretch">
-                        <div class="col-9 min-w-0 d-flex flex-column">
-                            <div class="card-body d-flex flex-column flex-grow-1">
+                <div class="card w-100 h-100 d-flex flex-column dashboard-insight-card position-relative">
+                    <div class="card-body d-flex flex-column flex-grow-1 dashboard-insight-card-body">
                                 @php
                                     $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
@@ -348,14 +352,10 @@
                                 <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Strategia</a>
                                 <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
                                 @endif
-                            </div>
-                        </div>
-                        <div class="col-3 text-sm-left flex-shrink-0 d-flex align-items-end justify-content-end p-0 dashboard-insight-illustration-col">
-                            <div class="dashboard-insight-illustration">
-                                <img src="{{ asset('assets/img/illustrations/card-advance-sale.png') }}" height="140"
-                                    class="d-block" alt="" role="presentation">
-                            </div>
-                        </div>
+                    </div>
+                    <div class="dashboard-insight-illustration" aria-hidden="true">
+                        <img src="{{ asset('assets/img/illustrations/card-advance-sale.png') }}" height="140"
+                            class="d-block" alt="" role="presentation">
                     </div>
                 </div>
             </div>
@@ -414,26 +414,6 @@
         </div>
     @endif
 
-    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
-    <!-- Google Analytics -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header pb-0 d-flex justify-content-between">
-                    <div class="card-title mb-0">
-                        <h5 class="mb-0">Google Analytics</h5>
-                        <small class="text-muted">Visitors and page views (last 7 days)</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="analyticsChart" style="min-height: 280px;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- / Google Analytics -->
-    @endif
-
     <div class="row align-items-lg-stretch dashboard-paired-row">
         <!-- Emotional Balance (right column) -->
         <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0 d-flex flex-column">
@@ -448,11 +428,18 @@
                 <div class="card-body flex-grow-1 d-flex flex-column">
                     <div class="row flex-grow-1">
                         <div class="col-12 d-flex flex-column flex-grow-1">
-                            <div class="sentiment-chart flex-grow-1 d-flex flex-column">
-                                <div class="d-flex align-items-stretch justify-content-between flex-grow-1">
+                            <div class="sentiment-chart flex-grow-1 d-flex flex-column justify-content-end">
+                                @php
+                                    $sentimentMaxCount = max(1, (int) max(array_column($sentimentData, 'count')));
+                                    $sentimentBarMaxHeight = 120;
+                                @endphp
+                                <div class="d-flex align-items-end justify-content-between sentiment-bars-row">
                                     @foreach ($sentimentData as $index => $sentiment)
+                                        @php
+                                            $sentimentBarHeight = max(32, (int) round(($sentiment['count'] / $sentimentMaxCount) * $sentimentBarMaxHeight));
+                                        @endphp
                                         <div class="sentiment-column text-center">
-                                            <div class="sentiment-bar" style="height: calc({{ $sentiment['count'] && max(array_column($sentimentData, 'count')) ? ($sentiment['count'] / max(array_column($sentimentData, 'count'))) * 210 : 0 }}px)">
+                                            <div class="sentiment-bar" style="height: {{ $sentimentBarHeight }}px">
                                                 <span class="sentiment-count">{{ $sentiment['count'] }}</span>
                                             </div>
                                             <div class="sentiment-emoji">
@@ -637,6 +624,26 @@
     </div>
     @endif
 
+    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
+    <!-- Google Analytics -->
+    <div class="row mb-4 dashboard-analytics-row">
+        <div class="col-12">
+            <div class="card dashboard-analytics-card">
+                <div class="card-header pb-0 d-flex justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Google Analytics</h5>
+                        <small class="text-muted">Visitors and page views (last 7 days)</small>
+                    </div>
+                </div>
+                <div class="card-body pt-2 overflow-hidden">
+                    <div id="analyticsChart" class="dashboard-analytics-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- / Google Analytics -->
+    @endif
+
 @endsection
 
 <style>
@@ -666,22 +673,31 @@
         flex: 0 0 auto;
     }
 
+    .dashboard-top-row {
+        overflow-x: clip;
+    }
+
     .dashboard-insight-card {
         overflow: visible;
     }
 
-    .dashboard-insight-card > .row {
+    .dashboard-top-row > .col-md-4:has(.dashboard-insight-card) {
         overflow: visible;
     }
 
-    .dashboard-insight-illustration-col {
-        overflow: visible;
+    .dashboard-insight-card-body {
+        position: relative;
+        z-index: 1;
+        padding-right: 5.5rem;
     }
 
     .dashboard-insight-illustration {
+        position: absolute;
+        right: 0;
+        bottom: 0;
         line-height: 0;
-        overflow: visible;
-        flex-shrink: 0;
+        pointer-events: none;
+        z-index: 0;
     }
 
     .dashboard-insight-illustration img {
@@ -689,8 +705,21 @@
         height: 140px;
         width: auto;
         max-width: none;
-        margin-bottom: 0;
-        margin-right: -1.25rem;
+        transform: translateX(18%);
+    }
+
+    .dashboard-analytics-card .card-body {
+        overflow: hidden;
+    }
+
+    .dashboard-analytics-chart {
+        min-height: 280px;
+        max-width: 100%;
+    }
+
+    .dashboard-analytics-chart .apexcharts-canvas,
+    .dashboard-analytics-chart svg {
+        max-width: 100% !important;
     }
 
     @media (min-width: 992px) {
@@ -700,8 +729,9 @@
     }
 
     .sentiment-chart {
-        padding: 1rem 0 0;
+        padding: 0.5rem 0 0;
         min-height: 0;
+        justify-content: flex-end;
     }
 
     .sentiment-column {
@@ -710,7 +740,8 @@
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        height: 100%;
+        align-self: flex-end;
+        height: auto;
         padding: 0 5px;
     }
 
@@ -720,18 +751,26 @@
         background-color: #696cff;
         border-radius: 8px;
         position: relative;
-        min-height: 30px;
+        min-height: 32px;
         transition: height 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .sentiment-count {
-        position: absolute;
-        top: -25px;
-        left: 50%;
-        transform: translateX(-50%);
-        color: #566a7f;
+        color: #fff;
         font-weight: 600;
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
+        line-height: 1;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    }
+
+    .sentiment-column:nth-child(2) .sentiment-count,
+    .sentiment-column:nth-child(3) .sentiment-count,
+    .sentiment-column:nth-child(4) .sentiment-count {
+        color: #434343;
+        text-shadow: none;
     }
 
     .sentiment-emoji {
@@ -762,12 +801,10 @@
         background-color: #52c41a;
     }
 
-    .sentiment-chart .d-flex {
-        flex: 1;
-        min-height: 168px;
-        margin-top: 0.5rem;
-        align-items: stretch;
-        height: auto !important;
+    .sentiment-chart .sentiment-bars-row {
+        flex: 0 0 auto;
+        width: 100%;
+        align-items: flex-end;
     }
 
     @media (max-width: 576px) {
@@ -787,8 +824,8 @@
             font-size: 1.2rem;
         }
 
-        .sentiment-chart .d-flex {
-            min-height: 140px;
+        .sentiment-chart .sentiment-bars-row {
+            width: 100%;
         }
 
         .dashboard-paired-row > [class*='col-lg-'] > .card {

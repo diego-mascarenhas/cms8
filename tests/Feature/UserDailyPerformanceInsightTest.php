@@ -349,7 +349,7 @@ class UserDailyPerformanceInsightTest extends TestCase
         $this->assertDatabaseCount('notifications', 0);
     }
 
-    public function test_performance_insights_generate_command_only_targets_admin_and_root(): void
+    public function test_performance_insights_generate_command_only_targets_admin(): void
     {
         $this->seedInsightDependencies();
         $admin = $this->createUserWithRole('admin');
@@ -360,6 +360,12 @@ class UserDailyPerformanceInsightTest extends TestCase
         $collaborator->teams()->attach($team->id, ['role' => 'editor']);
         $collaborator->current_team_id = $team->id;
         $collaborator->save();
+
+        $root = User::factory()->create();
+        $root->assignRole(Role::firstOrCreate(['name' => 'root']));
+        $root->teams()->attach($team->id, ['role' => 'editor']);
+        $root->current_team_id = $team->id;
+        $root->save();
 
         Mail::fake();
         config(['daily_performance_insight.send_email' => true]);
@@ -374,10 +380,43 @@ class UserDailyPerformanceInsightTest extends TestCase
             'team_id' => $team->id,
             'user_id' => $collaborator->id,
         ]);
+        $this->assertDatabaseMissing('user_daily_performance_insights', [
+            'team_id' => $team->id,
+            'user_id' => $root->id,
+        ]);
 
         $this->artisan('performance-insights:generate')->assertSuccessful();
         $this->assertEquals(1, UserDailyPerformanceInsight::query()->where('team_id', $team->id)->count());
         Mail::assertSent(\App\Mail\DailyPerformanceInsightMail::class);
+    }
+
+    public function test_performance_insights_datatable_only_lists_admin_users(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+
+        $collaborator = User::factory()->create();
+        $collaborator->assignRole(Role::firstOrCreate(['name' => 'collaborator']));
+        $collaborator->teams()->attach($team->id, ['role' => 'editor']);
+
+        UserDailyPerformanceInsight::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $collaborator->id,
+            'insight_date' => now()->toDateString(),
+        ]);
+
+        config(['daily_performance_insight.use_llm' => false]);
+        app(UserDailyPerformanceInsightService::class)->ensureTodayRecord($admin, $team, null);
+
+        $response = $this->actingAs($admin)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get($this->performanceInsightsDataTableUrl());
+
+        $response->assertOk();
+        $response->assertJsonPath('recordsTotal', 1);
+        $this->assertSame($admin->name, $response->json('data.0.user_name'));
     }
 
     public function test_generate_command_skips_teams_without_performance_insights_module(): void
