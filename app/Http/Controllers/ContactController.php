@@ -117,7 +117,23 @@ class ContactController extends Controller
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ?: null;
 
-        $contact = Contact::create($contactData);
+        $phoneInt = $contactData['phone'] ? (int) preg_replace('/[^0-9]/', '', (string) $contactData['phone']) : null;
+        $existing = app(\App\Services\Contacts\TeamContactMatcher::class)->findExisting(
+            (int) $contactData['team_id'],
+            $contactData['email'] ? (string) $contactData['email'] : null,
+            $phoneInt > 0 ? $phoneInt : null,
+            isset($contactData['name']) ? (string) $contactData['name'] : null,
+        );
+
+        if ($existing)
+        {
+            $contact = $existing;
+            $reusedExisting = true;
+        } else
+        {
+            $contact = Contact::create($contactData);
+            $reusedExisting = false;
+        }
 
         // Sync categories
         $categoryIds = [];
@@ -136,7 +152,13 @@ class ContactController extends Controller
         $validCategoryIds = Category::onlyExistingIds(array_unique($categoryIds));
         if ($validCategoryIds !== [])
         {
-            $contact->categories()->sync($validCategoryIds);
+            if ($reusedExisting)
+            {
+                $contact->categories()->syncWithoutDetaching($validCategoryIds);
+            } else
+            {
+                $contact->categories()->sync($validCategoryIds);
+            }
         }
 
         // Sync software
@@ -147,7 +169,9 @@ class ContactController extends Controller
 
         $this->syncContactEnterpriseFromForm($contact, $data['enterprise'] ?? []);
 
-        $message = __('messages.success.created');
+        $message = $reusedExisting
+            ? __('app.Contact already exists; categories were updated.')
+            : __('messages.success.created');
 
         if ($request->ajax())
         {
@@ -155,6 +179,7 @@ class ContactController extends Controller
                 'success' => true,
                 'message' => $message,
                 'data' => $contact->fresh(),
+                'reused_existing' => $reusedExisting,
             ]);
         }
 

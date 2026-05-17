@@ -17,6 +17,7 @@ use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
+use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -1259,6 +1260,21 @@ class ChatController extends Controller
                 unset($slashOutreach['_http_status']);
 
                 return response()->json($slashOutreach, $httpStatus >= 400 ? $httpStatus : 200);
+            }
+
+            $slashInsight = app(PerformanceInsightSlashDispatcher::class)->tryWebAssistantMessage(
+                $message,
+                auth()->user(),
+                (int) $teamId,
+                $contextUser,
+                $hasAudio,
+            );
+            if ($slashInsight !== null)
+            {
+                $httpStatus = (int) ($slashInsight['_http_status'] ?? 200);
+                unset($slashInsight['_http_status']);
+
+                return response()->json($slashInsight, $httpStatus >= 400 ? $httpStatus : 200);
             }
 
             $uid = (int) $teamId;

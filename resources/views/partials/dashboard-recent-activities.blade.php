@@ -1,5 +1,8 @@
-<div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between py-3 flex-wrap gap-2">
+@php
+    $fillHeight = $fillHeight ?? false;
+@endphp
+<div class="card {{ $fillHeight ? 'h-100 mb-0 d-flex flex-column' : '' }}">
+    <div class="card-header d-flex align-items-center justify-content-between py-3 flex-wrap gap-2 flex-shrink-0">
         <div class="card-title mb-0">
             <h5 class="mb-0">
                 <i class="ti ti-history ti-xs me-1"></i>{{ __('Recent contact activity') }}
@@ -12,13 +15,13 @@
             </a>
         @endcan
     </div>
-    <div class="card-body pt-2">
+    <div class="card-body pt-2 {{ $fillHeight ? 'flex-grow-1 overflow-auto' : '' }}">
         <div class="mb-4 pb-3 border-bottom">
             <small class="text-muted d-block mb-2">{{ __('app.dashboard_contacts_chart_subtitle') }}</small>
             <div id="dashboardContactsTrendChart" style="min-height: 120px;"></div>
         </div>
 
-        @forelse ($recentContactActivities as $interaction)
+        @foreach ($recentContactActivities as $interaction)
             <div class="d-flex flex-wrap gap-2 border-bottom pb-3 mb-3 align-items-start">
                 <div class="flex-grow-1 min-w-0">
                     <a href="{{ route('contact.show', $interaction->contact_id) }}#activity" class="fw-medium text-body d-inline-block text-truncate" style="max-width: 100%;">
@@ -41,8 +44,6 @@
                     @endif
                 </div>
             </div>
-        @empty
-            <p class="text-muted mb-0">{{ __('No recent contact activity.') }}</p>
-        @endforelse
+        @endforeach
     </div>
 </div>

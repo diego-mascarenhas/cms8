@@ -138,106 +138,125 @@
 
     <!-- Hour chart  -->
     <div class="card bg-transparent shadow-none mt-4 mb-0 border-0">
-        <div class="card-body row p-0 pb-2 align-items-stretch">
-            <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2">
-                <div class="row g-3 g-lg-4 w-100">
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="d-flex align-items-center gap-3 h-100">
-                            <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                <i class="ti ti-device-laptop ti-xl"></i>
-                            </span>
-                            <div class="content-right min-w-0">
-                                <p class="mb-0">Horas invertidas</p>
-                                <h4 class="text-primary mb-0">@formatMinutes($totalTeamMinutes)</h4>
+        <div class="card-body row p-0 pb-2 align-items-stretch dashboard-top-row">
+            <div class="col-12 col-md-8 mb-4 mb-md-4 mb-lg-3 mb-sm-2 d-flex flex-column min-h-0">
+                <div class="dashboard-left-panel d-flex flex-column flex-grow-1 min-h-0 w-100">
+                    <div class="dashboard-metrics-primary flex-shrink-0">
+                        <div class="row g-3 g-lg-4">
+                            <div class="col-12 col-sm-6 col-lg-4">
+                                <div class="d-flex align-items-center gap-3 dashboard-metric-item">
+                                    <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                        <i class="ti ti-device-laptop ti-xl"></i>
+                                    </span>
+                                    <div class="content-right min-w-0">
+                                        <p class="mb-0">Horas invertidas</p>
+                                        <h4 class="text-primary mb-0">@formatMinutes($totalTeamMinutes)</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            @can('contact.list')
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 dashboard-metric-item text-body text-decoration-none">
+                                        <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-target ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
+                                            <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 dashboard-metric-item text-body text-decoration-none">
+                                        <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-users ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
+                                            <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
+                                        </div>
+                                    </a>
+                                </div>
+                            @else
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <div class="d-flex align-items-center gap-3 dashboard-metric-item">
+                                        <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-target ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
+                                            <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <div class="d-flex align-items-center gap-3 dashboard-metric-item">
+                                        <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-users ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
+                                            <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endcan
+                        </div>
+                    </div>
+
+                    <div class="dashboard-metrics-secondary flex-shrink-0 mt-3">
+                        <div class="row g-3 g-lg-4">
+                            @can('contact.list')
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 dashboard-metric-item text-body text-decoration-none">
+                                        <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-activity ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
+                                            <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
+                                        </div>
+                                    </a>
+                                </div>
+                            @else
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <div class="d-flex align-items-center gap-3 dashboard-metric-item">
+                                        <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-activity ti-xl"></i>
+                                        </span>
+                                        <div class="content-right min-w-0">
+                                            <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
+                                            <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endcan
+                            <div class="col-12 col-sm-6 col-lg-4">
+                                <div class="d-flex align-items-center gap-3 dashboard-metric-item">
+                                    <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                        <i class="ti ti-discount-check ti-xl"></i>
+                                    </span>
+                                    <div class="content-right min-w-0">
+                                        <p class="mb-0">Para hablar hoy</p>
+                                        <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    @can('contact.list')
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
-                                <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-target ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
-                                    <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
-                                <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-users ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
-                                    <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <a href="{{ route('contact-list') }}" class="d-flex align-items-center gap-3 h-100 text-body text-decoration-none">
-                                <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-activity ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
-                                    <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
-                                </div>
-                            </a>
-                        </div>
-                    @else
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="d-flex align-items-center gap-3 h-100">
-                                <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-target ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_metric_new_leads') }}</p>
-                                    <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="d-flex align-items-center gap-3 h-100">
-                                <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-users ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_contacts_row_total') }}</p>
-                                    <h4 class="text-primary mb-0">{{ $totalContactsCount ?? 0 }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="d-flex align-items-center gap-3 h-100">
-                                <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                    <i class="ti ti-activity ti-xl"></i>
-                                </span>
-                                <div class="content-right min-w-0">
-                                    <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
-                                    <h4 class="text-info mb-0">{{ $contactsWithRecentActivityCount ?? 0 }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                    @endcan
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="d-flex align-items-center gap-3 h-100">
-                            <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                <i class="ti ti-discount-check ti-xl"></i>
-                            </span>
-                            <div class="content-right min-w-0">
-                                <p class="mb-0">Para hablar hoy</p>
-                                <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
-                            </div>
-                        </div>
+
+                    <div class="dashboard-recent-activity-slot flex-grow-1 min-h-0 mt-3 d-flex flex-column">
+                        @include('partials.dashboard-recent-activities', [
+                            'recentContactActivities' => $recentContactActivities ?? collect(),
+                            'fillHeight' => true,
+                        ])
                     </div>
                 </div>
             </div>
 
             <!-- View sales -->
             <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2 d-flex flex-column">
-                <div class="card w-100 flex-grow-1 d-flex flex-column">
+                <div class="card w-100 h-100 d-flex flex-column">
                     <div class="row g-0 flex-grow-1 align-items-stretch">
                         <div class="col-9 min-w-0 d-flex flex-column">
                             <div class="card-body d-flex flex-column flex-grow-1">
@@ -249,13 +268,12 @@
                                         @php
                                             $headlineParts = \App\Models\UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($dailyPerformanceInsight->headline);
                                         @endphp
-                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                            <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-bell ti-sm"></i></span>
-                                            <h5 class="card-title mb-0 fw-semibold">
-                                                {{ __('app.dashboard_daily_digest_title') }}:
-                                                {{ e($headlineParts['text']) }}{{ $headlineParts['emoji'] }}
-                                            </h5>
-                                        </div>
+                                        <h5 class="card-title mb-1 fw-semibold">
+                                            @if($headlineParts['emoji'] !== '')
+                                                <span aria-hidden="true">{{ $headlineParts['emoji'] }}</span>
+                                            @endif
+                                            {{ e($headlineParts['text']) }}
+                                        </h5>
                                         <p class="mb-1 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
                                         <p class="mb-2 text-body">{{ e($dailyPerformanceInsight->message) }}</p>
                                         @if(!empty($dailyPerformanceInsight->context_snapshot['highlights'] ?? []))
@@ -376,12 +394,6 @@
             </div>
         </div>
     @endif
-
-    <div class="row mb-4">
-        <div class="col-12">
-            @include('partials.dashboard-recent-activities', ['recentContactActivities' => $recentContactActivities ?? collect()])
-        </div>
-    </div>
 
     @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
     <!-- Google Analytics -->
@@ -613,6 +625,31 @@
 @endsection
 
 <style>
+    @media (min-width: 768px) {
+        .dashboard-top-row > .col-md-8,
+        .dashboard-top-row > .col-md-4 {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dashboard-left-panel {
+            height: 100%;
+        }
+
+        .dashboard-metrics-primary .row,
+        .dashboard-metrics-secondary .row {
+            align-items: flex-start;
+        }
+    }
+
+    .dashboard-metric-item {
+        min-height: 0;
+    }
+
+    .dashboard-metrics-primary {
+        flex: 0 0 auto;
+    }
+
     .sentiment-chart {
         padding: 1rem 0;
     }
