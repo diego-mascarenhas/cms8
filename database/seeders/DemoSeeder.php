@@ -37,5 +37,7 @@ class DemoSeeder extends Seeder
         $this->call(DemoWhatsAppConversationsSeeder::class);
 
         $this->call(DemoNotificationsSeeder::class);
+
+        $this->call(DemoPerformanceInsightsSeeder::class);
     }
 }

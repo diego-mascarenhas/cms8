@@ -8,12 +8,23 @@ class AssignAdminRole
 {
     /**
      * Handle the event.
-     *
-     * @return void
      */
-    public function handle(Registered $event)
+    public function handle(Registered $event): void
     {
         $user = $event->user;
-        $user->assignRole(2);
+
+        if ($user->roles()->exists())
+        {
+            return;
+        }
+
+        if ($user->ownedTeams()->where('personal_team', true)->exists())
+        {
+            $user->assignRole('admin');
+
+            return;
+        }
+
+        $user->assignRole('user');
     }
 }

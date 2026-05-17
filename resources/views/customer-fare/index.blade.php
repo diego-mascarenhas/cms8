@@ -26,7 +26,7 @@
         </a>
     </div>
     <div class="card-body">
-        {!! $dataTable->table(['class' => 'table table-striped table-bordered']) !!}
+        {!! $dataTable->table(['class' => 'table table-striped table-bordered table-hover']) !!}
     </div>
 </div>
 <!--/ DataTable Card -->

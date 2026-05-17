@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Support\DataTableFormatter;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
@@ -39,10 +40,9 @@ class ContactDataTable extends DataTable
                 }
                 $companyName = $row->enterprises->first() ? e($row->enterprises->first()->name) : '';
 
-                return '<div class="d-flex flex-column">
-							<span class="fw-medium text-body text-truncate">'.$fullName.'</span>
-							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
-						</div>';
+                $nameHtml = DataTableFormatter::showLink($row, 'contact.show', $fullName, 'view', [$row->id]);
+
+                return DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
             })
             ->filterColumn('name', function ($query, $keyword)
             {

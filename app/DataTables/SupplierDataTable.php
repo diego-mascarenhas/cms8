@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Enterprise;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -21,6 +22,10 @@ class SupplierDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'supplier.action')
             ->setRowId('id')
+            ->editColumn('name', function ($row)
+            {
+                return DataTableFormatter::showLink($row, 'client.show', $row->name, 'view', [$row->id]);
+            })
             ->addColumn('billing_address', function ($row)
             {
                 $billingAddress = $row->enterpriseBillingAddress();

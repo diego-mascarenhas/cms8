@@ -27,11 +27,16 @@ class NavbarNotificationsDropdownTest extends TestCase
         ]);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        \App\Models\Module::firstOrCreate(
+            ['key' => 'tasks'],
+            ['name' => 'Tasks', 'is_core' => false],
+        );
 
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->enableModule('tasks');
 
         $otherUser = User::factory()->create();
         $otherUser->teams()->attach($team->id, ['role' => 'admin']);
@@ -85,5 +90,19 @@ class NavbarNotificationsDropdownTest extends TestCase
         $response->assertSee('Notificación para mí', false);
         $response->assertDontSee('Notificación de otro', false);
         $response->assertDontSee('Diseño de vistas y componentes', false);
+        $response->assertSee('dropdown-notifications-dismiss', false);
+        $response->assertSee('ti-trash', false);
+        $response->assertSee('ti-circle-check', false);
+        $response->assertSee('dropdown-notifications-unread', false);
+        $response->assertSee(__('app.navbar_notifications_view_all_tasks'), false);
+        $response->assertSee('ti-speakerphone', false);
+        $response->assertSee('ti-layout-kanban', false);
+        $response->assertSee('aria-label="'.__('app.navbar_notification_dismiss').'"', false);
+        $response->assertDontSee('title="'.__('app.navbar_notification_dismiss').'"', false);
+        $response->assertSee('fst-italic', false);
+        $response->assertSee(
+            __('app.navbar_notification_created_at', ['date' => $mine->created_at->isoFormat('D MMM YYYY, HH:mm')]),
+            false,
+        );
     }
 }

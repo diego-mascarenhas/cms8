@@ -100,7 +100,7 @@
 <!-- Order List Table -->
 <div class="card">
 	<div class="card-datatable table-responsive">
-		{{ $dataTable->table(['class' => 'datatables-orders table']) }}
+		{{ $dataTable->table(['class' => 'datatables-orders table table-hover']) }}
 	</div>
 </div>
 

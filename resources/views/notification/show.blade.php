@@ -36,6 +36,11 @@
             </form>
             @endcan
         @endif
+        @if(! empty($notification->metadata['action_url']))
+        <a href="{{ $notification->metadata['action_url'] }}" class="btn btn-primary waves-effect waves-light">
+            <i class="ti ti-chart-bar me-1"></i>{{ __('app.performance_insight_notification_view') }}
+        </a>
+        @endif
         @if($notification->contact)
         <a href="{{ route('collaborator.notifications', $notification->contact->id) }}" class="btn btn-info waves-effect waves-light">
             <i class="ti ti-bell me-1"></i>Ver notificaciones del colaborador
@@ -106,16 +111,58 @@
                 <i class="ti ti-message me-2"></i>{{ __('Message Content') }}
             </h5>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label fw-medium">Asunto</label>
-                    <p class="text-body">{{ $notification->subject }}</p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-medium">Mensaje</label>
-                    <div class="border rounded p-3 bg-light">
-                        {!! $notification->formatted_message !!}
+                @if($dailyPerformanceInsight ?? null)
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">{{ __('app.performance_insight_column_headline') }}</label>
+                        <p class="text-body mb-0">{{ $dailyPerformanceInsight->headline }}</p>
                     </div>
-                </div>
+                    @if(filled($dailyPerformanceInsight->focus))
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">{{ __('app.performance_insight_column_focus') }}</label>
+                        <p class="text-body mb-0">{{ $dailyPerformanceInsight->focus }}</p>
+                    </div>
+                    @endif
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">{{ __('app.performance_insight_column_message') }}</label>
+                        <div class="border rounded p-3 bg-light mb-0">
+                            @if(filled($dailyPerformanceInsight->message))
+                                {!! nl2br(e($dailyPerformanceInsight->message)) !!}
+                            @elseif(filled($notification->message))
+                                {!! $notification->formatted_message !!}
+                            @else
+                                <span class="text-muted">{{ __('app.performance_insight_notification_empty_body') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @if(!empty($dailyPerformanceInsight->context_snapshot['highlights'] ?? []))
+                    <div class="mb-0">
+                        <label class="form-label fw-medium">{{ __('app.performance_insight_notification_highlights') }}</label>
+                        <ul class="list-unstyled mb-0">
+                            @foreach($dailyPerformanceInsight->context_snapshot['highlights'] as $highlight)
+                                <li class="mb-1 text-body"><i class="ti ti-point-filled ti-xs me-1 text-primary"></i>{{ $highlight }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+                    <p class="text-muted small mt-3 mb-0">
+                        {{ __('app.performance_insight_notification_ratio', ['ratio' => number_format((float) $dailyPerformanceInsight->performance_ratio, 2)]) }}
+                    </p>
+                @else
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">{{ __('Asunto') }}</label>
+                        <p class="text-body mb-0">{{ $notification->subject }}</p>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-medium">{{ __('Mensaje') }}</label>
+                        <div class="border rounded p-3 bg-light mb-0">
+                            @if(filled($notification->message))
+                                {!! $notification->formatted_message !!}
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 

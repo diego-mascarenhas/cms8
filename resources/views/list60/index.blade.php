@@ -67,7 +67,7 @@
             </div>
         </div> -->
         <div class="card-body">
-            {{ $dataTable->table() }}
+            {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
         </div>
     </div>
 

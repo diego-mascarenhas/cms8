@@ -304,95 +304,100 @@
         @endif
 
         <!-- Quick links  -->
-        @if ($configData['showQuickAccess'])
-            <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
-                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
-                    data-bs-auto-close="outside" aria-expanded="false">
-                    <i class='ti ti-layout-grid-add ti-md'></i>
-                </a>
-                <div class="dropdown-menu dropdown-menu-end py-0">
-                    <div class="dropdown-menu-header border-bottom">
-                        <div class="dropdown-header d-flex align-items-center py-3">
-                            <h5 class="text-body mb-0 me-auto">{{ __('app.shortcuts.title') }}</h5>
+        @php
+            $shortcutTeam         = auth()->user()?->currentTeam;
+            $shortcutsIconVisible = auth()->check() && $shortcutTeam?->getSetting('shortcuts_icon_visible', false);
+        @endphp
+        @if ($shortcutsIconVisible)
+            @php
+                $storedShortcuts = $shortcutTeam->getSetting('team_shortcuts', []) ?? [];
+
+                $defaultShortcutMeta = collect(\App\Support\TeamDefaultShortcuts::definitions())
+                    ->mapWithKeys(fn (array $definition, string $key): array => [
+                        $key => [
+                            'route' => $definition['route'],
+                            'module' => $definition['module'],
+                            'title' => $definition['title'],
+                            'subtitle' => $definition['subtitle'],
+                            'icon' => $definition['icon'],
+                        ],
+                    ])
+                    ->all();
+
+                $renderedShortcuts = [];
+                foreach ($storedShortcuts as $sc) {
+                    $type = $sc['type'] ?? 'custom';
+
+                    if ($type === 'default') {
+                        if (empty($sc['enabled'])) { continue; }
+                        $key  = $sc['key'] ?? '';
+                        $meta = $defaultShortcutMeta[$key] ?? null;
+                        if (! $meta) { continue; }
+
+                        // Module & permission checks
+                        if (! $shortcutTeam->hasModule($meta['module'])) { continue; }
+                        if (! \App\Support\TeamDefaultShortcuts::userCanSeeShortcut($key, auth()->user())) { continue; }
+                        if ($key === 'team_files' && ! auth()->user()->can('viewAny', \App\Models\TeamFile::class)) { continue; }
+                        if ($key === 'passwords'
+                            && ! $shortcutTeam->hasModule('passwords')
+                            && ! auth()->user()->hasRole('admin')
+                            && ! auth()->user()->hasRole('developer')
+                        ) { continue; }
+
+                        $renderedShortcuts[] = ['_type' => 'default', 'meta' => $meta];
+                    } else {
+                        if (! ($sc['enabled'] ?? true)) { continue; }
+                        if (empty($sc['title']) || empty($sc['url']) || empty($sc['icon'])) { continue; }
+                        $renderedShortcuts[] = ['_type' => 'custom', 'sc' => $sc];
+                    }
+                }
+
+                $shortcutColClass = count($renderedShortcuts) === 1 ? 'col-12' : 'col-6';
+            @endphp
+            @if (count($renderedShortcuts) > 0)
+                <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
+                    <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside" aria-expanded="false">
+                        <i class='ti ti-layout-grid-add ti-md'></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end py-0">
+                        <div class="dropdown-menu-header border-bottom">
+                            <div class="dropdown-header d-flex align-items-center py-3">
+                                <h5 class="text-body mb-0 me-auto">{{ __('app.shortcuts.title') }}</h5>
+                            </div>
+                        </div>
+                        <div class="dropdown-shortcuts-list scrollable-container">
+                            <div class="row row-bordered overflow-visible g-0">
+                                @foreach ($renderedShortcuts as $item)
+                                    @if ($item['_type'] === 'default')
+                                        @php $meta = $item['meta']; @endphp
+                                        <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                            <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                                <i class="{{ $meta['icon'] }} fs-4"></i>
+                                            </span>
+                                            <a href="{{ route($meta['route']) }}" class="stretched-link">{{ $meta['title'] }}</a>
+                                            <small class="text-muted mb-0">{{ $meta['subtitle'] }}</small>
+                                        </div>
+                                    @else
+                                        @php $sc = $item['sc']; @endphp
+                                        <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
+                                            <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                                <i class="{{ $sc['icon'] }} fs-4"></i>
+                                            </span>
+                                            <a href="{{ $sc['url'] }}"
+                                               @if(!empty($sc['open_in_new_tab'])) target="_blank" @endif
+                                               class="stretched-link">{{ $sc['title'] }}</a>
+                                            @if(!empty($sc['subtitle']))
+                                                <small class="text-muted mb-0">{{ $sc['subtitle'] }}</small>
+                                            @endif
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
                         </div>
                     </div>
-                    <div class="dropdown-shortcuts-list scrollable-container">
-                        @php
-                            $shortcutTeam = auth()->user()?->currentTeam;
-                            $showCalendarShortcut = ! auth()->check()
-                                || $shortcutTeam === null
-                                || $shortcutTeam->hasModule('calendar');
-                            $showProspectShortcut = ! auth()->check()
-                                || $shortcutTeam === null
-                                || $shortcutTeam->hasModule('prospecting');
-                            $showTeamFilesShortcut = auth()->check()
-                                && $shortcutTeam?->hasModule('team_files')
-                                && auth()->user()->can('viewAny', \App\Models\TeamFile::class);
-                            $showTimesShortcut = auth()->check() && $shortcutTeam?->hasModule('times');
-                            $showPasswordsShortcut = auth()->check() && (
-                                $shortcutTeam?->hasModule('passwords')
-                                || auth()->user()->hasRole('admin')
-                                || auth()->user()->hasRole('developer')
-                            );
-                            $shortcutVisibleCount = ($showCalendarShortcut ? 1 : 0)
-                                + ($showProspectShortcut ? 1 : 0)
-                                + ($showTeamFilesShortcut ? 1 : 0)
-                                + ($showTimesShortcut ? 1 : 0)
-                                + ($showPasswordsShortcut ? 1 : 0);
-                            $shortcutColClass = $shortcutVisibleCount === 1 ? 'col-12' : 'col-6';
-                        @endphp
-                        @if ($shortcutVisibleCount > 0)
-                            <div class="row row-bordered overflow-visible g-0">
-                                @if ($showCalendarShortcut)
-                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
-                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                            <i class="ti ti-calendar fs-4"></i>
-                                        </span>
-                                        <a href="{{ route('app-calendar') }}" class="stretched-link">{{ __('Calendario') }}</a>
-                                        <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
-                                    </div>
-                                @endif
-                                @if ($showProspectShortcut)
-                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
-                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                            <i class="ti ti-target fs-4"></i>
-                                        </span>
-                                        <a href="{{ route('prospect.search') }}" class="stretched-link">{{ __('Buscar clientes') }}</a>
-                                        <small class="text-muted mb-0">{{ __('Prospección') }}</small>
-                                    </div>
-                                @endif
-                                @if ($showTeamFilesShortcut)
-                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
-                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                            <i class="ti ti-folders fs-4"></i>
-                                        </span>
-                                        <a href="{{ route('team-file.index') }}" class="stretched-link">{{ __('Team files') }}</a>
-                                        <small class="text-muted mb-0">{{ __('app.shortcuts.team_files') }}</small>
-                                    </div>
-                                @endif
-                                @if ($showTimesShortcut)
-                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
-                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                            <i class="ti ti-hourglass fs-4"></i>
-                                        </span>
-                                        <a href="{{ route('time.index') }}" class="stretched-link">{{ __('Times') }}</a>
-                                        <small class="text-muted mb-0">{{ __('app.shortcuts.times') }}</small>
-                                    </div>
-                                @endif
-                                @if ($showPasswordsShortcut)
-                                    <div @class(['dropdown-shortcuts-item', $shortcutColClass])>
-                                        <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                            <i class="ti ti-lock fs-4"></i>
-                                        </span>
-                                        <a href="{{ route('passwords.index') }}" class="stretched-link">Contraseñas</a>
-                                        <small class="text-muted mb-0">Cofre</small>
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </li>
+                </li>
+            @endif
         @endif
         <!-- Quick links -->
 

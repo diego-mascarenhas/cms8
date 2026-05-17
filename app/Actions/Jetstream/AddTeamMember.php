@@ -4,6 +4,7 @@ namespace App\Actions\Jetstream;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Support\JetstreamTeamRoleSynchronizer;
 use Closure;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +16,8 @@ use Laravel\Jetstream\Rules\Role;
 
 class AddTeamMember implements AddsTeamMembers
 {
+    public function __construct(private JetstreamTeamRoleSynchronizer $roleSynchronizer) {}
+
     /**
      * Add a new team member to the given team.
      */
@@ -33,28 +36,7 @@ class AddTeamMember implements AddsTeamMembers
             ['role' => $role],
         );
 
-        // Sync Spatie role with Jetstream team role (simple mapping)
-        $roleMap = [
-            'admin' => 'admin',
-            'editor' => 'editor',
-        ];
-        if ($role && isset($roleMap[$role]))
-        {
-            // Remove mapped roles then assign the selected one
-            try
-            {
-                $newTeamMember->removeRole('admin');
-            } catch (\Throwable $e)
-            {
-            }
-            try
-            {
-                $newTeamMember->removeRole('editor');
-            } catch (\Throwable $e)
-            {
-            }
-            $newTeamMember->assignRole($roleMap[$role]);
-        }
+        $this->roleSynchronizer->sync($newTeamMember, $role);
 
         TeamMemberAdded::dispatch($team, $newTeamMember);
     }

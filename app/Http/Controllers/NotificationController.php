@@ -7,6 +7,7 @@ use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
+use App\Models\UserDailyPerformanceInsight;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -79,7 +80,28 @@ class NotificationController extends Controller
             $notification->refresh();
         }
 
-        return view('notification.show', compact('notification'));
+        $dailyPerformanceInsight = $this->resolveDailyPerformanceInsightForNotification($notification);
+
+        return view('notification.show', compact('notification', 'dailyPerformanceInsight'));
+    }
+
+    private function resolveDailyPerformanceInsightForNotification(Notification $notification): ?UserDailyPerformanceInsight
+    {
+        if (! $notification->isDailyPerformanceInsight())
+        {
+            return null;
+        }
+
+        $insightId = (int) ($notification->metadata['performance_insight_id'] ?? $notification->reference ?? 0);
+
+        if ($insightId <= 0)
+        {
+            return null;
+        }
+
+        return UserDailyPerformanceInsight::query()
+            ->where('team_id', $notification->team_id)
+            ->find($insightId);
     }
 
     /**
@@ -205,6 +227,42 @@ class NotificationController extends Controller
             'is_read' => $notification->is_read,
             'read_at' => $notification->read_at?->toIso8601String(),
             'read_at_formatted' => $notification->formatted_read_at,
+        ]);
+    }
+
+    /**
+     * Mark notification as unread (navbar / recipient).
+     */
+    public function markAsUnread(Notification $notification): JsonResponse
+    {
+        $this->authorizeNotificationRecipient($notification);
+
+        if ($notification->is_read)
+        {
+            $notification->markAsUnread();
+            $notification->refresh();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.navbar_notification_marked_unread'),
+            'is_read' => $notification->is_read,
+            'created_at_formatted' => $notification->created_at->isoFormat('D MMM YYYY, HH:mm'),
+        ]);
+    }
+
+    /**
+     * Dismiss a notification from the navbar dropdown (recipient only).
+     */
+    public function dismiss(Notification $notification): JsonResponse
+    {
+        $this->authorizeNotificationRecipient($notification);
+
+        $notification->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.navbar_notification_dismissed'),
         ]);
     }
 

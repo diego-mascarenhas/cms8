@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Helpers\TokenHelper;
 use App\Models\Account;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -20,6 +21,10 @@ class AccountDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($account)
+            {
+                return DataTableFormatter::showLink($account, 'account.edit', $account->name, 'update', [$account->id]);
+            })
             ->addColumn('owner_name', function ($account)
             {
                 return $account->owner->name;

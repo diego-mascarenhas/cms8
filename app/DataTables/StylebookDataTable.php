@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Helpers\Helpers;
 use App\Models\Stylebook;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -15,6 +16,10 @@ class StylebookDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($row)
+            {
+                return DataTableFormatter::showLink($row, 'stylebook.show', $row->name, 'view', [$row->id]);
+            })
             ->addColumn('action', function ($stylebook)
             {
                 return view('stylebook.action', compact('stylebook'))->render();
@@ -46,7 +51,7 @@ class StylebookDataTable extends DataTable
             {
                 $query->orderBy('date', $order);
             })
-            ->rawColumns(['action', 'language'])
+            ->rawColumns(['name', 'action', 'language'])
             ->setRowId('id');
     }
 

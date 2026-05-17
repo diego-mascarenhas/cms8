@@ -6,11 +6,14 @@ use App\Enums\ExternalProvider;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
+use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Services\TokenUsageLogService;
+use App\Support\TeamDefaultShortcuts;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +40,20 @@ class TeamSettingController extends Controller
             ->latest('id')
             ->first();
 
-        return view('team-settings.index', compact('team', 'groupedSettings', 'googleExternalAccount'));
+        $performanceInsightsModule = Module::query()
+            ->where('key', 'performance_insights')
+            ->where('status', 1)
+            ->first();
+
+        $performanceInsightsEnabled = $team->hasModule('performance_insights');
+
+        return view('team-settings.index', compact(
+            'team',
+            'groupedSettings',
+            'googleExternalAccount',
+            'performanceInsightsModule',
+            'performanceInsightsEnabled',
+        ));
     }
 
     public function businessConfig(Team $team)
@@ -132,6 +148,14 @@ class TeamSettingController extends Controller
                 );
                 $response = $agent->prompt($userMessage, [], Lab::Anthropic);
                 $summary = $response->text ?: '';
+
+                TokenUsageLogService::logFromAiResponse(
+                    teamId: (int) $team->id,
+                    service: 'TeamSettingController::businessSummary',
+                    usage: $response->usage ?? null,
+                    moduleKey: 'landings',
+                    inputSize: strlen($userMessage),
+                );
             } catch (\Throwable $e)
             {
                 Log::error('Business summary AI fallback failed', ['error' => $e->getMessage()]);
@@ -239,6 +263,25 @@ class TeamSettingController extends Controller
                     'is_encrypted' => false,
                 ]);
             }
+
+            if ($group === 'notifications')
+            {
+                foreach ([
+                    'notifications_email_enabled',
+                    'notifications_sms_enabled',
+                    'performance_insights_in_app_notification',
+                ] as $notificationBooleanKey)
+                {
+                    if (! array_key_exists($notificationBooleanKey, $settings))
+                    {
+                        $team->setSetting($notificationBooleanKey, false, [
+                            'group' => 'notifications',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -284,6 +327,8 @@ class TeamSettingController extends Controller
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
             'notifications_email_enabled',
+            'notifications_sms_enabled',
+            'performance_insights_in_app_notification',
             'assistant_auto_respond',
             'assistant_auto_respond_admins_when_off',
             'assistant_chat_stub',
@@ -386,8 +431,8 @@ class TeamSettingController extends Controller
             ],
             'notifications' => [
                 'title' => 'Notification Settings',
-                'icon' => 'ti ti-bell',
-                'settings' => [
+                'icon' => 'ti ti-speakerphone',
+                'settings' => array_merge([
                     'notifications_email_enabled' => [
                         'label' => 'Email Notifications',
                         'type' => 'checkbox',
@@ -404,6 +449,16 @@ class TeamSettingController extends Controller
                         'section' => 'general',
                         'row' => 1,
                     ],
+                ], $team->hasModule('performance_insights') ? [
+                    'performance_insights_in_app_notification' => [
+                        'label' => __('app.team_setting_performance_insights_in_app_notification'),
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('performance_insights_in_app_notification', '1'),
+                        'is_encrypted' => false,
+                        'section' => 'performance_insights',
+                        'row' => 3,
+                    ],
+                ] : [], [
                     'notifications_from_name' => [
                         'label' => 'From Name',
                         'type' => 'text',
@@ -422,7 +477,7 @@ class TeamSettingController extends Controller
                         'row' => 2,
                         'placeholder' => 'notifications@yourdomain.com',
                     ],
-                ],
+                ]),
             ],
             'api' => [
                 'title' => 'API Access Token',
@@ -804,6 +859,24 @@ class TeamSettingController extends Controller
                         'help' => 'Usually same as SMTP password',
                         'section' => 'incoming',
                         'row' => 2,
+                    ],
+                    'mailbox_spam_ai_enabled' => [
+                        'label' => 'AI spam classification',
+                        'type' => 'checkbox',
+                        'value' => filter_var($team->getSetting('mailbox_spam_ai_enabled'), FILTER_VALIDATE_BOOLEAN),
+                        'is_encrypted' => false,
+                        'help' => 'When enabled, new inbound messages are classified with AI and moved to Spam when detected.',
+                        'section' => 'incoming',
+                        'row' => 3,
+                    ],
+                    'mailbox_spam_ai_prompt' => [
+                        'label' => 'AI spam classification prompt',
+                        'type' => 'textarea',
+                        'value' => $team->getSetting('mailbox_spam_ai_prompt'),
+                        'is_encrypted' => false,
+                        'help' => 'Optional custom instructions for spam detection. Leave empty to use the default prompt.',
+                        'section' => 'incoming',
+                        'row' => 3,
                     ],
                 ],
             ],
@@ -1724,55 +1797,122 @@ class TeamSettingController extends Controller
     /**
      * Show team shortcuts configuration
      */
-    public function shortcuts(Team $team)
+    public function shortcuts(Team $team): \Illuminate\View\View
     {
         $this->authorize('update', $team);
 
-        $shortcuts = $team->getSetting('team_shortcuts', []);
+        $shortcutsIconVisible = (bool) $team->getSetting('shortcuts_icon_visible', false);
+        $savedShortcuts = $team->getSetting('team_shortcuts', []) ?? [];
 
-        return view('team-settings.shortcuts', compact('team', 'shortcuts'));
+        // Normalize legacy custom shortcuts (no type / enabled field)
+        $savedShortcuts = array_map(function ($sc)
+        {
+            if (! isset($sc['type']))
+            {
+                $sc['type'] = 'custom';
+            }
+
+            if (($sc['type'] ?? '') === 'custom' && ! array_key_exists('enabled', $sc))
+            {
+                $sc['enabled'] = true;
+            }
+
+            return $sc;
+        }, $savedShortcuts);
+
+        // Inject any default shortcuts not yet stored so they appear in the UI (disabled)
+        $availableDefaults = $this->getAvailableDefaultShortcuts($team);
+        $savedDefaultKeys = array_column(
+            array_filter($savedShortcuts, fn ($sc) => ($sc['type'] ?? '') === 'default'),
+            'key',
+        );
+
+        foreach (array_keys($availableDefaults) as $key)
+        {
+            if (! in_array($key, $savedDefaultKeys, true))
+            {
+                $savedShortcuts[] = [
+                    'type' => 'default',
+                    'key' => $key,
+                    'enabled' => TeamDefaultShortcuts::isEnabledByDefault($key, $team),
+                ];
+            }
+        }
+
+        $shortcuts = array_values($savedShortcuts);
+
+        return view('team-settings.shortcuts', compact('team', 'shortcuts', 'shortcutsIconVisible', 'availableDefaults'));
     }
 
     /**
      * Store team shortcuts configuration
      */
-    public function storeShortcuts(Request $request, Team $team)
+    public function storeShortcuts(Request $request, Team $team): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('update', $team);
 
         $request->validate([
-            'shortcuts' => 'array|max:6',
-            'shortcuts.*.title' => 'required|string|max:50',
+            'shortcuts_icon_visible' => 'nullable|boolean',
+            'shortcuts' => 'nullable|array|max:11',
+            'shortcuts.*.type' => 'required|in:default,custom',
+            'shortcuts.*.key' => 'nullable|string|max:50',
+            'shortcuts.*.enabled' => 'nullable|boolean',
+            'shortcuts.*.title' => 'nullable|string|max:50',
             'shortcuts.*.subtitle' => 'nullable|string|max:100',
-            'shortcuts.*.url' => 'required|string|max:255',
-            'shortcuts.*.icon' => 'required|string|max:50',
-            'shortcuts.*.open_in_new_tab' => 'boolean',
-            'shortcuts.*.order' => 'integer|min:0',
+            'shortcuts.*.url' => 'nullable|string|max:255',
+            'shortcuts.*.icon' => 'nullable|string|max:50',
+            'shortcuts.*.open_in_new_tab' => 'nullable|boolean',
+            'shortcuts.*.order' => 'nullable|integer|min:0',
         ]);
 
-        $shortcuts = $request->input('shortcuts', []);
+        $team->setSetting('shortcuts_icon_visible', $request->boolean('shortcuts_icon_visible'), [
+            'type' => 'boolean',
+            'group' => 'shortcuts',
+        ]);
 
-        // Filter out empty shortcuts
-        $shortcuts = array_filter($shortcuts, function ($shortcut)
+        $raw = $request->input('shortcuts', []);
+        $processed = [];
+
+        foreach ($raw as $sc)
         {
-            return ! empty($shortcut['title']) && ! empty($shortcut['url']) && ! empty($shortcut['icon']);
-        });
+            $type = $sc['type'] ?? 'custom';
 
-        // Sort shortcuts by order
-        usort($shortcuts, function ($a, $b)
+            if ($type === 'default')
+            {
+                $processed[] = [
+                    'type' => 'default',
+                    'key' => $sc['key'],
+                    'enabled' => (bool) ($sc['enabled'] ?? false),
+                    'order' => (int) ($sc['order'] ?? 99),
+                ];
+            } else
+            {
+                if (! empty($sc['title']) && ! empty($sc['url']) && ! empty($sc['icon']))
+                {
+                    $processed[] = [
+                        'type' => 'custom',
+                        'title' => $sc['title'],
+                        'subtitle' => $sc['subtitle'] ?? null,
+                        'url' => $sc['url'],
+                        'icon' => $sc['icon'],
+                        'enabled' => (bool) ($sc['enabled'] ?? false),
+                        'open_in_new_tab' => (bool) ($sc['open_in_new_tab'] ?? false),
+                        'order' => (int) ($sc['order'] ?? 99),
+                    ];
+                }
+            }
+        }
+
+        usort($processed, fn ($a, $b) => $a['order'] - $b['order']);
+
+        $processed = array_map(function ($sc)
         {
-            return ($a['order'] ?? 0) - ($b['order'] ?? 0);
-        });
+            unset($sc['order']);
 
-        // Remove order field from final data
-        $shortcuts = array_map(function ($shortcut)
-        {
-            unset($shortcut['order']);
+            return $sc;
+        }, $processed);
 
-            return $shortcut;
-        }, $shortcuts);
-
-        $team->setSetting('team_shortcuts', $shortcuts, [
+        $team->setSetting('team_shortcuts', array_values($processed), [
             'type' => 'json',
             'group' => 'shortcuts',
         ]);
@@ -1780,5 +1920,24 @@ class TeamSettingController extends Controller
         return redirect()
             ->back()
             ->with('success', 'Team shortcuts updated successfully');
+    }
+
+    /**
+     * Default system shortcuts available for all teams.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function getAvailableDefaultShortcuts(Team $team): array
+    {
+        return collect(TeamDefaultShortcuts::definitions())
+            ->filter(fn (array $definition): bool => $team->hasModule($definition['module']))
+            ->mapWithKeys(fn (array $definition, string $key): array => [
+                $key => [
+                    'title' => $definition['title'],
+                    'subtitle' => $definition['subtitle'],
+                    'icon' => $definition['icon'],
+                ],
+            ])
+            ->all();
     }
 }

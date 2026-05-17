@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Prompt;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -14,6 +15,10 @@ class PromptDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('section_label', function ($prompt)
+            {
+                return DataTableFormatter::showLink($prompt, 'prompt.show', $prompt->section_label, 'view', [$prompt]);
+            })
             ->addColumn('action', function ($prompt)
             {
                 return view('prompt.action', compact('prompt'));
@@ -30,7 +35,7 @@ class PromptDataTable extends DataTable
                     ? '<span class="badge bg-label-info">'.e($prompt->module->name).'</span>'
                     : '';
             })
-            ->rawColumns(['action', 'is_active', 'module_name'])
+            ->rawColumns(['section_label', 'action', 'is_active', 'module_name'])
             ->setRowId('id');
     }
 

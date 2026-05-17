@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Message;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -24,7 +25,11 @@ class MessageDataTable extends DataTable
             ->rawColumns(['name', 'action', 'status_id', 'category_info', 'progress'])
             ->editColumn('name', function ($data)
             {
-                return '<span class="fw-semibold">'.e($data->name).'</span>';
+                return DataTableFormatter::link(
+                    route('message.show', $data->id),
+                    $data->name,
+                    'fw-semibold',
+                );
             })
             ->addColumn('category_info', function ($data)
             {

@@ -29,6 +29,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Notification settings
             'notifications.notifications_email' => 'nullable|in:0,1',
             'notifications.notifications_sms' => 'nullable|in:0,1',
+            'notifications.notifications_email_enabled' => 'nullable|in:0,1',
+            'notifications.notifications_sms_enabled' => 'nullable|in:0,1',
+            'notifications.performance_insights_in_app_notification' => 'nullable|in:0,1',
 
             // Chat / Assistant settings
             'chat.assistant_auto_respond' => 'nullable|in:0,1',

@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\SubscriptionProduct;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -19,6 +20,18 @@ class SubscriptionProductDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($product)
+            {
+                if (! auth()->user()?->hasRole('root'))
+                {
+                    return e($product->name);
+                }
+
+                return DataTableFormatter::link(
+                    route('account.products.edit', $product->id),
+                    $product->name,
+                );
+            })
             ->editColumn('active', function ($product)
             {
                 return $product->active
@@ -48,32 +61,37 @@ class SubscriptionProductDataTable extends DataTable
             ->addColumn('action', function ($product)
             {
                 $html = '<div class="d-flex justify-content-center align-items-center">';
-                if (auth()->user()->hasRole('root')) {
+                if (auth()->user()->hasRole('root'))
+                {
                     $html .= '<a href="'.route('account.products.edit', $product->id).'" class="text-body" title="Editar producto">
                         <i class="ti ti-edit ti-sm me-2"></i>
                     </a>';
                 }
                 // SLA actions
-                if ($product->sla) {
+                if ($product->sla)
+                {
                     $html .= '<a href="'.route('sla.edit', ['productId' => $product->id, 'slaId' => $product->sla->id]).'" class="text-body" title="Editar SLA">
                         <i class="ti ti-file-text ti-sm me-2"></i>
                     </a>';
-                } else {
+                } else
+                {
                     $html .= '<a href="'.route('sla.create', $product->id).'" class="text-body" title="Crear SLA">
                         <i class="ti ti-file-plus ti-sm me-2"></i>
                     </a>';
                 }
                 // Send SLA button
-                if ($product->sla) {
+                if ($product->sla)
+                {
                     $html .= '<a href="javascript:;" class="text-body send-sla-btn" data-product-id="'.$product->id.'" title="Enviar SLA">
                         <i class="ti ti-send ti-sm me-2"></i>
                     </a>';
                 }
                 $html .= '</div>';
+
                 return $html;
             })
             ->setRowId('id')
-            ->rawColumns(['active', 'action']);
+            ->rawColumns(['name', 'active', 'action']);
     }
 
     public function query(SubscriptionProduct $model): QueryBuilder

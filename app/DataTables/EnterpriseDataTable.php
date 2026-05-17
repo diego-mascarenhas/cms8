@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Enterprise;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -32,17 +33,18 @@ class EnterpriseDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
-                return '<div class="d-flex flex-column">
-							<span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
-							<small class="text-muted">'.e($row->email ?? '-').'</small>
-						</div>';
+                $nameHtml = auth()->user()?->hasAnyRole(['admin', 'collaborator', 'client'])
+                    ? DataTableFormatter::link(route('client.show', $row->id), $row->name)
+                    : '<span class="fw-medium text-body text-truncate">'.e($row->name).'</span>';
+
+                return DataTableFormatter::nameColumn($nameHtml, $row->email ?? '-');
             })
             ->addColumn('billing_addresses', function ($row)
             {
                 // Obtener solo la dirección de facturación activa
                 $activeAddress = $row->enterpriseBillingAddresses->where('status', 1)->first();
-                
-                if (!$activeAddress)
+
+                if (! $activeAddress)
                 {
                     return '<span class="text-muted">-</span>';
                 }

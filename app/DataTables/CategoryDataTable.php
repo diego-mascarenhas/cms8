@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Category;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -22,6 +23,10 @@ class CategoryDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'category.action')
             ->setRowId('id')
+            ->editColumn('name', function ($data)
+            {
+                return DataTableFormatter::showLink($data, 'categories.edit', $data->name, 'update', [$data->id]);
+            })
             ->rawColumns(['name', 'action', 'status'])
             ->addColumn('user_count', function ($data)
             {

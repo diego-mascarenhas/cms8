@@ -26,6 +26,10 @@ class AssistantFabTest extends TestCase
         $this->assertStringContainsString('wire:snapshot', $html);
         $this->assertStringNotContainsString('wire:model="respondWithAudio"', $html);
         $this->assertStringNotContainsString('href="'.route('assistant').'"', $html);
+        $this->assertStringContainsString('assistant-empty-suggestions', $html);
+        $this->assertStringContainsString('assistant-suggestion-example', $html);
+        $this->assertStringContainsString('data-prompt=', $html);
+        $this->assertStringContainsString('id="assistant-offcanvas-reset-btn"', $html);
     }
 
     public function test_dedicated_assistant_page_does_not_render_floating_button(): void

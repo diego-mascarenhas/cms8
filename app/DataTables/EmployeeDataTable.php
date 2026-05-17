@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -26,15 +27,10 @@ class EmployeeDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
-                $fullName = e($row->name);
-                if (! empty($row->surname))
-                {
-                    $fullName .= ' '.e($row->surname);
-                }
+                $fullName = trim($row->name.' '.($row->surname ?? ''));
+                $nameHtml = DataTableFormatter::showLink($row, 'employee.show', $fullName, 'view', [$row->id]);
 
-                return '<div class="d-flex flex-column">
-							<span class="fw-medium text-body text-truncate">'.$fullName.'</span>
-						</div>';
+                return '<div class="d-flex flex-column">'.$nameHtml.'</div>';
             })
             ->addColumn('city', function ($row)
             {

@@ -3,7 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Content;
-use App\Support\ContentsSectionCategoryData;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -25,9 +25,12 @@ class ContentDataTable extends DataTable
             {
                 $title = $content->resolveAdministrativeTitle();
 
-                return $title !== null
-                    ? e($title)
-                    : '<span class="text-muted">'.__('app.No title').'</span>';
+                if ($title === null)
+                {
+                    return '<span class="text-muted">'.__('app.No title').'</span>';
+                }
+
+                return DataTableFormatter::showLink($content, 'contents.show', $title, 'view', [$content->id]);
             })
             ->editColumn('section_category_id', function (Content $content)
             {

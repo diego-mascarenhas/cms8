@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\DailyPerformanceInsightMail;
 use App\Models\Team;
+use App\Services\UserDailyPerformanceInsightNotificationService;
 use App\Services\UserDailyPerformanceInsightService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class GenerateDailyPerformanceInsightsCommand extends Command
 {
@@ -12,8 +15,10 @@ class GenerateDailyPerformanceInsightsCommand extends Command
 
     protected $description = 'Create or refresh daily performance insight rows for admin and root users only (per team). Without --force, existing rows for that calendar day are left unchanged.';
 
-    public function handle(UserDailyPerformanceInsightService $service): int
-    {
+    public function handle(
+        UserDailyPerformanceInsightService $service,
+        UserDailyPerformanceInsightNotificationService $notificationService,
+    ): int {
         $date = $this->option('date') ? \Carbon\Carbon::parse($this->option('date')) : now();
         $teamId = $this->option('team');
         $userId = $this->option('user');
@@ -27,6 +32,11 @@ class GenerateDailyPerformanceInsightsCommand extends Command
         $skippedNonPrivileged = 0;
         foreach ($teams as $team)
         {
+            if (! $team->hasModule('performance_insights'))
+            {
+                continue;
+            }
+
             foreach ($team->allUsers()->unique('id') as $user)
             {
                 if ($userId && (int) $user->id !== (int) $userId)
@@ -39,8 +49,22 @@ class GenerateDailyPerformanceInsightsCommand extends Command
 
                     continue;
                 }
-                $service->ensureTodayRecord($user, $team, null, $date, $force);
+
+                $insightDate = $date->toDateString();
+                $hadInsight = $notificationService->insightExistsForDay($user, $team, $insightDate);
+
+                $insight = $service->ensureTodayRecord($user, $team, null, $date, $force);
                 $count++;
+
+                if ($team->performanceInsightsInAppNotificationEnabled())
+                {
+                    $notificationService->syncForInsight($insight, $team, markUnread: $force || ! $hadInsight);
+                }
+
+                if (config('daily_performance_insight.send_email', true) && $user->email)
+                {
+                    Mail::to($user->email)->send(new DailyPerformanceInsightMail($insight));
+                }
             }
         }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class AgentConversationContextService
@@ -13,24 +14,11 @@ class AgentConversationContextService
     public const DEFAULT_HISTORY_LIMIT = 20;
 
     /**
-     * Latest chat_assistant conversation for the user (same scope as history), or null.
+     * Latest active assistant conversation for the user (same scope as history), or null.
      */
     public function getAssistantConversationForUser(int $userId, ?int $teamId = null): ?AgentConversation
     {
-        $teamId = $this->resolveTeamId($teamId);
-        $query = AgentConversation::where('user_id', $userId)
-            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at');
-
-        if ($teamId !== null)
-        {
-            $query->where('team_id', $teamId);
-        } else
-        {
-            $query->whereNull('team_id');
-        }
-
-        return $query->first();
+        return $this->activeAssistantConversationQuery($userId, $teamId)->first();
     }
 
     public function getAssistantToolFlowRoutingKey(int $userId, int $teamId): ?string
@@ -53,6 +41,19 @@ class AgentConversationContextService
     }
 
     /**
+     * Hide current assistant history from UI and LLM context without deleting stored messages.
+     */
+    public function startFreshAssistantContext(int $userId, ?int $teamId = null): AgentConversation
+    {
+        $teamId = $this->resolveTeamId($teamId);
+
+        $this->activeAssistantConversationQuery($userId, $teamId)
+            ->update(['archived_at' => now()]);
+
+        return $this->createAssistantConversation($userId, 'Chat', $teamId);
+    }
+
+    /**
      * Resolve team ID for scoping: from auth user's current team, or null (conversations without team stay hidden in team context).
      */
     private function resolveTeamId(?int $teamId = null): ?int
@@ -72,37 +73,14 @@ class AgentConversationContextService
      */
     public function getOrCreateConversation(int $userId, string $title = 'Chat', ?int $teamId = null): AgentConversation
     {
-        $teamId = $this->resolveTeamId($teamId);
-        $query = AgentConversation::where('user_id', $userId)
-            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at');
-
-        if ($teamId !== null)
-        {
-            $query->where('team_id', $teamId);
-        } else
-        {
-            $query->whereNull('team_id');
-        }
-
-        $conversation = $query->first();
+        $conversation = $this->getAssistantConversationForUser($userId, $teamId);
 
         if ($conversation)
         {
             return $conversation;
         }
 
-        $payload = [
-            'id' => (string) Str::uuid(),
-            'user_id' => $userId,
-            'title' => $this->normalizeConversationTitle($title),
-        ];
-        if ($teamId !== null)
-        {
-            $payload['team_id'] = $teamId;
-        }
-
-        return AgentConversation::create($payload);
+        return $this->createAssistantConversation($userId, $title, $this->resolveTeamId($teamId));
     }
 
     /**
@@ -113,20 +91,7 @@ class AgentConversationContextService
      */
     public function getHistoryForPrompt(int $userId, int $limit = self::DEFAULT_HISTORY_LIMIT, ?int $teamId = null): array
     {
-        $teamId = $this->resolveTeamId($teamId);
-        $query = AgentConversation::where('user_id', $userId)
-            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at');
-
-        if ($teamId !== null)
-        {
-            $query->where('team_id', $teamId);
-        } else
-        {
-            $query->whereNull('team_id');
-        }
-
-        $conversation = $query->first();
+        $conversation = $this->getAssistantConversationForUser($userId, $teamId);
 
         if (! $conversation)
         {
@@ -152,20 +117,7 @@ class AgentConversationContextService
      */
     public function getMessagesForDisplay(int $userId, int $limit = 50, ?int $teamId = null): array
     {
-        $teamId = $this->resolveTeamId($teamId);
-        $query = AgentConversation::where('user_id', $userId)
-            ->whereHas('messages', fn ($q) => $q->where('agent', self::AGENT_NAME))
-            ->orderByDesc('updated_at');
-
-        if ($teamId !== null)
-        {
-            $query->where('team_id', $teamId);
-        } else
-        {
-            $query->whereNull('team_id');
-        }
-
-        $conversation = $query->first();
+        $conversation = $this->getAssistantConversationForUser($userId, $teamId);
 
         if (! $conversation)
         {
@@ -294,6 +246,40 @@ class AgentConversationContextService
                 'assistant_tool_flow_routing_key' => $assistantFlowRoutingKey,
             ]);
         }
+    }
+
+    private function activeAssistantConversationQuery(int $userId, ?int $teamId = null): Builder
+    {
+        $teamId = $this->resolveTeamId($teamId);
+        $query = AgentConversation::query()
+            ->where('user_id', $userId)
+            ->whereNull('archived_at')
+            ->orderByDesc('updated_at');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        } else
+        {
+            $query->whereNull('team_id');
+        }
+
+        return $query;
+    }
+
+    private function createAssistantConversation(int $userId, string $title, ?int $teamId): AgentConversation
+    {
+        $payload = [
+            'id' => (string) Str::uuid(),
+            'user_id' => $userId,
+            'title' => $this->normalizeConversationTitle($title),
+        ];
+        if ($teamId !== null)
+        {
+            $payload['team_id'] = $teamId;
+        }
+
+        return AgentConversation::create($payload);
     }
 
     /**

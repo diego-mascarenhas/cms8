@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Fare;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -14,6 +15,10 @@ class FareDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($fare)
+            {
+                return DataTableFormatter::showLink($fare, 'fare.edit', $fare->name, 'update', [$fare->id]);
+            })
             ->addColumn('action', function ($fare)
             {
                 return view('fare.action', compact('fare'));
@@ -51,7 +56,7 @@ class FareDataTable extends DataTable
                 // This is a simplified approach as units is a many-to-many relationship
                 $query->orderBy('name', $order);
             })
-            ->rawColumns(['action', 'units'])
+            ->rawColumns(['name', 'action', 'units'])
             ->setRowId('id');
     }
 

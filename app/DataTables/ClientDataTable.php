@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Enterprise;
+use App\Support\DataTableFormatter;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -24,10 +25,9 @@ class ClientDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
-                return '<div class="d-flex flex-column">
-							<span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
-							<small class="text-muted">'.e($row->responsible->name ?? 'Sin asignar').'</small>
-						</div>';
+                $nameHtml = DataTableFormatter::showLink($row, 'client.show', $row->name, 'view', [$row->id]);
+
+                return DataTableFormatter::nameColumn($nameHtml, $row->responsible->name ?? 'Sin asignar');
             })
             ->addColumn('sources', function ($row)
             {

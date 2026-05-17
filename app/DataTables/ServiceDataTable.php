@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Service;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class ServiceDataTable extends DataTable
 
         return $table
             ->setRowId('id')
-            ->rawColumns(['name', 'action', 'status', 'operation_type'])
+            ->rawColumns(['name', 'action', 'status', 'operation_type', 'enterprise_id'])
             ->addColumn('operation_type', function ($data)
             {
                 if ($data->operation == 'buy')
@@ -40,7 +41,19 @@ class ServiceDataTable extends DataTable
             })
             ->editColumn('enterprise_id', function ($data)
             {
-                return $data->client ? $data->client->name : 'N/A';
+                if (! $data->client)
+                {
+                    return 'N/A';
+                }
+
+                return DataTableFormatter::showLink(
+                    $data,
+                    'service.show',
+                    $data->client->name,
+                    'view',
+                    [$data->id],
+                    'fw-medium text-body',
+                );
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {

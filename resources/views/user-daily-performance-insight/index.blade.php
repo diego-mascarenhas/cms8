@@ -26,10 +26,15 @@
                 <div class="col-md-4">
                     <label class="form-label" for="insight_date">{{ __('app.performance_insight_filter_date') }}</label>
                     <input type="date" class="form-control" id="insight_date" name="insight_date"
-                        value="{{ request('insight_date') }}">
+                        value="{{ request('insight_date', now()->toDateString()) }}">
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary">{{ __('app.performance_insight_filter_apply') }}</button>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="{{ route('performance-insights.index') }}" class="btn btn-label-secondary btn-sm">
+                        {{ __('app.performance_insight_filter_all_dates') }}
+                    </a>
                 </div>
             </form>
         </div>
@@ -37,11 +42,11 @@
 
     <div class="card">
         <div class="card-body">
-            {{ $dataTable->table() }}
+            {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
         </div>
     </div>
 @endsection
 
 @push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    {{ $dataTable->scripts() }}
 @endpush

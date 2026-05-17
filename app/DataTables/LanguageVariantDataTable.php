@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Helpers\Helpers;
 use App\Models\LanguageVariant;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -40,8 +41,16 @@ class LanguageVariantDataTable extends DataTable
                 }
 
                 $flag = $flagCode ? '<span class="fi fi-'.$flagCode.' me-2"></span>' : '';
+                $nameHtml = DataTableFormatter::showLink(
+                    $row,
+                    'language-variants.edit',
+                    $row->name,
+                    'update',
+                    [$row->id],
+                    'fw-medium text-body',
+                );
 
-                return $flag.e($row->name);
+                return $flag.$nameHtml;
             })
             ->editColumn('base_language', function ($row)
             {

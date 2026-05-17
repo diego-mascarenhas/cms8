@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Software;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -14,6 +15,10 @@ class SoftwareDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('name', function ($software)
+            {
+                return DataTableFormatter::showLink($software, 'software.edit', $software->name, 'update', ['software' => $software->id]);
+            })
             ->addColumn('action', function ($software)
             {
                 return view('software.action', compact('software'));
@@ -31,7 +36,7 @@ class SoftwareDataTable extends DataTable
                 $query->leftJoin('categories', 'software.category_id', '=', 'categories.id')
                     ->orderBy('categories.name', $order);
             })
-            ->rawColumns(['action'])
+            ->rawColumns(['name', 'action'])
             ->setRowId('id');
     }
 

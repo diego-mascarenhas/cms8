@@ -4,6 +4,26 @@
 
 @section('page-style')
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<style>
+    .team-settings-card--disabled {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .team-settings-card--disabled::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(128, 128, 128, 0.35);
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .team-settings-card--disabled .card-body {
+        opacity: 0.75;
+    }
+</style>
 @endsection
 
 @section('content')
@@ -68,6 +88,25 @@
                             <h5 class="card-title">Notifications</h5>
                             <p class="card-text">Manage notification preferences for your team</p>
                             <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'notifications']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div @class([
+                        'card',
+                        'h-100',
+                        'team-settings-card--disabled' => ! $performanceInsightsEnabled,
+                    ]) data-module="performance_insights">
+                        <div class="card-body text-center">
+                            <i class="ti ti-{{ $performanceInsightsModule?->icon ?? 'chart-infographic' }} mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ $performanceInsightsModule?->name ?? __('app.performance_insights_menu') }}</h5>
+                            <p class="card-text">{{ $performanceInsightsModule?->description ?? __('app.shortcuts.performance_insights') }}</p>
+                            @if ($performanceInsightsEnabled)
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'notifications']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                            @else
+                                <span class="badge bg-label-secondary">{{ __('Inactive') }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -136,6 +137,12 @@ class CollaboratorDataTable extends DataTable
                 $query->orderBy('projects_count', $order);
             })
             ->setRowId('id')
+            ->editColumn('name', function ($row)
+            {
+                $fullName = trim($row->name.' '.($row->surname ?? ''));
+
+                return DataTableFormatter::showLink($row, 'collaborator.show', $fullName, 'view', [$row->id]);
+            })
             ->filterColumn('services', function ($query, $keyword)
             {
                 if ($keyword !== '')

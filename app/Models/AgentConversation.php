@@ -20,6 +20,11 @@ class AgentConversation extends Model
         'team_id',
         'title',
         'assistant_tool_flow_routing_key',
+        'archived_at',
+    ];
+
+    protected $casts = [
+        'archived_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

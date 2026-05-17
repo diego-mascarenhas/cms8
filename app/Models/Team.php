@@ -291,6 +291,12 @@ class Team extends JetstreamTeam
             ]);
         }
 
+        if ($moduleKey === 'performance_insights')
+        {
+            $this->load('modules');
+            \App\Support\TeamDefaultShortcuts::applyPerformanceInsightsTeamDefaults($this);
+        }
+
         return true;
     }
 
@@ -408,6 +414,22 @@ class Team extends JetstreamTeam
     public function isPublicCatalogEnabled(): bool
     {
         return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Whether daily performance insights create an in-app notification (navbar bell).
+     */
+    public function performanceInsightsInAppNotificationEnabled(): bool
+    {
+        if (! $this->hasModule('performance_insights'))
+        {
+            return false;
+        }
+
+        return filter_var(
+            $this->getSetting('performance_insights_in_app_notification', true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
     }
 
     /**

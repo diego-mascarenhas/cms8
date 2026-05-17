@@ -1,23 +1,17 @@
-@component('mail::message')
-  {{ __('You have been invited to join the :team team!', ['team' => $invitation->team->name]) }}
+@extends('emails.layouts.humano')
 
-  @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::registration()))
-    {{ __('If you do not have an account, you may create one by clicking the button below. After creating an account, you may click the invitation acceptance button in this email to accept the team invitation:') }}
+@section('title', __('Team Invitation'))
 
-    @component('mail::button', ['url' => route('register')])
-      {{ __('Create Account') }}
-    @endcomponent
+@section('content')
+    <h1>{{ __('Team Invitation') }}</h1>
 
-    {{ __('If you already have an account, you may accept this invitation by clicking the button below:') }}
+    <p class="center">{{ __('You have been invited to join the :team team!', ['team' => $invitation->team->name]) }}</p>
 
-  @else
-    {{ __('You may accept this invitation by clicking the button below:') }}
-  @endif
+    <p class="center">{{ __('Click the button below to create your account or sign in and join the team.') }}</p>
 
+    <div class="btn-wrap">
+        <a href="{{ $acceptUrl }}" class="btn">{{ __('Accept Invitation') }}</a>
+    </div>
 
-  @component('mail::button', ['url' => $acceptUrl])
-    {{ __('Accept Invitation') }}
-  @endcomponent
-
-  {{ __('If you did not expect to receive an invitation to this team, you may discard this email.') }}
-@endcomponent
+    <p class="muted" style="margin-top: 20px;">{{ __('If you did not expect to receive an invitation to this team, you may discard this email.') }}</p>
+@endsection

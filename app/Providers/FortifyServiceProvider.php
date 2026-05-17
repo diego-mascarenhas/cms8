@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Responses\RegistrationRegisterResponse;
+use App\Support\PendingTeamInvitation;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,6 +35,16 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
+        Fortify::registerView(function ()
+        {
+            $invitation = PendingTeamInvitation::get(request());
+
+            return view('auth.register', [
+                'teamInvitation' => $invitation,
+                'lockInvitationEmail' => $invitation !== null,
+            ]);
+        });
 
         RateLimiter::for('login', function (Request $request)
         {

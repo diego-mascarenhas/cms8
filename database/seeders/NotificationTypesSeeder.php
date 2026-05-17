@@ -113,6 +113,15 @@ Saludos,
                 'is_customizable' => false,
                 'is_active' => true,
             ],
+            [
+                'name' => 'Daily Performance Insight',
+                'template_subject' => 'Insight diario: {headline}',
+                'template_body' => '{focus}
+
+{message}',
+                'is_customizable' => false,
+                'is_active' => true,
+            ],
         ];
 
         foreach ($types as $type)

@@ -2,8 +2,10 @@
 
 namespace App\Actions\Fortify;
 
+use App\Actions\Jetstream\AcceptTeamInvitation;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\PendingTeamInvitation;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -13,6 +15,8 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
+    public function __construct(private AcceptTeamInvitation $acceptTeamInvitation) {}
+
     /**
      * Create a newly registered user.
      *
@@ -20,14 +24,26 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        $pendingInvitation = PendingTeamInvitation::get(request());
+
+        $emailRules = ['required', 'string', 'email', 'max:255', 'unique:users'];
+
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'email' => array_merge($emailRules, $pendingInvitation ? [
+                function (string $attribute, mixed $value, \Closure $fail) use ($pendingInvitation): void
+                {
+                    if (strcasecmp((string) $value, (string) $pendingInvitation->email) !== 0)
+                    {
+                        $fail(__('This invitation was sent to a different email address.'));
+                    }
+                },
+            ] : []),
             'password' => $this->passwordRules(),
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();
 
-        return User::query()->getModel()->getConnection()->transaction(function () use ($input)
+        return User::query()->getModel()->getConnection()->transaction(function () use ($input, $pendingInvitation)
         {
             $user = User::create([
                 'name' => $input['name'],
@@ -35,7 +51,17 @@ class CreateNewUser implements CreatesNewUsers
                 'password' => Hash::make($input['password']),
             ]);
 
-            $this->createTeam($user);
+            if ($pendingInvitation)
+            {
+                $user->forceFill(['email_verified_at' => now()])->save();
+
+                PendingTeamInvitation::pull(request());
+                $this->acceptTeamInvitation->accept($user, $pendingInvitation);
+            } else
+            {
+                $this->createPersonalTeam($user);
+            }
+
             $user->refresh();
 
             return $user;
@@ -43,9 +69,9 @@ class CreateNewUser implements CreatesNewUsers
     }
 
     /**
-     * Create a personal team for the user.
+     * Create a personal team for self-registered users.
      */
-    protected function createTeam(User $user): void
+    protected function createPersonalTeam(User $user): void
     {
         $team = $user->ownedTeams()->save(Team::forceCreate([
             'user_id' => $user->id,
@@ -53,7 +79,6 @@ class CreateNewUser implements CreatesNewUsers
             'personal_team' => true,
         ]));
 
-        // Set the current team for the user
         $user->forceFill([
             'current_team_id' => $team->id,
         ])->save();

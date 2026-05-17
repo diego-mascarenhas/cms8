@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Task;
+use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -17,6 +18,10 @@ class TaskDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'task.action')
             ->setRowId('id')
+            ->editColumn('title', function ($row)
+            {
+                return DataTableFormatter::showLink($row, 'task.edit', $row->title, 'update', [$row->id]);
+            })
             ->addColumn('project_name', function ($row)
             {
                 return $row->project ? ($row->project->real_name ?: $row->project->name) : __('No project');
@@ -44,7 +49,7 @@ class TaskDataTable extends DataTable
             {
                 return $row->status_label;
             })
-            ->rawColumns(['action', 'status_id']);
+            ->rawColumns(['action', 'title', 'status_id']);
     }
 
     public function query(Task $model): QueryBuilder
@@ -68,11 +73,23 @@ class TaskDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
-            ->ordering(false)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
+                'autoWidth' => false,
+                'columnDefs' => [
+                    [
+                        'targets' => 0,
+                        'visible' => false,
+                        'searchable' => false,
+                        'orderable' => false,
+                    ],
+                ],
                 'initComplete' => "function() {
 					var api = this.api();
+					api.columns.adjust();
+					if (api.responsive) {
+						api.responsive.recalc();
+					}
 					api.columns('.select-filter').every(function() {
 						var column = this;
 						$('.filter-status').on('click', function(e) {
@@ -82,13 +99,26 @@ class TaskDataTable extends DataTable
 						});
 					});
 				}",
+                'drawCallback' => 'function() {
+					var api = this.api();
+					api.columns.adjust();
+					if (api.responsive) {
+						api.responsive.recalc();
+					}
+					$("#task-table tbody tr").css({
+						"user-select": "none",
+						"-webkit-user-select": "none",
+						"-moz-user-select": "none",
+						"-ms-user-select": "none"
+					});
+				}',
             ]);
     }
 
     public function getColumns(): array
     {
         return [
-            Column::make('id')->hidden(),
+            Column::make('id')->hidden()->searchable(false),
             Column::make('title')
                 ->title(__('Title'))
                 ->addClass('all'),
@@ -103,29 +133,32 @@ class TaskDataTable extends DataTable
                 ->searchable(true)
                 ->orderable(false),
             Column::make('start_date')
-                ->title(__('Start date'))
+                ->title(__('app.task_table_start'))
                 ->className('text-center')
                 ->addClass('min-desktop')
+                ->width(105)
                 ->searchable(false)
                 ->orderable(false),
             Column::make('due_date')
-                ->title(__('Due date'))
+                ->title(__('app.task_table_due'))
                 ->className('text-center')
                 ->addClass('min-desktop')
+                ->width(115)
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
                 ->title(__('Status'))
                 ->className('text-center')
-                ->addClass('min-tablet'),
+                ->addClass('min-tablet')
+                ->width(120)
+                ->orderable(false),
             Column::computed('action')
                 ->title(__('Actions'))
-                ->width(20)
+                ->width(80)
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->exportable(false)
-                ->printable(false)
-                ->width(30),
+                ->printable(false),
         ];
     }
 

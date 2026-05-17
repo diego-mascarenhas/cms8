@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Notification;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -47,8 +48,11 @@ class NotificationDataTable extends DataTable
             })
             ->editColumn('subject', function ($notification)
             {
-                return '<span title="'.e($notification->subject).'">'.
-                       e(\Str::limit($notification->subject, 50)).'</span>';
+                $label = \Str::limit($notification->subject, 50);
+
+                return '<span title="'.e($notification->subject).'">'
+                    .DataTableFormatter::showLink($notification, 'notification.show', $label, 'view', [$notification->id], 'text-body')
+                    .'</span>';
             })
             ->rawColumns(['action', 'status', 'read_status', 'subject'])
             ->setRowId('id');
@@ -143,8 +147,8 @@ class NotificationDataTable extends DataTable
             Column::make('subject')->title('Asunto'),
             Column::make('contact_name')->title('Contacto')->searchable(false)->orderable(false),
             Column::make('type_name')->title('Tipo')->searchable(false)->orderable(false),
-            Column::make('status')->title('Estado')->searchable(false)->orderable(false),
-            Column::make('read_status')->title('Leído')->searchable(false)->orderable(false),
+            Column::make('status')->title('Estado')->searchable(false)->orderable(false)->addClass('text-center'),
+            Column::make('read_status')->title('Leído')->searchable(false)->orderable(false)->addClass('text-center'),
             Column::make('sent_date')->title('Enviado')->searchable(false)->orderable(false),
             Column::make('created_at')->title('Creado'),
             Column::computed('action')

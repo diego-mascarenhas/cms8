@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Helpers\Helpers;
 use App\Models\Certification;
+use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -15,6 +16,16 @@ class CertificationDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->editColumn('certification', function ($row)
+            {
+                return DataTableFormatter::showLink(
+                    $row,
+                    'certification.edit',
+                    $row->certification,
+                    'update',
+                    ['certification' => $row->id],
+                );
+            })
             ->addColumn('action', function ($certification)
             {
                 return view('certification.action', compact('certification'));
@@ -38,7 +49,7 @@ class CertificationDataTable extends DataTable
             {
                 $query->orderBy('language', $order);
             })
-            ->rawColumns(['action', 'language'])
+            ->rawColumns(['certification', 'action', 'language'])
             ->setRowId('id');
     }
 
