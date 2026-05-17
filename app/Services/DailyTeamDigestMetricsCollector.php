@@ -88,7 +88,8 @@ class DailyTeamDigestMetricsCollector
             $digest['payments'] = $this->collectPaymentMetrics($team);
         }
 
-        $digest['highlights'] = $this->buildHighlights($digest, $team);
+        $digest['highlight_items'] = $this->buildHighlightItems($digest, $team);
+        $digest['highlights'] = array_column($digest['highlight_items'], 'label');
 
         return $digest;
     }
@@ -360,90 +361,109 @@ class DailyTeamDigestMetricsCollector
 
     /**
      * @param  array<string, mixed>  $digest
-     * @return list<string>
+     * @return list<array{key: string, label: string, count: int}>
      */
-    public function buildHighlights(array $digest, Team $team): array
+    public function buildHighlightItems(array $digest, Team $team): array
     {
-        $lines = [];
+        $items = [];
 
         if (isset($digest['whatsapp']))
         {
             $w = $digest['whatsapp'];
             if (($w['unread_inbound'] ?? 0) > 0)
             {
-                $lines[] = __('app.performance_digest_highlight_whatsapp_unread', ['count' => $w['unread_inbound']]);
+                $items[] = $this->highlightItem('whatsapp_unread', (int) $w['unread_inbound']);
             } elseif (($w['inbound_24h'] ?? 0) > 0)
             {
-                $lines[] = __('app.performance_digest_highlight_whatsapp_inbound', ['count' => $w['inbound_24h']]);
+                $items[] = $this->highlightItem('whatsapp_inbound', (int) $w['inbound_24h']);
             }
         }
 
         if (isset($digest['email']) && ($digest['email']['unread'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_email_unread', ['count' => $digest['email']['unread']]);
+            $items[] = $this->highlightItem('email_unread', (int) $digest['email']['unread']);
         }
 
         if (isset($digest['appointments']) && ($digest['appointments']['today'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_appointments_today', ['count' => $digest['appointments']['today']]);
+            $items[] = $this->highlightItem('appointments_today', (int) $digest['appointments']['today']);
         }
 
         if (isset($digest['client_sentiment']) && ($digest['client_sentiment']['stressed_contacts'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_stressed_clients', ['count' => $digest['client_sentiment']['stressed_contacts']]);
+            $items[] = $this->highlightItem('stressed_clients', (int) $digest['client_sentiment']['stressed_contacts']);
         }
 
         if (isset($digest['tasks']))
         {
             if (($digest['tasks']['overdue'] ?? 0) > 0)
             {
-                $lines[] = __('app.performance_digest_highlight_tasks_overdue', ['count' => $digest['tasks']['overdue']]);
+                $items[] = $this->highlightItem('tasks_overdue', (int) $digest['tasks']['overdue']);
             }
             if (($digest['tasks']['due_today'] ?? 0) > 0)
             {
-                $lines[] = __('app.performance_digest_highlight_tasks_due_today', ['count' => $digest['tasks']['due_today']]);
+                $items[] = $this->highlightItem('tasks_due_today', (int) $digest['tasks']['due_today']);
             }
             if (($digest['tasks']['pending'] ?? 0) > 0)
             {
-                $lines[] = __('app.performance_digest_highlight_tasks_pending', ['count' => $digest['tasks']['pending']]);
+                $items[] = $this->highlightItem('tasks_pending', (int) $digest['tasks']['pending']);
             }
         }
 
         if (isset($digest['projects']) && ($digest['projects']['ending_this_week'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_projects_due', ['count' => $digest['projects']['ending_this_week']]);
+            $items[] = $this->highlightItem('projects_due', (int) $digest['projects']['ending_this_week']);
         }
 
         if (isset($digest['services']) && (($digest['services']['billing_due_7d'] ?? 0) + ($digest['services']['needs_attention'] ?? 0)) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_services_action', [
-                'count' => ($digest['services']['billing_due_7d'] ?? 0) + ($digest['services']['needs_attention'] ?? 0),
-            ]);
+            $items[] = $this->highlightItem('services_action', (int) (($digest['services']['billing_due_7d'] ?? 0) + ($digest['services']['needs_attention'] ?? 0)));
         }
 
         if (isset($digest['invoices']) && ($digest['invoices']['overdue_count'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_invoices_overdue', ['count' => $digest['invoices']['overdue_count']]);
+            $items[] = $this->highlightItem('invoices_overdue', (int) $digest['invoices']['overdue_count']);
         } elseif (isset($digest['invoices']) && ($digest['invoices']['unpaid_count'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_invoices_unpaid', ['count' => $digest['invoices']['unpaid_count']]);
+            $items[] = $this->highlightItem('invoices_unpaid', (int) $digest['invoices']['unpaid_count']);
         }
 
         if (isset($digest['payments']) && ($digest['payments']['pending_claim_count'] ?? 0) > 0)
         {
-            $lines[] = __('app.performance_digest_highlight_payments_claim', ['count' => $digest['payments']['pending_claim_count']]);
+            $items[] = $this->highlightItem('payments_claim', (int) $digest['payments']['pending_claim_count']);
         }
 
         $activity = $digest['user_activity'] ?? [];
-        if (count($lines) === 0 && ((int) ($activity['interactions_count'] ?? 0)) === 0)
+        if ($items === [] && ((int) ($activity['interactions_count'] ?? 0)) === 0)
         {
-            $lines[] = __('app.performance_digest_highlight_quiet_day');
+            $items[] = $this->highlightItem('quiet_day', 0);
         }
 
-        return array_slice($lines, 0, 12);
+        return array_slice($items, 0, 12);
     }
 
-    private function whatsappConversationQuery(Team $team): Builder
+    /**
+     * @param  array<string, mixed>  $digest
+     * @return list<string>
+     */
+    public function buildHighlights(array $digest, Team $team): array
+    {
+        return array_column($this->buildHighlightItems($digest, $team), 'label');
+    }
+
+    /**
+     * @return array{key: string, label: string, count: int}
+     */
+    private function highlightItem(string $key, int $count): array
+    {
+        return [
+            'key' => $key,
+            'label' => (string) __('app.performance_digest_highlight_'.$key, ['count' => $count]),
+            'count' => $count,
+        ];
+    }
+
+    public function whatsappConversationQueryForTeam(Team $team): Builder
     {
         $teamNumber = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom());
 
@@ -461,5 +481,10 @@ class DailyTeamDigestMetricsCollector
         }
 
         return $query;
+    }
+
+    private function whatsappConversationQuery(Team $team): Builder
+    {
+        return $this->whatsappConversationQueryForTeam($team);
     }
 }

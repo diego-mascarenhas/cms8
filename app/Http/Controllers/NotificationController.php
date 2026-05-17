@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
 use App\Models\UserDailyPerformanceInsight;
+use App\Services\PerformanceDigestHighlightSuggestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -81,8 +82,15 @@ class NotificationController extends Controller
         }
 
         $dailyPerformanceInsight = $this->resolveDailyPerformanceInsightForNotification($notification);
+        $performanceDigestHighlights = null;
 
-        return view('notification.show', compact('notification', 'dailyPerformanceInsight'));
+        if ($dailyPerformanceInsight && $notification->team)
+        {
+            $performanceDigestHighlights = app(PerformanceDigestHighlightSuggestionService::class)
+                ->forInsight($dailyPerformanceInsight, $notification->team);
+        }
+
+        return view('notification.show', compact('notification', 'dailyPerformanceInsight', 'performanceDigestHighlights'));
     }
 
     private function resolveDailyPerformanceInsightForNotification(Notification $notification): ?UserDailyPerformanceInsight

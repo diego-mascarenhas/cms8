@@ -115,6 +115,8 @@ class UserDailyPerformanceInsightTest extends TestCase
         $this->assertArrayHasKey('tasks', $digest);
         $this->assertArrayHasKey('highlights', $digest);
         $this->assertIsArray($digest['highlights']);
+        $this->assertArrayHasKey('highlight_items', $digest);
+        $this->assertNotEmpty($digest['highlight_items'][0]['key'] ?? null);
     }
 
     public function test_digest_includes_daily_task_items_for_open_and_overdue_tasks(): void
@@ -574,7 +576,10 @@ class UserDailyPerformanceInsightTest extends TestCase
             ->get(route('notification.show', $notification))
             ->assertOk()
             ->assertSee($insight->headline, false)
-            ->assertSee($insight->message, false);
+            ->assertSee($insight->message, false)
+            ->assertSee(__('app.performance_digest_suggestion_card_title'), false)
+            ->assertSee('data-digest-highlight-key', false)
+            ->assertSee('digest-suggestion-card', false);
     }
 
     public function test_notification_formatted_message_renders_line_breaks(): void
