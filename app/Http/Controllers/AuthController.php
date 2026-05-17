@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Fortify\PasswordValidationRules;
 use App\Helpers\TokenHelper;
 use App\Models\Team;
 use App\Models\User;
@@ -10,9 +11,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    use PasswordValidationRules;
+
     public function register(Request $request)
     {
         $rules = [
@@ -138,6 +142,32 @@ class AuthController extends Controller
             'success' => true,
             'message' => __('Perfil actualizado correctamente.'),
             'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => $this->passwordRules(),
+        ]);
+
+        if (! Hash::check($validated['current_password'], $user->password))
+        {
+            throw ValidationException::withMessages([
+                'current_password' => [__('La contraseña actual no es correcta.')],
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Contraseña actualizada correctamente.'),
         ]);
     }
 

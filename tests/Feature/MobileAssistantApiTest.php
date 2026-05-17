@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\Email;
 use App\Models\List60;
 use App\Models\List60Status;
+use App\Models\Message;
 use App\Models\Module;
 use App\Models\Notification;
 use App\Models\NotificationType;
@@ -173,6 +174,76 @@ class MobileAssistantApiTest extends TestCase
         $response->assertJsonStructure(['folder_counts', 'pagination']);
     }
 
+    public function test_message_endpoint_returns_campaign_list_like_web(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Newsletter Mayo',
+            'type_id' => 1,
+            'text' => 'Hola',
+            'status_id' => 0,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message?search=Mayo');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonStructure([
+            'data' => [
+                [
+                    'id',
+                    'name',
+                    'status' => ['key', 'label'],
+                    'progress',
+                ],
+            ],
+            'pagination',
+        ]);
+        $this->assertSame('Newsletter Mayo', $response->json('data.0.name'));
+        $this->assertSame('paused', $response->json('data.0.status.key'));
+    }
+
+    public function test_message_show_returns_campaign_detail(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Detalle campaña',
+            'type_id' => 1,
+            'text' => 'Cuerpo',
+            'status_id' => 0,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.name', 'Detalle campaña');
+        $response->assertJsonStructure([
+            'data' => [
+                'stats' => [
+                    'subscribers',
+                    'sent',
+                    'delivered',
+                    'opened',
+                    'clicks',
+                    'failed',
+                    'open_rate',
+                ],
+                'sender' => ['from_name', 'from_address', 'configured'],
+                'category_label',
+                'contact_status_label',
+                'stats_updated_at_label',
+                'status',
+            ],
+        ]);
+    }
+
     public function test_dashboard_returns_today_contacts_when_list60_enabled(): void
     {
         [$user, $team, $token] = $this->assistantUserWithToken();
@@ -277,6 +348,48 @@ class MobileAssistantApiTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'name' => 'Mobile Updated',
+        ]);
+    }
+
+    public function test_auth_user_can_update_password(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/auth/password', [
+                'current_password' => 'password',
+                'password' => 'new-password-9',
+                'password_confirmation' => 'new-password-9',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Hash::check('new-password-9', $user->fresh()->password),
+        );
+    }
+
+    public function test_billing_show_returns_plan_and_usage_for_team(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $team->setSetting('email_plan', 'free', ['type' => 'string', 'group' => 'email']);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/billing');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.team.id', $team->id);
+        $response->assertJsonPath('data.email_plan.key', 'free');
+        $response->assertJsonStructure([
+            'data' => [
+                'team',
+                'email_plan',
+                'usage',
+                'billing',
+            ],
         ]);
     }
 }

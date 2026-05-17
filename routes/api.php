@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
@@ -388,6 +389,7 @@ Route::group(['prefix' => 'auth'], function ()
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
         Route::put('profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile.update');
+        Route::put('password', [AuthController::class, 'updatePassword'])->name('api.auth.password.update');
     });
 });
 
@@ -404,6 +406,9 @@ Route::middleware('auth:sanctum')->group(function ()
 {
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
+
+    Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
+    Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');
