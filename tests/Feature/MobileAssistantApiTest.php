@@ -1,0 +1,177 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CalendarEvent;
+use App\Models\Contact;
+use App\Models\Email;
+use App\Models\Module;
+use App\Models\Notification;
+use App\Models\NotificationType;
+use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Jetstream\Features;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class MobileAssistantApiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function seedModulesFromPricingConfig(): void
+    {
+        $keys = array_values(array_unique(array_merge(
+            config('humano_pricing.plan_team_modules.assistant', []),
+            config('humano_pricing.plan_team_modules.business', []),
+            config('humano_pricing.plan_team_modules.foundation', []),
+        )));
+
+        foreach ($keys as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => ucfirst(str_replace('-', ' ', $key)),
+                    'icon' => 'layout',
+                    'description' => 'Test',
+                    'is_core' => false,
+                    'status' => 1,
+                ],
+            );
+        }
+    }
+
+    private function assistantUserWithToken(): array
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->seedModulesFromPricingConfig();
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'assistant');
+
+        $token = $user->createToken('mobile-test')->plainTextToken;
+
+        return [$user, $team, $token];
+    }
+
+    public function test_menu_returns_enabled_modules_for_assistant_team(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/menu');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $enabled = $response->json('enabled_modules');
+        $this->assertIsArray($enabled);
+        $this->assertContains('today', $enabled);
+        $this->assertContains('contacts', $enabled);
+        $this->assertContains('clients', $enabled);
+        $this->assertContains('tasks', $enabled);
+        $this->assertContains('chat', $enabled);
+        $this->assertNotContains('projects', $enabled);
+        $this->assertNotContains('invoices', $enabled);
+    }
+
+    public function test_today_endpoint_returns_events_and_tasks(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Morning standup',
+            'start' => now()->setTime(9, 0),
+            'end' => now()->setTime(9, 30),
+            'all_day' => false,
+            'label' => 'Business',
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/today');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonStructure(['date', 'events', 'tasks', 'running_task']);
+        $this->assertNotEmpty($response->json('events'));
+    }
+
+    public function test_clients_endpoint_requires_clients_module(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $team->disableModule('clients');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/clients');
+
+        $response->assertStatus(403);
+    }
+
+    public function test_emails_endpoint_returns_inbox_messages(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'subject' => 'Welcome inbox',
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/emails?folder=inbox');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $this->assertNotEmpty($response->json('data'));
+        $response->assertJsonStructure(['folder_counts', 'pagination']);
+    }
+
+    public function test_notifications_inbox_for_linked_contact_user(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+        ]);
+
+        $type = NotificationType::query()->firstOrCreate(
+            ['name' => 'General Message'],
+            ['description' => 'Test', 'status' => 1],
+        );
+
+        Notification::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => $type->id,
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'subject' => 'Mobile alert',
+            'message' => 'Hello from Humano',
+            'is_sent' => true,
+            'sent_at' => now(),
+            'is_read' => false,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/notifications');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $this->assertSame(1, $response->json('unread_count'));
+        $this->assertCount(1, $response->json('data'));
+    }
+}

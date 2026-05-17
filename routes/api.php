@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
+use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\FareController;
@@ -10,8 +11,10 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
+use App\Http\Controllers\Api\MailInboxController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
@@ -29,6 +32,7 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
+use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\AuthController;
@@ -399,6 +403,9 @@ Route::middleware('auth:sanctum')->group(function ()
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
 
+    // Today / Hoy (calendar events + tasks for the current day)
+    Route::get('today', [TodayController::class, 'index'])->name('api.today.index');
+
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
 
@@ -448,9 +455,23 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::get('contacts/stats', [ContactController::class, 'stats']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
-    // Enterprises - for user-based authentication (Sanctum tokens)
+    // Clients (enterprises) — Assistant plan module "clients"
+    Route::get('clients', [ClientController::class, 'index'])->name('api.clients.index');
+    Route::get('clients/{id}', [ClientController::class, 'show'])->name('api.clients.show');
+
+    // Enterprises — Foundation plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
+
+    // Mailbox inbox (synced IMAP emails)
+    Route::get('emails', [MailInboxController::class, 'index'])->name('api.emails.index');
+    Route::get('emails/{id}', [MailInboxController::class, 'show'])->name('api.emails.show');
+
+    // Recipient notifications (navbar inbox for the authenticated user)
+    Route::get('notifications', [NotificationInboxController::class, 'index'])->name('api.notifications.index');
+    Route::post('notifications/mark-all-read', [NotificationInboxController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
+    Route::patch('notifications/{notification}/read', [NotificationInboxController::class, 'markAsRead'])->name('api.notifications.mark-as-read');
+    Route::delete('notifications/{notification}', [NotificationInboxController::class, 'dismiss'])->name('api.notifications.dismiss');
 
     // Payments, Products, Orders - moved to team.token middleware (see below)
 
@@ -536,6 +557,8 @@ Route::middleware('auth:sanctum')->group(function ()
 
     // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
     Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');
+    Route::get('assistant/history', [ChatController::class, 'assistantHistory'])->name('api.assistant.history');
+    Route::post('assistant/reset-context', [ChatController::class, 'resetAssistantContext'])->name('api.assistant.reset-context');
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);

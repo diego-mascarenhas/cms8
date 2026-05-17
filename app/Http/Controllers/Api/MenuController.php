@@ -90,9 +90,18 @@ class MenuController extends Controller
 
         $items = $this->formatMenuForApi($menu);
 
+        $enabledModules = $team
+            ? $team->modules()
+                ->where('module_team.status', 1)
+                ->pluck('key')
+                ->values()
+                ->all()
+            : [];
+
         return response()->json([
             'success' => true,
             'menu' => $items,
+            'enabled_modules' => $enabledModules,
         ]);
     }
 
