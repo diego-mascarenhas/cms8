@@ -34,7 +34,7 @@ class MenuController extends Controller
         }
 
         $teamKey = $team?->id ?? 'none';
-        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}";
+        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}_".app()->getLocale();
 
         $menu = Cache::remember($cacheKey, 3600, function () use ($user, $team)
         {
@@ -117,9 +117,10 @@ class MenuController extends Controller
         {
             if (isset($item['menuHeader']))
             {
+                $header = trim((string) $item['menuHeader']);
                 $result[] = [
                     'type' => 'header',
-                    'menu_header' => $item['menuHeader'],
+                    'menu_header' => $header !== '' ? __($header) : '',
                 ];
 
                 continue;
@@ -131,9 +132,11 @@ class MenuController extends Controller
                 $icon = $m[0];
             }
 
+            $name = trim((string) ($item['name'] ?? ''));
+
             $result[] = [
                 'type' => 'item',
-                'name' => $item['name'] ?? '',
+                'name' => $name !== '' ? __($name) : '',
                 'url' => $item['url'] ?? '',
                 'slug' => $item['slug'] ?? '',
                 'icon' => $icon,

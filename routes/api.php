@@ -387,6 +387,7 @@ Route::group(['prefix' => 'auth'], function ()
     {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
+        Route::put('profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile.update');
     });
 });
 

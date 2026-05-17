@@ -79,17 +79,13 @@ class AuthController extends Controller
                 }
             }
 
-            $user->load('currentTeam');
+            $user->load(['currentTeam', 'roles']);
             $token = $user->createToken('IDONEO Access Token')->plainTextToken;
 
             $response = [
                 'email' => $user->email,
                 'token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ],
+                'user' => $this->profilePayload($user),
                 'current_team' => $user->currentTeam ? [
                     'id' => $user->currentTeam->id,
                     'name' => $user->currentTeam->name,
@@ -118,20 +114,59 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = $request->user();
-        $user->load('currentTeam');
+        return response()->json($this->profilePayload($request->user()));
+    }
 
-        $data = [
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $user->fill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Perfil actualizado correctamente.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function profilePayload(User $user): array
+    {
+        $user->loadMissing(['currentTeam', 'roles']);
+
+        return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'phone' => $user->phone !== null ? (string) $user->phone : null,
+            'role' => $this->formatUserRoleLabel($user),
             'current_team' => $user->currentTeam ? [
                 'id' => $user->currentTeam->id,
                 'name' => $user->currentTeam->name,
             ] : null,
         ];
+    }
 
-        return response()->json($data);
+    private function formatUserRoleLabel(User $user): string
+    {
+        return $user->roles
+            ->pluck('name')
+            ->map(fn (string $name) => ucfirst($name))
+            ->implode(', ');
     }
 
     /**

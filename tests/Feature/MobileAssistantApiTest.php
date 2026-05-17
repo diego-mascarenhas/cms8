@@ -14,8 +14,8 @@ use App\Models\User;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
-use Database\Seeders\LanguageSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\LanguageSeeder;
 use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
@@ -76,6 +76,8 @@ class MobileAssistantApiTest extends TestCase
     {
         [, , $token] = $this->assistantUserWithToken();
 
+        app()->setLocale('es');
+
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/menu');
 
@@ -90,6 +92,26 @@ class MobileAssistantApiTest extends TestCase
         $this->assertContains('chat', $enabled);
         $this->assertNotContains('projects', $enabled);
         $this->assertNotContains('invoices', $enabled);
+
+        $menuNames = collect($response->json('menu'))
+            ->where('type', 'item')
+            ->pluck('name')
+            ->all();
+        $this->assertContains('Panel', $menuNames);
+        $this->assertContains('Hoy', $menuNames);
+        $this->assertContains('Contactos', $menuNames);
+        $this->assertContains('Tareas', $menuNames);
+    }
+
+    public function test_auth_user_returns_role_label(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user');
+
+        $response->assertOk();
+        $response->assertJsonPath('role', 'Admin');
     }
 
     public function test_today_endpoint_returns_events_and_tasks(): void
@@ -112,6 +134,13 @@ class MobileAssistantApiTest extends TestCase
         $response->assertJsonPath('success', true);
         $response->assertJsonStructure(['date', 'events', 'tasks', 'running_task']);
         $this->assertNotEmpty($response->json('events'));
+
+        $dated = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/today?date='.now()->toDateString());
+
+        $dated->assertOk();
+        $dated->assertJsonPath('success', true);
+        $dated->assertJsonPath('date', now()->toDateString());
     }
 
     public function test_clients_endpoint_requires_clients_module(): void
@@ -222,5 +251,32 @@ class MobileAssistantApiTest extends TestCase
         $response->assertJsonPath('success', true);
         $this->assertSame(1, $response->json('unread_count'));
         $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_auth_user_includes_phone_and_can_update_profile(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('email', $user->email);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/auth/profile', [
+                'name' => 'Mobile Updated',
+                'email' => $user->email,
+                'phone' => '600111222',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('user.name', 'Mobile Updated');
+        $response->assertJsonPath('user.phone', '600111222');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Mobile Updated',
+        ]);
     }
 }
