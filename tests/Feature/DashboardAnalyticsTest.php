@@ -192,7 +192,7 @@ class DashboardAnalyticsTest extends TestCase
             ['key' => 'calendar'],
             [
                 'name' => 'Calendar',
-                'icon' => 'calendar',
+                'icon' => 'calendar-event',
                 'description' => 'Team calendar',
                 'status' => 1,
             ],
