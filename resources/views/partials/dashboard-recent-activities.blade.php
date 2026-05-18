@@ -1,49 +1,83 @@
 @php
     $fillHeight = $fillHeight ?? false;
+    $defaultPanel = 'contacts-trend';
 @endphp
-<div class="card {{ $fillHeight ? 'h-100 mb-0 d-flex flex-column' : '' }}">
+<div class="card {{ $fillHeight ? 'h-100 mb-0 d-flex flex-column' : '' }}" id="dashboardContactPanelCard">
     <div class="card-header d-flex align-items-center justify-content-between py-3 flex-wrap gap-2 flex-shrink-0">
         <div class="card-title mb-0">
-            <h5 class="mb-0">
-                <i class="ti ti-history ti-xs me-1"></i>{{ __('Recent contact activity') }}
+            <h5 class="mb-0" id="dashboardContactPanelTitle">
+                <i class="ti ti-target ti-xs me-1" id="dashboardContactPanelIcon"></i>
+                <span id="dashboardContactPanelTitleText">{{ __('app.dashboard_panel_contacts_trend_title') }}</span>
             </h5>
-            <small class="text-muted">{{ __('app.dashboard_contacts_summary_subtitle') }}</small>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                <small class="text-muted" id="dashboardContactPanelSubtitle">{{ __('app.dashboard_contacts_chart_subtitle_30') }}</small>
+                <small id="dashboardContactPanelMonthChange" class="d-none" aria-live="polite"></small>
+            </div>
         </div>
-        @can('contact.list')
-            <a href="{{ route('contact-list') }}" class="btn btn-sm btn-label-primary">
-                <i class="ti ti-list ti-xs me-1"></i>{{ __('app.dashboard_contacts_view_list') }}
-            </a>
-        @endcan
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <div class="d-none align-items-center gap-2" id="dashboardLatestContactsPager" aria-hidden="true">
+                <button type="button" class="btn btn-sm btn-label-secondary" id="dashboardLatestContactsPrev" disabled>
+                    <i class="ti ti-chevron-left ti-xs me-1"></i>{{ __('app.dashboard_latest_contacts_prev') }}
+                </button>
+                <button type="button" class="btn btn-sm btn-label-secondary" id="dashboardLatestContactsNext" disabled>
+                    {{ __('app.dashboard_latest_contacts_next') }}<i class="ti ti-chevron-right ti-xs ms-1"></i>
+                </button>
+            </div>
+            @can('contact.list')
+                <a href="{{ route('contact-list') }}" class="btn btn-sm btn-label-primary" id="dashboardContactPanelListLink">
+                    <i class="ti ti-list ti-xs me-1"></i>{{ __('app.dashboard_contacts_view_list') }}
+                </a>
+            @endcan
+        </div>
     </div>
-    <div class="card-body pt-2 {{ $fillHeight ? 'flex-grow-1 overflow-auto' : '' }}">
-        <div class="mb-4 pb-3 border-bottom">
-            <small class="text-muted d-block mb-2">{{ __('app.dashboard_contacts_chart_subtitle') }}</small>
-            <div id="dashboardContactsTrendChart" style="min-height: 120px;"></div>
+    <div class="card-body pt-2 {{ $fillHeight ? 'flex-grow-1 min-h-0 d-flex flex-column' : '' }}">
+        <div class="dashboard-contact-panel {{ $defaultPanel === 'contacts-trend' ? '' : 'd-none' }} {{ $fillHeight ? 'flex-grow-1 min-h-0' : '' }}" data-panel="contacts-trend">
+            <div id="dashboardContactsTrendChart" style="min-height: 200px;"></div>
         </div>
 
-        @foreach ($recentContactActivities as $interaction)
-            <div class="d-flex flex-wrap gap-2 border-bottom pb-3 mb-3 align-items-start">
-                <div class="flex-grow-1 min-w-0">
-                    <a href="{{ route('contact.show', $interaction->contact_id) }}#activity" class="fw-medium text-body d-inline-block text-truncate" style="max-width: 100%;">
-                        {{ $interaction->contact->name }} {{ $interaction->contact->surname }}
-                    </a>
-                    <div class="small text-muted">
-                        {{ $interaction->type->label() }}
-                        @if ($interaction->subject)
-                            — {{ $interaction->subject }}
-                        @endif
-                    </div>
-                    @if ($interaction->body)
-                        <p class="mb-0 small text-body-secondary mt-1">{{ Str::limit($interaction->body, 120) }}</p>
-                    @endif
-                </div>
-                <div class="text-md-end small text-muted text-nowrap">
-                    {{ $interaction->occurred_at->isoFormat('D MMM YYYY, HH:mm') }}
-                    @if ($interaction->user)
-                        <div class="small">{{ $interaction->user->name }}</div>
-                    @endif
-                </div>
+        <div class="dashboard-contact-panel {{ $defaultPanel === 'status-breakdown' ? '' : 'd-none' }} {{ $fillHeight ? 'flex-grow-1 min-h-0' : '' }}" data-panel="status-breakdown">
+            <div id="dashboardContactStatusChart" style="min-height: 220px;"></div>
+        </div>
+
+        <div class="dashboard-contact-panel dashboard-latest-contacts-panel {{ $defaultPanel === 'latest-contacts' ? '' : 'd-none' }} {{ $fillHeight ? 'flex-grow-1 min-h-0' : '' }}" data-panel="latest-contacts">
+            <div class="table-responsive flex-grow-1 min-h-0">
+                <table id="dashboardLatestContactsTable" class="table table-hover table-sm dashboard-latest-contacts-table w-100">
+                    <thead>
+                        <tr>
+                            <th>{{ __('Name') }}</th>
+                            <th>{{ __('Status') }}</th>
+                            <th class="text-end">{{ __('Date') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($latestRegisteredContacts as $contact)
+                            <tr>
+                                <td class="text-truncate" style="max-width: 220px;">
+                                    @can('contact.show')
+                                        <a href="{{ route('contact.show', $contact->id) }}" class="text-body text-decoration-none fw-normal">
+                                            {{ trim($contact->name.' '.$contact->surname) }}
+                                        </a>
+                                    @else
+                                        <span class="text-body fw-normal">{{ trim($contact->name.' '.$contact->surname) }}</span>
+                                    @endcan
+                                </td>
+                                <td>
+                                    @if ($contact->status)
+                                        <span class="badge rounded-pill {{ $contact->status->label_class }}">
+                                            {{ $contact->status->name }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td class="text-end text-nowrap small text-muted" data-order="{{ $contact->created_at->timestamp }}">
+                                    {{ $contact->created_at->isoFormat('D MMM YYYY, HH:mm') }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        @endforeach
+        </div>
     </div>
 </div>

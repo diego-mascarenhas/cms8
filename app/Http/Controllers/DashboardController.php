@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
 use App\Models\Contact;
-use App\Models\ContactInteraction;
+use App\Models\ContactStatus;
 use App\Models\Enterprise;
 use App\Models\List60;
 use App\Models\Project;
@@ -108,43 +108,104 @@ class DashboardController extends Controller
             ];
         }
 
-        // Count leads from last 7 days (filtered by team)
-        $recentLeadsCount = Contact::where('team_id', $activeTeam->id)
-            ->where('created_at', '>=', now()->subDays(7))
-            ->count();
-
         $authUser = auth()->user();
-        $totalContactsCount = Contact::query()->count();
+
+        $recentLeadsQuery = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->where('status_id', 1)
+            ->where('created_at', '>=', now()->subDays(7));
+        if ($authUser->hasRole('collaborator'))
+        {
+            $recentLeadsQuery->where('responsible_id', $authUser->id);
+        }
+        $recentLeadsCount = $recentLeadsQuery->count();
+        $totalContactsCount = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->count();
         $totalClientsCount = $activeTeam->hasModule('clients')
             ? Enterprise::query()->where('team_id', $activeTeam->id)->count()
             : 0;
-        $contactsWithRecentActivityCount = (int) ContactInteraction::query()
-            ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
-            {
-                $query->where('team_id', $activeTeam->id);
-                if ($authUser->hasRole('collaborator'))
-                {
-                    $query->where('responsible_id', $authUser->id);
-                }
-            })
-            ->where('occurred_at', '>=', now()->subDays(7))
-            ->distinct()
-            ->count('contact_id');
+        $currentMonthStart = now()->startOfMonth();
+        $latestContactsThisMonthQuery = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->where('created_at', '>=', $currentMonthStart);
+        if ($authUser->hasRole('collaborator'))
+        {
+            $latestContactsThisMonthQuery->where('responsible_id', $authUser->id);
+        }
+        $latestContactsThisMonthCount = $latestContactsThisMonthQuery->count();
 
-        $dashboardContactsCreatedTrend = [
+        $previousMonthStart = $currentMonthStart->copy()->subMonth();
+        $nextMonthStart = $currentMonthStart->copy()->addMonth();
+        $responsibleIdForContacts = $authUser->hasRole('collaborator') ? $authUser->id : null;
+        $contactsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+            responsibleId: $responsibleIdForContacts,
+        );
+        $leadsCreatedThisMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $currentMonthStart,
+            $nextMonthStart,
+            statusId: 1,
+            responsibleId: $responsibleIdForContacts,
+        );
+        $leadsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+            statusId: 1,
+            responsibleId: $responsibleIdForContacts,
+        );
+        $dashboardPanelMonthComparisons = [
+            'contacts-trend' => $this->buildMonthComparison(
+                $leadsCreatedThisMonthCount,
+                $leadsCreatedPreviousMonthCount,
+            ),
+            'status-breakdown' => $this->buildMonthComparison(
+                $latestContactsThisMonthCount,
+                $contactsCreatedPreviousMonthCount,
+            ),
+            'latest-contacts' => $this->buildMonthComparison(
+                $latestContactsThisMonthCount,
+                $contactsCreatedPreviousMonthCount,
+            ),
+        ];
+
+        $dashboardContactsCreatedTrend = $this->buildContactsCreatedTrend(
+            $activeTeam->id,
+            30,
+            statusId: 1,
+            responsibleId: $authUser->hasRole('collaborator') ? $authUser->id : null,
+        );
+
+        $dashboardContactStatusBreakdown = [
             'labels' => [],
             'values' => [],
         ];
-        for ($dayOffset = 6; $dayOffset >= 0; $dayOffset--)
+        $statusIdsForChart = [1, 2, 3, 4, 5];
+        $statusCountsById = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->whereIn('status_id', $statusIdsForChart)
+            ->selectRaw('status_id, COUNT(*) as aggregate')
+            ->groupBy('status_id')
+            ->pluck('aggregate', 'status_id');
+        $statusLabelsById = ContactStatus::query()
+            ->whereIn('id', $statusIdsForChart)
+            ->orderBy('id')
+            ->pluck('name', 'id');
+        foreach ($statusIdsForChart as $statusId)
         {
-            $dayStart = now()->subDays($dayOffset)->startOfDay();
-            $dayEnd = $dayStart->copy()->addDay();
-            $dashboardContactsCreatedTrend['labels'][] = $dayStart->isoFormat('ddd');
-            $dashboardContactsCreatedTrend['values'][] = Contact::query()
-                ->where('created_at', '>=', $dayStart)
-                ->where('created_at', '<', $dayEnd)
-                ->count();
+            $dashboardContactStatusBreakdown['labels'][] = $statusLabelsById[$statusId] ?? (string) $statusId;
+            $dashboardContactStatusBreakdown['values'][] = (int) ($statusCountsById[$statusId] ?? 0);
         }
+
+        $latestRegisteredContacts = (clone $latestContactsThisMonthQuery)
+            ->with('status:id,name,label_class')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['id', 'name', 'surname', 'status_id', 'created_at']);
 
         // Get contacts to follow up today (filtered by team)
         $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
@@ -353,23 +414,6 @@ class DashboardController extends Controller
         //     }
         //         }
 
-        $recentContactActivities = ContactInteraction::query()
-            ->whereHas('contact', function ($query) use ($activeTeam, $authUser): void
-            {
-                $query->where('team_id', $activeTeam->id);
-                if ($authUser->hasRole('collaborator'))
-                {
-                    $query->where('responsible_id', $authUser->id);
-                }
-            })
-            ->with([
-                'contact:id,name,surname,team_id,responsible_id',
-                'user:id,name',
-            ])
-            ->orderByDesc('occurred_at')
-            ->limit(15)
-            ->get();
-
         // Google Analytics: fetch chart data only when team has GA4 configured
         $analyticsChartData = null;
         if ($activeTeam
@@ -423,12 +467,107 @@ class DashboardController extends Controller
             'mentoringMessage',
             'hasProjects',
             'analyticsChartData',
-            'recentContactActivities',
             'totalContactsCount',
             'totalClientsCount',
-            'contactsWithRecentActivityCount',
+            'latestContactsThisMonthCount',
             'dashboardContactsCreatedTrend',
+            'dashboardContactStatusBreakdown',
+            'dashboardPanelMonthComparisons',
+            'latestRegisteredContacts',
             'dailyPerformanceInsight',
         ));
+    }
+
+    private function countTeamContactsCreatedBetween(
+        int $teamId,
+        Carbon $start,
+        Carbon $end,
+        ?int $statusId = null,
+        ?int $responsibleId = null,
+    ): int {
+        $query = Contact::query()
+            ->where('team_id', $teamId)
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<', $end);
+
+        if ($statusId !== null)
+        {
+            $query->where('status_id', $statusId);
+        }
+
+        if ($responsibleId !== null)
+        {
+            $query->where('responsible_id', $responsibleId);
+        }
+
+        return $query->count();
+    }
+
+    /**
+     * @return array{current: int, previous: int, difference: int, percent_change: float, direction: string}
+     */
+    private function buildMonthComparison(int $current, int $previous): array
+    {
+        $difference = $current - $previous;
+        $percentChange = $previous > 0
+            ? round((($current - $previous) / $previous) * 100, 1)
+            : ($current > 0 ? 100.0 : 0.0);
+
+        $direction = 'neutral';
+        if ($difference > 0)
+        {
+            $direction = 'up';
+        } elseif ($difference < 0)
+        {
+            $direction = 'down';
+        }
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'difference' => $difference,
+            'percent_change' => $percentChange,
+            'direction' => $direction,
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, values: list<int>}
+     */
+    private function buildContactsCreatedTrend(
+        int $teamId,
+        int $days,
+        ?int $statusId = null,
+        ?int $responsibleId = null,
+    ): array {
+        $trend = [
+            'labels' => [],
+            'values' => [],
+        ];
+
+        for ($dayOffset = $days - 1; $dayOffset >= 0; $dayOffset--)
+        {
+            $dayStart = now()->subDays($dayOffset)->startOfDay();
+            $dayEnd = $dayStart->copy()->addDay();
+            $trend['labels'][] = $dayStart->isoFormat('D MMM');
+            $query = Contact::query()
+                ->where('team_id', $teamId)
+                ->where('created_at', '>=', $dayStart)
+                ->where('created_at', '<', $dayEnd);
+
+            if ($statusId !== null)
+            {
+                $query->where('status_id', $statusId);
+            }
+
+            if ($responsibleId !== null)
+            {
+                $query->where('responsible_id', $responsibleId);
+            }
+
+            $trend['values'][] = $query->count();
+        }
+
+        return $trend;
     }
 }

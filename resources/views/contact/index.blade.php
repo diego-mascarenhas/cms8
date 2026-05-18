@@ -131,7 +131,7 @@
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="5">
-                                <i class="ti ti-user-check ti-sm"></i>
+                                <i class="ti ti-user-heart ti-sm"></i>
                             </a>
                         </div>
                     </div>

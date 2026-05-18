@@ -14,12 +14,22 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Analytics\Facades\Analytics;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class DashboardAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function grantContactDashboardPermissions(User $user): void
+    {
+        foreach (['contact.list', 'contact.show'] as $permission)
+        {
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            $user->givePermissionTo($permission);
+        }
+    }
 
     public function test_dashboard_does_not_show_analytics_chart_when_team_has_no_analytics(): void
     {
@@ -31,7 +41,7 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
-        $response->assertSee(__('Recent contact activity'), false);
+        $response->assertSee(__('app.dashboard_panel_contacts_trend_title'), false);
     }
 
     public function test_dashboard_shows_contact_summary_metrics_and_trend_chart(): void
@@ -48,6 +58,7 @@ class DashboardAnalyticsTest extends TestCase
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $this->grantContactDashboardPermissions($user);
 
         Module::query()->firstOrCreate(
             ['key' => 'contacts'],
@@ -64,6 +75,15 @@ class DashboardAnalyticsTest extends TestCase
             'team_id' => $team->id,
             'responsible_id' => $user->id,
             'creator_id' => $user->id,
+            'status_id' => 1,
+            'created_at' => Carbon::now()->subDay(),
+        ]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 2,
             'created_at' => Carbon::now()->subDay(),
         ]);
 
@@ -75,8 +95,153 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee(__('app.dashboard_metric_new_leads'), false);
         $response->assertSee(__('app.dashboard_metric_recent_activity'), false);
         $response->assertSee('dashboardContactsTrendChart', false);
-        $this->assertMatchesRegularExpression('/text-primary[^>]*>2</', $response->getContent());
+        $response->assertSee('dashboardContactStatusChart', false);
+        $response->assertSee('data-dashboard-panel="contacts-trend"', false);
+        $response->assertSee('data-dashboard-panel="status-breakdown"', false);
+        $response->assertSee('data-dashboard-panel="latest-contacts"', false);
+        $response->assertSee(__('app.dashboard_contacts_chart_subtitle_30'), false);
+        $this->assertMatchesRegularExpression('/text-primary[^>]*>3</', $response->getContent());
         $this->assertMatchesRegularExpression('/text-success[^>]*>2</', $response->getContent());
+        $this->assertMatchesRegularExpression('/text-info[^>]*>3</', $response->getContent());
+
+        preg_match('/const trendData = (\{.*?\});/s', $response->getContent(), $trendMatch);
+        $this->assertNotEmpty($trendMatch[1] ?? null);
+        $trend = json_decode($trendMatch[1], true, 512, JSON_THROW_ON_ERROR);
+        $yesterdayIndex = count($trend['values']) - 2;
+        $this->assertSame(2, $trend['values'][$yesterdayIndex]);
+    }
+
+    public function test_dashboard_includes_month_comparison_for_contact_panels(): void
+    {
+        Carbon::setTestNow('2026-05-18 12:00:00');
+
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $this->grantContactDashboardPermissions($user);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'CRM contacts',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('contacts');
+
+        Contact::factory()->count(2)->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 1,
+            'created_at' => Carbon::parse('2026-05-10 10:00:00'),
+        ]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 2,
+            'created_at' => Carbon::parse('2026-04-15 10:00:00'),
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('dashboardContactPanelMonthChange', false);
+        $response->assertSee('panelMonthComparisons', false);
+
+        preg_match('/const panelMonthComparisons = (\{.*?\});/s', $response->getContent(), $comparisonMatch);
+        $this->assertNotEmpty($comparisonMatch[1] ?? null);
+        $comparisons = json_decode($comparisonMatch[1], true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(2, $comparisons['status-breakdown']['current']);
+        $this->assertSame(1, $comparisons['status-breakdown']['previous']);
+        $this->assertSame(1, $comparisons['status-breakdown']['difference']);
+        $this->assertEquals(100.0, $comparisons['status-breakdown']['percent_change']);
+        $this->assertSame('up', $comparisons['status-breakdown']['direction']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dashboard_panel_triggers_work_without_contact_list_permission(): void
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('collaborator');
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('data-dashboard-panel="contacts-trend"', false);
+        $response->assertSee('data-dashboard-panel="status-breakdown"', false);
+        $response->assertSee('data-dashboard-panel="latest-contacts"', false);
+    }
+
+    public function test_dashboard_shows_latest_registered_contacts_in_panel(): void
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $this->grantContactDashboardPermissions($user);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'CRM contacts',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('contacts');
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'name' => 'PanelTest',
+            'surname' => 'Contact',
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('PanelTest Contact', false);
+        $response->assertSee('dashboard-contact-panel', false);
+        $response->assertSee('dashboardLatestContactsTable', false);
     }
 
     public function test_dashboard_shows_clients_metric_when_clients_module_enabled(): void
