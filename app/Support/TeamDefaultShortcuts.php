@@ -16,7 +16,7 @@ class TeamDefaultShortcuts
             'calendar' => [
                 'title' => 'Calendario',
                 'subtitle' => __('app.shortcuts.appointments'),
-                'icon' => 'ti ti-calendar',
+                'icon' => 'ti ti-calendar-event',
                 'route' => 'app-calendar',
                 'module' => 'calendar',
             ],

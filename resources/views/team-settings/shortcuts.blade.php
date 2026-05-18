@@ -199,7 +199,7 @@
                                             <input type="text"
                                                    name="shortcuts[{{ $index }}][icon]"
                                                    class="form-control icon-input"
-                                                   placeholder="ti ti-calendar"
+                                                   placeholder="ti ti-calendar-event"
                                                    value="{{ old('shortcuts.'.$index.'.icon', $shortcut['icon'] ?? '') }}"
                                                    required>
                                             <div class="icon-grid" id="icon-grid-{{ $index }}"></div>
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let totalIndex = {{ count($shortcuts) }};
 
     const popularIcons = [
-        'ti ti-calendar', 'ti ti-users', 'ti ti-file-invoice', 'ti ti-settings',
+        'ti ti-calendar-event', 'ti ti-users', 'ti ti-file-invoice', 'ti ti-settings',
         'ti ti-dashboard', 'ti ti-chart-bar', 'ti ti-mail', 'ti ti-phone',
         'ti ti-bell', 'ti ti-star', 'ti ti-heart', 'ti ti-bookmark',
         'ti ti-folder', 'ti ti-file', 'ti ti-download', 'ti ti-upload',
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <label class="form-label">Icon <span class="text-danger">*</span></label>
                         <div class="icon-picker">
                             <input type="text" name="shortcuts[${index}][icon]"
-                                   class="form-control icon-input" placeholder="ti ti-calendar" required>
+                                   class="form-control icon-input" placeholder="ti ti-calendar-event" required>
                             <div class="icon-grid" id="icon-grid-${index}"></div>
                         </div>
                         <small class="text-muted">Click to pick an icon</small>

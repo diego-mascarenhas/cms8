@@ -281,7 +281,7 @@ class ModuleSeeder extends Seeder
         ],
         'landings' => [
             'name' => 'Landings',
-            'icon' => 'page-break',
+            'icon' => 'globe',
             'description' => 'Landing pages management module',
             'group' => 'content',
             'order' => 5,
@@ -344,7 +344,7 @@ class ModuleSeeder extends Seeder
         ],
         'today' => [
             'name' => 'Today',
-            'icon' => 'calendar-time',
+            'icon' => 'calendar-event',
             'description' => "Today's activities module",
             'order' => 3,
         ],

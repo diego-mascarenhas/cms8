@@ -10,12 +10,12 @@
       "slug": "dashboard"
     },
     {
-      "menuHeader": "Operations"
+      "menuHeader": "CRM"
     },
     {
       "url": "today",
       "name": "Today",
-      "icon": "menu-icon tf-icons ti ti-calendar-time",
+      "icon": "menu-icon tf-icons ti ti-calendar-event",
       "slug": "today",
       "module_key": "today"
     },
