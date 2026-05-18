@@ -48,6 +48,22 @@ class DemoMailCampaignDataTest extends TestCase
             ->where('name', '[Demo] Mensaje suelto (newsletter)')
             ->first();
         $this->assertNotNull($standalone);
+        $this->assertFalse((bool) $standalone->status_id);
+
+        foreach (DemoMailCampaignData::DEMO_MESSAGE_NAMES as $demoMessageName)
+        {
+            $demoMessage = \App\Models\Message::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('name', $demoMessageName)
+                ->first();
+            $this->assertNotNull($demoMessage, "Missing demo message: {$demoMessageName}");
+            $this->assertFalse((bool) $demoMessage->status_id, "Expected paused: {$demoMessageName}");
+        }
+
+        $this->assertSame(
+            \App\Enums\CampaignStatus::Paused->value,
+            $broadcast->fresh()->status,
+        );
 
         $standaloneDeliveriesCount = MessageDelivery::query()
             ->where('message_id', $standalone->id)
