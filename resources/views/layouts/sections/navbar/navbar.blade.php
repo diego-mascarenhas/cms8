@@ -73,7 +73,7 @@
                            @keydown.enter.prevent="selectCurrent()"
                            @keydown.escape="close()"
                            x-ref="searchInput">
-                    <i class="ti ti-x ti-sm search-close cursor-pointer" @click.stop="close()"></i>
+                    <i class="ti ti-x ti-sm search-toggler search-close cursor-pointer" @click.stop="close()"></i>
 
                     <!-- Search Results Dropdown -->
                     <div class="twitter-typeahead search-results-anchor">

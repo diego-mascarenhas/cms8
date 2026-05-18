@@ -33,8 +33,7 @@ class NavbarGlobalSearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('x-data="globalSearch()"', false);
         $response->assertSee('search-results-anchor', false);
-        $response->assertSee('search-close cursor-pointer', false);
-        $response->assertDontSee('search-toggler cursor-pointer', false);
+        $response->assertSee('search-toggler search-close cursor-pointer', false);
     }
 
     public function test_main_js_skips_jquery_search_when_alpine_global_search_is_present(): void
