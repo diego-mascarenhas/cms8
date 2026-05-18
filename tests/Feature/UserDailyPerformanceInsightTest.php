@@ -328,6 +328,58 @@ class UserDailyPerformanceInsightTest extends TestCase
         );
     }
 
+    public function test_in_app_notification_does_not_attach_to_client_contact_with_same_email(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $team = $admin->currentTeam;
+
+        $clientContact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'email' => $admin->email,
+            'name' => 'Cliente',
+            'surname' => 'Externo',
+            'phone' => '34611111111',
+            'creator_id' => $team->user_id,
+            'responsible_id' => $team->user_id,
+            'status_id' => 1,
+            'country' => 724,
+            'language' => 'es',
+            'user_id' => null,
+        ]);
+
+        config([
+            'daily_performance_insight.send_email' => false,
+            'daily_performance_insight.use_llm' => false,
+        ]);
+        $team->setSetting('performance_insights_in_app_notification', true, [
+            'group' => 'notifications',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->artisan('performance-insights:generate')->assertSuccessful();
+
+        $insight = UserDailyPerformanceInsight::query()
+            ->where('team_id', $team->id)
+            ->where('user_id', $admin->id)
+            ->first();
+
+        $this->assertNotNull($insight);
+
+        $notification = Notification::withoutGlobalScopes()
+            ->where('reference', $insight->id)
+            ->first();
+
+        $this->assertNotNull($notification);
+        $this->assertNotSame((int) $clientContact->id, (int) $notification->contact_id);
+        $this->assertNull($clientContact->fresh()->user_id);
+
+        $staffContact = Contact::withoutGlobalScopes()->find($notification->contact_id);
+        $this->assertNotNull($staffContact);
+        $this->assertSame((int) $admin->id, (int) $staffContact->user_id);
+    }
+
     public function test_generate_command_skips_in_app_notification_when_team_setting_disabled(): void
     {
         $this->seedInsightDependencies();
