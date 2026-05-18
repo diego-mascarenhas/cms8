@@ -25,6 +25,20 @@ final class DemoMailCampaignData
     /** Minimum contacts per demo newsletter / campaign audience (must match UI expectations for simulations). */
     public const DEMO_NEWSLETTER_CONTACT_COUNT = 12;
 
+    /** @var list<string> */
+    public const DEMO_MESSAGE_NAMES = [
+        '[Demo] Mensaje suelto (newsletter)',
+        '[Demo] Difusión — cuerpo del mail',
+        '[Demo] Secuencia — Paso 1 bienvenida',
+        '[Demo] Secuencia — Paso 2 seguimiento',
+    ];
+
+    /** @var list<string> */
+    public const DEMO_CAMPAIGN_NAMES = [
+        '[Demo] Campaña difusión',
+        '[Demo] Campaña secuencia (2 pasos)',
+    ];
+
     public static function seed(Team $team, ?Command $command = null): void
     {
         $teamId = (int) $team->id;
@@ -93,7 +107,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => true,
+                'status_id' => false,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -112,7 +126,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => true,
+                'status_id' => false,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -131,7 +145,7 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => true,
+                'status_id' => false,
                 'min_hours_between_emails' => 0,
             ],
         );
@@ -150,20 +164,10 @@ final class DemoMailCampaignData
                 'enable_open_tracking' => true,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => true,
-                'status_id' => true,
+                'status_id' => false,
                 'min_hours_between_emails' => 0,
             ],
         );
-
-        Message::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->whereIn('name', [
-                '[Demo] Mensaje suelto (newsletter)',
-                '[Demo] Difusión — cuerpo del mail',
-                '[Demo] Secuencia — Paso 1 bienvenida',
-                '[Demo] Secuencia — Paso 2 seguimiento',
-            ])
-            ->update(['status_id' => true]);
 
         $campaignBroadcast = Campaign::withoutGlobalScopes()->firstOrCreate(
             [
@@ -172,7 +176,7 @@ final class DemoMailCampaignData
             ],
             [
                 'type' => CampaignType::Broadcasts->value,
-                'status' => CampaignStatus::Active->value,
+                'status' => CampaignStatus::Paused->value,
                 'summary' => 'Demo: un mensaje, audiencia categoría Tester.',
             ],
         );
@@ -192,7 +196,7 @@ final class DemoMailCampaignData
             ],
             [
                 'type' => CampaignType::Sequences->value,
-                'status' => CampaignStatus::Active->value,
+                'status' => CampaignStatus::Paused->value,
                 'summary' => 'Demo: dos correos, espera 60 min entre pasos.',
             ],
         );
@@ -222,10 +226,56 @@ final class DemoMailCampaignData
             $command,
         );
 
+        self::pauseDemoMailFixtures($teamId, $command);
+
         $command?->info('✅ Demo mail: mensaje suelto ID '.$standalone->id);
         $command?->info('✅ Demo mail: difusión campaña ID '.$campaignBroadcast->id.' → mensaje ID '.$msgBroadcast->id);
         $command?->info('✅ Demo mail: secuencia campaña ID '.$campaignSequence->id.' → mensajes ID '.$msgSeqA->id.', '.$msgSeqB->id);
         $command?->info('✅ Demo mail: '.count($demoContacts).' contactos Tester + entregas seed (campaña/newsletter) para estadísticas.');
+    }
+
+    /**
+     * Pause demo messages/campaigns and stop pending deliveries from being scheduled.
+     * Safe to run after seed or on staging to halt auto-sends.
+     */
+    public static function pauseDemoMailFixtures(?int $teamId = null, ?Command $command = null): void
+    {
+        $messageQuery = Message::withoutGlobalScopes()->whereIn('name', self::DEMO_MESSAGE_NAMES);
+        if ($teamId !== null)
+        {
+            $messageQuery->where('team_id', $teamId);
+        }
+
+        $messageIds = $messageQuery->pluck('id');
+        $messagesPaused = $messageQuery->update([
+            'status_id' => false,
+            'started_at' => null,
+            'scheduled_send_at' => null,
+        ]);
+
+        $campaignQuery = Campaign::withoutGlobalScopes()->whereIn('name', self::DEMO_CAMPAIGN_NAMES);
+        if ($teamId !== null)
+        {
+            $campaignQuery->where('team_id', $teamId);
+        }
+
+        $campaignsPaused = $campaignQuery->update(['status' => CampaignStatus::Paused->value]);
+
+        $pendingCancelled = 0;
+        if ($messageIds->isNotEmpty())
+        {
+            $pendingCancelled = MessageDelivery::withoutGlobalScopes()
+                ->whereIn('message_id', $messageIds)
+                ->where('status_id', 1)
+                ->whereNull('delivered_at')
+                ->update([
+                    'status_id' => 4,
+                    'scheduled_for' => null,
+                    'error_message' => 'Demo mail paused (seeder)',
+                ]);
+        }
+
+        $command?->info("⏸️  Demo mail paused: {$messagesPaused} message(s), {$campaignsPaused} campaign(s), {$pendingCancelled} pending delivery(ies) cancelled.");
     }
 
     /**
@@ -304,8 +354,8 @@ final class DemoMailCampaignData
             return;
         }
 
-        // status_id 1 = pending (see SendScheduledDeliveries, MessageController). Messages must be active (status_id true)
-        // so SendMessageCampaignJob::validateDelivery() allows SMTP/Mailpit sends.
+        // status_id 1 = pending (see SendScheduledDeliveries). Demo messages are paused after seed;
+        // activate manually in UI before sending. Completed sample rows below are for stats UI only.
         $pendingPayload = [
             'team_id' => $teamId,
             'status_id' => 1,

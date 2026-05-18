@@ -1,135 +1,113 @@
 # Colas (Queues) de Humano
 
-Esta guía describe las colas que usa la aplicación, cómo configurarlas en .env, cómo ejecutar workers en desarrollo y producción, y cómo monitorear y recuperar errores.
+Guía de colas, `.env`, workers en desarrollo/producción y recuperación de fallos.
 
-## 1) Colas definidas y propósito
+## 1) Colas por tipo
 
--   task-communications: Procesa envíos de comunicaciones de tareas (emails a cliente, notas internas), Job: `App\Jobs\SendTaskCommunication`. Prioritaria.
--   default: Cola por defecto de Laravel (reservada para futuros trabajos genéricos).
+### Correo (worker dedicado)
 
-Nota: El Job `SendTaskCommunication` utiliza reintentos (tries=3) y backoff=60 segundos.
+| Cola | Job | Uso |
+|------|-----|-----|
+| `task-communications` | `SendTaskCommunication` | Emails desde el Kanban |
+| `notifications` | `SendNotificationJob` | Notificaciones a contactos |
+| `mailer` | `SendMessageCampaignJob` | Mensajes, reenvíos, pruebas |
+| `campaign` | `SendMessageCampaignJob` | Envíos masivos de campaña |
+
+Configuración de colas de campaña: `config/message_delivery_dispatch.php`.
+
+### General (otro worker)
+
+| Cola | Job / uso |
+|------|-----------|
+| `default` | Jobs sin cola explícita |
+| `domain-info` | `UpdateDomainInfo`, `UpdateServerDomainInfo` |
+| `domain-updates` | `UpdateDomainSiteType` |
+| `domain-version` | `UpdateDomainPhpVersion` |
+| `whm-sync` | `WhmDomainSync` |
+| `whm-tests` | `WhmServerTest` |
+| `ovh-sync` | `OvhServiceSync` |
 
 ## 2) Requisitos previos
 
--   Migraciones de colas ejecutadas (jobs y failed_jobs):
+Migraciones `jobs` y `failed_jobs` ejecutadas.
 
-```bash
-php artisan migrate --path=database/migrations/2020_05_21_500000_create_jobs_table.php --force
-php artisan migrate --path=database/migrations/2019_08_19_000000_create_failed_jobs_table.php --force
-```
-
--   Migración de comunicaciones de tareas (asegúrate que corre después de `tasks`):
-
-```bash
-# ejemplo sugerido (ajusta al timestamp real en tu repo)
-php artisan migrate --path=database/migrations/2024_07_04_400000_create_task_communications_table.php --force
-```
-
-## 3) Configuración .env
+## 3) Configuración `.env`
 
 ```env
-# Driver recomendado
-QUEUE_CONNECTION=database
+QUEUE_CONNECTION=redis
+MESSAGE_DELIVERY_QUEUE_CONNECTION=redis
 
-# (Opcional) Configuración de correo para envíos a clientes
 MAIL_MAILER=smtp
 MAIL_HOST=...
 MAIL_PORT=587
 MAIL_USERNAME=...
 MAIL_PASSWORD=...
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=no-reply@tudominio.com
+MAIL_FROM_ADDRESS=no-reply@example.com
 MAIL_FROM_NAME="Humano"
 ```
 
-Si usas Redis, cambia `QUEUE_CONNECTION=redis` y ajusta tu `config/queue.php`/Redis en `.env`.
+## 4) Workers
 
-## 4) Arranque de workers
-
-### Desarrollo (local)
-
-Procesar primero la cola prioritaria y luego la default:
+### Desarrollo (dos terminales)
 
 ```bash
-php artisan queue:work --queue=task-communications,default --sleep=1 --tries=3 --backoff=60
+# Correo
+php artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120
+
+# Resto
+php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120
 ```
 
-Detener con Ctrl+C.
+### Producción / Forge (dos daemons)
 
-### Producción (Supervisor)
+Ejemplos listos para copiar en Forge:
 
-Archivo de ejemplo `/etc/supervisor/conf.d/humano-queues.conf`:
+- `deploy/supervisor/forge-queue-email.conf.example`
+- `deploy/supervisor/forge-queue-general.conf.example`
+- `deploy/supervisor/README.md`
+
+**Daemon 1 — general** (el que ya tienes, actualizado):
 
 ```ini
-[program:humano-queues]
-process_name=%(program_name)s_%(process_num)02d
-directory=/var/www/humano
-command=php artisan queue:work --queue=task-communications,default --sleep=1 --tries=3 --backoff=60 --timeout=120
-autostart=true
-autorestart=true
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+directory=/home/forge/staging.humano.app
 numprocs=2
-redirect_stderr=true
-stdout_logfile=/var/www/humano/storage/logs/queue.log
-stopwaitsecs=5
-stopasgroup=true
-killasgroup=true
 ```
 
-Aplicar cambios:
+**Daemon 2 — email** (nuevo en Forge → Queue → New Worker):
 
-```bash
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl start humano-queues:*
+```ini
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+directory=/home/forge/staging.humano.app
+numprocs=1
 ```
 
-Ajusta `numprocs` según CPU/RAM del servidor y volumen de envíos.
+Quita `--daemon` y `--quiet` si los tenías; Supervisor ya mantiene el proceso vivo.
 
-## 5) Despliegue (checklist rápido)
+Tras cada deploy: `php artisan queue:restart`.
 
-1. Compilar assets si no hay CI: `npm run build`.
-2. Migraciones necesarias ejecutadas (incluida la de `task_communications`).
-3. `.env` con `QUEUE_CONNECTION=database` y mail configurado.
-4. Workers levantados: `task-communications,default`.
-5. Limpiar cachés: `php artisan optimize:clear`.
+## 5) Despliegue (checklist)
+
+1. `.env` con `QUEUE_CONNECTION=redis` y mail configurado.
+2. Dos daemons activos (general + email).
+3. `php artisan queue:restart` en el deploy script.
 
 ## 6) Monitoreo y recuperación
-
--   Ver trabajos en cola (driver database):
-    -   Tabla `jobs` (pendientes), `failed_jobs` (fallidos).
--   Reintentar fallidos:
 
 ```bash
 php artisan queue:failed
 php artisan queue:retry all
-# o por ID
-php artisan queue:retry 12345
-```
-
--   Borrar fallidos procesados:
-
-```bash
 php artisan queue:flush
+
+tail -f storage/logs/queue-email.log
+tail -f storage/logs/laravel.log
 ```
 
--   Parar/arrancar workers (Supervisor):
+## 7) Prueba rápida
 
-```bash
-sudo supervisorctl status humano-queues:*
-sudo supervisorctl restart humano-queues:*
-```
+1. Envía una comunicación desde una tarea (cola `task-communications`).
+2. O encola campaña: `php artisan messages:send-pending`.
+3. Comprueba `queue-email.log` o logs de Laravel.
 
-## 7) Prueba rápida de la cola de comunicaciones
-
-1. Desde el Kanban, abre una tarea y envía una comunicación (cliente o responsable).
-2. Verifica en logs que el Job se encola y procesa:
-
-```bash
-tail -f storage/logs/laravel.log | grep -i "Task communication"
-```
-
-3. Si usas base de datos como driver, verifica movimiento en `jobs`/`failed_jobs`.
-
----
-
-Ante cualquier pico de carga en comunicaciones, aumenta `numprocs` y prioriza `task-communications` en el orden de la opción `--queue`.
+Para envíos masivos con rate limit, mantén `numprocs=1` en el worker de email; el jitter al encolar está en `MessageDeliveryDispatcher`.

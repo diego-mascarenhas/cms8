@@ -1,0 +1,22 @@
+; Forge / Supervisor — worker general (sin envío de correo)
+; Ajusta directory, command (php8.x) y stdout_logfile a tu servidor.
+;
+; Colas: sync dominios, WHM, OVH y jobs sin cola explícita (default).
+
+[program:humano-queue-general]
+directory=/home/forge/staging.humano.app
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+process_name=%(program_name)s_%(process_num)02d
+autostart=true
+autorestart=true
+user=forge
+numprocs=2
+startsecs=1
+redirect_stderr=true
+stdout_logfile=/home/forge/staging.humano.app/storage/logs/queue-general.log
+stdout_logfile_maxbytes=5MB
+stdout_logfile_backups=3
+stopwaitsecs=3600
+stopsignal=SIGTERM
+stopasgroup=true
+killasgroup=true

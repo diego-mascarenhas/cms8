@@ -1,0 +1,28 @@
+; Forge / Supervisor — worker solo para correo
+; Ajusta directory, command (php8.x) y stdout_logfile a tu servidor.
+;
+; Colas:
+;   task-communications — emails del Kanban (prioridad alta)
+;   notifications       — notificaciones a contactos
+;   mailer              — mensajes / reenvíos
+;   campaign            — envíos masivos de campaña
+;
+; numprocs=1 evita saturar SMTP; sube a 2 en staging si necesitas velocidad.
+
+[program:humano-queue-email]
+directory=/home/forge/staging.humano.app
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+process_name=%(program_name)s_%(process_num)02d
+autostart=true
+autorestart=true
+user=forge
+numprocs=1
+startsecs=1
+redirect_stderr=true
+stdout_logfile=/home/forge/staging.humano.app/storage/logs/queue-email.log
+stdout_logfile_maxbytes=5MB
+stdout_logfile_backups=3
+stopwaitsecs=3600
+stopsignal=SIGTERM
+stopasgroup=true
+killasgroup=true

@@ -197,7 +197,7 @@
                         height: 220,
                         type: 'donut',
                         toolbar: { show: false },
-                        offsetX: -16
+                        offsetX: -43,
                     },
                     labels: labels,
                     series: values,
@@ -209,16 +209,17 @@
                         fontSize: '12px',
                         labels: { colors: muted },
                         itemMargin: { vertical: 6, horizontal: 8 },
+                        offsetX: -29,
                         formatter: function(seriesName, opts) {
                             const count = opts.w.globals.series[opts.seriesIndex] ?? 0;
                             return seriesName + ' (' + count + ')';
-                        }
+                        },
                     },
                     dataLabels: {
                         enabled: true,
                         formatter: function(val) {
                             return Math.round(val) + '%';
-                        }
+                        },
                     },
                     plotOptions: {
                         pie: {
@@ -885,13 +886,19 @@
         box-shadow: inset 0 0 0 1px rgba(105, 108, 255, 0.35);
     }
 
+    #dashboardContactStatusChart {
+        width: 100%;
+        overflow: hidden;
+        padding-right: 0.75rem;
+    }
+
     #dashboardContactStatusChart .apexcharts-legend {
         padding: 0 0 0 12px;
     }
 
     #dashboardContactStatusChart .apexcharts-legend.apx-legend-position-right {
         top: 50% !important;
-        right: 0 !important;
+        right: 2.4rem !important;
         bottom: auto !important;
         left: auto !important;
         transform: translateY(-50%);
