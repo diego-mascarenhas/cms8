@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Services\Billing\StripeInvoiceCoreMapper;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -22,7 +23,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
 
     protected $description = 'Map Stripe invoice_syncs rows into core invoices table (idempotent by source reference)';
 
-    public function handle(): int
+    public function handle(StripeInvoiceCoreMapper $mapper): int
     {
         if (! Schema::hasTable('invoice_syncs'))
         {
@@ -111,7 +112,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
             $gross = $this->normalizeAmount($row->subtotal ?? $row->total ?? $row->amount_due ?? 0);
             $discount = $this->normalizeNullableAmount($row->total_discount_amount);
             $total = $this->normalizeAmount($row->total ?? $row->amount_due ?? $gross);
-            $balance = $this->normalizeAmount($row->amount_remaining ?? $total);
+            $coreFields = $mapper->mapFromInvoiceSync($row);
 
             $payload = [
                 'team_id' => $row->team_id,
@@ -125,8 +126,8 @@ class ImportStripeInvoiceSyncsCommand extends Command
                 'gross_amount' => $gross,
                 'discount' => $discount,
                 'total_amount' => $total,
-                'balance' => $balance,
-                'status' => $this->mapStripeStatusToInvoiceStatus((string) $row->status),
+                'balance' => $coreFields['balance'],
+                'status' => $coreFields['status'],
                 'source_provider' => 'stripe',
                 'source_reference_id' => $row->external_id,
                 'source_synced_at' => $row->last_synced_at ?? now(),
@@ -164,23 +165,10 @@ class ImportStripeInvoiceSyncsCommand extends Command
         $this->info(
             "Processed: {$processed} | created: {$created} | updated: {$updated} | skipped: {$skipped}".
             ($reconcile ? ' | reconcile' : ' | pending-only').
-            ($dryRun ? ' | dry-run' : '')
+            ($dryRun ? ' | dry-run' : ''),
         );
 
         return self::SUCCESS;
-    }
-
-    private function mapStripeStatusToInvoiceStatus(string $status): int
-    {
-        return match (strtolower($status))
-        {
-            'draft' => 9,
-            'open' => 1,
-            'paid' => 2,
-            'void' => 3,
-            'uncollectible' => 7,
-            default => 7,
-        };
     }
 
     private function normalizeAmount(mixed $amount): float
