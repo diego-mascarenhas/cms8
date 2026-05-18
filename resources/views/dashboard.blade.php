@@ -684,7 +684,7 @@
                         <div class="dashboard-calendar-header-actions d-flex align-items-center flex-wrap gap-2 flex-shrink-0">
                             @include('partials.dashboard-calendar-tab-nav')
                             <a href="{{ route('app-calendar') }}" id="dashboard-cal-link-calendar" class="btn btn-sm btn-label-primary">
-                                <i class="ti ti-calendar-event me-1"></i>{{ __('app.dashboard_calendar_tab_calendar') }}
+                                <i class="ti ti-calendar me-1"></i>{{ __('app.dashboard_calendar_tab_calendar') }}
                             </a>
                         </div>
                     @endif

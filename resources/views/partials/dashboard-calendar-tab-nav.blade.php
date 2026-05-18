@@ -7,7 +7,7 @@
         role="tab"
         aria-controls="dashboard-cal-pane-today"
         aria-selected="true">
-        <i class="ti ti-calendar me-1"></i>{{ __('app.dashboard_calendar_tab_today') }}
+        <i class="ti ti-calendar-event me-1"></i>{{ __('app.dashboard_calendar_tab_today') }}
     </button>
     <button type="button"
         class="btn btn-sm btn-label-primary"
