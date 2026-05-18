@@ -546,9 +546,20 @@ if (typeof $ !== 'undefined') {
     // Toggle Universal Sidebar
 
     // Navbar Search with autosuggest (typeahead)
-    // ? You can remove the following JS if you don't want to use search functionality.
+    // Skipped when Alpine globalSearch() manages #navbar-collapse (avoids fighting d-none / backdrop / input).
     //----------------------------------------------------------------------------------
 
+  function usesAlpineGlobalSearch() {
+    var navbarCollapse = document.getElementById('navbar-collapse');
+
+    return (
+      navbarCollapse &&
+      navbarCollapse.hasAttribute('x-data') &&
+      navbarCollapse.getAttribute('x-data').indexOf('globalSearch') !== -1
+    );
+  }
+
+  if (!usesAlpineGlobalSearch()) {
     var searchToggler = $('.search-toggler'),
       searchInputWrapper = $('.search-input-wrapper'),
       searchInput = $('.search-input'),
@@ -947,6 +958,7 @@ if (typeof $ !== 'undefined') {
         psSearch.update();
       });
     }
+  }
   });
 }
 

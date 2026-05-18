@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Module;
@@ -172,6 +173,53 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertSame(1, $comparisons['status-breakdown']['difference']);
         $this->assertEquals(100.0, $comparisons['status-breakdown']['percent_change']);
         $this->assertSame('up', $comparisons['status-breakdown']['direction']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dashboard_shows_calendar_tabs_with_today_events(): void
+    {
+        Carbon::setTestNow('2026-05-18 12:00:00');
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'calendar'],
+            [
+                'name' => 'Calendar',
+                'icon' => 'calendar',
+                'description' => 'Team calendar',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('calendar');
+
+        CalendarEvent::query()->create([
+            'team_id' => $team->id,
+            'title' => 'Dashboard calendar event',
+            'start' => Carbon::parse('2026-05-18 10:00:00'),
+            'end' => Carbon::parse('2026-05-18 11:00:00'),
+            'all_day' => false,
+            'label' => 'Business',
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('app.dashboard_calendar_tab_today'), false);
+        $response->assertSee(__('app.dashboard_calendar_tab_upcoming'), false);
+        $response->assertSee(__('app.dashboard_calendar_tab_calendar'), false);
+        $response->assertSee('Dashboard calendar event', false);
+        $response->assertSee('dashboard-cal-pane-today', false);
+        $response->assertSee('id="dashboard-cal-link-calendar"', false);
+        $response->assertSee(route('app-calendar'), false);
+        $response->assertDontSee('dashboard-cal-pane-calendar', false);
 
         Carbon::setTestNow();
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Enterprise;
@@ -450,6 +451,8 @@ class DashboardController extends Controller
                 ->findTodayInsight(auth()->user(), $activeTeam);
         }
 
+        $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
+
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -475,7 +478,105 @@ class DashboardController extends Controller
             'dashboardPanelMonthComparisons',
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
+            'dashboardCalendarData',
         ));
+    }
+
+    /**
+     * @return array{
+     *     today: list<array<string, mixed>>,
+     *     upcoming: list<array<string, mixed>>
+     * }|null
+     */
+    private function buildDashboardCalendarData($activeTeam): ?array
+    {
+        if (! $activeTeam || (! $activeTeam->hasModule('calendar') && ! $activeTeam->hasModule('today')))
+        {
+            return null;
+        }
+
+        $today = now()->startOfDay();
+        $tomorrow = $today->copy()->addDay();
+        $upcomingLimit = $today->copy()->addDays(30)->endOfDay();
+
+        $todayEvents = CalendarEvent::query()
+            ->with('guests:id,name,surname')
+            ->where('end', '>', $today)
+            ->where('start', '<', $tomorrow)
+            ->orderBy('start')
+            ->get();
+
+        $upcomingEvents = CalendarEvent::query()
+            ->with('guests:id,name,surname')
+            ->where('start', '>=', $tomorrow)
+            ->where('start', '<=', $upcomingLimit)
+            ->orderBy('start')
+            ->limit(30)
+            ->get();
+
+        return [
+            'today' => $todayEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->values()->all(),
+            'upcoming' => $upcomingEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->values()->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatDashboardCalendarEvent(CalendarEvent $event): array
+    {
+        $start = $event->start;
+        $end = $event->end;
+        $label = $event->label ?? 'Business';
+
+        return [
+            'id' => $event->id,
+            'title' => $event->title,
+            'location' => $event->location,
+            'label' => $label,
+            'label_class' => $this->calendarEventLabelClass($label),
+            'all_day' => (bool) $event->all_day,
+            'date_key' => $start?->toDateString(),
+            'date_display' => $start?->isoFormat('D MMM YYYY') ?? '',
+            'time_display' => $this->formatDashboardCalendarEventTime($event),
+            'calendar_url' => route('app-calendar'),
+            'guests' => $event->guests->map(fn (Contact $guest) => trim($guest->name.' '.$guest->surname))->filter()->values()->all(),
+        ];
+    }
+
+    private function formatDashboardCalendarEventTime(CalendarEvent $event): string
+    {
+        if ($event->all_day)
+        {
+            return __('app.dashboard_calendar_all_day');
+        }
+
+        $start = $event->start;
+        $end = $event->end;
+        if ($start === null)
+        {
+            return '';
+        }
+
+        $formatted = $start->isoFormat('HH:mm');
+        if ($end !== null && ! $start->equalTo($end))
+        {
+            $formatted .= ' – '.$end->isoFormat('HH:mm');
+        }
+
+        return $formatted;
+    }
+
+    private function calendarEventLabelClass(?string $label): string
+    {
+        return match ($label)
+        {
+            'Personal' => 'danger',
+            'Family' => 'warning',
+            'Holiday' => 'success',
+            'ETC' => 'info',
+            default => 'primary',
+        };
     }
 
     private function countTeamContactsCreatedBetween(

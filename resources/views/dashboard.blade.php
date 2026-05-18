@@ -673,16 +673,23 @@
 
         <!-- Main Content Column -->
         <div class="col-lg-8 order-lg-1 d-flex flex-column">
-            <!-- Today's contacts — paired with emotional balance; matching header + equal card height (lg+) -->
-            <div class="card mb-4 flex-grow-1 d-flex flex-column w-100">
-                <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
+            <!-- Today's contacts / calendar — paired with emotional balance -->
+            <div class="card mb-4 dashboard-calendar-card w-100 flex-grow-1 d-flex flex-column">
+                <div class="card-header pb-1 d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div class="card-title mb-0">
-                        <h5 class="mb-0">Contactos para hoy</h5>
-                        <small class="text-muted">Lista de seguimiento diario</small>
+                        <h5 class="mb-1">{{ __('app.dashboard_calendar_card_title') }}</h5>
+                        <small class="text-muted d-block">{{ __('app.dashboard_calendar_card_subtitle') }}</small>
                     </div>
+                    @if ($dashboardCalendarData ?? null)
+                        <a href="{{ route('app-calendar') }}" id="dashboard-cal-link-calendar" class="btn btn-sm btn-label-primary flex-shrink-0">
+                            <i class="ti ti-calendar me-1"></i>{{ __('app.dashboard_calendar_tab_calendar') }}
+                        </a>
+                    @endif
                 </div>
-                <div class="card-body flex-grow-1 d-flex flex-column">
-                    @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
+                <div class="card-body dashboard-calendar-card-body flex-grow-1 d-flex flex-column min-h-0">
+                    @if ($dashboardCalendarData ?? null)
+                        @include('partials.dashboard-calendar-tabs', $dashboardCalendarData)
+                    @elseif(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
                         <div class="table-responsive flex-grow-1">
                             <table class="table table-borderless">
                                 <thead>
@@ -973,6 +980,88 @@
         .dashboard-paired-row > [class*='col-lg-'] > .card {
             min-height: 330px;
         }
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-card-body {
+        padding: 0.5rem 1.25rem 0.75rem;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-tabs {
+        flex-shrink: 0;
+        gap: 0.35rem;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-tabs .nav-link {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.8125rem;
+        line-height: 1.25;
+        white-space: nowrap;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-tabs .dashboard-calendar-tab-label {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+    }
+
+    @media (max-width: 575.98px) {
+        .dashboard-calendar-card .dashboard-calendar-tabs .dashboard-calendar-tab-label {
+            display: none;
+        }
+
+        .dashboard-calendar-card .dashboard-calendar-tabs .nav-link i {
+            margin-right: 0 !important;
+        }
+    }
+
+    .dashboard-calendar-card .tab-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0;
+        margin: 0;
+    }
+
+    .dashboard-calendar-card .tab-pane {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-tab-inner {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-events-table {
+        margin-bottom: 0;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-events-table thead th {
+        padding-top: 0.375rem;
+        padding-bottom: 0.25rem;
+        font-size: 0.75rem;
+        border-bottom: 0;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-events-table tbody td {
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
+        vertical-align: middle;
+    }
+
+    .dashboard-calendar-card .dashboard-calendar-empty {
+        flex-grow: 1;
+        justify-content: center;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
     }
 
     .sentiment-chart {

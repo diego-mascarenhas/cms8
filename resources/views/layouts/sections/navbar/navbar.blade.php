@@ -73,10 +73,10 @@
                            @keydown.enter.prevent="selectCurrent()"
                            @keydown.escape="close()"
                            x-ref="searchInput">
-                    <i class="ti ti-x ti-sm search-toggler cursor-pointer" @click="close()"></i>
+                    <i class="ti ti-x ti-sm search-close cursor-pointer" @click.stop="close()"></i>
 
                     <!-- Search Results Dropdown -->
-                    <div class="twitter-typeahead">
+                    <div class="twitter-typeahead search-results-anchor">
                         <div class="tt-menu navbar-search-suggestion"
                                  x-cloak
                                  x-ref="resultsContainer"
@@ -973,6 +973,19 @@ document.addEventListener('DOMContentLoaded', function() {
     <span class="visually-hidden">{{ __('app.searching') }}...</span>
 </div>
 
+<style>
+    /* Alpine results dropdown: do not cover the input (theme typeahead uses height:100%). */
+    .layout-navbar .search-input-wrapper .search-results-anchor {
+        top: 100% !important;
+        height: auto !important;
+        pointer-events: none;
+    }
+
+    .layout-navbar .search-input-wrapper .search-results-anchor .tt-menu {
+        pointer-events: auto;
+    }
+</style>
+
 <script>
 function globalSearch() {
     return {
@@ -1000,16 +1013,6 @@ function globalSearch() {
                 if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.keyCode === 191)) {
                     e.preventDefault();
                     this.open();
-                }
-            });
-
-            // Setup click handlers for search togglers
-            document.querySelectorAll('.search-toggler').forEach(btn => {
-                if (!btn.closest('.search-input-wrapper')) {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.open();
-                    });
                 }
             });
 
