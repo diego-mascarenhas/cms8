@@ -237,7 +237,7 @@ class ModuleSeeder extends Seeder
             'order' => 3,
         ],
         'prompts' => [
-            'name' => 'Prompts',
+            'name' => 'Instrucciones AI',
             'icon' => 'cpu',
             'description' => 'Instructions for the assistant.',
             'group' => 'automation',
@@ -481,8 +481,7 @@ class ModuleSeeder extends Seeder
     {
         $this->command->info('Creando módulos...');
 
-        foreach ($this->coreModules as $key => $moduleData)
-        {
+        foreach ($this->coreModules as $key => $moduleData) {
             Module::updateOrCreate(
                 ['key' => $key],
                 [
@@ -497,8 +496,7 @@ class ModuleSeeder extends Seeder
             $this->command->info("Módulo core '{$moduleData['name']}' creado o actualizado");
         }
 
-        foreach ($this->additionalModules as $key => $moduleData)
-        {
+        foreach ($this->additionalModules as $key => $moduleData) {
             Module::updateOrCreate(
                 ['key' => $key],
                 [

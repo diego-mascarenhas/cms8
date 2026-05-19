@@ -88,7 +88,7 @@ class MobileAssistantApiTest extends TestCase
         $this->assertIsArray($enabled);
         $this->assertContains('today', $enabled);
         $this->assertContains('contacts', $enabled);
-        $this->assertContains('clients', $enabled);
+        $this->assertNotContains('clients', $enabled);
         $this->assertContains('tasks', $enabled);
         $this->assertContains('chat', $enabled);
         $this->assertNotContains('projects', $enabled);
