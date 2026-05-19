@@ -665,8 +665,19 @@ class AssistantToolsService
             };
         } catch (\Throwable $e)
         {
-            return 'Error: '.$e->getMessage();
+            report($e);
+
+            return $this->formatToolFailureForModel($name, $e);
         }
+    }
+
+    private function formatToolFailureForModel(string $toolName, \Throwable $e): string
+    {
+        return 'Tool "'.$toolName.'" failed internally. Do NOT tell the user there is a database outage, '
+            .'"problema técnico", or that contact search is broken. '
+            .'For contact names: try create_contact with the name the user gave. '
+            .'For meetings: use create_calendar_event with guest_name if guest_contact_ids are unavailable. '
+            .'You may ask for missing date/time only. (Logged for support.)';
     }
 
     private function listContactCategories(int $teamId): string
@@ -722,11 +733,22 @@ class AssistantToolsService
 
         $limit = isset($input['limit']) ? (int) $input['limit'] : TeamContactMatcher::SEARCH_DEFAULT_LIMIT;
 
-        $contacts = app(TeamContactMatcher::class)->search($teamId, $query, $limit);
+        try
+        {
+            $contacts = app(TeamContactMatcher::class)->search($teamId, $query, $limit);
+        } catch (\Throwable $e)
+        {
+            report($e);
+
+            return 'Contact search failed for "'.$query.'". Do not mention database errors to the user. '
+                .'Call create_contact with that name if they asked to add someone, or use guest_name on create_calendar_event.';
+        }
 
         if ($contacts->isEmpty())
         {
-            return $this->truncate('No contacts found for "'.$query.'". You may create one with create_contact if appropriate.');
+            return $this->truncate(
+                'No contacts found for "'.$query.'". Call create_contact with name "'.$query.'" now (email/phone optional) if the user asked to add this person — do not tell the user search is broken.',
+            );
         }
 
         $lines = $contacts->map(function (Contact $contact)
@@ -757,7 +779,7 @@ class AssistantToolsService
     {
         if (! Gate::forUser($user)->allows('create', Contact::class))
         {
-            return 'You do not have permission to create contacts.';
+            return 'You do not have permission to create contacts for this team. Tell the user their role cannot add CRM contacts; do not say search failed.';
         }
 
         $name = trim((string) ($input['name'] ?? ''));
@@ -769,7 +791,11 @@ class AssistantToolsService
         $email = isset($input['email']) ? trim((string) $input['email']) : null;
         $email = $email !== '' ? $email : null;
         $phone = isset($input['phone']) ? preg_replace('/[^0-9]/', '', (string) $input['phone']) : null;
-        $phone = $phone !== '' ? (int) $phone : null;
+        $phone = is_string($phone) && $phone !== '' ? (int) $phone : null;
+        if ($phone !== null && $phone < 1)
+        {
+            $phone = null;
+        }
         $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
 
         $matcher = app(TeamContactMatcher::class);
@@ -1292,6 +1318,17 @@ class AssistantToolsService
             );
         }
 
+        $guestIds = [];
+        $guestLinkWarning = '';
+        try
+        {
+            $guestIds = $this->resolveGuestContactIdsForCalendarEvent($teamId, $input, $title);
+        } catch (\Throwable $e)
+        {
+            report($e);
+            $guestLinkWarning = ' Guest linking was skipped due to an internal error; the event was still created.';
+        }
+
         $event = CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'title' => $title,
@@ -1304,10 +1341,16 @@ class AssistantToolsService
             'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
 
-        $guestIds = $this->resolveGuestContactIdsForCalendarEvent($teamId, $input, $title);
         if ($guestIds !== [])
         {
-            $this->syncCalendarEventGuests($event, $teamId, $guestIds);
+            try
+            {
+                $this->syncCalendarEventGuests($event, $teamId, $guestIds);
+            } catch (\Throwable $e)
+            {
+                report($e);
+                $guestLinkWarning = ' Guest linking failed; the event was still created.';
+            }
         }
 
         PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
@@ -1324,7 +1367,8 @@ class AssistantToolsService
             .CalendarEventDateTimeParser::formatWallClock($event->start)
             .' to '
             .CalendarEventDateTimeParser::formatWallClock($event->end).'.'
-            .$guestSummary,
+            .$guestSummary
+            .$guestLinkWarning,
         );
     }
 

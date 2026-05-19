@@ -38,6 +38,8 @@ class Calendar extends Controller
      */
     public function events(Request $request)
     {
+        $this->authorize('viewAny', CalendarEvent::class);
+
         $start = $request->input('start');
         $end = $request->input('end');
 
@@ -66,6 +68,8 @@ class Calendar extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', CalendarEvent::class);
+
         $teamId = auth()->user()?->currentTeam?->id;
         if (! $teamId)
         {
@@ -112,6 +116,8 @@ class Calendar extends Controller
      */
     public function update(Request $request, CalendarEvent $event)
     {
+        $this->authorize('update', $event);
+
         $teamId = auth()->user()?->currentTeam?->id;
         if (! $teamId || $event->team_id != $teamId)
         {
@@ -169,6 +175,8 @@ class Calendar extends Controller
      */
     public function destroy(CalendarEvent $event)
     {
+        $this->authorize('delete', $event);
+
         $teamId = auth()->user()?->currentTeam?->id;
         if (! $teamId || $event->team_id != $teamId)
         {

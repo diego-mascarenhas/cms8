@@ -97,6 +97,36 @@ class SearchNormalizer
         };
     }
 
+    /**
+     * Lowercased, trimmed contact full name for equality / LIKE (MySQL and PostgreSQL).
+     */
+    public static function contactFullNameLowerSql(Connection $connection): string
+    {
+        return 'lower('.self::sqlContactFullName($connection).')';
+    }
+
+    /**
+     * Lowercased, trimmed coalesced contact text column (name, surname, email).
+     */
+    public static function contactTextColumnLowerSql(string $column, Connection $connection): string
+    {
+        self::assertSafeIdentifier($column);
+
+        return 'lower(trim('.self::sqlCoalesceColumn($column, $connection).'))';
+    }
+
+    /**
+     * Phone column cast to string for LIKE (bigint-safe on MySQL and PostgreSQL).
+     */
+    public static function contactPhoneLikeSql(Connection $connection): string
+    {
+        return match ($connection->getDriverName())
+        {
+            'mysql' => "cast(coalesce(phone, '') as char)",
+            default => "coalesce(cast(phone as text), '')",
+        };
+    }
+
     private static function sqlCoalesceColumn(string $column, Connection $connection): string
     {
         self::assertSafeIdentifier($column);
