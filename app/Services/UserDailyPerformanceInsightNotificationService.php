@@ -127,29 +127,21 @@ class UserDailyPerformanceInsightNotificationService
         return (int) $type->id;
     }
 
+    /**
+     * In-app notifications require a contact row; use only contacts already linked
+     * to this user, or create a dedicated staff contact — never attach to a client
+     * contact that merely shares the admin email.
+     */
     private function resolveRecipientContact(User $user, Team $team): ?Contact
     {
-        $contact = Contact::withoutGlobalScopes()
+        $linked = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
             ->where('user_id', $user->id)
             ->first();
 
-        if (! $contact && $user->email)
+        if ($linked)
         {
-            $contact = Contact::withoutGlobalScopes()
-                ->where('team_id', $team->id)
-                ->where('email', $user->email)
-                ->first();
-
-            if ($contact && (int) $contact->user_id !== (int) $user->id)
-            {
-                $contact->forceFill(['user_id' => $user->id])->save();
-            }
-        }
-
-        if ($contact)
-        {
-            return $contact;
+            return $linked;
         }
 
         if (! $user->email)

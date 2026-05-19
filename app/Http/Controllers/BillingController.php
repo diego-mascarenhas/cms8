@@ -140,21 +140,30 @@ class BillingController extends Controller
         $remainingProspectCredits = $team->getRemainingProspectCredits();
         $currentProspectPlan = $team->getProspectPlan();
 
-        $affiliateCommissionsAsReferrer = $team->billingAffiliateCommissionsAsReferrer()
-            ->with(['payingTeam', 'payingEnterprise', 'referrerEnterprise'])
-            ->latest()
-            ->limit(200)
-            ->get();
+        $affiliateCommissionsAsReferrer = collect();
+        $affiliateCommissionsAsPayer = collect();
+        $affiliateTotalsAsReferrer = [];
+        $affiliateTotalsAsPayer = [];
+        $affiliateCommissionPercent = 0.0;
 
-        $affiliateCommissionsAsPayer = $team->billingAffiliateCommissionsAsPayer()
-            ->with(['referrerTeam', 'payingEnterprise', 'referrerEnterprise'])
-            ->latest()
-            ->limit(200)
-            ->get();
+        if ($team->hasModule('affiliates'))
+        {
+            $affiliateCommissionsAsReferrer = $team->billingAffiliateCommissionsAsReferrer()
+                ->with(['payingTeam', 'payingEnterprise', 'referrerEnterprise'])
+                ->latest()
+                ->limit(200)
+                ->get();
 
-        $affiliateTotalsAsReferrer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsReferrer);
-        $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
-        $affiliateCommissionPercent = (float) $team->getSetting('affiliate_commission_percent', '0');
+            $affiliateCommissionsAsPayer = $team->billingAffiliateCommissionsAsPayer()
+                ->with(['referrerTeam', 'payingEnterprise', 'referrerEnterprise'])
+                ->latest()
+                ->limit(200)
+                ->get();
+
+            $affiliateTotalsAsReferrer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsReferrer);
+            $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
+            $affiliateCommissionPercent = (float) $team->getSetting('affiliate_commission_percent', '0');
+        }
 
         $tokenStats = null;
         if ($user->hasRole(['root', 'admin']))

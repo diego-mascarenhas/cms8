@@ -19,6 +19,7 @@ class ApolloController extends Controller
     public function index(): View|RedirectResponse
     {
         $this->authorize('create', Contact::class);
+        $this->ensureProspectingModuleEnabled();
 
         if (! auth()->user()->currentTeam)
         {
@@ -59,6 +60,7 @@ class ApolloController extends Controller
     public function searchPeople(Request $request): JsonResponse
     {
         $this->authorize('create', Contact::class);
+        $this->ensureProspectingModuleEnabled();
 
         $validated = $request->validate([
             'person_titles' => 'nullable|array',
@@ -114,6 +116,7 @@ class ApolloController extends Controller
     public function searchOrganizations(Request $request): JsonResponse
     {
         $this->authorize('create', Contact::class);
+        $this->ensureProspectingModuleEnabled();
 
         $validated = $request->validate([
             'q_organization_domains' => 'nullable|string|max:1000',
@@ -159,6 +162,7 @@ class ApolloController extends Controller
     public function addPersonAsContact(Request $request): RedirectResponse|JsonResponse
     {
         $this->authorize('create', Contact::class);
+        $this->ensureProspectingModuleEnabled();
 
         if (! auth()->user()->currentTeam)
         {
@@ -365,5 +369,10 @@ class ApolloController extends Controller
         $credits = config('prospects.credits_per_position', []);
 
         return (int) ($credits[$position] ?? config('prospects.default_credits', 1));
+    }
+
+    private function ensureProspectingModuleEnabled(): void
+    {
+        abort_unless(auth()->user()->currentTeam?->hasModule('prospecting'), 404);
     }
 }

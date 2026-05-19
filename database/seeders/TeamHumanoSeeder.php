@@ -142,6 +142,7 @@ class TeamHumanoSeeder extends Seeder
             'contacts',  // Contact management
             'enterprises',  // Enterprise management
             'prospecting',  // Prospect search
+            'prompts',  // AI instructions (assistant flows)
             'services',  // Service management
             'projects',  // Project management
             'tasks',  // Task management

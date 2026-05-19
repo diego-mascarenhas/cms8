@@ -52,11 +52,7 @@ class TestMessageMail extends Mailable
         }
 
         // Get CSS from template if available
-        $css = '';
-        if ($this->message->template && isset($this->message->template->gjs_data['css']))
-        {
-            $css = $this->message->template->gjs_data['css'];
-        }
+        $css = $this->message->resolveMailCss();
 
         // Inline CSS styles
         $cssInliner = new CssToInlineStyles;

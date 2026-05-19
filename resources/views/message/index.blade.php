@@ -35,6 +35,21 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    #message-table .message-list-progress-col {
+        width: 9.5rem;
+        max-width: 9.5rem;
+    }
+
+    #message-table .message-list-progress {
+        min-width: 0;
+        max-width: 9rem;
+    }
+
+    #message-table .message-list-progress__bar {
+        height: 6px;
+        min-width: 3.5rem;
+    }
 </style>
 
 @section('content')
@@ -57,71 +72,63 @@
 	$planConfig = $team->getEmailPlanConfig();
 @endphp
 
-<div class="row mb-4">
+<div class="row g-3 mb-3">
 	<!-- Plan Actual -->
-	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
-		<div class="card h-100">
-			<div class="card-body d-flex justify-content-between align-items-center">
-				<div class="card-title mb-0">
-					<h5 class="mb-0 me-2">{{ $currentPlan->getDisplayName() }}</h5>
-					<small>Plan Actual</small>
+	<div class="col-xl-3 col-md-6 col-sm-6">
+		<div class="card h-100 mb-0">
+			<div class="card-body py-3 px-3 d-flex justify-content-between align-items-center gap-2">
+				<div class="min-w-0">
+					<h6 class="mb-0 text-truncate">{{ $currentPlan->getDisplayName() }}</h6>
+					<small class="text-muted">Plan Actual</small>
 				</div>
-				<div class="card-icon">
-					<span class="badge bg-label-primary rounded-pill p-2">
-						<i class='ti ti-award ti-sm'></i>
-					</span>
-				</div>
+				<span class="badge bg-label-primary rounded p-2 flex-shrink-0">
+					<i class="ti ti-award ti-sm"></i>
+				</span>
 			</div>
 		</div>
 	</div>
 
 	<!-- Contactos -->
-	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
-		<div class="card h-100">
-			<div class="card-body d-flex justify-content-between align-items-center">
-				<div class="card-title mb-0">
-					<h5 class="mb-0 me-2">{{ number_format($team->contacts()->count()) }}</h5>
-					<small>Contactos / {{ number_format($planConfig['contact_limit']) }}</small>
+	<div class="col-xl-3 col-md-6 col-sm-6">
+		<div class="card h-100 mb-0">
+			<div class="card-body py-3 px-3 d-flex justify-content-between align-items-center gap-2">
+				<div class="min-w-0">
+					<h6 class="mb-0">{{ number_format($team->contacts()->count()) }}</h6>
+					<small class="text-muted">Contactos / {{ number_format($planConfig['contact_limit']) }}</small>
 				</div>
-				<div class="card-icon">
-					<span class="badge bg-label-info rounded-pill p-2">
-						<i class='ti ti-users ti-sm'></i>
-					</span>
-				</div>
+				<span class="badge bg-label-info rounded p-2 flex-shrink-0">
+					<i class="ti ti-users ti-sm"></i>
+				</span>
 			</div>
 		</div>
 	</div>
 
 	<!-- Envíos Mensuales -->
-	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
-		<div class="card h-100">
-			<div class="card-body d-flex justify-content-between align-items-center">
-				<div class="card-title mb-0">
-					<h5 class="mb-0 me-2">{{ number_format($planConfig['monthly_used']) }}</h5>
-					<small>Envíos este mes / {{ number_format($planConfig['monthly_limit']) }}</small>
+	<div class="col-xl-3 col-md-6 col-sm-6">
+		<div class="card h-100 mb-0">
+			<div class="card-body py-3 px-3 d-flex justify-content-between align-items-center gap-2">
+				<div class="min-w-0">
+					<h6 class="mb-0">{{ number_format($planConfig['monthly_used']) }}</h6>
+					<small class="text-muted">Envíos este mes / {{ number_format($planConfig['monthly_limit']) }}</small>
 				</div>
-				<div class="card-icon">
-					<span class="badge bg-label-success rounded-pill p-2">
-						<i class='ti ti-send ti-sm'></i>
-					</span>
-				</div>
+				<span class="badge bg-label-success rounded p-2 flex-shrink-0">
+					<i class="ti ti-send ti-sm"></i>
+				</span>
 			</div>
 		</div>
 	</div>
 
 	<!-- Envíos Diarios -->
-	<div class="col-xl-3 col-md-6 col-sm-6 mb-4">
-		<div class="card h-100">
-			<div class="card-body d-flex justify-content-between align-items-center">
-				<div class="card-title mb-0">
-					<h5 class="mb-0 me-2">{{ number_format($planConfig['daily_used']) }}</h5>
-					<small>Envíos hoy / {{ $planConfig['daily_limit'] ? number_format($planConfig['daily_limit']) : '∞' }}</small>
+	<div class="col-xl-3 col-md-6 col-sm-6">
+		<div class="card h-100 mb-0">
+			<div class="card-body py-3 px-3 d-flex justify-content-between align-items-center gap-2">
+				<div class="min-w-0">
+					<h6 class="mb-0">{{ number_format($planConfig['daily_used']) }}</h6>
+					<small class="text-muted">Envíos hoy / {{ $planConfig['daily_limit'] ? number_format($planConfig['daily_limit']) : '∞' }}</small>
 				</div>
-				<div class="card-icon">
-					<span class="badge bg-label-warning rounded-pill p-2">
-						<i class='ti ti-clock ti-sm'></i>
-					</span>
-				</div>
+				<span class="badge bg-label-warning rounded p-2 flex-shrink-0">
+					<i class="ti ti-clock ti-sm"></i>
+				</span>
 			</div>
 		</div>
 	</div>
@@ -175,7 +182,9 @@
 
 <div class="card">
     <div class="card-body">
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        <div class="card-datatable table-responsive">
+            {{ $dataTable->table(['class' => 'table table-hover dt-responsive w-100']) }}
+        </div>
     </div>
 </div>
 

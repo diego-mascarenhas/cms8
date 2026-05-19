@@ -18,6 +18,7 @@ use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\MessageDeliveryDispatcher;
+use App\Services\MessageFormTemplateResolver;
 use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
 use Carbon\Carbon;
@@ -69,7 +70,9 @@ class MessageController extends Controller
             $data->text = old('text', __('Boletín por correo'));
         }
 
-        return view('message.form', compact('data'));
+        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request);
+
+        return view('message.form', array_merge(compact('data'), $previewContext));
     }
 
     /**
@@ -135,30 +138,45 @@ class MessageController extends Controller
 
         $messageModel = null;
 
-        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, &$messageModel): void
+        $messageIdForGate = $request->filled('id') ? (int) $request->id : null;
+        $hasDeliveries = $messageIdForGate > 0
+            && MessageDelivery::query()->where('message_id', $messageIdForGate)->exists();
+
+        $mailHtml = null;
+        if ($resolvedTypeId === 1 && $templateId !== null && $templateId > 0 && ! $hasDeliveries)
         {
+            $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
+        }
+
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, &$messageModel): void
+        {
+            $payload = [
+                'name' => $validated['name'],
+                'type_id' => $resolvedTypeId,
+                'category_id' => ($data['category_id'] ?? '') ?: null,
+                'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
+                'template_id' => $templateId,
+                'text' => $validated['text'],
+                'status_id' => $status_id,
+                'show_unsubscribe' => $show_unsubscribe,
+                'enable_open_tracking' => $enable_open_tracking,
+                'enable_click_tracking' => $enable_click_tracking,
+                'min_hours_between_emails' => max(0, $minHours),
+                'send_allowed_weekdays' => $sendAllowedWeekdays,
+                'send_window_start' => $sendWindowStart,
+                'send_window_end' => $sendWindowEnd,
+                'scheduled_send_at' => $scheduledSendAt,
+            ];
+
+            if ($mailHtml !== null)
+            {
+                $payload['mail_html'] = $mailHtml;
+            }
+
             $messageModel = Message::updateOrCreate(
                 ['id' => $request->id],
-                [
-                    'name' => $validated['name'],
-                    'type_id' => $resolvedTypeId,
-                    'category_id' => ($data['category_id'] ?? '') ?: null,
-                    'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
-                    'template_id' => $templateId,
-                    'text' => $validated['text'],
-                    'status_id' => $status_id,
-                    'show_unsubscribe' => $show_unsubscribe,
-                    'enable_open_tracking' => $enable_open_tracking,
-                    'enable_click_tracking' => $enable_click_tracking,
-                    'min_hours_between_emails' => max(0, $minHours),
-                    'send_allowed_weekdays' => $sendAllowedWeekdays,
-                    'send_window_start' => $sendWindowStart,
-                    'send_window_end' => $sendWindowEnd,
-                    'scheduled_send_at' => $scheduledSendAt,
-                ],
+                $payload,
             );
-
-            $this->syncTemplateHtmlFromMessageForm($request, $resolvedTypeId, $templateId);
         });
 
         $messageId = (int) $messageModel->id;
@@ -439,7 +457,9 @@ class MessageController extends Controller
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
 
-        return view('message.form', compact('data', 'removeMailTemplate'));
+        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request, $removeMailTemplate);
+
+        return view('message.form', array_merge(compact('data', 'removeMailTemplate'), $previewContext));
     }
 
     /**
@@ -464,44 +484,14 @@ class MessageController extends Controller
             $messageId = null;
         }
 
-        $returnUrl = null;
-        if ($messageId !== null)
-        {
-            $returnUrl = route('message.edit', $messageId);
-        }
-        if ($returnUrl === null)
-        {
-            $returnUrl = TemplateEditorReturnUrl::validatedFromRequest($request);
-        }
-        if ($returnUrl === null || $returnUrl === '')
-        {
-            $returnUrl = route('message.create');
-        }
-
-        $previewHtml = $this->iframePreviewHtmlForTemplate($template);
-        $mailHtmlTextareaValue = $this->rawTemplateHtmlFromModel($template);
-        $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-            route('template.editor', $template->getHashedId()),
-            $returnUrl,
-        );
-
-        $html = view('message.ajax.email-template-preview-bundle', [
-            'previewHtml' => $previewHtml,
-            'grapesEditorUrl' => $grapesEditorUrl,
-            'templateLabel' => $template->name,
-            'messageId' => $messageId,
-            'templateId' => $template->id,
-            'templateHashedId' => $template->getHashedId(),
-            'removeTemplateUrl' => null,
-            'useMailHtmlTextarea' => true,
-            'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
-            'mailHtmlTextareaReadonly' => false,
-        ])->render();
+        $returnUrl = $this->resolveTemplateEditorReturnUrl($request, $messageId);
+        $message = $messageId !== null ? Message::query()->with('template')->find($messageId) : null;
+        $bundle = $this->buildEmailTemplatePreviewBundle($template, $messageId, $returnUrl, $message);
 
         return response()->json([
-            'preview_html' => $previewHtml,
-            'html' => $html,
-            'duplicate_action_url' => route('template.duplicate', $template->getHashedId()),
+            'preview_html' => $bundle['preview_html'],
+            'html' => $bundle['html'],
+            'duplicate_action_url' => $bundle['duplicate_action_url'],
         ]);
     }
 
@@ -1158,11 +1148,7 @@ class MessageController extends Controller
      */
     private function getTestHtmlForContact($message, $testContact)
     {
-        $templateHtml = '';
-        if ($message && $message->template && isset($message->template->gjs_data['html']))
-        {
-            $templateHtml = (string) $message->template->gjs_data['html'];
-        }
+        $templateHtml = $message ? $message->resolveMailHtml() : '';
 
         if (trim($templateHtml) === '')
         {
@@ -1403,15 +1389,9 @@ class MessageController extends Controller
     {
         $sampleContact = $this->resolvePreviewSampleContact($message);
 
-        $htmlContent = '';
-        if ($message->template && $message->template->gjs_data)
+        $htmlContent = $message->resolveMailHtml();
+        if (trim($htmlContent) !== '')
         {
-            $gjsData = is_array($message->template->gjs_data)
-                ? $message->template->gjs_data
-                : json_decode($message->template->gjs_data, true);
-
-            $htmlContent = $gjsData['html'] ?? '';
-
             $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
         } else
         {
@@ -1480,16 +1460,117 @@ class MessageController extends Controller
     }
 
     /**
+     * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null}
+     */
+    private function prepareMessageFormTemplatePreview(object $data, Request $request, bool $removeMailTemplate = false): array
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return [
+                'emailPreviewBundleHtml' => null,
+                'emailPreviewDuplicateActionUrl' => null,
+                'messageFormDefaultTemplateId' => null,
+            ];
+        }
+
+        $preferredTemplateId = $removeMailTemplate
+            ? null
+            : (int) old('template_id', $data->template_id ?? 0);
+
+        $template = app(MessageFormTemplateResolver::class)->resolveForForm(
+            $preferredTemplateId > 0 ? $preferredTemplateId : null,
+            (int) $team->id,
+            autoPickWhenMissing: ! $removeMailTemplate,
+        );
+
+        if (! $template instanceof Template)
+        {
+            return [
+                'emailPreviewBundleHtml' => null,
+                'emailPreviewDuplicateActionUrl' => null,
+                'messageFormDefaultTemplateId' => null,
+            ];
+        }
+
+        $data->template_id = $template->id;
+
+        $messageId = isset($data->id) ? (int) $data->id : null;
+        $returnUrl = $this->resolveTemplateEditorReturnUrl($request, $messageId > 0 ? $messageId : null);
+        $message = $messageId > 0
+            ? ($data instanceof Message ? $data->loadMissing('template') : Message::query()->with('template')->find($messageId))
+            : null;
+        $bundle = $this->buildEmailTemplatePreviewBundle($template, $messageId > 0 ? $messageId : null, $returnUrl, $message);
+
+        return [
+            'emailPreviewBundleHtml' => $bundle['html'],
+            'emailPreviewDuplicateActionUrl' => $bundle['duplicate_action_url'],
+            'messageFormDefaultTemplateId' => $template->id,
+        ];
+    }
+
+    /**
+     * @return array{preview_html: string, html: string, duplicate_action_url: string}
+     */
+    private function buildEmailTemplatePreviewBundle(Template $template, ?int $messageId, string $returnUrl, ?Message $message = null): array
+    {
+        $mailHtmlSource = $message instanceof Message
+            ? $message->resolveMailHtml()
+            : $this->rawTemplateHtmlFromModel($template);
+
+        $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
+        $mailHtmlTextareaValue = $mailHtmlSource;
+        $grapesEditorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+            route('template.editor', $template->getHashedId()),
+            $returnUrl,
+        );
+
+        $html = view('message.ajax.email-template-preview-bundle', [
+            'previewHtml' => $previewHtml,
+            'grapesEditorUrl' => $grapesEditorUrl,
+            'templateLabel' => $template->name,
+            'messageId' => $messageId,
+            'templateId' => $template->id,
+            'templateHashedId' => $template->getHashedId(),
+            'removeTemplateUrl' => null,
+            'useMailHtmlTextarea' => true,
+            'mailHtmlTextareaValue' => $mailHtmlTextareaValue,
+            'mailHtmlTextareaReadonly' => false,
+        ])->render();
+
+        return [
+            'preview_html' => $previewHtml,
+            'html' => $html,
+            'duplicate_action_url' => route('template.duplicate', $template->getHashedId()),
+        ];
+    }
+
+    private function resolveTemplateEditorReturnUrl(Request $request, ?int $messageId): string
+    {
+        if ($messageId !== null && $messageId > 0)
+        {
+            return route('message.edit', $messageId);
+        }
+
+        $returnUrl = TemplateEditorReturnUrl::validatedFromRequest($request);
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            return route('message.create');
+        }
+
+        return $returnUrl;
+    }
+
+    /**
      * Replace email template variables with actual values
      */
     private function iframePreviewHtmlForTemplate(Template $template): string
     {
-        $htmlContent = '';
-        if ($template->gjs_data && isset($template->gjs_data['html']))
-        {
-            $htmlContent = $template->gjs_data['html'];
-        }
+        return $this->iframePreviewHtmlFromSource($this->rawTemplateHtmlFromModel($template));
+    }
 
+    private function iframePreviewHtmlFromSource(string $htmlContent): string
+    {
         $sampleContact = (object) [
             'name' => 'John',
             'surname' => 'Doe',
@@ -1497,6 +1578,19 @@ class MessageController extends Controller
         ];
 
         return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+    }
+
+    private function resolveMailHtmlFromRequest(Request $request, int $templateId): string
+    {
+        $raw = $request->input('template_html');
+        if (is_string($raw) && trim($raw) !== '')
+        {
+            return $raw;
+        }
+
+        $template = Template::query()->whereKey($templateId)->first();
+
+        return $template instanceof Template ? $this->rawTemplateHtmlFromModel($template) : '';
     }
 
     private function rawTemplateHtmlFromModel(Template $template): string
@@ -1529,6 +1623,22 @@ class MessageController extends Controller
             return;
         }
 
+        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0)
+        {
+            if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
+            {
+                return;
+            }
+
+            $message = Message::query()->whereKey($messageIdForDeliveryGate)->first();
+            if ($message instanceof Message)
+            {
+                $message->forceFill(['mail_html' => $trimmed])->save();
+            }
+
+            return;
+        }
+
         $template = Template::query()->whereKey($templateId)->first();
         if (! $template instanceof Template)
         {
@@ -1542,29 +1652,6 @@ class MessageController extends Controller
 
         $template->refresh();
         GrapesJsHelper::fixTemplateStructure($template);
-    }
-
-    /**
-     * Writes HTML from the message form into the linked template's GrapesJS data (same record all messages use).
-     * Skipped when the message already has deliveries (form body is readonly) or the payload is empty.
-     */
-    private function syncTemplateHtmlFromMessageForm(Request $request, int $resolvedTypeId, ?int $templateId): void
-    {
-        if ($resolvedTypeId !== 1 || $templateId === null || $templateId <= 0)
-        {
-            return;
-        }
-
-        $messageId = $request->filled('id') ? (int) $request->input('id') : 0;
-        $messageIdGate = $messageId > 0 ? $messageId : null;
-
-        $raw = $request->input('template_html');
-        if (! is_string($raw))
-        {
-            return;
-        }
-
-        $this->persistTemplateHtmlFromMessageComposer($templateId, $raw, $messageIdGate);
     }
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string

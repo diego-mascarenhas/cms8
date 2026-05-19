@@ -69,7 +69,9 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertFalse($team->hasModule('invoices'));
         $this->assertFalse($team->hasModule('funnel'));
         $this->assertFalse($team->hasModule('dashboard'));
+        $this->assertFalse($team->hasModule('clients'));
         $this->assertTrue($team->hasModule('today'));
+        $this->assertTrue($team->hasModule('prompts'));
         $this->assertTrue($team->hasModule('mailer'));
         $this->assertTrue($team->hasModule('chat'));
     }
@@ -119,7 +121,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
     {
         $keys = config('humano_pricing.plan_team_modules.assistant', []);
 
-        foreach (['products', 'stores', 'orders', 'contents'] as $excluded)
+        foreach (['products', 'stores', 'orders', 'contents', 'clients'] as $excluded)
         {
             $this->assertNotContains($excluded, $keys, "Assistant demo plan must not include «{$excluded}».");
         }

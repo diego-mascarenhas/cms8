@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('contact_status_id')->nullable();
             $table->unsignedBigInteger('template_id')->nullable();
             $table->text('text');
+            $table->longText('mail_html')->nullable();
             $table->boolean('status_id')->default(0);
             $table->boolean('show_unsubscribe')->default(1);
             $table->boolean('enable_open_tracking')->default(1);

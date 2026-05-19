@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Contact;
+use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CountrySeeder;
@@ -45,6 +46,24 @@ class ApolloIntegrationTest extends TestCase
         return $user->refresh();
     }
 
+    protected function enableProspectingModule(Team $team): void
+    {
+        Module::query()->firstOrCreate(
+            ['key' => 'prospecting'],
+            [
+                'name' => 'Prospecting',
+                'icon' => 'target',
+                'description' => 'Prospect search',
+                'is_core' => false,
+                'group' => null,
+                'order' => 0,
+                'status' => 1,
+            ],
+        );
+
+        $team->enableModule('prospecting');
+    }
+
     public function test_apollo_index_requires_authentication(): void
     {
         $response = $this->get(route('contact.apollo'));
@@ -69,20 +88,33 @@ class ApolloIntegrationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_apollo_index_returns_view_when_authorized(): void
+    public function test_apollo_index_returns_404_when_prospecting_module_disabled(): void
     {
         $user = $this->createUserWithRole('admin');
         $this->actingAs($user);
 
         $response = $this->get(route('contact.apollo'));
 
-        $response->assertStatus(200);
-        $response->assertViewIs('contact.apollo');
+        $response->assertStatus(404);
+    }
+
+    public function test_apollo_index_returns_view_when_authorized(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $this->assertTrue($user->fresh()->currentTeam->hasModule('prospecting'));
+        $this->actingAs($user->fresh());
+
+        $response = $this->get(route('contact.apollo'));
+
+        $response->assertOk();
+        $response->assertSee('Encuentra contactos', false);
     }
 
     public function test_add_person_as_contact_creates_contact_with_team_and_apollo_data(): void
     {
         $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
         $user->currentTeam->addProspectCreditsFromPurchase(10);
         $this->actingAs($user);
 
@@ -119,6 +151,7 @@ class ApolloIntegrationTest extends TestCase
     public function test_add_person_as_contact_redirects_when_not_ajax(): void
     {
         $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
         $user->currentTeam->addProspectCreditsFromPurchase(10);
         $this->actingAs($user);
 

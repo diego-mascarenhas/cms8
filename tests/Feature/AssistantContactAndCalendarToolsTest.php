@@ -9,6 +9,7 @@ use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
+use App\Support\CalendarEventDateTimeParser;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -26,6 +27,48 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->seed(CountrySeeder::class);
         $this->seed(LanguageSeeder::class);
         $this->seed(ContactStatusSeeder::class);
+    }
+
+    public function test_search_contacts_returns_matching_contact_with_id(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Francisco',
+            'surname' => 'Caballero',
+            'email' => 'francisco@example.com',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('search_contacts', ['query' => 'Francisco Caballero']);
+
+        $this->assertStringContainsString('Found 1 contact', $out);
+        $this->assertStringContainsString('Francisco Caballero', $out);
+        $this->assertStringContainsString('francisco@example.com', $out);
+        $this->assertMatchesRegularExpression('/id \d+:/', $out);
+    }
+
+    public function test_create_contact_reuses_existing_by_full_name(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Francisco',
+            'surname' => 'Caballero',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('create_contact', [
+            'name' => 'Francisco Caballero',
+        ]);
+
+        $this->assertStringContainsString('already exists', $out);
+        $this->assertEquals(1, Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->count());
     }
 
     public function test_create_contact_reuses_existing_by_email(): void
@@ -97,13 +140,15 @@ class AssistantContactAndCalendarToolsTest extends TestCase
 
     public function test_create_calendar_event_rejects_overlapping_slot(): void
     {
+        config(['calendar.wall_clock_timezone' => 'Europe/Madrid']);
+
         $user = $this->createAdminWithTeam();
 
         CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $user->currentTeam->id,
             'title' => 'Busy block',
-            'start' => '2026-05-17 10:00:00',
-            'end' => '2026-05-17 11:00:00',
+            'start' => CalendarEventDateTimeParser::parseForStorage('2026-05-17 10:00:00'),
+            'end' => CalendarEventDateTimeParser::parseForStorage('2026-05-17 11:00:00'),
             'all_day' => false,
         ]);
 
@@ -117,6 +162,120 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->assertStringContainsString('Cannot create the event', $out);
         $this->assertStringContainsString('Busy block', $out);
         $this->assertEquals(1, CalendarEvent::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->count());
+    }
+
+    public function test_create_calendar_event_stores_naive_wall_clock_time(): void
+    {
+        config(['calendar.wall_clock_timezone' => 'Europe/Madrid']);
+
+        $user = $this->createAdminWithTeam();
+        $service = $this->assistantTools($user);
+
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Improvements call',
+            'start' => '2026-06-10 14:00:00',
+            'end' => '2026-06-10 15:00:00',
+        ]);
+
+        $this->assertStringContainsString('Calendar event created', $out);
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $user->currentTeam->id)
+            ->firstOrFail();
+
+        $this->assertSame('12:00:00', $event->start->utc()->format('H:i:s'));
+        $this->assertSame('13:00:00', $event->end->utc()->format('H:i:s'));
+    }
+
+    public function test_create_calendar_event_links_guest_contacts(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Francisco',
+            'surname' => 'Caballero',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Improvements call',
+            'start' => '2026-06-10 14:00:00',
+            'end' => '2026-06-10 15:00:00',
+            'guest_contact_ids' => [$contact->id],
+        ]);
+
+        $this->assertStringContainsString('Guests linked', $out);
+        $this->assertStringContainsString('Francisco Caballero', $out);
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $user->currentTeam->id)
+            ->firstOrFail();
+
+        $this->assertTrue($event->guests()->where('contacts.id', $contact->id)->exists());
+        $this->assertNull($event->notes);
+    }
+
+    public function test_create_calendar_event_auto_links_contact_created_in_same_request(): void
+    {
+        config(['calendar.wall_clock_timezone' => 'Europe/Madrid']);
+
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        $service = $this->assistantTools($user);
+
+        $service->execute('create_contact', [
+            'name' => 'Francisco Caballero',
+            'email' => 'francisco@example.com',
+        ]);
+
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Reunión con Francisco Caballero',
+            'start' => '2026-05-20 10:00:00',
+            'end' => '2026-05-20 11:00:00',
+        ]);
+
+        $this->assertStringContainsString('Guests linked', $out);
+        $this->assertStringContainsString('Francisco Caballero', $out);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('email', 'francisco@example.com')
+            ->firstOrFail();
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $user->currentTeam->id)
+            ->firstOrFail();
+
+        $this->assertTrue($event->guests()->where('contacts.id', $contact->id)->exists());
+    }
+
+    public function test_create_calendar_event_resolves_guest_from_title_without_prior_create(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Francisco',
+            'surname' => 'Caballero',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Reunión con Francisco Caballero',
+            'start' => '2026-05-20 10:00:00',
+            'end' => '2026-05-20 11:00:00',
+        ]);
+
+        $this->assertStringContainsString('Guests linked', $out);
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $user->currentTeam->id)
+            ->firstOrFail();
+
+        $this->assertEquals(1, $event->guests()->count());
     }
 
     public function test_create_contact_uses_existing_category_case_insensitively(): void

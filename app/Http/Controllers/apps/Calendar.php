@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Support\CalendarEventDateTimeParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -244,7 +245,7 @@ class Calendar extends Controller
 
     private function parseEventDateTime(string $value): Carbon
     {
-        return Carbon::parse($value)->utc();
+        return CalendarEventDateTimeParser::parseForStorage($value);
     }
 
     private function syncEventGuests(CalendarEvent $event, int $teamId, array $contactIds): void

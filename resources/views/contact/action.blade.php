@@ -9,10 +9,12 @@
         @endif
     @endcan
     @can('update', $contact)
-        @if ($contact->isInList60())
-            <a class="text-success"><i class="ti ti-list-check ti-sm me-2"></i></a>
-        @else
-            <a href="#" class="text-body" onclick="addToList({{ $contact->id }}, this)"><i class="ti ti-list-check ti-sm me-2"></i></a>
+        @if (auth()->user()->currentTeam?->hasModule('list60'))
+            @if ($contact->isInList60())
+                <a class="text-success"><i class="ti ti-list-check ti-sm me-2"></i></a>
+            @else
+                <a href="#" class="text-body" onclick="addToList({{ $contact->id }}, this)"><i class="ti ti-list-check ti-sm me-2"></i></a>
+            @endif
         @endif
     @endcan
 
