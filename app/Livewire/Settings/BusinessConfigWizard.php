@@ -436,4 +436,3 @@ class BusinessConfigWizard extends Component
         return view('livewire.settings.business-config-wizard');
     }
 }
-

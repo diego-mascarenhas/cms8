@@ -23,6 +23,24 @@ class AuthenticationTest extends TestCase
         }
     }
 
+    public function test_auth_minimal_layout_hides_left_cover_on_login(): void
+    {
+        config(['custom.custom.authMinimalLayout' => true]);
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertDontSee('col-lg-7', false);
+    }
+
+    public function test_auth_default_layout_shows_left_cover_on_login(): void
+    {
+        config(['custom.custom.authMinimalLayout' => false]);
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('col-lg-7', false);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();

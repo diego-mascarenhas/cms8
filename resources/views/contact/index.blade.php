@@ -173,10 +173,12 @@
                     <span class="d-none d-sm-inline-block">Importar</span>
                 </a>
                 @can('create', \App\Models\Contact::class)
-                <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
-                    <i class="ti ti-target me-sm-1"></i>
-                    <span class="d-none d-sm-inline-block">Buscar clientes</span>
-                </a>
+                    @if (auth()->user()->currentTeam?->hasModule('prospecting'))
+                        <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                            <i class="ti ti-target me-sm-1"></i>
+                            <span class="d-none d-sm-inline-block">Buscar clientes</span>
+                        </a>
+                    @endif
                 @endcan
                 <div class="contact-list-toolbar__filter">
                     <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"

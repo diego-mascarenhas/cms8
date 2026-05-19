@@ -27,7 +27,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contactos/</span> Buscar contactos</h4>
-        <p class="text-muted">Busca personas por filtros y añade los resultados como contactos. @if(isset($remainingProspectCredits)) <strong>{{ __('Créditos de prospectos') }}: {{ $remainingProspectCredits }}</strong> @endif</p>
+        <p class="text-muted">Encuentra contactos en nuestra base de datos con más de 200 millones de puestos profesionales. @if(isset($remainingProspectCredits)) <strong>{{ __('Créditos de prospectos') }}: {{ $remainingProspectCredits }}</strong> @endif</p>
     </div>
 </div>
 

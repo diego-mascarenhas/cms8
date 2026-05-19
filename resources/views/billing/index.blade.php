@@ -633,6 +633,7 @@
 	</div>
 </div>
 
+@if($team->hasModule('affiliates'))
 <!-- Afiliados (empresa cliente: referred_by = code del referente; comisión % en settings del equipo referidor) -->
 <div class="row">
 	<div class="col-12 mb-4">
@@ -748,6 +749,7 @@
 		</div>
 	</div>
 </div>
+@endif
 
 <!-- Modal: Edit Billing Data -->
 <div class="modal fade" id="editBillingModal" tabindex="-1" aria-hidden="true">

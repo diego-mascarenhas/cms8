@@ -14,18 +14,8 @@ $configData = Helper::appClasses();
 
 @section('content')
 <div class="authentication-wrapper authentication-cover authentication-bg">
-  <div class="authentication-inner row">
-
-    <!-- /Left Text -->
-    <div class="d-none d-lg-flex col-lg-7 p-0">
-      <div class="auth-cover-bg auth-cover-bg-color d-flex justify-content-center align-items-center">
-        <img src="{{ asset('assets/img/illustrations/auth-two-step-illustration-'.$configData['style'].'.png') }}" alt="auth-two-steps-cover" class="img-fluid my-5 auth-illustration" data-app-light-img="illustrations/auth-two-step-illustration-light.png" data-app-dark-img="illustrations/auth-two-step-illustration-dark.png">
-
-        <img src="{{ asset('assets/img/illustrations/bg-shape-image-'.$configData['style'].'.png') }}" alt="auth-two-steps-cover" class="platform-bg" data-app-light-img="illustrations/bg-shape-image-light.png" data-app-dark-img="illustrations/bg-shape-image-dark.png">
-      </div>
-    </div>
-    <!-- /Left Text -->
-
+  <div class="authentication-inner row{{ config('custom.custom.authMinimalLayout') ? ' justify-content-center' : '' }}">
+    @include('auth.partials.left-cover-column', ['coverIllustration' => 'auth-two-step-illustration'])
     <!-- Two Steps Verification -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-4 p-sm-5">
       <div class="w-px-400 mx-auto">

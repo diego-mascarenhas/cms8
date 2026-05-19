@@ -57,10 +57,10 @@ Schedule::command('stripe:sync-invoices --mode=auto --limit=60 --recent-days=30'
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('invoice-syncs:import-stripe --limit=120 --fallback-email --link-code-on-email-match')
+Schedule::command('invoice-syncs:import-stripe --reconcile --limit=120 --fallback-email --link-code-on-email-match')
     ->cron('5,15,25,35,45,55 * * * *')
     ->name('stripe-invoice-syncs-import')
-    ->description('Import pending-only Stripe invoice_syncs into core invoices')
+    ->description('Import/reconcile Stripe invoice_syncs into core invoices (status and balance)')
     ->withoutOverlapping()
     ->runInBackground();
 
