@@ -34,6 +34,7 @@ class UserResolverWhatsAppContactTest extends TestCase
         }
 
         Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
     }
 
     public function test_link_phone_creates_contact_with_team_owner_as_creator(): void
@@ -106,5 +107,58 @@ class UserResolverWhatsAppContactTest extends TestCase
             ->first();
         $this->assertNotNull($contact);
         $this->assertSame($user->id, (int) $contact->user_id);
+    }
+
+    public function test_resolve_user_prefers_team_staff_account_when_team_id_given(): void
+    {
+        $admin = User::factory()->create(['phone' => 5491136626495]);
+        $admin->assignRole('admin');
+        $team = Team::factory()->create(['user_id' => $admin->id]);
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+
+        $placeholder = User::factory()->create([
+            'email' => 'wa-5491136626495@chat.placeholder',
+            'phone' => 5491136626495,
+        ]);
+        $placeholder->assignRole('client');
+
+        $service = app(UserResolverService::class);
+        $resolved = $service->resolveUserForConversation('5491136626495', null, (int) $team->id);
+
+        $this->assertNotNull($resolved);
+        $this->assertSame($admin->id, $resolved->id);
+        $this->assertNotSame($placeholder->id, $resolved->id);
+    }
+
+    public function test_link_phone_does_not_replace_staff_user_on_existing_contact(): void
+    {
+        $admin = User::factory()->create(['phone' => 5491199988877]);
+        $admin->assignRole('admin');
+        $team = Team::factory()->create(['user_id' => $admin->id]);
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => $admin->id,
+            'creator_id' => $admin->id,
+            'responsible_id' => $admin->id,
+            'name' => 'Diego Admin',
+            'phone' => 5491199988877,
+            'status_id' => 1,
+        ]);
+
+        $service = app(UserResolverService::class);
+        $service->linkPhoneToContactInTeam((int) $team->id, '5491199988877', 'Diego');
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('phone', 5491199988877)
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame($admin->id, (int) $contact->user_id);
+
+        $resolved = $service->resolveUserForConversation('5491199988877', null, (int) $team->id);
+        $this->assertSame($admin->id, $resolved->id);
     }
 }

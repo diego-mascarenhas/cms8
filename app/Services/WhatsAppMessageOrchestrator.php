@@ -329,10 +329,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $userResolver = app(UserResolverService::class);
             $contextService = app(AgentConversationContextService::class);
-            $contextUser = $userResolver->resolveUserForConversation($phone, null);
+            $teamId = $contextTeamId ?? ($this->team ? (int) $this->team->id : null);
+            $contextUser = $userResolver->resolveUserForConversation($phone, null, $teamId);
             if ($contextUser !== null)
             {
-                $teamId = $contextTeamId ?? ($this->team ? (int) $this->team->id : null);
                 $contextService->persistMessages(
                     $contextUser->id,
                     $userMessage,
@@ -876,8 +876,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
                 app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom, $waProfileName);
 
-                $sheetUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
                 $teamId = (int) $this->team->id;
+                $sheetUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom, null, $teamId);
                 $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
                     ?? app(WhatsAppContactSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
                     ?? app(WhatsAppTaskSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId);
@@ -1010,7 +1010,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 } elseif ($adminsOnlyWhenAutoRespondOff)
                 {
                     $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
-                    $earlyUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                    $earlyUser = app(UserResolverService::class)->resolveUserForConversation(
+                        $cleanFrom,
+                        null,
+                        $assistantTeamIdEarly,
+                    );
                     if ($assistantTeamIdEarly !== null && $this->inboundWhatsAppUserIsTeamAdministrator($earlyUser, (int) $assistantTeamIdEarly))
                     {
                         $shouldProcessAutoAi = true;
@@ -1060,7 +1064,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
                     $assistantTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
                     $withTools = $assistantTeamId !== null;
-                    $contextUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom);
+                    $contextUser = app(UserResolverService::class)->resolveUserForConversation(
+                        $cleanFrom,
+                        null,
+                        $assistantTeamId,
+                    );
                     $contextContactId = null;
                     if ($contextUser !== null && $assistantTeamId !== null)
                     {
@@ -1179,7 +1187,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $forcedFlowRoutingKey,
                         $contextContactId !== null ? (int) $contextContactId : null,
                         false,
-                        true,
+                        \App\Services\Assistant\AssistantActorContextService::CHANNEL_WHATSAPP,
                         false,
                     );
 

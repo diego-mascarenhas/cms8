@@ -63,7 +63,7 @@ class HumanoInteractiveGuideCommand extends Command
             null,
             null,
             false,
-            false,
+            null,
             false,
             $appendix,
         );

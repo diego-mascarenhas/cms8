@@ -16,7 +16,7 @@ class AssistantToolRoleRestrictionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_jetstream_client_team_role_cannot_use_internal_tools(): void
+    public function test_jetstream_client_team_role_cannot_use_staff_crm_tools(): void
     {
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
@@ -31,6 +31,25 @@ class AssistantToolRoleRestrictionTest extends TestCase
 
         $out = $service->execute('list_team_users', []);
         $this->assertStringContainsString('No disponible para tu rol', $out);
+    }
+
+    public function test_spatie_admin_with_client_pivot_can_use_internal_tools(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+
+        $admin = User::factory()->create();
+        $admin->teams()->attach($team->id, ['role' => 'client']);
+        $admin->assignRole($role);
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($admin->id, $team->id, null);
+
+        $out = $service->execute('search_contacts', ['query' => 'test']);
+        $this->assertStringNotContainsString('No disponible para tu rol', $out);
     }
 
     public function test_jetstream_admin_team_role_can_list_team_users(): void

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Certification;
 use App\Models\Contact;
@@ -24,6 +25,7 @@ use App\Models\TeamFile;
 use App\Models\TeamPassword;
 use App\Models\Ticket;
 use App\Models\UserDailyPerformanceInsight;
+use App\Policies\CalendarEventPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
@@ -52,6 +54,7 @@ use Illuminate\Support\Facades\Gate;
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
+        CalendarEvent::class => CalendarEventPolicy::class,
         Category::class => CategoryPolicy::class,
         Certification::class => CertificationPolicy::class,
         EnterpriseDepartment::class => EnterpriseDepartmentPolicy::class,

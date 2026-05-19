@@ -21,9 +21,7 @@ class AdminProactiveWhatsAppOutreachExecutor
         protected AdminProactiveWhatsAppOutreachService $outreach,
         protected ChatAssistantReplyService $replyService,
         protected AgentConversationContextService $contextService,
-    )
-    {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed> success payload or error with _http_status
@@ -117,7 +115,7 @@ class AdminProactiveWhatsAppOutreachExecutor
             $routingKey,
             null,
             false,
-            false,
+            \App\Services\Assistant\AssistantActorContextService::CHANNEL_WHATSAPP,
             true,
         );
 
