@@ -39,6 +39,10 @@
             <div id="dashboardContactStatusChart" style="min-height: 220px;"></div>
         </div>
 
+        <div class="dashboard-contact-panel {{ $defaultPanel === 'interactions-breakdown' ? '' : 'd-none' }} {{ $fillHeight ? 'flex-grow-1 min-h-0' : '' }}" data-panel="interactions-breakdown">
+            <div id="dashboardContactInteractionsTrendChart" class="contact-interactions-activity-chart" style="min-height: 200px;"></div>
+        </div>
+
         <div class="dashboard-contact-panel dashboard-latest-contacts-panel {{ $defaultPanel === 'latest-contacts' ? '' : 'd-none' }} {{ $fillHeight ? 'flex-grow-1 min-h-0' : '' }}" data-panel="latest-contacts">
             <div class="table-responsive flex-grow-1 min-h-0">
                 <table id="dashboardLatestContactsTable" class="table table-hover table-sm dashboard-latest-contacts-table w-100">

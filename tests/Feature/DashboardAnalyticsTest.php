@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContactInteractionType;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\User;
@@ -80,12 +82,19 @@ class DashboardAnalyticsTest extends TestCase
             'created_at' => Carbon::now()->subDay(),
         ]);
 
-        Contact::factory()->create([
+        $contact = Contact::factory()->create([
             'team_id' => $team->id,
             'responsible_id' => $user->id,
             'creator_id' => $user->id,
             'status_id' => 2,
             'created_at' => Carbon::now()->subDay(),
+        ]);
+
+        ContactInteraction::factory()->create([
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'type' => ContactInteractionType::Call,
+            'occurred_at' => Carbon::now()->subDay(),
         ]);
 
         $this->actingAs($user);
@@ -100,10 +109,16 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('data-dashboard-panel="contacts-trend"', false);
         $response->assertSee('data-dashboard-panel="status-breakdown"', false);
         $response->assertSee('data-dashboard-panel="latest-contacts"', false);
+        $response->assertSee('data-dashboard-panel="interactions-breakdown"', false);
+        $response->assertSee('dashboardContactInteractionsTrendChart', false);
+        $response->assertSee('data-panel="latest-contacts"', false);
         $response->assertSee(__('app.dashboard_contacts_chart_subtitle_30'), false);
-        $this->assertMatchesRegularExpression('/text-primary[^>]*>3</', $response->getContent());
-        $this->assertMatchesRegularExpression('/text-success[^>]*>2</', $response->getContent());
-        $this->assertMatchesRegularExpression('/text-info[^>]*>3</', $response->getContent());
+
+        preg_match('/const interactionsTrendData = (\{.*?\});/s', $response->getContent(), $interactionsMatch);
+        $this->assertNotEmpty($interactionsMatch[1] ?? null);
+        $interactions = json_decode($interactionsMatch[1], true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $interactions['total']);
+        $this->assertNotEmpty($interactions['series']);
 
         preg_match('/const trendData = (\{.*?\});/s', $response->getContent(), $trendMatch);
         $this->assertNotEmpty($trendMatch[1] ?? null);

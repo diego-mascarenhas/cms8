@@ -93,11 +93,18 @@
                     title: @json(__('app.dashboard_panel_latest_contacts_title')),
                     subtitle: @json(__('app.dashboard_latest_contacts_subtitle')),
                     icon: 'ti-user-plus'
+                },
+                'interactions-breakdown': {
+                    title: @json(__('app.dashboard_panel_interactions_title')),
+                    subtitle: @json(__('app.dashboard_interactions_chart_subtitle')),
+                    icon: 'ti-history'
                 }
             };
 
             const trendData = @json($dashboardContactsCreatedTrend ?? ['labels' => [], 'values' => []]);
             const statusData = @json($dashboardContactStatusBreakdown ?? ['labels' => [], 'values' => []]);
+            const interactionsTrendData = @json($dashboardContactInteractionsTrend ?? ['labels' => [], 'series' => [], 'total' => 0]);
+            const interactionTypeColors = ['#696cff', '#71dd37', '#03c3ec', '#ffab00', '#ff3e1d', '#8592a3', '#233446', '#e83e8c'];
             const panelMonthComparisons = @json($dashboardPanelMonthComparisons ?? []);
             const vsLastMonthLabel = @json(__('vs last month'));
             const chartsEnabled = typeof ApexCharts !== 'undefined';
@@ -258,6 +265,84 @@
                 chartInstances['status-breakdown'].render();
             }
 
+            function renderInteractionsChart() {
+                if (!chartsEnabled || chartInstances['interactions-breakdown']) {
+                    return;
+                }
+                const el = document.querySelector('#dashboardContactInteractionsTrendChart');
+                if (!el) {
+                    return;
+                }
+                const series = interactionsTrendData.series || [];
+                if (!series.length) {
+                    el.innerHTML = '<p class="text-muted small mb-0">' + @json(__('app.contact_interactions_chart_empty')) + '</p>';
+                    return;
+                }
+                chartInstances['interactions-breakdown'] = new ApexCharts(el, {
+                    chart: {
+                        height: 200,
+                        parentHeightOffset: 0,
+                        type: 'bar',
+                        stacked: true,
+                        toolbar: { show: false },
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: false,
+                            columnWidth: '55%',
+                            borderRadius: 4,
+                        },
+                    },
+                    grid: {
+                        show: true,
+                        borderColor: '#e7e7e7',
+                        strokeDashArray: 4,
+                        padding: { top: 0, bottom: 0, left: 8, right: 8 },
+                    },
+                    colors: interactionTypeColors,
+                    dataLabels: { enabled: false },
+                    series: series,
+                    legend: {
+                        position: 'bottom',
+                        horizontalAlign: 'left',
+                        fontSize: '12px',
+                        labels: { colors: muted },
+                        itemMargin: { vertical: 4, horizontal: 8 },
+                    },
+                    xaxis: {
+                        categories: interactionsTrendData.labels || [],
+                        tickAmount: 6,
+                        labels: {
+                            rotate: -45,
+                            rotateAlways: false,
+                            style: {
+                                colors: muted,
+                                fontSize: '10px',
+                                fontFamily: 'Public Sans',
+                            },
+                        },
+                    },
+                    yaxis: {
+                        labels: {
+                            style: { colors: muted, fontSize: '11px' },
+                            formatter: function(val) {
+                                return parseInt(val, 10);
+                            },
+                        },
+                    },
+                    tooltip: {
+                        shared: true,
+                        intersect: false,
+                        y: {
+                            formatter: function(val) {
+                                return parseInt(val, 10);
+                            },
+                        },
+                    },
+                });
+                chartInstances['interactions-breakdown'].render();
+            }
+
             function initLatestContactsTable() {
                 const tableEl = document.getElementById('dashboardLatestContactsTable');
                 if (!tableEl || latestContactsDt || typeof $ === 'undefined' || !$.fn || !$.fn.DataTable) {
@@ -394,6 +479,8 @@
                     renderContactsTrendChart();
                 } else if (panelKey === 'status-breakdown') {
                     renderStatusChart();
+                } else if (panelKey === 'interactions-breakdown') {
+                    renderInteractionsChart();
                 } else if (panelKey === 'latest-contacts') {
                     initLatestContactsTable();
                     if (latestContactsDt) {
@@ -435,7 +522,7 @@
                 <div class="dashboard-left-panel d-flex flex-column flex-grow-1 min-h-0 w-100">
                     <div class="dashboard-metrics-primary flex-shrink-0">
                         <div class="row g-3 g-lg-4">
-                            <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="col-12 col-sm-6 col-xl-3">
                                 <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item dashboard-metric-item--active border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="contacts-trend" aria-pressed="true">
                                     <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
                                         <i class="ti ti-target ti-xl"></i>
@@ -446,7 +533,7 @@
                                     </div>
                                 </button>
                             </div>
-                            <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="col-12 col-sm-6 col-xl-3">
                                 <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="latest-contacts" aria-pressed="false">
                                     <span class="bg-label-info p-2 rounded d-inline-flex align-items-center justify-content-center">
                                         <i class="ti ti-user-plus ti-xl"></i>
@@ -457,7 +544,18 @@
                                     </div>
                                 </button>
                             </div>
-                            <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="interactions-breakdown" aria-pressed="false">
+                                    <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                        <i class="ti ti-history ti-xl"></i>
+                                    </span>
+                                    <div class="content-right min-w-0">
+                                        <p class="mb-0">{{ __('app.dashboard_metric_logged_interactions') }}</p>
+                                        <h4 class="text-warning mb-0">{{ $teamInteractionsLast30DaysCount ?? 0 }}</h4>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-3">
                                 <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="status-breakdown" aria-pressed="false">
                                     <span class="bg-label-primary p-2 rounded d-inline-flex align-items-center justify-content-center">
                                         <i class="ti ti-users ti-xl"></i>
@@ -469,6 +567,7 @@
                                 </button>
                             </div>
                         </div>
+
                     </div>
 
                     <div class="dashboard-recent-activity-slot flex-grow-1 min-h-0 mt-3 d-flex flex-column">
@@ -914,6 +1013,11 @@
     #dashboardContactStatusChart .apexcharts-datalabel-label {
         font-size: 18px !important;
         font-weight: 500 !important;
+    }
+
+    .contact-interactions-activity-chart {
+        width: 100%;
+        overflow: hidden;
     }
 
     .dashboard-latest-contacts-panel .dataTables_wrapper {

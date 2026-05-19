@@ -11,6 +11,7 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
+use App\Services\ContactInteractionChartDataService;
 use App\Services\UserDailyPerformanceInsightService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
@@ -139,6 +140,29 @@ class DashboardController extends Controller
         $previousMonthStart = $currentMonthStart->copy()->subMonth();
         $nextMonthStart = $currentMonthStart->copy()->addMonth();
         $responsibleIdForContacts = $authUser->hasRole('collaborator') ? $authUser->id : null;
+
+        $interactionChartService = app(ContactInteractionChartDataService::class);
+        $teamInteractionsLast30DaysCount = $interactionChartService->countForTeam(
+            $activeTeam->id,
+            30,
+            $responsibleIdForContacts,
+        );
+        $dashboardContactInteractionsTrend = $interactionChartService->buildDailyTrendByType(
+            $activeTeam->id,
+            responsibleId: $responsibleIdForContacts,
+        );
+        $interactionsPreviousMonthCount = $interactionChartService->countForTeamBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+            $responsibleIdForContacts,
+        );
+        $interactionsThisMonthCount = $interactionChartService->countForTeamBetween(
+            $activeTeam->id,
+            $currentMonthStart,
+            $nextMonthStart,
+            $responsibleIdForContacts,
+        );
         $contactsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
             $activeTeam->id,
             $previousMonthStart,
@@ -171,6 +195,10 @@ class DashboardController extends Controller
             'latest-contacts' => $this->buildMonthComparison(
                 $latestContactsThisMonthCount,
                 $contactsCreatedPreviousMonthCount,
+            ),
+            'interactions-breakdown' => $this->buildMonthComparison(
+                $interactionsThisMonthCount,
+                $interactionsPreviousMonthCount,
             ),
         ];
 
@@ -476,6 +504,8 @@ class DashboardController extends Controller
             'dashboardContactsCreatedTrend',
             'dashboardContactStatusBreakdown',
             'dashboardPanelMonthComparisons',
+            'dashboardContactInteractionsTrend',
+            'teamInteractionsLast30DaysCount',
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
             'dashboardCalendarData',
