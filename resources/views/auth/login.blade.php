@@ -19,8 +19,8 @@ $configData = Helper::appClasses();
 
     <!-- Login -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
-      <div class="w-px-400 mx-auto w-100">
-        <div class="app-brand mb-4 w-100 min-w-0">
+      <div class="w-px-400 mx-auto">
+        <div class="app-brand mb-4">
             @include('auth.partials.logo-full', ['logoId' => 'logo'])
         </div>
         <h3 class="mb-1">
