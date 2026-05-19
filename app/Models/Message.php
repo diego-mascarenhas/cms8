@@ -18,7 +18,7 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'mail_html', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -84,6 +84,36 @@ class Message extends Model
     public function contactStatus()
     {
         return $this->belongsTo(\App\Models\ContactStatus::class);
+    }
+
+    public function resolveMailHtml(): string
+    {
+        if (is_string($this->mail_html) && trim($this->mail_html) !== '')
+        {
+            return $this->mail_html;
+        }
+
+        if ($this->relationLoaded('template') || $this->template_id)
+        {
+            $template = $this->template;
+            if ($template && is_array($template->gjs_data) && isset($template->gjs_data['html']))
+            {
+                return (string) $template->gjs_data['html'];
+            }
+        }
+
+        return '';
+    }
+
+    public function resolveMailCss(): string
+    {
+        $template = $this->template;
+        if ($template && is_array($template->gjs_data) && isset($template->gjs_data['css']))
+        {
+            return (string) $template->gjs_data['css'];
+        }
+
+        return '';
     }
 
     /**

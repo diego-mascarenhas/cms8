@@ -216,9 +216,9 @@ class MessageDelivery extends Model
     public function getHtmlForContact()
     {
         $templateHtml = '';
-        if ($this->message && $this->message->template && isset($this->message->template->gjs_data['html']))
+        if ($this->message)
         {
-            $templateHtml = (string) $this->message->template->gjs_data['html'];
+            $templateHtml = $this->message->resolveMailHtml();
         }
 
         if (trim($templateHtml) === '')

@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	<div id="message-form-template-id-slot"></div>
 
 	<div class="card mb-4">
-		<h5 class="card-header">{{ __('Messages') }}</h5>
+		<h5 class="card-header">{{ __('app.message_form_card_title') }}</h5>
 		<div class="card-body">
 		<div class="row g-3">
 			<div class="col-12">
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			<div class="col-md-6">
 				<x-module-categories-select
 					id="category_id"
-					label="Categoría"
+					label="{{ __('app.Tags') }}"
 					moduleKey="contacts"
 					:selected="old('category_id', $data->category_id ?? '')"
 					:allowEmpty="true"
@@ -261,27 +261,44 @@ document.addEventListener('DOMContentLoaded', function () {
 					</div>
 				@endif
 			</div>
-			<div class="col-md-12">
-				<x-input-textarea id="text" label="{{ __('Texto alternativo') }} (*)" value="{{ old('text', $data->text?? '') }}" />
-				<div class="form-text mt-1">
-					{{ __('app.message_form_alt_text_help') }}
-				</div>
-			</div>
+			@php
+				$messageTemplateSelectRequired = empty($removeMailTemplate) && empty($templateSelectDisabled);
+			@endphp
 			<div class="col-md-12" id="message-form-template-field-wrapper">
 				<x-input-select
 					id="template_id"
 					label="{{ __('Plantilla') }}"
 					:options="$data->templates ?? []"
 					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
-					:placeholder="__('app.message_form_template_none')"
+					:placeholder="$removeMailTemplate ? __('app.message_form_template_none') : null"
+					:required="$messageTemplateSelectRequired"
+					:allowClear="! $messageTemplateSelectRequired"
 					:disabled="$templateSelectDisabled"
 				/>
+				@if ($messageTemplateSelectRequired)
+					<div class="form-text mt-1">{{ __('app.message_form_template_required_help') }}</div>
+				@endif
+			</div>
+			<div class="col-md-12">
+				<x-input-textarea id="text" label="{{ __('app.Preview') }} (*)" value="{{ old('text', $data->text?? '') }}" />
+				<div class="form-text mt-1">
+					{{ __('app.message_form_alt_text_help') }}
+				</div>
 			</div>
 		</div>
 		</div>
 	</div>
 
-	<div id="message-email-template-preview-mount">
+	<div
+		id="message-email-template-preview-mount"
+		@if (filled($emailPreviewBundleHtml ?? null))
+			data-dynamic-preview="1"
+			data-loaded-template-id="{{ (int) old('template_id', $data->template_id ?? 0) }}"
+		@endif
+	>
+		@if (filled($emailPreviewBundleHtml ?? null))
+			{!! $emailPreviewBundleHtml !!}
+		@endif
 	</div>
 
 	@if (isset($data->id))
@@ -355,6 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var previewUrl = @json(route('message.template-email-preview'));
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
     var templateLockDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
+    var defaultTemplateId = @json((int) ($messageFormDefaultTemplateId ?? 0));
+    var allowNoTemplate = @json((bool) ($removeMailTemplate ?? false));
 
     if (! mount)
     {
@@ -363,6 +382,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var templateSlot = document.getElementById('message-form-template-id-slot');
     var duplicateForm = document.getElementById('message-email-template-duplicate-form');
+    var initialDuplicateActionUrl = @json($emailPreviewDuplicateActionUrl ?? null);
+
+    if (duplicateForm && initialDuplicateActionUrl)
+    {
+        duplicateForm.setAttribute('action', initialDuplicateActionUrl);
+    }
+
+    if (mount.dataset.dynamicPreview === '1' && mount.querySelector('#message-template-html-quill-editor'))
+    {
+        if (window.humaBindEmailTestSendModals)
+        {
+            window.humaBindEmailTestSendModals();
+        }
+        if (window.humaInitMessageTemplateHtmlQuill)
+        {
+            window.humaInitMessageTemplateHtmlQuill(mount);
+        }
+    }
 
     if (duplicateForm)
     {
@@ -549,6 +586,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var tid = ($tpl.val() || '').toString().trim();
             if (! tid)
             {
+                if (! allowNoTemplate && defaultTemplateId > 0)
+                {
+                    $tpl.val(String(defaultTemplateId)).trigger('change');
+                    return;
+                }
                 clearDynamicPreview();
                 return;
             }

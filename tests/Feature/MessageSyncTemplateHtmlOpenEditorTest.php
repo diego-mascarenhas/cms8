@@ -84,6 +84,47 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
         $this->assertStringContainsString('Meraki 2', (string) ($template->gjs_data['components'] ?? ''));
     }
 
+    public function test_sync_with_message_id_persists_mail_html_on_message_not_template(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Tpl base',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => ['html' => '<p>Template original</p>', 'css' => ''],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Email',
+            'type_id' => 1,
+            'text' => 'Alt',
+            'team_id' => $teamId,
+            'template_id' => $template->id,
+            'mail_html' => '<p>Message body</p>',
+            'status_id' => false,
+        ]);
+
+        $customHtml = '<p>Updated in composer</p>';
+
+        $response = $this->actingAs($user)->post(route('message.sync-template-html-open-editor'), [
+            '_token' => csrf_token(),
+            'template_id' => $template->id,
+            'message_id' => $message->id,
+            'template_html' => $customHtml,
+            'return_url' => route('message.edit', $message->id),
+        ]);
+
+        $response->assertRedirect();
+
+        $message->refresh();
+        $template->refresh();
+
+        $this->assertSame($customHtml, (string) $message->mail_html);
+        $this->assertSame('<p>Template original</p>', (string) ($template->gjs_data['html'] ?? ''));
+    }
+
     public function test_sync_with_message_id_requires_email_message_type(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -131,6 +172,7 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
             'text' => 't',
             'team_id' => $teamId,
             'template_id' => $template->id,
+            'mail_html' => '<p>locked</p>',
             'status_id' => false,
         ]);
 
@@ -155,7 +197,9 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
         ]);
 
         $response->assertRedirect();
+        $message->refresh();
         $template->refresh();
+        $this->assertSame('<p>locked</p>', (string) $message->mail_html);
         $this->assertSame('<p>locked</p>', (string) ($template->gjs_data['html'] ?? ''));
     }
 }

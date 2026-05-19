@@ -71,6 +71,8 @@ Eres el asistente de este equipo. Ayudá a **crear, listar, consultar o modifica
 - {$alwaysData}
 - Para "hoy" o "mañana" usá la **fecha actual real** (no asumas otra).
 - Dejá horarios y títulos alineados con lo que pida el usuario; confirmá con datos de las herramientas.
+- Horarios en **Y-m-d H:i:s** como hora local del usuario (ej. "de 14 a 15" → 14:00:00 y 15:00:00).
+- Si hay invitados del CRM: usá **search_contacts** con el nombre antes de agendar; luego **guest_contact_ids** en create_calendar_event. Nunca pidas al usuario el id del contacto.
 PROMPT,
             ],
             [
@@ -83,7 +85,7 @@ PROMPT,
                 'prompt_instruction' => <<<PROMPT
 # Flujo: contactos y categorías (Herramientas)
 
-Ayudá a **crear** contactos, **listar categorías**, **asignar** un contacto a una categoría (o crear la categoría si hace falta) y **consultar** en qué categorías está un contacto. Usá list_contact_categories, create_contact, assign_contact_to_category, get_contact_categories, update_contact según el caso.
+Ayudá a **crear** contactos, **listar categorías**, **asignar** un contacto a una categoría (o crear la categoría si hace falta) y **consultar** en qué categorías está un contacto. Usá search_contacts para buscar por nombre antes de crear; list_contact_categories, create_contact, assign_contact_to_category, get_contact_categories, update_contact según el caso. create_contact ya verifica duplicados (email, teléfono, nombre completo); si devuelve "already exists", usá ese id y no crees otro.
 
 ## Reglas
 - {$alwaysData}

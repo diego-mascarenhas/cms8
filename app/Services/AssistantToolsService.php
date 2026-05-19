@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
+use App\Support\CalendarEventDateTimeParser;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -57,6 +58,13 @@ class AssistantToolsService
     protected int $whatsappToolSendCount = 0;
 
     /**
+     * Contact IDs touched via create_contact in this request (for auto-linking calendar guests).
+     *
+     * @var list<int>
+     */
+    protected array $recentContactIdsInRequest = [];
+
+    /**
      * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
      */
     protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
@@ -84,6 +92,7 @@ class AssistantToolsService
         $this->whatsappToolSingleCustomerSendPerTurn = false;
         $this->whatsappToolSendCount = 0;
         $this->whatsAppGatewayOverride = null;
+        $this->recentContactIdsInRequest = [];
     }
 
     /**
@@ -161,8 +170,20 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'search_contacts',
+                'description' => 'Search CRM contacts by name, email, or phone. Use BEFORE create_contact or create_calendar_event when the user names a person (e.g. "Francisco Caballero") — returns id, full name, email, phone. Never ask the user for a contact id; use this tool instead.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => 'string', 'description' => 'Name, email, phone, or part of them to search'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max results (default 10, max 25)'],
+                    ],
+                    'required' => ['query'],
+                ],
+            ],
+            [
                 'name' => 'create_contact',
-                'description' => 'Create a new contact. Provide at least name; optionally email, phone, category name (created if missing), notes (stored in contact data JSON), and birthday (Y-m-d). If a contact with the same email, phone, or name already exists in the team, returns that contact instead of creating a duplicate.',
+                'description' => 'Create a new contact. Provide at least name (full name is ok, e.g. Francisco Caballero); optionally email, phone, category name (created if missing), notes (stored in contact data JSON), and birthday (Y-m-d). Call search_contacts first when the user names someone. ALWAYS checks for an existing contact first (same email, phone, or matching full name) and returns that contact id instead of creating a duplicate.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -303,14 +324,23 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_calendar_event',
-                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end in Y-m-d H:i or ISO 8601. Refuses creation if another event overlaps that time (use check_calendar_availability first to suggest free slots). When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it.',
+                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end as local wall-clock times in Y-m-d H:i:s (e.g. 2026-06-10 14:00:00) or ISO 8601 with timezone. Refuses creation if another event overlaps that time (use check_calendar_availability first to suggest free slots). When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it. To invite CRM contacts, pass guest_contact_ids (array of contact ids from search/list) — do NOT only mention guests in notes.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'title' => ['type' => 'string', 'description' => 'Event title'],
-                        'start' => ['type' => 'string', 'description' => 'Start datetime: Y-m-d H:i:s or ISO 8601. For "today"/"hoy" use the real current date (e.g. 2026-03-16).'],
-                        'end' => ['type' => 'string', 'description' => 'End datetime: Y-m-d H:i:s or ISO 8601. Same date as start when user says "today"/"hoy" unless they specify duration.'],
-                        'notes' => ['type' => 'string', 'description' => 'Optional notes'],
+                        'start' => ['type' => 'string', 'description' => 'Start datetime: Y-m-d H:i:s (local wall clock) or ISO 8601. For "today"/"hoy" use the real current date (e.g. 2026-03-16).'],
+                        'end' => ['type' => 'string', 'description' => 'End datetime: Y-m-d H:i:s (local wall clock) or ISO 8601. Same date as start when user says "today"/"hoy" unless they specify duration.'],
+                        'guest_contact_ids' => [
+                            'type' => 'array',
+                            'items' => ['type' => 'integer'],
+                            'description' => 'Contact IDs to link as calendar guests (required when a CRM contact is the meeting guest — use id from create_contact or lookup).',
+                        ],
+                        'guest_name' => [
+                            'type' => 'string',
+                            'description' => 'Full name of a CRM contact guest (e.g. Francisco Caballero). Resolved to guest_contact_ids automatically if id is omitted.',
+                        ],
+                        'notes' => ['type' => 'string', 'description' => 'Optional notes (not for guest list — use guest_contact_ids)'],
                         'url' => ['type' => 'string', 'description' => 'Optional URL'],
                         'label' => ['type' => 'string', 'description' => 'Optional label such as Business, Personal, etc.'],
                         'location' => ['type' => 'string', 'description' => 'Optional location/place for the event (e.g. office, Zoom, address).'],
@@ -332,14 +362,19 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_calendar_event',
-                'description' => 'Update an existing calendar event. Use list_calendar_events first to get the event id when the user says "modifica el evento X" or "cambia la reunión de hoy". Pass event_id and only the fields to change (title, start, end, notes, url, label, all_day).',
+                'description' => 'Update an existing calendar event. Use list_calendar_events first to get the event id when the user says "modifica el evento X" or "cambia la reunión de hoy". Pass event_id and only the fields to change (title, start, end, guest_contact_ids, notes, url, label, all_day). Use guest_contact_ids to link CRM contacts as guests — do not only write guest names in notes.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'event_id' => ['type' => 'integer', 'description' => 'ID of the event to update (from list_calendar_events).'],
                         'title' => ['type' => 'string', 'description' => 'New title (optional).'],
-                        'start' => ['type' => 'string', 'description' => 'New start datetime Y-m-d H:i or ISO 8601 (optional).'],
+                        'start' => ['type' => 'string', 'description' => 'New start datetime Y-m-d H:i (local wall clock) or ISO 8601 (optional).'],
                         'end' => ['type' => 'string', 'description' => 'New end datetime (optional).'],
+                        'guest_contact_ids' => [
+                            'type' => 'array',
+                            'items' => ['type' => 'integer'],
+                            'description' => 'Replace linked guest contacts with these contact IDs (optional).',
+                        ],
                         'all_day' => ['type' => 'boolean', 'description' => 'Whether the event is all-day (optional).'],
                         'notes' => ['type' => 'string', 'description' => 'New notes (optional).'],
                         'url' => ['type' => 'string', 'description' => 'New URL (optional).'],
@@ -597,6 +632,7 @@ class AssistantToolsService
                 'list_contact_categories' => $this->listContactCategories($teamId),
                 'list_contact_statuses' => $this->listContactStatuses(),
                 'get_contact_categories' => $this->getContactCategories($teamId, $user, $input),
+                'search_contacts' => $this->searchContacts($teamId, $user, $input),
                 'create_contact' => $this->createContact($teamId, $user, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $user, $input),
                 'update_contact' => $this->updateContact($teamId, $user, $input),
@@ -671,6 +707,52 @@ class AssistantToolsService
         return "CRM contact statuses (estado del contacto / lifecycle; use contact_status_name in create_message or update_message — exact name):\n".$lines;
     }
 
+    private function searchContacts(int $teamId, User $user, array $input): string
+    {
+        if (! Gate::forUser($user)->allows('viewAny', Contact::class))
+        {
+            return 'You do not have permission to list contacts.';
+        }
+
+        $query = trim((string) ($input['query'] ?? ''));
+        if ($query === '')
+        {
+            return 'query is required (name, email, or phone).';
+        }
+
+        $limit = isset($input['limit']) ? (int) $input['limit'] : TeamContactMatcher::SEARCH_DEFAULT_LIMIT;
+
+        $contacts = app(TeamContactMatcher::class)->search($teamId, $query, $limit);
+
+        if ($contacts->isEmpty())
+        {
+            return $this->truncate('No contacts found for "'.$query.'". You may create one with create_contact if appropriate.');
+        }
+
+        $lines = $contacts->map(function (Contact $contact)
+        {
+            $fullName = trim($contact->name.' '.($contact->surname ?? ''));
+            $parts = ['id '.$contact->id.': '.$fullName];
+            if ($contact->email)
+            {
+                $parts[] = $contact->email;
+            }
+            if ($contact->phone)
+            {
+                $parts[] = 'tel '.$contact->phone;
+            }
+
+            return '  - '.implode(' | ', $parts);
+        })->implode("\n");
+
+        $count = $contacts->count();
+        $header = $count === 1
+            ? 'Found 1 contact (use this id in guest_contact_ids or create_contact):'
+            : "Found {$count} contacts (pick the correct id for guest_contact_ids):";
+
+        return $this->truncate($header."\n".$lines);
+    }
+
     private function createContact(int $teamId, User $user, array $input): string
     {
         if (! Gate::forUser($user)->allows('create', Contact::class))
@@ -703,20 +785,25 @@ class AssistantToolsService
             $this->applyContactOptionalFields($existing, $input);
             $categoryId = $this->attachContactToCategoryName($existing, $teamId, $categoryName);
 
+            $this->registerRecentContactId((int) $existing->id);
+
             $out = "Contact already exists: {$existing->name} (id: {$existing->id}). No duplicate was created.";
             if ($categoryId && $categoryName)
             {
                 $out .= " Assigned to category: {$categoryName}.";
             }
+            $out .= ' Use id '.$existing->id.' in guest_contact_ids when scheduling a calendar event with this person.';
 
             return $this->truncate($out);
         }
 
+        [$firstName, $surname] = $matcher->splitFullName($name);
+
         $payload = [
             'team_id' => $teamId,
             'creator_id' => $user->id,
-            'name' => $name,
-            'surname' => null,
+            'name' => $firstName,
+            'surname' => $surname,
             'email' => $email,
             'phone' => $phone,
             'status_id' => 1,
@@ -727,11 +814,14 @@ class AssistantToolsService
 
         $categoryId = $this->attachContactToCategoryName($contact, $teamId, $categoryName);
 
+        $this->registerRecentContactId((int) $contact->id);
+
         $out = "Contact created: {$contact->name} (id: {$contact->id}).";
         if ($categoryId && $categoryName)
         {
             $out .= " Assigned to category: {$categoryName}.";
         }
+        $out .= ' Use id '.$contact->id.' in guest_contact_ids when scheduling a calendar event with this person.';
 
         return $this->truncate($out);
     }
@@ -1123,7 +1213,7 @@ class AssistantToolsService
 
         try
         {
-            $start = \Carbon\Carbon::parse($startRaw);
+            $start = CalendarEventDateTimeParser::parseForStorage($startRaw);
         } catch (\Throwable)
         {
             return 'Invalid start datetime format.';
@@ -1134,7 +1224,7 @@ class AssistantToolsService
         {
             try
             {
-                $end = \Carbon\Carbon::parse($endRaw);
+                $end = CalendarEventDateTimeParser::parseForStorage($endRaw);
             } catch (\Throwable)
             {
                 return 'Invalid end datetime format.';
@@ -1153,7 +1243,12 @@ class AssistantToolsService
 
         if ($busy->isEmpty())
         {
-            return $this->truncate('The calendar is free between '.$start->toDateTimeString().' and '.$end->toDateTimeString().'.');
+            return $this->truncate(
+                'The calendar is free between '
+                .CalendarEventDateTimeParser::formatWallClock($start)
+                .' and '
+                .CalendarEventDateTimeParser::formatWallClock($end).'.',
+            );
         }
 
         return $this->truncate("There are events in that range:\n".$this->formatBusyCalendarLines($busy));
@@ -1176,8 +1271,8 @@ class AssistantToolsService
 
         try
         {
-            $start = \Carbon\Carbon::parse($startRaw);
-            $end = \Carbon\Carbon::parse($endRaw);
+            $start = CalendarEventDateTimeParser::parseForStorage($startRaw);
+            $end = CalendarEventDateTimeParser::parseForStorage($endRaw);
         } catch (\Throwable)
         {
             return 'Invalid start or end datetime format.';
@@ -1209,10 +1304,27 @@ class AssistantToolsService
             'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
 
+        $guestIds = $this->resolveGuestContactIdsForCalendarEvent($teamId, $input, $title);
+        if ($guestIds !== [])
+        {
+            $this->syncCalendarEventGuests($event, $teamId, $guestIds);
+        }
+
         PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
 
+        $expectedGuest = $this->calendarEventExpectsGuest($input, $title);
+        $guestSummary = $guestIds !== []
+            ? ' Guests linked: '.$this->formatCalendarGuestNames($event->fresh('guests')).'.'
+            : ($expectedGuest
+                ? ' Warning: no CRM guest was linked — pass guest_contact_ids with the contact id.'
+                : '');
+
         return $this->truncate(
-            'Calendar event created: '.$event->title.' (id: '.$event->id.') from '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
+            'Calendar event created: '.$event->title.' (id: '.$event->id.') from '
+            .CalendarEventDateTimeParser::formatWallClock($event->start)
+            .' to '
+            .CalendarEventDateTimeParser::formatWallClock($event->end).'.'
+            .$guestSummary,
         );
     }
 
@@ -1267,7 +1379,10 @@ class AssistantToolsService
 
         $lines = $events->map(function (CalendarEvent $event)
         {
-            return '  id '.$event->id.': '.$event->title.' — '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i');
+            return '  id '.$event->id.': '.$event->title.' — '
+                .CalendarEventDateTimeParser::formatWallClock($event->start)
+                .' to '
+                .CalendarEventDateTimeParser::formatWallClock($event->end);
         })->implode("\n");
 
         return $this->truncate("Calendar events:\n".$lines);
@@ -1322,7 +1437,7 @@ class AssistantToolsService
         {
             try
             {
-                $updates['start'] = \Carbon\Carbon::parse($input['start']);
+                $updates['start'] = CalendarEventDateTimeParser::parseForStorage((string) $input['start']);
             } catch (\Throwable)
             {
                 return 'Invalid start datetime format.';
@@ -1332,7 +1447,7 @@ class AssistantToolsService
         {
             try
             {
-                $updates['end'] = \Carbon\Carbon::parse($input['end']);
+                $updates['end'] = CalendarEventDateTimeParser::parseForStorage((string) $input['end']);
             } catch (\Throwable)
             {
                 return 'Invalid end datetime format.';
@@ -1352,8 +1467,28 @@ class AssistantToolsService
             PushCalendarEventToGoogleJob::dispatch($event->id, 'updated');
         }
 
+        if (array_key_exists('guest_contact_ids', $input) || array_key_exists('guest_name', $input))
+        {
+            $guestIds = $this->resolveGuestContactIdsForCalendarEvent(
+                $teamId,
+                $input,
+                (string) ($updates['title'] ?? $event->title),
+            );
+            $this->syncCalendarEventGuests($event, $teamId, $guestIds);
+        }
+
+        $event->refresh();
+
+        $guestSummary = $event->guests()->exists()
+            ? ' Guests: '.$this->formatCalendarGuestNames($event->load('guests')).'.'
+            : '';
+
         return $this->truncate(
-            'Event updated: '.$event->title.' (id: '.$event->id.') — '.$event->start?->format('Y-m-d H:i').' to '.$event->end?->format('Y-m-d H:i').'.',
+            'Event updated: '.$event->title.' (id: '.$event->id.') — '
+            .CalendarEventDateTimeParser::formatWallClock($event->start)
+            .' to '
+            .CalendarEventDateTimeParser::formatWallClock($event->end).'.'
+            .$guestSummary,
         );
     }
 
@@ -2083,8 +2218,190 @@ class AssistantToolsService
     {
         return $busy->map(function (CalendarEvent $event)
         {
-            return '- '.$event->title.' ('.$event->start?->format('Y-m-d H:i').' → '.$event->end?->format('Y-m-d H:i').')';
+            return '- '.$event->title.' ('
+                .CalendarEventDateTimeParser::formatWallClock($event->start)
+                .' → '
+                .CalendarEventDateTimeParser::formatWallClock($event->end).')';
         })->implode("\n");
+    }
+
+    private function registerRecentContactId(int $contactId): void
+    {
+        if ($contactId < 1)
+        {
+            return;
+        }
+
+        if (! in_array($contactId, $this->recentContactIdsInRequest, true))
+        {
+            $this->recentContactIdsInRequest[] = $contactId;
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function normalizeGuestContactIds(array $input): array
+    {
+        $ids = [];
+
+        if (isset($input['guest_contact_ids']) && is_array($input['guest_contact_ids']))
+        {
+            $ids = array_merge($ids, $input['guest_contact_ids']);
+        }
+
+        if (isset($input['contact_id']) && (int) $input['contact_id'] > 0)
+        {
+            $ids[] = (int) $input['contact_id'];
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn (int $id): bool => $id > 0)));
+
+        return $ids;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function resolveGuestContactIdsForCalendarEvent(int $teamId, array $input, string $title): array
+    {
+        $ids = $this->normalizeGuestContactIds($input);
+
+        if (isset($input['guest_name']) && is_string($input['guest_name']))
+        {
+            $ids = array_merge($ids, $this->findContactIdsByGuestName($teamId, $input['guest_name']));
+        }
+
+        if (isset($input['guest_names']) && is_array($input['guest_names']))
+        {
+            foreach ($input['guest_names'] as $guestName)
+            {
+                if (is_string($guestName))
+                {
+                    $ids = array_merge($ids, $this->findContactIdsByGuestName($teamId, $guestName));
+                }
+            }
+        }
+
+        $guestFromTitle = $this->extractGuestNameFromEventTitle($title);
+        if ($guestFromTitle !== null)
+        {
+            $ids = array_merge($ids, $this->findContactIdsByGuestName($teamId, $guestFromTitle));
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn (int $id): bool => $id > 0)));
+
+        if ($ids !== [])
+        {
+            return $ids;
+        }
+
+        if (count($this->recentContactIdsInRequest) === 1)
+        {
+            return [$this->recentContactIdsInRequest[0]];
+        }
+
+        if ($this->recentContactIdsInRequest !== [])
+        {
+            $ids = $this->matchRecentContactsToEventTitle($teamId, $title);
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids), fn (int $id): bool => $id > 0)));
+    }
+
+    private function calendarEventExpectsGuest(array $input, string $title): bool
+    {
+        if (isset($input['guest_name']) && trim((string) $input['guest_name']) !== '')
+        {
+            return true;
+        }
+
+        if ($this->extractGuestNameFromEventTitle($title) !== null)
+        {
+            return true;
+        }
+
+        return $this->recentContactIdsInRequest !== [];
+    }
+
+    private function extractGuestNameFromEventTitle(string $title): ?string
+    {
+        $title = trim($title);
+        if ($title === '')
+        {
+            return null;
+        }
+
+        if (preg_match('/\b(?:con|with)\s+(.+)$/iu', $title, $matches))
+        {
+            $name = trim($matches[1]);
+
+            return $name !== '' ? $name : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function findContactIdsByGuestName(int $teamId, string $guestName): array
+    {
+        return app(TeamContactMatcher::class)->findIdsByName($teamId, $guestName);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function matchRecentContactsToEventTitle(int $teamId, string $title): array
+    {
+        $titleLower = mb_strtolower(trim($title));
+        if ($titleLower === '')
+        {
+            return [];
+        }
+
+        $contacts = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('id', $this->recentContactIdsInRequest)
+            ->get(['id', 'name', 'surname']);
+
+        $matched = $contacts->filter(function (Contact $contact) use ($titleLower)
+        {
+            $full = mb_strtolower(trim($contact->name.' '.($contact->surname ?? '')));
+            $first = mb_strtolower(trim((string) $contact->name));
+
+            return $full !== '' && (str_contains($titleLower, $full) || ($first !== '' && str_contains($titleLower, $first)));
+        })->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
+        return count($matched) === 1 ? $matched : [];
+    }
+
+    /**
+     * @param  list<int>  $contactIds
+     */
+    private function syncCalendarEventGuests(CalendarEvent $event, int $teamId, array $contactIds): void
+    {
+        $validIds = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('id', $contactIds)
+            ->pluck('id')
+            ->all();
+
+        $event->guests()->sync($validIds);
+    }
+
+    private function formatCalendarGuestNames(CalendarEvent $event): string
+    {
+        if (! $event->relationLoaded('guests'))
+        {
+            $event->load('guests:id,name,surname');
+        }
+
+        return $event->guests
+            ->map(fn (Contact $contact): string => trim($contact->name.' '.($contact->surname ?? '')))
+            ->filter(fn (string $name): bool => $name !== '')
+            ->implode(', ');
     }
 
     private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int

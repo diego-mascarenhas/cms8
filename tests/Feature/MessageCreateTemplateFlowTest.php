@@ -249,7 +249,8 @@ class MessageCreateTemplateFlowTest extends TestCase
             ->first();
 
         $this->assertNotNull($message);
-        $this->assertSame($customHtml, $template->fresh()->gjs_data['html']);
+        $this->assertSame($customHtml, (string) $message->mail_html);
+        $this->assertSame('<html><body><p>Original</p></body></html>', $template->fresh()->gjs_data['html']);
     }
 
     public function test_message_store_does_not_update_template_html_when_message_has_deliveries(): void
@@ -311,6 +312,7 @@ class MessageCreateTemplateFlowTest extends TestCase
 
         $response->assertRedirect(route('message.index'));
         $this->assertSame($originalHtml, $template->fresh()->gjs_data['html']);
+        $this->assertNotSame($tamperedHtml, (string) $message->fresh()->mail_html);
     }
 
     public function test_message_create_with_template_prefills_and_exposes_preview_ajax_contract(): void

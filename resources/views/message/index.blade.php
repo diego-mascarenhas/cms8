@@ -35,6 +35,21 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    #message-table .message-list-progress-col {
+        width: 9.5rem;
+        max-width: 9.5rem;
+    }
+
+    #message-table .message-list-progress {
+        min-width: 0;
+        max-width: 9rem;
+    }
+
+    #message-table .message-list-progress__bar {
+        height: 6px;
+        min-width: 3.5rem;
+    }
 </style>
 
 @section('content')
@@ -167,7 +182,9 @@
 
 <div class="card">
     <div class="card-body">
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        <div class="card-datatable table-responsive">
+            {{ $dataTable->table(['class' => 'table table-hover dt-responsive w-100']) }}
+        </div>
     </div>
 </div>
 
