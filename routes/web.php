@@ -891,6 +891,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
     Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
+    Route::post('message/sync-template-html', [MessageController::class, 'syncTemplateHtml'])->name('message.sync-template-html');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');

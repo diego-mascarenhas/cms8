@@ -352,6 +352,19 @@ document.addEventListener('DOMContentLoaded', function () {
 		<input type="hidden" name="template_html" id="message-email-template-duplicate-template-html" value="">
 	</form>
 	<form
+		id="message-update-template-form"
+		method="post"
+		action="{{ route('message.sync-template-html') }}"
+		class="d-none"
+		aria-hidden="true"
+	>
+		@csrf
+		<input type="hidden" name="template_id" id="message-update-template-template-id" value="">
+		<input type="hidden" name="message_id" id="message-update-template-message-id" value="">
+		<input type="hidden" name="return_url" id="message-update-template-return-url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
+		<input type="hidden" name="template_html" id="message-update-template-html" value="">
+	</form>
+	<form
 		id="message-open-visual-editor-form"
 		method="post"
 		action="{{ route('message.sync-template-html-open-editor') }}"
@@ -413,6 +426,31 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.removeProperty('overflow');
     }
 
+    window.humaReadMessageTemplateHtmlFromComposer = function (root)
+    {
+        root = root || document.getElementById('message-email-template-preview-mount') || document;
+        if (window.humaSyncMessageTemplateHtmlQuill)
+        {
+            window.humaSyncMessageTemplateHtmlQuill();
+        }
+        var quillEditor = root.querySelector('#message-template-html-quill-editor .ql-editor');
+        if (quillEditor && String(quillEditor.innerHTML || '').trim() !== '')
+        {
+            return quillEditor.innerHTML;
+        }
+        var ta = root.querySelector('#message-template-html-body');
+        if (ta && String(ta.value || '').trim() !== '')
+        {
+            return ta.value;
+        }
+        if (window.humaMessageTemplateQuillInstance && window.humaMessageTemplateQuillInstance.root)
+        {
+            return window.humaMessageTemplateQuillInstance.root.innerHTML || '';
+        }
+
+        return '';
+    };
+
     function humaSyncDuplicateTemplateHtmlField()
     {
         var htmlInput = document.getElementById('message-email-template-duplicate-template-html');
@@ -420,12 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
         {
             return;
         }
-        if (window.humaSyncMessageTemplateHtmlQuill)
-        {
-            window.humaSyncMessageTemplateHtmlQuill();
-        }
-        var ta = document.getElementById('message-template-html-body');
-        htmlInput.value = (ta && ta.value) ? ta.value : '';
+        htmlInput.value = window.humaReadMessageTemplateHtmlFromComposer(mount);
     }
 
     if (duplicateForm)
@@ -530,12 +563,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    var previewFetchToken = 0;
+
+    function humaDestroyMessageTemplateHtmlQuillIn(root)
+    {
+        if (window.humaMessageTemplateQuillInstance)
+        {
+            window.humaMessageTemplateQuillInstance = null;
+        }
+        root = root || mount;
+        if (! root)
+        {
+            return;
+        }
+        root.querySelectorAll('[data-quill-bound="1"]').forEach(function (el)
+        {
+            delete el.dataset.quillBound;
+            el.innerHTML = '';
+            el.className = 'message-template-html-quill-root';
+        });
+    }
+
     function loadEmailTemplatePreview(templateId)
     {
         if (mount.dataset.dynamicPreview === '1' && mount.dataset.loadedTemplateId === String(templateId))
         {
             return;
         }
+
+        var fetchToken = ++previewFetchToken;
 
         var params = new URLSearchParams({ template_id: String(templateId), return_url: window.location.href.split('#')[0] });
         if (messageFormMessageId)
@@ -564,11 +620,16 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(function (data)
             {
+                if (fetchToken !== previewFetchToken)
+                {
+                    return;
+                }
                 if (! data || typeof data.html !== 'string')
                 {
                     throw new Error('bad payload');
                 }
                 removeStaleEmailTestSendModalsOutsidePreviewMount();
+                humaDestroyMessageTemplateHtmlQuillIn(mount);
                 mount.innerHTML = data.html;
                 mount.dataset.dynamicPreview = '1';
                 mount.dataset.loadedTemplateId = String(templateId);
@@ -658,6 +719,21 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * @param {ParentNode|Document|null} root
      */
+    window.humaDestroyMessageTemplateHtmlQuillIn = function (root)
+    {
+        if (window.humaMessageTemplateQuillInstance)
+        {
+            window.humaMessageTemplateQuillInstance = null;
+        }
+        root = root || document;
+        root.querySelectorAll('#message-template-html-quill-editor[data-quill-bound="1"]').forEach(function (el)
+        {
+            delete el.dataset.quillBound;
+            el.innerHTML = '';
+            el.className = 'message-template-html-quill-root';
+        });
+    };
+
     window.humaInitMessageTemplateHtmlQuill = function (root)
     {
         root = root || document;
@@ -673,7 +749,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (mountEl.dataset.quillBound === '1')
         {
-            return;
+            window.humaDestroyMessageTemplateHtmlQuillIn(root);
+            mountEl = root.querySelector('#message-template-html-quill-editor');
+            ta = root.querySelector('#message-template-html-body');
+            if (! ta || ! mountEl)
+            {
+                return;
+            }
         }
         mountEl.dataset.quillBound = '1';
         window.humaMessageTemplateQuillInstance = null;
@@ -826,6 +908,121 @@ document.addEventListener('DOMContentLoaded', function () {
         returnInput.value = ru;
         htmlInput.value = ta.value || '';
         form.submit();
+    });
+
+    document.addEventListener('click', function (e)
+    {
+        var btn = e.target.closest('[data-huma-update-template]');
+        if (! btn)
+        {
+            return;
+        }
+        e.preventDefault();
+        var form = document.getElementById('message-update-template-form');
+        var ta = document.getElementById('message-template-html-body');
+        if (! form || ! ta)
+        {
+            return;
+        }
+
+        function submitUpdateTemplate()
+        {
+            var previewRoot = btn.closest('.email-template-content-preview') || mount;
+            var composerHtml = window.humaReadMessageTemplateHtmlFromComposer
+                ? window.humaReadMessageTemplateHtmlFromComposer(previewRoot)
+                : ((ta && ta.value) ? ta.value : '');
+
+            var tid = (btn.getAttribute('data-template-id') || '').trim();
+            if (! tid && window.jQuery)
+            {
+                var $tpl = window.jQuery('#template_id');
+                if ($tpl.length && $tpl.val())
+                {
+                    tid = String($tpl.val()).trim();
+                }
+            }
+            if (! tid)
+            {
+                var tplSelect = document.getElementById('template_id');
+                if (tplSelect && tplSelect.value)
+                {
+                    tid = String(tplSelect.value).trim();
+                }
+            }
+            var mid = (btn.getAttribute('data-message-id') || '').trim();
+            if (! mid && messageFormMessageId)
+            {
+                mid = String(messageFormMessageId);
+            }
+            var templateIdInput = document.getElementById('message-update-template-template-id');
+            var messageIdInput = document.getElementById('message-update-template-message-id');
+            var htmlInput = document.getElementById('message-update-template-html');
+            var returnInput = document.getElementById('message-update-template-return-url');
+            if (! templateIdInput || ! messageIdInput || ! htmlInput || ! tid)
+            {
+                return;
+            }
+            templateIdInput.value = tid;
+            if (mid)
+            {
+                messageIdInput.setAttribute('name', 'message_id');
+                messageIdInput.value = mid;
+            }
+            else
+            {
+                messageIdInput.removeAttribute('name');
+                messageIdInput.value = '';
+            }
+            htmlInput.value = composerHtml;
+            if (! htmlInput.value || htmlInput.value.replace(/<[^>]*>/g, '').trim() === '')
+            {
+                if (typeof Swal !== 'undefined')
+                {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: @json(__('app.email_template_update_empty')),
+                        confirmButtonText: @json(__('OK')),
+                    });
+                }
+
+                return;
+            }
+            if (returnInput)
+            {
+                returnInput.value = window.location.href.split('#')[0];
+            }
+            form.submit();
+        }
+
+        if (typeof Swal === 'undefined')
+        {
+            if (window.confirm(@json(__('app.email_template_update_confirm_text'))))
+            {
+                submitUpdateTemplate();
+            }
+
+            return;
+        }
+
+        Swal.fire({
+            title: @json(__('app.email_template_update_confirm_title')),
+            text: @json(__('app.email_template_update_confirm_text')),
+            icon: 'warning',
+            showCancelButton: true,
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: 'btn btn-warning me-2',
+                cancelButton: 'btn btn-label-secondary',
+            },
+            confirmButtonText: @json(__('app.email_template_update_button')),
+            cancelButtonText: @json(__('Cancel')),
+        }).then(function (result)
+        {
+            if (result.isConfirmed)
+            {
+                submitUpdateTemplate();
+            }
+        });
     });
 })();
 </script>

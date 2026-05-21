@@ -124,4 +124,43 @@ class MessageTemplateEmailPreviewJsonTest extends TestCase
         $this->assertStringContainsString($modalDomId, $html);
         $this->assertSame(1, substr_count($html, $modalDomId), 'Preview fragment must include a single test-send modal root id.');
     }
+
+    public function test_template_email_preview_uses_selected_template_when_message_linked_to_another(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $templateA = Template::withoutGlobalScopes()->create([
+            'name' => 'Template A',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => ['html' => '<p>Content from template A</p>', 'css' => ''],
+        ]);
+
+        $templateB = Template::withoutGlobalScopes()->create([
+            'name' => 'Template B',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => ['html' => '<p>Content from template B</p>', 'css' => ''],
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'M',
+            'type_id' => 1,
+            'text' => 't',
+            'team_id' => $teamId,
+            'template_id' => $templateA->id,
+            'status_id' => false,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('message.template-email-preview', [
+            'template_id' => $templateB->id,
+            'message_id' => $message->id,
+        ]));
+
+        $response->assertOk();
+        $html = (string) $response->json('html');
+        $this->assertStringContainsString('Content from template B', $html);
+        $this->assertStringNotContainsString('Content from template A', $html);
+    }
 }
