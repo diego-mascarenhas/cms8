@@ -1817,5 +1817,45 @@
 			});
 		}
 	};
+
+    /**
+     * Move a task card to another column after assistant (or API) status change — no page reload.
+     *
+     * @param {number|string} taskId
+     * @param {number|string} statusIdOrKey status id or TO_DO / IN_PROGRESS / REVIEW / DONE
+     * @returns {boolean}
+     */
+    window.humanoKanbanMoveTask = function (taskId, statusIdOrKey) {
+        const numericTaskId = parseInt(taskId, 10);
+        if (!numericTaskId || Number.isNaN(numericTaskId)) {
+            return false;
+        }
+
+        let statusId = parseInt(statusIdOrKey, 10);
+        if (!statusId || Number.isNaN(statusId)) {
+            const key = String(statusIdOrKey || '').toUpperCase();
+            const match = statuses.find(
+                (s) => String(s.original_name || '').toUpperCase() === key || String(s.id) === key
+            );
+            statusId = match ? parseInt(match.id, 10) : null;
+        }
+        if (!statusId) {
+            return false;
+        }
+
+        const item = document.querySelector(`.kanban-item[data-task-id="${numericTaskId}"]`);
+        if (!item) {
+            return false;
+        }
+
+        const targetBoard = document.querySelector(`.kanban-board[data-id="${statusId}"] .kanban-drag`);
+        if (!targetBoard) {
+            return false;
+        }
+
+        targetBoard.appendChild(item);
+
+        return true;
+    };
 })();
 

@@ -64,15 +64,13 @@
     };
 </script>
 <script>
-    // Move kanban card when the assistant changes task status (no full page reload — keep offcanvas open).
+    // Move kanban card when the assistant changes task status (no page reload — assistant offcanvas stays open).
     document.addEventListener('livewire:init', function () {
-        Livewire.on('assistant-task-status-updated', function (payload) {
-            var taskId = payload && (payload.taskId ?? payload[0] && payload[0].taskId);
-            var statusId = payload && (payload.statusId ?? payload[0] && payload[0].statusId);
-            var statusName = payload && (payload.statusName ?? payload[0] && payload[0].statusName);
-            if (typeof window.humanoKanbanMoveTask === 'function' && taskId) {
-                window.humanoKanbanMoveTask(taskId, statusId || statusName);
+        Livewire.on('assistant-task-status-updated', function (detail) {
+            if (typeof window.humanoKanbanMoveTask !== 'function' || !detail || !detail.taskId) {
+                return;
             }
+            window.humanoKanbanMoveTask(detail.taskId, detail.statusId || detail.statusName);
         });
     });
 
