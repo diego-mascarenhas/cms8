@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
+use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
@@ -302,7 +303,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_task_status',
-                'description' => 'Move an existing task to another kanban status (e.g. mark done, send to review, start progress). Provide task_id from search_tasks or get_account_report. Status: use keys TO_DO, IN_PROGRESS, REVIEW, DONE, or natural language like "finalizada", "en revisión", "completada".',
+                'description' => 'Move an existing task to another kanban column. Required task_id (from search_tasks / get_account_report). Status must be one of: TO_DO (por hacer), IN_PROGRESS (en progreso), REVIEW (en revisión), DONE (completada/finalizada) — keys or Spanish phrases.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1291,8 +1292,16 @@ class AssistantToolsService
         if ((int) $task->status_id === (int) $targetStatus->id)
         {
             $label = $targetStatus->translated_name;
+            $sentinel = AssistantTaskStatusUpdate::formatSentinelLine(
+                (int) $task->id,
+                (int) $targetStatus->id,
+                (string) $targetStatus->name,
+            );
 
-            return $this->truncate("Task \"{$task->title}\" (id: {$task->id}) is already in status {$targetStatus->name} ({$label}).");
+            return $this->truncate(
+                $sentinel."\n"
+                ."Task \"{$task->title}\" (id: {$task->id}) is already in status {$targetStatus->name} ({$label}).",
+            );
         }
 
         $previousLabel = $task->status?->translated_name ?? (string) ($task->status?->name ?? '—');
@@ -1308,8 +1317,15 @@ class AssistantToolsService
 
         $newLabel = $targetStatus->translated_name;
 
+        $sentinel = AssistantTaskStatusUpdate::formatSentinelLine(
+            (int) $task->id,
+            (int) $targetStatus->id,
+            (string) $targetStatus->name,
+        );
+
         return $this->truncate(
-            "Task \"{$task->title}\" (id: {$task->id}) moved from {$previousLabel} to {$targetStatus->name} ({$newLabel}).",
+            $sentinel."\n"
+            ."Task \"{$task->title}\" (id: {$task->id}) moved from {$previousLabel} to {$targetStatus->name} ({$newLabel}).",
         );
     }
 

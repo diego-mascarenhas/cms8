@@ -807,6 +807,10 @@
                                     window.location.assign(data.redirect_url);
                                     return;
                                 }
+                                if (data.reload_page) {
+                                    window.location.reload();
+                                    return;
+                                }
                                 if (data.action_performed === 'document_ingestion') {
                                     registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
                                 }
@@ -905,6 +909,10 @@
                             appendAssistantExchangeToChat(currentUserMessage, currentAiResponse, currentAiAudioBase64, currentAiAudioMime, currentAttachmentPreviews);
                             if (data.redirect_url && typeof data.redirect_url === 'string') {
                                 window.location.assign(data.redirect_url);
+                                return;
+                            }
+                            if (data.reload_page) {
+                                window.location.reload();
                                 return;
                             }
                             if (data.action_performed === 'document_ingestion') {

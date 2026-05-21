@@ -79,6 +79,7 @@ class AssistantTaskToolsTest extends TestCase
             'status' => 'finalizada',
         ]);
 
+        $this->assertStringContainsString('humano_task_status_updated:', $out);
         $this->assertStringContainsString('moved from', $out);
         $this->assertStringContainsString('DONE', $out);
 
