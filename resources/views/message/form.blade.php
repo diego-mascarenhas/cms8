@@ -349,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	>
 		@csrf
 		<input type="hidden" name="return_url" value="{{ isset($data->id) ? route('message.edit', $data->id) : request()->fullUrl() }}">
+		<input type="hidden" name="template_html" id="message-email-template-duplicate-template-html" value="">
 	</form>
 	<form
 		id="message-open-visual-editor-form"
@@ -401,6 +402,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function humaCleanupBootstrapModalBackdrop()
+    {
+        document.querySelectorAll('.modal-backdrop').forEach(function (el)
+        {
+            el.remove();
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+    }
+
+    function humaSyncDuplicateTemplateHtmlField()
+    {
+        var htmlInput = document.getElementById('message-email-template-duplicate-template-html');
+        if (! htmlInput)
+        {
+            return;
+        }
+        if (window.humaSyncMessageTemplateHtmlQuill)
+        {
+            window.humaSyncMessageTemplateHtmlQuill();
+        }
+        var ta = document.getElementById('message-template-html-body');
+        htmlInput.value = (ta && ta.value) ? ta.value : '';
+    }
+
     if (duplicateForm)
     {
         duplicateForm.addEventListener('submit', function (e)
@@ -413,32 +440,39 @@ document.addEventListener('DOMContentLoaded', function () {
             if (duplicateForm.dataset.humaDupProceed === '1')
             {
                 delete duplicateForm.dataset.humaDupProceed;
+                humaSyncDuplicateTemplateHtmlField();
+                humaCleanupBootstrapModalBackdrop();
                 return;
             }
             var dupModal = document.getElementById('message-email-template-duplicate-modal');
             if (! dupModal || ! dupModal.classList.contains('show'))
             {
+                humaSyncDuplicateTemplateHtmlField();
                 return;
             }
             e.preventDefault();
-            if (typeof bootstrap === 'undefined' || ! bootstrap.Modal)
+            humaSyncDuplicateTemplateHtmlField();
+            function proceedDuplicateSubmit()
             {
+                humaCleanupBootstrapModalBackdrop();
                 duplicateForm.dataset.humaDupProceed = '1';
                 duplicateForm.submit();
+            }
+            if (typeof bootstrap === 'undefined' || ! bootstrap.Modal)
+            {
+                proceedDuplicateSubmit();
                 return;
             }
             var inst = bootstrap.Modal.getInstance(dupModal);
             if (! inst)
             {
-                duplicateForm.dataset.humaDupProceed = '1';
-                duplicateForm.submit();
+                proceedDuplicateSubmit();
                 return;
             }
             dupModal.addEventListener('hidden.bs.modal', function onDupModalHidden()
             {
                 dupModal.removeEventListener('hidden.bs.modal', onDupModalHidden);
-                duplicateForm.dataset.humaDupProceed = '1';
-                duplicateForm.submit();
+                proceedDuplicateSubmit();
             });
             inst.hide();
         });

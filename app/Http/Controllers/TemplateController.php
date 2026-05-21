@@ -221,11 +221,23 @@ class TemplateController extends Controller
             $gjsData = json_decode(json_encode($gjsData), true) ?? [];
         }
 
+        $composerHtml = trim((string) ($validated['template_html'] ?? ''));
+        if ($composerHtml !== '')
+        {
+            $gjsData['html'] = $composerHtml;
+        }
+
         $copy = Template::create([
             'name' => $newName,
             'status_id' => true,
             'gjs_data' => $gjsData,
         ]);
+
+        if ($composerHtml !== '')
+        {
+            $copy->refresh();
+            GrapesJsHelper::fixTemplateStructure($copy);
+        }
 
         $linkedToMessage = false;
         $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
@@ -242,11 +254,14 @@ class TemplateController extends Controller
             }
         }
 
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        $fromComposer = $composerHtml !== '';
+
         $successKey = $linkedToMessage
             ? 'app.email_template_duplicate_success_linked'
-            : 'app.email_template_duplicate_success';
-
-        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+            : ($fromComposer
+                ? 'app.email_template_duplicate_success_composer'
+                : 'app.email_template_duplicate_success');
 
         if ($linkedToMessage)
         {
@@ -262,6 +277,20 @@ class TemplateController extends Controller
                     ->to($destination)
                     ->with('success', __($successKey));
             }
+        }
+
+        if ($fromComposer && $returnUrl !== null)
+        {
+            $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+            $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                $returnUrl,
+                $createPath,
+                ['template_id' => (string) $copy->id],
+            );
+
+            return redirect()
+                ->to($returnUrl)
+                ->with('success', __($successKey));
         }
 
         if ($returnUrl !== null && ! $linkedToMessage)
