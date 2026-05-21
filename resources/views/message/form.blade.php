@@ -671,6 +671,28 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        function humaSyncTemplateIdQueryParam(templateId)
+        {
+            if (! templateId)
+            {
+                return;
+            }
+            try
+            {
+                var url = new URL(window.location.href, window.location.origin);
+                if (url.searchParams.get('template_id') === String(templateId))
+                {
+                    return;
+                }
+                url.searchParams.set('template_id', String(templateId));
+                window.history.replaceState({}, '', url.pathname + url.search + (url.hash || ''));
+            }
+            catch (urlErr)
+            {
+                /* ignore */
+            }
+        }
+
         function evaluate()
         {
             if (templateLockDeliveries)
@@ -689,11 +711,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearDynamicPreview();
                 return;
             }
+
+            humaSyncTemplateIdQueryParam(tid);
             loadEmailTemplatePreview(parseInt(tid, 10));
         }
 
         $tpl.on('change select2:select', evaluate);
-        window.setTimeout(evaluate, 0);
+        window.setTimeout(function ()
+        {
+            var queryTid = '';
+            try
+            {
+                queryTid = (new URLSearchParams(window.location.search).get('template_id') || '').trim();
+            }
+            catch (queryErr)
+            {
+                queryTid = '';
+            }
+            if (queryTid && ($tpl.val() || '').toString().trim() !== queryTid)
+            {
+                $tpl.val(queryTid).trigger('change');
+
+                return;
+            }
+            evaluate();
+        }, 0);
     });
 })();
 </script>
@@ -894,19 +936,33 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         templateIdInput.value = tid;
-        messageIdInput.value = mid;
-        var ru = '';
+        if (mid)
+        {
+            messageIdInput.setAttribute('name', 'message_id');
+            messageIdInput.value = mid;
+        }
+        else
+        {
+            messageIdInput.removeAttribute('name');
+            messageIdInput.value = '';
+        }
+        var composerHtml = window.humaReadMessageTemplateHtmlFromComposer
+            ? window.humaReadMessageTemplateHtmlFromComposer(btn.closest('.email-template-content-preview') || document.getElementById('message-email-template-preview-mount'))
+            : (ta.value || '');
+        htmlInput.value = composerHtml;
         try
         {
-            var u = new URL(editorUrl, window.location.origin);
-            ru = u.searchParams.get('return_url') || '';
+            var returnUrl = new URL(window.location.href.split('#')[0], window.location.origin);
+            if (tid)
+            {
+                returnUrl.searchParams.set('template_id', tid);
+            }
+            returnInput.value = returnUrl.pathname + returnUrl.search;
         }
         catch (err1)
         {
-            ru = '';
+            returnInput.value = window.location.href.split('#')[0];
         }
-        returnInput.value = ru;
-        htmlInput.value = ta.value || '';
         form.submit();
     });
 

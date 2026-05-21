@@ -84,7 +84,7 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
         $this->assertStringContainsString('Meraki 2', (string) ($template->gjs_data['components'] ?? ''));
     }
 
-    public function test_sync_with_message_id_persists_mail_html_on_message_not_template(): void
+    public function test_sync_with_message_id_persists_template_html_before_editor(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -102,7 +102,6 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
             'text' => 'Alt',
             'team_id' => $teamId,
             'template_id' => $template->id,
-            'mail_html' => '<p>Message body</p>',
             'status_id' => false,
         ]);
 
@@ -117,12 +116,15 @@ class MessageSyncTemplateHtmlOpenEditorTest extends TestCase
         ]);
 
         $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $parts = parse_url($location);
+        parse_str($parts['query'] ?? '', $editorQuery);
+        $decodedReturn = urldecode((string) ($editorQuery['return_url'] ?? ''));
+        $this->assertStringContainsString('template_id='.$template->id, $decodedReturn);
 
-        $message->refresh();
         $template->refresh();
 
-        $this->assertSame($customHtml, (string) $message->mail_html);
-        $this->assertSame('<p>Template original</p>', (string) ($template->gjs_data['html'] ?? ''));
+        $this->assertSame($customHtml, (string) ($template->gjs_data['html'] ?? ''));
     }
 
     public function test_sync_with_message_id_requires_email_message_type(): void

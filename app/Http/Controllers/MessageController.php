@@ -516,7 +516,12 @@ class MessageController extends Controller
             }
         }
 
-        $this->persistTemplateHtmlFromMessageComposer($templateId, $html, $messageIdGate);
+        $this->persistTemplateHtmlToTemplateModel($templateId, $html);
+
+        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        {
+            Message::query()->whereKey($messageIdGate)->update(['mail_html' => null]);
+        }
 
         $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
         if ($returnUrl === null || $returnUrl === '')
@@ -526,14 +531,25 @@ class MessageController extends Controller
                 : route('message.create');
         }
 
-        if ($messageIdGate === null && $returnUrl !== null && $returnUrl !== '')
+        if ($returnUrl !== null && $returnUrl !== '')
         {
-            $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
-            $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
-                $returnUrl,
-                $createPath,
-                ['template_id' => (string) $templateId],
-            );
+            if ($messageIdGate !== null)
+            {
+                $editPath = parse_url(route('message.edit', $messageIdGate), PHP_URL_PATH) ?? '/message/edit';
+                $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                    $returnUrl,
+                    $editPath,
+                    ['template_id' => (string) $templateId],
+                );
+            } else
+            {
+                $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+                $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                    $returnUrl,
+                    $createPath,
+                    ['template_id' => (string) $templateId],
+                );
+            }
         }
 
         $template = Template::query()->whereKey($templateId)->firstOrFail();
@@ -1541,9 +1557,12 @@ class MessageController extends Controller
             ];
         }
 
+        $requestTemplateId = $request->integer('template_id');
         $preferredTemplateId = $removeMailTemplate
             ? null
-            : (int) old('template_id', $data->template_id ?? 0);
+            : ($requestTemplateId > 0
+                ? $requestTemplateId
+                : (int) old('template_id', $data->template_id ?? 0));
 
         $template = app(MessageFormTemplateResolver::class)->resolveForForm(
             $preferredTemplateId > 0 ? $preferredTemplateId : null,
@@ -1669,12 +1688,9 @@ class MessageController extends Controller
      * When the user picks another template in the message form, show that template's HTML.
      * Only reuse message-specific HTML when the previewed template is the one already linked to the message.
      */
-    private function resolveMailHtmlForTemplatePreview(Template $template, ?Message $message): string
+    private function resolveMailHtmlForTemplatePreview(Template $template, ?Message $message = null): string
     {
-        if ($message instanceof Message && (int) $message->template_id === (int) $template->id)
-        {
-            return $message->resolveMailHtml();
-        }
+        $template->refresh();
 
         return $this->rawTemplateHtmlFromModel($template);
     }
