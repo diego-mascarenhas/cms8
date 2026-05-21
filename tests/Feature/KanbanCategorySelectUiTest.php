@@ -47,6 +47,6 @@ class KanbanCategorySelectUiTest extends TestCase
         $response->assertSee('id="label"', false);
         $response->assertSee('quickStoreUrl', false);
         $response->assertSee('humaKanbanAfterModuleCategoryQuickStore', false);
-        $response->assertSee('module-categories-refreshed', false);
+        $response->assertDontSee('kanban-module-cat-mgr-label-tasks', false);
     }
 }

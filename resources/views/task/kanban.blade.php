@@ -169,28 +169,6 @@
                 }
             };
 
-            function registerKanbanCategoryRefreshListener() {
-                Livewire.on('module-categories-refreshed', function (event) {
-                    var selectId = event && event.selectId ? event.selectId : null;
-                    var moduleKey = event && event.moduleKey ? event.moduleKey : null;
-                    if (selectId !== 'label' || moduleKey !== 'tasks') {
-                        return;
-                    }
-                    var sidebar = document.querySelector('.kanban-update-item-sidebar');
-                    var sel = sidebar ? sidebar.querySelector('#label') : null;
-                    if (!sidebar || !sel) {
-                        return;
-                    }
-                    var prev = sel.value || '';
-                    window.humaKanbanRebuildCategorySelect(sel, sidebar, prev);
-                });
-            }
-
-            if (typeof Livewire !== 'undefined') {
-                registerKanbanCategoryRefreshListener();
-            } else {
-                document.addEventListener('livewire:init', registerKanbanCategoryRefreshListener);
-            }
         })();
     </script>
     @include('components.partials.select2-module-category-quick-create', [
@@ -327,12 +305,7 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <div class="d-flex align-items-center justify-content-between flex-nowrap gap-2 mb-1" style="min-height: 2.25rem;">
-                                <label class="form-label mb-0" for="label">{{ __('Categoría') }}</label>
-                                @can('viewAny', \App\Models\Category::class)
-                                    @livewire(\App\Livewire\ModuleCategoriesManagerModal::class, ['moduleKey' => 'tasks', 'linkedSelectId' => 'label'], key('kanban-module-cat-mgr-label-tasks'))
-                                @endcan
-                            </div>
+                            <label class="form-label" for="label">{{ __('Categoría') }}</label>
                             <select
                                 class="select2 select2-label form-select"
                                 id="label"
