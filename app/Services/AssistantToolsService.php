@@ -33,6 +33,7 @@ use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Defines and executes tools available to the chat assistant (create contact, task, send WhatsApp, etc.).
@@ -276,6 +277,42 @@ class AssistantToolsService
                         'due_days' => ['type' => 'integer', 'description' => 'Due date in days from today (default 7)'],
                     ],
                     'required' => ['title'],
+                ],
+            ],
+            [
+                'name' => 'search_tasks',
+                'description' => 'Search team tasks by title (partial match). Use BEFORE update_task_status when the user names a task without giving its id — returns id, title, and current status. Never ask the user for a task id; use this tool instead.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => 'string', 'description' => 'Part of the task title to search'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max results (default 10, max 25)'],
+                    ],
+                    'required' => ['query'],
+                ],
+            ],
+            [
+                'name' => 'list_task_statuses',
+                'description' => 'List kanban task statuses for the team (TO_DO, IN_PROGRESS, REVIEW, DONE with translated labels). Use before update_task_status when the target status is unclear.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'update_task_status',
+                'description' => 'Move an existing task to another kanban status (e.g. mark done, send to review, start progress). Provide task_id from search_tasks or get_account_report. Status: use keys TO_DO, IN_PROGRESS, REVIEW, DONE, or natural language like "finalizada", "en revisión", "completada".',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'task_id' => ['type' => 'integer', 'description' => 'Task ID to update'],
+                        'status' => [
+                            'type' => 'string',
+                            'description' => 'Target status: TO_DO | IN_PROGRESS | REVIEW | DONE, or Spanish/English phrase (finalizada, revisión, en progreso, por hacer)',
+                        ],
+                    ],
+                    'required' => ['task_id', 'status'],
                 ],
             ],
             [
@@ -639,6 +676,9 @@ class AssistantToolsService
                 'get_account_report' => $this->getAccountReport($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
+                'search_tasks' => $this->searchTasks($teamId, $input),
+                'list_task_statuses' => $this->listTaskStatuses(),
+                'update_task_status' => $this->updateTaskStatus($teamId, $user, $input),
                 'list_team_users' => $this->listTeamUsers($teamId),
                 'get_my_profile' => $this->getMyProfile($user, $teamId),
                 'commit_assistant_flow' => $this->commitAssistantFlow($teamId, $input),
@@ -1166,6 +1206,158 @@ class AssistantToolsService
         $dueStr = $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : 'N/A';
 
         return $this->truncate("Task created: {$task->title} (id: {$task->id}), assigned to {$assignee}, due {$dueStr}.");
+    }
+
+    private function searchTasks(int $teamId, array $input): string
+    {
+        $query = trim((string) ($input['query'] ?? ''));
+        if ($query === '')
+        {
+            return 'Search query is required.';
+        }
+
+        $limit = isset($input['limit']) ? (int) $input['limit'] : 10;
+        $limit = max(1, min(25, $limit));
+
+        $tasks = Task::withoutGlobalScopes()
+            ->with('status')
+            ->where('team_id', $teamId)
+            ->where('title', 'like', '%'.$query.'%')
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get();
+
+        if ($tasks->isEmpty())
+        {
+            return 'No tasks found matching "'.$query.'".';
+        }
+
+        $lines = $tasks->map(function (Task $task): string
+        {
+            $statusKey = $task->status?->name ?? 'UNKNOWN';
+            $statusLabel = $task->status?->translated_name ?? $statusKey;
+
+            return '  - '.$task->title.' (id: '.$task->id.', status: '.$statusKey.' / '.$statusLabel.')';
+        })->implode("\n");
+
+        $count = $tasks->count();
+
+        return $this->truncate("Found {$count} task(s):\n".$lines);
+    }
+
+    private function listTaskStatuses(): string
+    {
+        $statuses = TaskStatus::orderBy('order')->get();
+        $lines = $statuses->map(function (TaskStatus $status): string
+        {
+            return '  - '.$status->name.' → '.$status->translated_name;
+        })->implode("\n");
+
+        return $this->truncate("Task statuses:\n".($lines ?: '  (none)'));
+    }
+
+    private function updateTaskStatus(int $teamId, User $user, array $input): string
+    {
+        $taskId = (int) ($input['task_id'] ?? 0);
+        $statusInput = trim((string) ($input['status'] ?? ''));
+
+        if ($taskId < 1)
+        {
+            return 'task_id is required.';
+        }
+        if ($statusInput === '')
+        {
+            return 'status is required (e.g. DONE, REVIEW, finalizada, en revisión).';
+        }
+
+        $task = Task::withoutGlobalScopes()
+            ->with('status')
+            ->where('team_id', $teamId)
+            ->find($taskId);
+
+        if ($task === null)
+        {
+            return "Task with id {$taskId} not found in this team.";
+        }
+
+        $targetStatus = $this->resolveTaskStatusFromAssistantInput($statusInput);
+        if ($targetStatus === null)
+        {
+            $available = TaskStatus::orderBy('order')->pluck('name')->implode(', ');
+
+            return 'Unknown status "'.$statusInput.'". Use one of: '.$available.' (or Spanish: finalizada/completada, revisión, en progreso, por hacer).';
+        }
+
+        if ((int) $task->status_id === (int) $targetStatus->id)
+        {
+            $label = $targetStatus->translated_name;
+
+            return $this->truncate("Task \"{$task->title}\" (id: {$task->id}) is already in status {$targetStatus->name} ({$label}).");
+        }
+
+        $previousLabel = $task->status?->translated_name ?? (string) ($task->status?->name ?? '—');
+        $maxOrder = (int) Task::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('status_id', $targetStatus->id)
+            ->when($task->board_id !== null, fn ($q) => $q->where('board_id', $task->board_id))
+            ->max('order');
+
+        $task->status_id = $targetStatus->id;
+        $task->order = $maxOrder + 1;
+        $task->save();
+
+        $newLabel = $targetStatus->translated_name;
+
+        return $this->truncate(
+            "Task \"{$task->title}\" (id: {$task->id}) moved from {$previousLabel} to {$targetStatus->name} ({$newLabel}).",
+        );
+    }
+
+    /**
+     * Map assistant status input to a TaskStatus row (keys TO_DO, IN_PROGRESS, REVIEW, DONE or natural language).
+     */
+    private function resolveTaskStatusFromAssistantInput(string $statusInput): ?TaskStatus
+    {
+        $normalized = Str::ascii(mb_strtolower(trim($statusInput)));
+        $normalized = str_replace(['-', ' '], '_', $normalized);
+        $normalized = preg_replace('/[^a-z0-9_]/', '', $normalized) ?? $normalized;
+
+        $aliases = [
+            'to_do' => 'TO_DO',
+            'todo' => 'TO_DO',
+            'por_hacer' => 'TO_DO',
+            'pendiente' => 'TO_DO',
+            'in_progress' => 'IN_PROGRESS',
+            'inprogress' => 'IN_PROGRESS',
+            'en_progreso' => 'IN_PROGRESS',
+            'progreso' => 'IN_PROGRESS',
+            'review' => 'REVIEW',
+            'en_revision' => 'REVIEW',
+            'revision' => 'REVIEW',
+            'done' => 'DONE',
+            'finalizada' => 'DONE',
+            'finalizado' => 'DONE',
+            'completada' => 'DONE',
+            'completado' => 'DONE',
+            'terminada' => 'DONE',
+            'terminado' => 'DONE',
+            'hecha' => 'DONE',
+            'hecho' => 'DONE',
+        ];
+
+        $key = $aliases[$normalized] ?? strtoupper(str_replace(' ', '_', $statusInput));
+
+        if (in_array($key, ['TO_DO', 'IN_PROGRESS', 'REVIEW', 'DONE'], true))
+        {
+            return TaskStatus::query()->where('name', $key)->first();
+        }
+
+        if (ctype_digit($statusInput))
+        {
+            return TaskStatus::query()->find((int) $statusInput);
+        }
+
+        return null;
     }
 
     private function listTeamUsers(int $teamId): string

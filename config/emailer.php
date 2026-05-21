@@ -101,8 +101,11 @@ return [
     |--------------------------------------------------------------------------
     |
     | Footer to add to emails when using system SMTP (not team SMTP).
+    | Set EMAILER_SHOW_ADVERTISING_FOOTER=true to show the default or custom footer.
     |
     */
+
+    'show_advertising_footer' => env('EMAILER_SHOW_ADVERTISING_FOOTER', false),
 
     'advertising_footer' => env('EMAILER_ADVERTISING_FOOTER', ''),
 

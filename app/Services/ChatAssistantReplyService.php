@@ -532,6 +532,12 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 When they ask to create or modify something, use:
 - search_contacts before create_contact when the user names someone; create_contact, update_contact (to add or change phone, email, or name), get_contact_categories (to see a contact's categories), assign_contact_to_category (to add another category to a contact), create_task, send_whatsapp_message
 
+Tasks (kanban):
+- search_tasks (query) → find a task by title fragment; returns task id and current status. Use BEFORE update_task_status when the user names a task. NEVER ask the user for a task id.
+- list_task_statuses → TO_DO, IN_PROGRESS, REVIEW, DONE (and translated labels) when the target column is unclear.
+- get_account_report with report_type "tasks" → recent tasks with ids.
+- update_task_status (task_id, status) → move a task to another column when they ask to mark done/finalizada, send to review/revisión, start progress, back to por hacer, etc. Call the tool in the same turn once you have task_id and status — do not only confirm in text.
+
 Product catalog and WhatsApp PURCHASE flow (priority when the user wants to buy — team has products module):
 - list_product_catalog (optional category_name) → full catalog with id, code, name, price. Use for "catálogo", "productos", "qué venden".
 - search_products (query) → find by name or code. Use before offering to add to cart.

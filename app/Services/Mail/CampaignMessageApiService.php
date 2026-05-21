@@ -2,13 +2,11 @@
 
 namespace App\Services\Mail;
 
-use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CampaignMessageApiService
 {
@@ -245,40 +243,9 @@ class CampaignMessageApiService
         return $this->contactsQueryForMessage($message)->count();
     }
 
-    private function contactsQueryForMessage(Message $message): HasMany|Builder
+    private function contactsQueryForMessage(Message $message): Builder
     {
-        if ($message->category)
-        {
-            $query = $message->category->contacts();
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        } else
-        {
-            $query = Contact::query()
-                ->where('team_id', $message->team_id)
-                ->whereNotNull('email');
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        }
-
-        $testDomains = [
-            '@example.org',
-            '@example.net',
-            '@example.com',
-            '@demo.com',
-            '@test.com',
-            '@localhost',
-            '@testing.com',
-            '@dummy.com',
-            '@fake.com',
-        ];
-
-        foreach ($testDomains as $domain)
-        {
-            $query->where('email', 'not like', '%'.$domain);
-        }
-
-        return $query;
+        return $message->audienceContactsQuery();
     }
 
     /**
