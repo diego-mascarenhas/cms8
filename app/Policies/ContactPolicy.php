@@ -109,7 +109,19 @@ class ContactPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['admin', 'collaborator', 'developer', 'technical']);
+        if (! $user->currentTeam)
+        {
+            return false;
+        }
+
+        return $user->hasRole([
+            'admin',
+            'collaborator',
+            'developer',
+            'technical',
+            'editor',
+            'client',
+        ]);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Prompt;
 use App\Models\User;
+use App\Services\Assistant\AssistantActorContextService;
 use App\Tools\AssistantTool;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -24,6 +25,7 @@ class ChatAssistantReplyService
         protected CollectionAssistantContextService $collectionAssistantContext,
         protected ContactAssistantContextService $contactAssistantContext,
         protected AssistantToolAuthorizationService $assistantToolAuthorization,
+        protected AssistantActorContextService $actorContext,
         protected BusinessAssistantContextService $businessAssistantContext,
     ) {}
 
@@ -37,7 +39,7 @@ class ChatAssistantReplyService
      * When $teamId is set, a markdown block from team business_config (wizard) is appended to instructions when non-empty.
      *
      * @param  array<int, array{direction: string, body: string}>  $history
-     * @param  bool  $inboundWhatsapp  When true (auto-reply to a customer on WhatsApp), add instructions to infer intent from business config, avoid assuming e-commerce, and for anonymous customers append flow discovery (routing keys) when needed.
+     * @param  string|null  $channel  {@see AssistantActorContextService::CHANNEL_WEB} or {@see AssistantActorContextService::CHANNEL_WHATSAPP}; profile (prompts, hints) is derived from the user + policies, not from the channel alone.
      * @param  bool  $singleCustomerWhatsAppSendPerTurn  When true, only the first {@see AssistantToolsService::sendWhatsAppMessage()} send in this request succeeds (admin proactive opening).
      * @param  string|null  $humanoGuideAppendix  When set, appended to system instructions (e.g. terminal interactive tour); does not enable tools by itself.
      * @return array{
@@ -49,7 +51,7 @@ class ChatAssistantReplyService
      *     assistant_flow_routing_key: ?string,
      * }
      */
-    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, bool $inboundWhatsapp = false, bool $singleCustomerWhatsAppSendPerTurn = false, ?string $humanoGuideAppendix = null): array
+    public function getReply(string $message, array $history = [], ?int $teamId = null, bool $withTools = false, ?int $contextUserId = null, ?string $contextCustomerPhone = null, ?string $forcedFlowRoutingKey = null, ?int $contactId = null, bool $previewOnly = false, ?string $channel = null, bool $singleCustomerWhatsAppSendPerTurn = false, ?string $humanoGuideAppendix = null): array
     {
         if ($this->useStub($teamId))
         {
@@ -74,13 +76,13 @@ class ChatAssistantReplyService
             ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
 
-        if ($withTools && $teamId !== null && $contextUserId !== null)
+        $actorContext = ($withTools && $teamId !== null && $contextUserId !== null)
+            ? $this->actorContext->resolve($contextUserId, $teamId, $channel)
+            : null;
+
+        if ($actorContext !== null && $actorContext->limitedToolset)
         {
-            $ctxUser = User::withoutGlobalScopes()->find($contextUserId);
-            if ($ctxUser !== null && $this->assistantToolAuthorization->isRestrictedTeamMember($ctxUser, $teamId))
-            {
-                $instructions .= $this->customerTeamRoleInstructionsAppendix();
-            }
+            $instructions .= $this->customerTeamRoleInstructionsAppendix();
         }
 
         $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId);
@@ -182,10 +184,10 @@ class ChatAssistantReplyService
             $instructions .= $this->previewModeInstructionsAppendix($flowRoutingKey, $collectionsTotalLabel);
         }
 
-        if ($inboundWhatsapp && $withTools && $teamId !== null && ! $previewOnly)
+        if ($actorContext !== null && $actorContext->whatsappInboundCustomerPrompts && ! $previewOnly)
         {
             $instructions .= $this->inboundWhatsappCustomerIntentAppendix();
-            if ($contextUserId === null && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled($teamId))
+            if (! $this->toolIntentPrompts->keywordIntentRoutingEnabled($teamId))
             {
                 $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
                 if ($discovery !== '')
@@ -198,11 +200,12 @@ class ChatAssistantReplyService
         if ($humanoGuideAppendix !== null && trim($humanoGuideAppendix) !== '')
         {
             $instructions .= "\n\n---\n\n".trim($humanoGuideAppendix);
-        } elseif ($withTools && $teamId !== null)
+        } elseif ($withTools && $teamId !== null && $actorContext !== null)
         {
-            $hint = $inboundWhatsapp
-                ? trim((string) config('humano_interactive_guide.whatsapp_help_hint', ''))
-                : trim((string) config('humano_interactive_guide.web_help_hint', ''));
+            $hintKey = $actorContext->usesWebInteractiveGuideHint()
+                ? 'web_help_hint'
+                : 'whatsapp_help_hint';
+            $hint = trim((string) config('humano_interactive_guide.'.$hintKey, ''));
             if ($hint !== '')
             {
                 $instructions .= "\n\n---\n\n".$hint;
@@ -538,8 +541,9 @@ Product catalog and WhatsApp PURCHASE flow (priority when the user wants to buy 
 
 When they ask to schedule an event, appointment, or meeting ("agendar", "cita", "reunión", "evento", "reservar", "poner en el calendario"), use the calendar tools:
 - search_contacts (query with the guest's name) → get contact id BEFORE create_calendar_event when a person is named. Do NOT ask the user for contact ids.
+- If they also ask to add someone to the CRM ("agregar contacto", "nuevo contacto", a name like "Pepe"): call search_contacts first; if no match, call create_contact with that name only — email and phone are optional; do NOT ask for email/phone before trying create_contact.
 - check_calendar_availability (start, end) → to see if the slot is free before confirming
-- create_calendar_event (title, start, end; optional: guest_contact_ids, guest_name, notes, url, label) → to create the event. For "hoy"/"today" use the CURRENT DATE given above in start/end (e.g. {$today} 15:00:00). Use Y-m-d H:i:s as local wall-clock times (same as the user says, e.g. 14:00:00 to 15:00:00). For "mañana" use tomorrow; for weekday names use the next occurrence. When the meeting is with a CRM contact: use guest_contact_ids from search_contacts or create_contact in the same turn; guest_name also works as fallback. Never ask the user for ids and never offer "create without guest" unless they explicitly decline linking a contact.
+- create_calendar_event (title, start, end; optional: guest_contact_ids, guest_name, notes, url, label) → to create the event. For "hoy"/"today" use the CURRENT DATE given above in start/end (e.g. {$today} 15:00:00). Use Y-m-d H:i:s as local wall-clock times (same as the user says, e.g. 14:00:00 to 15:00:00). For "mañana" use tomorrow; for weekday names use the next occurrence. When the meeting is with a CRM contact: use guest_contact_ids from search_contacts or create_contact in the same turn; guest_name also works as fallback. Never ask the user for ids and never offer "create without guest" unless they explicitly decline linking a contact. If only the meeting title and guest name are given but date/time is missing, ask in one short message for date and start time (default 1 hour duration if they do not specify end).
 When they ask to edit, change, or modify an existing event ("modificar", "editar", "cambiar el evento", "cambia la hora de", "reprogramar"), use:
 - list_calendar_events (start, end) → to find the event in that date range and get its id
 - update_calendar_event (event_id, and only the fields to change: title, start, end, guest_contact_ids, notes, url, label, all_day) → to apply the change. Confirm the update briefly.
@@ -566,6 +570,8 @@ Campaign messages (News / newsletter / email campaigns):
 Topic locking: When a team flow is active for this thread, stay on that topic until it is resolved (e.g. payment sent, order placed) or the user clearly wants to switch topic. Do not jump to the product catalog or shopping tools during billing or support unless the user clearly asks about buying. When the instructions include "Conversation flow (discovery mode)", ask at most one short clarifying question if needed, then call commit_assistant_flow with the exact routing_key once intent is clear.
 
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
+NEVER invent "problema técnico", "problema momentáneo", "problema con la base de datos", or that contact search is broken. "No contacts found" means: call create_contact with the name the user gave (or ask one clarifying question if the name is ambiguous). "You do not have permission" means: say their role cannot do that action — do not blame search or the system. If a tool failed internally, retry create_contact or create_calendar_event with guest_name — never tell the user the database is down.
+When proposing meeting times (e.g. after another event ends at 11:00), call check_calendar_availability and create_calendar_event in the same turn once the user confirms — do not only ask in text without calling tools.
 EOT;
     }
 
@@ -579,7 +585,7 @@ EOT;
 
 ### User role on this team (limited customer)
 
-This user is a **customer** (Jetstream role: client / guest / user) on this team. Do not use internal CRM bulk tools, campaigns, templates, team-wide calendar, or account reports. Prefer conversational help, catalog/cart, support tickets, and WhatsApp replies in this thread only. If they ask for internal staff actions, say the business team must do it from the app.
+This user has a **limited** assistant profile on this team (customer / guest, or without CRM create permissions). Do not use internal CRM bulk tools, campaigns, templates, team-wide calendar, or account reports unless a tool succeeds. Prefer conversational help, catalog/cart, support tickets, and WhatsApp replies in this thread only. If they ask for internal staff actions they cannot perform, say the business team must do it from the app or grant the needed access.
 EOT;
     }
 

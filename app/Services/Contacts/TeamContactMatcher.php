@@ -3,6 +3,8 @@
 namespace App\Services\Contacts;
 
 use App\Models\Contact;
+use App\Support\SearchNormalizer;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Collection;
 
 class TeamContactMatcher
@@ -12,11 +14,14 @@ class TeamContactMatcher
     public function findExisting(int $teamId, ?string $email, ?int $phone, ?string $name): ?Contact
     {
         $base = Contact::withoutGlobalScopes()->where('team_id', $teamId);
+        $connection = $this->connection();
 
         $normalizedEmail = $email !== null ? strtolower(trim($email)) : '';
         if ($normalizedEmail !== '')
         {
-            $existing = (clone $base)->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])->first();
+            $existing = (clone $base)
+                ->whereRaw(SearchNormalizer::contactTextColumnLowerSql('email', $connection).' = ?', [$normalizedEmail])
+                ->first();
             if ($existing)
             {
                 return $existing;
@@ -32,7 +37,7 @@ class TeamContactMatcher
             }
         }
 
-        return $this->findExistingByName($base, $name);
+        return $this->findExistingByName($base, $name, $connection);
     }
 
     /**
@@ -68,6 +73,7 @@ class TeamContactMatcher
         }
 
         $limit = max(1, min($limit, 25));
+        $connection = $this->connection();
 
         $existing = $this->findExisting($teamId, null, null, $query);
         if ($existing)
@@ -98,16 +104,16 @@ class TeamContactMatcher
 
         return Contact::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->where(function ($builder) use ($term, $phoneDigits)
+            ->where(function ($builder) use ($term, $phoneDigits, $connection)
             {
-                $builder->whereRaw('LOWER(TRIM(name)) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(TRIM(COALESCE(surname, ""))) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(TRIM(CONCAT(name, " ", COALESCE(surname, "")))) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(TRIM(COALESCE(email, ""))) LIKE ?', [$term]);
+                $builder->whereRaw(SearchNormalizer::contactTextColumnLowerSql('name', $connection).' like ?', [$term])
+                    ->orWhereRaw(SearchNormalizer::contactTextColumnLowerSql('surname', $connection).' like ?', [$term])
+                    ->orWhereRaw(SearchNormalizer::contactFullNameLowerSql($connection).' like ?', [$term])
+                    ->orWhereRaw(SearchNormalizer::contactTextColumnLowerSql('email', $connection).' like ?', [$term]);
 
                 if (strlen($phoneDigits) >= 4)
                 {
-                    $builder->orWhere('phone', 'like', '%'.$phoneDigits.'%');
+                    $builder->orWhereRaw(SearchNormalizer::contactPhoneLikeSql($connection).' like ?', ['%'.$phoneDigits.'%']);
                 }
             })
             ->orderBy('name')
@@ -142,7 +148,7 @@ class TeamContactMatcher
     /**
      * @param  \Illuminate\Database\Eloquent\Builder<Contact>  $base
      */
-    private function findExistingByName($base, ?string $name): ?Contact
+    private function findExistingByName($base, ?string $name, Connection $connection): ?Contact
     {
         $normalizedName = $name !== null ? mb_strtolower(trim($name)) : '';
         if ($normalizedName === '')
@@ -150,14 +156,16 @@ class TeamContactMatcher
             return null;
         }
 
-        $existing = (clone $base)->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])->first();
+        $nameLower = SearchNormalizer::contactTextColumnLowerSql('name', $connection);
+
+        $existing = (clone $base)->whereRaw($nameLower.' = ?', [$normalizedName])->first();
         if ($existing)
         {
             return $existing;
         }
 
         $existing = (clone $base)
-            ->whereRaw('LOWER(TRIM(CONCAT(name, " ", COALESCE(surname, "")))) = ?', [$normalizedName])
+            ->whereRaw(SearchNormalizer::contactFullNameLowerSql($connection).' = ?', [$normalizedName])
             ->first();
         if ($existing)
         {
@@ -171,8 +179,8 @@ class TeamContactMatcher
             $surname = implode(' ', array_slice($parts, 1));
 
             $existing = (clone $base)
-                ->whereRaw('LOWER(TRIM(name)) = ?', [$firstName])
-                ->whereRaw('LOWER(TRIM(COALESCE(surname, ""))) = ?', [$surname])
+                ->whereRaw($nameLower.' = ?', [$firstName])
+                ->whereRaw(SearchNormalizer::contactTextColumnLowerSql('surname', $connection).' = ?', [$surname])
                 ->first();
             if ($existing)
             {
@@ -181,5 +189,17 @@ class TeamContactMatcher
         }
 
         return null;
+    }
+
+    private function connection(): Connection
+    {
+        $connection = Contact::query()->getConnection();
+
+        if (! $connection instanceof Connection)
+        {
+            throw new \LogicException('TeamContactMatcher expects Illuminate\Database\Connection.');
+        }
+
+        return $connection;
     }
 }

@@ -2,52 +2,165 @@
 
 namespace App\Services;
 
+use App\Models\CalendarEvent;
+use App\Models\Contact;
+use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\Prompt;
+use App\Models\Team;
+use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 
 /**
- * Restricts assistant tools (WhatsApp / Humano Assistant) by the user's Jetstream role on the team.
- * Spatie roles are used elsewhere; for assistant tools the team pivot role is the source of truth.
+ * Assistant tool access mirrors Laravel policies for the acting user on the team.
+ * Channel (web, WhatsApp) does not change authorization — only role/permissions do.
  */
 class AssistantToolAuthorizationService
 {
     /**
-     * Roles that only get customer-safe tools (no CRM bulk, campaigns, team calendar, etc.).
+     * Tools that are always available to any resolved team member (profile, flow routing, WhatsApp reply).
      *
      * @var list<string>
      */
-    public const RESTRICTED_TEAM_ROLES = ['client', 'guest', 'user'];
-
-    /**
-     * Tools allowed for RESTRICTED_TEAM_ROLES when acting in that team context.
-     *
-     * @var list<string>
-     */
-    public const CLIENT_SAFE_TOOLS = [
+    private const ALWAYS_ALLOWED_TOOLS = [
         'commit_assistant_flow',
         'get_my_profile',
-        'list_product_catalog',
-        'search_products',
-        'add_to_whatsapp_cart',
-        'create_ticket',
         'send_whatsapp_message',
     ];
 
     /**
-     * Effective Jetstream role for this user on the team (pivot), or null if not a member.
+     * Shopping helpers when the team sells via WhatsApp (no ProductPolicy client view required).
+     *
+     * @var list<string>
      */
-    public function jetstreamTeamRole(User $user, int $teamId): ?string
-    {
-        $membership = $user->teams()->where('team_id', $teamId)->first();
-        $role = $membership?->pivot?->role;
+    private const WHATSAPP_CART_TOOLS = [
+        'list_product_catalog',
+        'search_products',
+        'add_to_whatsapp_cart',
+    ];
 
-        return is_string($role) && $role !== '' ? $role : null;
+    /**
+     * @var array<string, array{0: string, 1: class-string}>
+     */
+    private const TOOL_POLICY = [
+        'list_contact_categories' => ['viewAny', Contact::class],
+        'list_contact_statuses' => ['viewAny', Contact::class],
+        'search_contacts' => ['viewAny', Contact::class],
+        'create_contact' => ['create', Contact::class],
+        'get_contact_categories' => ['viewAny', Contact::class],
+        'assign_contact_to_category' => ['update', Contact::class],
+        'update_contact' => ['update', Contact::class],
+        'check_calendar_availability' => ['viewAny', CalendarEvent::class],
+        'create_calendar_event' => ['create', CalendarEvent::class],
+        'list_calendar_events' => ['viewAny', CalendarEvent::class],
+        'update_calendar_event' => ['update', CalendarEvent::class],
+        'create_ticket' => ['create', Ticket::class],
+        'list_opportunity_stages' => ['viewAny', Opportunity::class],
+        'create_opportunity' => ['create', Opportunity::class],
+        'list_templates' => ['viewAny', Prompt::class],
+        'create_template' => ['create', Prompt::class],
+        'update_template_status' => ['update', Prompt::class],
+        'update_template' => ['update', Prompt::class],
+        'list_messages' => ['viewAny', Prompt::class],
+        'create_message' => ['create', Prompt::class],
+        'update_message_status' => ['update', Prompt::class],
+        'update_message' => ['update', Prompt::class],
+        'list_product_catalog' => ['viewAny', Product::class],
+        'search_products' => ['viewAny', Product::class],
+    ];
+
+    /**
+     * CRM bulk / staff tools without a dedicated policy mapping yet.
+     *
+     * @var list<string>
+     */
+    private const STAFF_CRM_TOOLS = [
+        'get_account_report',
+        'list_team_users',
+        'create_task',
+        'add_ticket_response',
+    ];
+
+    public function prepareTeamContext(User $user, int $teamId): void
+    {
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if ($team !== null)
+        {
+            $user->setRelation('currentTeam', $team);
+        }
     }
 
+    /**
+     * Broad CRM staff profile (contacts + campaigns). Used only for prompt tone and legacy checks.
+     */
+    public function hasFullAssistantToolAccess(User $user, int $teamId): bool
+    {
+        if ($user->hasAnyRole(['admin', 'root']))
+        {
+            return true;
+        }
+
+        $membership = $user->teams()->where('team_id', $teamId)->first();
+        $pivotRole = $membership?->pivot?->role;
+        if (is_string($pivotRole) && in_array($pivotRole, ['admin', 'editor', 'collaborator'], true))
+        {
+            return true;
+        }
+
+        $this->prepareTeamContext($user, $teamId);
+
+        return Gate::forUser($user)->allows('viewAny', Contact::class)
+            && Gate::forUser($user)->allows('create', Contact::class);
+    }
+
+    /**
+     * @deprecated Use {@see hasFullAssistantToolAccess()} or {@see usesCustomerAssistantPrompts()}.
+     */
+    public function isTeamStaffMember(User $user, int $teamId): bool
+    {
+        return $this->hasFullAssistantToolAccess($user, $teamId);
+    }
+
+    /**
+     * Whether to use the narrow "customer / WhatsApp buyer" system prompts (not tool access).
+     */
+    public function usesCustomerAssistantPrompts(User $user, int $teamId): bool
+    {
+        if ($this->hasFullAssistantToolAccess($user, $teamId))
+        {
+            return false;
+        }
+
+        $this->prepareTeamContext($user, $teamId);
+
+        if (Gate::forUser($user)->allows('create', CalendarEvent::class))
+        {
+            return false;
+        }
+
+        if (Gate::forUser($user)->allows('create', Ticket::class))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @deprecated Use {@see usesCustomerAssistantPrompts()}.
+     */
+    public function usesLimitedAssistantToolset(User $user, int $teamId): bool
+    {
+        return $this->usesCustomerAssistantPrompts($user, $teamId);
+    }
+
+    /**
+     * @deprecated Use {@see usesCustomerAssistantPrompts()}.
+     */
     public function isRestrictedTeamMember(User $user, int $teamId): bool
     {
-        $role = $this->jetstreamTeamRole($user, $teamId);
-
-        return $role !== null && in_array($role, self::RESTRICTED_TEAM_ROLES, true);
+        return $this->usesCustomerAssistantPrompts($user, $teamId);
     }
 
     /**
@@ -55,16 +168,77 @@ class AssistantToolAuthorizationService
      */
     public function denyReasonForTool(string $toolName, User $user, int $teamId): ?string
     {
-        if (! $this->isRestrictedTeamMember($user, $teamId))
+        $this->prepareTeamContext($user, $teamId);
+
+        if (in_array($toolName, self::ALWAYS_ALLOWED_TOOLS, true))
         {
             return null;
         }
 
-        if (in_array($toolName, self::CLIENT_SAFE_TOOLS, true))
+        if (in_array($toolName, self::WHATSAPP_CART_TOOLS, true))
         {
             return null;
         }
 
-        return 'No disponible para tu rol en este equipo (cliente). Pedí ayuda al equipo o usá las opciones de compra o soporte que te ofrecen.';
+        $policy = self::TOOL_POLICY[$toolName] ?? null;
+        if ($policy !== null)
+        {
+            [$ability, $modelClass] = $policy;
+
+            if ($this->allowsPolicyAbility($user, $ability, $modelClass))
+            {
+                return null;
+            }
+
+            return $this->denialMessage();
+        }
+
+        if (in_array($toolName, self::STAFF_CRM_TOOLS, true))
+        {
+            return $this->hasFullAssistantToolAccess($user, $teamId)
+                ? null
+                : $this->denialMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  class-string  $modelClass
+     */
+    private function allowsPolicyAbility(User $user, string $ability, string $modelClass): bool
+    {
+        if ($ability === 'update')
+        {
+            if ($modelClass === CalendarEvent::class)
+            {
+                return Gate::forUser($user)->allows('create', CalendarEvent::class);
+            }
+
+            if ($modelClass === Contact::class)
+            {
+                $teamId = $user->currentTeam?->id;
+                if ($teamId === null)
+                {
+                    return false;
+                }
+
+                $probe = new Contact(['team_id' => $teamId]);
+
+                return Gate::forUser($user)->allows('update', $probe);
+            }
+
+            if ($modelClass === Prompt::class)
+            {
+                return Gate::forUser($user)->allows('create', Prompt::class);
+            }
+        }
+
+        return Gate::forUser($user)->allows($ability, $modelClass);
+    }
+
+    private function denialMessage(): string
+    {
+        return 'No disponible para tu rol en este equipo. Pedí ayuda al equipo o usá las opciones que tu cuenta tiene habilitadas.';
     }
 }
