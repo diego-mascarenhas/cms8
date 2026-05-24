@@ -66,6 +66,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display post-payment onboarding documentation
+     */
+    public function onboarding()
+    {
+        return view('help.onboarding', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Display chat and assistant documentation
      */
     public function chatAssistant()

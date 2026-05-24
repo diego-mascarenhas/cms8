@@ -42,12 +42,7 @@
                         </div>
                     </div>
                     <div x-show="step === 'welcome' || step === 'ready'" x-transition style="display: none;">
-                        @include('chat.partials.assistant-empty-suggestions-inner', ['showTerminalHint' => false])
-                        @auth
-                            <p class="text-muted small mt-2 mb-0">
-                                {{ __('Same user as in the terminal (:email) to see the same conversation.', ['email' => auth()->user()->email]) }}
-                            </p>
-                        @endauth
+                        @include('chat.partials.assistant-empty-suggestions-inner')
                     </div>
                 </div>
             @else

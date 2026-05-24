@@ -27,7 +27,7 @@ return [
             'description' => 'Déjate ayudar por la inteligencia artificial para automatizar procesos rutinarios de tu negocio, como la gestión a través de WhatsApp de la agenda, los clientes y las tareas manteniendo tu propia identidad.',
             'features' => [
                 'Chat por WhatsApp y prompts alineados con tu tono de marca',
-                'Calendario, clientes, contactos y tareas en un solo flujo',
+                'Calendario, contactos y tareas en un solo flujo',
                 'Prospección y automatización de lo repetitivo para ganar tiempo',
                 'Mailer, landings y panel para seguir cerca de tus clientes',
             ],
@@ -42,8 +42,8 @@ return [
                 'Dashboard y ajustes del equipo para visibilidad operativa',
             ],
         ],
-        'foundation' => [
-            'name' => 'Foundation',
+        'mentor' => [
+            'name' => 'Mentor',
             'description' => 'La solución completa para automatizar todo tu negocio y hacerlo crecer más allá de lo que jamás imaginaste sin necesidad de tener que contratar a más personal.',
             'features' => [
                 'Incluye todos los módulos del plan Business en tu espacio de trabajo',
@@ -64,6 +64,6 @@ return [
     'checkout_complete_register_first' => 'Primero creá tu cuenta y luego completá el pago desde el paso de facturación.',
     'dashboard_post_checkout_whatsapp_title' => 'Vincular WhatsApp',
     'dashboard_post_checkout_whatsapp_body' => 'Escaneá el código QR para conectar WhatsApp (Dispositivos vinculados) cuando tu conector lo permita.',
-    'dashboard_post_checkout_whatsapp_button' => 'Escanear QR de WhatsApp',
+    'dashboard_post_checkout_whatsapp_button' => 'Conectar WhatsApp',
     'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copiá este mensaje y contactá soporte, o probá de nuevo en unos minutos.',
 ];

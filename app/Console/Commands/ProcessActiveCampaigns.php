@@ -180,45 +180,6 @@ class ProcessActiveCampaigns extends Command
      */
     private function getContactsForMessage(Message $message)
     {
-        $query = null;
-
-        if ($message->category)
-        {
-            // If category is specified, get contacts from that category
-            $query = $message->category->contacts();
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        } else
-        {
-            // If no category (NULL), get all contacts from the team (entire database)
-            $query = \App\Models\Contact::where('team_id', $message->team_id)
-                ->whereNotNull('email');
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        }
-
-        // Exclude test/demo email addresses
-        $testDomains = [
-            '@example.org',
-            '@example.net',
-            '@example.com',
-            '@demo.com',
-            '@test.com',
-            '@localhost',
-            '@testing.com',
-            '@dummy.com',
-            '@fake.com',
-        ];
-
-        foreach ($testDomains as $domain)
-        {
-            $query->where('email', 'not like', '%'.$domain);
-        }
-
-        return $query->get();
+        return $message->audienceContactsQuery()->get();
     }
 }

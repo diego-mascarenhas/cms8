@@ -291,6 +291,43 @@ class TemplateDuplicateFromMessagePreviewTest extends TestCase
         $this->assertSame('/message/55/edit', $query['return_url'] ?? null);
     }
 
+    public function test_duplicate_with_template_html_saves_content_and_returns_to_return_url(): void
+    {
+        Permission::firstOrCreate(['name' => 'template.store', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->givePermissionTo('template.store');
+        $this->actingAs($user->fresh());
+
+        $source = Template::create([
+            'team_id' => (int) $team->id,
+            'name' => 'Tpl source',
+            'status_id' => true,
+            'gjs_data' => ['html' => '<p>Original</p>'],
+        ]);
+
+        $createUrl = url('/message/create');
+        $customHtml = '<h1>From Quill</h1><p>Custom body</p>';
+
+        $response = $this->post(route('template.duplicate', $source->getHashedId()), [
+            '_token' => csrf_token(),
+            'duplicate_template_name' => 'Quill copy tpl',
+            'template_html' => $customHtml,
+            'return_url' => $createUrl,
+        ]);
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringNotContainsString('/template/', $location);
+        $this->assertStringContainsString('template_id=', $location);
+
+        $copy = Template::query()->where('name', 'Quill copy tpl')->first();
+        $this->assertNotNull($copy);
+        $this->assertSame($customHtml, $copy->gjs_data['html'] ?? null);
+    }
+
     public function test_duplicate_redirect_ignores_untrusted_return_url(): void
     {
         Permission::firstOrCreate(['name' => 'template.store', 'guard_name' => 'web']);

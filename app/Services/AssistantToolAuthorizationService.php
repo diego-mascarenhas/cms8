@@ -79,6 +79,9 @@ class AssistantToolAuthorizationService
         'get_account_report',
         'list_team_users',
         'create_task',
+        'search_tasks',
+        'list_task_statuses',
+        'update_task_status',
         'add_ticket_response',
     ];
 

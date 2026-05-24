@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Contracts\CheckoutSessionRetriever;
-use App\Models\Enterprise;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
@@ -11,8 +10,10 @@ use App\Support\HumanoPublicPaymentLinkCheckout;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Stripe\Checkout\Session;
 use Tests\TestCase;
@@ -61,23 +62,35 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             ->assertSessionHasErrors('category');
     }
 
-    public function test_accepts_foundation_category_query(): void
+    public function test_rejects_foundation_category_query(): void
     {
         config(['humano_pricing.signup_completion' => 'payment_link']);
 
-        $email = 'payment-link-foundation-'.uniqid('', true).'@example.com';
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_foundation',
+            'category' => 'foundation',
+        ]))
+            ->assertRedirect(route('pricing'))
+            ->assertSessionHasErrors('category');
+    }
+
+    public function test_accepts_mentor_category_query(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $email = 'payment-link-mentor-'.uniqid('', true).'@example.com';
 
         $session = Session::constructFrom([
-            'id' => 'cs_test_foundation',
+            'id' => 'cs_test_mentor',
             'object' => 'checkout.session',
             'status' => 'complete',
             'mode' => 'subscription',
             'payment_status' => 'paid',
-            'customer' => 'cus_test_foundation',
-            'subscription' => 'sub_test_foundation',
+            'customer' => 'cus_test_mentor',
+            'subscription' => 'sub_test_mentor',
             'customer_details' => [
                 'email' => $email,
-                'name' => 'Foundation Buyer',
+                'name' => 'Mentor Buyer',
             ],
         ]);
 
@@ -92,8 +105,8 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         });
 
         $this->get(route('pricing.checkout.complete', [
-            'session_id' => 'cs_test_foundation',
-            'category' => 'foundation',
+            'session_id' => 'cs_test_mentor',
+            'category' => 'mentor',
         ]))
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('success')
@@ -241,6 +254,48 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $user = User::where('email', $email)->first();
         $this->assertNotNull($user);
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_new_user_checkout_does_not_send_fortify_reset_password_notification(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        Notification::fake();
+
+        $email = 'payment-link-welcome-only-'.uniqid('', true).'@example.com';
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_welcome_only',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => 'cus_test_welcome_only',
+            'subscription' => 'sub_test_welcome_only',
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Welcome Only Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_welcome_only',
+            'category' => 'assistant',
+        ]))->assertRedirect(route('dashboard'));
+
+        $user = User::where('email', $email)->first();
+        $this->assertNotNull($user);
+        Notification::assertNotSentTo($user, ResetPassword::class);
     }
 
     public function test_existing_user_with_matching_customer_is_logged_in(): void

@@ -669,63 +669,16 @@
 		});
 	}
 
-	// Populate select2 with grouped categories
+	// Populate category select (module options API + quick-create from kanban blade scripts)
 		const labelSelect = sidebarEl.querySelector('#label');
 		const currentCategoryId = taskDiv ? taskDiv.getAttribute('data-category-id') : null;
-		if (labelSelect && window.$ && $.fn.select2)
+		if (labelSelect && typeof window.humaKanbanRebuildCategorySelect === 'function')
 		{
-			$(labelSelect).empty();
-			$(labelSelect).append(new Option('Selecciona una categoría', '', false, false));
-
-			// Wait for kanbanData to be available
-			const populateCategories = () => {
-				console.log('Checking kanbanData availability...');
-				console.log('window.kanbanData:', window.kanbanData);
-				console.log('window.kanbanData?.categories:', window.kanbanData?.categories);
-
-				if (!window.kanbanData || !window.kanbanData.categories) {
-					console.log('kanbanData not available yet, retrying...');
-					setTimeout(populateCategories, 100);
-					return;
-				}
-
-				console.log('Categories data:', window.kanbanData.categories);
-
-				// Handle grouped categories structure - using optgroups for better Select2 compatibility
-				window.kanbanData.categories.forEach(group => {
-					console.log('Processing group:', group);
-					if (group.categories && group.categories.length > 0) {
-						console.log('Creating optgroup for:', group.name, 'with', group.categories.length, 'subcategories');
-
-						// Create optgroup for this parent category
-						const optgroup = document.createElement('optgroup');
-						optgroup.label = group.name;
-
-						// Add subcategories to the optgroup
-						group.categories.forEach(category => {
-							console.log('Adding subcategory:', category.name, 'ID:', category.id);
-							const isSelected = currentCategoryId && parseInt(currentCategoryId) === category.id;
-							const opt = new Option(category.name, category.id, isSelected, isSelected);
-							optgroup.appendChild(opt);
-						});
-
-						$(labelSelect).append(optgroup);
-						console.log('Optgroup added to select');
-					} else {
-						console.log('No subcategories found for group:', group.name);
-					}
-				});
-
-				$(labelSelect).select2({
-					dropdownParent: $(sidebarEl),
-					placeholder: 'Selecciona una categoría',
-					allowClear: true,
-					// Add passive event listeners to improve performance
-					scrollAfterSelect: false
-				});
-			};
-
-			populateCategories();
+			window.humaKanbanRebuildCategorySelect(
+				labelSelect,
+				sidebarEl,
+				currentCategoryId && String(currentCategoryId) !== '' ? currentCategoryId : null,
+			);
 		}
 
 		// Populate select2 with responsible users and pre-select current responsible
@@ -1817,5 +1770,45 @@
 			});
 		}
 	};
+
+    /**
+     * Move a task card to another column after assistant (or API) status change — no page reload.
+     *
+     * @param {number|string} taskId
+     * @param {number|string} statusIdOrKey status id or TO_DO / IN_PROGRESS / REVIEW / DONE
+     * @returns {boolean}
+     */
+    window.humanoKanbanMoveTask = function (taskId, statusIdOrKey) {
+        const numericTaskId = parseInt(taskId, 10);
+        if (!numericTaskId || Number.isNaN(numericTaskId)) {
+            return false;
+        }
+
+        let statusId = parseInt(statusIdOrKey, 10);
+        if (!statusId || Number.isNaN(statusId)) {
+            const key = String(statusIdOrKey || '').toUpperCase();
+            const match = statuses.find(
+                (s) => String(s.original_name || '').toUpperCase() === key || String(s.id) === key
+            );
+            statusId = match ? parseInt(match.id, 10) : null;
+        }
+        if (!statusId) {
+            return false;
+        }
+
+        const item = document.querySelector(`.kanban-item[data-task-id="${numericTaskId}"]`);
+        if (!item) {
+            return false;
+        }
+
+        const targetBoard = document.querySelector(`.kanban-board[data-id="${statusId}"] .kanban-drag`);
+        if (!targetBoard) {
+            return false;
+        }
+
+        targetBoard.appendChild(item);
+
+        return true;
+    };
 })();
 

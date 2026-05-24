@@ -23,6 +23,26 @@
                         <div class="col-12">
                             <p class="lead">{{ __('Welcome to the Humano application help center. Here you will find comprehensive documentation to help you make the most of our platform.') }}</p>
 
+                            <div class="card border-success mb-4">
+                                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="ti ti-rocket text-success me-2"></i>
+                                        <h5 class="card-title mb-0">{{ __('help_onboarding.index_card_title') }}</h5>
+                                    </div>
+                                    <a href="{{ route('help.onboarding') }}" class="btn btn-success btn-sm">
+                                        {{ __('help_onboarding.index_card_cta') }}
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-3">{{ __('help_onboarding.index_card_intro') }}</p>
+                                    <ol class="mb-0 ps-3">
+                                        <li class="mb-2">{{ __('help_onboarding.index_card_step_checkout') }}</li>
+                                        <li class="mb-2">{{ __('help_onboarding.index_card_step_business') }}</li>
+                                        <li class="mb-0">{{ __('help_onboarding.index_card_step_whatsapp') }}</li>
+                                    </ol>
+                                </div>
+                            </div>
+
                             <div class="alert alert-primary mb-4" role="alert">
                                 <h6 class="alert-heading mb-2">
                                     <i class="ti ti-book me-2"></i>
@@ -31,9 +51,9 @@
                                 <p class="mb-0">{{ __('For a non-technical guide to what you can do in the platform (contacts, projects, tasks, billing, etc.), see the') }} <a href="{{ route('manual.index') }}" class="alert-link">{{ __('User Manual') }}</a>.</p>
                             </div>
 
-                            <div class="card border-success mb-4">
+                            <div class="card border-secondary mb-4">
                                 <div class="card-header d-flex align-items-center">
-                                    <i class="ti ti-rocket text-success me-2"></i>
+                                    <i class="ti ti-user-plus text-secondary me-2"></i>
                                     <h5 class="card-title mb-0">{{ __('Onboarding: registration and first steps') }}</h5>
                                 </div>
                                 <div class="card-body">

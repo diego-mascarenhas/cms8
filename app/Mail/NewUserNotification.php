@@ -37,11 +37,11 @@ class NewUserNotification extends Mailable
                 'token' => $token,
                 'email' => $user->email,
             ], false));
-        } catch (\Exception $e)
+        } catch (\Throwable $e)
         {
             Log::error("Failed to generate password reset token for user {$user->id}: ".$e->getMessage());
-            // Fallback URL to password reset request page
-            $this->resetUrl = url(route('password.request'));
+
+            throw $e;
         }
     }
 

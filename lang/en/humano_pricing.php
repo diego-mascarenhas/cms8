@@ -27,7 +27,7 @@ return [
             'description' => 'Let AI help you automate routine work like WhatsApp scheduling, clients, and tasks while keeping your brand voice.',
             'features' => [
                 'WhatsApp chat and saved prompts aligned with your brand voice',
-                'Calendar, clients, contacts, and tasks in one workflow',
+                'Calendar, contacts, and tasks in one workflow',
                 'Prospecting plus automation for repetitive work',
                 'Mailer, landing pages, and dashboard to stay close to customers',
             ],
@@ -42,8 +42,8 @@ return [
                 'Team settings and dashboard for operational visibility',
             ],
         ],
-        'foundation' => [
-            'name' => 'Foundation',
+        'mentor' => [
+            'name' => 'Mentor',
             'description' => 'The full stack to automate and grow your business beyond what you thought possible—without hiring more staff.',
             'features' => [
                 'Includes the full Business module suite in your workspace',
@@ -64,6 +64,6 @@ return [
     'checkout_complete_register_first' => 'Create your account first, then complete checkout from the billing step.',
     'dashboard_post_checkout_whatsapp_title' => 'Link WhatsApp',
     'dashboard_post_checkout_whatsapp_body' => 'Scan the QR code to connect WhatsApp (Linked devices) when your connector supports it.',
-    'dashboard_post_checkout_whatsapp_button' => 'Scan WhatsApp QR',
+    'dashboard_post_checkout_whatsapp_button' => 'Connect WhatsApp',
     'checkout_billing_gate_pending' => 'Your payment was received, but we could not unlock the app billing check yet. Please copy this message and contact support, or try again in a few minutes.',
 ];

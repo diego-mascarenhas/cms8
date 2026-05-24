@@ -8,13 +8,21 @@
     $waPresentation = TeamWhatsAppChatPresentation::resolveForTeam($businessCfgTeam);
     $isLocalWhatsAppDriver = ($waPresentation['whatsappDriver'] ?? '') === 'local';
     $teamWhatsAppIsConnected = (bool) ($waPresentation['teamWhatsAppIsConnected'] ?? false);
+    if ($teamWhatsAppIsConnected && session()->has(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA)) {
+        session()->forget(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA);
+    }
     $showWhatsappQrCtaBecauseDisconnected = $canUpdateBusinessTeam
         && $isLocalWhatsAppDriver
         && ! $teamWhatsAppIsConnected;
-    $showWhatsappQrCta = $canUpdateBusinessTeam && (
-        session()->has(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA)
-        || $showWhatsappQrCtaBecauseDisconnected
-    );
+    $showWhatsappQrCta = $canUpdateBusinessTeam
+        && ! $teamWhatsAppIsConnected
+        && (
+            session()->has(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA)
+            || $showWhatsappQrCtaBecauseDisconnected
+        );
+    $showWhatsappConnectButton = $canUpdateBusinessTeam
+        && $isLocalWhatsAppDriver
+        && ! $teamWhatsAppIsConnected;
     $wrapInDashboardTopRow = $dashboardTopRow ?? false;
 @endphp
 @if ($needsBusinessConfig || $showWhatsappQrCta)
@@ -38,9 +46,11 @@
                 <a href="{{ route('team-settings.business-config', $businessCfgTeam) }}" class="btn btn-warning btn-sm waves-effect waves-light">
                     <i class="ti ti-building-store ti-sm me-1"></i>{{ __('Configure business') }}
                 </a>
+                @if ($showWhatsappConnectButton)
                 <a href="{{ route('registration.onboarding.qr') }}" class="btn btn-warning btn-sm waves-effect waves-light">
                     <i class="ti ti-qrcode ti-sm me-1"></i>{{ __('humano_pricing.dashboard_post_checkout_whatsapp_button') }}
                 </a>
+                @endif
             @else
                 <a href="{{ route('registration.onboarding.qr') }}" class="btn btn-warning btn-sm waves-effect waves-light">
                     <i class="ti ti-qrcode ti-sm me-1"></i>{{ __('humano_pricing.dashboard_post_checkout_whatsapp_button') }}

@@ -2,13 +2,16 @@
 
 namespace App\Livewire;
 
+use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantChatService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Support\AssistantCreatedMessageRedirect;
+use App\Support\AssistantTaskStatusUpdate;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
@@ -194,6 +197,23 @@ class AssistantChat extends Component
             false,
         );
 
+        $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
+        $serverTaskApply = $teamId !== null
+            ? app(AssistantInboundTaskStatusService::class)->tryApplyFromUserMessage(
+                $user,
+                (int) $teamId,
+                $text,
+                $history,
+                $toolResults,
+            )
+            : null;
+
+        if ($serverTaskApply !== null)
+        {
+            $toolResults[] = $serverTaskApply['tool_result'];
+            $replyResponse['tool_results'] = $toolResults;
+        }
+
         if (! ($replyResponse['success'] ?? false))
         {
             $this->messages[] = [
@@ -209,6 +229,10 @@ class AssistantChat extends Component
         }
 
         $assistantText = (string) ($replyResponse['text'] ?? '');
+        if ($serverTaskApply !== null)
+        {
+            $assistantText = $this->formatServerAppliedTaskStatusReply($serverTaskApply['update']);
+        }
         $assistantMessage = [
             'role' => 'assistant',
             'content' => $assistantText,
@@ -246,9 +270,7 @@ class AssistantChat extends Component
             $replyResponse['assistant_flow_routing_key'] ?? null,
         );
 
-        $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults(
-            is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [],
-        );
+        $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults($toolResults);
         if ($createdMessageId !== null)
         {
             $redirectUrl = AssistantCreatedMessageRedirect::resolveMessageEditUrlForUser($user, $createdMessageId);
@@ -256,6 +278,19 @@ class AssistantChat extends Component
             {
                 $this->js('window.location.assign('.json_encode($redirectUrl).')');
             }
+        }
+
+        $taskStatusUpdate = $serverTaskApply !== null
+            ? $serverTaskApply['update']
+            : AssistantTaskStatusUpdate::extractFromToolResults($toolResults);
+        if ($taskStatusUpdate !== null)
+        {
+            $this->dispatch(
+                'assistant-task-status-updated',
+                taskId: $taskStatusUpdate['task_id'],
+                statusId: $taskStatusUpdate['status_id'],
+                statusName: $taskStatusUpdate['status_name'],
+            );
         }
 
         $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
@@ -393,5 +428,18 @@ class AssistantChat extends Component
             );
             $this->conversationId = $conversation?->id;
         }
+    }
+
+    /**
+     * @param  array{task_id: int, status_id: int, status_name: string}  $update
+     */
+    protected function formatServerAppliedTaskStatusReply(array $update): string
+    {
+        $task = \App\Models\Task::withoutGlobalScopes()->find($update['task_id']);
+        $status = TaskStatus::query()->find($update['status_id']);
+        $title = $task?->title ?? __('Task');
+        $label = $status?->translated_name ?? $update['status_name'];
+
+        return '✅ Listo. La tarea "'.$title.'" quedó en '.$label.'.';
     }
 }

@@ -469,7 +469,7 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::get('clients', [ClientController::class, 'index'])->name('api.clients.index');
     Route::get('clients/{id}', [ClientController::class, 'show'])->name('api.clients.show');
 
-    // Enterprises — Foundation plan module "enterprises"
+    // Enterprises — Mentor plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
 

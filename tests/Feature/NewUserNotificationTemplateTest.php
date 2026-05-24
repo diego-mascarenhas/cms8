@@ -77,12 +77,14 @@ class NewUserNotificationTemplateTest extends TestCase
         $this->assertStringContainsString('<strong>Democracia Sur</strong>', $html);
     }
 
-    public function test_welcome_email_has_no_footer_app_name_block(): void
+    public function test_welcome_mailable_reset_url_never_points_to_forgot_password_page(): void
     {
-        $user = User::factory()->create(['name' => 'Pat Example']);
+        $user = User::factory()->create();
 
-        $html = (new NewUserNotification($user, null))->render();
+        $mailable = new NewUserNotification($user, null);
+        $html = $mailable->render();
 
-        $this->assertStringNotContainsString('class="foot"', $html);
+        $this->assertStringContainsString('/reset-password/', (string) $mailable->resetUrl);
+        $this->assertStringNotContainsString('/forgot-password', $html);
     }
 }

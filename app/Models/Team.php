@@ -803,9 +803,20 @@ class Team extends JetstreamTeam
      */
     public function getAdvertisingFooter()
     {
+        if (! config('emailer.show_advertising_footer', false))
+        {
+            return '';
+        }
+
         if (! $this->isUsingSystemSmtp())
         {
             return '';
+        }
+
+        $customFooter = trim((string) config('emailer.advertising_footer', ''));
+        if ($customFooter !== '')
+        {
+            return $customFooter;
         }
 
         return '

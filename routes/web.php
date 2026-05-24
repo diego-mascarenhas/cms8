@@ -891,6 +891,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
     Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
+    Route::post('message/sync-template-html', [MessageController::class, 'syncTemplateHtml'])->name('message.sync-template-html');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug');  // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
@@ -1301,6 +1302,7 @@ Route::prefix('manual')->name('manual.')->group(function ()
 Route::prefix('help')->name('help.')->group(function ()
 {
     Route::get('/', [HelpController::class, 'index'])->name('index');
+    Route::get('/onboarding', [HelpController::class, 'onboarding'])->name('onboarding');
     Route::get('/usage', [HelpController::class, 'usage'])->name('usage');
     Route::get('/chat-assistant', [HelpController::class, 'chatAssistant'])->name('chat-assistant');
     Route::get('/contacts', [HelpController::class, 'contacts'])->name('contacts');

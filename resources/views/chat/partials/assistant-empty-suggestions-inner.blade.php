@@ -1,5 +1,15 @@
 @php
-    $showTerminalHint = $showTerminalHint ?? true;
+    $suggestionTeam = auth()->user()?->currentTeam;
+    $hasContactsModule = $suggestionTeam?->hasModule('contacts') ?? false;
+    $hasTasksModule = $suggestionTeam?->hasModule('tasks') ?? false;
+    $hasChatModule = $suggestionTeam?->hasModule('chat') ?? false;
+    $hasCalendarModule = $suggestionTeam?->hasModule('calendar') ?? false;
+    $hasTicketsModule = $suggestionTeam?->hasModule('tickets') ?? false;
+    $hasTemplatesModule = $suggestionTeam?->hasModule('templates') ?? false;
+    $hasCampaignsModule = $suggestionTeam?->hasModule('campaigns') ?? false;
+    $hasProductsModule = $suggestionTeam?->hasModule('products') ?? false;
+    $hasInvoicesModule = $suggestionTeam?->hasModule('invoices') ?? false;
+    $showTeamFlowsSuggestions = $hasInvoicesModule || $hasProductsModule;
 @endphp
 {{-- Suggested prompts align with App\Services\AssistantToolsService --}}
 <div class="assistant-empty-suggestions">
@@ -7,6 +17,7 @@
         Puedes pedir al asistente acciones reales sobre tu equipo. Ejemplos (clic para poner el texto abajo):
     </p>
     <div class="row g-2 small">
+        @if ($hasContactsModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-users me-1"></i>Contactos</strong>
@@ -16,25 +27,19 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-6">
-            <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
-                <strong class="d-block mb-1"><i class="ti ti-chart-bar me-1"></i>Informes</strong>
-                <div class="d-flex flex-wrap gap-1">
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Dame un resumen de mi cuenta">Resumen</button>
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis contactos recientes">Contactos</button>
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis tareas recientes">Tareas</button>
-                </div>
-            </div>
-        </div>
+        @endif
+        @if ($hasTasksModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-layout-kanban me-1"></i>Tareas</strong>
                 <div class="d-flex flex-wrap gap-1">
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Crea una tarea: llamar al cliente mañana">Crear tarea</button>
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista los miembros del equipo">Equipo (asignar)</button>
+                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis tareas recientes">Listar tareas</button>
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasChatModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-brand-whatsapp me-1"></i>WhatsApp</strong>
@@ -43,6 +48,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasCalendarModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-calendar-time me-1"></i>Calendario</strong>
@@ -52,6 +59,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasTicketsModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-ticket me-1"></i>Tickets</strong>
@@ -60,6 +69,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasTemplatesModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-template me-1"></i>Plantillas email</strong>
@@ -68,6 +79,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasCampaignsModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-broadcast me-1"></i>Campañas</strong>
@@ -77,6 +90,8 @@
                 </div>
             </div>
         </div>
+        @endif
+        @if ($hasProductsModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-package me-1"></i>Catálogo</strong>
@@ -86,6 +101,7 @@
                 </div>
             </div>
         </div>
+        @endif
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-user me-1"></i>Perfil</strong>
@@ -94,27 +110,32 @@
                 </div>
             </div>
         </div>
+        @if ($showTeamFlowsSuggestions)
         <div class="col-12">
             <div class="border rounded p-2 bg-label-secondary bg-opacity-10">
                 <strong class="d-block mb-1"><i class="ti ti-arrows-exchange me-1"></i>Flujos del equipo</strong>
                 <p class="text-muted mb-2 mb-md-1 small">Si tu equipo configuró flujos (facturas, catálogo, agendar…), dilo con claridad y el asistente continuará en ese contexto.</p>
                 <div class="d-flex flex-wrap gap-1">
+                    @if ($hasInvoicesModule)
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Necesito pagar o consultar mis facturas">Facturación</button>
+                    @endif
+                    @if ($hasProductsModule)
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Quiero ver el catálogo para comprar por WhatsApp">Compras</button>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+        <div class="col-12 col-md-6">
+            <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
+                <strong class="d-block mb-1"><i class="ti ti-chart-bar me-1"></i>Informes</strong>
+                <div class="d-flex flex-wrap gap-1">
+                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Dame un resumen de mi cuenta">Resumen</button>
+                    @if ($hasContactsModule)
+                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis contactos recientes">Contactos</button>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
-    @if ($showTerminalHint)
-        <p class="text-muted small mt-3 mb-0">
-            <i class="ti ti-terminal ti-xs me-1"></i>
-            Opcional:
-            @if (! empty($selectedPhone ?? null))
-                <code>php artisan chat:simulate --phone={{ $selectedPhone }}</code>
-            @else
-                <code>php artisan chat:simulate</code>
-            @endif
-            — misma sesión que este chat si usas el mismo usuario en la terminal.
-        </p>
-    @endif
 </div>

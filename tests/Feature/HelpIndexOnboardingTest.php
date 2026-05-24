@@ -11,6 +11,7 @@ class HelpIndexOnboardingTest extends TestCase
         $response = $this->get(route('help.index'));
 
         $response->assertStatus(200);
+        $response->assertSee(route('help.onboarding'), false);
         $response->assertSee('Onboarding: registro y primeros pasos', false);
         $response->assertSee('/register', false);
         $response->assertSee('/registration/onboarding/qr', false);

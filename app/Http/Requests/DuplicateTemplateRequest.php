@@ -30,6 +30,7 @@ class DuplicateTemplateRequest extends FormRequest
                     ? [Rule::exists('messages', 'id')->where(static fn ($query) => $query->where('team_id', $teamId))]
                     : [Rule::prohibited()]),
             ],
+            'template_html' => ['nullable', 'string', 'max:819200'],
         ];
     }
 }

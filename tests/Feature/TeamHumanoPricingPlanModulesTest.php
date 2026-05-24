@@ -18,7 +18,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $keys = array_values(array_unique(array_merge(
             config('humano_pricing.plan_team_modules.assistant', []),
             config('humano_pricing.plan_team_modules.business', []),
-            config('humano_pricing.plan_team_modules.foundation', []),
+            config('humano_pricing.plan_team_modules.mentor', []),
         )));
 
         foreach ($keys as $key)
@@ -162,9 +162,9 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->hasModule('campaigns'));
     }
 
-    public function test_humano_pricing_foundation_bundle_includes_business_and_enterprise_keys(): void
+    public function test_humano_pricing_mentor_bundle_includes_business_and_enterprise_keys(): void
     {
-        $keys = config('humano_pricing.plan_team_modules.foundation', []);
+        $keys = config('humano_pricing.plan_team_modules.mentor', []);
         $this->assertSame([], array_diff([
             'settings',
             'campaigns',
@@ -178,7 +178,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         ], $keys));
     }
 
-    public function test_foundation_plan_enables_business_and_enterprise_modules(): void
+    public function test_mentor_plan_enables_business_and_enterprise_modules(): void
     {
         $this->seedModulesFromPricingConfig();
 
@@ -186,7 +186,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'foundation');
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'mentor');
 
         $team = $team->fresh();
         $this->assertTrue($team->hasModule('funnel'));
@@ -196,7 +196,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->hasModule('projects'));
     }
 
-    public function test_foundation_plan_sync_disables_modules_outside_bundle(): void
+    public function test_mentor_plan_sync_disables_modules_outside_bundle(): void
     {
         $this->seedModulesFromPricingConfig();
 
@@ -221,7 +221,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->enableModule('list60'));
         $this->assertTrue($team->enableModule('survival'));
 
-        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'foundation');
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'mentor');
 
         $team = $team->fresh();
         $this->assertFalse($team->hasModule('list60'));

@@ -15,6 +15,13 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
 
     public function test_dashboard_shows_whatsapp_qr_link_beside_configure_business_when_profile_incomplete(): void
     {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'disconnected'], 200),
+        ]);
+
         $user = User::factory()->withPersonalTeam()->create();
         $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
 
@@ -54,6 +61,13 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
 
     public function test_dashboard_shows_whatsapp_only_prompt_when_post_checkout_session_and_business_complete(): void
     {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'disconnected'], 200),
+        ]);
+
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
@@ -127,6 +141,59 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $response->assertOk();
         $response->assertDontSee(__('humano_pricing.dashboard_post_checkout_whatsapp_title'), false);
         $response->assertDontSee(route('registration.onboarding.qr'), false);
+    }
+
+    public function test_dashboard_hides_whatsapp_connect_button_when_connected_but_business_incomplete(): void
+    {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'connected', 'number' => '34613194131'], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('whatsapp_from', '34613194131');
+
+        $this->actingAs($user);
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('Configure business'), false);
+        $response->assertDontSee(__('humano_pricing.dashboard_post_checkout_whatsapp_button'), false);
+        $response->assertDontSee(route('registration.onboarding.qr'), false);
+    }
+
+    public function test_dashboard_hides_whatsapp_only_prompt_when_post_checkout_session_but_already_connected(): void
+    {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'connected', 'number' => '34613194131'], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('business_config', ['business_name' => 'Acme Corp'], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $team->setSetting('whatsapp_from', '34613194131');
+
+        $this->actingAs($user);
+
+        $response = $this->withSession([
+            HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA => true,
+        ])->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee(__('humano_pricing.dashboard_post_checkout_whatsapp_title'), false);
+        $response->assertDontSee(__('humano_pricing.dashboard_post_checkout_whatsapp_button'), false);
     }
 
     public function test_dashboard_hides_whatsapp_qr_when_twilio_driver_even_if_disconnected(): void

@@ -66,6 +66,6 @@ class MessageShowVisualEditorTest extends TestCase
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString(__('Editar'), $html);
         $this->assertStringContainsString(route('message.edit', $message->id), $html);
-        $this->assertStringNotContainsString(__('Abrir editor visual'), $html);
+        $this->assertStringNotContainsString(__('app.message_visual_editor_button'), $html);
     }
 }

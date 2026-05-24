@@ -64,6 +64,16 @@
     };
 </script>
 <script>
+    // Move kanban card when the assistant changes task status (no page reload — assistant offcanvas stays open).
+    document.addEventListener('livewire:init', function () {
+        Livewire.on('assistant-task-status-updated', function (detail) {
+            if (typeof window.humanoKanbanMoveTask !== 'function' || !detail || !detail.taskId) {
+                return;
+            }
+            window.humanoKanbanMoveTask(detail.taskId, detail.statusId || detail.statusName);
+        });
+    });
+
     // Ensure offcanvas lives under <body> to avoid transform/overflow clipping
     document.addEventListener('DOMContentLoaded', function () {
         var el = document.querySelector('.kanban-update-item-sidebar');
@@ -92,6 +102,80 @@
         }
     });
     </script>
+    <script>
+        (function () {
+            var moduleOptionsUrl = @json(route('categories.module-options'));
+
+            window.humaKanbanRebuildCategorySelect = function (labelSelect, sidebarEl, selectedCategoryId) {
+                var $s = typeof jQuery !== 'undefined' ? jQuery(labelSelect) : null;
+                if (!$s || !$s.length || typeof jQuery.fn.select2 === 'undefined') {
+                    return;
+                }
+
+                var emptyText = $s.data('placeholder') || @json(__('Selecciona una categoría'));
+
+                jQuery.getJSON(moduleOptionsUrl, { module_key: 'tasks' })
+                    .done(function (data) {
+                        if ($s.hasClass('select2-hidden-accessible')) {
+                            $s.select2('destroy');
+                        }
+
+                        $s.empty();
+                        $s.append(new Option(emptyText, '', false, false));
+
+                        (data.groups || []).forEach(function (g) {
+                            if (g.type === 'option') {
+                                $s.append(new Option(g.label, String(g.id), false, false));
+                            } else if (g.type === 'group') {
+                                var og = jQuery('<optgroup>').attr('label', g.label);
+                                (g.options || []).forEach(function (o) {
+                                    og.append(new Option(o.label, String(o.id), false, false));
+                                });
+                                $s.append(og);
+                            }
+                        });
+
+                        $s.select2({
+                            dropdownParent: jQuery(sidebarEl),
+                            placeholder: emptyText,
+                            allowClear: true,
+                            width: '100%',
+                            language: {
+                                noResults: function () {
+                                    return '';
+                                }
+                            },
+                            escapeMarkup: function (markup) {
+                                return markup;
+                            }
+                        });
+
+                        if (selectedCategoryId && $s.find('option[value="' + String(selectedCategoryId).replace(/"/g, '\\"') + '"]').length) {
+                            $s.val(String(selectedCategoryId)).trigger('change');
+                        } else {
+                            $s.val(null).trigger('change');
+                        }
+                    });
+            };
+
+            window.humaKanbanAfterModuleCategoryQuickStore = function (selectId, category) {
+                if (selectId !== 'label' || !category || !category.id) {
+                    return;
+                }
+                var sidebar = document.querySelector('.kanban-update-item-sidebar');
+                var sel = sidebar ? sidebar.querySelector('#label') : null;
+                if (sidebar && sel && typeof window.humaKanbanRebuildCategorySelect === 'function') {
+                    window.humaKanbanRebuildCategorySelect(sel, sidebar, category.id);
+                }
+            };
+
+        })();
+    </script>
+    @include('components.partials.select2-module-category-quick-create', [
+        'selectId' => 'label',
+        'moduleKey' => 'tasks',
+        'multiple' => false,
+    ])
     @php
     $kanbanJs = public_path('assets/js/app-kanban-custom.js');
     $kanbanJsQ = file_exists($kanbanJs) ? '?v=' . filemtime($kanbanJs) : '';
@@ -222,7 +306,13 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="label">{{ __('Categoría') }}</label>
-                            <select class="select2 select2-label form-select" id="label">
+                            <select
+                                class="select2 select2-label form-select"
+                                id="label"
+                                data-module-key="tasks"
+                                data-placeholder="{{ __('Selecciona una categoría') }}"
+                                data-show-empty-option="1"
+                                data-allow-empty-select="1">
                                 <option value="">{{ __('Selecciona una categoría') }}</option>
                             </select>
                         </div>

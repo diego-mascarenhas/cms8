@@ -29,6 +29,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use stdClass;
@@ -515,7 +516,93 @@ class MessageController extends Controller
             }
         }
 
-        $this->persistTemplateHtmlFromMessageComposer($templateId, $html, $messageIdGate);
+        $this->persistTemplateHtmlToTemplateModel($templateId, $html);
+
+        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        {
+            Message::query()->whereKey($messageIdGate)->update(['mail_html' => null]);
+        }
+
+        $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+        if ($returnUrl === null || $returnUrl === '')
+        {
+            $returnUrl = $messageIdGate !== null
+                ? route('message.edit', $messageIdGate)
+                : route('message.create');
+        }
+
+        if ($returnUrl !== null && $returnUrl !== '')
+        {
+            if ($messageIdGate !== null)
+            {
+                $editPath = parse_url(route('message.edit', $messageIdGate), PHP_URL_PATH) ?? '/message/edit';
+                $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                    $returnUrl,
+                    $editPath,
+                    ['template_id' => (string) $templateId],
+                );
+            } else
+            {
+                $createPath = parse_url(route('message.create'), PHP_URL_PATH) ?? '/message/create';
+                $returnUrl = TemplateEditorReturnUrl::mergeQueryWhenPathMatches(
+                    $returnUrl,
+                    $createPath,
+                    ['template_id' => (string) $templateId],
+                );
+            }
+        }
+
+        $template = Template::query()->whereKey($templateId)->firstOrFail();
+        $editorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
+            route('template.editor', $template->getHashedId()),
+            $returnUrl,
+        );
+
+        return redirect()->to($editorUrl);
+    }
+
+    /**
+     * Persist Quill HTML into the linked template and return to the message composer (no visual editor).
+     */
+    public function syncTemplateHtml(SyncMessageTemplateHtmlForEditorRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $templateId = (int) $validated['template_id'];
+        $messageId = isset($validated['message_id']) ? (int) $validated['message_id'] : 0;
+        $messageIdGate = $messageId > 0 ? $messageId : null;
+        $html = (string) $validated['template_html'];
+
+        if ($messageIdGate !== null)
+        {
+            $message = Message::query()->whereKey($messageIdGate)->first();
+            if (! $message || (int) $message->type_id !== 1)
+            {
+                abort(422, 'Invalid message for email template.');
+            }
+
+            if (MessageDelivery::query()->where('message_id', $messageIdGate)->exists())
+            {
+                return redirect()
+                    ->back()
+                    ->with('warning', __('app.email_template_update_blocked_deliveries'));
+            }
+        }
+
+        if (! $this->persistTemplateHtmlToTemplateModel($templateId, $html))
+        {
+            return redirect()
+                ->back()
+                ->with('warning', __('app.email_template_update_empty'));
+        }
+
+        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        {
+            $message = Message::query()->whereKey($messageIdGate)->first();
+            if ($message instanceof Message)
+            {
+                $message->forceFill(['mail_html' => trim($html)])->save();
+            }
+        }
 
         $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
         if ($returnUrl === null || $returnUrl === '')
@@ -535,13 +622,9 @@ class MessageController extends Controller
             );
         }
 
-        $template = Template::query()->whereKey($templateId)->firstOrFail();
-        $editorUrl = TemplateEditorReturnUrl::editorRouteWithReturn(
-            route('template.editor', $template->getHashedId()),
-            $returnUrl,
-        );
-
-        return redirect()->to($editorUrl);
+        return redirect()
+            ->to($returnUrl)
+            ->with('success', __('app.email_template_update_success'));
     }
 
     /**
@@ -747,45 +830,7 @@ class MessageController extends Controller
      */
     private function getContactsForMessage(Message $message)
     {
-        $query = null;
-
-        if ($message->category)
-        {
-            $query = $message->category->contacts();
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        } else
-        {
-            // If no category, get all contacts from the team
-            $query = \App\Models\Contact::where('team_id', $message->team_id)
-                ->whereNotNull('email');
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        }
-
-        // Exclude test/demo email addresses
-        $testDomains = [
-            '@example.org',
-            '@example.net',
-            '@example.com',
-            '@demo.com',
-            '@test.com',
-            '@localhost',
-            '@testing.com',
-            '@dummy.com',
-            '@fake.com',
-        ];
-
-        foreach ($testDomains as $domain)
-        {
-            $query->where('email', 'not like', '%'.$domain);
-        }
-
-        return $query;
+        return $message->audienceContactsQuery();
     }
 
     /**
@@ -1474,9 +1519,12 @@ class MessageController extends Controller
             ];
         }
 
+        $requestTemplateId = $request->integer('template_id');
         $preferredTemplateId = $removeMailTemplate
             ? null
-            : (int) old('template_id', $data->template_id ?? 0);
+            : ($requestTemplateId > 0
+                ? $requestTemplateId
+                : (int) old('template_id', $data->template_id ?? 0));
 
         $template = app(MessageFormTemplateResolver::class)->resolveForForm(
             $preferredTemplateId > 0 ? $preferredTemplateId : null,
@@ -1514,9 +1562,7 @@ class MessageController extends Controller
      */
     private function buildEmailTemplatePreviewBundle(Template $template, ?int $messageId, string $returnUrl, ?Message $message = null): array
     {
-        $mailHtmlSource = $message instanceof Message
-            ? $message->resolveMailHtml()
-            : $this->rawTemplateHtmlFromModel($template);
+        $mailHtmlSource = $this->resolveMailHtmlForTemplatePreview($template, $message);
 
         $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
         $mailHtmlTextareaValue = $mailHtmlSource;
@@ -1601,6 +1647,17 @@ class MessageController extends Controller
     }
 
     /**
+     * When the user picks another template in the message form, show that template's HTML.
+     * Only reuse message-specific HTML when the previewed template is the one already linked to the message.
+     */
+    private function resolveMailHtmlForTemplatePreview(Template $template, ?Message $message = null): string
+    {
+        $template->refresh();
+
+        return $this->rawTemplateHtmlFromModel($template);
+    }
+
+    /**
      * Writes Quill / composer HTML into the template's GrapesJS payload. Skipped when the message
      * already has deliveries (readonly body) or the HTML is empty.
      */
@@ -1639,10 +1696,26 @@ class MessageController extends Controller
             return;
         }
 
+        $this->persistTemplateHtmlToTemplateModel($templateId, $trimmed);
+    }
+
+    private function persistTemplateHtmlToTemplateModel(int $templateId, string $rawHtml): bool
+    {
+        if ($templateId <= 0)
+        {
+            return false;
+        }
+
+        $trimmed = trim($rawHtml);
+        if ($trimmed === '')
+        {
+            return false;
+        }
+
         $template = Template::query()->whereKey($templateId)->first();
         if (! $template instanceof Template)
         {
-            return;
+            return false;
         }
 
         $gjsData = is_array($template->gjs_data) ? $template->gjs_data : [];
@@ -1652,6 +1725,8 @@ class MessageController extends Controller
 
         $template->refresh();
         GrapesJsHelper::fixTemplateStructure($template);
+
+        return true;
     }
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string

@@ -15,10 +15,12 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamWhatsAppChatPresentation;
+use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
@@ -26,6 +28,7 @@ use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\AssistantCreatedMessageRedirect;
+use App\Support\AssistantTaskStatusUpdate;
 use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
@@ -1334,6 +1337,23 @@ class ChatController extends Controller
             $request->boolean('preview_only'),
         );
 
+        $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
+        $serverTaskApply = $teamId !== null && ! $request->boolean('preview_only')
+            ? app(AssistantInboundTaskStatusService::class)->tryApplyFromUserMessage(
+                $contextUser,
+                (int) $teamId,
+                $message,
+                $history,
+                $toolResults,
+            )
+            : null;
+
+        if ($serverTaskApply !== null)
+        {
+            $toolResults[] = $serverTaskApply['tool_result'];
+            $replyResponse['tool_results'] = $toolResults;
+        }
+
         if (! $replyResponse['success'])
         {
             return response()->json([
@@ -1344,6 +1364,14 @@ class ChatController extends Controller
 
         $previewOnly = $request->boolean('preview_only');
         $assistantText = $replyResponse['text'] ?? '';
+        if ($serverTaskApply !== null)
+        {
+            $task = \App\Models\Task::withoutGlobalScopes()->find($serverTaskApply['update']['task_id']);
+            $status = \App\Models\TaskStatus::query()->find($serverTaskApply['update']['status_id']);
+            $title = $task?->title ?? __('Task');
+            $label = $status?->translated_name ?? $serverTaskApply['update']['status_name'];
+            $assistantText = '✅ Listo. La tarea "'.$title.'" quedó en '.$label.'.';
+        }
         if ($previewOnly)
         {
             $assistantText = $this->sanitizePreviewAssistantText($assistantText);
@@ -1359,7 +1387,7 @@ class ChatController extends Controller
                 $replyResponse['usage'] ?? [],
                 $replyResponse['meta'] ?? [],
                 $replyResponse['tool_calls'] ?? [],
-                $replyResponse['tool_results'] ?? [],
+                $toolResults,
                 $teamId,
                 (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
                 $replyResponse['assistant_flow_routing_key'] ?? null,
@@ -1373,9 +1401,7 @@ class ChatController extends Controller
         ];
         if (! $previewOnly && auth()->check())
         {
-            $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults(
-                is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [],
-            );
+            $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults($toolResults);
             if ($createdMessageId !== null)
             {
                 $redirectUrl = AssistantCreatedMessageRedirect::resolveMessageEditUrlForUser(
@@ -1386,6 +1412,14 @@ class ChatController extends Controller
                 {
                     $payload['redirect_url'] = $redirectUrl;
                 }
+            }
+
+            $taskStatusUpdate = $serverTaskApply !== null
+                ? $serverTaskApply['update']
+                : AssistantTaskStatusUpdate::extractFromToolResults($toolResults);
+            if ($taskStatusUpdate !== null)
+            {
+                $payload['task_status_update'] = $taskStatusUpdate;
             }
         }
         if ($hasAudio)
@@ -2161,6 +2195,10 @@ class ChatController extends Controller
             if (auth()->check() && auth()->user()->currentTeam)
             {
                 $team = auth()->user()->currentTeam;
+                if (is_array($status))
+                {
+                    TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $status);
+                }
                 $teamNumber = $team->getWhatsAppFrom();
                 $statusStr = is_array($status) ? ($status['status'] ?? 'disconnected') : 'disconnected';
                 $teamNumberFormatted = $teamNumber

@@ -173,7 +173,7 @@ class CampaignClassicEditorStoreTest extends TestCase
         $response->assertSee('id="email-test-send-modal-'.$message->id.'"', false);
         $response->assertSee('openEmailTestSendModal', false);
         $this->assertMatchesRegularExpression('#/template/[^"\s]+/editor#', $html);
-        $this->assertStringContainsString('Abrir editor visual', $html);
+        $this->assertStringContainsString(__('app.message_visual_editor_button'), $html);
         $this->assertStringContainsString('target="_blank"', $html);
     }
 }
