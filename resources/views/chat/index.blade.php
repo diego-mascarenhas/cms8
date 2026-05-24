@@ -1766,26 +1766,6 @@
             });
         }
 
-        // "Link current number to this team" – request QR URL so Node receives token and callbacks if already connected
-        var linkCurrentNumberBtn = document.getElementById('chat-link-current-number-btn');
-        if (linkCurrentNumberBtn && linkCurrentNumberBtn.dataset.qrUrl) {
-            linkCurrentNumberBtn.addEventListener('click', function () {
-                var url = linkCurrentNumberBtn.dataset.qrUrl;
-                if (!url) return;
-                url = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'link_current=1';
-                linkCurrentNumberBtn.disabled = true;
-                fetch(url, { credentials: 'same-origin' }).then(function () {
-                    linkCurrentNumberBtn.disabled = false;
-                    var statusUrl = '{{ route("chat.whatsapp-status") }}';
-                    fetch(statusUrl, { headers: { 'Accept': 'application/json' } }).then(function (r) { return r.json(); }).then(function (data) {
-                        if (data.isTeamConnected && data.teamNumberFormatted) {
-                            if (window.location && window.location.reload) window.location.reload();
-                        }
-                    }).catch(function () { linkCurrentNumberBtn.disabled = false; });
-                }).catch(function () { linkCurrentNumberBtn.disabled = false; });
-            });
-        }
-
         // Poll WhatsApp status so UI always reflects current team (fixes wrong state when switching team)
         var waStatusUrl = '{{ route("chat.whatsapp-status") }}';
         var connectedLabel = '{{ __("Connected") }}';
@@ -1798,7 +1778,6 @@
             var disconnectBadgeTrigger = document.getElementById('chat-whatsapp-disconnect-badge-trigger');
             var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
             var contactsWaAvatar = document.getElementById('chat-contacts-wa-avatar');
-            var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
             var displayNumber = data.teamNumberFormatted || null;
             if (titleEl) titleEl.textContent = displayNumber || '{{ __("Not linked") }}';
             if (data.isTeamConnected) {
@@ -1808,7 +1787,6 @@
                 if (historyWaPanel) {
                     historyWaPanel.classList.add('d-none');
                 }
-                if (linkExistingBlock) { linkExistingBlock.classList.add('d-none'); }
                 if (badgeEl) { badgeEl.textContent = connectedLabel; badgeEl.className = 'badge bg-success'; }
                 if (badgeWrap) { badgeWrap.classList.add('chat-wa-disconnect-enabled'); }
                 if (disconnectBadgeTrigger) { disconnectBadgeTrigger.disabled = false; }
@@ -1827,12 +1805,6 @@
                     if (prevTeamConnected && qrImgReload && qrImgReload.dataset.qrBase) {
                         runWhatsappQrServerRefreshAndPoll();
                     }
-                }
-                if (linkExistingBlock && data.status === 'connected' && data.number) {
-                    linkExistingBlock.dataset.number = data.number;
-                    linkExistingBlock.classList.remove('d-none');
-                } else if (linkExistingBlock) {
-                    linkExistingBlock.classList.add('d-none');
                 }
                 if (badgeEl) {
                     var status = data.status || 'disconnected';
@@ -1858,8 +1830,6 @@
             }, 3000);
         }
 
-        var btnLinkExisting = document.getElementById('chat-btn-link-existing-number');
-        var linkExistingBlock = document.getElementById('chat-link-existing-number-block');
         var chatWaDisconnectBadgeTrigger = document.getElementById('chat-whatsapp-disconnect-badge-trigger');
         if (chatWaDisconnectBadgeTrigger && typeof Swal !== 'undefined') {
             chatWaDisconnectBadgeTrigger.addEventListener('click', function () {
@@ -1954,32 +1924,6 @@
                 });
             });
         }
-
-        if (btnLinkExisting && linkExistingBlock) {
-            btnLinkExisting.addEventListener('click', function () {
-                var number = linkExistingBlock.dataset.number;
-                if (!number) return;
-                var token = document.querySelector('meta[name="csrf-token"]');
-                var t = token ? token.getAttribute('content') : '';
-                btnLinkExisting.disabled = true;
-                fetch('{{ route("chat.link-current-number") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': t,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ number: number })
-                })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.ok) { if (window.location) window.location.reload(); }
-                    else { btnLinkExisting.disabled = false; }
-                })
-                .catch(function () { btnLinkExisting.disabled = false; });
-            });
-        }
     });
     </script>
 @endsection
@@ -2055,12 +1999,6 @@
                                         <i class="ti ti-refresh me-1"></i>{{ __('auth.registration.qr_whatsapp_refresh') }}
                                     </button>
                                 @endif
-                                <div id="chat-link-existing-number-block" class="d-none mt-2" data-number="">
-                                    <p class="small text-muted mb-2">{{ __('A number is connected in the service but not linked to this team.') }}</p>
-                                    <button type="button" id="chat-btn-link-existing-number" class="btn btn-sm btn-primary w-100">
-                                        <i class="ti ti-link me-1"></i>{{ __('Link to this team') }}
-                                    </button>
-                                </div>
                             </div>
                             </div>
                     </div>

@@ -58,6 +58,8 @@ final class TeamWhatsAppChatPresentation
 
             if ($team)
             {
+                TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $whatsappStatus);
+
                 $teamWhatsAppNumber = $team->getWhatsAppFrom();
                 $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
                     ? PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)

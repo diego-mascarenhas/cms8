@@ -286,3 +286,42 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
 </script>
 @endpush
 @endif
+
+@if (!($teamWhatsAppIsConnected ?? false) && ($whatsappDriver ?? '') === 'local' && !($onboardingQrScanTargetsChatOnly ?? false))
+@push('scripts')
+<script>
+(function () {
+  var waStatusUrl = @json(route('chat.whatsapp-status'));
+
+  function onConnected() {
+    if (window.location && window.location.reload) {
+      window.location.reload();
+    }
+  }
+
+  function applyStatus(data) {
+    if (data.isTeamConnected) {
+      onConnected();
+    }
+  }
+
+  fetch(waStatusUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    .then(function (r) { return r.json(); })
+    .then(applyStatus)
+    .catch(function () {});
+
+  var waPoll = setInterval(function () {
+    fetch(waStatusUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        applyStatus(data);
+        if (data.isTeamConnected) {
+          clearInterval(waPoll);
+        }
+      })
+      .catch(function () {});
+  }, 3000);
+})();
+</script>
+@endpush
+@endif

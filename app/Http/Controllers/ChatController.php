@@ -20,6 +20,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamWhatsAppChatPresentation;
+use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
@@ -2194,6 +2195,10 @@ class ChatController extends Controller
             if (auth()->check() && auth()->user()->currentTeam)
             {
                 $team = auth()->user()->currentTeam;
+                if (is_array($status))
+                {
+                    TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $status);
+                }
                 $teamNumber = $team->getWhatsAppFrom();
                 $statusStr = is_array($status) ? ($status['status'] ?? 'disconnected') : 'disconnected';
                 $teamNumberFormatted = $teamNumber
