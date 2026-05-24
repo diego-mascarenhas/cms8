@@ -110,6 +110,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
                 onload="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');"
                 onerror="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');">
             </div>
+            <p class="small text-muted mb-0 mt-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
           </div>
           @else
           <div id="registration-wa-qr-block" class="d-flex flex-column align-items-center mb-4">
@@ -133,6 +134,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
                 </div>
               </div>
             </div>
+            <p class="small text-muted mb-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
             <p class="small text-muted mb-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
             <button type="button" id="registration-wa-qr-refresh" class="btn btn-sm btn-outline-secondary mt-1">
               {{ __('auth.registration.qr_whatsapp_refresh') }}

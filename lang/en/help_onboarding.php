@@ -57,7 +57,7 @@ return [
         'When the camera opens, point it at the QR code on the Humano screen.',
         'Confirm on your phone if WhatsApp asks you to.',
     ],
-    'step3_refresh' => 'If the QR is slow to load, use Refresh QR code on the same screen. You can also open Chat — the code may refresh when you enter Chat if the connector supports it.',
+    'step3_refresh' => 'If the QR is slow to load, use Refresh QR code on the same screen. You can also open Chat — the code may refresh when you enter Chat if the connector supports it. The screen shows a note that loading may take up to 45 seconds.',
     'step3_connected' => 'When WhatsApp is linked, you will see a success message. Then go to the dashboard or open Chat to verify messages work.',
     'step3_cloud_note' => 'In some environments the flow may differ and a QR may not appear on this screen. If you do not see a QR, contact support.',
 

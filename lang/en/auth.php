@@ -95,6 +95,7 @@ return [
         'qr_whatsapp_image_alt' => 'QR code to link WhatsApp',
         'qr_whatsapp_refresh' => 'Refresh QR code',
         'qr_whatsapp_refresh_hint' => 'If the code does not appear, tap refresh — we also update it automatically when you open Chat.',
+        'qr_whatsapp_timing_hint' => 'The QR code may take up to 45 seconds to appear. Do not close this screen.',
         'qr_whatsapp_loading' => 'Loading QR code…',
         'qr_whatsapp_refresh_failed' => 'Could not refresh the code. Try again or open Chat.',
         'qr_open_chat' => 'Open Chat',

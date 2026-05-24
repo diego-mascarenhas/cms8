@@ -1993,6 +1993,7 @@
                                         </div>
                                     </div>
                                     <p id="chat-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
+                                    <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
                                     <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
                                     <button type="button" class="btn btn-sm btn-outline-primary w-100" id="chat-whatsapp-qr-refresh-btn">
                                         <i class="ti ti-refresh me-1"></i>{{ __('auth.registration.qr_whatsapp_refresh') }}
