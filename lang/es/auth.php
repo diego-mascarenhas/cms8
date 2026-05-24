@@ -91,6 +91,8 @@ return [
         'qr_whatsapp_timing_hint' => 'El código puede tardar hasta 45 segundos en aparecer. No cierres esta pantalla.',
         'qr_whatsapp_loading' => 'Cargando código QR…',
         'qr_whatsapp_refresh_failed' => 'No se pudo actualizar el código. Inténtalo de nuevo o abre Chat.',
+        'qr_whatsapp_service_unreachable' => 'No se pudo conectar con el servicio de WhatsApp. En local, ejecutá npm start en humano-whatsapp-service (puerto 3000).',
+        'qr_whatsapp_load_failed' => 'El código QR no apareció. Comprobá que el servicio WhatsApp esté en marcha y tocá «Actualizar código QR».',
         'qr_open_chat' => 'Abrir Chat',
         'qr_continue_dashboard' => 'Ir al panel',
         'invalid_payment_session' => 'Sesión de pago no válida.',

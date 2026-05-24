@@ -103,6 +103,7 @@ class EnsureRegistrationBillingComplete
             'attendance.stop',
             'current-team.update',
             'chat.whatsapp-refresh-qr',
+            'chat.whatsapp-warmup-qr',
             'chat.whatsapp-disconnect',
             'chat.whatsapp-qr-image',
         ]);

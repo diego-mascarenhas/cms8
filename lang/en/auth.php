@@ -98,6 +98,8 @@ return [
         'qr_whatsapp_timing_hint' => 'The QR code may take up to 45 seconds to appear. Do not close this screen.',
         'qr_whatsapp_loading' => 'Loading QR code…',
         'qr_whatsapp_refresh_failed' => 'Could not refresh the code. Try again or open Chat.',
+        'qr_whatsapp_service_unreachable' => 'Could not reach the WhatsApp service. Locally, run npm start in humano-whatsapp-service (port 3000).',
+        'qr_whatsapp_load_failed' => 'The QR code did not appear. Check that the WhatsApp service is running and tap Refresh QR code.',
         'qr_open_chat' => 'Open Chat',
         'qr_continue_dashboard' => 'Go to dashboard',
         'invalid_payment_session' => 'Invalid payment session.',

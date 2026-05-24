@@ -2365,6 +2365,77 @@ class ChatController extends Controller
     }
 
     /**
+     * Start WhatsApp session without /refresh (no credential wipe). Used before polling for the QR image.
+     */
+    public function whatsappWarmupQr(Request $request)
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return response()->json(['ok' => false], 400);
+        }
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['ok' => false], 401);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $this->authorize('update', $team);
+
+        $baseUrl = $team->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
+        if ($baseUrl === '')
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('The WhatsApp service URL is not configured for this team.'),
+            ], 422);
+        }
+
+        $presentation = TeamWhatsAppChatPresentation::resolveForTeam($team);
+        if ($presentation['teamWhatsAppIsConnected'])
+        {
+            return response()->json(['ok' => true, 'skipped' => 'connected']);
+        }
+
+        $status = $presentation['whatsappStatus'] ?? null;
+        $statusStr = is_array($status) ? (string) ($status['status'] ?? 'disconnected') : 'disconnected';
+        if ($statusStr === 'unreachable')
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 503);
+        }
+        if (in_array($statusStr, ['connected', 'waiting_qr'], true))
+        {
+            return response()->json(['ok' => true, 'skipped' => $statusStr]);
+        }
+
+        $warmupUrl = $baseUrl.'/warmup?team_id='.$team->id;
+
+        try
+        {
+            $warmupResp = \Illuminate\Support\Facades\Http::timeout(15)->connectTimeout(3)->get($warmupUrl);
+        } catch (\Throwable)
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 503);
+        }
+
+        if (! $warmupResp->successful())
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 502);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
      * End the local WhatsApp session for the current team (Node /logout) and clear the linked number in team settings.
      */
     public function whatsappDisconnect(Request $request)
