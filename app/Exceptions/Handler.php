@@ -2,6 +2,8 @@
 
 namespace App\Exceptions;
 
+use App\Support\AuthIntendedUrlGuard;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -50,5 +52,17 @@ class Handler extends ExceptionHandler
         }
 
         return parent::render($request, $exception);
+    }
+
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        if (AuthIntendedUrlGuard::shouldSkipStoringIntended($request))
+        {
+            return $this->shouldReturnJson($request, $exception)
+                ? response()->json(['message' => $exception->getMessage()], 401)
+                : redirect()->route('login');
+        }
+
+        return parent::unauthenticated($request, $exception);
     }
 }
