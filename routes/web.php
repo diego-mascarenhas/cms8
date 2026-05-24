@@ -1302,6 +1302,7 @@ Route::prefix('manual')->name('manual.')->group(function ()
 Route::prefix('help')->name('help.')->group(function ()
 {
     Route::get('/', [HelpController::class, 'index'])->name('index');
+    Route::get('/onboarding', [HelpController::class, 'onboarding'])->name('onboarding');
     Route::get('/usage', [HelpController::class, 'usage'])->name('usage');
     Route::get('/chat-assistant', [HelpController::class, 'chatAssistant'])->name('chat-assistant');
     Route::get('/contacts', [HelpController::class, 'contacts'])->name('contacts');
