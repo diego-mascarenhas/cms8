@@ -1173,9 +1173,8 @@
                 if (!mergedMessages || mergedMessages.length === 0) {
                     var src = document.getElementById('assistant-suggestions-source');
                     var inner = src ? src.innerHTML : '';
-                    var extra = assistantUserId ? '' : '<p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? "" }}) para ver la misma conversación.</p>';
                     list.innerHTML = '<li class="text-center p-4 assistant-empty-state">' +
-                        '<div class="text-start">' + inner + '</div>' + extra + '</li>';
+                        '<div class="text-start">' + inner + '</div></li>';
                     return;
                 }
                 var html = mergedMessages.map(function(m) {
@@ -2495,7 +2494,7 @@
                     <div class="chat-history-body bg-body" id="chat-history-body" data-poll-phone="{{ $selectedPhone ?? '' }}" data-view-assistant="{{ ($viewAssistant ?? false) ? '1' : '0' }}">
                         @if ($viewAssistant ?? false)
                             <div id="assistant-suggestions-source" class="d-none" aria-hidden="true">
-                                @include('chat.partials.assistant-empty-suggestions-inner', ['selectedPhone' => $selectedPhone ?? null])
+                                @include('chat.partials.assistant-empty-suggestions-inner')
                             </div>
                         @endif
                         <ul class="list-unstyled chat-history" id="assistant-messages-list">
@@ -2516,11 +2515,8 @@
                                 @empty
                                     <li class="text-center p-4 assistant-empty-state">
                                         <div class="text-start">
-                                            @include('chat.partials.assistant-empty-suggestions-inner', ['selectedPhone' => $selectedPhone ?? null])
+                                            @include('chat.partials.assistant-empty-suggestions-inner')
                                         </div>
-                                        @if (! ($selectedAssistantUser ?? null))
-                                            <p class="text-muted small mt-2 mb-0">Mismo usuario que en la terminal ({{ auth()->user()->email ?? '' }}) para ver la misma conversación.</p>
-                                        @endif
                                     </li>
                                 @endforelse
                             @elseif (!$selectedPhone)
