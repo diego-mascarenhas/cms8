@@ -213,6 +213,12 @@
                         btn.prop('disabled', false).html(originalHtml);
                         return;
                     }
+                    if (typeof window.humaKanbanAfterModuleCategoryQuickStore === 'function') {
+                        window.humaKanbanAfterModuleCategoryQuickStore(selectId, response.category);
+                        select.select2('close');
+                        btn.prop('disabled', false).html(originalHtml);
+                        return;
+                    }
                     if (isMultiple) {
                         const newOption = new Option(response.category.name, response.category.id, false, true);
                         select.append(newOption).trigger('change');

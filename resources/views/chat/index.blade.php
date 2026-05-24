@@ -807,6 +807,10 @@
                                     window.location.assign(data.redirect_url);
                                     return;
                                 }
+                                if (data.task_status_update && typeof window.humanoKanbanMoveTask === 'function') {
+                                    var tsu = data.task_status_update;
+                                    window.humanoKanbanMoveTask(tsu.task_id, tsu.status_id || tsu.status_name);
+                                }
                                 if (data.action_performed === 'document_ingestion') {
                                     registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);
                                 }
@@ -906,6 +910,10 @@
                             if (data.redirect_url && typeof data.redirect_url === 'string') {
                                 window.location.assign(data.redirect_url);
                                 return;
+                            }
+                            if (data.task_status_update && typeof window.humanoKanbanMoveTask === 'function') {
+                                var tsuJ = data.task_status_update;
+                                window.humanoKanbanMoveTask(tsuJ.task_id, tsuJ.status_id || tsuJ.status_name);
                             }
                             if (data.action_performed === 'document_ingestion') {
                                 registerLocalDocumentEvents(currentUserMessage, currentAiResponse, currentAttachmentPreviews);

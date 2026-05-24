@@ -112,14 +112,16 @@ class DebugMessageContacts extends Command
         }
 
         // Check 2: Contact Status
-        $expectedStatus = $message->contact_status_id ?: 1;
-        if ($contact->status_id == $expectedStatus)
+        if ($message->contact_status_id === null)
+        {
+            $this->info('✅ Any contact status allowed (message targets all statuses)');
+        } elseif ((int) $contact->status_id === (int) $message->contact_status_id)
         {
             $this->info("✅ Contact status matches: {$contact->status_id}");
         } else
         {
             $this->error('❌ Contact status does NOT match.');
-            $this->info("   Expected: {$expectedStatus}");
+            $this->info("   Expected: {$message->contact_status_id}");
             $this->info("   Actual: {$contact->status_id}");
             $this->info('   This contact will NOT receive this message.');
 
@@ -195,44 +197,6 @@ class DebugMessageContacts extends Command
      */
     private function getContactsForMessage(Message $message)
     {
-        $query = null;
-
-        if ($message->category)
-        {
-            $query = $message->category->contacts();
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        } else
-        {
-            // If no category, get all contacts from the team
-            $query = Contact::where('team_id', $message->team_id)
-                ->whereNotNull('email');
-
-            // Filter by contact status - use message's contact_status_id or default to active (1)
-            $statusId = $message->contact_status_id ?: 1;
-            $query->where('status_id', $statusId);
-        }
-
-        // Exclude test/demo email addresses
-        $testDomains = [
-            '@example.org',
-            '@example.net',
-            '@example.com',
-            '@demo.com',
-            '@test.com',
-            '@localhost',
-            '@testing.com',
-            '@dummy.com',
-            '@fake.com',
-        ];
-
-        foreach ($testDomains as $domain)
-        {
-            $query->where('email', 'not like', '%'.$domain);
-        }
-
-        return $query->get();
+        return $message->audienceContactsQuery()->get();
     }
 }

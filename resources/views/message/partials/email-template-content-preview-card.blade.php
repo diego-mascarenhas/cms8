@@ -37,11 +37,11 @@
                     data-bs-target="#{{ $emailTestSendModalDomId }}"
                     aria-controls="{{ $emailTestSendModalDomId }}"
                 >
-                    <i class="ti ti-send ti-sm me-1"></i>{{ __('Enviar correo de prueba') }}
+                    <i class="ti ti-send ti-sm me-1"></i>{{ __('app.message_email_test_send_button') }}
                 </button>
             @else
                 <span class="btn btn-sm btn-label-secondary disabled" title="{{ __('Disponible después de guardar el mensaje') }}">
-                    <i class="ti ti-send ti-sm me-1"></i>{{ __('Enviar correo de prueba') }}
+                    <i class="ti ti-send ti-sm me-1"></i>{{ __('app.message_email_test_send_button') }}
                 </span>
             @endif
                 @if (filled($grapesEditorUrl) && $grapesEditorUrl !== '#')
@@ -53,7 +53,7 @@
                         data-template-id="{{ (int) ($templateId ?? 0) }}"
                         data-message-id="{{ filled($messageId) ? (int) $messageId : '' }}"
                     >
-                        <i class="ti ti-edit ti-sm me-1"></i>{{ __('Abrir editor visual') }}
+                        <i class="ti ti-edit ti-sm me-1"></i>{{ __('app.message_visual_editor_button') }}
                     </button>
                 @else
                     <span
@@ -62,8 +62,19 @@
                         tabindex="-1"
                         title="{{ __('Select a template with a visual editor to open it.') }}"
                     >
-                        <i class="ti ti-edit ti-sm me-1"></i>{{ __('Abrir editor visual') }}
+                        <i class="ti ti-edit ti-sm me-1"></i>{{ __('app.message_visual_editor_button') }}
                     </span>
+                @endif
+                @if ($useMailHtmlTextarea && ! $mailHtmlTextareaReadonly && filled($templateId))
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-label-warning waves-effect"
+                        data-huma-update-template="1"
+                        data-template-id="{{ (int) $templateId }}"
+                        data-message-id="{{ filled($messageId) ? (int) $messageId : '' }}"
+                    >
+                        <i class="ti ti-device-floppy ti-sm me-1"></i>{{ __('app.email_template_update_button') }}
+                    </button>
                 @endif
                 @if (filled($templateHashedId) && filled($duplicateFormId))
                     <button

@@ -12,6 +12,8 @@ use App\Models\Conversation;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Store;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
@@ -1191,9 +1193,42 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         false,
                     );
 
+                    $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
+                    $agentHistory = ($contextUser !== null && $assistantTeamId !== null)
+                        ? app(AgentConversationContextService::class)->getHistoryForPrompt(
+                            $contextUser->id,
+                            AgentConversationContextService::DEFAULT_HISTORY_LIMIT,
+                            (int) $assistantTeamId,
+                        )
+                        : [];
+                    $statusHistory = $agentHistory !== [] ? $agentHistory : $this->conversationRowsToPromptHistory($history);
+                    $serverTaskApply = ($contextUser !== null && $assistantTeamId !== null)
+                        ? app(\App\Services\Assistant\AssistantInboundTaskStatusService::class)->tryApplyFromUserMessage(
+                            $contextUser,
+                            (int) $assistantTeamId,
+                            (string) $body,
+                            $statusHistory,
+                            $toolResults,
+                        )
+                        : null;
+
+                    if ($serverTaskApply !== null)
+                    {
+                        $toolResults[] = $serverTaskApply['tool_result'];
+                        $replyResponse['tool_results'] = $toolResults;
+                    }
+
                     if ($replyResponse['success'] ?? false)
                     {
                         $aiMessage = $replyResponse['text'] ?? '';
+                        if ($serverTaskApply !== null)
+                        {
+                            $task = Task::withoutGlobalScopes()->find($serverTaskApply['update']['task_id']);
+                            $status = TaskStatus::query()->find($serverTaskApply['update']['status_id']);
+                            $title = $task?->title ?? 'Tarea';
+                            $label = $status?->translated_name ?? $serverTaskApply['update']['status_name'];
+                            $aiMessage = '✅ Listo. La tarea "'.$title.'" quedó en '.$label.'.';
+                        }
 
                         if (trim((string) $aiMessage) !== '')
                         {
@@ -3659,5 +3694,29 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         $pivotRole = strtolower((string) ($membership?->pivot?->role ?? ''));
 
         return in_array($pivotRole, ['admin', 'editor'], true);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array{direction: string, body: string}>
+     */
+    private function conversationRowsToPromptHistory(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row)
+        {
+            $direction = ($row['direction'] ?? '') === 'inbound' ? 'inbound' : 'outbound';
+            $body = trim((string) ($row['body'] ?? ''));
+            if ($body === '')
+            {
+                continue;
+            }
+            $out[] = [
+                'direction' => $direction,
+                'body' => $body,
+            ];
+        }
+
+        return $out;
     }
 }

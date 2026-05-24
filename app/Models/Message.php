@@ -117,6 +117,58 @@ class Message extends Model
     }
 
     /**
+     * @return list<string>
+     */
+    public static function demoEmailDomainsExcludedFromAudience(): array
+    {
+        return [
+            '@example.org',
+            '@example.net',
+            '@example.com',
+            '@demo.com',
+            '@test.com',
+            '@localhost',
+            '@testing.com',
+            '@dummy.com',
+            '@fake.com',
+        ];
+    }
+
+    /**
+     * Contacts eligible for deliveries: category (if set), optional contact status, valid email, no demo domains.
+     * When contact_status_id is null, all statuses in the audience are included.
+     *
+     * @return Builder<\App\Models\Contact>
+     */
+    public function audienceContactsQuery(): Builder
+    {
+        if ($this->category_id)
+        {
+            $this->loadMissing('category');
+            $query = $this->category
+                ? $this->category->contacts()
+                : Contact::query()->whereRaw('1 = 0');
+        } else
+        {
+            $query = Contact::query()
+                ->where('team_id', $this->team_id)
+                ->whereNotNull('email');
+        }
+
+        if ($this->contact_status_id)
+        {
+            $query->where('status_id', $this->contact_status_id);
+        }
+
+        foreach (self::demoEmailDomainsExcludedFromAudience() as $domain)
+        {
+            $query->where('email', 'not like', '%'.$domain);
+        }
+
+        return $query;
+    }
+
+    /**
      * Check if this message can be sent to a specific contact based on the minimum hours between emails
      */
     public function canSendToContact(\App\Models\Contact $contact): bool
