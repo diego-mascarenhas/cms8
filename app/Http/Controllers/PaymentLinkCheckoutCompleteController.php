@@ -8,7 +8,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -81,11 +80,6 @@ class PaymentLinkCheckoutCompleteController extends Controller
         $request->session()->regenerate();
         $request->session()->put('humano_after_public_payment_link_checkout', true);
         $request->session()->put(HumanoPublicPaymentLinkCheckout::SESSION_SHOW_DASHBOARD_WHATSAPP_QR_CTA, true);
-
-        if ($outcome->isNewUser && config('app.env') !== 'testing')
-        {
-            Password::sendResetLink(['email' => $outcome->user->email]);
-        }
 
         Log::info('pricing.checkout.complete: user logged in, redirecting to dashboard', [
             'user_id' => $outcome->user->id,
