@@ -27,7 +27,7 @@ return [
             'description' => 'Déjate ayudar por la inteligencia artificial para automatizar procesos rutinarios de tu negocio, como la gestión a través de WhatsApp de la agenda, los clientes y las tareas manteniendo tu propia identidad.',
             'features' => [
                 'Chat por WhatsApp y prompts alineados con tu tono de marca',
-                'Calendario, clientes, contactos y tareas en un solo flujo',
+                'Calendario, contactos y tareas en un solo flujo',
                 'Prospección y automatización de lo repetitivo para ganar tiempo',
                 'Mailer, landings y panel para seguir cerca de tus clientes',
             ],
@@ -43,7 +43,7 @@ return [
             ],
         ],
         'foundation' => [
-            'name' => 'Foundation',
+            'name' => 'Mentor',
             'description' => 'La solución completa para automatizar todo tu negocio y hacerlo crecer más allá de lo que jamás imaginaste sin necesidad de tener que contratar a más personal.',
             'features' => [
                 'Incluye todos los módulos del plan Business en tu espacio de trabajo',

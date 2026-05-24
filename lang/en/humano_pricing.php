@@ -27,7 +27,7 @@ return [
             'description' => 'Let AI help you automate routine work like WhatsApp scheduling, clients, and tasks while keeping your brand voice.',
             'features' => [
                 'WhatsApp chat and saved prompts aligned with your brand voice',
-                'Calendar, clients, contacts, and tasks in one workflow',
+                'Calendar, contacts, and tasks in one workflow',
                 'Prospecting plus automation for repetitive work',
                 'Mailer, landing pages, and dashboard to stay close to customers',
             ],
@@ -43,7 +43,7 @@ return [
             ],
         ],
         'foundation' => [
-            'name' => 'Foundation',
+            'name' => 'Mentor',
             'description' => 'The full stack to automate and grow your business beyond what you thought possible—without hiring more staff.',
             'features' => [
                 'Includes the full Business module suite in your workspace',
