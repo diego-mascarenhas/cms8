@@ -8,7 +8,7 @@ use App\Models\Team;
 class TeamModulesByPricingPlanSyncer
 {
     /**
-     * Enable/disable team modules from Humano pricing plan slug (assistant, business, foundation).
+     * Enable/disable team modules from Humano pricing plan slug (assistant, business, mentor).
      */
     public function syncForHumanoPricingPlan(Team $team, string $planSlug): void
     {
@@ -18,7 +18,7 @@ class TeamModulesByPricingPlanSyncer
             return;
         }
 
-        if (! in_array($planSlug, ['assistant', 'business', 'foundation'], true))
+        if (! in_array($planSlug, ['assistant', 'business', 'mentor'], true))
         {
             return;
         }

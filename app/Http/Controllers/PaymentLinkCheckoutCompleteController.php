@@ -20,7 +20,7 @@ class PaymentLinkCheckoutCompleteController extends Controller
      *
      * @var array<int, string>
      */
-    private const PRICING_PLAN_SLUGS = ['assistant', 'business', 'foundation'];
+    private const PRICING_PLAN_SLUGS = ['assistant', 'business', 'mentor'];
 
     public function __invoke(Request $request, PaymentLinkSignupCompletionService $service): RedirectResponse
     {

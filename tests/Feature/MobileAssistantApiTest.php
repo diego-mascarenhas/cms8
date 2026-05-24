@@ -32,7 +32,7 @@ class MobileAssistantApiTest extends TestCase
         $keys = array_values(array_unique(array_merge(
             config('humano_pricing.plan_team_modules.assistant', []),
             config('humano_pricing.plan_team_modules.business', []),
-            config('humano_pricing.plan_team_modules.foundation', []),
+            config('humano_pricing.plan_team_modules.mentor', []),
         )));
 
         foreach ($keys as $key)

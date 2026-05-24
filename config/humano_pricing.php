@@ -12,7 +12,7 @@ return [
      * | signup_completion (default: payment_link)
      * |   payment_link — Default circuit: after Stripe Payment Link checkout, redirect
      * |     buyers to route('pricing.checkout.complete') with
-     * |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business|foundation). User
+     * |     ?session_id={CHECKOUT_SESSION_ID} (and optional &category=assistant|business|mentor). User
      * |     and team are ensured, then the user is logged in. Set the same URL in the
      * |     Stripe Payment Link "After payment" redirect field.
      * |   register_first — Opt-in legacy: send visitors to /register before paying
@@ -28,24 +28,24 @@ return [
         : 'payment_link',
 
     /*
-     * | Default plan slug when checkout return URL omits &category= (assistant, business, or foundation).
+     * | Default plan slug when checkout return URL omits &category= (assistant, business, or mentor).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
     {
         'business' => 'business',
-        'foundation' => 'foundation',
+        'mentor' => 'mentor',
         default => 'assistant',
     },
 
     /*
      * | Plan slug for the seeded Demo team: {@see TeamDemoSeeder} calls {@see TeamModulesByPricingPlanSyncer}
-     * | with this value (assistant, business, or foundation). Foundation = business modules plus enterprise extras below.
+     * | with this value (assistant, business, or mentor). Mentor = business modules plus enterprise extras below.
      * | Override with HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG.
      */
     'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'assistant'))))
     {
         'business' => 'business',
-        'foundation' => 'foundation',
+        'mentor' => 'mentor',
         default => 'assistant',
     },
 
@@ -68,12 +68,12 @@ return [
 
     /*
      * |--------------------------------------------------------------------------
-     * | Team modules after checkout (by plan id: assistant, business, foundation)
+     * | Team modules after checkout (by plan id: assistant, business, mentor)
      * |--------------------------------------------------------------------------
      * |
      * | Matched via stripe_product_id on the subscription vs plans below.
      * | Each plan lists every module key to enable (business repeats assistant + extras).
-     * | foundation is business plus org, CRM, API, files, support, extended billing, and commerce keys.
+     * | mentor is business plus org, CRM, API, files, support, extended billing, and commerce keys.
      * | Demo team modules follow demo_team_plan_slug above (default: assistant).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
@@ -110,7 +110,7 @@ return [
             'payments',
             'financial',
         ],
-        'foundation' => [
+        'mentor' => [
             'settings',
             'dashboard',
             'calendar',
@@ -160,7 +160,7 @@ return [
      * |   monthly price_1TVoawGelYN536DrEH4gIAsR (99€), yearly price_1TVod6GelYN536DrtCsqOG6d (990€).
      * | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
      * |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
-     * | Humano.app Foundation — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
+     * | Humano.app Mentor — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
      * |   monthly price_1TVofaGelYN536DrGEL9txGS (999€), yearly price_1TVog3GelYN536DryyMGQ0rE (9990€).
      * |
      * | checkout_available (per plan): when false, the public pricing card hides amounts and shows
@@ -203,19 +203,19 @@ return [
             ),
         ],
         [
-            'id' => 'foundation',
+            'id' => 'mentor',
             'checkout_url' => env(
-                'HUMANO_PRICING_FOUNDATION_CHECKOUT_URL',
+                'HUMANO_PRICING_MENTOR_CHECKOUT_URL',
                 'https://buy.stripe.com/4gM4gz3OB0B82fkcyV43S05',
             ),
-            'stripe_product_id' => env('HUMANO_PRICING_FOUNDATION_STRIPE_PRODUCT_ID', 'prod_UUoIeGCxj2MfcL'),
-            'stripe_price_monthly_id' => env('HUMANO_PRICING_FOUNDATION_PRICE_MONTHLY_ID', 'price_1TVofaGelYN536DrGEL9txGS'),
-            'stripe_price_yearly_id' => env('HUMANO_PRICING_FOUNDATION_PRICE_YEARLY_ID', 'price_1TVog3GelYN536DryyMGQ0rE'),
+            'stripe_product_id' => env('HUMANO_PRICING_MENTOR_STRIPE_PRODUCT_ID', 'prod_UUoIeGCxj2MfcL'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_MENTOR_PRICE_MONTHLY_ID', 'price_1TVofaGelYN536DrGEL9txGS'),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_MENTOR_PRICE_YEARLY_ID', 'price_1TVog3GelYN536DryyMGQ0rE'),
             'monthly_amount' => '999',
             'yearly_amount' => '9990',
             'popular' => false,
             'checkout_available' => filter_var(
-                (string) env('HUMANO_PRICING_FOUNDATION_CHECKOUT_AVAILABLE', 'false'),
+                (string) env('HUMANO_PRICING_MENTOR_CHECKOUT_AVAILABLE', 'false'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],

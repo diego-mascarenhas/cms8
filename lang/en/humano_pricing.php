@@ -42,7 +42,7 @@ return [
                 'Team settings and dashboard for operational visibility',
             ],
         ],
-        'foundation' => [
+        'mentor' => [
             'name' => 'Mentor',
             'description' => 'The full stack to automate and grow your business beyond what you thought possible—without hiring more staff.',
             'features' => [

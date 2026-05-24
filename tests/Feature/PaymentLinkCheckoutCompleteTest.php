@@ -61,23 +61,35 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             ->assertSessionHasErrors('category');
     }
 
-    public function test_accepts_foundation_category_query(): void
+    public function test_rejects_foundation_category_query(): void
     {
         config(['humano_pricing.signup_completion' => 'payment_link']);
 
-        $email = 'payment-link-foundation-'.uniqid('', true).'@example.com';
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_foundation',
+            'category' => 'foundation',
+        ]))
+            ->assertRedirect(route('pricing'))
+            ->assertSessionHasErrors('category');
+    }
+
+    public function test_accepts_mentor_category_query(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $email = 'payment-link-mentor-'.uniqid('', true).'@example.com';
 
         $session = Session::constructFrom([
-            'id' => 'cs_test_foundation',
+            'id' => 'cs_test_mentor',
             'object' => 'checkout.session',
             'status' => 'complete',
             'mode' => 'subscription',
             'payment_status' => 'paid',
-            'customer' => 'cus_test_foundation',
-            'subscription' => 'sub_test_foundation',
+            'customer' => 'cus_test_mentor',
+            'subscription' => 'sub_test_mentor',
             'customer_details' => [
                 'email' => $email,
-                'name' => 'Foundation Buyer',
+                'name' => 'Mentor Buyer',
             ],
         ]);
 
@@ -92,8 +104,8 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         });
 
         $this->get(route('pricing.checkout.complete', [
-            'session_id' => 'cs_test_foundation',
-            'category' => 'foundation',
+            'session_id' => 'cs_test_mentor',
+            'category' => 'mentor',
         ]))
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('success')

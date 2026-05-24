@@ -42,7 +42,7 @@ return [
                 'Dashboard y ajustes del equipo para visibilidad operativa',
             ],
         ],
-        'foundation' => [
+        'mentor' => [
             'name' => 'Mentor',
             'description' => 'La solución completa para automatizar todo tu negocio y hacerlo crecer más allá de lo que jamás imaginaste sin necesidad de tener que contratar a más personal.',
             'features' => [

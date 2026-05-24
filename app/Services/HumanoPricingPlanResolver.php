@@ -5,7 +5,7 @@ namespace App\Services;
 class HumanoPricingPlanResolver
 {
     /**
-     * Match a Stripe product id to a `humano_pricing.plans` entry (`assistant`, `business`, `foundation`).
+     * Match a Stripe product id to a `humano_pricing.plans` entry (`assistant`, `business`, `mentor`).
      */
     public function resolvePlanSlugFromStripeProductId(string $stripeProductId): ?string
     {

@@ -2,7 +2,7 @@
 $planImages = [
     'assistant' => 'assets/img/illustrations/page-pricing-basic.png',
     'business' => 'assets/img/illustrations/page-pricing-standard.png',
-    'foundation' => 'assets/img/illustrations/page-pricing-enterprise.png',
+    'mentor' => 'assets/img/illustrations/page-pricing-enterprise.png',
 ];
 @endphp
 
