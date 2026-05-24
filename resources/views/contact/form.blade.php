@@ -248,7 +248,7 @@
                                         <input type="checkbox" class="form-check-input" id="chat_assistant_ai_enabled" name="chat_assistant_ai_enabled" value="1" @checked($waAssistantEnabled)>
                                         <label class="form-check-label" for="chat_assistant_ai_enabled">{{ __('Contact assistant auto-reply (WhatsApp)') }}</label>
                                     </div>
-                                    <small class="text-muted d-block mt-1">{{ __('When off, inbound WhatsApp messages from this number will not receive automatic assistant replies. The team assistant-replies setting must still be on.') }}</small>
+                                    <small class="text-muted d-block mt-1">{{ __('Preference for manual assistant use in chat. Inbound WhatsApp auto-replies are controlled by the team settings in Chat.') }}</small>
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

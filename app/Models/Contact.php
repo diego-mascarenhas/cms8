@@ -72,8 +72,8 @@ class Contact extends Model implements HasMedia
     }
 
     /**
-     * Whether inbound WhatsApp auto-replies from the assistant are allowed for this contact.
-     * When {@see Contact::$data} has no chat_assistant_ai_enabled key, defaults to true (same as chat UI).
+     * Stored per-contact preference for manual chat compose (use-ai toggle). Inbound WhatsApp auto-replies
+     * follow team settings via {@see \App\Services\TeamInboundAssistantPolicy}; this flag does not override them.
      */
     public function allowsInboundChatAssistant(): bool
     {

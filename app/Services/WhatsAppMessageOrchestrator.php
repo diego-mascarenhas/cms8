@@ -246,30 +246,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     }
 
     /**
-     * Whether automatic assistant replies are allowed for this contact (team + contact JSON data).
-     */
-    private function inboundContactAllowsAssistantAutoReply(?int $contactId, ?int $contactTeamId = null): bool
-    {
-        if ($contactId === null)
-        {
-            return true;
-        }
-
-        $teamId = $contactTeamId ?? $this->team?->id;
-        if ($teamId === null)
-        {
-            return true;
-        }
-
-        $contact = Contact::withoutGlobalScopes()
-            ->whereKey($contactId)
-            ->where('team_id', $teamId)
-            ->first();
-
-        return $contact ? $contact->allowsInboundChatAssistant() : true;
-    }
-
-    /**
      * Check if this is the first message of the day from this contact
      */
     private function isFirstMessageToday($phoneNumber)
@@ -993,35 +969,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
-            // Automatic AI response using Claude (enabled when team has "Humano Assistant replies" ON,
-            // or when that is OFF but "admins only when off" is ON and the sender is a team admin/editor).
-            $assistantAutoRespond = $this->team && filter_var(
-                $this->team->getSetting('assistant_auto_respond', '1'),
-                FILTER_VALIDATE_BOOLEAN,
-            );
-            $adminsOnlyWhenAutoRespondOff = $this->team && filter_var(
-                $this->team->getSetting('assistant_auto_respond_admins_when_off', '0'),
-                FILTER_VALIDATE_BOOLEAN,
-            );
+            // Automatic AI response: team settings prevail over per-contact preferences.
             $shouldProcessAutoAi = false;
             if ($channel === 'whatsapp' && $this->team)
             {
-                if ($assistantAutoRespond)
-                {
-                    $shouldProcessAutoAi = true;
-                } elseif ($adminsOnlyWhenAutoRespondOff)
-                {
-                    $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
-                    $earlyUser = app(UserResolverService::class)->resolveUserForConversation(
-                        $cleanFrom,
-                        null,
-                        $assistantTeamIdEarly,
-                    );
-                    if ($assistantTeamIdEarly !== null && $this->inboundWhatsAppUserIsTeamAdministrator($earlyUser, (int) $assistantTeamIdEarly))
-                    {
-                        $shouldProcessAutoAi = true;
-                    }
-                }
+                $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
+                $earlyUser = app(UserResolverService::class)->resolveUserForConversation(
+                    $cleanFrom,
+                    null,
+                    $assistantTeamIdEarly,
+                );
+                $shouldProcessAutoAi = app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
+                    $this->team,
+                    $earlyUser,
+                    $assistantTeamIdEarly,
+                );
             }
             if ($shouldProcessAutoAi)
             {
@@ -1157,25 +1119,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                                 ]);
                             }
                         }
-                    }
-
-                    $contactIdForAssistantPreference = $this->findTeamContactIdByPhoneDigits($cleanFrom, $assistantTeamId)
-                        ?? ($contextContactId !== null ? (int) $contextContactId : null);
-
-                    if (! $this->inboundContactAllowsAssistantAutoReply($contactIdForAssistantPreference, $assistantTeamId))
-                    {
-                        Log::info('Auto AI skipped: contact has assistant disabled in data', [
-                            'from' => $cleanFrom,
-                            'contact_id' => $contactIdForAssistantPreference,
-                            'team_id' => $assistantTeamId,
-                            'webhook_team_id' => $assistantTeamId,
-                        ]);
-
-                        return response()->json([
-                            'status' => 'success',
-                            'conversation_id' => $conversation->id,
-                            'auto_ai_skipped' => 'contact_assistant_disabled',
-                        ]);
                     }
 
                     $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
@@ -3675,25 +3618,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Team WhatsApp line admins/editors (same idea as sheet-import checks), plus global admin/root.
-     */
-    private function inboundWhatsAppUserIsTeamAdministrator(?User $user, int $assistantTeamId): bool
-    {
-        if ($user === null)
-        {
-            return false;
-        }
-        if ($user->hasAnyRole(['admin', 'root']))
-        {
-            return true;
-        }
-        $membership = $user->teams()->where('teams.id', $assistantTeamId)->first();
-        $pivotRole = strtolower((string) ($membership?->pivot?->role ?? ''));
-
-        return in_array($pivotRole, ['admin', 'editor'], true);
     }
 
     /**
