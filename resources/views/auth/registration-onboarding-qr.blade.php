@@ -110,6 +110,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
                 onload="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');"
                 onerror="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');">
             </div>
+            <p class="small text-muted mb-0 mt-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
           </div>
           @else
           <div id="registration-wa-qr-block" class="d-flex flex-column align-items-center mb-4">
@@ -133,11 +134,12 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
                 </div>
               </div>
             </div>
+            <p class="small text-muted mb-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
             <p class="small text-muted mb-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
             <button type="button" id="registration-wa-qr-refresh" class="btn btn-sm btn-outline-secondary mt-1">
               {{ __('auth.registration.qr_whatsapp_refresh') }}
             </button>
-            <p id="registration-wa-qr-refresh-message" class="small text-muted mb-0 mt-2 d-none" role="status"></p>
+            <p id="registration-wa-qr-refresh-message" class="small text-danger mb-0 mt-2 d-none" role="alert"></p>
           </div>
           @endif
           @endif
@@ -168,6 +170,8 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
 @push('scripts')
 <script>
 (function () {
+  var statusUrl = @json(route('chat.whatsapp-status'));
+  var warmupUrl = @json(route('chat.whatsapp-warmup-qr'));
   var refreshUrl = @json(route('chat.whatsapp-refresh-qr'));
   var token = document.querySelector('meta[name="csrf-token"]');
   var btn = document.getElementById('registration-wa-qr-refresh');
@@ -177,6 +181,8 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
   var msgEl = document.getElementById('registration-wa-qr-refresh-message');
   var retryMs = 1100;
   var maxRetries = 36;
+  var serviceErrMsg = @json(__('auth.registration.qr_whatsapp_service_unreachable'));
+  var loadErrMsg = @json(__('auth.registration.qr_whatsapp_load_failed'));
 
   function setLoadingUi(active) {
     if (!qrContainer) return;
@@ -186,6 +192,16 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
       if (fallback) fallback.classList.remove('d-none');
     } else {
       qrContainer.classList.remove('registration-wa-qr-loading');
+    }
+  }
+
+  function showServiceError(text) {
+    setLoadingUi(false);
+    if (qrImg) qrImg.classList.add('d-none');
+    if (fallback) fallback.classList.remove('d-none');
+    if (msgEl) {
+      msgEl.textContent = text || serviceErrMsg;
+      msgEl.classList.remove('d-none');
     }
   }
 
@@ -199,6 +215,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
           setLoadingUi(false);
           qrImg.classList.remove('d-none');
           if (fallback) fallback.classList.add('d-none');
+          if (msgEl) msgEl.classList.add('d-none');
           qrImg.onload = null;
           qrImg.onerror = null;
         } else if (retries < maxRetries) {
@@ -206,9 +223,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
           setLoadingUi(true);
           setTimeout(bumpSrc, retryMs);
         } else {
-          setLoadingUi(false);
-          qrImg.classList.add('d-none');
-          if (fallback) fallback.classList.remove('d-none');
+          showServiceError(loadErrMsg);
           qrImg.onload = null;
           qrImg.onerror = null;
         }
@@ -219,9 +234,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
           setLoadingUi(true);
           setTimeout(bumpSrc, retryMs);
         } else {
-          setLoadingUi(false);
-          qrImg.classList.add('d-none');
-          if (fallback) fallback.classList.remove('d-none');
+          showServiceError(loadErrMsg);
         }
         qrImg.onload = null;
         qrImg.onerror = null;
@@ -232,54 +245,79 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     setTimeout(bumpSrc, 450);
   }
 
-  function postRefreshThenShow(showServerMessage) {
-    if (showServerMessage === undefined) {
-      showServerMessage = false;
-    }
+  function prepareSession(isManual) {
+    return fetch(statusUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && (data.isTeamConnected || data.status === 'connected')) {
+          window.location.reload();
+          return false;
+        }
+        if (data && data.status === 'unreachable') {
+          throw new Error(serviceErrMsg);
+        }
+        if (data && data.status === 'waiting_qr') {
+          return true;
+        }
+        var t = token ? token.getAttribute('content') : '';
+        if (!t) {
+          return true;
+        }
+        var actionUrl = isManual ? refreshUrl : warmupUrl;
+        return fetch(actionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': t,
+          },
+          body: '_token=' + encodeURIComponent(t),
+        }).then(function (r) {
+          return r.json().then(function (payload) {
+            return { ok: r.ok, payload: payload || {} };
+          }).catch(function () {
+            return { ok: r.ok, payload: {} };
+          });
+        }).then(function (result) {
+          if (!result.ok || result.payload.ok === false) {
+            throw new Error(result.payload.message || serviceErrMsg);
+          }
+          if (msgEl && isManual && result.payload.message) {
+            msgEl.textContent = result.payload.message;
+            msgEl.classList.remove('d-none');
+          }
+          return true;
+        });
+      });
+  }
+
+  function startFlow(isManual) {
     if (btn) btn.disabled = true;
     setLoadingUi(true);
-    if (msgEl) {
+    if (msgEl && !isManual) {
       msgEl.textContent = '';
       msgEl.classList.add('d-none');
     }
-    var t = token ? token.getAttribute('content') : '';
-    if (!t) {
-      showRealQr();
-      if (btn) btn.disabled = false;
-      return;
-    }
-    fetch(refreshUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: '_token=' + encodeURIComponent(t)
-    }).then(function (r) {
-      if (!r.ok) throw new Error('refresh failed');
-      return r.json();
-    }).then(function (data) {
-      if (msgEl && data.message && showServerMessage) {
-        msgEl.textContent = data.message;
-        msgEl.classList.remove('d-none');
-      }
-    }).catch(function () {
-      if (msgEl) {
-        msgEl.textContent = @json(__('auth.registration.qr_whatsapp_refresh_failed'));
-        msgEl.classList.remove('d-none');
-      }
-    }).finally(function () {
-      showRealQr();
-      if (btn) btn.disabled = false;
-    });
+    prepareSession(!!isManual)
+      .then(function (shouldPoll) {
+        if (shouldPoll) {
+          showRealQr();
+        }
+      })
+      .catch(function (err) {
+        showServiceError(err && err.message ? err.message : serviceErrMsg);
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
   }
 
-  postRefreshThenShow(false);
+  startFlow(false);
 
   if (btn) {
     btn.addEventListener('click', function () {
-      postRefreshThenShow(true);
+      startFlow(true);
     });
   }
 })();

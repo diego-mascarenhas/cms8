@@ -133,6 +133,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $user->assignRole('admin');
         $teamWa = '34999000111';
         $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
         $clientPhone = '34600555666';
         $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
         $contact = Contact::factory()->create([
@@ -161,7 +162,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'success' => true,
-                'assistant_inbound_enabled' => false,
+                'assistant_inbound_enabled' => true,
                 'assistant_toggle_available' => true,
             ]);
 

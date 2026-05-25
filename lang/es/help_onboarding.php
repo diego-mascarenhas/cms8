@@ -57,7 +57,7 @@ return [
         'Cuando se abra la cámara, apuntá al código QR que aparece en la pantalla de Humano.',
         'Confirmá en el teléfono si WhatsApp te lo pide.',
     ],
-    'step3_refresh' => 'Si el QR tarda en cargar, usá «Actualizar código QR» en la misma pantalla. También podés abrir Chat: el código se renueva al entrar a Chat cuando el conector lo permite.',
+    'step3_refresh' => 'Si el QR tarda en cargar, usá «Actualizar código QR» en la misma pantalla. También podés abrir Chat: el código se renueva al entrar a Chat cuando el conector lo permite. En pantalla verás un aviso de que puede demorar hasta 45 segundos.',
     'step3_connected' => 'Cuando WhatsApp quede vinculado, verás un mensaje de éxito. Entonces podés ir al panel o abrir Chat para probar que llegan y salen mensajes.',
     'step3_cloud_note' => 'En algunos entornos el flujo puede variar y puede no mostrarse QR en esta pantalla. Si no ves QR, contactá soporte.',
 

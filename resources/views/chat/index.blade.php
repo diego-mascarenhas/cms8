@@ -1519,6 +1519,10 @@
         var waTeamWasConnected = {{ ($teamWhatsAppIsConnected ?? false) ? 'true' : 'false' }};
         var waQrRefreshInFlight = false;
         var chatWaQrManualBtn = document.getElementById('chat-whatsapp-qr-refresh-btn');
+        var waStatusUrlForQr = '{{ route("chat.whatsapp-status") }}';
+        var waWarmupUrlForQr = '{{ route("chat.whatsapp-warmup-qr") }}';
+        var waServiceErrMsg = @json(__('auth.registration.qr_whatsapp_service_unreachable'));
+        var waLoadErrMsg = @json(__('auth.registration.qr_whatsapp_load_failed'));
 
         function collectWaQrScopes() {
             var scopes = [];
@@ -1586,42 +1590,50 @@
                 }
             });
 
-            fetch('{{ route("chat.whatsapp-refresh-qr") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': t,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: '_token=' + encodeURIComponent(t),
-            })
-                .then(function (r) {
-                    return r.json().then(function (data) {
-                        return { r: r, data: data && typeof data === 'object' ? data : {} };
-                    }).catch(function () {
-                        return { r: r, data: {} };
+            fetch(waStatusUrlForQr, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (statusData) {
+                    if (statusData && (statusData.isTeamConnected || statusData.status === 'connected')) {
+                        if (typeof applyWaStatus === 'function') {
+                            applyWaStatus(statusData);
+                        }
+                        releaseRefresh();
+                        return null;
+                    }
+                    if (statusData && statusData.status === 'unreachable') {
+                        throw new Error(waServiceErrMsg);
+                    }
+                    if (statusData && statusData.status === 'waiting_qr') {
+                        return { skipPrepare: true };
+                    }
+                    var prepareUrl = isManualTrigger
+                        ? '{{ route("chat.whatsapp-refresh-qr") }}'
+                        : waWarmupUrlForQr;
+                    return fetch(prepareUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': t,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: '_token=' + encodeURIComponent(t),
+                    }).then(function (r) {
+                        return r.json().then(function (data) {
+                            return { r: r, data: data && typeof data === 'object' ? data : {} };
+                        }).catch(function () {
+                            return { r: r, data: {} };
+                        });
+                    }).then(function (payload) {
+                        if (!payload.r.ok || payload.data.ok === false) {
+                            var failMsg = payload.data.message || waServiceErrMsg;
+                            throw new Error(failMsg);
+                        }
+                        return payload;
                     });
                 })
-                .then(function (payload) {
-                    var r = payload.r;
-                    var data = payload.data;
-                    if (!r.ok || data.ok === false) {
-                        var failMsg = (data && data.message) ? data.message : '{{ __("Could not refresh the QR code.") }}';
-                        scopes.forEach(function (s) {
-                            if (s.err) {
-                                s.err.textContent = failMsg;
-                                s.err.classList.remove('d-none');
-                            }
-                            if (s.container) {
-                                s.container.classList.remove('chat-qr-loading');
-                            }
-                            if (s.fallback) {
-                                s.fallback.classList.remove('d-none');
-                            }
-                        });
-                        releaseRefresh();
-
+                .then(function (prepareResult) {
+                    if (prepareResult === null) {
                         return;
                     }
                     var probeImg = scopes[0].img;
@@ -1642,7 +1654,7 @@
                     var maxRetries = 36;
                     var retryMs = 1100;
                     var firstPollDelay = isManualTrigger ? 450 : 1100;
-                    var loadErrMsg = '{{ __("The QR code did not load. Ensure the WhatsApp service is running and reachable from this server.") }}';
+                    var loadErrMsg = waLoadErrMsg;
 
                     function setScopesLoadingUi(active) {
                         scopes.forEach(function (s) {
@@ -1735,8 +1747,8 @@
                     }
                     setTimeout(bumpQrSrc, firstPollDelay);
                 })
-                .catch(function () {
-                    var netMsg = '{{ __("Could not refresh the QR code.") }}';
+                .catch(function (err) {
+                    var netMsg = (err && err.message) ? err.message : waServiceErrMsg;
                     scopes.forEach(function (s) {
                         if (s.container) {
                             s.container.classList.remove('chat-qr-loading');
@@ -1993,6 +2005,7 @@
                                         </div>
                                     </div>
                                     <p id="chat-qr-service-error" class="small text-danger mb-0 mt-2 text-center d-none" role="alert"></p>
+                                    <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
                                     <p class="small text-muted mb-0 text-center">{{ __('auth.registration.qr_whatsapp_refresh_hint') }}</p>
                                     <button type="button" class="btn btn-sm btn-outline-primary w-100" id="chat-whatsapp-qr-refresh-btn">
                                         <i class="ti ti-refresh me-1"></i>{{ __('auth.registration.qr_whatsapp_refresh') }}

@@ -19,6 +19,7 @@ use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
+use App\Services\TeamInboundAssistantPolicy;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
@@ -250,9 +251,11 @@ class ChatController extends Controller
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
             $contact->assistant_toggle_available = $crmProfile !== null;
-            $contact->assistant_inbound_enabled = $crmProfile !== null
-                ? $crmProfile->allowsInboundChatAssistant()
-                : true;
+            $inboundUser = isset($userData) && $userData instanceof User
+                ? $userData
+                : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
+            $contact->assistant_inbound_enabled = app(TeamInboundAssistantPolicy::class)
+                ->allowsWhatsAppAutoReply($team, $inboundUser);
             $contacts->push($contact);
         }
 
@@ -452,14 +455,6 @@ class ChatController extends Controller
         }
 
         $contactChatAiToggleDefault = $userChatAiToggleDefault;
-        if ($selectedContact)
-        {
-            $contactData = $selectedContact->data;
-            if (is_object($contactData) && property_exists($contactData, 'chat_assistant_ai_enabled'))
-            {
-                $contactChatAiToggleDefault = filter_var($contactData->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
-            }
-        }
 
         $presentation = TeamWhatsAppChatPresentation::resolveForTeam(auth()->user()?->currentTeam);
         $whatsappDriver = $presentation['whatsappDriver'];
@@ -785,9 +780,12 @@ class ChatController extends Controller
         $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
         $contact->refresh();
 
+        $inboundUser = $contact->user_id ? User::query()->find($contact->user_id) : null;
+
         return response()->json([
             'success' => true,
-            'assistant_inbound_enabled' => $contact->allowsInboundChatAssistant(),
+            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)
+                ->allowsWhatsAppAutoReply($team, $inboundUser),
             'assistant_toggle_available' => true,
         ]);
     }
@@ -819,7 +817,10 @@ class ChatController extends Controller
 
         return [
             'contact_id' => (int) $crm->id,
-            'assistant_inbound_enabled' => $crm->allowsInboundChatAssistant(),
+            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
+                $team,
+                $crm->user_id ? User::query()->find($crm->user_id) : null,
+            ),
             'assistant_toggle_available' => true,
         ];
     }
@@ -2361,6 +2362,77 @@ class ChatController extends Controller
         }
 
         return redirect()->route('chat.index')->with('success', $message);
+    }
+
+    /**
+     * Start WhatsApp session without /refresh (no credential wipe). Used before polling for the QR image.
+     */
+    public function whatsappWarmupQr(Request $request)
+    {
+        if (config('whatsapp.driver') !== 'local')
+        {
+            return response()->json(['ok' => false], 400);
+        }
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['ok' => false], 401);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $this->authorize('update', $team);
+
+        $baseUrl = $team->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
+        if ($baseUrl === '')
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('The WhatsApp service URL is not configured for this team.'),
+            ], 422);
+        }
+
+        $presentation = TeamWhatsAppChatPresentation::resolveForTeam($team);
+        if ($presentation['teamWhatsAppIsConnected'])
+        {
+            return response()->json(['ok' => true, 'skipped' => 'connected']);
+        }
+
+        $status = $presentation['whatsappStatus'] ?? null;
+        $statusStr = is_array($status) ? (string) ($status['status'] ?? 'disconnected') : 'disconnected';
+        if ($statusStr === 'unreachable')
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 503);
+        }
+        if (in_array($statusStr, ['connected', 'waiting_qr'], true))
+        {
+            return response()->json(['ok' => true, 'skipped' => $statusStr]);
+        }
+
+        $warmupUrl = $baseUrl.'/warmup?team_id='.$team->id;
+
+        try
+        {
+            $warmupResp = \Illuminate\Support\Facades\Http::timeout(15)->connectTimeout(3)->get($warmupUrl);
+        } catch (\Throwable)
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 503);
+        }
+
+        if (! $warmupResp->successful())
+        {
+            return response()->json([
+                'ok' => false,
+                'message' => __('auth.registration.qr_whatsapp_service_unreachable'),
+            ], 502);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     /**

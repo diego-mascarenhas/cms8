@@ -541,6 +541,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('chat.whatsapp-status');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
+    Route::post('/chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('chat.whatsapp-warmup-qr');
     Route::post('/chat/whatsapp-disconnect', [ChatController::class, 'whatsappDisconnect'])->name('chat.whatsapp-disconnect');
     Route::post('/chat/link-current-number', [ChatController::class, 'linkCurrentNumberFromService'])->name('chat.link-current-number');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
