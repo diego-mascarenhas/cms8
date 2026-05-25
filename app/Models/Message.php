@@ -146,7 +146,7 @@ class Message extends Model
         {
             $this->loadMissing('category');
             $query = $this->category
-                ? $this->category->contacts()
+                ? $this->category->contacts()->getQuery()->whereNotNull('email')
                 : Contact::query()->whereRaw('1 = 0');
         } else
         {
