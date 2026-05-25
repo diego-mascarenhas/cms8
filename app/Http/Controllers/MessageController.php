@@ -149,12 +149,11 @@ class MessageController extends Controller
             $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
         }
 
-        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, &$messageModel): void
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, $hasDeliveries, &$messageModel): void
         {
             $payload = [
                 'name' => $validated['name'],
                 'type_id' => $resolvedTypeId,
-                'category_id' => ($data['category_id'] ?? '') ?: null,
                 'contact_status_id' => filled($data['contact_status_id'] ?? null) ? (int) $data['contact_status_id'] : null,
                 'template_id' => $templateId,
                 'text' => $validated['text'],
@@ -171,13 +170,24 @@ class MessageController extends Controller
 
             if ($mailHtml !== null)
             {
-                $payload['mail_html'] = $mailHtml;
+                if (Schema::hasColumn('messages', 'mail_html'))
+                {
+                    $payload['mail_html'] = $mailHtml;
+                } elseif ($templateId !== null && $templateId > 0)
+                {
+                    $this->persistTemplateHtmlToTemplateModel($templateId, $mailHtml);
+                }
             }
 
             $messageModel = Message::updateOrCreate(
                 ['id' => $request->id],
                 $payload,
             );
+
+            if (! $hasDeliveries)
+            {
+                $messageModel->syncMessageCategories($data['message_category_ids'] ?? []);
+            }
         });
 
         $messageId = (int) $messageModel->id;
@@ -302,7 +312,7 @@ class MessageController extends Controller
     public function show(string $id)
     {
         // Obtener el mensaje con relaciones necesarias
-        $message = Message::with(['category', 'deliveries', 'team.settings', 'template'])
+        $message = Message::with(['contactCategories', 'deliveries', 'team.settings', 'template'])
             ->withExists('campaigns')
             ->findOrFail($id);
 
@@ -314,27 +324,7 @@ class MessageController extends Controller
         }
         $emailConfig = $team->getOutgoingEmailConfig();
 
-        // Contar contactos que coinciden con la categoría y estado de contacto del mensaje
-        $contactsInCategory = 0;
-        if ($message->category)
-        {
-            $query = $message->category->contacts();
-
-            // Apply contact status filter if specified in the message
-            if ($message->contact_status_id)
-            {
-                $query->where('status_id', $message->contact_status_id);
-            }
-
-            $contactsInCategory = $query->count();
-        } elseif ($message->contact_status_id)
-        {
-            // If no category but has contact status filter, count all team contacts with that status
-            $contactsInCategory = \App\Models\Contact::where('team_id', $message->team_id)
-                ->where('status_id', $message->contact_status_id)
-                ->whereNotNull('email')
-                ->count();
-        }
+        $contactsInCategory = $message->audienceContactsQuery()->count();
 
         // Obtener estadísticas reales calculadas desde la base de datos (optimizado con una sola query)
         $deliveryStats = MessageDelivery::where('message_id', $message->id)
@@ -443,7 +433,7 @@ class MessageController extends Controller
      */
     public function edit(Request $request, string $id)
     {
-        $data = Message::with(['deliveries', 'team.settings', 'template'])->find($id);
+        $data = Message::with(['contactCategories', 'deliveries', 'team.settings', 'template'])->find($id);
 
         if (! $data)
         {
@@ -1414,13 +1404,10 @@ class MessageController extends Controller
      */
     private function resolvePreviewSampleContact(Message $message): object
     {
-        if ($message->category)
+        $contact = $message->audienceContactsQuery()->first();
+        if ($contact !== null)
         {
-            $contact = $message->category->contacts()->first();
-            if ($contact !== null)
-            {
-                return $contact;
-            }
+            return $contact;
         }
 
         return (object) [
@@ -1680,7 +1667,8 @@ class MessageController extends Controller
             return;
         }
 
-        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0)
+        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
+            && Schema::hasColumn('messages', 'mail_html'))
         {
             if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
             {

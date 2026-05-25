@@ -128,13 +128,53 @@ class MessageAudienceContactsQueryTest extends TestCase
             'type_id' => 1,
             'text' => 'Hi',
             'team_id' => $teamId,
-            'category_id' => $category->id,
             'contact_status_id' => null,
         ]);
+        $message->syncMessageCategories([$category->id]);
 
         $query = $message->audienceContactsQuery();
 
         $this->assertInstanceOf(Builder::class, $query);
         $this->assertSame(['in-category@company.test'], $query->pluck('email')->all());
+    }
+
+    #[Test]
+    public function multiple_categories_union_deduplicates_contacts(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $teamId = (int) $user->ownedTeams()->first()->id;
+
+        $categoryA = Category::factory()->create(['team_id' => $teamId, 'name' => 'Segment A']);
+        $categoryB = Category::factory()->create(['team_id' => $teamId, 'name' => 'Segment B']);
+
+        $shared = Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'shared@company.test',
+        ]);
+
+        $onlyB = Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'only-b@company.test',
+        ]);
+
+        $categoryA->contacts()->attach($shared->id);
+        $categoryB->contacts()->attach([$shared->id, $onlyB->id]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Multi category',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+        ]);
+        $message->syncMessageCategories([$categoryA->id, $categoryB->id]);
+
+        $emails = $message->audienceContactsQuery()->orderBy('email')->pluck('email')->all();
+
+        $this->assertSame(['only-b@company.test', 'shared@company.test'], $emails);
+        $this->assertSame(2, $message->audienceContactsQuery()->count());
     }
 }

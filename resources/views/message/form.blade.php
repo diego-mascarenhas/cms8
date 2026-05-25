@@ -231,13 +231,24 @@ document.addEventListener('DOMContentLoaded', function () {
 				<x-input-general id="name" label="{{ __('Subject') }} (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
+				@php
+					$messageCategorySelected = old(
+						'message_category_ids',
+						isset($data->contactCategories)
+							? $data->contactCategories->pluck('id')->all()
+							: [],
+					);
+				@endphp
 				<x-module-categories-select
-					id="category_id"
+					id="message_category_ids"
+					name="message_category_ids[]"
+					errorKey="message_category_ids"
 					label="{{ __('app.Tags') }}"
 					moduleKey="contacts"
-					:selected="old('category_id', $data->category_id ?? '')"
+					:selected="$messageCategorySelected"
+					:multiple="true"
 					:allowEmpty="true"
-					emptyText="Toda la base de datos"
+					:emptyText="__('app.message_form_categories_all')"
 					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
 				/>
 				@if(isset($data->hasDeliveries) && $data->hasDeliveries)

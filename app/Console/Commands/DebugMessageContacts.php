@@ -31,7 +31,7 @@ class DebugMessageContacts extends Command
         $messageId = $this->argument('messageId');
         $contactEmail = $this->option('contact-email');
 
-        $message = Message::with('category')->find($messageId);
+        $message = Message::with('contactCategories')->find($messageId);
 
         if (! $message)
         {
@@ -43,7 +43,7 @@ class DebugMessageContacts extends Command
         $this->info("📧 Debugging Message: {$message->name}");
         $this->info("   ID: {$message->id}");
         $this->info('   Status: '.($message->status_id ? 'Active' : 'Inactive'));
-        $this->info('   Category: '.($message->category ? $message->category->name : 'None (All contacts)'));
+        $this->info('   Categories: '.$message->contactCategoriesLabel());
         $this->info('   Contact Status Filter: '.($message->contact_status_id ?: '1 (Active)'));
         $this->info('   Min Hours Between Emails: '.($message->min_hours_between_emails ?: 48));
         $this->newLine();
@@ -92,16 +92,17 @@ class DebugMessageContacts extends Command
         $this->info("   Status ID: {$contact->status_id}");
         $this->newLine();
 
-        // Check 1: Category
-        if ($message->category)
+        if ($message->hasContactCategoryFilter())
         {
-            $inCategory = $message->category->contacts()->where('contact_id', $contact->id)->exists();
+            $message->loadMissing('contactCategories');
+            $categoryIds = $message->contactCategories->pluck('id')->all();
+            $inCategory = $contact->categories()->whereIn('categories.id', $categoryIds)->exists();
             if ($inCategory)
             {
-                $this->info("✅ Contact IS in category: {$message->category->name}");
+                $this->info('✅ Contact IS in at least one message category: '.$message->contactCategoriesLabel());
             } else
             {
-                $this->error("❌ Contact is NOT in category: {$message->category->name}");
+                $this->error('❌ Contact is NOT in message categories: '.$message->contactCategoriesLabel());
                 $this->info('   This contact will NOT receive this message.');
 
                 return;

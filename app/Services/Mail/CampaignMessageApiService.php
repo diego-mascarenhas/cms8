@@ -2,6 +2,7 @@
 
 namespace App\Services\Mail;
 
+use App\Models\Category;
 use App\Models\Message;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
@@ -51,10 +52,8 @@ class CampaignMessageApiService
             'id' => $message->id,
             'name' => $message->name,
             'status' => $this->listStatus($message),
-            'category' => $message->category ? [
-                'id' => $message->category->id,
-                'name' => $message->category->name,
-            ] : null,
+            'contact_categories' => $this->formatContactCategories($message),
+            'contact_categories_label' => $message->contactCategoriesLabel(),
             'contact_status' => $message->contactStatus ? [
                 'id' => $message->contactStatus->id,
                 'name' => $message->contactStatus->name,
@@ -93,20 +92,15 @@ class CampaignMessageApiService
             'name' => $message->name,
             'text' => $message->text,
             'status' => $this->listStatus($message),
-            'category' => $message->category ? [
-                'id' => $message->category->id,
-                'name' => $message->category->name,
-            ] : null,
-            'category_label' => $message->category
-                ? $message->category->name
-                : (string) __('All contacts'),
+            'contact_categories' => $this->formatContactCategories($message),
+            'contact_categories_label' => $message->contactCategoriesLabel(),
             'contact_status' => $message->contactStatus ? [
                 'id' => $message->contactStatus->id,
                 'name' => $message->contactStatus->name,
             ] : null,
             'contact_status_label' => $message->contactStatus
                 ? $message->contactStatus->name
-                : (string) __('All statuses'),
+                : (string) __('app.message_form_contact_status_all'),
             'template' => $message->template ? [
                 'id' => $message->template->id,
                 'name' => $message->template->name,
@@ -246,6 +240,22 @@ class CampaignMessageApiService
     private function contactsQueryForMessage(Message $message): Builder
     {
         return $message->audienceContactsQuery();
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    private function formatContactCategories(Message $message): array
+    {
+        $message->loadMissing('contactCategories');
+
+        return $message->contactCategories
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

@@ -2,11 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class UpdateMessageDeliveryStats extends Command
 {
@@ -23,10 +21,7 @@ class UpdateMessageDeliveryStats extends Command
 
         foreach ($messages as $message)
         {
-            $subscribers = Contact::whereHas('categories', function ($q) use ($message)
-            {
-                $q->where('categories.id', $message->category_id);
-            })->count();
+            $subscribers = $message->audienceContactsQuery()->count();
 
             $deliveries = MessageDelivery::where('message_id', $message->id);
             $sent = (clone $deliveries)->whereNotNull('sent_at')->count();

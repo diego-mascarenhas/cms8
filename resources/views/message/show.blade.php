@@ -91,11 +91,13 @@
 					<div class="mb-2"><strong>{{ __('Email') }}:</strong> {{ $emailConfig['from_address'] }}</div>
 				@endif
 				<div class="mb-2">
-					<strong>{{ __('Category') }}:</strong>
-					@if($message->category)
-						<span class="badge bg-label-primary">{{ $message->category->name }}</span>
+					<strong>{{ __('app.Tags') }}:</strong>
+					@if($message->hasContactCategoryFilter())
+						@foreach($message->contactCategories as $contactCategory)
+							<span class="badge bg-label-primary me-1">{{ $contactCategory->name }}</span>
+						@endforeach
 					@else
-						<span class="badge bg-label-secondary">{{ __('All contacts') }}</span>
+						<span class="badge bg-label-secondary">{{ __('app.message_form_categories_all') }}</span>
 					@endif
 				</div>
 				<div class="mb-2">
@@ -103,7 +105,7 @@
 					@if($message->contactStatus)
 						<span class="badge bg-label-success">{{ $message->contactStatus->name }}</span>
 					@else
-						<span class="badge bg-label-secondary">{{ __('All statuses') }}</span>
+						<span class="badge bg-label-secondary">{{ __('app.message_form_contact_status_all') }}</span>
 					@endif
 				</div>
 			</div>

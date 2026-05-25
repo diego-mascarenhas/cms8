@@ -45,7 +45,7 @@ class MessageStoreSaveIntentTest extends TestCase
             'name' => 'Save intent message',
             'text' => 'Alternative text for message body',
             'type_id' => 1,
-            'category_id' => '',
+            'message_category_ids' => [],
             'contact_status_id' => '',
             'min_hours_between_emails' => 48,
             'send_allowed_weekdays' => [1, 2, 3, 4, 5],

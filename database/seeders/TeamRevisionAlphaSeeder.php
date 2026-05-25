@@ -765,13 +765,14 @@ class TeamRevisionAlphaSeeder extends Seeder
                     'text' => 'Hola {{name}}, comunicarte con tus clientes nunca fue tan fácil. Descubre REVISION ALPHA Marketing en https://revisionalpha.com/emailer y nuestras aplicaciones en https://humano.app ¡Te esperamos!',
                     'type_id' => 1,
                     'template_id' => $professionalTemplate->id,
-                    'category_id' => $staffCategory->id,
                     'enable_open_tracking' => true,
                     'enable_click_tracking' => true,
                     'show_unsubscribe' => false,
                     'status_id' => 0,
                 ],
             );
+
+            $message->syncMessageCategories([$staffCategory->id]);
 
             $this->getCommand()->info("✅ Message created for Staff category (Message ID: {$message->id})");
             $this->getCommand()->info("   - Template: {$professionalTemplate->name} (ID: {$professionalTemplate->id})");
