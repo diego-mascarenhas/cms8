@@ -15,7 +15,8 @@
 @section('page-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-kanban.css')}}" />
 <style>
-#project-selector {
+#project-selector,
+#responsible-filter {
 	width: 200px !important;
 }
 .select2-container {
@@ -81,6 +82,20 @@
             document.body.appendChild(el);
         }
 
+        function kanbanFilterUrl() {
+            const params = new URLSearchParams();
+            params.set('view', 'kanban');
+            const responsibleId = $('#responsible-filter').val();
+            if (responsibleId) {
+                params.set('responsible_id', responsibleId);
+            }
+            const projectId = $('#project-selector').val();
+            if (projectId) {
+                params.set('project_id', projectId);
+            }
+            return '{{ route('task.index') }}?' + params.toString();
+        }
+
         // Initialize Select2 on project selector
         const $projectSelector = $('#project-selector');
         if ($projectSelector.length && $.fn.select2) {
@@ -90,14 +105,21 @@
                 dropdownAutoWidth: true
             });
 
-            // Handle project selector change
             $projectSelector.on('change', function() {
-                const projectId = $(this).val();
-                if (projectId) {
-                    window.location.href = '{{ route('task.index') }}?view=kanban&project_id=' + projectId;
-                } else {
-                    window.location.href = '{{ route('task.index') }}?view=kanban';
-                }
+                window.location.href = kanbanFilterUrl();
+            });
+        }
+
+        const $responsibleFilter = $('#responsible-filter');
+        if ($responsibleFilter.length && $.fn.select2) {
+            $responsibleFilter.select2({
+                width: 'resolve',
+                minimumResultsForSearch: 5,
+                dropdownAutoWidth: true
+            });
+
+            $responsibleFilter.on('change', function() {
+                window.location.href = kanbanFilterUrl();
             });
         }
     });
@@ -204,6 +226,18 @@
             </p>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-3 mt-3 mt-md-0">
+            <!-- Responsible filter -->
+            <div class="w-auto">
+                <select class="form-select select2" id="responsible-filter" title="{{ __('Responsible') }}">
+                    <option value="all" {{ ($selectedResponsibleFilter ?? '') === 'all' ? 'selected' : '' }}>{{ __('All') }}</option>
+                    @foreach($users as $teamUser)
+                        <option value="{{ $teamUser['id'] }}" {{ (string) ($selectedResponsibleFilter ?? auth()->id()) === (string) $teamUser['id'] ? 'selected' : '' }}>
+                            {{ $teamUser['name'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             @if (auth()->user()->currentTeam->hasModule('projects'))
             <!-- Project Selector -->
             <div class="w-auto">

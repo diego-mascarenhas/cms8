@@ -76,6 +76,13 @@ class TaskController extends Controller
 
         $projectBoardIds = $project ? [] : Project::whereNotNull('board_id')->pluck('board_id')->unique()->values()->all();
 
+        $selectedResponsibleFilter = $request->query('responsible_id', (string) auth()->id());
+        $responsibleFilterId = null;
+        if ($selectedResponsibleFilter !== 'all' && $selectedResponsibleFilter !== '')
+        {
+            $responsibleFilterId = (int) $selectedResponsibleFilter;
+        }
+
         // Get tasks grouped by status
         $tasksByStatus = [];
         foreach ($statuses as $status)
@@ -86,6 +93,10 @@ class TaskController extends Controller
             if (! $project && ! empty($projectBoardIds))
             {
                 $query->whereNotIn('board_id', $projectBoardIds);
+            }
+            if ($responsibleFilterId !== null)
+            {
+                $query->where('responsible_id', $responsibleFilterId);
             }
             $tasks = $query->orderBy('order')->get();
 
@@ -153,6 +164,18 @@ class TaskController extends Controller
             ->get()
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'profile_photo_url' => $u->profile_photo_url ?? null]);
 
+        $users = collect($users);
+        if (! $users->contains('id', auth()->id()))
+        {
+            $currentUser = auth()->user();
+            $users->push([
+                'id' => $currentUser->id,
+                'name' => $currentUser->name,
+                'profile_photo_url' => $currentUser->profile_photo_url ?? null,
+            ]);
+        }
+        $users = $users->sortBy('name')->values();
+
         $categories = class_exists(Category::class)
             ? Category::query()
                 ->whereHas('module', function ($q)
@@ -181,7 +204,7 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board', 'users', 'categories', 'projects'));
+        return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board', 'users', 'categories', 'projects', 'selectedResponsibleFilter'));
     }
 
     public function getActivities($taskId)
