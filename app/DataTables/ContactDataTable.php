@@ -162,28 +162,79 @@ class ContactDataTable extends DataTable
             ->parameters([
                 'initComplete' => "function() {
 					var api = this.api();
+
+					function syncContactListToolbarSelect2() {
+						var emotionalVal = $('#EmotionalState').val();
+						if (emotionalVal) {
+							$('#EmotionalState').val(emotionalVal).trigger('change.select2');
+						}
+						var categoryVal = $('#CategoryFilter').val();
+						if (categoryVal) {
+							$('#CategoryFilter').val(categoryVal).trigger('change.select2');
+						}
+					}
+
 					api.columns('.select-filter').every(function() {
 						var column = this;
-						$('#EmotionalState').on('change', function() {
-							var val = $.fn.dataTable.util.escapeRegex($(this).val());
+						$('#EmotionalState').off('change.contactFilter').on('change.contactFilter', function() {
+							var val = $(this).val();
 							column.search(val ? val : '', true, false).draw();
 						});
-
-						$('.filter-status').on('click', function(e) {
-							e.preventDefault();
-							var status = $(this).data('status');
-							api.column('status_id:name').search(status).draw();
-						});
 					});
+
+					$('#CategoryFilter').off('change.contactFilter').on('change.contactFilter', function() {
+						var val = $(this).val();
+						api.column('.category-filter').search(val ? val : '', true, false).draw();
+					});
+
+					$('.filter-status').off('click.contactFilter').on('click.contactFilter', function(e) {
+						e.preventDefault();
+						api.column('status_id:name').search($(this).data('status')).draw();
+					});
+
+					var savedEmotional = sessionStorage.getItem('contact_list_emotional_state');
+					var savedCategory = sessionStorage.getItem('contact_list_category');
+					if (savedEmotional) {
+						$('#EmotionalState').val(savedEmotional).trigger('change.select2');
+						api.columns('.select-filter').search(savedEmotional, true, false);
+					}
+					if (savedCategory) {
+						$('#CategoryFilter').val(savedCategory).trigger('change.select2');
+						api.column('.category-filter').search(savedCategory, true, false);
+					}
+					if (savedEmotional || savedCategory) {
+						api.draw();
+					}
+
+					$('#EmotionalState').off('change.contactFilterPersist').on('change.contactFilterPersist', function() {
+						var val = $(this).val();
+						if (val) {
+							sessionStorage.setItem('contact_list_emotional_state', val);
+						} else {
+							sessionStorage.removeItem('contact_list_emotional_state');
+						}
+					});
+
+					$('#CategoryFilter').off('change.contactFilterPersist').on('change.contactFilterPersist', function() {
+						var val = $(this).val();
+						if (val) {
+							sessionStorage.setItem('contact_list_category', val);
+						} else {
+							sessionStorage.removeItem('contact_list_category');
+						}
+					});
+
+					syncContactListToolbarSelect2();
 				}",
                 'drawCallback' => "function() {
-					$('#EmotionalState').off('change').on('change', function() {
-						$('#contact-table').DataTable().columns('.select-filter').search($(this).val()).draw();
-					});
-					$('#CategoryFilter').off('change').on('change', function() {
-						let selectedValue = $(this).val();
-						$('#contact-table').DataTable().column(5).search(selectedValue ? selectedValue : '', true, false).draw();
-					});
+					var emotionalVal = $('#EmotionalState').val();
+					if (emotionalVal) {
+						$('#EmotionalState').val(emotionalVal).trigger('change.select2');
+					}
+					var categoryVal = $('#CategoryFilter').val();
+					if (categoryVal) {
+						$('#CategoryFilter').val(categoryVal).trigger('change.select2');
+					}
 				}",
             ]);
     }
