@@ -205,6 +205,36 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     }
   }
 
+  function waitForWhatsAppQrReady(maxAttempts, intervalMs) {
+    maxAttempts = maxAttempts || 45;
+    intervalMs = intervalMs || 800;
+    return new Promise(function (resolve) {
+      var attempts = 0;
+      function poll() {
+        fetch(statusUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && (data.isTeamConnected || data.status === 'connected')) {
+              window.location.reload();
+              return;
+            }
+            if (data && data.status === 'waiting_qr') {
+              resolve();
+              return;
+            }
+            attempts += 1;
+            if (attempts >= maxAttempts) {
+              resolve();
+              return;
+            }
+            setTimeout(poll, intervalMs);
+          })
+          .catch(function () { resolve(); });
+      }
+      poll();
+    });
+  }
+
   function showRealQr() {
     if (!qrImg || !qrImg.dataset.qrBase) return;
     var retries = 0;
@@ -257,11 +287,11 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
           throw new Error(serviceErrMsg);
         }
         if (data && data.status === 'waiting_qr') {
-          return true;
+          return { poll: true, qrReady: true };
         }
         var t = token ? token.getAttribute('content') : '';
         if (!t) {
-          return true;
+          return { poll: true, qrReady: false };
         }
         var actionUrl = isManual ? refreshUrl : warmupUrl;
         return fetch(actionUrl, {
@@ -287,7 +317,7 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
             msgEl.textContent = result.payload.message;
             msgEl.classList.remove('d-none');
           }
-          return true;
+          return { poll: true, qrReady: false };
         });
       });
   }
@@ -300,9 +330,17 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
       msgEl.classList.add('d-none');
     }
     prepareSession(!!isManual)
-      .then(function (shouldPoll) {
-        if (shouldPoll) {
+      .then(function (result) {
+        if (!result || !result.poll) {
+          return;
+        }
+        function beginImagePoll() {
           showRealQr();
+        }
+        if (result.qrReady) {
+          beginImagePoll();
+        } else {
+          waitForWhatsAppQrReady().then(beginImagePoll);
         }
       })
       .catch(function (err) {

@@ -1544,6 +1544,51 @@
             return scopes;
         }
 
+        function waitForWhatsAppQrReady(maxAttempts, intervalMs) {
+            maxAttempts = maxAttempts || 45;
+            intervalMs = intervalMs || 800;
+
+            return new Promise(function (resolve)
+            {
+                var attempts = 0;
+
+                function poll()
+                {
+                    fetch(waStatusUrlForQr, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data)
+                        {
+                            if (data && (data.isTeamConnected || data.status === 'connected'))
+                            {
+                                window.location.reload();
+
+                                return;
+                            }
+                            if (data && data.status === 'waiting_qr')
+                            {
+                                resolve();
+
+                                return;
+                            }
+                            attempts += 1;
+                            if (attempts >= maxAttempts)
+                            {
+                                resolve();
+
+                                return;
+                            }
+                            setTimeout(poll, intervalMs);
+                        })
+                        .catch(function ()
+                        {
+                            resolve();
+                        });
+                }
+
+                poll();
+            });
+        }
+
         function runWhatsappQrServerRefreshAndPoll(isManualTrigger) {
             if (isManualTrigger === undefined) {
                 isManualTrigger = false;
@@ -1604,7 +1649,7 @@
                         throw new Error(waServiceErrMsg);
                     }
                     if (statusData && statusData.status === 'waiting_qr') {
-                        return { skipPrepare: true };
+                        return { qrReady: true };
                     }
                     var prepareUrl = isManualTrigger
                         ? '{{ route("chat.whatsapp-refresh-qr") }}'
@@ -1653,7 +1698,6 @@
                     var qrRetries = 0;
                     var maxRetries = 36;
                     var retryMs = 1100;
-                    var firstPollDelay = isManualTrigger ? 450 : 1100;
                     var loadErrMsg = waLoadErrMsg;
 
                     function setScopesLoadingUi(active) {
@@ -1745,7 +1789,16 @@
                             probeImg.src = src;
                         }, 0);
                     }
-                    setTimeout(bumpQrSrc, firstPollDelay);
+
+                    function startQrImagePoll() {
+                        setTimeout(bumpQrSrc, 450);
+                    }
+
+                    if (prepareResult.qrReady) {
+                        startQrImagePoll();
+                    } else {
+                        waitForWhatsAppQrReady().then(startQrImagePoll);
+                    }
                 })
                 .catch(function (err) {
                     var netMsg = (err && err.message) ? err.message : waServiceErrMsg;
