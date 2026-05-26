@@ -12,7 +12,6 @@ $configData = Helper::appClasses();
 
 @section('page-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/front-page-landing.css') }}" />
-<link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/front-page-pricing.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -21,7 +20,6 @@ $configData = Helper::appClasses();
 
 @section('page-script')
 <script src="{{ asset('assets/js/front-page-landing.js') }}"></script>
-<script src="{{ asset('assets/js/front-page-pricing.js') }}"></script>
 @endsection
 
 @section('content')
@@ -35,9 +33,6 @@ $configData = Helper::appClasses();
             El sistema operativo de tu negocio digital.<br class="d-none d-lg-block" />
             Contactos, WhatsApp, IA y procesos sin depender del mega excel.
           </h2>
-          <div class="landing-hero-btn d-inline-block position-relative">
-            <a href="#landingPricing" class="btn btn-primary btn-lg me-2 mb-2">Ver planes</a>
-          </div>
         </div>
         <div id="heroDashboardAnimation" class="hero-animation-img">
           <div id="heroAnimationImg" class="position-relative hero-dashboard-img">
@@ -108,24 +103,7 @@ $configData = Helper::appClasses();
     </div>
   </section>
 
-  <section class="section-py bg-body">
-    <div class="container">
-      <div class="row align-items-center gy-5">
-        <div class="col-lg-6">
-          <span class="badge bg-label-primary mb-3">El empleado del mes</span>
-          <h3 class="mb-3"><span class="section-title">Todos los meses</span></h3>
-          <p class="mb-0 text-body">
-            Si perdés el día con formularios y configuraciones en vez de estar con tus clientes, Humano.app es tu empleado secreto para el trabajo aburrido — con un consultor de IA que te acompaña siempre.
-          </p>
-        </div>
-        <div class="col-lg-6 text-center">
-          <img src="{{ asset('assets/img/front-pages/landing-page/cta-dashboard.png') }}" alt="Humano.app" class="img-fluid" />
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="landingManuals" class="section-py bg-white landing-reviews pb-0">
+  <section id="landingManuals" class="section-py bg-body landing-reviews pb-0">
     <div class="container">
       <div class="row align-items-center gx-0 gy-4 g-lg-5">
         <div class="col-md-6 col-lg-5 col-xl-3">
@@ -176,16 +154,6 @@ $configData = Helper::appClasses();
           </div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <section id="landingPricing" class="section-py bg-body landing-pricing">
-    <div class="container">
-      @include('content.front-pages.partials.humano-pricing-plans', [
-        'plans' => $plans,
-        'showPageHeader' => true,
-        'showFlashAlerts' => false,
-      ])
     </div>
   </section>
 
