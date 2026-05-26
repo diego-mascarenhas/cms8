@@ -163,48 +163,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
     </div>
   </section>
 
-  <section id="landingFunFacts" class="section-py landing-fun-facts">
-    <div class="container">
-      <div class="row gy-3">
-        <div class="col-sm-6 col-lg-3">
-          <div class="card border border-label-primary shadow-none">
-            <div class="card-body text-center">
-              <img src="{{ $humanoImg('icons/laptop.png') }}" alt="" class="mb-2" />
-              <h5 class="h2 mb-1">100%</h5>
-              <p class="fw-medium mb-0">Tus datos,<br />siempre exportables</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="card border border-label-success shadow-none">
-            <div class="card-body text-center">
-              <img src="{{ $humanoImg('icons/user-success.png') }}" alt="" class="mb-2" />
-              <h5 class="h2 mb-1">24/7</h5>
-              <p class="fw-medium mb-0">Nube y acceso<br />desde cualquier sitio</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="card border border-label-info shadow-none">
-            <div class="card-body text-center">
-              <img src="{{ $humanoImg('icons/diamond-info.png') }}" alt="" class="mb-2" />
-              <h5 class="h2 mb-1">IA</h5>
-              <p class="fw-medium mb-0">Consultor<br />personalizado</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="card border border-label-warning shadow-none">
-            <div class="card-body text-center">
-              <img src="{{ $humanoImg('icons/check-warning.png') }}" alt="" class="mb-2" />
-              <h5 class="h2 mb-1">WA</h5>
-              <p class="fw-medium mb-0">Control por<br />WhatsApp</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  @include('homes.humano.partials.plan-showcase')
 
   <section id="landingFAQ" class="section-py bg-body landing-faq">
     <div class="container">

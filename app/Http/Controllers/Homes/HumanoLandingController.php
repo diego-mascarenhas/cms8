@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Homes;
 
 use App\Http\Controllers\Controller;
+use App\Services\HumanoPricingPlanResolver;
 use App\Support\HumanoHomeAsset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -34,6 +35,7 @@ class HumanoLandingController extends Controller
         return view('homes.humano.landing', [
             'pageConfigs' => ['myLayout' => 'front'],
             'guidePresentations' => self::guidePresentations(),
+            'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForDisplay(),
         ]);
     }
 }

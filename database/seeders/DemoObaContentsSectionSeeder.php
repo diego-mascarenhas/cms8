@@ -122,7 +122,7 @@ class DemoObaContentsSectionSeeder extends Seeder
         }
 
         $planSlug = (string) config('humano_pricing.demo_team_plan_slug', 'assistant');
-        if (! in_array($planSlug, ['assistant', 'business', 'mentor'], true))
+        if (! in_array($planSlug, array_keys(config('humano_pricing.plan_team_modules', [])), true))
         {
             $planSlug = 'assistant';
         }

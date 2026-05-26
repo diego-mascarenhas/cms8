@@ -21,6 +21,10 @@ return [
     'coupon_copied' => 'Copied',
     'staging_note' => 'Staging prices — production links can be swapped via environment variables.',
     'most_popular' => 'Most popular',
+    'landing_plans_badge' => 'Plans',
+    'landing_plans_title' => 'What each plan includes',
+    'landing_plans_subtitle' => 'Compare modules and capabilities. Pricing and checkout live on the plans page.',
+    'landing_plans_cta' => 'View plans and pricing',
     'plans' => [
         'assistant' => [
             'name' => 'Assistant',
@@ -28,15 +32,24 @@ return [
             'features' => [
                 'WhatsApp chat and saved prompts aligned with your brand voice',
                 'Calendar, contacts, and tasks in one workflow',
+                'Today view and settings for day-to-day operations',
+            ],
+        ],
+        'hunter' => [
+            'name' => 'Hunter',
+            'description' => 'Everything in Assistant, plus tools to capture and nurture leads with integrated email marketing and landing pages.',
+            'features' => [
+                'Everything in the Assistant plan',
                 'Prospecting plus automation for repetitive work',
-                'Mailer, landing pages, and dashboard to stay close to customers',
+                'Mailer for email follow-up',
+                'Landing pages to turn visits into contacts',
             ],
         ],
         'business' => [
             'name' => 'Business',
             'description' => 'Run your digital operations in one AI-assisted platform without losing the human touch that sets you apart.',
             'features' => [
-                'Everything in Assistant, plus campaigns and sales funnel',
+                'Everything in Hunter, plus campaigns and sales funnel',
                 'Invoices, payments, and financial reporting in one place',
                 'Linked marketing, sales, and collections without tool-hopping',
                 'Team settings and dashboard for operational visibility',

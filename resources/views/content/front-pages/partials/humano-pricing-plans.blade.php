@@ -3,6 +3,7 @@ $showPageHeader = $showPageHeader ?? true;
 $showFlashAlerts = $showFlashAlerts ?? true;
 $planImages = $planImages ?? [
     'assistant' => 'assets/img/illustrations/page-pricing-basic.png',
+    'hunter' => 'assets/img/illustrations/page-pricing-basic.png',
     'business' => 'assets/img/illustrations/page-pricing-standard.png',
     'mentor' => 'assets/img/illustrations/page-pricing-enterprise.png',
 ];
@@ -66,7 +67,7 @@ $planImages = $planImages ?? [
       $highlightPopular = $checkoutAvailable && ! empty($plan['popular']);
       $cardBorder = $highlightPopular ? 'border-primary border' : 'border rounded';
     @endphp
-    <div class="col-lg-4 mb-md-0 mb-4" id="plan-{{ $id }}">
+    <div class="col-md-6 col-xl-3 mb-md-0 mb-4" id="plan-{{ $id }}">
       <div class="card {{ $cardBorder }} shadow-none h-100 d-flex flex-column">
         <div class="card-body d-flex flex-column flex-grow-1">
           @if ($highlightPopular)
