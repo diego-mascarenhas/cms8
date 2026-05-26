@@ -217,8 +217,10 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
           <p class="fw-medium mb-4">Hacemos la tecnología amigable. Hablamos como personas normales.</p>
           <a href="{{ route('pricing') }}" class="btn btn-lg btn-primary mb-2">Ver precios</a>
         </div>
-        <div class="col-lg-6 pt-lg-5 text-center text-lg-end">
-          <img src="{{ $humanoImg('landing-page/cta-dashboard.png') }}" alt="" class="img-fluid" />
+        <div class="col-lg-6 pt-lg-5 text-center text-lg-end d-flex align-items-end justify-content-center justify-content-lg-end">
+          <div class="landing-cta-panel-mask">
+            <img src="{{ $humanoImg('landing-page/hero-elements-dark.png') }}" alt="Panel Humano" class="landing-cta-panel-shot" width="1024" height="696" loading="lazy" decoding="async" />
+          </div>
         </div>
       </div>
     </div>
