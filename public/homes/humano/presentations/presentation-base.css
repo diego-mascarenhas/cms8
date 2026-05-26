@@ -36,7 +36,8 @@ body{background:#06050f;font-family:var(--font);overflow:hidden;
 .hdr{position:absolute;top:42px;left:84px;right:84px;display:flex;
  justify-content:space-between;align-items:center;z-index:5}
 .brand{display:flex;align-items:center}
-.brand-logo{height:28px;width:auto;display:block}
+.brand-logo{height:28px;width:auto;min-width:80px;display:block;object-fit:contain;
+ filter:drop-shadow(0 2px 12px rgba(0,0,0,.35))}
 .hdr-r{font-size:12.5px;letter-spacing:3.4px;color:var(--muted2);font-weight:600}
 .ftr{position:absolute;bottom:40px;left:84px;right:84px;display:flex;
  justify-content:space-between;align-items:center;z-index:5;
