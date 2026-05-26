@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Homes;
 
 use App\Http\Controllers\Controller;
+use App\Support\HumanoHomeAsset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -15,7 +16,7 @@ class HumanoLandingController extends Controller
     {
         return [
             [
-                'url' => url('/homes/humano/presentations/primeros-pasos.html'),
+                'url' => HumanoHomeAsset::url('presentations/primeros-pasos.html'),
                 'title' => __('Primeros pasos'),
                 'subtitle' => __('Cómo funciona Humano'),
                 'description' => __('Presentación interactiva: configuración del negocio, onboarding y módulos principales.'),

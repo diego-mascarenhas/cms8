@@ -1,5 +1,9 @@
 @php
+use App\Support\HumanoHomeAsset;
+
 $configData = Helper::appClasses();
+$humanoImg = static fn (string $path): string => HumanoHomeAsset::url('img/'.$path);
+$heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 @endphp
 
 @extends('layouts/layoutMaster')
@@ -7,19 +11,19 @@ $configData = Helper::appClasses();
 @section('title', 'Humano.app — El sistema operativo de tu negocio digital')
 
 @section('vendor-style')
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/swiper/swiper.css') }}" />
+<link rel="stylesheet" href="{{ HumanoHomeAsset::url('vendor/swiper/swiper.css') }}" />
 @endsection
 
 @section('page-style')
-<link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/front-page-landing.css') }}" />
+<link rel="stylesheet" href="{{ HumanoHomeAsset::url('css/landing.css') }}" />
 @endsection
 
 @section('vendor-script')
-<script src="{{ asset('assets/vendor/libs/swiper/swiper.js') }}"></script>
+<script src="{{ HumanoHomeAsset::url('vendor/swiper/swiper.js') }}"></script>
 @endsection
 
 @section('page-script')
-<script src="{{ asset('assets/js/front-page-landing.js') }}"></script>
+<script src="{{ HumanoHomeAsset::url('js/landing.js') }}"></script>
 @endsection
 
 @section('content')
@@ -36,8 +40,8 @@ $configData = Helper::appClasses();
         </div>
         <div id="heroDashboardAnimation" class="hero-animation-img">
           <div id="heroAnimationImg" class="position-relative hero-dashboard-img">
-            <img src="{{ asset('assets/img/front-pages/landing-page/hero-dashboard-'.$configData['style'].'.png') }}" alt="Panel Humano" class="animation-img" data-app-light-img="front-pages/landing-page/hero-dashboard-light.png" data-app-dark-img="front-pages/landing-page/hero-dashboard-dark.png" />
-            <img src="{{ asset('assets/img/front-pages/landing-page/hero-elements-'.$configData['style'].'.png') }}" alt="" class="position-absolute hero-elements-img animation-img top-0 start-0" data-app-light-img="front-pages/landing-page/hero-elements-light.png" data-app-dark-img="front-pages/landing-page/hero-elements-dark.png" />
+            <img src="{{ $humanoImg('landing-page/hero-dashboard-'.$heroImageStyle.'.png') }}" alt="Panel Humano" class="animation-img humano-landing-hero-img" data-humano-light-img="{{ $humanoImg('landing-page/hero-dashboard-light.png') }}" data-humano-dark-img="{{ $humanoImg('landing-page/hero-dashboard-dark.png') }}" />
+            <img src="{{ $humanoImg('landing-page/hero-elements-'.$heroImageStyle.'.png') }}" alt="" class="position-absolute hero-elements-img animation-img top-0 start-0 humano-landing-hero-img" data-humano-light-img="{{ $humanoImg('landing-page/hero-elements-light.png') }}" data-humano-dark-img="{{ $humanoImg('landing-page/hero-elements-dark.png') }}" />
           </div>
         </div>
       </div>
@@ -59,42 +63,42 @@ $configData = Helper::appClasses();
       <div class="features-icon-wrapper row gx-0 gy-4 g-sm-5">
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/laptop.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/laptop.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Sin el mega excel</h5>
           <p class="features-icon-description">Dejá macros opacos y permisos confusos. Toda la empresa ve la misma información con roles claros.</p>
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/check.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/check.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Los datos son tuyos</h5>
           <p class="features-icon-description">Servidores en Europa. Exportá y llevate tus datos cuando quieras, sin límites.</p>
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/rocket.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/rocket.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Menos gestión, más vida</h5>
           <p class="features-icon-description">Procesos probados sin inventarlos vos. Humano.app acelera la operativa desde el primer día.</p>
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/paper.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/paper.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Sistema en la nube</h5>
           <p class="features-icon-description">Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.</p>
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/user.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/user.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Control por WhatsApp</h5>
           <p class="features-icon-description">Gestioná tu negocio desde WhatsApp. Vos das las órdenes, Humano.app responde.</p>
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ asset('assets/img/front-pages/icons/keyboard.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/keyboard.png') }}" alt="" />
           </div>
           <h5 class="mb-3">Consultor IA personalizado</h5>
           <p class="features-icon-description">Respuestas útiles para tu negocio y tu equipo, con tu tono de marca.</p>
@@ -151,6 +155,8 @@ $configData = Helper::appClasses();
                 @endforeach
               </div>
             </div>
+            <div class="swiper-button-next d-none" aria-hidden="true"></div>
+            <div class="swiper-button-prev d-none" aria-hidden="true"></div>
           </div>
         </div>
       </div>
@@ -163,7 +169,7 @@ $configData = Helper::appClasses();
         <div class="col-sm-6 col-lg-3">
           <div class="card border border-label-primary shadow-none">
             <div class="card-body text-center">
-              <img src="{{ asset('assets/img/front-pages/icons/laptop.png') }}" alt="" class="mb-2" />
+              <img src="{{ $humanoImg('icons/laptop.png') }}" alt="" class="mb-2" />
               <h5 class="h2 mb-1">100%</h5>
               <p class="fw-medium mb-0">Tus datos,<br />siempre exportables</p>
             </div>
@@ -172,7 +178,7 @@ $configData = Helper::appClasses();
         <div class="col-sm-6 col-lg-3">
           <div class="card border border-label-success shadow-none">
             <div class="card-body text-center">
-              <img src="{{ asset('assets/img/front-pages/icons/user-success.png') }}" alt="" class="mb-2" />
+              <img src="{{ $humanoImg('icons/user-success.png') }}" alt="" class="mb-2" />
               <h5 class="h2 mb-1">24/7</h5>
               <p class="fw-medium mb-0">Nube y acceso<br />desde cualquier sitio</p>
             </div>
@@ -181,7 +187,7 @@ $configData = Helper::appClasses();
         <div class="col-sm-6 col-lg-3">
           <div class="card border border-label-info shadow-none">
             <div class="card-body text-center">
-              <img src="{{ asset('assets/img/front-pages/icons/diamond-info.png') }}" alt="" class="mb-2" />
+              <img src="{{ $humanoImg('icons/diamond-info.png') }}" alt="" class="mb-2" />
               <h5 class="h2 mb-1">IA</h5>
               <p class="fw-medium mb-0">Consultor<br />personalizado</p>
             </div>
@@ -190,7 +196,7 @@ $configData = Helper::appClasses();
         <div class="col-sm-6 col-lg-3">
           <div class="card border border-label-warning shadow-none">
             <div class="card-body text-center">
-              <img src="{{ asset('assets/img/front-pages/icons/check-warning.png') }}" alt="" class="mb-2" />
+              <img src="{{ $humanoImg('icons/check-warning.png') }}" alt="" class="mb-2" />
               <h5 class="h2 mb-1">WA</h5>
               <p class="fw-medium mb-0">Control por<br />WhatsApp</p>
             </div>
@@ -210,7 +216,7 @@ $configData = Helper::appClasses();
       <div class="row gy-5">
         <div class="col-lg-5">
           <div class="text-center">
-            <img src="{{ asset('assets/img/front-pages/landing-page/faq-boy-with-logos.png') }}" alt="" class="faq-image" />
+            <img src="{{ $humanoImg('landing-page/faq-boy-with-logos.png') }}" alt="" class="faq-image" />
           </div>
         </div>
         <div class="col-lg-7">
@@ -254,7 +260,7 @@ $configData = Helper::appClasses();
           <a href="{{ route('pricing') }}" class="btn btn-lg btn-primary mb-2">Ver precios</a>
         </div>
         <div class="col-lg-6 pt-lg-5 text-center text-lg-end">
-          <img src="{{ asset('assets/img/front-pages/landing-page/cta-dashboard.png') }}" alt="" class="img-fluid" />
+          <img src="{{ $humanoImg('landing-page/cta-dashboard.png') }}" alt="" class="img-fluid" />
         </div>
       </div>
     </div>
