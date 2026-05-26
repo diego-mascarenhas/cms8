@@ -17,6 +17,7 @@ class HumanoLandingTest extends TestCase
             ->assertSee('landingPlans', false)
             ->assertDontSee('landingFunFacts', false)
             ->assertSee('#landingManuals', false)
+            ->assertSee('#landingPlans', false)
             ->assertSee('#landingFAQ', false)
             ->assertSee(__('Primeros pasos'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/primeros-pasos.html'), false)

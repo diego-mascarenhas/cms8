@@ -13,7 +13,7 @@
         ],
         [
             'label' => 'Planes',
-            'url' => route('pricing'),
+            'url' => $onLanding ? '#landingPlans' : $landingUrl.'#landingPlans',
         ],
         [
             'label' => 'FAQ',
