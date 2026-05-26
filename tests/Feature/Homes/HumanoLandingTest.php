@@ -21,6 +21,8 @@ class HumanoLandingTest extends TestCase
             ->assertSee('#landingFAQ', false)
             ->assertSee(__('Primeros pasos'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/primeros-pasos.html'), false)
+            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/chat-contactos-modulos.html'), false)
+            ->assertSee('Chat, contactos y módulos', false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('css/landing.css'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee(route('pricing'), false)

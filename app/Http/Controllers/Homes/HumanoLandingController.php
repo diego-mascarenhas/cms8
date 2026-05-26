@@ -20,7 +20,13 @@ class HumanoLandingController extends Controller
                 'url' => HumanoHomeAsset::url('presentations/primeros-pasos.html'),
                 'title' => __('Primeros pasos'),
                 'subtitle' => __('Cómo funciona Humano'),
-                'description' => __('Presentación interactiva: configuración del negocio, onboarding y módulos principales.'),
+                'description' => __('Configuración del negocio en seis pasos: marca, contacto, desafío e informe.'),
+            ],
+            [
+                'url' => HumanoHomeAsset::url('presentations/chat-contactos-modulos.html'),
+                'title' => __('Chat, contactos y módulos'),
+                'subtitle' => __('El día a día en el panel'),
+                'description' => __('Conversaciones, agenda de contactos y herramientas según tu plan.'),
             ],
         ];
     }
