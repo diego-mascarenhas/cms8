@@ -18,6 +18,14 @@ class Landing extends Controller
         return view('content.front-pages.humano-landing-page', [
             'pageConfigs' => $pageConfigs,
             'plans' => $this->pricingPlanResolver->plansForDisplay(),
+            'guidePresentations' => [
+                [
+                    'url' => url('/humano-presentacion.html'),
+                    'title' => __('Primeros pasos'),
+                    'subtitle' => __('Cómo funciona Humano'),
+                    'description' => __('Presentación interactiva: configuración del negocio, onboarding y módulos principales.'),
+                ],
+            ],
         ]);
     }
 }

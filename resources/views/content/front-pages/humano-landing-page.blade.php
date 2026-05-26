@@ -125,15 +125,18 @@ $configData = Helper::appClasses();
     </div>
   </section>
 
-  <section id="landingReviews" class="section-py bg-body landing-reviews pb-0">
+  <section id="landingManuals" class="section-py bg-white landing-reviews pb-0">
     <div class="container">
       <div class="row align-items-center gx-0 gy-4 g-lg-5">
         <div class="col-md-6 col-lg-5 col-xl-3">
           <div class="mb-3 pb-1">
-            <span class="badge bg-label-primary">Testimonios</span>
+            <span class="badge bg-label-primary">Guías</span>
           </div>
-          <h3 class="mb-1"><span class="section-title">Esto dicen</span> quienes usan Humano.app</h3>
-          <p class="mb-3 mb-md-5">Experiencias reales de equipos que dejaron el excel atrás.</p>
+          <h3 class="mb-1"><span class="section-title">Aprendé a usar</span> Humano</h3>
+          <p class="mb-3 mb-md-5">
+            Presentaciones paso a paso por módulo.<br class="d-none d-xl-block" />
+            Empezamos por cómo funciona la plataforma.
+          </p>
           <div class="landing-reviews-btns">
             <button id="reviews-previous-btn" class="btn btn-label-primary reviews-btn me-3 scaleX-n1-rtl" type="button">
               <i class="ti ti-chevron-left ti-sm"></i>
@@ -147,39 +150,27 @@ $configData = Helper::appClasses();
           <div class="swiper-reviews-carousel overflow-hidden mb-5 pb-md-2 pb-md-3">
             <div class="swiper" id="swiper-reviews">
               <div class="swiper-wrapper">
-                <div class="swiper-slide">
-                  <div class="card h-100">
-                    <div class="card-body text-body d-flex flex-column justify-content-between h-100">
-                      <p>«Gracias a tener un software personalizado hemos podido llegar a tener 6 oficinas en la empresa. Con el excel esto hubiera sido imposible.»</p>
-                      <div>
-                        <h6 class="mb-0">Juan Carlos Casal</h6>
-                        <p class="small text-muted mb-0">CEO</p>
+                @foreach ($guidePresentations as $guide)
+                  <div class="swiper-slide">
+                    <a href="{{ $guide['url'] }}" class="card h-100 text-body text-decoration-none">
+                      <div class="card-body d-flex flex-column justify-content-between h-100">
+                        <div class="mb-3">
+                          <span class="badge bg-label-primary rounded p-2">
+                            <i class="ti ti-presentation ti-md"></i>
+                          </span>
+                        </div>
+                        <p class="mb-2">{{ $guide['description'] }}</p>
+                        <div>
+                          <h6 class="mb-0">{{ $guide['title'] }}</h6>
+                          <p class="small text-primary mb-0 fw-semibold">{{ $guide['subtitle'] }}</p>
+                        </div>
+                        <span class="text-primary small fw-semibold mt-3 d-inline-flex align-items-center gap-1">
+                          Ver presentación <i class="ti ti-arrow-right ti-xs"></i>
+                        </span>
                       </div>
-                    </div>
+                    </a>
                   </div>
-                </div>
-                <div class="swiper-slide">
-                  <div class="card h-100">
-                    <div class="card-body text-body d-flex flex-column justify-content-between h-100">
-                      <p>«Humano.app son los únicos programadores con los que he trabajado que resuelven problemas de negocio y entienden las necesidades del cliente.»</p>
-                      <div>
-                        <h6 class="mb-0">Lorena Pérez</h6>
-                        <p class="small text-muted mb-0">CEO · Marcas Honestas</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="swiper-slide">
-                  <div class="card h-100">
-                    <div class="card-body text-body d-flex flex-column justify-content-between h-100">
-                      <p>«Si mi abuelo hubiera tenido este programa, ahora yo sería millonario.»</p>
-                      <div>
-                        <h6 class="mb-0">Javier Fernández</h6>
-                        <p class="small text-muted mb-0">Vendedor y artista</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                @endforeach
               </div>
             </div>
           </div>

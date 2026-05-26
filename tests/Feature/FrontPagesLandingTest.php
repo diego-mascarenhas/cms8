@@ -22,6 +22,9 @@ class FrontPagesLandingTest extends TestCase
             ->assertOk()
             ->assertSee('El asistente digital que trabaja por ti', false)
             ->assertSee('Beneficios clave', false)
+            ->assertSee(__('Primeros pasos'), false)
+            ->assertSee(url('/humano-presentacion.html'), false)
+            ->assertSee('Ver presentación', false)
             ->assertSee(__('humano_pricing.hero_title'), false)
             ->assertSee(__('humano_pricing.subscribe'), false)
             ->assertSee('price-duration-toggler', false);
