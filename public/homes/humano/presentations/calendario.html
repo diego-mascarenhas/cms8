@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Calendario</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-mock{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;
+ background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.06);
+ font-family:var(--font);color:#566a7f;display:flex;flex-direction:column}
+.pres-mock-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid #e4e6ef}
+.pres-mock-head strong{font-size:14px;color:#566a7f}
+.pres-mock-tabs{display:flex;gap:6px}
+.pres-mock-tab{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;color:#a1acb8;background:#f5f5f9}
+.pres-mock-tab.on{background:rgba(105,108,255,.12);color:#696cff}
+.pres-mock-body{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e4e6ef;padding:1px}
+.pres-mock-day{background:#fff;min-height:52px;padding:6px 8px;font-size:10px;color:#a1acb8}
+.pres-mock-day b{display:block;font-size:11px;color:#566a7f;margin-bottom:4px}
+.pres-mock-ev{margin-top:2px;padding:2px 5px;border-radius:4px;background:rgba(105,108,255,.15);color:#696cff;font-size:9px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pres-mock-ev.g{background:rgba(113,221,55,.2);color:#56ca00}
+.pres-mock-side{width:220px;flex:none;border-left:1px solid #e4e6ef;background:#fff;padding:14px}
+.pres-mock-side h5{font-size:12px;font-weight:700;color:#566a7f;margin-bottom:10px}
+.pres-mock-li{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f0f2f4;font-size:11px}
+.pres-mock-li .t{font-weight:600;color:#566a7f}
+.pres-mock-li .h{color:#a1acb8;font-size:10px}
+.pres-mock-wrap{display:flex;flex:1;min-height:0}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 03 · GUÍA</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:900px">Calendario · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">tu agenda en el panel</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:560px;line-height:1.6">Reuniones, recordatorios y seguimientos con clientes en una vista clara para todo el equipo.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="chat-contactos-modulos.html">← Capítulo anterior</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">CALENDARIO</span></div>
+   <h2 class="u" style="--d:.26s">Todo el equipo <em>en la misma agenda</em></h2>
+   <p class="u" style="--d:.36s">Ves el mes o la semana, filtrás por responsable y sabés qué toca hoy sin salir del panel.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Vista mes y semana</span>
+    <span class="dv-chip">Eventos del equipo</span>
+    <span class="dv-chip">Desde el inicio</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Calendario</span><span class="r">Agenda</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:300px;height:300px;right:-80px;top:40px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">CALENDARIO · VISTA</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Planificá el día con <em style="font-style:normal;color:var(--accent)">contexto real</em></h2>
+  <p class="sub">Citas con contactos, tareas con fecha y recordatorios aparecen juntos para no perder ningún seguimiento.</p>
+ </div>
+ <div class="pres-mock u sc" style="--d:.22s">
+  <div class="pres-mock-head">
+   <strong>Mayo 2026</strong>
+   <div class="pres-mock-tabs">
+    <span class="pres-mock-tab">Hoy</span>
+    <span class="pres-mock-tab on">Mes</span>
+    <span class="pres-mock-tab">Semana</span>
+   </div>
+  </div>
+  <div class="pres-mock-wrap">
+   <div class="pres-mock-body" style="flex:1">
+    <div class="pres-mock-day"><b>12</b></div><div class="pres-mock-day"><b>13</b><div class="pres-mock-ev">Llamada ACME</div></div>
+    <div class="pres-mock-day"><b>14</b></div><div class="pres-mock-day"><b>15</b><div class="pres-mock-ev g">Demo producto</div></div>
+    <div class="pres-mock-day"><b>16</b></div><div class="pres-mock-day"><b>17</b></div><div class="pres-mock-day"><b>18</b></div>
+    <div class="pres-mock-day"><b>19</b><div class="pres-mock-ev">Seguimiento</div></div><div class="pres-mock-day"><b>20</b></div>
+    <div class="pres-mock-day"><b>21</b></div><div class="pres-mock-day"><b>22</b></div><div class="pres-mock-day"><b>23</b></div>
+    <div class="pres-mock-day"><b>24</b></div><div class="pres-mock-day"><b>25</b></div><div class="pres-mock-day"><b>26</b><div class="pres-mock-ev">Reunión equipo</div></div>
+    <div class="pres-mock-day"><b>27</b></div><div class="pres-mock-day"><b>28</b></div><div class="pres-mock-day"><b>29</b></div>
+    <div class="pres-mock-day"><b>30</b></div><div class="pres-mock-day"><b>31</b></div>
+   </div>
+   <div class="pres-mock-side">
+    <h5>Próximos</h5>
+    <div class="pres-mock-li"><div><div class="t">Demo producto</div><div class="h">Vie 15 · 10:00</div></div></div>
+    <div class="pres-mock-li"><div><div class="t">Seguimiento ACME</div><div class="h">Lun 19 · 16:30</div></div></div>
+    <div class="pres-mock-li"><div><div class="t">Reunión equipo</div><div class="h">Mar 26 · 09:00</div></div></div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Calendario</span><span class="r">Vista</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">CALENDARIO · CREAR</div></div>
+ <div class="wi">
+  <div class="wi-l u sc" style="--d:.12s">
+   <div class="glow1"></div>
+   <div class="fwrap"><svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#e8eaff" stroke-width="1.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg></div>
+   <div class="cap">Nuevo evento en <span>dos clics</span></div>
+  </div>
+  <div class="wi-r">
+   <div class="u" style="--d:.18s"><span class="kicker">AGENDAR</span></div>
+   <h2 class="wi-h2 u" style="--d:.24s">Vinculá cada cita a un contacto</h2>
+   <p class="lead2 u" style="--d:.32s">Al crear un evento elegís fecha, hora y responsable. Si está ligado a un contacto, al abrirlo ves el historial de conversaciones y tareas.</p>
+   <div class="wi-pills u" style="--d:.42s">
+    <span class="wi-pill"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/></svg></span> Recordatorios</span>
+    <span class="wi-pill"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span> Contacto asociado</span>
+    <span class="wi-pill"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Equipo asignado</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Calendario</span><span class="r">Crear</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">SIGUIENTE CAPÍTULO</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">BLOQUE 04</span></div>
+  <h2 class="u" style="--d:.14s">Seguí con <em>Tareas</em></h2>
+  <p class="u" style="--d:.24s">El calendario marca el cuándo; las tareas ordenan el qué hacer y quién lo lleva.</p>
+  <a class="cta-link u" style="--d:.36s" href="tareas.html">Continuar con Tareas →</a>
+  <div class="pres-nav-row u" style="--d:.44s"><a href="chat-contactos-modulos.html">← Chat y contactos</a></div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

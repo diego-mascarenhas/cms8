@@ -28,6 +28,24 @@ class HumanoLandingController extends Controller
                 'subtitle' => __('El día a día en el panel'),
                 'description' => __('Conversaciones, agenda de contactos y herramientas según tu plan.'),
             ],
+            [
+                'url' => HumanoHomeAsset::url('presentations/calendario.html'),
+                'title' => __('Calendario'),
+                'subtitle' => __('Agenda y eventos'),
+                'description' => __('Vista mensual y semanal, citas con clientes y recordatorios del equipo.'),
+            ],
+            [
+                'url' => HumanoHomeAsset::url('presentations/tareas.html'),
+                'title' => __('Tareas'),
+                'subtitle' => __('Pendientes del equipo'),
+                'description' => __('Lista y tablero por estado, responsables, fechas y vínculo con contactos.'),
+            ],
+            [
+                'url' => HumanoHomeAsset::url('presentations/prospeccion.html'),
+                'title' => __('Prospección'),
+                'subtitle' => __('Buscar contactos'),
+                'description' => __('Buscá perfiles por cargo y ubicación e importalos a tu agenda con créditos de prospectos.'),
+            ],
         ];
     }
 
