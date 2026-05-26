@@ -3,7 +3,7 @@ $showPageHeader = $showPageHeader ?? true;
 $showFlashAlerts = $showFlashAlerts ?? true;
 $planImages = $planImages ?? [
     'assistant' => 'assets/img/illustrations/page-pricing-basic.png',
-    'hunter' => 'assets/img/illustrations/page-pricing-basic.png',
+    'hunter' => 'homes/humano/img/plans/hunter.png',
     'business' => 'assets/img/illustrations/page-pricing-standard.png',
     'mentor' => 'assets/img/illustrations/page-pricing-enterprise.png',
 ];

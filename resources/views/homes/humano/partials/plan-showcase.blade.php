@@ -1,9 +1,11 @@
 @php
+  use App\Support\HumanoHomeAsset;
+
   $planImages = [
-    'assistant' => 'assets/img/illustrations/page-pricing-basic.png',
-    'hunter' => 'assets/img/illustrations/page-pricing-basic.png',
-    'business' => 'assets/img/illustrations/page-pricing-standard.png',
-    'mentor' => 'assets/img/illustrations/page-pricing-enterprise.png',
+    'assistant' => HumanoHomeAsset::url('img/plans/assistant.png'),
+    'hunter' => HumanoHomeAsset::url('img/plans/hunter.png'),
+    'business' => HumanoHomeAsset::url('img/plans/business.png'),
+    'mentor' => HumanoHomeAsset::url('img/plans/mentor.png'),
   ];
 @endphp
 
@@ -20,16 +22,15 @@
         @php
           $planId = $plan['id'];
           $contentOnRight = $index % 2 === 1;
-          $planImage = $planImages[$planId] ?? 'assets/img/illustrations/page-pricing-basic.png';
+          $planImage = $planImages[$planId] ?? HumanoHomeAsset::url('img/plans/assistant.png');
         @endphp
         <div class="row align-items-center gy-4 mb-4 mb-lg-5 landing-plan-row">
           @if ($contentOnRight)
             <div class="col-lg-5 col-xl-4 order-2 order-lg-1 text-center landing-plan-visual">
               <img
-                src="{{ asset($planImage) }}"
+                src="{{ $planImage }}"
                 alt=""
                 class="img-fluid landing-plan-illustration"
-                height="200"
               />
             </div>
             <div class="col-lg-7 col-xl-7 order-1 order-lg-2 ms-lg-auto landing-plan-copy">
@@ -41,10 +42,9 @@
             </div>
             <div class="col-lg-5 col-xl-4 text-center landing-plan-visual">
               <img
-                src="{{ asset($planImage) }}"
+                src="{{ $planImage }}"
                 alt=""
                 class="img-fluid landing-plan-illustration"
-                height="200"
               />
             </div>
           @endif
