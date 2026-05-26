@@ -119,6 +119,8 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
 Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
+Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
+    ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');

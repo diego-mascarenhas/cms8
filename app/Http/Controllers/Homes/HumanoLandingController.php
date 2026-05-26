@@ -44,4 +44,9 @@ class HumanoLandingController extends Controller
             'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForDisplay(),
         ]);
     }
+
+    public function chatWhatsappEmbed(): View
+    {
+        return view('homes.humano.presentations.embed.chat-whatsapp');
+    }
 }

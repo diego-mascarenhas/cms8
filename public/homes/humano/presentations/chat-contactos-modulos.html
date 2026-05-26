@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -194,6 +195,79 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 .pres-next{margin-top:28px;font-size:15px;font-weight:600}
 .pres-next a{color:var(--accent);text-decoration:none}
 .pres-next a:hover{color:#fff}
+.chat-slide-layout{position:absolute;left:84px;right:84px;top:96px;bottom:68px;display:flex;gap:28px;align-items:stretch}
+.chat-slide-copy{flex:0 0 380px;display:flex;flex-direction:column;justify-content:center}
+.chat-slide-copy h2{font-size:36px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1.08;margin-top:14px}
+.chat-slide-copy h2 em{font-style:normal;color:var(--accent)}
+.chat-slide-copy p{margin-top:16px;font-size:15px;color:var(--muted);line-height:1.58}
+.chat-wa-embed{flex:1;min-width:0;border-radius:16px;overflow:auto;background:#f5f5f9;
+ box-shadow:0 28px 60px -24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.08);
+ display:flex;align-items:flex-start;justify-content:center;padding:24px}
+.pres-wa-panel{font-family:var(--font);font-size:14px;color:#566a7f;width:100%;max-width:360px}
+.pres-wa-card{background:#fff;border-radius:.375rem;box-shadow:0 .125rem .375rem rgba(67,89,113,.16);overflow:hidden}
+.pres-wa-head{display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem 1rem;text-align:center}
+.pres-wa-avatar{width:4.5rem;height:4.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e8fadf;color:#71dd37;position:relative;font-size:2rem}
+.pres-wa-avatar-offline::after,.pres-wa-avatar-waiting::after{content:"";position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff}
+.pres-wa-avatar-offline::after{background:#8592a3}
+.pres-wa-avatar-waiting::after{background:#ffab00}
+.pres-wa-title{margin:.5rem 0 .35rem;font-size:1.125rem;font-weight:500;color:#566a7f}
+.pres-wa-badge{display:inline-block;padding:.35rem .65rem;font-size:.75rem;font-weight:500;border-radius:.25rem;background:#8592a3;color:#fff}
+.pres-wa-badge-warning{background:#ffab00;color:#fff}
+.pres-wa-qr-frame-ready{background:#fff}
+.pres-wa-btn-active{opacity:1;cursor:default}
+.pres-wa-body{padding:0 1.25rem 1.25rem}
+.pres-wa-label{display:block;margin:0 0 .75rem;font-size:.75rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#a1acb8}
+.pres-wa-qr-wrap{text-align:center;margin-bottom:.5rem}
+.pres-wa-qr-frame{position:relative;width:200px;height:200px;margin:0 auto;border-radius:.375rem;background:#eceef2;overflow:hidden}
+.pres-wa-qr-img{display:block;width:200px;height:200px;object-fit:contain}
+.pres-wa-qr-fallback{position:absolute;inset:0}
+.pres-wa-qr-pattern{position:absolute;inset:-10px;background-color:#dfe3ea;background-image:linear-gradient(90deg,rgba(67,89,113,.22) 50%,transparent 50%),linear-gradient(rgba(67,89,113,.22) 50%,transparent 50%);background-size:7px 7px;filter:blur(3px);opacity:.55}
+.pres-wa-qr-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 70% 70% at 50% 50%,rgba(255,255,255,.88) 0%,rgba(255,255,255,.35) 55%,rgba(255,255,255,.12) 100%)}
+.pres-wa-qr-loading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:.5rem;background:rgba(255,255,255,.82)}
+.pres-wa-qr-loading span{font-size:.8125rem;color:#a1acb8;text-align:center;line-height:1.35}
+.pres-wa-spinner{width:2.25rem;height:2.25rem;border:.2em solid rgba(105,108,255,.2);border-top-color:#696cff;border-radius:50%;animation:pres-wa-spin .75s linear infinite}
+@keyframes pres-wa-spin{to{transform:rotate(360deg)}}
+.pres-wa-hint{margin:.35rem 0 0;font-size:.8125rem;line-height:1.45;color:#a1acb8;text-align:center}
+.pres-wa-btn{display:block;width:100%;margin-top:.75rem;padding:.45rem .9rem;font-size:.8125rem;font-weight:500;color:#696cff;background:transparent;border:1px solid #696cff;border-radius:.375rem;opacity:.65;cursor:not-allowed}
+.chat-slide-full{position:absolute;left:84px;right:84px;top:96px;bottom:68px;border-radius:16px;overflow:hidden;
+ box-shadow:0 28px 60px -24px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.08)}
+.pres-chat-app{display:flex;height:100%;background:#f5f5f9;font-family:var(--font),system-ui,sans-serif;font-size:12px;color:#566a7f;text-align:left}
+.pres-chat-side{width:32%;min-width:240px;max-width:300px;background:#fff;border-right:1px solid #e4e6ef;display:flex;flex-direction:column}
+.pres-chat-side-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px}
+.pres-chat-wa-dot{width:38px;height:38px;border-radius:50%;background:#e8fadf;color:#71dd37;display:flex;align-items:center;justify-content:center;flex:none;position:relative}
+.pres-chat-wa-dot::after{content:"";position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#71dd37;border:2px solid #fff}
+.pres-chat-wa-dot .ti{font-size:18px}
+.pres-chat-search{flex:1;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:#f5f5f9;color:#a1acb8;font-size:12px}
+.pres-chat-filter{display:flex;align-items:center;gap:8px;margin:0 14px 8px;padding:8px 14px;border-radius:999px;background:#f5f5f9;font-size:12px;color:#566a7f}
+.pres-chat-chev{margin-left:auto;font-size:14px;color:#a1acb8}
+.pres-chat-section{margin:10px 0 4px;padding:0 16px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#a1acb8}
+.pres-chat-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;text-decoration:none;color:inherit}
+.pres-chat-item.active{background:rgba(105,108,255,.12)}
+.pres-chat-av{width:36px;height:36px;border-radius:50%;background:#e8fadf;color:#71dd37;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.pres-chat-av-bot{background:rgba(3,195,236,.16);color:#03c3ec;font-size:16px}
+.pres-chat-item-body{flex:1;min-width:0}
+.pres-chat-item-body strong{display:block;font-size:13px;font-weight:600;color:#566a7f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pres-chat-item-body span{display:block;font-size:11px;color:#a1acb8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pres-chat-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.pres-chat-meta small{font-size:10px;color:#a1acb8;white-space:nowrap}
+.pres-chat-badge{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#71dd37;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.pres-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;background:#f5f5f9}
+.pres-chat-main-head{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#fff;border-bottom:1px solid #e4e6ef}
+.pres-chat-main-head strong{display:block;font-size:14px;color:#566a7f}
+.pres-chat-main-head span{display:block;font-size:11px;color:#a1acb8;margin-top:2px}
+.pres-chat-icon-btn{width:34px;height:34px;border:1px solid #e4e6ef;border-radius:8px;background:#fff;color:#566a7f;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.pres-chat-main-head .pres-chat-icon-btn{margin-left:auto}
+.pres-chat-main-body{flex:1;overflow:auto;padding:16px 18px}
+.pres-chat-intro{font-size:12px;color:#a1acb8;margin-bottom:12px;line-height:1.45}
+.pres-chat-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pres-chat-card{background:#fff;border:1px solid #e4e6ef;border-radius:8px;padding:10px}
+.pres-chat-card strong{display:flex;align-items:center;gap:6px;font-size:12px;color:#566a7f;margin-bottom:8px}
+.pres-chat-card strong .ti{font-size:14px;color:#8592a3}
+.pres-chat-pill{display:inline-block;margin:0 4px 4px 0;padding:3px 8px;border-radius:6px;background:#f5f5f9;font-size:10px;color:#566a7f}
+.pres-chat-footer{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#fff;border-top:1px solid #e4e6ef}
+.pres-chat-input{flex:1;padding:10px 12px;border-radius:8px;background:#f5f5f9;color:#a1acb8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pres-chat-send{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:none;border-radius:8px;background:#696cff;color:#fff;font-size:12px;font-weight:600;flex:none}
+.pres-chat-spark{font-size:14px;opacity:.9}
 </style>
 </head>
 <body>
@@ -213,28 +287,131 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
  </div>
 </section>
 
-<!-- 02 CHAT -->
+<!-- 02 WHATSAPP QR -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:340px;height:340px;right:-100px;top:20px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">CHAT · WHATSAPP</div></div>
+ <div class="chat-slide-layout">
+  <div class="chat-slide-copy">
+   <span class="eyebrow u" style="--d:.08s">EN EL PANEL</span>
+   <h2 class="u" style="--d:.16s">Conectar <em>WhatsApp</em></h2>
+   <p class="u" style="--d:.26s">Abrí Chat y, en el panel lateral, escaneá el código QR con tu teléfono. Cuando quede vinculado, verás tus conversaciones y el asistente en la misma pantalla.</p>
+   <div class="dv-chips u" style="--d:.36s;margin-top:20px">
+    <span class="dv-chip">Código QR en pantalla</span>
+    <span class="dv-chip">Actualizar si tarda</span>
+   </div>
+  </div>
+  <div class="chat-wa-embed u sc" style="--d:.22s">
+<div class="pres-wa-panel">
+  <div class="pres-wa-card">
+    <div class="pres-wa-head">
+      <div class="pres-wa-avatar pres-wa-avatar-waiting" aria-hidden="true">
+        <span class="ti ti-brand-whatsapp"></span>
+      </div>
+      <h5 class="pres-wa-title">+34 999 000 999</h5>
+      <span class="pres-wa-badge pres-wa-badge-warning">Escanear QR</span>
+    </div>
+    <div class="pres-wa-body">
+      <p class="pres-wa-label">Conexión WhatsApp</p>
+      <div class="pres-wa-qr-wrap">
+        <div class="pres-wa-qr-frame pres-wa-qr-frame-ready">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggnh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==" alt="Código QR WhatsApp" width="200" height="200" class="pres-wa-qr-img">
+        </div>
+      </div>
+      <p class="pres-wa-hint">El código puede tardar hasta 45 segundos en aparecer. No cierres esta pantalla.</p>
+      <p class="pres-wa-hint">Si no aparece el código, tocá actualizar: también se renueva solo al abrir Chat.</p>
+      <button type="button" class="pres-wa-btn pres-wa-btn-active">Actualizar código QR</button>
+    </div>
+  </div>
+</div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Día a día</span><span class="r">Vincular WhatsApp</span></div>
+</section>
+
+<!-- 03 CHAT PANEL -->
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-accent" style="width:360px;height:360px;left:-120px;top:30px"></div>
  <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
-  <div class="hdr-r">CHAT</div></div>
- <div class="dv">
-  <div class="num sc" style="--d:.05s">01</div>
-  <div class="dv-r">
-   <div class="k u" style="--d:.15s"><span class="kicker">CONVERSACIONES</span></div>
-   <h2 class="u" style="--d:.24s">Chat con <em>contexto de tu negocio</em></h2>
-   <p class="u" style="--d:.32s">Escribís desde el panel y el asistente responde con el tono y los datos que cargaste en «Configurar negocio». Ideal para borradores, respuestas rápidas y seguimiento.</p>
-   <div class="dv-chips u" style="--d:.4s">
-    <span class="dv-chip">WhatsApp conectado</span>
-    <span class="dv-chip">Historial por contacto</span>
-    <span class="dv-chip">Asistente con tu marca</span>
-   </div>
-  </div>
+  <div class="hdr-r">CHAT · PANEL COMPLETO</div></div>
+ <div class="chat-slide-full">
+<div class="pres-chat-app u sc" style="--d:.18s">
+  <aside class="pres-chat-side">
+    <div class="pres-chat-side-head">
+      <span class="pres-chat-wa-dot" aria-hidden="true"><span class="ti ti-brand-whatsapp"></span></span>
+      <div class="pres-chat-search"><span class="ti ti-search"></span><span>Buscar…</span></div>
+    </div>
+    <div class="pres-chat-filter"><span class="ti ti-filter"></span><span>Todos los estados</span><span class="ti ti-chevron-down pres-chat-chev"></span></div>
+    <p class="pres-chat-section">Asistente</p>
+    <div class="pres-chat-item active">
+      <span class="pres-chat-av pres-chat-av-bot"><span class="ti ti-robot"></span></span>
+      <div class="pres-chat-item-body">
+        <strong>Asistente</strong>
+        <span>Mi conversación con el bot</span>
+      </div>
+    </div>
+    <p class="pres-chat-section">WhatsApp</p>
+    <div class="pres-chat-item">
+      <span class="pres-chat-av">01</span>
+      <div class="pres-chat-item-body">
+        <strong>34600222001</strong>
+        <span>Hola, querría informa…</span>
+      </div>
+      <div class="pres-chat-meta"><small>hace 5 horas</small><span class="pres-chat-badge">3</span></div>
+    </div>
+    <div class="pres-chat-item">
+      <span class="pres-chat-av">04</span>
+      <div class="pres-chat-item-body">
+        <strong>34600222004</strong>
+        <span>Hola, querría informa…</span>
+      </div>
+      <div class="pres-chat-meta"><small>hace 5 horas</small><span class="pres-chat-badge">2</span></div>
+    </div>
+    <div class="pres-chat-item">
+      <span class="pres-chat-av">07</span>
+      <div class="pres-chat-item-body">
+        <strong>34600222007</strong>
+        <span>Hola, querría informa…</span>
+      </div>
+      <div class="pres-chat-meta"><small>hace 5 horas</small><span class="pres-chat-badge">1</span></div>
+    </div>
+  </aside>
+  <main class="pres-chat-main">
+    <div class="pres-chat-main-head">
+      <span class="pres-chat-av pres-chat-av-bot"><span class="ti ti-robot"></span></span>
+      <div>
+        <strong>Asistente</strong>
+        <span>Escribe abajo para pedirle al asistente lo que necesites.</span>
+      </div>
+      <button type="button" class="pres-chat-icon-btn" aria-hidden="true"><span class="ti ti-refresh"></span></button>
+    </div>
+    <div class="pres-chat-main-body">
+      <p class="pres-chat-intro">Puedes pedir al asistente acciones reales sobre tu equipo. Ejemplos (clic para poner el texto abajo):</p>
+      <div class="pres-chat-cards">
+        <div class="pres-chat-card"><strong><span class="ti ti-users"></span> Contactos</strong><span class="pres-chat-pill">Crear contacto</span><span class="pres-chat-pill">Categorías</span></div>
+        <div class="pres-chat-card"><strong><span class="ti ti-layout-kanban"></span> Tareas</strong><span class="pres-chat-pill">Crear tarea</span><span class="pres-chat-pill">Listar tareas</span></div>
+        <div class="pres-chat-card"><strong><span class="ti ti-brand-whatsapp"></span> WhatsApp</strong><span class="pres-chat-pill">Enviar mensaje</span></div>
+        <div class="pres-chat-card"><strong><span class="ti ti-calendar-time"></span> Calendario</strong><span class="pres-chat-pill">Listar</span><span class="pres-chat-pill">Agendar</span></div>
+        <div class="pres-chat-card"><strong><span class="ti ti-user"></span> Perfil</strong><span class="pres-chat-pill">Mi perfil</span></div>
+        <div class="pres-chat-card"><strong><span class="ti ti-chart-bar"></span> Informes</strong><span class="pres-chat-pill">Resumen</span><span class="pres-chat-pill">Contactos</span></div>
+      </div>
+    </div>
+    <div class="pres-chat-footer">
+      <button type="button" class="pres-chat-icon-btn" aria-hidden="true"><span class="ti ti-microphone"></span></button>
+      <button type="button" class="pres-chat-icon-btn" aria-hidden="true"><span class="ti ti-paperclip"></span></button>
+      <div class="pres-chat-input">Escribe tu mensaje aquí…</div>
+      <button type="button" class="pres-chat-send"><span class="ti ti-send"></span> Enviar <span class="ti ti-sparkles pres-chat-spark"></span></button>
+    </div>
+  </main>
+</div>
  </div>
+ <div class="ftr"><span>Humano · Día a día</span><span class="r">Chat completo</span></div>
 </section>
 
-<!-- 03 CONTACTOS -->
+<!-- 04 CONTACTOS -->
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:340px;height:340px;right:-120px;bottom:-140px"></div>
@@ -260,7 +437,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
  <div class="ftr"><span>Humano · Día a día</span><span class="r">Contactos</span></div>
 </section>
 
-<!-- 04 MÓDULOS -->
+<!-- 05 MÓDULOS -->
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-violet" style="width:380px;height:380px;right:-130px;top:-90px"></div>
@@ -288,7 +465,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
  <div class="ftr"><span>Humano · Día a día</span><span class="r">Módulos</span></div>
 </section>
 
-<!-- 05 CIERRE -->
+<!-- 06 CIERRE -->
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>

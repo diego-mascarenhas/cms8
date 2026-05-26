@@ -1,0 +1,31 @@
+{{-- Archivo de respaldo: panel sin servicio / sin QR (estado desconectado). --}}
+<div class="pres-wa-panel">
+  <div class="pres-wa-card">
+    <div class="pres-wa-head">
+      <div class="pres-wa-avatar pres-wa-avatar-offline" aria-hidden="true">
+        <span class="ti ti-brand-whatsapp"></span>
+      </div>
+      <h5 class="pres-wa-title">No vinculado</h5>
+      <span class="pres-wa-badge">Desconectado</span>
+    </div>
+    <div class="pres-wa-body">
+      <p class="pres-wa-label">Conexión WhatsApp</p>
+      <div class="pres-wa-qr-wrap">
+        <div class="pres-wa-qr-frame">
+          <img src="/homes/humano/img/presentations/whatsapp-qr.png" alt="Código QR WhatsApp" width="200" height="200" class="pres-wa-qr-img" onerror="this.style.display='none';this.parentElement.querySelector('.pres-wa-qr-fallback').style.display='flex';">
+          <div class="pres-wa-qr-fallback" style="display:none">
+            <div class="pres-wa-qr-pattern" aria-hidden="true"></div>
+            <div class="pres-wa-qr-vignette" aria-hidden="true"></div>
+            <div class="pres-wa-qr-loading" role="status">
+              <div class="pres-wa-spinner" aria-hidden="true"></div>
+              <span>Cargando código QR…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="pres-wa-hint">El código puede tardar hasta 45 segundos en aparecer. No cierres esta pantalla.</p>
+      <p class="pres-wa-hint">Si no aparece el código, tocá actualizar: también se renueva solo al abrir Chat.</p>
+      <button type="button" class="pres-wa-btn" disabled>Actualizar código QR</button>
+    </div>
+  </div>
+</div>

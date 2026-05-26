@@ -97,4 +97,14 @@ class HumanoLandingTest extends TestCase
         $this->get('/humano-presentacion.html')
             ->assertRedirect('/homes/humano/presentations/primeros-pasos.html');
     }
+
+    public function test_chat_whatsapp_presentation_embed_is_public(): void
+    {
+        $this->get(route('humano.presentation.chat-whatsapp-embed'))
+            ->assertOk()
+            ->assertSee('+34 999 000 999', false)
+            ->assertSee(__('Scan QR'), false)
+            ->assertSee(__('WhatsApp connection'), false)
+            ->assertSee('homes/humano/img/presentations/whatsapp-qr.png', false);
+    }
 }
