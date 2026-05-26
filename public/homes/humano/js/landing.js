@@ -72,17 +72,34 @@
     });
   }
 
+  function updateReviewsNavButtons(swiper) {
+    const atStart = swiper.isBeginning;
+    const atEnd = swiper.isEnd;
+
+    if (reviewsPreviousBtn) {
+      reviewsPreviousBtn.disabled = atStart;
+      reviewsPreviousBtn.classList.toggle('disabled', atStart);
+      reviewsPreviousBtn.setAttribute('aria-disabled', atStart ? 'true' : 'false');
+    }
+
+    if (reviewsNextBtn) {
+      reviewsNextBtn.disabled = atEnd;
+      reviewsNextBtn.classList.toggle('disabled', atEnd);
+      reviewsNextBtn.setAttribute('aria-disabled', atEnd ? 'true' : 'false');
+    }
+  }
+
   if (swiperReviews && typeof Swiper !== 'undefined') {
-    new Swiper(swiperReviews, {
+    const reviewsSwiper = new Swiper(swiperReviews, {
       slidesPerView: 1,
       spaceBetween: 5,
       grabCursor: true,
       autoplay: {
         delay: 3000,
         disableOnInteraction: false,
+        stopOnLastSlide: true,
       },
-      loop: true,
-      loopAdditionalSlides: 1,
+      loop: false,
       navigation: {
         nextEl: '.swiper-reviews-carousel .swiper-button-next',
         prevEl: '.swiper-reviews-carousel .swiper-button-prev',
@@ -97,7 +114,20 @@
           spaceBetween: 20,
         },
       },
+      on: {
+        init: function () {
+          updateReviewsNavButtons(this);
+        },
+        slideChange: function () {
+          updateReviewsNavButtons(this);
+        },
+        resize: function () {
+          updateReviewsNavButtons(this);
+        },
+      },
     });
+
+    updateReviewsNavButtons(reviewsSwiper);
   }
 
   if (reviewsNextBtn && reviewsSliderNext) {

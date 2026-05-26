@@ -136,16 +136,16 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
                   <div class="swiper-slide">
                     <a href="{{ $guide['url'] }}" class="card h-100 text-body text-decoration-none">
                       <div class="card-body d-flex flex-column justify-content-between h-100">
-                        <div class="mb-3">
-                          <span class="badge bg-label-primary rounded p-2">
-                            <i class="ti ti-presentation ti-md"></i>
+                        <div class="mb-3 d-flex align-items-center gap-3">
+                          <span class="badge bg-label-primary rounded p-2 flex-shrink-0">
+                            <i class="ti ti-{{ $guide['icon'] }} ti-md"></i>
                           </span>
+                          <div class="min-w-0">
+                            <h6 class="mb-0">{{ $guide['title'] }}</h6>
+                            <p class="small text-primary mb-0 fw-semibold">{{ $guide['subtitle'] }}</p>
+                          </div>
                         </div>
                         <p class="mb-2">{{ $guide['description'] }}</p>
-                        <div>
-                          <h6 class="mb-0">{{ $guide['title'] }}</h6>
-                          <p class="small text-primary mb-0 fw-semibold">{{ $guide['subtitle'] }}</p>
-                        </div>
                         <span class="text-primary small fw-semibold mt-3 d-inline-flex align-items-center gap-1">
                           Ver presentación <i class="ti ti-arrow-right ti-xs"></i>
                         </span>
