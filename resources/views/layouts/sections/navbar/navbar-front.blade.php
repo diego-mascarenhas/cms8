@@ -1,5 +1,5 @@
 @php
-    $showHumanoSectionNav = Route::is('front-pages.landing', 'pricing', 'front-pages.pricing');
+    $showHumanoSectionNav = Route::is('humano', 'pricing', 'front-pages.pricing');
 @endphp
 <!-- Navbar: Start -->
 <nav class="layout-navbar shadow-none py-0 humano-front-navbar">
@@ -29,7 +29,7 @@
         <div class="collapse navbar-collapse" id="humanoFrontNavCollapse">
           <ul class="navbar-nav ms-lg-auto align-items-lg-center gap-lg-2 pt-3 pt-lg-0 pb-2 pb-lg-0">
             @if ($showHumanoSectionNav)
-              @include('layouts.sections.navbar.partials.humano-front-nav-links')
+              @include('homes.humano.partials.nav-links')
             @endif
             @if (Route::has('login'))
               <li class="nav-item ms-lg-2">

@@ -1,21 +1,21 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Homes;
 
 use Tests\TestCase;
 
-class FrontPagesLandingTest extends TestCase
+class HumanoLandingTest extends TestCase
 {
-    public function test_guest_can_view_humano_landing_page(): void
+    public function test_guest_can_view_humano_landing_at_root(): void
     {
-        $this->get('/front-pages/landing')
+        $this->get('/')
             ->assertOk()
             ->assertSee('El asistente digital que trabaja por ti', false)
             ->assertSee('Beneficios clave', false)
             ->assertSee('#landingManuals', false)
             ->assertSee('#landingFAQ', false)
             ->assertSee(__('Primeros pasos'), false)
-            ->assertSee(url('/humano-presentacion.html'), false)
+            ->assertSee(url('/homes/humano/presentations/primeros-pasos.html'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee(route('pricing'), false)
             ->assertSee('humanoFrontNavCollapse', false)
@@ -25,14 +25,15 @@ class FrontPagesLandingTest extends TestCase
             ->assertDontSee(__('humano_pricing.hero_title'), false);
     }
 
-    public function test_home_redirects_to_landing_when_public_home_path_is_set(): void
+    public function test_legacy_front_pages_landing_redirects_to_root(): void
     {
-        config([
-            'app.public_home_route' => null,
-            'app.public_home_path' => '/front-pages/landing',
-        ]);
+        $this->get('/front-pages/landing')
+            ->assertRedirect('/');
+    }
 
-        $this->get('/')
-            ->assertRedirect('/front-pages/landing');
+    public function test_legacy_presentation_url_redirects_to_homes_path(): void
+    {
+        $this->get('/humano-presentacion.html')
+            ->assertRedirect('/homes/humano/presentations/primeros-pasos.html');
     }
 }

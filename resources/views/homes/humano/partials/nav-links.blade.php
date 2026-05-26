@@ -1,6 +1,6 @@
 @php
-    $landingUrl = route('front-pages.landing');
-    $onLanding = Route::is('front-pages.landing');
+    $landingUrl = route('humano');
+    $onLanding = Route::is('humano');
 
     $items = [
         [

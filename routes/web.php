@@ -33,7 +33,7 @@ use App\Http\Controllers\GoogleIntegrationController;
 use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
-use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
@@ -114,14 +114,15 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
     ->name('public-shop.show');
 
 // main
-Route::get('/', [HomeController::class, 'index']);
+Route::get('/', [HumanoLandingController::class, 'index'])->name('humano');
+Route::redirect('/front-pages/landing', '/', 301);
+Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 
 Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
 Route::get('/front-pages/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('front-pages.pricing');
-Route::get('/front-pages/landing', [\App\Http\Controllers\front_pages\Landing::class, 'index'])->name('front-pages.landing');
 Route::get('/pricing/checkout/complete', \App\Http\Controllers\PaymentLinkCheckoutCompleteController::class)
     ->middleware('throttle:payment-link-checkout')
     ->name('pricing.checkout.complete');

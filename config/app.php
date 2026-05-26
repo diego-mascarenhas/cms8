@@ -255,10 +255,9 @@ return [
     | Public home for guests (URL "/")
     |--------------------------------------------------------------------------
     |
-    | If PUBLIC_HOME_ROUTE (named route) or PUBLIC_HOME_PATH (internal path like
-    | /landing) is set, guests visiting "/" are sent there instead of login.
-    | Leave both empty so guests go to login. Authenticated users always go to
-    | the dashboard from "/".
+    | Legacy: optional redirect targets if HomeController is used again. Guests
+    | visiting "/" see the Humano landing (route humano). Authenticated users
+    | are redirected to the dashboard from "/".
     |
     */
     'public_home_route' => env('PUBLIC_HOME_ROUTE'),
