@@ -40,8 +40,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
         </div>
         <div id="heroDashboardAnimation" class="hero-animation-img">
           <div id="heroAnimationImg" class="position-relative hero-dashboard-img">
-            <img src="{{ $humanoImg('landing-page/hero-dashboard-'.$heroImageStyle.'.png') }}" alt="Panel Humano" class="animation-img humano-landing-hero-img" data-humano-light-img="{{ $humanoImg('landing-page/hero-dashboard-light.png') }}" data-humano-dark-img="{{ $humanoImg('landing-page/hero-dashboard-dark.png') }}" />
-            <img src="{{ $humanoImg('landing-page/hero-elements-'.$heroImageStyle.'.png') }}" alt="" class="position-absolute hero-elements-img animation-img top-0 start-0 humano-landing-hero-img" data-humano-light-img="{{ $humanoImg('landing-page/hero-elements-light.png') }}" data-humano-dark-img="{{ $humanoImg('landing-page/hero-elements-dark.png') }}" />
+            <img src="{{ $humanoImg('landing-page/hero-elements-'.$heroImageStyle.'.png') }}" alt="Panel Humano" class="animation-img humano-landing-hero-img landing-hero-panel-shot w-100" width="1024" height="696" loading="eager" decoding="async" data-humano-light-img="{{ $humanoImg('landing-page/hero-elements-light.png') }}" data-humano-dark-img="{{ $humanoImg('landing-page/hero-elements-dark.png') }}" />
           </div>
         </div>
       </div>
