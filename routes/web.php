@@ -121,6 +121,7 @@ Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 
 Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
 Route::get('/front-pages/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('front-pages.pricing');
+Route::get('/front-pages/landing', [\App\Http\Controllers\front_pages\Landing::class, 'index'])->name('front-pages.landing');
 Route::get('/pricing/checkout/complete', \App\Http\Controllers\PaymentLinkCheckoutCompleteController::class)
     ->middleware('throttle:payment-link-checkout')
     ->name('pricing.checkout.complete');

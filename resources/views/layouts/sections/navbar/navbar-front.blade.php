@@ -10,9 +10,20 @@
         </a>
       </div>
       <ul class="navbar-nav flex-row align-items-center ms-auto gap-2">
+        @if (Route::is('front-pages.landing'))
+          <li class="d-none d-md-block">
+            <a href="#landingFeatures" class="nav-link px-2">Beneficios</a>
+          </li>
+          <li class="d-none d-md-block">
+            <a href="#landingPricing" class="nav-link px-2">Planes</a>
+          </li>
+          <li class="d-none d-md-block">
+            <a href="#landingContact" class="nav-link px-2">Contacto</a>
+          </li>
+        @endif
         @if(Route::has('login'))
           <li>
-            <a href="{{ route('login') }}" class="btn btn-label-primary">{{ __('Login') }}</a>
+            <a href="{{ route('login') }}" class="btn btn-primary">{{ __('Login') }}</a>
           </li>
         @endif
       </ul>
