@@ -255,10 +255,12 @@ return [
     | Public home for guests (URL "/")
     |--------------------------------------------------------------------------
     |
-    | If PUBLIC_HOME_ROUTE (named route) or PUBLIC_HOME_PATH (internal path like
-    | /landing) is set, guests visiting "/" are sent there instead of login.
-    | Leave both empty so guests go to login. Authenticated users always go to
-    | the dashboard from "/".
+    | Same behavior in every environment (local, staging, production). Only
+    | PUBLIC_HOME_ROUTE and PUBLIC_HOME_PATH control where guests go from "/".
+    | Route name wins if both are set; otherwise path; if both empty → login.
+    | Authenticated users always go to the dashboard from "/".
+    |
+    | PUBLIC_HOME_ROUTE=humano | PUBLIC_HOME_ROUTE=wapify | PUBLIC_HOME_PATH=/inicio
     |
     */
     'public_home_route' => env('PUBLIC_HOME_ROUTE'),

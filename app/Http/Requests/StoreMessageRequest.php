@@ -47,6 +47,11 @@ class StoreMessageRequest extends FormRequest
                 $this->merge([$flag => '1']);
             }
         }
+
+        if (! $this->has('message_category_ids') || ! is_array($this->input('message_category_ids')))
+        {
+            $this->merge(['message_category_ids' => []]);
+        }
     }
 
     /**
@@ -59,6 +64,8 @@ class StoreMessageRequest extends FormRequest
             'name' => ['required', 'string', 'min:3', 'max:50'],
             'text' => ['required', 'string', 'min:3', 'max:255'],
             'contact_status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
+            'message_category_ids' => ['nullable', 'array'],
+            'message_category_ids.*' => ['integer', 'exists:categories,id'],
             'template_id' => ['nullable', 'integer', 'exists:templates,id'],
             'template_html' => ['nullable', 'string'],
             'min_hours_between_emails' => ['nullable', 'numeric', 'min:0', 'max:8760'],

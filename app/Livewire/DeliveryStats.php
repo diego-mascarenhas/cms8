@@ -196,7 +196,7 @@ class DeliveryStats extends Component
 
     private function loadPotentialSubscribers()
     {
-        $message = \App\Models\Message::with(['category', 'contactStatus', 'deliveries', 'team.settings'])->find($this->messageId);
+        $message = \App\Models\Message::with(['contactCategories', 'contactStatus', 'deliveries', 'team.settings'])->find($this->messageId);
 
         if (! $message)
         {

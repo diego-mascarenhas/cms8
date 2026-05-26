@@ -22,7 +22,10 @@ class PublicHumanoPricingPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('humano-front-topnav', false);
+        $response->assertSee('Beneficios', false);
+        $response->assertSee(route('humano').'#landingFAQ', false);
         $response->assertSee(__('humano_pricing.plans.assistant.name'), false);
+        $response->assertSee(__('humano_pricing.plans.hunter.name'), false);
         $response->assertSee(__('humano_pricing.plans.business.name'), false);
         $response->assertSee(__('humano_pricing.plans.mentor.name'), false);
         $response->assertSee('3cIeVd98VabI07cgPb43S03', false);

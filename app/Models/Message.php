@@ -65,6 +65,44 @@ class Message extends Model
         return $this->belongsTo(\App\Models\Category::class);
     }
 
+    /**
+     * Contact categories that define who receives this message (pivot message_categories).
+     */
+    public function contactCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'message_categories');
+    }
+
+    public function hasContactCategoryFilter(): bool
+    {
+        if ($this->relationLoaded('contactCategories'))
+        {
+            return $this->contactCategories->isNotEmpty();
+        }
+
+        return $this->contactCategories()->exists();
+    }
+
+    /**
+     * @param  iterable<int|string|null>  $ids
+     */
+    public function syncMessageCategories(iterable $ids): void
+    {
+        $this->contactCategories()->sync(Category::onlyExistingIds($ids));
+    }
+
+    public function contactCategoriesLabel(): string
+    {
+        if (! $this->hasContactCategoryFilter())
+        {
+            return (string) __('app.message_form_categories_all');
+        }
+
+        $this->loadMissing('contactCategories');
+
+        return $this->contactCategories->pluck('name')->implode(', ');
+    }
+
     public function template()
     {
         return $this->belongsTo(\App\Models\Template::class);
@@ -135,24 +173,34 @@ class Message extends Model
     }
 
     /**
-     * Contacts eligible for deliveries: category (if set), optional contact status, valid email, no demo domains.
+     * Contacts eligible for deliveries: optional contact categories (pivot), optional contact status, valid email, no demo domains.
+     * When no categories are linked, all team contacts with email are included.
      * When contact_status_id is null, all statuses in the audience are included.
      *
      * @return Builder<\App\Models\Contact>
      */
     public function audienceContactsQuery(): Builder
     {
-        if ($this->category_id)
+        $query = Contact::query()
+            ->where('team_id', $this->team_id)
+            ->whereNotNull('email');
+
+        if ($this->hasContactCategoryFilter())
         {
-            $this->loadMissing('category');
-            $query = $this->category
-                ? $this->category->contacts()
-                : Contact::query()->whereRaw('1 = 0');
-        } else
-        {
-            $query = Contact::query()
-                ->where('team_id', $this->team_id)
-                ->whereNotNull('email');
+            $categoryIds = $this->relationLoaded('contactCategories')
+                ? $this->contactCategories->pluck('id')->all()
+                : $this->contactCategories()->pluck('categories.id')->all();
+
+            if ($categoryIds === [])
+            {
+                $query->whereRaw('1 = 0');
+            } else
+            {
+                $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds): void
+                {
+                    $categoryQuery->whereIn('categories.id', $categoryIds);
+                });
+            }
         }
 
         if ($this->contact_status_id)

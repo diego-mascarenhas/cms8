@@ -259,28 +259,10 @@
         });
 
         $(function() {
-            let table = $('.datatable').DataTable();
-
-            $('#EmotionalState').on('change', function() {
-                let selectedValue = $(this).val();
-                table.column('.select-filter').search(selectedValue).draw();
-            });
-
-            // Use single value for category filter
-            $('#CategoryFilter').on('change', function() {
-                let selectedValue = $(this).val();
-                table.column(5).search(selectedValue ? selectedValue : '', true, false).draw();
-            });
-
             $('#EnterpriseState').on('change', function() {
+                let table = $('#contact-table').DataTable();
                 let selectedValue = $(this).val();
                 table.column('.enterprise-filter').search(selectedValue).draw();
-            });
-
-            $('.filter-status').on('click', function(e) {
-                e.preventDefault();
-                var status = $(this).data('status');
-                table.column('status_id:name').search(status).draw();
             });
 
             $('#import-button').on('click', function() {

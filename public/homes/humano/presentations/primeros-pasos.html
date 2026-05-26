@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Humano · Cómo funciona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+ --ink:#0a0818;--navy:#12101f;--indigo:#1a1730;--purple:#252240;
+ --surface:#2f2d4a;--primary:#696cff;--primary2:#8592ff;--primary3:#5a5fd4;
+ --accent:#b4b6ff;--accentpale:#e0e2ff;--muted:#9496b8;--muted2:#a8aac8;
+ --offwhite:#eceeff;--white:#fff;
+ --font:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+html,body{height:100%}
+body{background:#06050f;font-family:var(--font);overflow:hidden;
+ -webkit-font-smoothing:antialiased;color:var(--offwhite)}
+#stage{position:absolute;width:1280px;height:720px;left:50%;top:50%;
+ transform:translate(-50%,-50%) scale(1);transform-origin:center}
+.slide{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden;
+ transition:opacity .6s ease,visibility .6s;
+ background:
+   radial-gradient(1100px 700px at 78% -10%,#2a2858 0%,rgba(42,40,88,0) 55%),
+   radial-gradient(900px 800px at -8% 108%,#1a1840 0%,rgba(26,24,64,0) 58%),
+   linear-gradient(160deg,#12101f 0%,#0e0c1a 45%,#0a0818 100%)}
+.slide.active{opacity:1;visibility:visible;z-index:2}
+.grid-tex{position:absolute;inset:0;opacity:.45;
+ background-image:linear-gradient(rgba(150,140,255,.04) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(150,140,255,.04) 1px,transparent 1px);
+ background-size:46px 46px;mask:radial-gradient(900px 600px at 60% 40%,#000 30%,transparent 85%)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
+.b-accent{background:#5a58c8}.b-primary{background:#696cff}.b-violet{background:#4a3d9e}
+.slide .u{opacity:0;transform:translateY(26px);
+ transition:opacity .72s cubic-bezier(.22,.72,.2,1),transform .72s cubic-bezier(.22,.72,.2,1);
+ transition-delay:var(--d,0s)}
+.slide.active .u{opacity:1;transform:none}
+.slide .fz{opacity:0;transition:opacity .8s ease;transition-delay:var(--d,0s)}
+.slide.active .fz{opacity:1}
+.slide .sc{opacity:0;transform:scale(.88);
+ transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
+.slide.active .sc{opacity:1;transform:none}
+.hdr{position:absolute;top:42px;left:84px;right:84px;display:flex;
+ justify-content:space-between;align-items:center;z-index:5}
+.brand{display:flex;align-items:center}
+.brand-logo{height:28px;width:auto;display:block}
+.hdr-r{font-size:12.5px;letter-spacing:3.4px;color:var(--muted2);font-weight:600}
+.ftr{position:absolute;bottom:40px;left:84px;right:84px;display:flex;
+ justify-content:space-between;align-items:center;z-index:5;
+ font-size:11.5px;letter-spacing:2.4px;color:#5f6288;font-weight:600}
+.ftr .r{color:var(--accent)}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;
+ padding:8px 16px;border-radius:999px;font-size:12px;font-weight:700;
+ letter-spacing:3px;color:var(--accent);background:rgba(105,108,255,.12);
+ border:1px solid rgba(105,108,255,.28)}
+.eyebrow.solid{background:linear-gradient(120deg,#696cff,#8592ff);color:#fff;
+ border:none;box-shadow:0 10px 30px -8px rgba(105,108,255,.55)}
+.kicker{font-size:13px;font-weight:600;letter-spacing:3.6px;color:var(--accent)}
+h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
+.card{position:relative;border-radius:20px;
+ background:linear-gradient(165deg,rgba(90,88,150,.24),rgba(24,22,48,.5));
+ border:1px solid rgba(150,148,220,.16);
+ box-shadow:0 26px 50px -28px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.05)}
+.ic{width:24px;height:24px}
+.badge-ic{display:flex;align-items:center;justify-content:center;border-radius:14px;
+ background:linear-gradient(150deg,#b4b6ff,#696cff);color:#0a0818;flex:none;
+ box-shadow:0 12px 26px -10px rgba(105,108,255,.55)}
+#hud{position:fixed;left:0;right:0;bottom:0;z-index:40;pointer-events:none}
+#bar{height:3px;background:rgba(255,255,255,.07)}
+#bar i{display:block;height:100%;width:0;
+ background:linear-gradient(90deg,#696cff,#b4b6ff);transition:width .5s ease;
+ box-shadow:0 0 14px rgba(180,182,255,.7)}
+#nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+ display:flex;align-items:center;gap:13px;z-index:41;pointer-events:auto;
+ padding:6px 8px;border-radius:999px;background:rgba(12,12,30,.75);
+ border:1px solid rgba(150,148,220,.16);backdrop-filter:blur(10px)}
+#nav button{width:36px;height:36px;border-radius:50%;cursor:pointer;
+ background:rgba(40,38,72,.65);border:1px solid rgba(150,148,220,.22);
+ color:#d8daff;display:flex;align-items:center;justify-content:center;transition:.18s}
+#nav button:hover{background:#696cff;border-color:#696cff;color:#fff}
+#count{font-size:12px;letter-spacing:1.4px;color:#8084b8;font-weight:600;min-width:62px;text-align:center}
+#count b{color:#fff;font-weight:700}
+.cv{position:absolute;inset:0}
+.cv-l{position:absolute;left:84px;top:188px;width:660px}
+.cv .ttl{font-size:64px;font-weight:800;letter-spacing:-2.2px;line-height:1.03;color:#fff}
+.cv .ttl .g{background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.cv .meta{margin-top:38px;padding-top:26px;border-top:1px solid rgba(150,148,220,.2);width:480px}
+.cv .meta .pg{font-size:18px;color:#fff;font-weight:600;margin-bottom:14px}
+.cv .meta .ln{font-size:13.5px;color:var(--muted2);line-height:2}
+.cv .meta .ln b{color:var(--accent);font-weight:600}
+.cv-scene{position:absolute;right:40px;top:50%;transform:translateY(-50%);
+ width:520px;height:520px}
+.cv-orbit{position:absolute;inset:0;transform:translateY(-12px)}
+.logoH{height:100px;width:auto;object-fit:contain;
+ filter:drop-shadow(0 20px 40px rgba(105,108,255,.45))}
+.wmk{position:absolute;right:-30px;bottom:54px;font-size:150px;font-weight:800;
+ letter-spacing:6px;color:rgba(130,128,220,.05)}
+.dv{position:absolute;inset:0;display:flex;align-items:center;padding:0 84px}
+.dv .num{font-size:240px;font-weight:800;line-height:.8;letter-spacing:-8px;
+ color:transparent;-webkit-text-stroke:1.6px rgba(133,146,255,.38)}
+.dv .dv-r{margin-left:64px}
+.dv .dv-r .k{margin-bottom:22px}
+.dv .dv-r h2{font-size:54px;font-weight:800;color:#fff;letter-spacing:-1.6px;line-height:1.06}
+.dv .dv-r h2 em{font-style:normal;color:var(--accent)}
+.dv .dv-r p{margin-top:20px;font-size:16px;color:var(--muted);max-width:460px;line-height:1.6}
+.dv-chips{display:flex;gap:10px;margin-top:30px;flex-wrap:wrap;max-width:500px}
+.dv-chip{font-size:11.5px;font-weight:600;letter-spacing:1.4px;color:#d4d6ff;
+ padding:8px 14px;border-radius:9px;background:rgba(120,118,200,.14);
+ border:1px solid rgba(150,148,220,.2)}
+.shead{position:absolute;left:84px;top:118px;width:1112px}
+.shead h2{font-size:42px;font-weight:800;color:#fff;letter-spacing:-1.1px;line-height:1.05}
+.shead .sub{margin-top:13px;font-size:15.5px;color:var(--muted);max-width:780px;line-height:1.55}
+.wi{position:absolute;left:84px;right:84px;top:122px;bottom:74px;display:flex;gap:40px}
+.wi-h2{font-size:39px;font-weight:800;color:#fff;letter-spacing:-1px;margin:13px 0 16px;line-height:1.04}
+.wi-l{width:380px;flex:none;border-radius:24px;position:relative;overflow:hidden;
+ background:linear-gradient(165deg,#696cff,#4a46b8 65%,#252240);
+ box-shadow:0 40px 70px -30px rgba(105,108,255,.5)}
+.wi-l .glow1{position:absolute;width:300px;height:300px;border-radius:50%;
+ background:radial-gradient(circle,rgba(200,202,255,.45),transparent 65%);left:-60px;top:-70px}
+.wi-l .fwrap{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%)}
+.wi-l .cap{position:absolute;left:34px;right:34px;bottom:34px;
+ font-size:18px;font-weight:700;color:#fff;line-height:1.32}
+.wi-l .cap span{color:var(--accentpale)}
+.wi-r{flex:1;display:flex;flex-direction:column;justify-content:center}
+.wi-r .lead2{font-size:17px;color:#c8cae8;line-height:1.62}
+.wi-r .lead2 b{color:#fff;font-weight:700}
+.wi-pills{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.wi-pill{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#e4e6ff;
+ font-weight:600;padding:9px 15px 9px 11px;border-radius:11px;
+ background:rgba(120,118,200,.14);border:1px solid rgba(150,148,220,.2)}
+.wi-pill .dot{width:18px;height:18px;border-radius:6px;flex:none;
+ background:linear-gradient(140deg,#b4b6ff,#696cff);display:flex;align-items:center;justify-content:center}
+.wi-pill .dot svg{width:11px;height:11px;color:#0a0818}
+.jr{position:absolute;left:84px;right:84px;top:268px;bottom:84px}
+.jnode{border-radius:14px;padding:16px 12px;text-align:center;position:relative;
+ background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.52));
+ border:1px solid rgba(150,148,220,.18)}
+.jnode .jn{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:1.2px}
+.jnode .jt{margin-top:8px;font-size:13px;font-weight:700;color:#fff;line-height:1.25}
+.jnode.hot{background:linear-gradient(150deg,#696cff,#8592ff);border-color:transparent;
+ box-shadow:0 18px 38px -14px rgba(105,108,255,.75)}
+.jnode.hot .jn{color:#e8eaff}
+.jr-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:20px}
+.jr-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:28px;font-weight:300}
+.cgrid{position:absolute;left:84px;right:84px;top:268px;
+ display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ccard{border-radius:18px;padding:22px 20px;
+ background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));
+ border:1px solid rgba(150,148,220,.16)}
+.ccard .top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.ccard .bi{width:44px;height:44px;border-radius:13px}
+.ccard .bi .ic{width:22px;height:22px}
+.ccard .cn{font-size:12px;font-weight:800;color:#6e70a0}
+.ccard h4{font-size:16.5px;font-weight:700;color:#fff;margin-bottom:8px}
+.ccard p{font-size:12.5px;color:#a4a6c8;line-height:1.5}
+.ccard .uline{height:2px;width:0;background:linear-gradient(90deg,#b4b6ff,transparent);
+ margin-top:12px;transition:width .8s ease .3s}
+.slide.active .ccard .uline{width:100%}
+.stg{position:absolute;left:84px;right:84px;top:150px;bottom:92px;display:flex;gap:36px}
+.stg-l{flex:1;display:flex;flex-direction:column}
+.stg-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:8px}
+.stg-bb{width:58px;height:58px;border-radius:16px;flex:none}
+.stg-bb .ic{width:28px;height:28px}
+.stg-name{font-size:40px;font-weight:800;color:#fff;letter-spacing:-1.1px;line-height:1}
+.stg-one{font-size:14px;color:var(--accent);margin-top:9px;font-weight:600}
+.stg-rule{height:1px;background:linear-gradient(90deg,rgba(150,148,220,.4),transparent);margin:20px 0}
+.stg-hl{font-size:22px;font-weight:800;color:#fff;margin-bottom:14px}
+.stg-body{font-size:14px;color:#b8bae0;line-height:1.66}
+.stg-steps{margin-top:auto;padding-top:20px;display:flex;gap:6px}
+.stg-steps .sd{height:6px;border-radius:3px;flex:1;background:rgba(150,148,220,.16)}
+.stg-steps .sd.on{background:linear-gradient(90deg,#696cff,#8592ff)}
+.stg-steps .sd.cur{background:linear-gradient(90deg,#b4b6ff,#e0e2ff);
+ box-shadow:0 0 14px rgba(180,182,255,.65)}
+.stg-r{width:380px;flex:none;border-radius:22px;padding:30px 28px;position:relative;overflow:hidden;
+ background:linear-gradient(165deg,#696cff,#5a56c4 62%,#302e5a);
+ box-shadow:0 40px 74px -28px rgba(105,108,255,.55)}
+.stg-r .rglow{position:absolute;width:220px;height:220px;border-radius:50%;right:-70px;top:-80px;
+ background:radial-gradient(circle,rgba(220,222,255,.45),transparent 65%)}
+.stg-r .rtop{font-size:11px;font-weight:700;letter-spacing:2.4px;color:#d8dcff}
+.stg-r .rname{margin-top:18px;font-size:28px;font-weight:800;color:#fff;line-height:1.05}
+.stg-r .rsep{width:48px;height:3px;border-radius:2px;background:var(--accentpale);margin:16px 0}
+.stg-r .rdesc{font-size:13px;color:#e8eaff;line-height:1.58}
+.stg-r .rtrack{margin-top:auto;padding-top:24px;font-size:11px;letter-spacing:2px;font-weight:700;color:#b8bcff}
+.cl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 84px}
+.cl h2{font-size:50px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1.08;max-width:820px}
+.cl h2 em{font-style:normal;
+ background:linear-gradient(100deg,#b4b6ff,#8592ff);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.cl p{margin-top:22px;font-size:16px;color:var(--muted);max-width:560px;line-height:1.6}
+.cta-link{display:inline-flex;margin-top:28px;padding:14px 22px;border-radius:12px;
+ font-size:14px;font-weight:700;color:#fff;text-decoration:none;
+ background:linear-gradient(120deg,#696cff,#8592ff);
+ box-shadow:0 16px 36px -12px rgba(105,108,255,.65)}
+.cta-link:hover{color:#fff;filter:brightness(1.08)}
+.pres-next{margin-top:28px;font-size:15px;font-weight:600}
+.pres-next a{color:var(--accent);text-decoration:none}
+.pres-next a:hover{color:#fff}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- 01 COVER -->
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cv">
+  <div class="cv-scene fz" style="--d:.45s">
+   <div class="cv-orbit">
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
+     <img class="logoH" src="/assets/logo-light.svg" alt="Humano">
+    </div>
+   </div>
+  </div>
+  <div class="cv-l">
+   <div class="eyebrow u" style="--d:.05s">H U M A N O</div>
+   <h1 class="ttl u" style="--d:.13s;margin-top:24px">Tu negocio,<br><span class="g">en un solo lugar</span></h1>
+   <div class="meta u" style="--d:.26s">
+    <div class="pg">Presentación · Cómo funciona</div>
+    <div class="ln">Empezamos por <b>configurar el negocio</b></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 02 DIVIDER -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-accent" style="width:360px;height:360px;left:-120px;top:30px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">P R E S E N T A C I Ó N</div></div>
+ <div class="dv">
+  <div class="num sc" style="--d:.05s">01</div>
+  <div class="dv-r">
+   <div class="k u" style="--d:.15s"><span class="kicker">BLOQUE 01 · PRIMEROS PASOS</span></div>
+   <h2 class="u" style="--d:.24s">Configuración<br>de tu <em>negocio</em></h2>
+   <p class="u" style="--d:.32s">Antes de usar Chat, contactos o campañas, Humano aprende quién sos: marca, contacto, redes y el desafío que querés resolver.</p>
+   <div class="dv-chips u" style="--d:.4s">
+    <span class="dv-chip">Asistente en 6 pasos</span>
+    <span class="dv-chip">Contexto para la IA</span>
+    <span class="dv-chip">Informe de mercado</span>
+    <span class="dv-chip">Tu equipo</span>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 03 QUÉ ES -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:340px;height:340px;left:-120px;bottom:-140px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">QUÉ ES HUMANO</div></div>
+ <div class="wi">
+  <div class="wi-l sc" style="--d:.12s">
+   <div class="glow1"></div>
+   <div class="fwrap"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano" style="height:72px;width:auto"></div>
+   <div class="cap">Centralizá <span>contactos, proyectos y comunicación</span> en una plataforma.</div>
+  </div>
+  <div class="wi-r">
+   <span class="eyebrow u" style="--d:.04s">EN POCAS PALABRAS</span>
+   <h2 class="wi-h2 u" style="--d:.1s">¿Qué es <span style="color:var(--accent)">Humano</span>?</h2>
+   <div class="lead2 u" style="--d:.2s">Humano es una <b>plataforma de gestión empresarial</b>. Un mismo espacio para contactos, clientes, proyectos, tareas, facturación y canales como email, SMS y WhatsApp.</div>
+   <div class="wi-pills">
+    <div class="wi-pill u" style="--d:.32s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Por equipos de trabajo</div>
+    <div class="wi-pill u" style="--d:.38s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Módulos según tu plan</div>
+    <div class="wi-pill u" style="--d:.44s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Asistente con contexto</div>
+    <div class="wi-pill u" style="--d:.5s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Roles y permisos</div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Cómo funciona</span><span class="r">Introducción</span></div>
+</section>
+
+<!-- 04 PRIMEROS PASOS -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">PRIMEROS PASOS</div></div>
+ <div class="shead">
+  <span class="eyebrow u" style="--d:0s">TRAS CONTRATAR</span>
+  <h2 class="u" style="--d:.08s;margin-top:14px">Tres pasos para empezar</h2>
+  <div class="sub u" style="--d:.14s">El panel te guía con un aviso visible hasta completar lo esencial.</div>
+ </div>
+ <div class="jr">
+  <div class="jr-flow">
+   <div class="jnode u" style="--d:.22s"><div class="jn">PASO 1</div><div class="jt">Elegir plan y pagar</div></div>
+   <div class="jnode hot u" style="--d:.3s"><div class="jn">PASO 2</div><div class="jt">Configurar negocio</div></div>
+   <div class="jnode u" style="--d:.38s"><div class="jn">PASO 3</div><div class="jt">Conectar WhatsApp</div></div>
+  </div>
+  <p class="u" style="--d:.48s;margin-top:28px;font-size:15px;color:#b0b2d4;line-height:1.6;max-width:900px">
+   En esta presentación nos centramos en el <strong style="color:#fff">paso 2</strong>: el asistente «Configurar negocio» del panel. Los datos que cargás alimentan al asistente y los mensajes con el tono de tu marca.
+  </p>
+ </div>
+ <div class="ftr"><span>Humano · Cómo funciona</span><span class="r">Primeros pasos</span></div>
+</section>
+
+<!-- 05 WIZARD 6 PASOS -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-violet" style="width:380px;height:380px;right:-130px;top:-90px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">ASISTENTE</div></div>
+ <div class="shead">
+  <span class="eyebrow u" style="--d:0s">6 PASOS</span>
+  <h2 class="u" style="--d:.08s;margin-top:14px">El asistente de configuración</h2>
+  <div class="sub u" style="--d:.14s">Mismo flujo en el panel de tu equipo y al registrarte por primera vez.</div>
+ </div>
+ <div class="cgrid">
+  <div class="ccard u" style="--d:.2s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg></div><div class="cn">01</div></div>
+   <h4>Datos del negocio</h4><p>Nombre, sector, logo, descripción, propuesta de valor y contacto.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.27s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M5 20c.5-3.5 3-6 7-6s6.5 2.5 7 6"/></svg></div><div class="cn">02</div></div>
+   <h4>Información personal</h4><p>Responsable, idioma, país y datos para personalizar el asistente.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.34s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></div><div class="cn">03</div></div>
+   <h4>Dirección</h4><p>Ubicación física o digital del negocio.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.41s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="18" cy="17" r="2"/><path d="M8 12h4M14 8.5l2-1M14 15.5l2 1"/></svg></div><div class="cn">04</div></div>
+   <h4>Redes sociales</h4><p>Enlaces a perfiles para contexto y comunicación.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.48s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v4M8 6h8M6 10h12v10H6z"/></svg></div><div class="cn">05</div></div>
+   <h4>Desafío</h4><p>Qué problema querés resolver con Humano; la IA resume tu situación.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.55s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12.5l4.6 4.5L19 7"/></svg></div><div class="cn">06</div></div>
+   <h4>Revisar y enviar</h4><p>Informe de mercado generado por IA y guardado en el equipo.</p><div class="uline"></div></div>
+ </div>
+ <div class="ftr"><span>Humano · Configuración del negocio</span><span class="r">Vista general</span></div>
+</section>
+
+<!-- 06 PASO 1 DETALLE -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">PASO 1 / 6</div></div>
+ <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 01 · DATOS DEL NEGOCIO</span></div>
+ <div class="stg">
+  <div class="stg-l">
+   <div class="stg-head u" style="--d:.12s">
+    <div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V8l8-4 8 4v12"/></svg></div>
+    <div><div class="stg-name">Tu marca, clara</div><div class="stg-one">Lo mínimo para que Humano hable como vos.</div></div>
+   </div>
+   <div class="stg-rule u" style="--d:.2s"></div>
+   <div class="stg-hl u" style="--d:.26s">Nombre, sector y descripción.</div>
+   <div class="stg-body u" style="--d:.33s">Completás nombre del negocio, rubro, logo opcional, descripción («¿qué hacés y para quién?») y una frase de propuesta de valor. También teléfono, WhatsApp, web y email. Todo queda guardado en tu equipo y el asistente lo usa en el chat y en los mensajes automáticos.</div>
+   <div class="stg-steps u" style="--d:.44s">
+    <div class="sd cur"></div><div class="sd"></div><div class="sd"></div><div class="sd"></div><div class="sd"></div><div class="sd"></div>
+   </div>
+  </div>
+  <div class="stg-r sc" style="--d:.34s">
+   <div class="rglow"></div>
+   <div class="rtop">EN EL PANEL</div>
+   <div class="rname">Configurar negocio</div>
+   <div class="rsep"></div>
+   <div class="rdesc">Entrá con tu cuenta al panel → «Configurar negocio». Completás los datos de tu marca y equipo.</div>
+   <div class="rtrack">CONFIGURACIÓN · 01/06</div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Configuración del negocio</span><span class="r">Paso 1</span></div>
+</section>
+
+<!-- 07 PASO 5 DESAFÍO -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">PASO 5 / 6</div></div>
+ <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 05 · DESAFÍO</span></div>
+ <div class="stg">
+  <div class="stg-l">
+   <div class="stg-head u" style="--d:.12s">
+    <div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9.3 18h5.4M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10c.8.7 1.1 1.3 1.2 2.5h5.6c.1-1.2.4-1.8 1.2-2.5A6 6 0 0 0 12 3Z"/></svg></div>
+    <div><div class="stg-name">Tu problema, en foco</div><div class="stg-one">Humano entiende qué querés mejorar.</div></div>
+   </div>
+   <div class="stg-rule u" style="--d:.2s"></div>
+   <div class="stg-hl u" style="--d:.26s">La IA resume tu situación.</div>
+   <div class="stg-body u" style="--d:.33s">Describís el desafío principal (ventas, operación, atención al cliente…). Con los datos del negocio y, si aplica, contexto personal, el asistente genera un resumen breve y práctico. Ese texto queda guardado y orienta respuestas futuras.</div>
+   <div class="stg-steps u" style="--d:.44s">
+    <div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div><div class="sd"></div>
+   </div>
+  </div>
+  <div class="stg-r sc" style="--d:.34s">
+   <div class="rglow"></div>
+   <div class="rtop">SALIDA</div>
+   <div class="rname">Resumen del asistente</div>
+   <div class="rsep"></div>
+   <div class="rdesc">Párrafo o puntos con recomendaciones concretas según tu rubro y problemática — sin inventar servicios que no ofrecés.</div>
+   <div class="rtrack">CONFIGURACIÓN · 05/06</div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Configuración del negocio</span><span class="r">Paso 5</span></div>
+</section>
+
+<!-- 08 PASO 6 INFORME -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">PASO 6 / 6</div></div>
+ <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 06 · REVISAR Y ENVIAR</span></div>
+ <div class="stg">
+  <div class="stg-l">
+   <div class="stg-head u" style="--d:.12s">
+    <div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12.5l4.6 4.5L19 7"/></svg></div>
+    <div><div class="stg-name">Informe y guardado</div><div class="stg-one">Cerrás la configuración con datos accionables.</div></div>
+   </div>
+   <div class="stg-rule u" style="--d:.2s"></div>
+   <div class="stg-hl u" style="--d:.26s">Informe de mercado al finalizar.</div>
+   <div class="stg-body u" style="--d:.33s">Si tenés rubro, descripción y propuesta de valor, Humano puede armar un informe con clientes potenciales y contexto de tu mercado. Al guardar, queda todo en la ficha de tu negocio: es la base para el asistente y para conectar WhatsApp.</div>
+   <div class="stg-steps u" style="--d:.44s">
+    <div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div>
+   </div>
+  </div>
+  <div class="stg-r sc" style="--d:.34s">
+   <div class="rglow"></div>
+   <div class="rtop">RESULTADO</div>
+   <div class="rname">Listo para operar</div>
+   <div class="rsep"></div>
+   <div class="rdesc">Desaparece el aviso «Configurar negocio». Siguiente paso natural: conectar WhatsApp y explorar chat, contactos y módulos del plan.</div>
+   <div class="rtrack">CONFIGURACIÓN · 06/06</div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Configuración del negocio</span><span class="r">Paso 6</span></div>
+</section>
+
+<!-- 09 SIGUIENTE CAPÍTULO -->
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">SIGUIENTE CAPÍTULO</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">BLOQUE 02</span></div>
+  <h2 class="u" style="--d:.14s">Chat, contactos y <em>módulos del día a día</em></h2>
+  <p class="u" style="--d:.24s">Ya configuraste tu negocio. El siguiente paso es conocer el chat, la agenda de contactos y las herramientas de tu plan.</p>
+  <a class="cta-link u" style="--d:.36s" href="chat-contactos-modulos.html">Continuar con el capítulo 2 →</a>
+ </div>
+</section>
+
+</div>
+
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let cur=0;const total=slides.length;
+const bar=document.querySelector('#bar i');
+const count=document.querySelector('#count');
+function fit(){
+ const s=Math.min(innerWidth/1280,innerHeight/720);
+ document.querySelector('#stage').style.transform='translate(-50%,-50%) scale('+s+')';
+}
+function show(n){
+ cur=Math.max(0,Math.min(total-1,n));
+ slides.forEach((s,i)=>s.classList.toggle('active',i===cur));
+ bar.style.width=((cur+1)/total*100)+'%';
+ count.innerHTML='<b>'+String(cur+1).padStart(2,'0')+'</b> / '+String(total).padStart(2,'0');
+}
+function next(){show(cur+1)}
+function prev(){show(cur-1)}
+addEventListener('keydown',e=>{
+ if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next()}
+ else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev()}
+ else if(e.key==='Home')show(0);
+ else if(e.key==='End')show(total-1);
+ else if(e.key==='f'||e.key==='F'){
+  if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+ }
+});
+addEventListener('resize',fit);
+let sx=0;
+addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+addEventListener('touchend',e=>{
+ const dx=e.changedTouches[0].clientX-sx;
+ if(dx<-46)next();else if(dx>46)prev();
+},{passive:true});
+fit();show(0);
+</script>
+</body>
+</html>

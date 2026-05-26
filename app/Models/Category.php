@@ -174,11 +174,19 @@ class Category extends Model
     }
 
     /**
-     * Get messages in this category.
+     * Messages classified by this category (future news type via messages.category_id).
      */
     public function messages()
     {
         return $this->hasMany(Message::class);
+    }
+
+    /**
+     * Campaign messages that send to contacts in this contact category.
+     */
+    public function messagesByContactCategory()
+    {
+        return $this->belongsToMany(Message::class, 'message_categories');
     }
 
     /**
@@ -446,6 +454,7 @@ class Category extends Model
         return $this->invoiceItems()->count()
             + $this->teamFiles()->count()
             + $this->messages()->count()
+            + $this->messagesByContactCategory()->count()
             + $this->products()->count()
             + $this->tasks()->count()
             + $this->projects()->count()

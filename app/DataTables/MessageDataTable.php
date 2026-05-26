@@ -33,11 +33,14 @@ class MessageDataTable extends DataTable
             })
             ->addColumn('category_info', function ($data)
             {
-                $categoryName = optional($data->category)->name ?? '<span class="text-muted">Sin categoría</span>';
-                $contactStatus = optional($data->contactStatus)->name ?? '<span class="text-muted">Todos</span>';
+                $categoryLine = $data->hasContactCategoryFilter()
+                    ? e($data->contactCategories->sortBy('name')->pluck('name')->implode(', '))
+                    : '<span class="text-muted">'.e(__('app.message_form_categories_all')).'</span>';
+                $contactStatus = optional($data->contactStatus)->name
+                    ?? '<span class="text-muted">'.e(__('app.message_form_contact_status_all')).'</span>';
 
                 return '<div class="d-flex flex-column">
-                    <span>'.$categoryName.'</span>
+                    <span>'.$categoryLine.'</span>
                     <small class="text-muted mt-1">'.$contactStatus.'</small>
                 </div>';
             })
@@ -147,7 +150,7 @@ class MessageDataTable extends DataTable
     {
         return $model->newQuery()
             ->with([
-                'category',
+                'contactCategories',
                 'contactStatus',
                 'deliveries',
             ])
@@ -187,7 +190,7 @@ class MessageDataTable extends DataTable
                 ->title(__('Subject'))
                 ->addClass('all'),
             Column::computed('category_info')
-                ->title(__('Category'))
+                ->title(__('app.Tags'))
                 ->orderable(false)
                 ->searchable(false)
                 ->addClass('min-desktop'),

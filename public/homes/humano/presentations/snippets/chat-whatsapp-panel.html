@@ -1,0 +1,23 @@
+{{-- Panel con QR activo (waiting_qr). Regenerar imagen: php artisan humano:sync-presentation-whatsapp-qr --team=1 --}}
+<div class="pres-wa-panel">
+  <div class="pres-wa-card">
+    <div class="pres-wa-head">
+      <div class="pres-wa-avatar pres-wa-avatar-waiting" aria-hidden="true">
+        <span class="ti ti-brand-whatsapp"></span>
+      </div>
+      <h5 class="pres-wa-title">+34 999 000 999</h5>
+      <span class="pres-wa-badge pres-wa-badge-warning">Escanear QR</span>
+    </div>
+    <div class="pres-wa-body">
+      <p class="pres-wa-label">Conexión WhatsApp</p>
+      <div class="pres-wa-qr-wrap">
+        <div class="pres-wa-qr-frame pres-wa-qr-frame-ready">
+          <img src="/homes/humano/img/presentations/whatsapp-qr.png" alt="Código QR WhatsApp" width="200" height="200" class="pres-wa-qr-img">
+        </div>
+      </div>
+      <p class="pres-wa-hint">El código puede tardar hasta 45 segundos en aparecer. No cierres esta pantalla.</p>
+      <p class="pres-wa-hint">Si no aparece el código, tocá actualizar: también se renueva solo al abrir Chat.</p>
+      <button type="button" class="pres-wa-btn pres-wa-btn-active">Actualizar código QR</button>
+    </div>
+  </div>
+</div>

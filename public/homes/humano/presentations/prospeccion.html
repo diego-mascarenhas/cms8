@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Prospección</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-slide-stack{position:absolute;left:84px;right:84px;top:78px;bottom:64px;
+ display:flex;flex-direction:column;gap:16px;min-height:0}
+.pres-slide-stack .shead{position:static;left:auto;top:auto;width:auto;flex:0 0 auto}
+.pres-slide-stack .shead h2{font-size:36px;line-height:1.08}
+.pres-slide-stack .shead .sub{margin-top:8px;font-size:14px;max-width:920px;line-height:1.45}
+.pres-slide-note{flex:0 0 auto;margin:0;font-size:13px;color:var(--muted);text-align:center;line-height:1.45}
+.pres-slide-flow-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;flex:1 1 auto;min-height:0;align-content:start}
+.pres-slide-flow-grid .ccard{padding:18px 16px}
+.pres-prospect{position:relative;left:auto;right:auto;top:auto;bottom:auto;flex:1 1 auto;min-height:0;
+ border-radius:18px;overflow:auto;background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);
+ font-family:var(--font);color:#566a7f;padding:20px 24px}
+.pres-prospect-crumb{font-size:12px;color:#a1acb8;margin-bottom:4px}
+.pres-prospect-crumb span{color:#566a7f;font-weight:600}
+.pres-prospect h3{font-size:18px;font-weight:700;color:#566a7f;margin:0 0 4px}
+.pres-prospect .lead{font-size:12px;color:#a1acb8;margin-bottom:16px;line-height:1.45}
+.pres-prospect .credits{display:inline-block;margin-bottom:14px;padding:4px 10px;border-radius:6px;
+ background:rgba(105,108,255,.1);color:#696cff;font-size:11px;font-weight:700}
+.pres-prospect-card{background:#fff;border-radius:10px;border:1px solid #e4e6ef;padding:18px 20px;margin-bottom:14px}
+.pres-prospect-card h4{font-size:14px;font-weight:700;margin:0 0 4px;color:#566a7f}
+.pres-prospect-card .sub{font-size:11px;color:#a1acb8;margin-bottom:14px}
+.pres-prospect-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.pres-prospect-field label{display:block;font-size:10px;font-weight:600;color:#566a7f;margin-bottom:4px}
+.pres-prospect-field .box{height:34px;border-radius:8px;background:#f5f5f9;border:1px solid #e4e6ef;padding:0 10px;
+ font-size:11px;color:#a1acb8;display:flex;align-items:center}
+.pres-prospect-field.wide{grid-column:1/-1}
+.pres-prospect-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pres-prospect-chips span{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:600;
+ border:1px solid #696cff;color:#696cff;background:#fff}
+.pres-prospect-chips span.on{background:#696cff;color:#fff}
+.pres-prospect-btn{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:9px 16px;
+ border-radius:8px;background:#696cff;color:#fff;font-size:12px;font-weight:600}
+.pres-prospect-table{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border-radius:10px;overflow:hidden;
+ border:1px solid #e4e6ef}
+.pres-prospect-table th,.pres-prospect-table td{padding:10px 12px;text-align:left;border-bottom:1px solid #f0f2f4}
+.pres-prospect-table th{font-size:10px;font-weight:700;color:#a1acb8;text-transform:uppercase;letter-spacing:.04em;background:#fafafa}
+.pres-prospect-table td{color:#566a7f}
+.pres-prospect-table .act{color:#696cff;font-weight:600;white-space:nowrap}
+.pres-prospect-import{float:right;padding:7px 14px;border-radius:8px;background:#696cff;color:#fff;font-size:11px;font-weight:600}
+.pres-prospect-check{width:14px;height:14px;border-radius:4px;border:1px solid #c9cdd4;display:inline-block;vertical-align:middle}
+.pres-prospect-check.on{background:#696cff;border-color:#696cff}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 05 · PLAN HUNTER</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:920px">Prospección · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">buscar contactos</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:580px;line-height:1.6">Encontrá perfiles por cargo, ubicación y empresa; importalos a tu agenda y seguilos con chat, tareas y calendario.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="tareas.html">← Capítulo anterior: Tareas</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">PROSPECCIÓN</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">BUSCAR CONTACTOS</span></div>
+   <h2 class="u" style="--d:.26s">Millones de perfiles <em>desde el panel</em></h2>
+   <p class="u" style="--d:.36s">La pantalla de prospección está en Contactos → Buscar contactos. Filtrás por título, ubicación, seniority y más; cada importación usa créditos de prospectos.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">+200 M perfiles</span>
+    <span class="dv-chip">Créditos visibles</span>
+    <span class="dv-chip">Importar a Contactos</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Prospección</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">DEFINIR BÚSQUEDA</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Armá el filtro <em style="font-style:normal;color:var(--accent)">como en el panel</em></h2>
+   <p class="sub">Títulos, ubicación de la persona, posición, dominios de empresa y palabras clave. Después pulsás Buscar personas.</p>
+  </div>
+  <div class="pres-prospect u sc" style="--d:.2s">
+  <div class="pres-prospect-crumb">Contactos / <span>Buscar contactos</span></div>
+  <div class="credits u" style="--d:.24s">Créditos de prospectos: 48</div>
+  <div class="pres-prospect-card">
+   <h4>Define tu búsqueda</h4>
+   <p class="sub">Indica títulos, ubicación, posición o palabras clave. Añade los resultados como contactos.</p>
+   <div class="pres-prospect-grid">
+    <div class="pres-prospect-field wide">
+     <label>Títulos</label>
+     <div class="box">director comercial, gerente de ventas</div>
+    </div>
+    <div class="pres-prospect-field">
+     <label>Ubicación de la persona</label>
+     <div class="box">España, Madrid</div>
+    </div>
+    <div class="pres-prospect-field">
+     <label>Posición</label>
+     <div class="pres-prospect-chips">
+      <span>Director</span><span class="on">Manager</span><span>VP</span><span>C-Suite</span>
+     </div>
+    </div>
+    <div class="pres-prospect-field">
+     <label>Dominios empresa</label>
+     <div class="box">empresa.com</div>
+    </div>
+    <div class="pres-prospect-field">
+     <label>Ubicación de la empresa</label>
+     <div class="box">California</div>
+    </div>
+    <div class="pres-prospect-field wide">
+     <label>Palabras clave</label>
+     <div class="box">tecnología, software</div>
+    </div>
+   </div>
+   <div class="pres-prospect-btn"><i class="ti ti-search"></i> Buscar personas</div>
+  </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Prospección</span><span class="r">Filtros</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">RESULTADOS</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Elegí perfiles e <em style="font-style:normal;color:var(--accent)">importalos</em></h2>
+   <p class="sub">Tabla con nombre, cargo, empresa, email y teléfono. Podés importar uno o varios seleccionados y asignar categoría.</p>
+  </div>
+  <div class="pres-prospect u sc" style="--d:.2s">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+   <div>
+    <h3 style="font-size:15px;margin:0">Resultados de búsqueda</h3>
+    <p class="lead" style="margin:0">127 personas encontradas</p>
+   </div>
+   <span class="pres-prospect-import"><i class="ti ti-user-plus"></i> Importar seleccionados</span>
+  </div>
+  <table class="pres-prospect-table">
+   <thead>
+    <tr>
+     <th style="width:28px"><span class="pres-prospect-check on"></span></th>
+     <th>Nombre</th><th>Título</th><th>Empresa</th><th>Email</th><th>Acciones</th>
+    </tr>
+   </thead>
+   <tbody>
+    <tr>
+     <td><span class="pres-prospect-check on"></span></td>
+     <td><strong>María G.</strong></td><td>Directora comercial</td><td>ACME S.L.</td><td>m***@acme.com</td>
+     <td class="act">+ Importar</td>
+    </tr>
+    <tr>
+     <td><span class="pres-prospect-check"></span></td>
+     <td><strong>Carlos R.</strong></td><td>Gerente de ventas</td><td>TechNova</td><td>c***@technova.io</td>
+     <td class="act">+ Importar</td>
+    </tr>
+    <tr>
+     <td><span class="pres-prospect-check on"></span></td>
+     <td><strong>Laura P.</strong></td><td>VP Marketing</td><td>Grupo Norte</td><td>l***@gruponorte.es</td>
+     <td class="act">+ Importar</td>
+    </tr>
+   </tbody>
+  </table>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Prospección</span><span class="r">Importar</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">DESPUÉS DEL IMPORT</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Del perfil importado al <em style="font-style:normal;color:var(--accent)">seguimiento</em></h2>
+   <p class="sub">Cada importación entra a Contactos y desde ahí seguís con el resto del panel.</p>
+  </div>
+  <div class="pres-slide-flow-grid">
+   <div class="ccard u" style="--d:.15s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div><div class="cn">01</div></div>
+    <h4>Créditos</h4><p>Cada importación consume créditos según el nivel del perfil. Si se agotan, podés ampliar el plan.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.22s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="cn">02</div></div>
+    <h4>Contacto en tu agenda</h4><p>Queda en Contactos con categoría, email y teléfono cuando la búsqueda los trae.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.29s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="cn">03</div></div>
+    <h4>Chat y seguimiento</h4><p>Escribís por WhatsApp o creás tareas desde el mismo flujo del capítulo anterior.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.36s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="cn">04</div></div>
+    <h4>Calendario</h4><p>Agendás la próxima reunión con ese contacto sin cambiar de herramienta.</p><div class="uline"></div></div>
+  </div>
+  <p class="pres-slide-note u" style="--d:.45s">En planes Hunter también tenés Mailer y Landings; la búsqueda de prospectos es el punto de partida para outbound.</p>
+ </div>
+ <div class="ftr"><span>Humano · Prospección</span><span class="r">Flujo</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+  <div class="hdr-r">GUÍAS</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">RECORRIDO COMPLETO</span></div>
+  <h2 class="u" style="--d:.14s">De la búsqueda al <em>cierre</em></h2>
+  <p class="u" style="--d:.24s">Configuración, día a día, calendario, tareas y prospección. Compará planes y activá el módulo que necesites.</p>
+  <div class="pres-nav-row u" style="--d:.36s">
+   <a href="/inicio#landingPlans">Ver planes en la landing →</a>
+   <a href="primeros-pasos.html">Volver a Primeros pasos</a>
+   <a href="chat-contactos-modulos.html">Chat y contactos</a>
+  </div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

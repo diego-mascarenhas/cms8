@@ -21,6 +21,10 @@ return [
     'coupon_copied' => 'Copiado',
     'staging_note' => 'Precios de staging: en producción se pueden cambiar los enlaces por variables de entorno.',
     'most_popular' => 'Más popular',
+    'landing_plans_badge' => 'Planes',
+    'landing_plans_title' => 'Qué incluye cada plan',
+    'landing_plans_subtitle' => 'Compará módulos y capacidades. Los precios y el checkout están en la página de planes.',
+    'landing_plans_cta' => 'Ver planes y precios',
     'plans' => [
         'assistant' => [
             'name' => 'Assistant',
@@ -28,15 +32,24 @@ return [
             'features' => [
                 'Chat por WhatsApp y prompts alineados con tu tono de marca',
                 'Calendario, contactos y tareas en un solo flujo',
+                'Panel Hoy y ajustes para operar el día a día',
+            ],
+        ],
+        'hunter' => [
+            'name' => 'Hunter',
+            'description' => 'Todo lo del Assistant, con herramientas para captar y nutrir leads: email marketing y landings integradas en el mismo flujo de trabajo.',
+            'features' => [
+                'Todo lo del plan Assistant',
                 'Prospección y automatización de lo repetitivo para ganar tiempo',
-                'Mailer, landings y panel para seguir cerca de tus clientes',
+                'Mailer para seguimiento por email',
+                'Landings para convertir visitas en contactos',
             ],
         ],
         'business' => [
             'name' => 'Business',
             'description' => 'Controla toda la parte digital de tu negocio en una sola plataforma gestionada con inteligencia artificial y sin perder el toque humano que te diferencia de la competencia.',
             'features' => [
-                'Todo lo de Assistant, más campañas y embudo comercial',
+                'Todo lo de Hunter, más campañas y embudo comercial',
                 'Facturas, cobros y módulo financiero en la misma plataforma',
                 'Marketing, ventas y cobros enlazados sin cambiar de herramienta',
                 'Dashboard y ajustes del equipo para visibilidad operativa',

@@ -72,8 +72,26 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertFalse($team->hasModule('clients'));
         $this->assertTrue($team->hasModule('today'));
         $this->assertTrue($team->hasModule('prompts'));
-        $this->assertTrue($team->hasModule('mailer'));
+        $this->assertFalse($team->hasModule('mailer'));
+        $this->assertFalse($team->hasModule('landings'));
         $this->assertTrue($team->hasModule('chat'));
+    }
+
+    public function test_hunter_plan_includes_mailer_and_landings(): void
+    {
+        $this->seedModulesFromPricingConfig();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'hunter');
+
+        $team = $team->fresh();
+        $this->assertTrue($team->hasModule('chat'));
+        $this->assertTrue($team->hasModule('mailer'));
+        $this->assertTrue($team->hasModule('landings'));
+        $this->assertFalse($team->hasModule('funnel'));
     }
 
     public function test_business_plan_enables_assistant_and_addon_modules(): void

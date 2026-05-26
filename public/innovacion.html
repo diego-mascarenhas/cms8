@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fanyion · Concepto A — Evolución</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+ --ink:#070518;--navy:#0D0A2A;--indigo:#160041;--indigo2:#1E0F66;--purple:#241351;
+ --surface:#2A2060;--blue:#0057FF;--blue2:#4361F7;--blue3:#4134D4;--cyan:#5AD8FF;
+ --cyan2:#5BC0EB;--cyanpale:#BFE6FF;--lilac:#CBC6E8;--muted:#8E88B8;--muted2:#8899CC;
+ --offwhite:#E8EFFE;--white:#FFFFFF;
+ --font:'Calibri','Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+html,body{height:100%}
+body{background:#040310;font-family:var(--font);overflow:hidden;
+ -webkit-font-smoothing:antialiased;color:var(--offwhite)}
+#stage{position:absolute;width:1280px;height:720px;left:50%;top:50%;
+ transform:translate(-50%,-50%) scale(1);transform-origin:center;}
+.slide{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden;
+ transition:opacity .6s ease,visibility .6s;
+ background:
+   radial-gradient(1100px 700px at 78% -10%,#241a63 0%,rgba(36,26,99,0) 55%),
+   radial-gradient(900px 800px at -8% 108%,#10204f 0%,rgba(16,32,79,0) 58%),
+   linear-gradient(160deg,#0c0a26 0%,#0a0820 45%,#070518 100%);}
+.slide.active{opacity:1;visibility:visible}
+.slide.active{z-index:2}
+/* texture */
+.grid-tex{position:absolute;inset:0;opacity:.5;
+ background-image:linear-gradient(rgba(120,140,255,.045) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(120,140,255,.045) 1px,transparent 1px);
+ background-size:46px 46px;mask:radial-gradient(900px 600px at 60% 40%,#000 30%,transparent 85%)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;pointer-events:none}
+.b-cyan{background:#1f7fd8}.b-blue{background:#3b3ad0}.b-violet{background:#5b2db0}
+
+/* entry animation */
+.slide .u{opacity:0;transform:translateY(26px);
+ transition:opacity .72s cubic-bezier(.22,.72,.2,1),transform .72s cubic-bezier(.22,.72,.2,1);
+ transition-delay:var(--d,0s)}
+.slide.active .u{opacity:1;transform:none}
+.slide .fz{opacity:0;transition:opacity .8s ease;transition-delay:var(--d,0s)}
+.slide.active .fz{opacity:1}
+.slide .sc{opacity:0;transform:scale(.88);
+ transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
+.slide.active .sc{opacity:1;transform:none}
+.slide .lf{opacity:0;transform:translateX(-34px);
+ transition:opacity .7s ease,transform .7s cubic-bezier(.22,.72,.2,1);transition-delay:var(--d,0s)}
+.slide.active .lf{opacity:1;transform:none}
+
+/* chrome */
+.hdr{position:absolute;top:42px;left:84px;right:84px;display:flex;
+ justify-content:space-between;align-items:center;z-index:5}
+.brand{display:flex;align-items:center;gap:11px}
+.mark{width:30px;height:30px}
+.brand span{font-weight:700;font-size:21px;letter-spacing:.2px;color:#fff}
+.hdr-r{font-size:12.5px;letter-spacing:3.4px;color:var(--muted2);font-weight:600}
+.ftr{position:absolute;bottom:40px;left:84px;right:84px;display:flex;
+ justify-content:space-between;align-items:center;z-index:5;
+ font-size:11.5px;letter-spacing:2.4px;color:#5f6a9c;font-weight:600}
+.ftr .r{color:var(--cyan2)}
+
+.eyebrow{display:inline-flex;align-items:center;gap:9px;
+ padding:8px 16px;border-radius:999px;font-size:12px;font-weight:700;
+ letter-spacing:3px;color:var(--cyan);background:rgba(90,216,255,.09);
+ border:1px solid rgba(90,216,255,.26)}
+.eyebrow.solid{background:linear-gradient(120deg,#0057FF,#4361F7);color:#fff;
+ border:none;box-shadow:0 10px 30px -8px rgba(0,87,255,.6)}
+.kicker{font-size:13px;font-weight:600;letter-spacing:3.6px;color:var(--cyan)}
+
+h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
+.lead{color:var(--cyanpale);font-weight:400}
+.body{color:#b9bce0;line-height:1.64}
+
+/* glass card */
+.card{position:relative;border-radius:20px;
+ background:linear-gradient(165deg,rgba(74,72,140,.26),rgba(20,18,52,.5));
+ border:1px solid rgba(140,150,230,.16);
+ box-shadow:0 26px 50px -28px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.05)}
+.card.glow{box-shadow:0 30px 60px -26px rgba(0,60,200,.5),
+ inset 0 1px 0 rgba(255,255,255,.06)}
+.ic{width:24px;height:24px}
+.badge-ic{display:flex;align-items:center;justify-content:center;border-radius:14px;
+ background:linear-gradient(150deg,#5AD8FF,#2C8FD8);color:#0a1230;flex:none;
+ box-shadow:0 12px 26px -10px rgba(90,216,255,.6)}
+
+/* nav hud */
+#hud{position:fixed;left:0;right:0;bottom:0;z-index:40;pointer-events:none}
+#bar{height:3px;background:rgba(255,255,255,.07)}
+#bar i{display:block;height:100%;width:0;
+ background:linear-gradient(90deg,#0057FF,#5AD8FF);transition:width .5s ease;
+ box-shadow:0 0 14px rgba(90,216,255,.8)}
+#nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+ display:flex;align-items:center;gap:13px;z-index:41;pointer-events:auto;
+ padding:6px 8px;border-radius:999px;background:rgba(12,12,34,.7);
+ border:1px solid rgba(140,150,230,.16);backdrop-filter:blur(10px)}
+#nav button{width:36px;height:36px;border-radius:50%;cursor:pointer;
+ background:rgba(40,42,86,.6);border:1px solid rgba(140,150,230,.2);
+ color:#cfd6ff;display:flex;align-items:center;justify-content:center;transition:.18s}
+#nav button:hover{background:#0057FF;border-color:#0057FF;color:#fff}
+#count{font-size:12px;letter-spacing:1.4px;color:#8089bd;font-weight:600;
+ min-width:62px;text-align:center}
+#count b{color:#fff;font-weight:700}
+
+/* COVER */
+.cv{position:absolute;inset:0}
+.cv-l{position:absolute;left:84px;top:188px;width:660px}
+.cv .ttl{font-size:67px;font-weight:800;letter-spacing:-2.4px;line-height:1.03;color:#fff}
+.cv .ttl .g{background:linear-gradient(100deg,#5AD8FF,#7BA8FF 60%,#fff);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.cv .meta{margin-top:38px;padding-top:26px;border-top:1px solid rgba(140,150,230,.2);width:430px}
+.cv .meta .pg{font-size:18px;color:#fff;font-weight:600;margin-bottom:14px}
+.cv .meta .ln{font-size:13.5px;color:var(--muted2);line-height:2}
+.cv .meta .ln b{color:var(--cyan);font-weight:600}
+.cv-scene{position:absolute;right:40px;top:50%;transform:translateY(-50%);
+ width:520px;height:520px;perspective:1500px}
+.cv-orbit{position:absolute;inset:0;transform-style:preserve-3d;
+ animation:floaty 7s ease-in-out infinite}
+.cv-ring{position:absolute;border-radius:50%;border:1px solid rgba(90,216,255,.16);
+ left:50%;top:50%;transform:translate(-50%,-50%)}
+.glassP{position:absolute;border-radius:24px;
+ background:linear-gradient(160deg,rgba(95,110,220,.32),rgba(18,16,48,.62));
+ border:1px solid rgba(150,160,240,.22);backdrop-filter:blur(4px);
+ box-shadow:0 40px 80px -30px rgba(0,0,0,.85)}
+.logoF{width:150px;height:165px;filter:drop-shadow(0 24px 40px rgba(0,80,255,.5))}
+@keyframes floaty{0%,100%{transform:translateY(-14px)}50%{transform:translateY(14px)}}
+@keyframes spinSlow{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.wmk{position:absolute;right:-30px;bottom:54px;font-size:150px;font-weight:800;
+ letter-spacing:6px;color:rgba(125,140,255,.05)}
+
+/* DIVIDER */
+.dv{position:absolute;inset:0;display:flex;align-items:center;padding:0 84px}
+.dv .num{font-size:240px;font-weight:800;line-height:.8;letter-spacing:-8px;
+ color:transparent;-webkit-text-stroke:1.6px rgba(123,168,255,.4)}
+.dv .dv-r{margin-left:64px}
+.dv .dv-r .k{margin-bottom:22px}
+.dv .dv-r h2{font-size:54px;font-weight:800;color:#fff;letter-spacing:-1.6px;line-height:1.06}
+.dv .dv-r h2 em{font-style:normal;color:var(--cyan)}
+.dv .dv-r p{margin-top:20px;font-size:16px;color:var(--muted);max-width:440px;line-height:1.6}
+.dv-chips{display:flex;gap:10px;margin-top:30px;flex-wrap:wrap;max-width:470px}
+.dv-chip{font-size:11.5px;font-weight:600;letter-spacing:1.4px;color:#cdd4ff;
+ padding:8px 14px;border-radius:9px;background:rgba(120,130,220,.12);
+ border:1px solid rgba(140,150,230,.2)}
+
+/* section title block (content slides) */
+.shead{position:absolute;left:84px;top:118px;width:1112px}
+.shead .row{display:flex;align-items:center;gap:18px}
+.shead h2{font-size:42px;font-weight:800;color:#fff;letter-spacing:-1.1px;line-height:1.05}
+.shead .sub{margin-top:13px;font-size:15.5px;color:var(--muted);max-width:760px;line-height:1.55}
+.bigbadge{width:60px;height:60px;border-radius:18px;flex:none}
+.bigbadge .ic{width:30px;height:30px}
+
+/* WHAT IS */
+.wi{position:absolute;left:84px;right:84px;top:122px;bottom:74px;display:flex;gap:40px}
+.wi-h2{font-size:39px;font-weight:800;color:#fff;letter-spacing:-1px;
+ margin:13px 0 16px;line-height:1.04}
+.wi-r .eyebrow{align-self:flex-start}
+.wi-l{width:380px;flex:none;border-radius:24px;position:relative;overflow:hidden;
+ background:linear-gradient(165deg,#0a55ff,#1f30b8 65%,#241351);
+ box-shadow:0 40px 70px -30px rgba(0,70,255,.55)}
+.wi-l .glow1{position:absolute;width:300px;height:300px;border-radius:50%;
+ background:radial-gradient(circle,rgba(120,230,255,.55),transparent 65%);
+ left:-60px;top:-70px}
+.wi-l .fwrap{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%)}
+.wi-l .fwrap .logoF{width:188px;height:206px}
+.wi-l .cap{position:absolute;left:34px;right:34px;bottom:34px;
+ font-size:19px;font-weight:700;color:#fff;line-height:1.32}
+.wi-l .cap span{color:var(--cyan)}
+.wi-r{flex:1;display:flex;flex-direction:column;justify-content:center}
+.wi-r .lead2{font-size:17.5px;color:#c7cbef;line-height:1.62}
+.wi-r .lead2 b{color:#fff;font-weight:700}
+.wi-quote{margin:22px 0;padding:20px 24px;border-radius:16px;
+ background:linear-gradient(120deg,rgba(90,216,255,.12),rgba(0,87,255,.06));
+ border-left:3px solid var(--cyan)}
+.wi-quote .ql{font-size:11px;letter-spacing:3px;color:var(--cyan);font-weight:700}
+.wi-quote .qt{margin-top:9px;font-size:20px;font-weight:700;color:#fff;
+ font-style:italic;line-height:1.34}
+.wi-model{font-size:11px;letter-spacing:3px;color:var(--muted2);font-weight:700;margin-bottom:13px}
+.wi-pills{display:flex;flex-wrap:wrap;gap:10px}
+.wi-pill{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#dfe3ff;
+ font-weight:600;padding:9px 15px 9px 11px;border-radius:11px;
+ background:rgba(120,130,220,.13);border:1px solid rgba(140,150,230,.2)}
+.wi-pill .dot{width:18px;height:18px;border-radius:6px;flex:none;
+ background:linear-gradient(140deg,#5AD8FF,#0057FF);display:flex;
+ align-items:center;justify-content:center}
+.wi-pill .dot svg{width:11px;height:11px;color:#06122e}
+
+/* AUDIENCE GRID */
+.agrid{position:absolute;left:84px;right:84px;top:288px;
+ display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.acard{border-radius:16px;padding:20px 18px;position:relative;
+ background:linear-gradient(165deg,rgba(74,72,140,.24),rgba(20,18,52,.46));
+ border:1px solid rgba(140,150,230,.15);transition:.3s;overflow:hidden}
+.acard .anum{font-size:13px;font-weight:800;color:var(--cyan);letter-spacing:1px}
+.acard .abar{width:26px;height:3px;border-radius:2px;margin:11px 0 13px;
+ background:linear-gradient(90deg,#5AD8FF,#0057FF)}
+.acard h4{font-size:15px;font-weight:700;color:#fff;line-height:1.22;margin-bottom:8px}
+.acard p{font-size:11.7px;color:#9aa0cf;line-height:1.5}
+.acard .corner{position:absolute;right:-22px;top:-22px;width:60px;height:60px;
+ border-radius:50%;background:radial-gradient(circle,rgba(90,216,255,.22),transparent 70%)}
+
+/* CAPABILITY GRID (3x2) */
+.cgrid{position:absolute;left:84px;right:84px;top:268px;
+ display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.ccard{border-radius:18px;padding:24px 22px;position:relative;
+ background:linear-gradient(165deg,rgba(74,72,140,.26),rgba(20,18,52,.5));
+ border:1px solid rgba(140,150,230,.16);transition:.3s}
+.ccard .top{display:flex;align-items:center;gap:13px;margin-bottom:15px}
+.ccard .bi{width:46px;height:46px;border-radius:13px}
+.ccard .bi .ic{width:23px;height:23px}
+.ccard .cn{font-size:12px;font-weight:800;color:#6f78b8;letter-spacing:1px}
+.ccard h4{font-size:17.5px;font-weight:700;color:#fff;margin-bottom:9px}
+.ccard p{font-size:13px;color:#a3a9d4;line-height:1.55}
+.ccard .uline{height:2px;width:0;background:linear-gradient(90deg,#5AD8FF,transparent);
+ margin-top:15px;transition:width .8s ease .3s}
+.slide.active .ccard .uline{width:100%}
+
+/* WHY */
+.why{position:absolute;left:84px;right:84px;top:150px;bottom:96px;display:flex;gap:40px}
+.why-l{width:316px;flex:none;display:flex;flex-direction:column;justify-content:center}
+.why-l .eyebrow{align-self:flex-start;margin-bottom:20px}
+.why-l h2{font-size:40px;font-weight:800;color:#fff;letter-spacing:-1.2px;line-height:1.07}
+.why-l h2 em{font-style:normal;color:var(--cyan)}
+.why-l p{margin-top:16px;font-size:14px;color:var(--muted);line-height:1.6}
+.why-l .stat{margin-top:26px;display:flex;gap:22px}
+.why-l .stat .v{font-size:38px;font-weight:800;color:#fff;line-height:1}
+.why-l .stat .v .inf{background:linear-gradient(120deg,#5AD8FF,#0057FF);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.why-l .stat .lab{font-size:10.5px;letter-spacing:1.4px;color:var(--muted2);
+ font-weight:600;margin-top:5px}
+.why-r{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:13px;align-content:center}
+.wrow{display:flex;gap:14px;padding:16px 17px;border-radius:14px;
+ background:linear-gradient(160deg,rgba(74,72,140,.24),rgba(20,18,52,.46));
+ border:1px solid rgba(140,150,230,.15)}
+.wrow .wn{width:30px;height:30px;border-radius:9px;flex:none;display:flex;
+ align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#06122e;
+ background:linear-gradient(140deg,#5AD8FF,#2C8FD8)}
+.wrow h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:5px;line-height:1.2}
+.wrow p{font-size:11.6px;color:#9498c6;line-height:1.46}
+
+/* METRICS */
+.mgrid{position:absolute;left:84px;right:84px;top:270px;
+ display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.mcard{border-radius:18px;padding:26px 24px;position:relative;overflow:hidden;
+ background:linear-gradient(165deg,rgba(74,72,140,.28),rgba(20,18,52,.52));
+ border:1px solid rgba(140,150,230,.16)}
+.mcard .mv{font-size:56px;font-weight:800;line-height:.9;letter-spacing:-2px;
+ background:linear-gradient(120deg,#fff,#7BA8FF 70%,#5AD8FF);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.mcard .ml{margin-top:14px;font-size:16px;font-weight:700;color:#fff}
+.mcard .md{margin-top:7px;font-size:12.3px;color:#9aa0cf;line-height:1.5}
+.mcard .mglow{position:absolute;right:-30px;bottom:-30px;width:120px;height:120px;
+ border-radius:50%;background:radial-gradient(circle,rgba(0,87,255,.3),transparent 70%)}
+
+/* STIMULI */
+.st{position:absolute;left:84px;right:84px;top:284px;bottom:92px;
+ display:flex;gap:0;align-items:stretch}
+.stcard{flex:1;border-radius:22px;padding:30px 30px;position:relative;overflow:hidden;
+ display:flex;flex-direction:column}
+.stcard.d{background:linear-gradient(165deg,rgba(0,87,255,.16),rgba(20,18,52,.5));
+ border:1px solid rgba(67,97,247,.34)}
+.stcard.i{background:linear-gradient(165deg,rgba(90,216,255,.13),rgba(20,18,52,.5));
+ border:1px solid rgba(90,216,255,.3)}
+.stcard .sttop{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.stcard .sti{width:52px;height:52px;border-radius:15px}
+.stcard .sti .ic{width:26px;height:26px}
+.stcard .stname{font-size:27px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.stcard .sttag{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:2px;
+ padding:7px 13px;border-radius:8px}
+.stcard.d .sttag{color:#9db4ff;border:1px solid rgba(120,150,255,.4);background:rgba(67,97,247,.14)}
+.stcard.i .sttag{color:#a9e6ff;border:1px solid rgba(90,216,255,.45);background:rgba(90,216,255,.12)}
+.stcard .stdir{font-size:14px;font-weight:700;color:var(--cyan);margin:14px 0 12px;
+ display:flex;align-items:center;gap:8px}
+.stcard .stdir .ar{font-size:16px}
+.stcard .stbody{font-size:13.6px;color:#b6bbe4;line-height:1.62;flex:1}
+.stcard .stline{margin-top:16px;display:flex;align-items:center;gap:10px;
+ padding:13px 16px;border-radius:12px;background:rgba(10,10,40,.5);
+ font-size:13px;font-weight:700;color:#fff}
+.stcard .stline .d2{width:8px;height:8px;border-radius:50%;background:var(--cyan);flex:none;
+ box-shadow:0 0 12px var(--cyan)}
+.st-plus{width:64px;display:flex;align-items:center;justify-content:center;flex:none;
+ z-index:3;margin:0 -22px}
+.st-plus div{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;
+ justify-content:center;font-size:30px;font-weight:300;color:#fff;
+ background:linear-gradient(140deg,#0057FF,#4361F7);
+ border:3px solid #0c0a26;box-shadow:0 16px 36px -10px rgba(0,87,255,.8)}
+
+/* JOURNEY */
+.jr{position:absolute;left:84px;right:84px;top:262px;bottom:84px}
+.jr-tracklabel{font-size:11px;font-weight:700;letter-spacing:2.4px;color:var(--muted2);
+ margin-bottom:9px}
+.jnode{border-radius:14px;padding:13px 8px;text-align:center;position:relative;
+ background:linear-gradient(165deg,rgba(74,72,140,.3),rgba(20,18,52,.55));
+ border:1px solid rgba(140,150,230,.18)}
+.jnode .jn{font-size:12px;font-weight:800;color:var(--cyan);letter-spacing:.5px}
+.jnode .jt{margin-top:6px;font-size:12px;font-weight:700;color:#fff;line-height:1.2}
+.jnode.hot{background:linear-gradient(150deg,#0057FF,#4361F7);border-color:transparent;
+ box-shadow:0 18px 38px -14px rgba(0,87,255,.8)}
+.jnode.hot .jn{color:#bfe0ff}
+.jnode.origin{background:linear-gradient(165deg,rgba(90,216,255,.16),rgba(20,18,52,.5));
+ border-color:rgba(90,216,255,.32)}
+
+/* STAGE */
+.stg{position:absolute;left:84px;right:84px;top:150px;bottom:92px;display:flex;gap:36px}
+.stg-l{flex:1;display:flex;flex-direction:column}
+.stg-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:8px}
+.stg-bb{width:62px;height:62px;border-radius:17px;flex:none}
+.stg-bb .ic{width:31px;height:31px}
+.stg-name{font-size:43px;font-weight:800;color:#fff;letter-spacing:-1.2px;line-height:1}
+.stg-one{font-size:14px;color:var(--cyan);margin-top:9px;font-weight:600}
+.stg-rule{height:1px;background:linear-gradient(90deg,rgba(140,150,230,.4),transparent);
+ margin:20px 0 20px}
+.stg-hl{font-size:23px;font-weight:800;color:#fff;margin-bottom:14px;letter-spacing:-.4px}
+.stg-body{font-size:14.4px;color:#b6bbe4;line-height:1.66}
+.stg-steps{margin-top:auto;padding-top:20px;display:flex;gap:6px;align-items:center}
+.stg-steps .sd{height:6px;border-radius:3px;flex:1;background:rgba(140,150,230,.16)}
+.stg-steps .sd.on{background:linear-gradient(90deg,#0057FF,#5AD8FF)}
+.stg-steps .sd.cur{background:linear-gradient(90deg,#5AD8FF,#BFE6FF);
+ box-shadow:0 0 14px rgba(90,216,255,.7)}
+.stg-r{width:392px;flex:none;border-radius:22px;padding:32px 30px;position:relative;
+ overflow:hidden;display:flex;flex-direction:column;
+ background:linear-gradient(165deg,#0a52ff,#243bc4 62%,#241655);
+ box-shadow:0 40px 74px -28px rgba(0,70,255,.6)}
+.stg-r .rglow{position:absolute;width:240px;height:240px;border-radius:50%;right:-80px;top:-90px;
+ background:radial-gradient(circle,rgba(120,230,255,.5),transparent 65%)}
+.stg-r .rtop{display:flex;align-items:center;gap:11px;font-size:11px;font-weight:700;
+ letter-spacing:2.6px;color:#bcd2ff}
+.stg-r .rtop .rdoc{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.14);
+ display:flex;align-items:center;justify-content:center}
+.stg-r .rtop .rdoc .ic{width:18px;height:18px;color:#fff}
+.stg-r .rname{margin-top:22px;font-size:33px;font-weight:800;color:#fff;
+ letter-spacing:-.6px;line-height:1.04;text-transform:uppercase}
+.stg-r .rsep{width:54px;height:3px;border-radius:2px;background:var(--cyan);margin:18px 0}
+.stg-r .rdesc{font-size:13.4px;color:#dde6ff;line-height:1.6}
+.stg-r .rtrack{margin-top:auto;font-size:11px;letter-spacing:2px;font-weight:700;
+ color:#8fa6e8}
+
+/* CLOSING */
+.cl{position:absolute;inset:0;display:flex;flex-direction:column;
+ justify-content:center;padding:0 84px}
+.cl .clk{margin-bottom:26px}
+.cl h2{font-size:52px;font-weight:800;color:#fff;letter-spacing:-1.6px;
+ line-height:1.08;max-width:830px}
+.cl h2 em{font-style:normal;
+ background:linear-gradient(100deg,#5AD8FF,#7BA8FF);
+ -webkit-background-clip:text;background-clip:text;color:transparent}
+.cl-contact{margin-top:42px;display:flex;gap:14px}
+.cl-cc{padding:18px 22px;border-radius:14px;min-width:172px;
+ background:linear-gradient(160deg,rgba(74,72,140,.26),rgba(20,18,52,.5));
+ border:1px solid rgba(140,150,230,.18)}
+.cl-cc .cl-lab{font-size:10px;letter-spacing:2px;color:var(--muted2);font-weight:700}
+.cl-cc .cl-val{margin-top:8px;font-size:15px;color:#fff;font-weight:600}
+.cl-cc.hi{background:linear-gradient(150deg,#0057FF,#4361F7);border:none;
+ box-shadow:0 24px 46px -18px rgba(0,87,255,.7)}
+.cl-cc.hi .cl-lab{color:#bcd0ff}
+.cl-wmk{position:absolute;right:-20px;bottom:38px;font-size:150px;font-weight:800;
+ letter-spacing:6px;color:rgba(125,140,255,.055)}
+.cl-scene{position:absolute;right:90px;top:108px;width:300px;height:300px}
+</style>
+</head><body>
+<div id="stage">
+<section class="slide cover"><div class="grid-tex"></div><div class="blob b-blue" style="width:420px;height:420px;right:60px;top:-120px"></div><div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div><div class="wmk u" style="--d:.5s">FANYION</div><div class="cv"><div class="cv-scene fz" style="--d:.45s"><div class="cv-ring" style="width:500px;height:500px"></div><div class="cv-ring" style="width:380px;height:380px"></div><div class="cv-ring" style="width:260px;height:260px"></div><div class="cv-orbit"><div class="glassP" style="width:150px;height:190px;left:60px;top:70px;transform:rotate(-9deg)"></div><div class="glassP" style="width:128px;height:166px;right:42px;top:130px;transform:rotate(11deg)"></div><div class="glassP" style="width:120px;height:120px;right:96px;bottom:54px;transform:rotate(-7deg)"></div><div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"><svg class="logoF" viewBox="0 0 120 132" fill="none">
+ <defs>
+  <linearGradient id="lfd" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4134D4"/><stop offset="1" stop-color="#241351"/></linearGradient>
+  <linearGradient id="lfc" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#8FE6FF"/><stop offset="1" stop-color="#39A8EC"/></linearGradient>
+  <linearGradient id="lfb" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4F6BFF"/><stop offset="1" stop-color="#2E249F"/></linearGradient>
+ </defs>
+ <rect x="14" y="10" width="92" height="30" rx="11" fill="url(#lfd)"/>
+ <rect x="14" y="52" width="60" height="30" rx="11" fill="url(#lfc)"/>
+ <rect x="82" y="52" width="24" height="24" rx="9" fill="url(#lfb)"/>
+ <rect x="14" y="94" width="30" height="30" rx="11" fill="url(#lfc)"/>
+</svg></div></div></div><div class="cv-l"><div class="eyebrow u" style="--d:.05s">F · A · N · Y · I · O · N</div><h1 class="ttl u" style="--d:.13s;margin-top:24px">Sistema operativo<br>de <span class="g">innovación</span><br>organizacional</h1><div class="meta u" style="--d:.26s"><div class="pg">Presentación general</div><div class="ln"><b>Diego Pons</b> &nbsp;·&nbsp; Mayo 2026 &nbsp;·&nbsp; Versión 1.0<br><b>dp@fanyion.com</b> &nbsp;·&nbsp; +54 9 358 4229 138 &nbsp;·&nbsp; www.fanyion.com</div></div></div></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-cyan" style="width:360px;height:360px;left:-120px;top:30px"></div><div class="blob b-violet" style="width:420px;height:420px;right:-100px;bottom:-120px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">F A N Y I O N &nbsp; · &nbsp; PRESENTACIÓN</div></div><div class="dv"><div class="num sc" style="--d:.05s">01</div><div class="dv-r"><div class="k u" style="--d:.15s"><span class="kicker">BLOQUE 01 · DESCRIPTORES</span></div><h2 class="u" style="--d:.24s">Descriptores del<br>sistema operativo <em>Fanyion</em></h2><p class="u" style="--d:.32s">Qué es Fanyion, para quién, qué lo hace diferente y por qué se comporta como un verdadero sistema operativo de la innovación.</p><div class="dv-chips u" style="--d:.4s"><span class="dv-chip">¿Qué es Fanyion?</span><span class="dv-chip">Audiencia</span><span class="dv-chip">Plataforma</span><span class="dv-chip">Diferenciales</span></div></div></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;left:-120px;bottom:-140px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">QUIÉNES SOMOS</div></div><div class="wi"><div class="wi-l sc" style="--d:.12s"><div class="glow1"></div><div class="fwrap"><svg class="logoF" viewBox="0 0 120 132" fill="none">
+ <defs>
+  <linearGradient id="lfd" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4134D4"/><stop offset="1" stop-color="#241351"/></linearGradient>
+  <linearGradient id="lfc" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#8FE6FF"/><stop offset="1" stop-color="#39A8EC"/></linearGradient>
+  <linearGradient id="lfb" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4F6BFF"/><stop offset="1" stop-color="#2E249F"/></linearGradient>
+ </defs>
+ <rect x="14" y="10" width="92" height="30" rx="11" fill="url(#lfd)"/>
+ <rect x="14" y="52" width="60" height="30" rx="11" fill="url(#lfc)"/>
+ <rect x="82" y="52" width="24" height="24" rx="9" fill="url(#lfb)"/>
+ <rect x="14" y="94" width="30" height="30" rx="11" fill="url(#lfc)"/>
+</svg></div><div class="cap">El <span>sistema operativo</span> que hace que la innovación ocurra.</div></div><div class="wi-r"><span class="eyebrow u" style="--d:.04s">QUIÉNES SOMOS</span><h2 class="wi-h2 u" style="--d:.1s">¿Qué es <span style="color:var(--cyan)">Fanyion</span>?</h2><div class="body lead2 u" style="--d:.2s">Fanyion es el <b>Sistema Operativo de Innovación</b> de las organizaciones. Una plataforma SaaS que permite gestionar sistemáticamente ideas, gobernanza e impacto.</div><div class="wi-quote u" style="--d:.3s"><div class="ql">DIFERENCIAL CLAVE</div><div class="qt">“La herramienta que permite que la innovación ocurra.”</div></div><div class="wi-model u" style="--d:.42s">MODELO</div><div class="wi-pills"><div class="wi-pill u" style="--d:0.50s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Usuarios ilimitados</div><div class="wi-pill u" style="--d:0.57s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Ideas ilimitadas</div><div class="wi-pill u" style="--d:0.64s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Desafíos ilimitados</div><div class="wi-pill u" style="--d:0.71s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Configuración a medida</div><div class="wi-pill u" style="--d:0.78s"><span class="dot"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.5L19 7"/></svg></span>Método de implementación propio</div></div></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 01</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-violet" style="width:380px;height:380px;right:-130px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">FANYION · PRESENTACIÓN</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">AUDIENCIA</span><h2 class="u" style="--d:.08s;margin-top:14px">¿Para quiénes es Fanyion?</h2><div class="sub u" style="--d:.14s">Ocho tipos de organización que transforman su forma de gestionar la innovación con un mismo sistema operativo.</div></div><div class="agrid"><div class="acard u" style="--d:0.20s"><div class="corner"></div><div class="anum">01</div><div class="abar"></div><h4>Empresas medianas y grandes</h4><p>Equipos y áreas que necesitan gestionar la innovación de forma transversal y sistemática.</p></div><div class="acard u" style="--d:0.26s"><div class="corner"></div><div class="anum">02</div><div class="abar"></div><h4>ONG's y fundaciones</h4><p>Gestioná proyectos sociales incrementando la participación y estandarizando la gestión.</p></div><div class="acard u" style="--d:0.32s"><div class="corner"></div><div class="anum">03</div><div class="abar"></div><h4>Redes de emprendedores</h4><p>Canalizá y coordiná iniciativas entre múltiples actores potenciando la inteligencia colectiva.</p></div><div class="acard u" style="--d:0.38s"><div class="corner"></div><div class="anum">04</div><div class="abar"></div><h4>Clusters y cámaras</h4><p>Impulsá desafíos y proyectos colaborativos con seguimiento y coordinación compartida.</p></div><div class="acard u" style="--d:0.44s"><div class="corner"></div><div class="anum">05</div><div class="abar"></div><h4>Empresas multilocales</h4><p>Unificá la gestión de la innovación entre sedes, áreas, equipos y distintos países.</p></div><div class="acard u" style="--d:0.50s"><div class="corner"></div><div class="anum">06</div><div class="abar"></div><h4>Grupos empresariales y holdings</h4><p>Coordiná iniciativas y participación entre distintas unidades y negocios del grupo.</p></div><div class="acard u" style="--d:0.56s"><div class="corner"></div><div class="anum">07</div><div class="abar"></div><h4>Instituciones educativas</h4><p>Organizá ideas, proyectos interdisciplinarios y programas de innovación o emprendimiento.</p></div><div class="acard u" style="--d:0.62s"><div class="corner"></div><div class="anum">08</div><div class="abar"></div><h4>Gobiernos y organismos públicos</h4><p>Gestioná iniciativas de mejora, modernización y transformación de forma organizada.</p></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 02</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:360px;height:360px;left:-140px;top:60px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">FANYION · PRESENTACIÓN</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">PLATAFORMA</span><h2 class="u" style="--d:.08s;margin-top:14px">¿Qué lo hace diferente?</h2><div class="sub u" style="--d:.14s">Seis capacidades que convierten la innovación dispersa en un proceso gestionable de punta a punta.</div></div><div class="cgrid"><div class="ccard u" style="--d:0.20s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 21V4"/><path d="M5.5 4.4c3-1.7 6 1.6 9 0s5-1 5-1v9.2s-2 .6-5 1.1-6-1.7-9 0"/></svg></div><div class="cn">#01</div></div><h4>Desafíos & Propuestas</h4><p>Convocatorias específicas (Desafíos) y canal permanente (Propuestas) para capturar innovación de toda la organización.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.27s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7.5" x2="20" y2="7.5"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="16.5" x2="20" y2="16.5"/><circle cx="9" cy="7.5" r="2.3"/><circle cx="15" cy="12" r="2.3"/><circle cx="8" cy="16.5" r="2.3"/></svg></div><div class="cn">#02</div></div><h4>Configuración Total</h4><p>Parametrizá objetivos estratégicos, criterios de evaluación, etapas del proceso y flujo de propuestas.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.34s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div><div class="cn">#03</div></div><h4>Medición de Impacto</h4><p>Cada idea justifica su impacto alineado a la estrategia. Indicadores en tiempo real.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.41s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 5-3.2 8.4-7.5 10-4.3-1.6-7.5-5-7.5-10V6L12 3Z"/><path d="M9 12l2 2 4-4.4"/></svg></div><div class="cn">#04</div></div><h4>Gobernanza del Sistema</h4><p>Comité de innovación, evaluadores por área y administradores con roles diferenciados.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.48s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-1.8-2.4-3.6-3.6-5.4-3.6a3.6 3.6 0 0 0 0 7.2c1.8 0 3.6-1.2 5.4-3.6Z"/><path d="M12 12c1.8 2.4 3.6 3.6 5.4 3.6a3.6 3.6 0 0 0 0-7.2c-1.8 0-3.6 1.2-5.4 3.6Z"/></svg></div><div class="cn">#05</div></div><h4>Sin límite de usuarios</h4><p>Usuarios e ideas ilimitados. El pricing no penaliza la participación: es su argumento más poderoso.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.55s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="3.5" y1="20" x2="20.5" y2="20"/><rect x="5.4" y="11.5" width="3.5" height="8.5" rx="1"/><rect x="10.8" y="6.5" width="3.5" height="13.5" rx="1"/><rect x="16.2" y="14" width="3.5" height="6" rx="1"/></svg></div><div class="cn">#06</div></div><h4>Analytics & Datos</h4><p>Seguí en tiempo real las interacciones, colaboraciones e indicadores de innovación de tu organización.</p><div class="uline"></div></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 03</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:360px;height:360px;left:-140px;top:60px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">FANYION · PRESENTACIÓN</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">PLATAFORMA</span><h2 class="u" style="--d:.08s;margin-top:14px">¿Por qué un sistema operativo?</h2><div class="sub u" style="--d:.14s">Fanyion no automatiza una tarea: coordina roles, decisiones y datos como la capa base sobre la que corre la innovación.</div></div><div class="cgrid"><div class="ccard u" style="--d:0.20s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.6 20c.3-3.2 2.7-5.2 5.4-5.2s5.1 2 5.4 5.2"/><path d="M15.6 5.3a3.1 3.1 0 0 1 .1 6"/><path d="M17.5 14.9c2.3.6 3.9 2.5 4 5.1"/></svg></div><div class="cn">#01</div></div><h4>Roles</h4><p>Define roles y responsabilidades: administradores, evaluadores funcionales, intrapreneurs, colaboradores y comité.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.27s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.5"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="8" r="2.5"/><path d="M6.5 8.5v7"/><path d="M17.5 10.5c0 4.6-4.6 4.1-8 5.5"/></svg></div><div class="cn">#02</div></div><h4>Decisiones</h4><p>Organiza la toma de decisiones a lo largo de todo el ciclo de innovación.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.34s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5"/><path d="M7 8h10v3.2a5 5 0 0 1-10 0Z"/><path d="M12 16.2V21"/></svg></div><div class="cn">#03</div></div><h4>Integración</h4><p>Integra la innovación adaptando su configuración a la estructura real de la organización.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.41s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v2.8M10.4 12.4 6.6 16.8M13.6 12.4l3.8 4.4"/></svg></div><div class="cn">#04</div></div><h4>Participación</h4><p>Se distribuye a lo ancho y alto de toda la organización para el aporte, la colaboración y la evaluación.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.48s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3.1"/></svg></div><div class="cn">#05</div></div><h4>Visibilidad</h4><p>Todo lo que ocurre es visible en tiempo real y de fácil acceso.</p><div class="uline"></div></div><div class="ccard u" style="--d:0.55s"><div class="top"><div class="bi badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l2 5.8 5.8 2-5.8 2-2 5.8-2-5.8-5.8-2 5.8-2Z"/></svg></div><div class="cn">#06</div></div><h4>Cultura</h4><p>Convierte la innovación en una capacidad transversal de la empresa.</p><div class="uline"></div></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 04</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-violet" style="width:380px;height:380px;right:-120px;bottom:-130px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">DIFERENCIALES</div></div><div class="why"><div class="why-l"><span class="eyebrow u" style="--d:0s">DIFERENCIALES</span><h2 class="u" style="--d:.1s">¿Por qué elegir <em>Fanyion</em>?</h2><p class="u" style="--d:.18s">Seis razones por las que Fanyion no es una herramienta más, sino la infraestructura de la innovación.</p><div class="stat u" style="--d:.24s"><div><div class="v"><span class="inf">∞</span></div><div class="lab">USUARIOS · IDEAS</div></div><div><div class="v">6</div><div class="lab">DIFERENCIADORES<br>CLAVE</div></div></div></div><div class="why-r"><div class="wrow u" style="--d:0.28s"><div class="wn">01</div><div><h4>Sin fricciones al crecimiento</h4><p>Usuarios, ideas y desafíos ilimitados. El modelo nunca penaliza la participación.</p></div></div><div class="wrow u" style="--d:0.35s"><div class="wn">02</div><div><h4>Infraestructura organizacional</h4><p>No es solo software. Es la arquitectura digital del sistema de innovación.</p></div></div><div class="wrow u" style="--d:0.42s"><div class="wn">03</div><div><h4>Totalmente configurable</h4><p>Objetivos estratégicos, criterios, procesos y estructura adaptados a tu organización.</p></div></div><div class="wrow u" style="--d:0.49s"><div class="wn">04</div><div><h4>Datos e indicadores</h4><p>Indicadores en tiempo real para medir y mejorar la gestión de la innovación.</p></div></div><div class="wrow u" style="--d:0.56s"><div class="wn">05</div><div><h4>Toda la organización participa</h4><p>Comité, evaluadores y empleados conviven en un único flujo unificado.</p></div></div><div class="wrow u" style="--d:0.63s"><div class="wn">06</div><div><h4>Implementación acompañada</h4><p>Activación técnica + diseño del sistema con el Método DAGMA propio de Fanyion.</p></div></div></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 05</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-cyan" style="width:340px;height:340px;left:-130px;top:40px"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;bottom:-120px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">FANYION · PRESENTACIÓN</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">EN NÚMEROS</span><h2 class="u" style="--d:.08s;margin-top:14px">Fanyion, de un vistazo</h2><div class="sub u" style="--d:.14s">La escala y la profundidad del sistema operativo de innovación, resumidas en seis cifras.</div></div><div class="mgrid"><div class="mcard u" style="--d:0.20s"><div class="mglow"></div><div class="mv">∞</div><div class="ml">Usuarios</div><div class="md">Sin límite. El pricing nunca penaliza la participación.</div></div><div class="mcard u" style="--d:0.28s"><div class="mglow"></div><div class="mv">∞</div><div class="ml">Ideas</div><div class="md">Toda la creatividad de la organización, capturada y trazada.</div></div><div class="mcard u" style="--d:0.36s"><div class="mglow"></div><div class="mv">7</div><div class="ml">Etapas</div><div class="md">Del estímulo a la decisión, con trazabilidad completa.</div></div><div class="mcard u" style="--d:0.44s"><div class="mglow"></div><div class="mv">2</div><div class="ml">Estímulos</div><div class="md">Top-down y bottom-up activando innovación en paralelo.</div></div><div class="mcard u" style="--d:0.52s"><div class="mglow"></div><div class="mv">100%</div><div class="ml">Configurable</div><div class="md">Objetivos, criterios, procesos y roles a tu medida.</div></div><div class="mcard u" style="--d:0.60s"><div class="mglow"></div><div class="mv">24/7</div><div class="ml">Tiempo real</div><div class="md">Analytics e indicadores de innovación siempre vivos.</div></div></div><div class="ftr"><span>Fanyion · Presentación general</span><span class="r">Descriptores · 06</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-cyan" style="width:360px;height:360px;left:-120px;top:30px"></div><div class="blob b-violet" style="width:420px;height:420px;right:-100px;bottom:-120px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">F A N Y I O N &nbsp; · &nbsp; PRESENTACIÓN</div></div><div class="dv"><div class="num sc" style="--d:.05s">02</div><div class="dv-r"><div class="k u" style="--d:.15s"><span class="kicker">BLOQUE 02 · WORKFLOW</span></div><h2 class="u" style="--d:.24s">Workflow del<br>sistema operativo <em>Fanyion</em></h2><p class="u" style="--d:.32s">El recorrido completo de la innovación: de los dos estímulos que la activan hasta la resolución final, etapa por etapa.</p><div class="dv-chips u" style="--d:.4s"><span class="dv-chip">2 estímulos</span><span class="dv-chip">Síntesis del recorrido</span><span class="dv-chip">7 etapas</span><span class="dv-chip">Entregables</span></div></div></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:320px;height:320px;left:80px;bottom:-150px"></div><div class="blob b-cyan" style="width:320px;height:320px;right:80px;bottom:-150px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · ORIGEN</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">ESTÍMULOS</span><h2 class="u" style="--d:.08s;margin-top:14px">2 estímulos que activan la innovación</h2><div class="sub u" style="--d:.14s">Dos caminos complementarios para que la innovación nazca en cualquier punto de la organización.</div></div><div class="st"><div class="stcard d u" style="--d:0.3s"><div class="sttop"><div class="sti badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4a1 1 0 0 0 1 1h2.2L16 20V4L7.2 9H5a1 1 0 0 0-1 1Z"/><path d="M19 9.2a4 4 0 0 1 0 5.6"/></svg></div><div class="stname">DESAFÍO</div><div class="sttag">TOP-DOWN</div></div><div class="stdir"><span class="ar">▾</span>De la dirección hacia la comunidad</div><div class="stbody">Una convocatoria estratégica que la dirección y los líderes impulsan hacia toda la comunidad, a partir de una necesidad, oportunidad o problema de la empresa. Orienta la innovación hacia temas prioritarios y alinea la participación con los objetivos estratégicos del negocio.</div><div class="stline"><span class="d2"></span>Creatividad focalizada en temas de alto impacto.</div></div><div class="st-plus sc" style="--d:.6s"><div>+</div></div><div class="stcard i u" style="--d:0.42s"><div class="sttop"><div class="sti badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.3 18h5.4M10 21h4"/><path d="M12 3a6.2 6.2 0 0 0-4 11c.8.7 1.1 1.3 1.2 2.5h5.6c.1-1.2.4-1.8 1.2-2.5A6.2 6.2 0 0 0 12 3Z"/></svg></div><div class="stname">IDEA</div><div class="sttag">BOTTOM-UP</div></div><div class="stdir"><span class="ar">▴</span>De las personas hacia la organización</div><div class="stbody">Una iniciativa que nace desde las personas, a partir de su experiencia, su observación y su creatividad para detectar oportunidades de mejora. No responde a una convocatoria: cualquiera puede aportar valor y cada idea evoluciona de forma colaborativa hasta volverse una acción concreta.</div><div class="stline"><span class="d2"></span>La innovación como hábito colectivo y participativo.</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Origen de la innovación</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-violet" style="width:420px;height:420px;right:-120px;top:-60px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · SÍNTESIS</div></div><div class="shead"><span class="eyebrow u" style="--d:0s">SÍNTESIS</span><h2 class="u" style="--d:.08s;margin-top:14px">Síntesis del recorrido</h2><div class="sub u" style="--d:.14s">Siete etapas convierten la creatividad distribuida en decisiones de innovación con trazabilidad.</div></div><div class="jr"><div class="fz" style="--d:.5s"><svg viewBox="0 0 1112 320" style="position:absolute;inset:0;width:100%;height:100%" fill="none">
+      <defs><linearGradient id="jg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#5AD8FF"/><stop offset="1" stop-color="#0057FF"/></linearGradient></defs>
+      <path d="M300 70 H360 Q380 70 380 110 V150" stroke="url(#jg)" stroke-width="2.4"/>
+      <path d="M300 250 H360 Q380 250 380 210 V170" stroke="url(#jg)" stroke-width="2.4"/>
+      <path d="M392 160 H440" stroke="url(#jg)" stroke-width="2.4"/>
+      <circle cx="380" cy="160" r="4" fill="#5AD8FF"/>
+    </svg></div><div style="position:absolute;left:0;top:24px;width:300px"><div class="jr-tracklabel" style="color:#9db4ff">DESAFÍO · TOP-DOWN</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="jnode origin u" style="--d:0.25s"><div class="jn">D01</div><div class="jt">Desafío</div></div><div class="jnode origin u" style="--d:0.32s"><div class="jn">D02</div><div class="jt">Soluciones</div></div></div></div><div style="position:absolute;left:0;bottom:14px;width:300px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="jnode origin u" style="--d:0.25s"><div class="jn">P01</div><div class="jt">Idea</div></div><div class="jnode origin u" style="--d:0.32s"><div class="jn">P02</div><div class="jt">Iniciativa</div></div></div><div class="jr-tracklabel" style="margin-top:9px;margin-bottom:0;color:#a9e6ff">IDEA · BOTTOM-UP</div></div><div style="position:absolute;left:452px;right:0;top:50%;transform:translateY(-50%);display:grid;grid-template-columns:repeat(5,1fr);gap:13px"><div class="jnode  u" style="--d:0.42s"><div class="jn">03</div><div class="jt">Concepto</div></div><div class="jnode  u" style="--d:0.50s"><div class="jn">04</div><div class="jt">Propuesta</div></div><div class="jnode  u" style="--d:0.58s"><div class="jn">05</div><div class="jt">Propuesta votada</div></div><div class="jnode  u" style="--d:0.66s"><div class="jn">06</div><div class="jt">Propuesta evaluada</div></div><div class="jnode hot u" style="--d:0.74s"><div class="jn">07</div><div class="jt">Propuesta resuelta</div></div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Del estímulo a la decisión</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · DESAFÍO</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 01 · DESAFÍO</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div><div><div class="stg-name">Definición</div><div class="stg-one">Identificar y fundamentar un desafío estratégico de la organización.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">El desafío marca el rumbo.</div><div class="stg-body u" style="--d:.33s">La gerencia, los líderes o el comité de innovación identifican una necesidad, una oportunidad o un problema estratégico de la organización. En Fanyion, ese desafío se fundamenta describiendo su contexto, su impacto esperado, su alineación estratégica y las áreas involucradas, para movilizar a toda la comunidad hacia la búsqueda de soluciones.</div><div class="stg-steps u" style="--d:.44s"><div class="sd cur"></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Desafío lanzado</div><div class="rsep"></div><div class="rdesc">Un desafío publicado con objetivos, contexto, impacto esperado y foco estratégico definidos, como disparador de soluciones.</div><div class="rtrack">TRACK DESAFÍO &nbsp;·&nbsp; ETAPA 01/02</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 01 · 02</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · DESAFÍO</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 02 · DESAFÍO</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.8 8.2 13.6 13.6 8.2 15.8 10.4 10.4Z"/></svg></div><div><div class="stg-name">Diseño</div><div class="stg-one">Desarrollar soluciones concretas que respondan al desafío planteado.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">El desafío encuentra respuestas.</div><div class="stg-body u" style="--d:.33s">Los intrapreneurs, de manera individual o en equipos, desarrollan soluciones para responder al desafío planteado. En Fanyion describen la propuesta, su impacto esperado, su nivel de innovación, su factibilidad y los recursos necesarios, enriqueciendo cada solución de forma colaborativa.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd cur"></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Solución</div><div class="rsep"></div><div class="rdesc">Un desarrollo plasmado con descripción, impacto y recursos requeridos, listo para pasar a la etapa de colaboración.</div><div class="rtrack">TRACK DESAFÍO &nbsp;·&nbsp; ETAPA 02/02</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 02 · 02</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 01 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.3 18h5.4M10 21h4"/><path d="M12 3a6.2 6.2 0 0 0-4 11c.8.7 1.1 1.3 1.2 2.5h5.6c.1-1.2.4-1.8 1.2-2.5A6.2 6.2 0 0 0 12 3Z"/></svg></div><div><div class="stg-name">Ideación</div><div class="stg-one">Capturar la creatividad distribuida de toda la organización.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">Todo empieza con una idea.</div><div class="stg-body u" style="--d:.33s">Cualquier persona de la organización —sin importar su rol— puede detectar una oportunidad, un problema o una mejora y darle un primer nombre. No hace falta profundidad técnica ni validación formal: basta una breve descripción, guiada por un formato sugerido y, si se desea, asistida por IA. Así, Fanyion captura la creatividad que de otro modo se perdería.</div><div class="stg-steps u" style="--d:.44s"><div class="sd cur"></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Idea</div><div class="rsep"></div><div class="rdesc">Un planteo inicial y breve que expresa una oportunidad, una necesidad, una mejora o una propuesta potencial.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 01/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 01 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 02 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 20.5h8"/><path d="M16.2 4.4 19.6 7.8 8.5 18.9H5.1v-3.4Z"/></svg></div><div><div class="stg-name">Descripción</div><div class="stg-one">Transformar la idea en una iniciativa con desarrollo y alineación.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">La idea necesita forma.</div><div class="stg-body u" style="--d:.33s">La idea, en manos de su dueño —un intrapreneur o un equipo—, se estructura: se fundamenta el problema, se la alinea con la estrategia de la organización y se definen su dimensión de impacto, su magnitud y los recursos que demandará. A través de la descripción, con el formato que configure la organización, la idea se transforma en una iniciativa.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd cur"></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Iniciativa</div><div class="rsep"></div><div class="rdesc">Una idea desarrollada con fundamentación, alineación estratégica, impacto esperado, magnitud y requerimientos de implementación.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 02/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 02 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 03 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v2.8M10.4 12.4 6.6 16.8M13.6 12.4l3.8 4.4"/></svg></div><div><div class="stg-name">Colaboración</div><div class="stg-one">Enriquecer la propuesta con la inteligencia colectiva.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">Ninguna idea madura sola.</div><div class="stg-body u" style="--d:.33s">La iniciativa se abre a toda la organización para que la inteligencia colectiva la trabaje: hay quienes mejoran su claridad, quienes anticipan riesgos, quienes suman nuevas perspectivas y quienes validan sus fortalezas. Cada aporte, guiado por preguntas orientadoras, hace que la iniciativa crezca hasta transformarse en un concepto.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div><div class="sd "></div><div class="sd "></div><div class="sd "></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Concepto</div><div class="rsep"></div><div class="rdesc">Una iniciativa enriquecida colectivamente: integra aportes, ajustes, observaciones, validaciones, riesgos y oportunidades.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 03/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 03 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 04 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 21 8l-9 5-9-5Z"/><path d="M3 12.4 12 17.4 21 12.4"/><path d="M3 16.7 12 21.7 21 16.7"/></svg></div><div><div class="stg-name">Síntesis</div><div class="stg-one">Consolidar los aportes en una propuesta final lista para evaluar.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">Es momento de poner orden.</div><div class="stg-body u" style="--d:.33s">El concepto y los aportes de la colaboración vuelven a manos del intrapreneur o del equipo. Se incorporan las mejoras relevantes y se reformulan los aspectos sugeridos por la comunidad. El Asistente de IA puede colaborar redactando síntesis, consolidando información y estructurando el documento final para ponerlo a consideración de toda la organización.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div><div class="sd "></div><div class="sd "></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Propuesta</div><div class="rsep"></div><div class="rdesc">El concepto ajustado y consolidado: el documento final que ingresa a las etapas de votación y evaluación.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 04/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 04 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 05 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11l4.2-8.1A2.6 2.6 0 0 1 14 5.5V8.6h4.6a2 2 0 0 1 2 2.4l-1.5 8a2 2 0 0 1-2 1.6Z"/><path d="M7 11H3.6v10H7"/></svg></div><div><div class="stg-name">Votación Social</div><div class="stg-one">Medir la adhesión de la organización sobre cada propuesta.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">La propuesta se hace visible.</div><div class="stg-body u" style="--d:.33s">Toda la organización es convocada para dar su opinión y fundamentarla. Es el momento en que la comunidad muestra qué propuestas la entusiasman y cuáles no considera tan valiosas, aportando una primera señal de adhesión colectiva antes de la decisión formal.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div><div class="sd "></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Propuesta votada</div><div class="rsep"></div><div class="rdesc">Refleja el nivel de adhesión, interés y valoración de la organización sobre cada iniciativa.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 05/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 05 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 06 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4v17.2M5.5 20.6h13"/><path d="M12 6 5 8M12 6l7 2"/><path d="M5 8 2.6 13.4a2.8 2.8 0 0 0 4.8 0Z"/><path d="M19 8l-2.4 5.4a2.8 2.8 0 0 0 4.8 0Z"/></svg></div><div><div class="stg-name">Evaluación</div><div class="stg-one">Analizar y priorizar cada propuesta de forma rigurosa.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">Llega el análisis riguroso.</div><div class="stg-body u" style="--d:.33s">El Comité de Innovación y los evaluadores funcionales estudian cada propuesta votada: su alineación estratégica, su factibilidad, su viabilidad, su impacto y su potencial de generar valor. Cada mirada queda registrada y luego se discute en conjunto, hasta construir una recomendación fundamentada y una priorización clara.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div><div class="sd "></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Propuesta evaluada</div><div class="rsep"></div><div class="rdesc">Contiene el análisis formal, la valoración estratégica, la recomendación de resolución y la priorización organizacional.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 06/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 06 · 07</span></div></section><section class="slide "><div class="grid-tex"></div><div class="blob b-blue" style="width:340px;height:340px;right:-120px;top:-90px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">WORKFLOW · IDEA</div></div><div style="position:absolute;left:84px;top:99px;z-index:5"><span class="eyebrow u" style="--d:0s">ETAPA 07 · IDEA</span></div><div class="stg"><div class="stg-l"><div class="stg-head u" style="--d:.12s"><div class="stg-bb badge-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 21V4"/><path d="M5.5 4.5c3-1.7 6 1.6 9 0s5-1 5-1v9.2s-2 .6-5 1.1-6-1.7-9 0"/></svg></div><div><div class="stg-name">Resolución</div><div class="stg-one">Formalizar la decisión sobre el futuro de la propuesta.</div></div></div><div class="stg-rule u" style="--d:.2s"></div><div class="stg-hl u" style="--d:.26s">El recorrido cierra con una decisión.</div><div class="stg-body u" style="--d:.33s">La organización resuelve formalmente el futuro de la propuesta: puede avanzar, requerir reformulación o quedar latente. Sea cual sea el desenlace, todo queda registrado con trazabilidad completa: la organización sabe qué se decidió y por qué, y los intrapreneurs reciben el feedback correspondiente.</div><div class="stg-steps u" style="--d:.44s"><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd on"></div><div class="sd cur"></div></div></div><div class="stg-r sc" style="--d:.34s"><div class="rglow"></div><div class="rtop"><div class="rdoc"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7.6A2.6 2.6 0 0 0 5 5.6v12.8A2.6 2.6 0 0 0 7.6 21h8.8A2.6 2.6 0 0 0 19 18.4V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></div>ENTREGABLE DE LA ETAPA</div><div class="rname">Propuesta resuelta</div><div class="rsep"></div><div class="rdesc">La decisión final sobre la iniciativa, con trazabilidad completa de su estado, evolución y resolución.</div><div class="rtrack">TRACK IDEA &nbsp;·&nbsp; ETAPA 07/07</div></div></div><div class="ftr"><span>Fanyion · Workflow de Innovación</span><span class="r">Etapa 07 · 07</span></div></section><section class="slide cover"><div class="grid-tex"></div><div class="blob b-blue" style="width:440px;height:440px;right:-80px;top:-150px"></div><div class="blob b-violet" style="width:380px;height:380px;left:-130px;bottom:-150px"></div><div class="hdr"><div class="brand"><svg class="mark" viewBox="0 0 30 30" fill="none">
+ <rect x="2" y="2" width="13" height="13" rx="4.2" fill="#5AD8FF"/>
+ <rect x="15" y="15" width="13" height="13" rx="4.2" fill="#4361F7"/>
+ <rect x="3.5" y="17" width="9" height="9" rx="3" fill="#4134D4"/>
+</svg><span>Fanyion</span></div><div class="hdr-r">F A N Y I O N · PROPUESTA</div></div><div class="cl-scene fz" style="--d:.4s"><div class="cv-ring" style="width:300px;height:300px"></div><div class="cv-ring" style="width:210px;height:210px"></div><div class="cv-orbit" style="position:absolute;inset:0"><div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"><svg class="logoF" viewBox="0 0 120 132" fill="none">
+ <defs>
+  <linearGradient id="lfd" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4134D4"/><stop offset="1" stop-color="#241351"/></linearGradient>
+  <linearGradient id="lfc" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#8FE6FF"/><stop offset="1" stop-color="#39A8EC"/></linearGradient>
+  <linearGradient id="lfb" x1="0" y1="0" x2="1" y2="1">
+   <stop offset="0" stop-color="#4F6BFF"/><stop offset="1" stop-color="#2E249F"/></linearGradient>
+ </defs>
+ <rect x="14" y="10" width="92" height="30" rx="11" fill="url(#lfd)"/>
+ <rect x="14" y="52" width="60" height="30" rx="11" fill="url(#lfc)"/>
+ <rect x="82" y="52" width="24" height="24" rx="9" fill="url(#lfb)"/>
+ <rect x="14" y="94" width="30" height="30" rx="11" fill="url(#lfc)"/>
+</svg></div></div></div><div class="cl-wmk u" style="--d:.6s">FANYION</div><div class="cl"><div class="clk u" style="--d:.05s"><span class="kicker">CONVERSEMOS</span></div><h2 class="u" style="--d:.14s">Conversemos sobre el <em>modelo de innovación</em> en tu organización</h2><div class="cl-contact"><div class="cl-cc hi u" style="--d:.3s"><div class="cl-lab">CONTACTO</div><div class="cl-val">Diego Pons</div></div><div class="cl-cc u" style="--d:.37s"><div class="cl-lab">EMAIL</div><div class="cl-val">dp@fanyion.com</div></div><div class="cl-cc u" style="--d:.44s"><div class="cl-lab">TELÉFONO</div><div class="cl-val">+54 9 358 4229 138</div></div><div class="cl-cc u" style="--d:.51s"><div class="cl-lab">WEB</div><div class="cl-val">www.fanyion.com</div></div></div></div></section>
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let cur=0;const total=slides.length;
+const bar=document.querySelector('#bar i');
+const count=document.querySelector('#count');
+function fit(){const s=Math.min(innerWidth/1280,innerHeight/720);
+ document.querySelector('#stage').style.transform=
+ 'translate(-50%,-50%) scale('+s+')';}
+function show(n){
+ cur=Math.max(0,Math.min(total-1,n));
+ slides.forEach((s,i)=>s.classList.toggle('active',i===cur));
+ bar.style.width=((cur+1)/total*100)+'%';
+ count.innerHTML='<b>'+String(cur+1).padStart(2,'0')+'</b> / '+String(total).padStart(2,'0');
+}
+function next(){show(cur+1)}function prev(){show(cur-1)}
+addEventListener('keydown',e=>{
+ if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+ else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+ else if(e.key==='Home')show(0);else if(e.key==='End')show(total-1);
+ else if(e.key==='f'||e.key==='F'){if(!document.fullscreenElement)
+  document.documentElement.requestFullscreen();else document.exitFullscreen();}
+});
+addEventListener('resize',fit);
+let sx=0;addEventListener('touchstart',e=>sx=e.touches[0].clientX,{passive:true});
+addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;
+ if(dx<-46)next();else if(dx>46)prev();},{passive:true});
+fit();show(0);
+</script>
+</body></html>

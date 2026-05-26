@@ -34,6 +34,7 @@ use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
@@ -115,6 +116,11 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
 
 // main
 Route::get('/', [HomeController::class, 'index']);
+Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
+Route::redirect('/front-pages/landing', '/inicio', 301);
+Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
+Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
+    ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');

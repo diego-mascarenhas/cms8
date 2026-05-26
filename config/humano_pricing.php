@@ -32,6 +32,7 @@ return [
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))
     {
+        'hunter' => 'hunter',
         'business' => 'business',
         'mentor' => 'mentor',
         default => 'assistant',
@@ -44,6 +45,7 @@ return [
      */
     'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'assistant'))))
     {
+        'hunter' => 'hunter',
         'business' => 'business',
         'mentor' => 'mentor',
         default => 'assistant',
@@ -81,6 +83,15 @@ return [
      */
     'plan_team_modules' => [
         'assistant' => [
+            'today',
+            'settings',
+            'calendar',
+            'contacts',
+            'tasks',
+            'prompts',
+            'chat',
+        ],
+        'hunter' => [
             'today',
             'settings',
             'calendar',
@@ -182,6 +193,23 @@ return [
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_ASSISTANT_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'hunter',
+            'checkout_url' => env(
+                'HUMANO_PRICING_HUNTER_CHECKOUT_URL',
+                '',
+            ),
+            'stripe_product_id' => env('HUMANO_PRICING_HUNTER_STRIPE_PRODUCT_ID', ''),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_HUNTER_PRICE_MONTHLY_ID', ''),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_HUNTER_PRICE_YEARLY_ID', ''),
+            'monthly_amount' => env('HUMANO_PRICING_HUNTER_MONTHLY_AMOUNT', ''),
+            'yearly_amount' => env('HUMANO_PRICING_HUNTER_YEARLY_AMOUNT', ''),
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_HUNTER_CHECKOUT_AVAILABLE', 'false'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],

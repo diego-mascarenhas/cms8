@@ -2072,9 +2072,9 @@ class AssistantToolsService
     {
         $messages = Message::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->with(['template:id,name', 'category:id,name', 'type:id,name'])
+            ->with(['template:id,name', 'contactCategories:id,name', 'type:id,name'])
             ->orderBy('updated_at', 'desc')
-            ->get(['id', 'name', 'type_id', 'template_id', 'category_id', 'status_id']);
+            ->get(['id', 'name', 'type_id', 'template_id', 'status_id']);
 
         if ($messages->isEmpty())
         {
@@ -2085,10 +2085,10 @@ class AssistantToolsService
         {
             $type = $m->type ? $m->type->name : '?';
             $tpl = $m->template ? $m->template->name : '—';
-            $cat = $m->category ? $m->category->name : '—';
+            $cat = $m->contactCategoriesLabel();
             $sending = (int) $m->status_id === 1 ? 'sending: enabled' : 'sending: paused';
 
-            return sprintf('  - %s (id: %d, channel: %s, template: %s, category: %s, %s)', $m->name, $m->id, $type, $tpl, $cat, $sending);
+            return sprintf('  - %s (id: %d, channel: %s, template: %s, categories: %s, %s)', $m->name, $m->id, $type, $tpl, $cat, $sending);
         })->implode("\n");
 
         return "Campaign messages (News):\n".$lines;
@@ -2139,15 +2139,10 @@ class AssistantToolsService
             $text = mb_substr($text, 0, 255);
         }
 
-        $categoryId = null;
-        $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
-        if ($categoryName !== null && $categoryName !== '')
+        $categoryResolution = $this->resolveContactCategoryIdsFromInput($teamId, $input);
+        if ($categoryResolution['error'] !== null)
         {
-            $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
-            if ($categoryId === null)
-            {
-                return "Contact category \"{$categoryName}\" not found. Use list_contact_categories to see available categories.";
-            }
+            return $categoryResolution['error'];
         }
 
         $contactStatusId = null;
@@ -2177,7 +2172,6 @@ class AssistantToolsService
             'team_id' => $teamId,
             'name' => $name,
             'type_id' => $typeId,
-            'category_id' => $categoryId,
             'contact_status_id' => $contactStatusId,
             'template_id' => $templateId,
             'text' => $text,
@@ -2188,13 +2182,16 @@ class AssistantToolsService
             'min_hours_between_emails' => 48,
         ]);
 
+        $message->syncMessageCategories($categoryResolution['ids']);
+
         $editUrl = url()->route('message.edit', $message->id);
         $showUrl = url()->route('message.show', $message->id);
 
         $out = "Campaign message created: {$message->name} (id: {$message->id}). Channel: {$channel}. Template: {$template->name}.";
-        if ($categoryId)
+        if ($categoryResolution['ids'] !== [])
         {
-            $out .= " Audience: category \"{$categoryName}\".";
+            $message->load('contactCategories');
+            $out .= ' Audience: categories "'.$message->contactCategoriesLabel().'".';
         }
         if ($contactStatusId)
         {
@@ -2277,20 +2274,20 @@ class AssistantToolsService
 
         $hasDeliveries = $message->deliveries()->exists();
         $updates = [];
+        $syncedCategoryIds = null;
 
-        $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
-        if ($categoryName !== null && $categoryName !== '')
+        if ($this->wantsContactCategorySync($input))
         {
             if ($hasDeliveries)
             {
                 return 'Cannot change audience (category) because this campaign already has deliveries. You can only change campaign sending (enabled vs paused).';
             }
-            $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
-            if ($categoryId === null)
+            $categoryResolution = $this->resolveContactCategoryIdsFromInput($teamId, $input);
+            if ($categoryResolution['error'] !== null)
             {
-                return "Contact category \"{$categoryName}\" not found. Use list_contact_categories to see available categories.";
+                return $categoryResolution['error'];
             }
-            $updates['category_id'] = $categoryId;
+            $syncedCategoryIds = $categoryResolution['ids'];
         }
 
         $contactStatusName = isset($input['contact_status_name']) ? trim((string) $input['contact_status_name']) : null;
@@ -2319,17 +2316,26 @@ class AssistantToolsService
             $updates['status_id'] = $status === 'active' ? 1 : 0;
         }
 
-        if ($updates === [])
+        if ($updates === [] && $syncedCategoryIds === null)
         {
-            return 'No changes provided. Pass at least one of: category_name, contact_status_name, status (campaign sending: active or paused).';
+            return 'No changes provided. Pass at least one of: category_name, category_names, contact_status_name, status (campaign sending: active or paused).';
         }
 
-        $message->update($updates);
+        if ($updates !== [])
+        {
+            $message->update($updates);
+        }
+
+        if ($syncedCategoryIds !== null)
+        {
+            $message->syncMessageCategories($syncedCategoryIds);
+        }
 
         $parts = ['Campaign "'.$message->name.'" (id: '.$message->id.') updated.'];
-        if (isset($updates['category_id']))
+        if ($syncedCategoryIds !== null)
         {
-            $parts[] = "Audience: category \"{$categoryName}\".";
+            $message->load('contactCategories');
+            $parts[] = 'Audience: categories "'.$message->contactCategoriesLabel().'".';
         }
         if (isset($updates['contact_status_id']))
         {
@@ -2342,6 +2348,57 @@ class AssistantToolsService
         $parts[] = 'Edit: '.url()->route('message.edit', $message->id).' — View/send: '.url()->route('message.show', $message->id);
 
         return $this->truncate(implode(' ', $parts));
+    }
+
+    private function wantsContactCategorySync(array $input): bool
+    {
+        return array_key_exists('category_name', $input) || array_key_exists('category_names', $input);
+    }
+
+    /**
+     * @return array{ids: list<int>, error: ?string}
+     */
+    private function resolveContactCategoryIdsFromInput(int $teamId, array $input): array
+    {
+        $names = [];
+        if (isset($input['category_names']) && is_array($input['category_names']))
+        {
+            foreach ($input['category_names'] as $name)
+            {
+                $trimmed = trim((string) $name);
+                if ($trimmed !== '')
+                {
+                    $names[] = $trimmed;
+                }
+            }
+        }
+
+        $singleName = isset($input['category_name']) ? trim((string) $input['category_name']) : '';
+        if ($singleName !== '')
+        {
+            $names[] = $singleName;
+        }
+
+        if ($names === [])
+        {
+            return ['ids' => [], 'error' => null];
+        }
+
+        $ids = [];
+        foreach (array_unique($names) as $categoryName)
+        {
+            $categoryId = $this->resolveContactCategoryByName($teamId, $categoryName);
+            if ($categoryId === null)
+            {
+                return [
+                    'ids' => [],
+                    'error' => "Contact category \"{$categoryName}\" not found. Use list_contact_categories to see available categories.",
+                ];
+            }
+            $ids[] = $categoryId;
+        }
+
+        return ['ids' => array_values(array_unique($ids)), 'error' => null];
     }
 
     private function resolveContactCategoryByName(int $teamId, string $categoryName): ?int
