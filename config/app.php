@@ -255,9 +255,12 @@ return [
     | Public home for guests (URL "/")
     |--------------------------------------------------------------------------
     |
-    | Legacy: optional redirect targets if HomeController is used again. Guests
-    | visiting "/" see the Humano landing (route humano). Authenticated users
-    | are redirected to the dashboard from "/".
+    | Same behavior in every environment (local, staging, production). Only
+    | PUBLIC_HOME_ROUTE and PUBLIC_HOME_PATH control where guests go from "/".
+    | Route name wins if both are set; otherwise path; if both empty → login.
+    | Authenticated users always go to the dashboard from "/".
+    |
+    | PUBLIC_HOME_ROUTE=humano | PUBLIC_HOME_ROUTE=wapify | PUBLIC_HOME_PATH=/inicio
     |
     */
     'public_home_route' => env('PUBLIC_HOME_ROUTE'),

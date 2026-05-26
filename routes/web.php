@@ -33,6 +33,7 @@ use App\Http\Controllers\GoogleIntegrationController;
 use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
@@ -114,8 +115,9 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
     ->name('public-shop.show');
 
 // main
-Route::get('/', [HumanoLandingController::class, 'index'])->name('humano');
-Route::redirect('/front-pages/landing', '/', 301);
+Route::get('/', [HomeController::class, 'index']);
+Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
+Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
