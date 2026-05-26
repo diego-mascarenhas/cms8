@@ -37,6 +37,11 @@ class HumanoLandingTest extends TestCase
             ->assertDontSee(__('humano_pricing.hero_title'), false);
     }
 
+    public function test_public_index_html_must_not_exist_to_avoid_root_reload_loop(): void
+    {
+        $this->assertFileDoesNotExist(public_path('index.html'));
+    }
+
     public function test_guest_root_redirects_to_login_by_default(): void
     {
         config([
