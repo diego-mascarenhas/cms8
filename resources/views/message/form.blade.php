@@ -82,23 +82,28 @@
         vertical-align: middle;
     }
 
-    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger {
-        display: inline-flex;
-        align-items: center;
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker.ql-picker {
+        width: max-content;
+        max-width: 16rem;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker .ql-picker-label {
         width: auto;
-        min-width: 2rem;
-        padding: 0 0.4rem;
+        padding-inline-start: 0.5rem;
+        padding-inline-end: 1.375rem;
         white-space: nowrap;
     }
 
-    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger-label {
-        font-size: 0.75rem;
-        font-weight: 500;
-        line-height: 1;
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker .ql-picker-label[data-label]:not([data-label=''])::before {
+        content: attr(data-label);
     }
 
     .message-template-quill-wrap .ql-toolbar .huma-merge-field-formats.is-open {
         z-index: 4;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker.ql-expanded {
+        z-index: 1090;
     }
 
     .huma-merge-field-menu.huma-merge-field-menu--portal {
@@ -1032,29 +1037,53 @@ window.humaMessageTemplateQuillLabels = {
         }
     }
 
-    function humaPositionMergeFieldPortalMenu(trigger, menu)
+    function humaCloneQuillPickerChevronSvg(toolbarEl)
     {
-        var rect = trigger.getBoundingClientRect();
+        var source = toolbarEl && toolbarEl.querySelector('.ql-picker-label svg');
+
+        if (source)
+        {
+            return source.outerHTML;
+        }
+
+        return '<svg viewBox="0 0 18 18"><polygon class="ql-stroke" points="7 11 9 13 11 11"></polygon><polygon class="ql-stroke" points="7 7 9 5 11 7"></polygon></svg>';
+    }
+
+    function humaPositionMergeFieldPortalMenu(labelEl, menu)
+    {
+        var rect = labelEl.getBoundingClientRect();
         menu.style.top = Math.round(rect.bottom + 2) + 'px';
         menu.style.left = Math.round(rect.left) + 'px';
         menu.style.minWidth = Math.max(Math.round(rect.width), 224) + 'px';
     }
 
-    function humaOpenMergeFieldPortalMenu(formats, trigger, menu)
+    function humaOpenMergeFieldPortalMenu(formats, picker, labelEl, menu)
     {
         if (menu.parentElement !== document.body)
         {
             document.body.appendChild(menu);
         }
 
-        humaPositionMergeFieldPortalMenu(trigger, menu);
+        humaPositionMergeFieldPortalMenu(labelEl, menu);
         menu.style.display = 'block';
         formats.classList.add('is-open');
+        picker.classList.add('ql-expanded');
+        labelEl.setAttribute('aria-expanded', 'true');
     }
 
-    function humaCloseMergeFieldPortalMenu(formats, menu)
+    function humaCloseMergeFieldPortalMenu(formats, picker, labelEl, menu)
     {
         formats.classList.remove('is-open');
+
+        if (picker)
+        {
+            picker.classList.remove('ql-expanded');
+        }
+
+        if (labelEl)
+        {
+            labelEl.setAttribute('aria-expanded', 'false');
+        }
 
         if (menu)
         {
@@ -1067,6 +1096,15 @@ window.humaMessageTemplateQuillLabels = {
         document.querySelectorAll('.huma-merge-field-formats.is-open').forEach(function (el)
         {
             el.classList.remove('is-open');
+        });
+        document.querySelectorAll('.huma-merge-field-picker.ql-expanded').forEach(function (picker)
+        {
+            picker.classList.remove('ql-expanded');
+            var labelEl = picker.querySelector('.ql-picker-label');
+            if (labelEl)
+            {
+                labelEl.setAttribute('aria-expanded', 'false');
+            }
         });
         document.querySelectorAll('.huma-merge-field-menu--portal').forEach(function (menu)
         {
@@ -1113,7 +1151,7 @@ window.humaMessageTemplateQuillLabels = {
         }
 
         var toolbarEl = humaFindMessageTemplateQuillToolbar(mountEl);
-        if (! toolbarEl || toolbarEl.querySelector('.huma-merge-field-trigger'))
+        if (! toolbarEl || toolbarEl.querySelector('.huma-merge-field-picker'))
         {
             return;
         }
@@ -1125,18 +1163,23 @@ window.humaMessageTemplateQuillLabels = {
         }
 
         var labels = window.humaMessageTemplateQuillLabels || {};
+        var mergeFieldLabel = labels.mergeFieldSelect || 'Campo';
         var formats = document.createElement('span');
         formats.className = 'ql-formats huma-merge-field-formats';
 
-        var trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.className = 'huma-merge-field-trigger';
-        trigger.setAttribute('title', labels.mergeFieldSelect || 'Insert field');
-        trigger.setAttribute('aria-label', labels.mergeFieldSelect || 'Insert field');
-        trigger.setAttribute('aria-haspopup', 'true');
-        trigger.innerHTML = '<span class="huma-merge-field-trigger-label">'
-            + (labels.mergeFieldSelect || 'Campo')
-            + '</span>';
+        var picker = document.createElement('span');
+        picker.className = 'huma-merge-field-picker ql-picker';
+
+        var labelEl = document.createElement('span');
+        labelEl.className = 'ql-picker-label';
+        labelEl.setAttribute('tabindex', '0');
+        labelEl.setAttribute('role', 'button');
+        labelEl.setAttribute('title', mergeFieldLabel);
+        labelEl.setAttribute('aria-label', mergeFieldLabel);
+        labelEl.setAttribute('aria-haspopup', 'true');
+        labelEl.setAttribute('aria-expanded', 'false');
+        labelEl.setAttribute('data-label', mergeFieldLabel);
+        labelEl.innerHTML = humaCloneQuillPickerChevronSvg(toolbarEl);
 
         var menu = document.createElement('div');
         menu.className = 'huma-merge-field-menu huma-merge-field-menu--portal';
@@ -1170,18 +1213,18 @@ window.humaMessageTemplateQuillLabels = {
                 event.preventDefault();
                 event.stopPropagation();
                 humaInsertMessageTemplateMergeField(field.token);
-                humaCloseMergeFieldPortalMenu(formats, menu);
+                humaCloseMergeFieldPortalMenu(formats, picker, labelEl, menu);
             });
 
             menu.appendChild(item);
         });
 
-        trigger.addEventListener('mousedown', function (event)
+        labelEl.addEventListener('mousedown', function (event)
         {
             event.preventDefault();
         });
 
-        trigger.addEventListener('click', function (event)
+        labelEl.addEventListener('click', function (event)
         {
             event.preventDefault();
             event.stopPropagation();
@@ -1191,7 +1234,7 @@ window.humaMessageTemplateQuillLabels = {
 
             if (willOpen)
             {
-                humaOpenMergeFieldPortalMenu(formats, trigger, menu);
+                humaOpenMergeFieldPortalMenu(formats, picker, labelEl, menu);
             }
         });
 
@@ -1200,7 +1243,8 @@ window.humaMessageTemplateQuillLabels = {
             event.stopPropagation();
         });
 
-        formats.appendChild(trigger);
+        picker.appendChild(labelEl);
+        formats.appendChild(picker);
         toolbarEl.appendChild(formats);
     }
 

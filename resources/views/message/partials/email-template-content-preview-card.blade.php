@@ -27,7 +27,7 @@
 
 <div class="card mb-4 email-template-content-preview">
     <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 py-3">
-        <h5 class="mb-0">{{ __('Contenido del correo') }}</h5>
+        <h5 class="mb-0">{{ __('Mail') }}</h5>
         <div class="d-flex flex-wrap gap-1 gap-sm-2">
             @if ($canEmailTestSend && $emailTestSendModalDomId)
                 <button
@@ -105,10 +105,6 @@
                 'templateId' => $templateId,
                 'inlineOnly' => $emailTestSendModalInline,
             ])
-        @endif
-
-        @if ($templateLabel)
-            <p class="text-muted small mb-3">{{ __('Plantilla:') }} <span class="fw-semibold">{{ $templateLabel }}</span></p>
         @endif
 
         <div class="mb-3">
