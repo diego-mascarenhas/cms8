@@ -1605,15 +1605,7 @@ class MessageController extends Controller
 
     private function iframePreviewHtmlFromSource(string $htmlContent): string
     {
-        $sampleValues = MessageTemplateMergeFields::sampleValues();
-        $sampleContact = (object) [
-            'name' => $sampleValues['{{name}}'],
-            'surname' => $sampleValues['{{surname}}'],
-            'email' => $sampleValues['{{email}}'],
-            'phone' => $sampleValues['{{phone}}'],
-        ];
-
-        return MessageTemplateMergeFields::replace($htmlContent, $sampleContact);
+        return MessageTemplateMergeFields::replace($htmlContent, MessageTemplateMergeFields::sampleContact());
     }
 
     private function resolveMailHtmlFromRequest(Request $request, int $templateId): string

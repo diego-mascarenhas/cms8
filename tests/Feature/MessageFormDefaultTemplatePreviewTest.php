@@ -41,7 +41,7 @@ class MessageFormDefaultTemplatePreviewTest extends TestCase
         $this->assertStringContainsString('message-template-merge-fields-json', $html);
         $this->assertStringContainsString('huma-merge-field-trigger', $html);
         $this->assertStringContainsString('humaMessageTemplateMergeFields', $html);
-        $this->assertStringContainsString('{{name}}', $html);
+        $this->assertStringContainsString('{{nombre}}', $html);
         $this->assertStringNotContainsString(__('app.message_form_template_none'), $html);
 
         $this->assertSame(1, Template::withoutGlobalScopes()->where('team_id', $teamId)->count());

@@ -85,16 +85,10 @@
     .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger {
         display: inline-flex;
         align-items: center;
-        gap: 0.25rem;
         width: auto;
         min-width: 2rem;
         padding: 0 0.4rem;
         white-space: nowrap;
-    }
-
-    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger .ti {
-        font-size: 1rem;
-        line-height: 1;
     }
 
     .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger-label {
@@ -1140,7 +1134,7 @@ window.humaMessageTemplateQuillLabels = {
         trigger.setAttribute('title', labels.mergeFieldSelect || 'Insert field');
         trigger.setAttribute('aria-label', labels.mergeFieldSelect || 'Insert field');
         trigger.setAttribute('aria-haspopup', 'true');
-        trigger.innerHTML = '<i class="ti ti-variable" aria-hidden="true"></i><span class="huma-merge-field-trigger-label">'
+        trigger.innerHTML = '<span class="huma-merge-field-trigger-label">'
             + (labels.mergeFieldSelect || 'Campo')
             + '</span>';
 
@@ -1207,7 +1201,7 @@ window.humaMessageTemplateQuillLabels = {
         });
 
         formats.appendChild(trigger);
-        toolbarEl.insertBefore(formats, toolbarEl.firstChild);
+        toolbarEl.appendChild(formats);
     }
 
     function humaInsertMessageTemplateMergeField(token)

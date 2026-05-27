@@ -5,16 +5,93 @@ namespace App\Support;
 class MessageTemplateMergeFields
 {
     /**
-     * @return list<array{token: string, label: string}>
+     * @return list<array{key: string, label_key: string, tokens: array<string, string>, aliases?: list<string>}>
      */
-    public static function forUi(): array
+    private static function fields(): array
     {
         return [
-            ['token' => '{{name}}', 'label' => __('app.message_merge_field_name')],
-            ['token' => '{{surname}}', 'label' => __('app.message_merge_field_surname')],
-            ['token' => '{{full_name}}', 'label' => __('app.message_merge_field_full_name')],
-            ['token' => '{{email}}', 'label' => __('app.message_merge_field_email')],
-            ['token' => '{{phone}}', 'label' => __('app.message_merge_field_phone')],
+            [
+                'key' => 'name',
+                'label_key' => 'message_merge_field_name',
+                'tokens' => [
+                    'en' => '{{name}}',
+                    'es' => '{{nombre}}',
+                ],
+            ],
+            [
+                'key' => 'surname',
+                'label_key' => 'message_merge_field_surname',
+                'tokens' => [
+                    'en' => '{{surname}}',
+                    'es' => '{{apellido}}',
+                ],
+            ],
+            [
+                'key' => 'full_name',
+                'label_key' => 'message_merge_field_full_name',
+                'tokens' => [
+                    'en' => '{{full_name}}',
+                    'es' => '{{nombre_completo}}',
+                ],
+                'aliases' => ['{{contact_name}}', '{{nombre_contacto}}'],
+            ],
+            [
+                'key' => 'email',
+                'label_key' => 'message_merge_field_email',
+                'tokens' => [
+                    'en' => '{{email}}',
+                    'es' => '{{email}}',
+                ],
+            ],
+            [
+                'key' => 'phone',
+                'label_key' => 'message_merge_field_phone',
+                'tokens' => [
+                    'en' => '{{phone}}',
+                    'es' => '{{telefono}}',
+                ],
+            ],
+        ];
+    }
+
+    private static function uiLocaleKey(?string $locale = null): string
+    {
+        $locale = $locale ?? app()->getLocale();
+
+        return str_starts_with($locale, 'es') ? 'es' : 'en';
+    }
+
+    /**
+     * @return list<array{token: string, label: string}>
+     */
+    public static function forUi(?string $locale = null): array
+    {
+        $localeKey = self::uiLocaleKey($locale);
+
+        return array_map(static function (array $field) use ($localeKey): array
+        {
+            return [
+                'token' => $field['tokens'][$localeKey],
+                'label' => __('app.'.$field['label_key']),
+            ];
+        }, self::fields());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function contactValues(object $contact): array
+    {
+        $name = (string) ($contact->name ?? '');
+        $surname = (string) ($contact->surname ?? '');
+        $fullName = trim($name.' '.$surname);
+
+        return [
+            'name' => $name,
+            'surname' => $surname,
+            'full_name' => $fullName,
+            'email' => (string) ($contact->email ?? ''),
+            'phone' => (string) ($contact->phone ?? ''),
         ];
     }
 
@@ -23,20 +100,25 @@ class MessageTemplateMergeFields
      */
     public static function valuesForContact(object $contact): array
     {
-        $name = (string) ($contact->name ?? '');
-        $surname = (string) ($contact->surname ?? '');
-        $fullName = trim($name.' '.$surname);
-        $email = (string) ($contact->email ?? '');
-        $phone = (string) ($contact->phone ?? '');
+        $values = self::contactValues($contact);
+        $map = [];
 
-        return [
-            '{{name}}' => $name,
-            '{{surname}}' => $surname,
-            '{{full_name}}' => $fullName,
-            '{{contact_name}}' => $fullName,
-            '{{email}}' => $email,
-            '{{phone}}' => $phone,
-        ];
+        foreach (self::fields() as $field)
+        {
+            $value = $values[$field['key']];
+
+            foreach ($field['tokens'] as $token)
+            {
+                $map[$token] = $value;
+            }
+
+            foreach ($field['aliases'] ?? [] as $token)
+            {
+                $map[$token] = $value;
+            }
+        }
+
+        return $map;
     }
 
     public static function replace(string $content, object $contact): string
@@ -54,11 +136,16 @@ class MessageTemplateMergeFields
      */
     public static function sampleValues(): array
     {
-        return self::valuesForContact((object) [
+        return self::valuesForContact(self::sampleContact());
+    }
+
+    public static function sampleContact(): object
+    {
+        return (object) [
             'name' => 'John',
             'surname' => 'Doe',
             'email' => 'john.doe@example.com',
             'phone' => '+34600000000',
-        ]);
+        ];
     }
 }
