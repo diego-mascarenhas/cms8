@@ -15,6 +15,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
@@ -1355,6 +1356,21 @@ class ChatController extends Controller
             $replyResponse['tool_results'] = $toolResults;
         }
 
+        $serverContactApply = $teamId !== null && ! $request->boolean('preview_only')
+            ? app(AssistantInboundContactCreationService::class)->tryApplyFromUserMessage(
+                $contextUser,
+                (int) $teamId,
+                $message,
+                $toolResults,
+            )
+            : null;
+
+        if ($serverContactApply !== null)
+        {
+            $toolResults[] = $serverContactApply['tool_result'];
+            $replyResponse['tool_results'] = $toolResults;
+        }
+
         if (! $replyResponse['success'])
         {
             return response()->json([
@@ -1372,6 +1388,9 @@ class ChatController extends Controller
             $title = $task?->title ?? __('Task');
             $label = $status?->translated_name ?? $serverTaskApply['update']['status_name'];
             $assistantText = '✅ Listo. La tarea "'.$title.'" quedó en '.$label.'.';
+        } elseif ($serverContactApply !== null)
+        {
+            $assistantText = $serverContactApply['whatsapp_reply'];
         }
         if ($previewOnly)
         {

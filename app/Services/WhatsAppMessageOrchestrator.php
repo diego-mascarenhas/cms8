@@ -1137,6 +1137,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     );
 
                     $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
+
                     $agentHistory = ($contextUser !== null && $assistantTeamId !== null)
                         ? app(AgentConversationContextService::class)->getHistoryForPrompt(
                             $contextUser->id,
@@ -1161,6 +1162,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $replyResponse['tool_results'] = $toolResults;
                     }
 
+                    $serverContactApply = ($contextUser !== null && $assistantTeamId !== null)
+                        ? app(\App\Services\Assistant\AssistantInboundContactCreationService::class)->tryApplyFromUserMessage(
+                            $contextUser,
+                            (int) $assistantTeamId,
+                            (string) $body,
+                            $toolResults,
+                        )
+                        : null;
+
+                    if ($serverContactApply !== null)
+                    {
+                        $toolResults[] = $serverContactApply['tool_result'];
+                        $replyResponse['tool_results'] = $toolResults;
+                    }
+
                     if ($replyResponse['success'] ?? false)
                     {
                         $aiMessage = $replyResponse['text'] ?? '';
@@ -1171,6 +1187,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             $title = $task?->title ?? 'Tarea';
                             $label = $status?->translated_name ?? $serverTaskApply['update']['status_name'];
                             $aiMessage = '✅ Listo. La tarea "'.$title.'" quedó en '.$label.'.';
+                        } elseif ($serverContactApply !== null)
+                        {
+                            $aiMessage = $serverContactApply['whatsapp_reply'];
                         }
 
                         if (trim((string) $aiMessage) !== '')

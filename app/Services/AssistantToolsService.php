@@ -67,6 +67,13 @@ class AssistantToolsService
     protected array $recentContactIdsInRequest = [];
 
     /**
+     * Tool names executed during the current request (Laravel AI may not populate tool_results).
+     *
+     * @var list<string>
+     */
+    protected array $executedToolsInRequest = [];
+
+    /**
      * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
      */
     protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
@@ -95,6 +102,28 @@ class AssistantToolsService
         $this->whatsappToolSendCount = 0;
         $this->whatsAppGatewayOverride = null;
         $this->recentContactIdsInRequest = [];
+        $this->executedToolsInRequest = [];
+    }
+
+    public function wasToolExecuted(string $name): bool
+    {
+        return in_array($name, $this->executedToolsInRequest, true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getExecutedToolsInRequest(): array
+    {
+        return $this->executedToolsInRequest;
+    }
+
+    private function recordExecutedTool(string $name): void
+    {
+        if (! in_array($name, $this->executedToolsInRequest, true))
+        {
+            $this->executedToolsInRequest[] = $name;
+        }
     }
 
     /**
@@ -663,9 +692,11 @@ class AssistantToolsService
             return $denied;
         }
 
+        $this->recordExecutedTool($name);
+
         try
         {
-            return match ($name)
+            $result = match ($name)
             {
                 'list_contact_categories' => $this->listContactCategories($teamId),
                 'list_contact_statuses' => $this->listContactStatuses(),
@@ -704,6 +735,8 @@ class AssistantToolsService
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 default => "Unknown tool: {$name}.",
             };
+
+            return $result;
         } catch (\Throwable $e)
         {
             report($e);
@@ -869,6 +902,7 @@ class AssistantToolsService
         $payload = [
             'team_id' => $teamId,
             'creator_id' => $user->id,
+            'responsible_id' => $user->id,
             'name' => $firstName,
             'surname' => $surname,
             'email' => $email,
