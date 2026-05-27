@@ -19,6 +19,7 @@ use App\Models\Template;
 use App\Models\User;
 use App\Services\MessageDeliveryDispatcher;
 use App\Services\MessageFormTemplateResolver;
+use App\Support\MessageTemplateMergeFields;
 use App\Support\TemplateEditorReturnUrl;
 use App\Traits\ConfiguresTeamMail;
 use Carbon\Carbon;
@@ -1604,13 +1605,15 @@ class MessageController extends Controller
 
     private function iframePreviewHtmlFromSource(string $htmlContent): string
     {
+        $sampleValues = MessageTemplateMergeFields::sampleValues();
         $sampleContact = (object) [
-            'name' => 'John',
-            'surname' => 'Doe',
-            'email' => 'john.doe@example.com',
+            'name' => $sampleValues['{{name}}'],
+            'surname' => $sampleValues['{{surname}}'],
+            'email' => $sampleValues['{{email}}'],
+            'phone' => $sampleValues['{{phone}}'],
         ];
 
-        return $this->replaceEmailVariables($htmlContent, $sampleContact, null);
+        return MessageTemplateMergeFields::replace($htmlContent, $sampleContact);
     }
 
     private function resolveMailHtmlFromRequest(Request $request, int $templateId): string
@@ -1719,15 +1722,7 @@ class MessageController extends Controller
 
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
     {
-        // Basic contact variables
-        $htmlContent = str_replace('{{name}}', $contact->name ?? 'John', $htmlContent);
-        $htmlContent = str_replace('{{contact_name}}', ($contact->name ?? 'John').' '.($contact->surname ?? 'Doe'), $htmlContent);
-        $htmlContent = str_replace('{{email}}', $contact->email ?? 'john.doe@example.com', $htmlContent);
-
-        // Note: {{date}} and {{header}} variables have been removed from templates
-        // They are now hardcoded in the template content
-
-        return $htmlContent;
+        return MessageTemplateMergeFields::replace($htmlContent, $contact);
     }
 
     /**

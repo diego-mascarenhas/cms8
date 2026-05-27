@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MessageTemplateMergeFields;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -280,8 +281,12 @@ class MessageDelivery extends Model
 
         $contactName = $this->contact ? $this->contact->name : '';
 
-        // Simple variable replacement for {{name}}
-        return str_replace('{{name}}', $contactName, $messageText);
+        return MessageTemplateMergeFields::replace($messageText, (object) [
+            'name' => $contactName,
+            'surname' => $this->contact->surname ?? '',
+            'email' => $this->contact->email ?? '',
+            'phone' => $this->contact->phone ?? '',
+        ]);
     }
 
     /**
@@ -289,14 +294,6 @@ class MessageDelivery extends Model
      */
     private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
     {
-        // Basic contact variables
-        $htmlContent = str_replace('{{name}}', $contact->name ?? '', $htmlContent);
-        $htmlContent = str_replace('{{contact_name}}', ($contact->name ?? '').' '.($contact->surname ?? ''), $htmlContent);
-        $htmlContent = str_replace('{{email}}', $contact->email ?? '', $htmlContent);
-
-        // Note: {{date}} and {{header}} variables have been removed from templates
-        // They are now hardcoded in the template content
-
-        return $htmlContent;
+        return MessageTemplateMergeFields::replace($htmlContent, $contact);
     }
 }

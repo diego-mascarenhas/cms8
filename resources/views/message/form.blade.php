@@ -905,6 +905,50 @@ window.humaMessageTemplateQuillLabels = {
         }
     }
 
+    function humaInsertMessageTemplateMergeField(token)
+    {
+        var quill = window.humaMessageTemplateQuillInstance;
+        if (! quill || ! token)
+        {
+            return;
+        }
+
+        var range = quill.getSelection(true);
+        var index = range ? range.index : quill.getLength();
+
+        quill.insertText(index, token, 'user');
+        quill.setSelection(index + token.length, 0, 'silent');
+
+        var ta = document.getElementById('message-template-html-body');
+        if (ta)
+        {
+            ta.value = quill.root.innerHTML;
+        }
+    }
+
+    function humaBindMessageTemplateMergeFieldSelect(root)
+    {
+        root = root || document;
+        var select = root.querySelector('[data-huma-merge-field-select]');
+        if (! select || select.dataset.humaMergeFieldBound === '1')
+        {
+            return;
+        }
+
+        select.dataset.humaMergeFieldBound = '1';
+        select.addEventListener('change', function ()
+        {
+            var token = (select.value || '').trim();
+            if (! token)
+            {
+                return;
+            }
+
+            humaInsertMessageTemplateMergeField(token);
+            select.value = '';
+        });
+    }
+
     window.humaSyncMessageTemplateHtmlQuill = function ()
     {
         if (! window.humaMessageTemplateQuillInstance)
@@ -934,6 +978,10 @@ window.humaMessageTemplateQuillLabels = {
             delete el.dataset.quillBound;
             el.innerHTML = '';
             el.className = 'message-template-html-quill-root';
+        });
+        root.querySelectorAll('[data-huma-merge-field-select]').forEach(function (el)
+        {
+            delete el.dataset.humaMergeFieldBound;
         });
     };
 
@@ -1028,6 +1076,7 @@ window.humaMessageTemplateQuillLabels = {
         else
         {
             humaBindMessageTemplateQuillImageUpload(quill, mountEl);
+            humaBindMessageTemplateMergeFieldSelect(root);
         }
 
         window.humaMessageTemplateQuillInstance = quill;
