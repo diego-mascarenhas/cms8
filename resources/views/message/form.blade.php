@@ -35,6 +35,35 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
 <style>
+    .message-template-quill-wrap {
+        overflow: visible;
+    }
+
+    .message-template-quill-wrap .ql-toolbar.ql-snow {
+        position: relative;
+        z-index: 3;
+        overflow: visible;
+        flex-wrap: wrap;
+    }
+
+    .message-template-quill-wrap .ql-container.ql-snow {
+        position: relative;
+        z-index: 1;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker {
+        position: relative;
+        z-index: 4;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker.ql-expanded {
+        z-index: 1090;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker-options {
+        z-index: 1090;
+    }
+
     .message-template-quill-wrap .ql-image-upload {
         width: auto;
         padding: 0 0.35rem;
@@ -44,6 +73,80 @@
         font-size: 1rem;
         line-height: 1;
         vertical-align: middle;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-formats {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        width: auto;
+        min-width: 2rem;
+        padding: 0 0.4rem;
+        white-space: nowrap;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger .ti {
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-trigger-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-formats.is-open {
+        z-index: 4;
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal {
+        display: none;
+        position: fixed;
+        z-index: 1090;
+        min-width: 14rem;
+        max-height: 16rem;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0.25rem 0;
+        list-style: none;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.375rem;
+        box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item {
+        display: block;
+        width: 100%;
+        padding: 0.4rem 0.75rem;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 0.8125rem;
+        line-height: 1.3;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item:hover,
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item:focus {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item-token {
+        display: block;
+        margin-top: 0.1rem;
+        font-family: var(--bs-font-monospace, monospace);
+        font-size: 0.75rem;
+        color: #6c757d;
     }
 </style>
 @endsection
@@ -764,10 +867,13 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <script>
 window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.store'));
+window.humaMessageTemplateMergeFields = @json(\App\Support\MessageTemplateMergeFields::forUi());
 window.humaMessageTemplateQuillLabels = {
     imageUrl: @json(__('app.message_quill_image_url')),
     imageUpload: @json(__('app.message_quill_image_upload')),
     imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
+    mergeFieldSelect: @json(__('app.message_merge_field_select_label')),
+    mergeFieldPlaceholder: @json(__('app.message_merge_field_select_placeholder')),
 };
 </script>
 <script>
@@ -863,6 +969,33 @@ window.humaMessageTemplateQuillLabels = {
         input.click();
     }
 
+    function humaFindMessageTemplateQuillToolbar(mountEl)
+    {
+        if (! mountEl)
+        {
+            return null;
+        }
+
+        if (mountEl.parentElement)
+        {
+            var toolbarInParent = mountEl.parentElement.querySelector('.ql-toolbar');
+
+            if (toolbarInParent)
+            {
+                return toolbarInParent;
+            }
+        }
+
+        var previous = mountEl.previousElementSibling;
+
+        if (previous && previous.classList.contains('ql-toolbar'))
+        {
+            return previous;
+        }
+
+        return null;
+    }
+
     function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
     {
         if (! quill || ! mountEl)
@@ -870,7 +1003,7 @@ window.humaMessageTemplateQuillLabels = {
             return;
         }
 
-        var toolbarEl = mountEl.querySelector('.ql-toolbar');
+        var toolbarEl = humaFindMessageTemplateQuillToolbar(mountEl);
         if (! toolbarEl || toolbarEl.querySelector('.ql-image-upload'))
         {
             return;
@@ -905,6 +1038,178 @@ window.humaMessageTemplateQuillLabels = {
         }
     }
 
+    function humaPositionMergeFieldPortalMenu(trigger, menu)
+    {
+        var rect = trigger.getBoundingClientRect();
+        menu.style.top = Math.round(rect.bottom + 2) + 'px';
+        menu.style.left = Math.round(rect.left) + 'px';
+        menu.style.minWidth = Math.max(Math.round(rect.width), 224) + 'px';
+    }
+
+    function humaOpenMergeFieldPortalMenu(formats, trigger, menu)
+    {
+        if (menu.parentElement !== document.body)
+        {
+            document.body.appendChild(menu);
+        }
+
+        humaPositionMergeFieldPortalMenu(trigger, menu);
+        menu.style.display = 'block';
+        formats.classList.add('is-open');
+    }
+
+    function humaCloseMergeFieldPortalMenu(formats, menu)
+    {
+        formats.classList.remove('is-open');
+
+        if (menu)
+        {
+            menu.style.display = 'none';
+        }
+    }
+
+    function humaCloseAllMergeFieldMenus()
+    {
+        document.querySelectorAll('.huma-merge-field-formats.is-open').forEach(function (el)
+        {
+            el.classList.remove('is-open');
+        });
+        document.querySelectorAll('.huma-merge-field-menu--portal').forEach(function (menu)
+        {
+            menu.style.display = 'none';
+        });
+    }
+
+    if (! window.humaMergeFieldMenuDocumentBound)
+    {
+        window.humaMergeFieldMenuDocumentBound = true;
+        document.addEventListener('click', function ()
+        {
+            humaCloseAllMergeFieldMenus();
+        });
+    }
+
+    function humaReadMessageTemplateMergeFields(root)
+    {
+        root = root || document;
+        var jsonEl = root.querySelector('#message-template-merge-fields-json');
+
+        if (jsonEl && jsonEl.textContent)
+        {
+            try
+            {
+                var parsed = JSON.parse(jsonEl.textContent);
+
+                return Array.isArray(parsed) ? parsed : [];
+            }
+            catch (e)
+            {
+                return [];
+            }
+        }
+
+        return Array.isArray(window.humaMessageTemplateMergeFields) ? window.humaMessageTemplateMergeFields : [];
+    }
+
+    function humaBindMessageTemplateQuillMergeFields(quill, mountEl, root)
+    {
+        if (! quill || ! mountEl)
+        {
+            return;
+        }
+
+        var toolbarEl = humaFindMessageTemplateQuillToolbar(mountEl);
+        if (! toolbarEl || toolbarEl.querySelector('.huma-merge-field-trigger'))
+        {
+            return;
+        }
+
+        var fields = humaReadMessageTemplateMergeFields(root);
+        if (! fields.length)
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+        var formats = document.createElement('span');
+        formats.className = 'ql-formats huma-merge-field-formats';
+
+        var trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'huma-merge-field-trigger';
+        trigger.setAttribute('title', labels.mergeFieldSelect || 'Insert field');
+        trigger.setAttribute('aria-label', labels.mergeFieldSelect || 'Insert field');
+        trigger.setAttribute('aria-haspopup', 'true');
+        trigger.innerHTML = '<i class="ti ti-variable" aria-hidden="true"></i><span class="huma-merge-field-trigger-label">'
+            + (labels.mergeFieldSelect || 'Campo')
+            + '</span>';
+
+        var menu = document.createElement('div');
+        menu.className = 'huma-merge-field-menu huma-merge-field-menu--portal';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('data-huma-message-template-merge-menu', '1');
+        menu.style.display = 'none';
+
+        fields.forEach(function (field)
+        {
+            if (! field || ! field.token)
+            {
+                return;
+            }
+
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'huma-merge-field-menu-item';
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = (field.label || field.token)
+                + '<span class="huma-merge-field-menu-item-token">'
+                + field.token
+                + '</span>';
+
+            item.addEventListener('mousedown', function (event)
+            {
+                event.preventDefault();
+            });
+
+            item.addEventListener('click', function (event)
+            {
+                event.preventDefault();
+                event.stopPropagation();
+                humaInsertMessageTemplateMergeField(field.token);
+                humaCloseMergeFieldPortalMenu(formats, menu);
+            });
+
+            menu.appendChild(item);
+        });
+
+        trigger.addEventListener('mousedown', function (event)
+        {
+            event.preventDefault();
+        });
+
+        trigger.addEventListener('click', function (event)
+        {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var willOpen = ! formats.classList.contains('is-open');
+            humaCloseAllMergeFieldMenus();
+
+            if (willOpen)
+            {
+                humaOpenMergeFieldPortalMenu(formats, trigger, menu);
+            }
+        });
+
+        menu.addEventListener('click', function (event)
+        {
+            event.stopPropagation();
+        });
+
+        formats.appendChild(trigger);
+        toolbarEl.insertBefore(formats, toolbarEl.firstChild);
+    }
+
     function humaInsertMessageTemplateMergeField(token)
     {
         var quill = window.humaMessageTemplateQuillInstance;
@@ -924,29 +1229,6 @@ window.humaMessageTemplateQuillLabels = {
         {
             ta.value = quill.root.innerHTML;
         }
-    }
-
-    function humaBindMessageTemplateMergeFieldSelect(root)
-    {
-        root = root || document;
-        var select = root.querySelector('[data-huma-merge-field-select]');
-        if (! select || select.dataset.humaMergeFieldBound === '1')
-        {
-            return;
-        }
-
-        select.dataset.humaMergeFieldBound = '1';
-        select.addEventListener('change', function ()
-        {
-            var token = (select.value || '').trim();
-            if (! token)
-            {
-                return;
-            }
-
-            humaInsertMessageTemplateMergeField(token);
-            select.value = '';
-        });
     }
 
     window.humaSyncMessageTemplateHtmlQuill = function ()
@@ -979,15 +1261,16 @@ window.humaMessageTemplateQuillLabels = {
             el.innerHTML = '';
             el.className = 'message-template-html-quill-root';
         });
-        root.querySelectorAll('[data-huma-merge-field-select]').forEach(function (el)
+        document.querySelectorAll('[data-huma-message-template-merge-menu="1"]').forEach(function (menuEl)
         {
-            delete el.dataset.humaMergeFieldBound;
+            menuEl.remove();
         });
     };
 
     window.humaInitMessageTemplateHtmlQuill = function (root)
     {
         root = root || document;
+
         if (typeof Quill === 'undefined')
         {
             return;
@@ -1076,7 +1359,7 @@ window.humaMessageTemplateQuillLabels = {
         else
         {
             humaBindMessageTemplateQuillImageUpload(quill, mountEl);
-            humaBindMessageTemplateMergeFieldSelect(root);
+            humaBindMessageTemplateQuillMergeFields(quill, mountEl, root);
         }
 
         window.humaMessageTemplateQuillInstance = quill;

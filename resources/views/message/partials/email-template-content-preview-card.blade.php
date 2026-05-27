@@ -118,24 +118,7 @@
                 @endphp
                 <label class="form-label" for="message-template-html-quill-editor">{{ __('Contenido del correo') }}</label>
                 @if (! $mailHtmlTextareaReadonly)
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                        <label class="form-label mb-0 small text-muted" for="message-template-merge-field-select">
-                            {{ __('app.message_merge_field_select_label') }}
-                        </label>
-                        <select
-                            id="message-template-merge-field-select"
-                            class="form-select form-select-sm w-auto"
-                            style="min-width: 14rem;"
-                            data-huma-merge-field-select="1"
-                        >
-                            <option value="">{{ __('app.message_merge_field_select_placeholder') }}</option>
-                            @foreach ($messageMergeFields as $mergeField)
-                                <option value="{{ $mergeField['token'] }}">
-                                    {{ $mergeField['label'] }} ({{ $mergeField['token'] }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <script type="application/json" id="message-template-merge-fields-json">@json($messageMergeFields)</script>
                 @endif
                 {{-- JSON carrier: raw HTML inside <textarea> breaks on </textarea> and confuses the HTML parser. --}}
                 <script type="application/json" id="message-template-html-initial-json">@json($mailHtmlTextareaValue)</script>
@@ -147,7 +130,7 @@
                     autocomplete="off"
                     @if ($mailHtmlTextareaReadonly) readonly @endif
                 ></textarea>
-                <div class="border rounded overflow-hidden bg-white message-template-quill-wrap" style="min-height: 320px;">
+                <div class="border rounded bg-white message-template-quill-wrap" style="min-height: 320px;">
                     <div id="message-template-html-quill-editor" class="message-template-html-quill-root"></div>
                 </div>
             @else

@@ -38,7 +38,9 @@ class MessageFormDefaultTemplatePreviewTest extends TestCase
         $this->assertStringContainsString('email-template-content-preview', $html);
         $this->assertStringContainsString(__('Contenido del correo'), $html);
         $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
-        $this->assertStringContainsString('data-huma-merge-field-select', $html);
+        $this->assertStringContainsString('message-template-merge-fields-json', $html);
+        $this->assertStringContainsString('huma-merge-field-trigger', $html);
+        $this->assertStringContainsString('humaMessageTemplateMergeFields', $html);
         $this->assertStringContainsString('{{name}}', $html);
         $this->assertStringNotContainsString(__('app.message_form_template_none'), $html);
 
