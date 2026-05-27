@@ -567,10 +567,12 @@ class TeamDemoSeeder extends Seeder
             ['email' => 'victor@machbel.com'],
             [
                 'name' => 'Victor Machbel',
+                'phone' => 34665086080,
                 'password' => bcrypt('Simplicity!'),
                 'email_verified_at' => now(),
             ],
         );
+        $victor->update(['phone' => 34665086080]);
         if (! $victor->hasRole('admin'))
         {
             $victor->assignRole('admin');

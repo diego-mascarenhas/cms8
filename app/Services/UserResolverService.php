@@ -39,13 +39,7 @@ class UserResolverService
             return;
         }
 
-        if ($user->hasRole('admin') && ! $user->teams()->where('team_id', $teamId)->exists())
-        {
-            $user->teams()->attach($teamId, ['role' => 'admin']);
-        } elseif (! $user->teams()->where('team_id', $teamId)->exists())
-        {
-            $user->teams()->attach($teamId, ['role' => 'client']);
-        }
+        $this->ensureTeamMembershipRole($user, $teamId);
 
         $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $teamId)
@@ -181,11 +175,7 @@ class UserResolverService
             return null;
         }
 
-        $phoneVariants = [$cleanNumber];
-        if (strlen($cleanNumber) === 11 && str_starts_with($cleanNumber, '34'))
-        {
-            $phoneVariants[] = substr($cleanNumber, -9);
-        }
+        $phoneVariants = $this->phoneVariantsForDigits($cleanNumber);
 
         $candidates = User::withoutGlobalScopes()
             ->where(function ($query) use ($phoneVariants)
@@ -204,7 +194,7 @@ class UserResolverService
 
         if ($candidates->isEmpty())
         {
-            return null;
+            return $this->findTeamStaffUserByContactPhone($teamId, $phoneVariants);
         }
 
         $globalAdmin = $candidates->first(fn (User $user) => $user->hasAnyRole(['admin', 'root']));
@@ -466,5 +456,124 @@ class UserResolverService
     private function isPlaceholderWhatsAppUser(User $user): bool
     {
         return str_ends_with(strtolower((string) $user->email), '@chat.placeholder');
+    }
+
+    /**
+     * @param  list<string>  $phoneVariants
+     */
+    private function findTeamStaffUserByContactPhone(int $teamId, array $phoneVariants): ?User
+    {
+        if ($teamId < 1 || $phoneVariants === [])
+        {
+            return null;
+        }
+
+        $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CONCAT(phone, ''), ' ', ''), '+', ''), '-', '')";
+
+        $contacts = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($phoneVariants, $phoneNormalizedSql)
+            {
+                foreach ($phoneVariants as $variant)
+                {
+                    $query->orWhereRaw("{$phoneNormalizedSql} = ?", [$variant])
+                        ->orWhereHas('sources', function ($sourceQuery) use ($variant)
+                        {
+                            $sourceQuery->where('source_id', 2)->where('value', $variant);
+                        });
+                }
+            })
+            ->get();
+
+        foreach ($contacts as $contact)
+        {
+            if ($contact->user_id)
+            {
+                $linkedUser = User::withoutGlobalScopes()->find($contact->user_id);
+                if ($linkedUser !== null && $this->userIsTeamStaff($linkedUser, $teamId))
+                {
+                    return $linkedUser;
+                }
+            }
+
+            $email = strtolower(trim((string) ($contact->email ?? '')));
+            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || str_ends_with($email, '@chat.placeholder'))
+            {
+                continue;
+            }
+
+            $staffByEmail = User::withoutGlobalScopes()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->whereHas('teams', function ($query) use ($teamId)
+                {
+                    $query->where('teams.id', $teamId)
+                        ->whereIn('team_user.role', ['admin', 'editor', 'collaborator']);
+                })
+                ->first();
+
+            if ($staffByEmail !== null)
+            {
+                return $staffByEmail;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function phoneVariantsForDigits(string $cleanNumber): array
+    {
+        $variants = [$cleanNumber];
+        if (strlen($cleanNumber) === 11 && str_starts_with($cleanNumber, '34'))
+        {
+            $variants[] = substr($cleanNumber, -9);
+        }
+
+        return $variants;
+    }
+
+    private function ensureTeamMembershipRole(User $user, int $teamId): void
+    {
+        $desiredRole = $this->resolveTeamPivotRoleForUser($user, $teamId);
+        $membership = $user->teams()->where('team_id', $teamId)->first();
+
+        if ($membership === null)
+        {
+            $user->teams()->attach($teamId, ['role' => $desiredRole]);
+
+            return;
+        }
+
+        $currentRole = (string) ($membership->pivot->role ?? '');
+        if ($currentRole === 'client' && $desiredRole !== 'client')
+        {
+            $user->teams()->updateExistingPivot($teamId, ['role' => $desiredRole]);
+        }
+    }
+
+    private function resolveTeamPivotRoleForUser(User $user, int $teamId): string
+    {
+        if ($user->hasAnyRole(['admin', 'root']))
+        {
+            return 'admin';
+        }
+
+        if ($this->userIsTeamStaff($user, $teamId))
+        {
+            $existingRole = $user->teams()
+                ->where('teams.id', $teamId)
+                ->value('team_user.role');
+
+            if (is_string($existingRole) && in_array($existingRole, ['admin', 'editor', 'collaborator'], true))
+            {
+                return $existingRole;
+            }
+
+            return 'admin';
+        }
+
+        return 'client';
     }
 }

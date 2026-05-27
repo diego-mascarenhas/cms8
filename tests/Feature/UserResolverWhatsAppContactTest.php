@@ -161,4 +161,54 @@ class UserResolverWhatsAppContactTest extends TestCase
         $resolved = $service->resolveUserForConversation('5491199988877', null, (int) $team->id);
         $this->assertSame($admin->id, $resolved->id);
     }
+
+    public function test_resolve_user_prefers_staff_via_team_contact_email_when_phone_matches(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'victor@machbel.com',
+            'phone' => null,
+        ]);
+        $admin->assignRole('admin');
+        $team = Team::factory()->create(['user_id' => $admin->id]);
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'creator_id' => $admin->id,
+            'responsible_id' => $admin->id,
+            'name' => 'Victor Machbel',
+            'email' => 'victor@machbel.com',
+            'phone' => 34665086080,
+            'status_id' => 1,
+        ]);
+
+        User::factory()->create([
+            'email' => 'wa-34665086080@chat.placeholder',
+            'phone' => 34665086080,
+        ])->assignRole('client');
+
+        $service = app(UserResolverService::class);
+        $resolved = $service->resolveUserForConversation('34665086080', null, (int) $team->id);
+
+        $this->assertNotNull($resolved);
+        $this->assertSame($admin->id, $resolved->id);
+    }
+
+    public function test_link_phone_upgrades_global_admin_from_client_pivot_to_admin(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'phone' => 34611111111,
+        ]);
+        $admin->assignRole('admin');
+        $team = Team::factory()->create(['user_id' => $admin->id]);
+        $admin->teams()->attach($team->id, ['role' => 'client']);
+
+        $service = app(UserResolverService::class);
+        $service->linkPhoneToContactInTeam((int) $team->id, '34611111111');
+
+        $role = $admin->fresh()->teams()->where('team_id', $team->id)->value('team_user.role');
+        $this->assertSame('admin', $role);
+    }
 }
