@@ -34,6 +34,18 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
+<style>
+    .message-template-quill-wrap .ql-image-upload {
+        width: auto;
+        padding: 0 0.35rem;
+    }
+
+    .message-template-quill-wrap .ql-image-upload .ti {
+        font-size: 1rem;
+        line-height: 1;
+        vertical-align: middle;
+    }
+</style>
 @endsection
 
 @section('vendor-script')
@@ -751,9 +763,147 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 <script>
+window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.store'));
+window.humaMessageTemplateQuillLabels = {
+    imageUrl: @json(__('app.message_quill_image_url')),
+    imageUpload: @json(__('app.message_quill_image_upload')),
+    imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
+};
+</script>
+<script>
 (function ()
 {
     window.humaMessageTemplateQuillInstance = null;
+
+    function humaGetMessageTemplateQuillCsrfToken()
+    {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function humaInsertImageIntoQuill(quill, url)
+    {
+        if (! quill || ! url)
+        {
+            return;
+        }
+
+        var range = quill.getSelection(true);
+        var index = range ? range.index : quill.getLength();
+
+        quill.insertEmbed(index, 'image', url, 'user');
+        quill.setSelection(index + 1, 0, 'silent');
+    }
+
+    function humaUploadMessageTemplateQuillImage(quill)
+    {
+        var uploadUrl = window.humaMessageTemplateQuillUploadUrl;
+        var labels = window.humaMessageTemplateQuillLabels || {};
+
+        if (! uploadUrl)
+        {
+            return;
+        }
+
+        var input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml');
+        input.style.display = 'none';
+        document.body.appendChild(input);
+
+        input.addEventListener('change', function ()
+        {
+            var file = input.files && input.files[0];
+            input.remove();
+
+            if (! file)
+            {
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file[]', file);
+
+            fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': humaGetMessageTemplateQuillCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+                .then(function (response)
+                {
+                    if (! response.ok)
+                    {
+                        throw new Error('upload_failed');
+                    }
+
+                    return response.json();
+                })
+                .then(function (payload)
+                {
+                    var urls = payload && payload.data ? payload.data : [];
+                    var url = Array.isArray(urls) ? urls[0] : null;
+
+                    if (! url)
+                    {
+                        throw new Error('upload_empty');
+                    }
+
+                    humaInsertImageIntoQuill(quill, url);
+                })
+                .catch(function ()
+                {
+                    window.alert(labels.imageUploadFailed || 'Could not upload the image.');
+                });
+        });
+
+        input.click();
+    }
+
+    function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
+    {
+        if (! quill || ! mountEl)
+        {
+            return;
+        }
+
+        var toolbarEl = mountEl.querySelector('.ql-toolbar');
+        if (! toolbarEl || toolbarEl.querySelector('.ql-image-upload'))
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+        var imageButton = toolbarEl.querySelector('button.ql-image');
+        var formats = document.createElement('span');
+        formats.className = 'ql-formats';
+
+        var uploadButton = document.createElement('button');
+        uploadButton.type = 'button';
+        uploadButton.className = 'ql-image-upload';
+        uploadButton.setAttribute('title', labels.imageUpload || 'Upload image');
+        uploadButton.innerHTML = '<i class="ti ti-upload" aria-hidden="true"></i>';
+        uploadButton.addEventListener('click', function (event)
+        {
+            event.preventDefault();
+            humaUploadMessageTemplateQuillImage(quill);
+        });
+
+        formats.appendChild(uploadButton);
+
+        if (imageButton && imageButton.parentElement)
+        {
+            imageButton.setAttribute('title', labels.imageUrl || 'Insert image from URL');
+            imageButton.parentElement.insertAdjacentElement('afterend', formats);
+        }
+        else
+        {
+            toolbarEl.appendChild(formats);
+        }
+    }
 
     window.humaSyncMessageTemplateHtmlQuill = function ()
     {
@@ -821,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ list: 'ordered' }, { list: 'bullet' }],
                 [{ align: [] }],
-                ['link'],
+                ['link', 'image'],
                 [{ color: [] }, { background: [] }],
                 ['blockquote', 'code-block'],
                 ['clean'],
@@ -874,6 +1024,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (readonly)
         {
             quill.enable(false);
+        }
+        else
+        {
+            humaBindMessageTemplateQuillImageUpload(quill, mountEl);
         }
 
         window.humaMessageTemplateQuillInstance = quill;
