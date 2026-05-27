@@ -38,8 +38,28 @@
   const reviewsSliderPrev = document.querySelector('#swiper-reviews ~ .swiper-button-prev, .swiper-reviews-carousel .swiper-button-prev');
   const reviewsSliderNext = document.querySelector('#swiper-reviews ~ .swiper-button-next, .swiper-reviews-carousel .swiper-button-next');
 
+  function resetHeroParallaxTransform() {
+    animationImg.forEach(function (layer) {
+      layer.style.transform = '';
+    });
+    animationElements.forEach(function (layer) {
+      layer.style.transform = '';
+    });
+  }
+
   const mediaQueryXL = '1200';
-  if (screen.width >= mediaQueryXL && heroAnimation && nav) {
+  const heroParallaxMq = window.matchMedia('(min-width: ' + mediaQueryXL + 'px)');
+
+  function syncHeroParallaxState() {
+    if (!heroParallaxMq.matches) {
+      resetHeroParallaxTransform();
+    }
+  }
+
+  syncHeroParallaxState();
+  window.addEventListener('resize', syncHeroParallaxState);
+
+  if (heroParallaxMq.matches && heroAnimation && nav) {
     heroAnimation.addEventListener('mousemove', function parallax(e) {
       animationElements.forEach(layer => {
         layer.style.transform = 'translateZ(1rem)';
