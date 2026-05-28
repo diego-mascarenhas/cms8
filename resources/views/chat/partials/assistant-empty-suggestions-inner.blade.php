@@ -2,7 +2,6 @@
     $suggestionTeam = auth()->user()?->currentTeam;
     $hasContactsModule = $suggestionTeam?->hasModule('contacts') ?? false;
     $hasTasksModule = $suggestionTeam?->hasModule('tasks') ?? false;
-    $hasChatModule = $suggestionTeam?->hasModule('chat') ?? false;
     $hasCalendarModule = $suggestionTeam?->hasModule('calendar') ?? false;
     $hasTicketsModule = $suggestionTeam?->hasModule('tickets') ?? false;
     $hasTemplatesModule = $suggestionTeam?->hasModule('templates') ?? false;
@@ -35,16 +34,6 @@
                 <div class="d-flex flex-wrap gap-1">
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Crea una tarea: llamar al cliente mañana">Crear tarea</button>
                     <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis tareas recientes">Listar tareas</button>
-                </div>
-            </div>
-        </div>
-        @endif
-        @if ($hasChatModule)
-        <div class="col-12 col-md-6">
-            <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
-                <strong class="d-block mb-1"><i class="ti ti-brand-whatsapp me-1"></i>WhatsApp</strong>
-                <div class="d-flex flex-wrap gap-1">
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Envía un WhatsApp al 34600111222 con el mensaje: Hola, te escribo desde Humano">Enviar mensaje</button>
                 </div>
             </div>
         </div>
@@ -102,14 +91,16 @@
             </div>
         </div>
         @endif
+        @if ($hasContactsModule)
         <div class="col-12 col-md-6">
             <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
-                <strong class="d-block mb-1"><i class="ti ti-user me-1"></i>Perfil</strong>
+                <strong class="d-block mb-1"><i class="ti ti-activity me-1"></i>Actividad</strong>
                 <div class="d-flex flex-wrap gap-1">
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Muéstrame mi perfil y mi equipo actual">Mi perfil</button>
+                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Registra una interacción para el contacto 57 de tipo llamada con asunto Seguimiento y detalles Cliente pidió propuesta">Guardar interacción</button>
                 </div>
             </div>
         </div>
+        @endif
         @if ($showTeamFlowsSuggestions)
         <div class="col-12">
             <div class="border rounded p-2 bg-label-secondary bg-opacity-10">
@@ -126,16 +117,5 @@
             </div>
         </div>
         @endif
-        <div class="col-12 col-md-6">
-            <div class="border rounded p-2 h-100 bg-label-secondary bg-opacity-10">
-                <strong class="d-block mb-1"><i class="ti ti-chart-bar me-1"></i>Informes</strong>
-                <div class="d-flex flex-wrap gap-1">
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Dame un resumen de mi cuenta">Resumen</button>
-                    @if ($hasContactsModule)
-                    <button type="button" class="btn btn-sm btn-label-secondary py-0 px-2 assistant-suggestion-example" data-prompt="Lista mis contactos recientes">Contactos</button>
-                    @endif
-                </div>
-            </div>
-        </div>
     </div>
 </div>

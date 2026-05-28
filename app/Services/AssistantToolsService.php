@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Enums\ContactInteractionType;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\GenerateTemplateHtmlJob;
@@ -10,6 +11,7 @@ use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
 use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\Module;
@@ -265,7 +267,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_contact',
-                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name, notes (contact data.notes JSON), birthday (Y-m-d).',
+                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name, surname, notes (contact data.notes JSON), birthday (Y-m-d).',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -273,10 +275,26 @@ class AssistantToolsService
                         'phone' => ['type' => 'string', 'description' => 'Phone number (with country code, digits only). Optional.'],
                         'email' => ['type' => 'string', 'description' => 'Email address. Optional.'],
                         'name' => ['type' => 'string', 'description' => 'Full name. Optional.'],
+                        'surname' => ['type' => 'string', 'description' => 'Surname/last name. Optional.'],
                         'notes' => ['type' => 'string', 'description' => 'Free-text notes stored in contact data.notes. Optional.'],
                         'birthday' => ['type' => 'string', 'description' => 'Birthday date Y-m-d. Optional.'],
                     ],
                     'required' => ['contact_id'],
+                ],
+            ],
+            [
+                'name' => 'create_contact_interaction',
+                'description' => 'Record an interaction/activity for a contact timeline. Required: contact_id and type. Optional: subject, body/details, occurred_at (date/time).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID'],
+                        'type' => ['type' => 'string', 'description' => 'One of: call, email, meeting, note, whatsapp, cart_abandoned, order_paid, other'],
+                        'subject' => ['type' => 'string', 'description' => 'Short title/subject (optional)'],
+                        'body' => ['type' => 'string', 'description' => 'Details/notes for the interaction (optional)'],
+                        'occurred_at' => ['type' => 'string', 'description' => 'When it happened. Accepts Y-m-d H:i:s, Y-m-d, or ISO datetime (optional, default now)'],
+                    ],
+                    'required' => ['contact_id', 'type'],
                 ],
             ],
             [
@@ -718,6 +736,7 @@ class AssistantToolsService
                 'create_contact' => $this->createContact($teamId, $user, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $user, $input),
                 'update_contact' => $this->updateContact($teamId, $user, $input),
+                'create_contact_interaction' => $this->createContactInteraction($teamId, $user, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
@@ -1120,7 +1139,7 @@ class AssistantToolsService
         $contactId = (int) ($input['contact_id'] ?? 0);
         if ($contactId < 1)
         {
-            return 'contact_id is required.';
+            return 'contact_id is required. Do not confirm activity registration.';
         }
 
         $contact = Contact::withoutGlobalScopes()
@@ -1129,7 +1148,7 @@ class AssistantToolsService
 
         if (! $contact)
         {
-            return "Contact with id {$contactId} not found.";
+            return "Contact with id {$contactId} not found. Do not confirm activity registration.";
         }
 
         if (! Gate::forUser($user)->allows('view', $contact))
@@ -1183,7 +1202,26 @@ class AssistantToolsService
         }
         if (array_key_exists('name', $input) && trim((string) $input['name']) !== '')
         {
-            $updates['name'] = trim((string) $input['name']);
+            $nameInput = trim((string) $input['name']);
+            $surnameInput = trim((string) ($input['surname'] ?? ''));
+
+            if ($surnameInput !== '')
+            {
+                $updates['name'] = $nameInput;
+            } else
+            {
+                [$firstName, $surnameFromName] = app(TeamContactMatcher::class)->splitFullName($nameInput);
+                $updates['name'] = $firstName;
+                if ($surnameFromName !== '')
+                {
+                    $updates['surname'] = $surnameFromName;
+                }
+            }
+        }
+
+        if (array_key_exists('surname', $input) && trim((string) $input['surname']) !== '')
+        {
+            $updates['surname'] = trim((string) $input['surname']);
         }
 
         if (array_key_exists('birthday', $input))
@@ -1214,7 +1252,7 @@ class AssistantToolsService
 
         if (empty($updates))
         {
-            return 'Provide at least one field to update: phone, email, name, notes, or birthday.';
+            return 'Provide at least one field to update: phone, email, name, surname, notes, or birthday.';
         }
 
         $contact->update($updates);
@@ -1225,6 +1263,176 @@ class AssistantToolsService
         }
 
         return $this->truncate("Contact {$contact->name} (id: {$contact->id}) updated: ".implode(', ', array_unique($updated)).'.');
+    }
+
+    private function createContactInteraction(int $teamId, User $user, array $input): string
+    {
+        Log::info('assistant.activity.create.start', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'input' => [
+                'contact_id' => $input['contact_id'] ?? null,
+                'type' => $input['type'] ?? $input['interaction_type'] ?? $input['tipo'] ?? null,
+                'subject' => $input['subject'] ?? $input['asunto'] ?? null,
+                'occurred_at' => $input['occurred_at'] ?? $input['fecha'] ?? $input['date'] ?? null,
+            ],
+        ]);
+
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        if ($contactId < 1)
+        {
+            Log::info('assistant.activity.create.validation.missing_contact_id', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+            ]);
+
+            return 'contact_id is required.';
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->find($contactId);
+
+        if (! $contact)
+        {
+            Log::info('assistant.activity.create.validation.contact_not_found', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => $contactId,
+            ]);
+
+            return "Contact with id {$contactId} not found.";
+        }
+
+        if (! Gate::forUser($user)->allows('logInteraction', $contact))
+        {
+            Log::info('assistant.activity.create.validation.permission_denied', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => $contactId,
+            ]);
+
+            return 'You do not have permission to log interactions for this contact. Do not confirm activity registration.';
+        }
+
+        $typeRaw = trim((string) ($input['type'] ?? $input['interaction_type'] ?? $input['tipo'] ?? ''));
+        if ($typeRaw === '')
+        {
+            Log::info('assistant.activity.create.validation.missing_type', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => $contactId,
+            ]);
+
+            return 'type is required. Do not confirm activity registration.';
+        }
+
+        $type = ContactInteractionType::tryFrom(Str::lower($typeRaw));
+        if ($type === null)
+        {
+            Log::info('assistant.activity.create.validation.invalid_type', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => $contactId,
+                'type_raw' => $typeRaw,
+            ]);
+
+            return 'Invalid interaction type. Use: call, email, meeting, note, whatsapp, cart_abandoned, order_paid, other. Do not confirm activity registration.';
+        }
+
+        $occurredAtRaw = trim((string) ($input['occurred_at'] ?? $input['fecha'] ?? $input['date'] ?? ''));
+        $occurredAt = $this->parseInteractionOccurredAt($occurredAtRaw);
+        if ($occurredAt === null)
+        {
+            Log::info('assistant.activity.create.validation.invalid_occurred_at', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => $contactId,
+                'occurred_at_raw' => $occurredAtRaw,
+            ]);
+
+            return 'Invalid occurred_at date. Use Y-m-d H:i:s, Y-m-d H:i, Y-m-d, d/m/Y H:i, d/m/Y, or ISO datetime. Do not confirm activity registration.';
+        }
+
+        $subject = isset($input['subject']) ? trim((string) $input['subject']) : trim((string) ($input['asunto'] ?? ''));
+        $body = isset($input['body']) ? trim((string) $input['body']) : trim((string) ($input['details'] ?? $input['detalles'] ?? ''));
+
+        $interaction = ContactInteraction::withoutGlobalScopes()->create([
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'type' => $type->value,
+            'subject' => $subject !== '' ? $subject : null,
+            'body' => $body !== '' ? $body : null,
+            'occurred_at' => $occurredAt,
+        ]);
+
+        Log::info('assistant.activity.create.success', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'contact_id' => (int) $contact->id,
+            'interaction_id' => (int) $interaction->id,
+            'type' => $interaction->type->value,
+            'subject' => $interaction->subject,
+            'occurred_at' => $interaction->occurred_at?->format('Y-m-d H:i:s'),
+        ]);
+
+        $summary = "Interaction recorded for {$contact->name} (id: {$contact->id}): {$type->value}";
+        if ($interaction->subject)
+        {
+            $summary .= " with subject \"{$interaction->subject}\"";
+        }
+        $summary .= ' at '.$interaction->occurred_at->format('Y-m-d H:i:s');
+        $summary .= " (interaction id: {$interaction->id}).";
+
+        return $this->truncate($summary);
+    }
+
+    private function parseInteractionOccurredAt(string $occurredAtRaw): ?Carbon
+    {
+        if ($occurredAtRaw === '')
+        {
+            return now();
+        }
+
+        $formats = [
+            'Y-m-d H:i:s',
+            'Y-m-d H:i',
+            'Y-m-d',
+            'd/m/Y H:i',
+            'd/m/Y',
+            'd-m-Y H:i',
+            'd-m-Y',
+        ];
+
+        foreach ($formats as $format)
+        {
+            try
+            {
+                $parsed = Carbon::createFromFormat($format, $occurredAtRaw);
+                if ($parsed !== false)
+                {
+                    if ($format === 'Y-m-d' || $format === 'd/m/Y' || $format === 'd-m-Y')
+                    {
+                        $now = now();
+
+                        return $parsed->setTime($now->hour, $now->minute, $now->second);
+                    }
+
+                    return $parsed;
+                }
+            } catch (\Throwable)
+            {
+                continue;
+            }
+        }
+
+        try
+        {
+            return Carbon::parse($occurredAtRaw);
+        } catch (\Throwable)
+        {
+            return null;
+        }
     }
 
     private function getAccountReport(int $teamId, array $input): string
