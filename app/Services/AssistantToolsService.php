@@ -1267,7 +1267,7 @@ class AssistantToolsService
 
     private function createContactInteraction(int $teamId, User $user, array $input): string
     {
-        Log::info('AssistantToolsService create_contact_interaction start', [
+        Log::info('assistant.activity.create.start', [
             'team_id' => $teamId,
             'user_id' => $user->id,
             'input' => [
@@ -1281,7 +1281,7 @@ class AssistantToolsService
         $contactId = (int) ($input['contact_id'] ?? 0);
         if ($contactId < 1)
         {
-            Log::info('AssistantToolsService create_contact_interaction missing contact_id', [
+            Log::info('assistant.activity.create.validation.missing_contact_id', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
             ]);
@@ -1295,7 +1295,7 @@ class AssistantToolsService
 
         if (! $contact)
         {
-            Log::info('AssistantToolsService create_contact_interaction contact not found', [
+            Log::info('assistant.activity.create.validation.contact_not_found', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
                 'contact_id' => $contactId,
@@ -1306,7 +1306,7 @@ class AssistantToolsService
 
         if (! Gate::forUser($user)->allows('logInteraction', $contact))
         {
-            Log::info('AssistantToolsService create_contact_interaction permission denied', [
+            Log::info('assistant.activity.create.validation.permission_denied', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
                 'contact_id' => $contactId,
@@ -1318,7 +1318,7 @@ class AssistantToolsService
         $typeRaw = trim((string) ($input['type'] ?? $input['interaction_type'] ?? $input['tipo'] ?? ''));
         if ($typeRaw === '')
         {
-            Log::info('AssistantToolsService create_contact_interaction missing type', [
+            Log::info('assistant.activity.create.validation.missing_type', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
                 'contact_id' => $contactId,
@@ -1330,7 +1330,7 @@ class AssistantToolsService
         $type = ContactInteractionType::tryFrom(Str::lower($typeRaw));
         if ($type === null)
         {
-            Log::info('AssistantToolsService create_contact_interaction invalid type', [
+            Log::info('assistant.activity.create.validation.invalid_type', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
                 'contact_id' => $contactId,
@@ -1344,7 +1344,7 @@ class AssistantToolsService
         $occurredAt = $this->parseInteractionOccurredAt($occurredAtRaw);
         if ($occurredAt === null)
         {
-            Log::info('AssistantToolsService create_contact_interaction invalid occurred_at', [
+            Log::info('assistant.activity.create.validation.invalid_occurred_at', [
                 'team_id' => $teamId,
                 'user_id' => $user->id,
                 'contact_id' => $contactId,
@@ -1366,7 +1366,7 @@ class AssistantToolsService
             'occurred_at' => $occurredAt,
         ]);
 
-        Log::info('AssistantToolsService create_contact_interaction created', [
+        Log::info('assistant.activity.create.success', [
             'team_id' => $teamId,
             'user_id' => $user->id,
             'contact_id' => (int) $contact->id,
