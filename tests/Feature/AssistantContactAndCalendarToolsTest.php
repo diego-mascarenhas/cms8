@@ -50,6 +50,31 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->assertMatchesRegularExpression('/id \d+:/', $out);
     }
 
+    public function test_get_contact_detail_returns_full_contact_data(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Leticia',
+            'surname' => 'Silvano Martínez',
+            'email' => 'leticia@example.com',
+            'phone' => 34662123626,
+            'data' => (object) ['notes' => 'Existing CRM note'],
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('get_contact_detail', ['contact_id' => $contact->id]);
+
+        $this->assertStringContainsString('Contact detail: Leticia Silvano Martínez', $out);
+        $this->assertStringContainsString('Email: leticia@example.com', $out);
+        $this->assertStringContainsString('Phone: 34662123626', $out);
+        $this->assertStringContainsString('Notes: Existing CRM note', $out);
+        $this->assertStringContainsString('Profile URL:', $out);
+    }
+
     public function test_create_contact_reuses_existing_by_full_name(): void
     {
         $user = $this->createAdminWithTeam();

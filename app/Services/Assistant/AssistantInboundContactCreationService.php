@@ -5,6 +5,7 @@ namespace App\Services\Assistant;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Support\AssistantContactCreationResult;
+use Illuminate\Support\Facades\Log;
 
 /**
  * When the LLM replies without calling create_contact, apply clear "nuevo contacto" intent server-side
@@ -26,24 +27,58 @@ class AssistantInboundContactCreationService
         string $message,
         array $existingToolResults,
     ): ?array {
+        Log::info('AssistantInboundContactCreationService start', [
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'message_preview' => mb_substr(trim($message), 0, 180),
+            'existing_tool_results_count' => count($existingToolResults),
+        ]);
+
         if ($this->assistantTools->wasToolExecuted('create_contact'))
         {
+            Log::info('AssistantInboundContactCreationService skipped because create_contact already executed', [
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+            ]);
+
             return null;
         }
 
         if (AssistantContactCreationResult::extractFromToolResults($existingToolResults) !== null)
         {
+            Log::info('AssistantInboundContactCreationService skipped because creation result already present in tool results', [
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+            ]);
+
             return null;
         }
 
         $parsed = $this->parseContactCreationIntent($message);
         if ($parsed === null)
         {
+            Log::info('AssistantInboundContactCreationService no contact intent detected', [
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+            ]);
+
             return null;
         }
 
+        Log::info('AssistantInboundContactCreationService intent detected', [
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'parsed' => $parsed,
+        ]);
+
         $this->assistantTools->setRequestContext($user->id, $teamId, null);
         $toolResult = $this->assistantTools->execute('create_contact', $parsed);
+
+        Log::info('AssistantInboundContactCreationService create_contact executed', [
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'tool_result_preview' => mb_substr($toolResult, 0, 250),
+        ]);
 
         if (
             str_contains($toolResult, 'not found')
@@ -51,14 +86,33 @@ class AssistantInboundContactCreationService
             || str_contains($toolResult, 'required')
             || str_contains($toolResult, 'Error:')
         ) {
+            Log::info('AssistantInboundContactCreationService create_contact result rejected by guardrails', [
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+                'tool_result' => $toolResult,
+            ]);
+
             return null;
         }
 
         $creation = AssistantContactCreationResult::parseToolResultText($toolResult);
         if ($creation === null)
         {
+            Log::info('AssistantInboundContactCreationService could not parse contact creation result', [
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+                'tool_result' => $toolResult,
+            ]);
+
             return null;
         }
+
+        Log::info('AssistantInboundContactCreationService finished successfully', [
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'contact_id' => $creation['contact_id'],
+            'already_exists' => $creation['already_exists'],
+        ]);
 
         return [
             'tool_result' => $toolResult,

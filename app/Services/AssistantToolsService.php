@@ -213,6 +213,18 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'get_contact_detail',
+                'description' => 'Get detailed information for one CRM contact. Provide contact_id when available; otherwise pass query (name, email, or phone) to resolve one match and return full detail.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID (preferred when known)'],
+                        'query' => ['type' => 'string', 'description' => 'Name, email, or phone when contact_id is unknown'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
                 'name' => 'create_contact',
                 'description' => 'Create a new contact. Provide at least name (full name is ok, e.g. Francisco Caballero); optionally email, phone, category name (created if missing), notes (stored in contact data JSON), and birthday (Y-m-d). Call search_contacts first when the user names someone. ALWAYS checks for an existing contact first (same email, phone, or matching full name) and returns that contact id instead of creating a duplicate.',
                 'input_schema' => [
@@ -702,6 +714,7 @@ class AssistantToolsService
                 'list_contact_statuses' => $this->listContactStatuses(),
                 'get_contact_categories' => $this->getContactCategories($teamId, $user, $input),
                 'search_contacts' => $this->searchContacts($teamId, $user, $input),
+                'get_contact_detail' => $this->getContactDetail($teamId, $user, $input),
                 'create_contact' => $this->createContact($teamId, $user, $input),
                 'assign_contact_to_category' => $this->assignContactToCategory($teamId, $user, $input),
                 'update_contact' => $this->updateContact($teamId, $user, $input),
@@ -794,6 +807,13 @@ class AssistantToolsService
 
     private function searchContacts(int $teamId, User $user, array $input): string
     {
+        Log::info('AssistantToolsService search_contacts start', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'query' => isset($input['query']) ? (string) $input['query'] : null,
+            'limit' => isset($input['limit']) ? (int) $input['limit'] : null,
+        ]);
+
         if (! Gate::forUser($user)->allows('viewAny', Contact::class))
         {
             return 'You do not have permission to list contacts.';
@@ -820,6 +840,12 @@ class AssistantToolsService
 
         if ($contacts->isEmpty())
         {
+            Log::info('AssistantToolsService search_contacts no matches', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'query' => $query,
+            ]);
+
             return $this->truncate(
                 'No contacts found for "'.$query.'". Call create_contact with name "'.$query.'" now (email/phone optional) if the user asked to add this person — do not tell the user search is broken.',
             );
@@ -846,11 +872,122 @@ class AssistantToolsService
             ? 'Found 1 contact (use this id in guest_contact_ids or create_contact):'
             : "Found {$count} contacts (pick the correct id for guest_contact_ids):";
 
+        Log::info('AssistantToolsService search_contacts success', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'query' => $query,
+            'matches_count' => $count,
+            'match_ids' => $contacts->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+        ]);
+
         return $this->truncate($header."\n".$lines);
+    }
+
+    private function getContactDetail(int $teamId, User $user, array $input): string
+    {
+        Log::info('AssistantToolsService get_contact_detail start', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'contact_id' => isset($input['contact_id']) ? (int) $input['contact_id'] : null,
+            'query' => isset($input['query']) ? (string) $input['query'] : null,
+        ]);
+
+        $contact = null;
+        $contactId = (int) ($input['contact_id'] ?? 0);
+
+        if ($contactId > 0)
+        {
+            $contact = Contact::withoutGlobalScopes()
+                ->where('team_id', $teamId)
+                ->with(['status', 'categories:id,name'])
+                ->find($contactId);
+        } else
+        {
+            $query = trim((string) ($input['query'] ?? ''));
+            if ($query === '')
+            {
+                return 'Provide contact_id or query to get contact detail.';
+            }
+
+            $matches = app(TeamContactMatcher::class)->search($teamId, $query, 2);
+            if ($matches->isEmpty())
+            {
+                Log::info('AssistantToolsService get_contact_detail no matches by query', [
+                    'team_id' => $teamId,
+                    'user_id' => $user->id,
+                    'query' => $query,
+                ]);
+
+                return 'No contacts found for "'.$query.'".';
+            }
+
+            if ($matches->count() > 1)
+            {
+                $options = $matches->map(function (Contact $match)
+                {
+                    $fullName = trim($match->name.' '.($match->surname ?? ''));
+
+                    return '  - id '.$match->id.': '.$fullName;
+                })->implode("\n");
+
+                return $this->truncate("Multiple contacts found for \"{$query}\". Use contact_id:\n".$options);
+            }
+
+            $contact = Contact::withoutGlobalScopes()
+                ->where('team_id', $teamId)
+                ->with(['status', 'categories:id,name'])
+                ->find((int) $matches->first()->id);
+        }
+
+        if (! $contact)
+        {
+            return $contactId > 0
+                ? "Contact with id {$contactId} not found."
+                : 'Contact not found.';
+        }
+
+        if (! Gate::forUser($user)->allows('view', $contact))
+        {
+            return 'You do not have permission to view this contact.';
+        }
+
+        $fullName = trim($contact->name.' '.($contact->surname ?? ''));
+        $categories = $contact->categories
+            ->pluck('name')
+            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+            ->values()
+            ->all();
+        $notes = is_object($contact->data ?? null) ? (string) ($contact->data->notes ?? '') : '';
+        $details = [
+            "Contact detail: {$fullName} (id: {$contact->id})",
+            'Email: '.($contact->email ?: 'N/A'),
+            'Phone: '.($contact->phone ? (string) $contact->phone : 'N/A'),
+            'Status: '.($contact->status->name ?? 'N/A'),
+            'Categories: '.($categories !== [] ? implode(', ', $categories) : 'N/A'),
+            'Notes: '.($notes !== '' ? $notes : 'N/A'),
+            'Profile URL: '.route('contact.show', $contact->id),
+        ];
+
+        Log::info('AssistantToolsService get_contact_detail success', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'contact_id' => (int) $contact->id,
+        ]);
+
+        return $this->truncate(implode("\n", $details));
     }
 
     private function createContact(int $teamId, User $user, array $input): string
     {
+        Log::info('AssistantToolsService create_contact start', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'input_name' => isset($input['name']) ? (string) $input['name'] : null,
+            'input_email' => isset($input['email']) ? (string) $input['email'] : null,
+            'input_phone' => isset($input['phone']) ? (string) $input['phone'] : null,
+            'input_category_name' => isset($input['category_name']) ? (string) $input['category_name'] : null,
+        ]);
+
         if (! Gate::forUser($user)->allows('create', Contact::class))
         {
             return 'You do not have permission to create contacts for this team. Tell the user their role cannot add CRM contacts; do not say search failed.';
@@ -894,6 +1031,13 @@ class AssistantToolsService
             }
             $out .= ' Use id '.$existing->id.' in guest_contact_ids when scheduling a calendar event with this person.';
 
+            Log::info('AssistantToolsService create_contact reused existing contact', [
+                'team_id' => $teamId,
+                'user_id' => $user->id,
+                'contact_id' => (int) $existing->id,
+                'category_assigned' => $categoryId !== null,
+            ]);
+
             return $this->truncate($out);
         }
 
@@ -923,6 +1067,15 @@ class AssistantToolsService
             $out .= " Assigned to category: {$categoryName}.";
         }
         $out .= ' Use id '.$contact->id.' in guest_contact_ids when scheduling a calendar event with this person.';
+
+        Log::info('AssistantToolsService create_contact created new contact', [
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'contact_id' => (int) $contact->id,
+            'email' => $contact->email,
+            'phone' => $contact->phone,
+            'category_assigned' => $categoryId !== null,
+        ]);
 
         return $this->truncate($out);
     }
