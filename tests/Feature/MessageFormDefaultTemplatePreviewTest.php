@@ -38,6 +38,10 @@ class MessageFormDefaultTemplatePreviewTest extends TestCase
         $this->assertStringContainsString('email-template-content-preview', $html);
         $this->assertStringContainsString(__('Contenido del correo'), $html);
         $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
+        $this->assertStringContainsString('message-template-merge-fields-json', $html);
+        $this->assertStringContainsString('huma-merge-field-picker', $html);
+        $this->assertStringContainsString('humaMessageTemplateMergeFields', $html);
+        $this->assertStringContainsString('{{nombre}}', $html);
         $this->assertStringNotContainsString(__('app.message_form_template_none'), $html);
 
         $this->assertSame(1, Template::withoutGlobalScopes()->where('team_id', $teamId)->count());

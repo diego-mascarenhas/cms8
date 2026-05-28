@@ -56,6 +56,7 @@ class TeamHumanoSeeder extends Seeder
             $humanoOwner = User::create([
                 'name' => 'Victor Machbel',
                 'email' => 'victor@machbel.com',
+                'phone' => 34665086080,
                 'password' => Hash::make('Simplicity!'),
             ]);
             $humanoOwner->assignRole('admin');
@@ -72,7 +73,10 @@ class TeamHumanoSeeder extends Seeder
         );
 
         // Ensure known password for owner
-        $humanoOwner->update(['password' => Hash::make('Simplicity!')]);
+        $humanoOwner->update([
+            'password' => Hash::make('Simplicity!'),
+            'phone' => 34665086080,
+        ]);
 
         // Ensure the user is in the team
         if (! $team->users()->where('user_id', $humanoOwner->id)->exists())
@@ -97,6 +101,7 @@ class TeamHumanoSeeder extends Seeder
         // Update current team for main user (already created in createHumanoTeam)
         $humanoOwner->update([
             'current_team_id' => $team->id,
+            'phone' => 34665086080,
         ]);
 
         // Add revision alpha user to humano team as well (create if missing)

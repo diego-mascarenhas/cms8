@@ -9,7 +9,7 @@
   ];
 @endphp
 
-<section id="landingPlans" class="section-py landing-plans bg-white">
+<section id="landingPlans" class="section-py landing-plans bg-body">
   <div class="container">
     <div class="text-center mb-4 mb-md-5 pb-1">
       <span class="badge bg-label-primary mb-3">{{ __('humano_pricing.landing_plans_badge') }}</span>

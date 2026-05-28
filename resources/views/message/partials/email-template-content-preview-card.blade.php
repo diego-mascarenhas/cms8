@@ -27,7 +27,7 @@
 
 <div class="card mb-4 email-template-content-preview">
     <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 py-3">
-        <h5 class="mb-0">{{ __('Contenido del correo') }}</h5>
+        <h5 class="mb-0">{{ __('Mail') }}</h5>
         <div class="d-flex flex-wrap gap-1 gap-sm-2">
             @if ($canEmailTestSend && $emailTestSendModalDomId)
                 <button
@@ -107,13 +107,15 @@
             ])
         @endif
 
-        @if ($templateLabel)
-            <p class="text-muted small mb-3">{{ __('Plantilla:') }} <span class="fw-semibold">{{ $templateLabel }}</span></p>
-        @endif
-
         <div class="mb-3">
             @if ($useMailHtmlTextarea)
+                @php
+                    $messageMergeFields = \App\Support\MessageTemplateMergeFields::forUi();
+                @endphp
                 <label class="form-label" for="message-template-html-quill-editor">{{ __('Contenido del correo') }}</label>
+                @if (! $mailHtmlTextareaReadonly)
+                    <script type="application/json" id="message-template-merge-fields-json">@json($messageMergeFields)</script>
+                @endif
                 {{-- JSON carrier: raw HTML inside <textarea> breaks on </textarea> and confuses the HTML parser. --}}
                 <script type="application/json" id="message-template-html-initial-json">@json($mailHtmlTextareaValue)</script>
                 <textarea
@@ -124,7 +126,7 @@
                     autocomplete="off"
                     @if ($mailHtmlTextareaReadonly) readonly @endif
                 ></textarea>
-                <div class="border rounded overflow-hidden bg-white message-template-quill-wrap" style="min-height: 320px;">
+                <div class="border rounded bg-white message-template-quill-wrap" style="min-height: 320px;">
                     <div id="message-template-html-quill-editor" class="message-template-html-quill-root"></div>
                 </div>
             @else

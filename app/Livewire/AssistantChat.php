@@ -6,6 +6,7 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantChatService;
 use App\Services\ChatAssistantReplyService;
@@ -214,6 +215,21 @@ class AssistantChat extends Component
             $replyResponse['tool_results'] = $toolResults;
         }
 
+        $serverContactApply = $teamId !== null
+            ? app(AssistantInboundContactCreationService::class)->tryApplyFromUserMessage(
+                $user,
+                (int) $teamId,
+                $text,
+                $toolResults,
+            )
+            : null;
+
+        if ($serverContactApply !== null)
+        {
+            $toolResults[] = $serverContactApply['tool_result'];
+            $replyResponse['tool_results'] = $toolResults;
+        }
+
         if (! ($replyResponse['success'] ?? false))
         {
             $this->messages[] = [
@@ -232,6 +248,9 @@ class AssistantChat extends Component
         if ($serverTaskApply !== null)
         {
             $assistantText = $this->formatServerAppliedTaskStatusReply($serverTaskApply['update']);
+        } elseif ($serverContactApply !== null)
+        {
+            $assistantText = $serverContactApply['whatsapp_reply'];
         }
         $assistantMessage = [
             'role' => 'assistant',

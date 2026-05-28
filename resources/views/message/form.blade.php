@@ -34,6 +34,120 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
+<style>
+    .message-template-quill-wrap {
+        overflow: visible;
+    }
+
+    .message-template-quill-wrap .ql-toolbar.ql-snow {
+        position: relative;
+        z-index: 3;
+        overflow: visible;
+        flex-wrap: wrap;
+    }
+
+    .message-template-quill-wrap .ql-container.ql-snow {
+        position: relative;
+        z-index: 1;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker {
+        position: relative;
+        z-index: 4;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker.ql-expanded {
+        z-index: 1090;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .ql-picker-options {
+        z-index: 1090;
+    }
+
+    .message-template-quill-wrap .ql-image-upload {
+        width: auto;
+        padding: 0 0.35rem;
+    }
+
+    .message-template-quill-wrap .ql-image-upload .ti {
+        font-size: 1rem;
+        line-height: 1;
+        vertical-align: middle;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-formats {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker.ql-picker {
+        width: max-content;
+        max-width: 16rem;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker .ql-picker-label {
+        width: auto;
+        padding-inline-start: 0.5rem;
+        padding-inline-end: 1.375rem;
+        white-space: nowrap;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker .ql-picker-label[data-label]:not([data-label=''])::before {
+        content: attr(data-label);
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-formats.is-open {
+        z-index: 4;
+    }
+
+    .message-template-quill-wrap .ql-toolbar .huma-merge-field-picker.ql-expanded {
+        z-index: 1090;
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal {
+        display: none;
+        position: fixed;
+        z-index: 1090;
+        min-width: 14rem;
+        max-height: 16rem;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0.25rem 0;
+        list-style: none;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.375rem;
+        box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item {
+        display: block;
+        width: 100%;
+        padding: 0.4rem 0.75rem;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 0.8125rem;
+        line-height: 1.3;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item:hover,
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item:focus {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    .huma-merge-field-menu.huma-merge-field-menu--portal .huma-merge-field-menu-item-token {
+        display: block;
+        margin-top: 0.1rem;
+        font-family: var(--bs-font-monospace, monospace);
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+</style>
 @endsection
 
 @section('vendor-script')
@@ -751,9 +865,409 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 <script>
+window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.store'));
+window.humaMessageTemplateMergeFields = @json(\App\Support\MessageTemplateMergeFields::forUi());
+window.humaMessageTemplateQuillLabels = {
+    imageUrl: @json(__('app.message_quill_image_url')),
+    imageUpload: @json(__('app.message_quill_image_upload')),
+    imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
+    mergeFieldSelect: @json(__('app.message_merge_field_select_label')),
+    mergeFieldPlaceholder: @json(__('app.message_merge_field_select_placeholder')),
+};
+</script>
+<script>
 (function ()
 {
     window.humaMessageTemplateQuillInstance = null;
+
+    function humaGetMessageTemplateQuillCsrfToken()
+    {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function humaInsertImageIntoQuill(quill, url)
+    {
+        if (! quill || ! url)
+        {
+            return;
+        }
+
+        var range = quill.getSelection(true);
+        var index = range ? range.index : quill.getLength();
+
+        quill.insertEmbed(index, 'image', url, 'user');
+        quill.setSelection(index + 1, 0, 'silent');
+    }
+
+    function humaUploadMessageTemplateQuillImage(quill)
+    {
+        var uploadUrl = window.humaMessageTemplateQuillUploadUrl;
+        var labels = window.humaMessageTemplateQuillLabels || {};
+
+        if (! uploadUrl)
+        {
+            return;
+        }
+
+        var input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml');
+        input.style.display = 'none';
+        document.body.appendChild(input);
+
+        input.addEventListener('change', function ()
+        {
+            var file = input.files && input.files[0];
+            input.remove();
+
+            if (! file)
+            {
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file[]', file);
+
+            fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': humaGetMessageTemplateQuillCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+                .then(function (response)
+                {
+                    if (! response.ok)
+                    {
+                        throw new Error('upload_failed');
+                    }
+
+                    return response.json();
+                })
+                .then(function (payload)
+                {
+                    var urls = payload && payload.data ? payload.data : [];
+                    var url = Array.isArray(urls) ? urls[0] : null;
+
+                    if (! url)
+                    {
+                        throw new Error('upload_empty');
+                    }
+
+                    humaInsertImageIntoQuill(quill, url);
+                })
+                .catch(function ()
+                {
+                    window.alert(labels.imageUploadFailed || 'Could not upload the image.');
+                });
+        });
+
+        input.click();
+    }
+
+    function humaFindMessageTemplateQuillToolbar(mountEl)
+    {
+        if (! mountEl)
+        {
+            return null;
+        }
+
+        if (mountEl.parentElement)
+        {
+            var toolbarInParent = mountEl.parentElement.querySelector('.ql-toolbar');
+
+            if (toolbarInParent)
+            {
+                return toolbarInParent;
+            }
+        }
+
+        var previous = mountEl.previousElementSibling;
+
+        if (previous && previous.classList.contains('ql-toolbar'))
+        {
+            return previous;
+        }
+
+        return null;
+    }
+
+    function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
+    {
+        if (! quill || ! mountEl)
+        {
+            return;
+        }
+
+        var toolbarEl = humaFindMessageTemplateQuillToolbar(mountEl);
+        if (! toolbarEl || toolbarEl.querySelector('.ql-image-upload'))
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+        var imageButton = toolbarEl.querySelector('button.ql-image');
+        var formats = document.createElement('span');
+        formats.className = 'ql-formats';
+
+        var uploadButton = document.createElement('button');
+        uploadButton.type = 'button';
+        uploadButton.className = 'ql-image-upload';
+        uploadButton.setAttribute('title', labels.imageUpload || 'Upload image');
+        uploadButton.innerHTML = '<i class="ti ti-upload" aria-hidden="true"></i>';
+        uploadButton.addEventListener('click', function (event)
+        {
+            event.preventDefault();
+            humaUploadMessageTemplateQuillImage(quill);
+        });
+
+        formats.appendChild(uploadButton);
+
+        if (imageButton && imageButton.parentElement)
+        {
+            imageButton.setAttribute('title', labels.imageUrl || 'Insert image from URL');
+            imageButton.parentElement.insertAdjacentElement('afterend', formats);
+        }
+        else
+        {
+            toolbarEl.appendChild(formats);
+        }
+    }
+
+    function humaCloneQuillPickerChevronSvg(toolbarEl)
+    {
+        var source = toolbarEl && toolbarEl.querySelector('.ql-picker-label svg');
+
+        if (source)
+        {
+            return source.outerHTML;
+        }
+
+        return '<svg viewBox="0 0 18 18"><polygon class="ql-stroke" points="7 11 9 13 11 11"></polygon><polygon class="ql-stroke" points="7 7 9 5 11 7"></polygon></svg>';
+    }
+
+    function humaPositionMergeFieldPortalMenu(labelEl, menu)
+    {
+        var rect = labelEl.getBoundingClientRect();
+        menu.style.top = Math.round(rect.bottom + 2) + 'px';
+        menu.style.left = Math.round(rect.left) + 'px';
+        menu.style.minWidth = Math.max(Math.round(rect.width), 224) + 'px';
+    }
+
+    function humaOpenMergeFieldPortalMenu(formats, picker, labelEl, menu)
+    {
+        if (menu.parentElement !== document.body)
+        {
+            document.body.appendChild(menu);
+        }
+
+        humaPositionMergeFieldPortalMenu(labelEl, menu);
+        menu.style.display = 'block';
+        formats.classList.add('is-open');
+        picker.classList.add('ql-expanded');
+        labelEl.setAttribute('aria-expanded', 'true');
+    }
+
+    function humaCloseMergeFieldPortalMenu(formats, picker, labelEl, menu)
+    {
+        formats.classList.remove('is-open');
+
+        if (picker)
+        {
+            picker.classList.remove('ql-expanded');
+        }
+
+        if (labelEl)
+        {
+            labelEl.setAttribute('aria-expanded', 'false');
+        }
+
+        if (menu)
+        {
+            menu.style.display = 'none';
+        }
+    }
+
+    function humaCloseAllMergeFieldMenus()
+    {
+        document.querySelectorAll('.huma-merge-field-formats.is-open').forEach(function (el)
+        {
+            el.classList.remove('is-open');
+        });
+        document.querySelectorAll('.huma-merge-field-picker.ql-expanded').forEach(function (picker)
+        {
+            picker.classList.remove('ql-expanded');
+            var labelEl = picker.querySelector('.ql-picker-label');
+            if (labelEl)
+            {
+                labelEl.setAttribute('aria-expanded', 'false');
+            }
+        });
+        document.querySelectorAll('.huma-merge-field-menu--portal').forEach(function (menu)
+        {
+            menu.style.display = 'none';
+        });
+    }
+
+    if (! window.humaMergeFieldMenuDocumentBound)
+    {
+        window.humaMergeFieldMenuDocumentBound = true;
+        document.addEventListener('click', function ()
+        {
+            humaCloseAllMergeFieldMenus();
+        });
+    }
+
+    function humaReadMessageTemplateMergeFields(root)
+    {
+        root = root || document;
+        var jsonEl = root.querySelector('#message-template-merge-fields-json');
+
+        if (jsonEl && jsonEl.textContent)
+        {
+            try
+            {
+                var parsed = JSON.parse(jsonEl.textContent);
+
+                return Array.isArray(parsed) ? parsed : [];
+            }
+            catch (e)
+            {
+                return [];
+            }
+        }
+
+        return Array.isArray(window.humaMessageTemplateMergeFields) ? window.humaMessageTemplateMergeFields : [];
+    }
+
+    function humaBindMessageTemplateQuillMergeFields(quill, mountEl, root)
+    {
+        if (! quill || ! mountEl)
+        {
+            return;
+        }
+
+        var toolbarEl = humaFindMessageTemplateQuillToolbar(mountEl);
+        if (! toolbarEl || toolbarEl.querySelector('.huma-merge-field-picker'))
+        {
+            return;
+        }
+
+        var fields = humaReadMessageTemplateMergeFields(root);
+        if (! fields.length)
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+        var mergeFieldLabel = labels.mergeFieldSelect || 'Campo';
+        var formats = document.createElement('span');
+        formats.className = 'ql-formats huma-merge-field-formats';
+
+        var picker = document.createElement('span');
+        picker.className = 'huma-merge-field-picker ql-picker';
+
+        var labelEl = document.createElement('span');
+        labelEl.className = 'ql-picker-label';
+        labelEl.setAttribute('tabindex', '0');
+        labelEl.setAttribute('role', 'button');
+        labelEl.setAttribute('title', mergeFieldLabel);
+        labelEl.setAttribute('aria-label', mergeFieldLabel);
+        labelEl.setAttribute('aria-haspopup', 'true');
+        labelEl.setAttribute('aria-expanded', 'false');
+        labelEl.setAttribute('data-label', mergeFieldLabel);
+        labelEl.innerHTML = humaCloneQuillPickerChevronSvg(toolbarEl);
+
+        var menu = document.createElement('div');
+        menu.className = 'huma-merge-field-menu huma-merge-field-menu--portal';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('data-huma-message-template-merge-menu', '1');
+        menu.style.display = 'none';
+
+        fields.forEach(function (field)
+        {
+            if (! field || ! field.token)
+            {
+                return;
+            }
+
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'huma-merge-field-menu-item';
+            item.setAttribute('role', 'menuitem');
+            item.innerHTML = (field.label || field.token)
+                + '<span class="huma-merge-field-menu-item-token">'
+                + field.token
+                + '</span>';
+
+            item.addEventListener('mousedown', function (event)
+            {
+                event.preventDefault();
+            });
+
+            item.addEventListener('click', function (event)
+            {
+                event.preventDefault();
+                event.stopPropagation();
+                humaInsertMessageTemplateMergeField(field.token);
+                humaCloseMergeFieldPortalMenu(formats, picker, labelEl, menu);
+            });
+
+            menu.appendChild(item);
+        });
+
+        labelEl.addEventListener('mousedown', function (event)
+        {
+            event.preventDefault();
+        });
+
+        labelEl.addEventListener('click', function (event)
+        {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var willOpen = ! formats.classList.contains('is-open');
+            humaCloseAllMergeFieldMenus();
+
+            if (willOpen)
+            {
+                humaOpenMergeFieldPortalMenu(formats, picker, labelEl, menu);
+            }
+        });
+
+        menu.addEventListener('click', function (event)
+        {
+            event.stopPropagation();
+        });
+
+        picker.appendChild(labelEl);
+        formats.appendChild(picker);
+        toolbarEl.appendChild(formats);
+    }
+
+    function humaInsertMessageTemplateMergeField(token)
+    {
+        var quill = window.humaMessageTemplateQuillInstance;
+        if (! quill || ! token)
+        {
+            return;
+        }
+
+        var range = quill.getSelection(true);
+        var index = range ? range.index : quill.getLength();
+
+        quill.insertText(index, token, 'user');
+        quill.setSelection(index + token.length, 0, 'silent');
+
+        var ta = document.getElementById('message-template-html-body');
+        if (ta)
+        {
+            ta.value = quill.root.innerHTML;
+        }
+    }
 
     window.humaSyncMessageTemplateHtmlQuill = function ()
     {
@@ -785,11 +1299,16 @@ document.addEventListener('DOMContentLoaded', function () {
             el.innerHTML = '';
             el.className = 'message-template-html-quill-root';
         });
+        document.querySelectorAll('[data-huma-message-template-merge-menu="1"]').forEach(function (menuEl)
+        {
+            menuEl.remove();
+        });
     };
 
     window.humaInitMessageTemplateHtmlQuill = function (root)
     {
         root = root || document;
+
         if (typeof Quill === 'undefined')
         {
             return;
@@ -821,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ list: 'ordered' }, { list: 'bullet' }],
                 [{ align: [] }],
-                ['link'],
+                ['link', 'image'],
                 [{ color: [] }, { background: [] }],
                 ['blockquote', 'code-block'],
                 ['clean'],
@@ -874,6 +1393,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (readonly)
         {
             quill.enable(false);
+        }
+        else
+        {
+            humaBindMessageTemplateQuillImageUpload(quill, mountEl);
+            humaBindMessageTemplateQuillMergeFields(quill, mountEl, root);
         }
 
         window.humaMessageTemplateQuillInstance = quill;
