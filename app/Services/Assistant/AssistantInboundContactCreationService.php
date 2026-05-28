@@ -5,6 +5,7 @@ namespace App\Services\Assistant;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Support\AssistantContactCreationResult;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -122,7 +123,7 @@ class AssistantInboundContactCreationService
     }
 
     /**
-     * @return array{name: string, email?: string, phone?: string, category_name?: string}|null
+     * @return array{name: string, email?: string, phone?: string, category_name?: string, notes?: string, birthday?: string}|null
      */
     public function parseContactCreationIntent(string $message): ?array
     {
@@ -146,7 +147,7 @@ class AssistantInboundContactCreationService
     }
 
     /**
-     * @return array{name: string, email?: string, phone?: string, category_name?: string}|null
+     * @return array{name: string, email?: string, phone?: string, category_name?: string, notes?: string, birthday?: string}|null
      */
     private function parseContactPayload(string $payload): ?array
     {
@@ -154,6 +155,13 @@ class AssistantInboundContactCreationService
         if ($payload === '')
         {
             return null;
+        }
+
+        $quotedName = null;
+        if (preg_match('/["“”](?<name>[^"“”]{2,})["“”]/u', $payload, $quotedNameMatch))
+        {
+            $quotedName = trim((string) ($quotedNameMatch['name'] ?? ''));
+            $payload = trim(str_replace($quotedNameMatch[0], '', $payload));
         }
 
         $categoryName = null;
@@ -181,9 +189,31 @@ class AssistantInboundContactCreationService
             }
         }
 
-        $name = preg_replace('/agregar\s+a\s+contacto.*$/iu', '', $payload);
-        $name = preg_replace('/\bde\s+la\s+empresa\b.*$/iu', '', $name);
-        $name = trim($name, " \t\n\r\0\x0B,.");
+        $notes = null;
+        if (preg_match('/\bnota[s]?\b\s*[:\-]?\s*(.+?)(?=(?:,|\.\s*|\s+cumplea(?:ñ|n)os\b|\s+fecha\s+de\s+cumplea(?:ñ|n)os\b|$))/iu', $payload, $notesMatch))
+        {
+            $notes = trim((string) ($notesMatch[1] ?? ''));
+            $payload = trim(str_replace($notesMatch[0], '', $payload));
+        }
+
+        $birthday = null;
+        if (preg_match('/\b(?:cumplea(?:ñ|n)os|fecha\s+de\s+cumplea(?:ñ|n)os|birthday)\b\s*[:\-]?\s*([0-9]{1,4}[\/\-][0-9]{1,2}[\/\-][0-9]{1,4})/iu', $payload, $birthdayMatch))
+        {
+            $birthday = $this->normalizeBirthday(trim((string) ($birthdayMatch[1] ?? '')));
+            $payload = trim(str_replace($birthdayMatch[0], '', $payload));
+        }
+
+        $name = $quotedName;
+        if ($name === null || $name === '')
+        {
+            $name = preg_replace('/agregar\s+a\s+contacto.*$/iu', '', $payload);
+            $name = preg_replace('/\bde\s+la\s+empresa\b.*$/iu', '', $name);
+            $name = preg_replace('/\bpodr[aá]s\s+ingresar\s+el\s+contacto\b/iu', '', $name);
+            $name = preg_replace('/\bingresar\s+el\s+contacto\b/iu', '', $name);
+            $name = preg_replace('/\bnuevo\s+contacto\b[:\s-]*/iu', '', $name);
+            $name = preg_replace('/\ben\s+la\b$/iu', '', $name);
+            $name = trim((string) $name, " \t\n\r\0\x0B,.");
+        }
 
         if ($name === '')
         {
@@ -203,12 +233,52 @@ class AssistantInboundContactCreationService
         {
             $result['category_name'] = $categoryName;
         }
+        if ($notes !== null && $notes !== '')
+        {
+            $result['notes'] = $notes;
+        }
+        if ($birthday !== null && $birthday !== '')
+        {
+            $result['birthday'] = $birthday;
+        }
 
         return $result;
     }
 
+    private function normalizeBirthday(string $raw): ?string
+    {
+        $raw = trim($raw);
+        if ($raw === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1)
+            {
+                return Carbon::createFromFormat('Y-m-d', $raw)->format('Y-m-d');
+            }
+
+            if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $raw) === 1)
+            {
+                return Carbon::createFromFormat('d/m/Y', $raw)->format('Y-m-d');
+            }
+
+            if (preg_match('/^\d{1,2}-\d{1,2}-\d{4}$/', $raw) === 1)
+            {
+                return Carbon::createFromFormat('d-m-Y', $raw)->format('Y-m-d');
+            }
+        } catch (\Throwable)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     /**
-     * @param  array{name: string, email?: string, phone?: string, category_name?: string}  $parsed
+     * @param  array{name: string, email?: string, phone?: string, category_name?: string, notes?: string, birthday?: string}  $parsed
      * @param  array{contact_id: int, created: bool, already_exists: bool}  $creation
      */
     private function formatWhatsAppReply(array $parsed, string $toolResult, array $creation): string
@@ -239,6 +309,14 @@ class AssistantInboundContactCreationService
         if (! empty($parsed['phone']))
         {
             $lines[] = 'Teléfono: '.$parsed['phone'];
+        }
+        if (! empty($parsed['birthday']))
+        {
+            $lines[] = 'Cumpleaños: '.$parsed['birthday'];
+        }
+        if (! empty($parsed['notes']))
+        {
+            $lines[] = 'Nota: '.$parsed['notes'];
         }
 
         return implode("\n", $lines);

@@ -265,7 +265,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'update_contact',
-                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name, notes (contact data.notes JSON), birthday (Y-m-d).',
+                'description' => 'Update an existing contact. Provide contact_id and any of: phone, email, name, surname, notes (contact data.notes JSON), birthday (Y-m-d).',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -273,6 +273,7 @@ class AssistantToolsService
                         'phone' => ['type' => 'string', 'description' => 'Phone number (with country code, digits only). Optional.'],
                         'email' => ['type' => 'string', 'description' => 'Email address. Optional.'],
                         'name' => ['type' => 'string', 'description' => 'Full name. Optional.'],
+                        'surname' => ['type' => 'string', 'description' => 'Surname/last name. Optional.'],
                         'notes' => ['type' => 'string', 'description' => 'Free-text notes stored in contact data.notes. Optional.'],
                         'birthday' => ['type' => 'string', 'description' => 'Birthday date Y-m-d. Optional.'],
                     ],
@@ -1183,7 +1184,26 @@ class AssistantToolsService
         }
         if (array_key_exists('name', $input) && trim((string) $input['name']) !== '')
         {
-            $updates['name'] = trim((string) $input['name']);
+            $nameInput = trim((string) $input['name']);
+            $surnameInput = trim((string) ($input['surname'] ?? ''));
+
+            if ($surnameInput !== '')
+            {
+                $updates['name'] = $nameInput;
+            } else
+            {
+                [$firstName, $surnameFromName] = app(TeamContactMatcher::class)->splitFullName($nameInput);
+                $updates['name'] = $firstName;
+                if ($surnameFromName !== '')
+                {
+                    $updates['surname'] = $surnameFromName;
+                }
+            }
+        }
+
+        if (array_key_exists('surname', $input) && trim((string) $input['surname']) !== '')
+        {
+            $updates['surname'] = trim((string) $input['surname']);
         }
 
         if (array_key_exists('birthday', $input))
@@ -1214,7 +1234,7 @@ class AssistantToolsService
 
         if (empty($updates))
         {
-            return 'Provide at least one field to update: phone, email, name, notes, or birthday.';
+            return 'Provide at least one field to update: phone, email, name, surname, notes, or birthday.';
         }
 
         $contact->update($updates);

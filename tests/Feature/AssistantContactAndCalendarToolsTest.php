@@ -163,6 +163,31 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->assertSame('VIP client', $contact->data->notes ?? null);
     }
 
+    public function test_update_contact_splits_full_name_into_name_and_surname(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Temp',
+            'surname' => 'Value',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('update_contact', [
+            'contact_id' => $contact->id,
+            'name' => 'Adrián Mestas',
+        ]);
+
+        $this->assertStringContainsString('updated', $out);
+
+        $contact->refresh();
+        $this->assertSame('Adrián', $contact->name);
+        $this->assertSame('Mestas', $contact->surname);
+    }
+
     public function test_create_calendar_event_rejects_overlapping_slot(): void
     {
         config(['calendar.wall_clock_timezone' => 'Europe/Madrid']);
