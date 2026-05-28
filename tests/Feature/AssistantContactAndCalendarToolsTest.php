@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
 use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -186,6 +188,115 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $contact->refresh();
         $this->assertSame('Adrián', $contact->name);
         $this->assertSame('Mestas', $contact->surname);
+    }
+
+    public function test_create_contact_interaction_records_activity(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Victor',
+            'surname' => 'Machbel',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('create_contact_interaction', [
+            'contact_id' => $contact->id,
+            'type' => 'whatsapp',
+            'subject' => 'Follow up',
+            'body' => 'Customer asked to resend proposal',
+            'occurred_at' => '2026-05-28 12:30:00',
+        ]);
+
+        $this->assertStringContainsString('Interaction recorded', $out);
+
+        $interaction = ContactInteraction::withoutGlobalScopes()
+            ->where('contact_id', $contact->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($interaction);
+        $this->assertSame('whatsapp', $interaction->type->value);
+        $this->assertSame('Follow up', $interaction->subject);
+        $this->assertSame('Customer asked to resend proposal', $interaction->body);
+        $this->assertSame('2026-05-28 12:30:00', $interaction->occurred_at?->format('Y-m-d H:i:s'));
+    }
+
+    public function test_create_contact_interaction_accepts_spanish_alias_fields(): void
+    {
+        $user = $this->createAdminWithTeam();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Leticia',
+            'surname' => 'Silvano Martínez',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('create_contact_interaction', [
+            'contact_id' => $contact->id,
+            'tipo' => 'call',
+            'asunto' => 'Onboarding Humano',
+            'detalles' => 'Se resolvieron dudas del flujo',
+            'fecha' => '28/05/2026 12:45',
+        ]);
+
+        $this->assertStringContainsString('with subject "Onboarding Humano"', $out);
+        $this->assertStringContainsString('at 2026-05-28 12:45:00', $out);
+
+        $interaction = ContactInteraction::withoutGlobalScopes()
+            ->where('contact_id', $contact->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($interaction);
+        $this->assertSame('call', $interaction->type->value);
+        $this->assertSame('Onboarding Humano', $interaction->subject);
+        $this->assertSame('Se resolvieron dudas del flujo', $interaction->body);
+        $this->assertSame('2026-05-28 12:45:00', $interaction->occurred_at?->format('Y-m-d H:i:s'));
+    }
+
+    public function test_create_contact_interaction_date_only_uses_current_time(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-28 13:11:22'));
+        try
+        {
+            $user = $this->createAdminWithTeam();
+
+            $contact = Contact::factory()->create([
+                'team_id' => $user->currentTeam->id,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+                'name' => 'Leticia',
+                'surname' => 'Silvano Martínez',
+            ]);
+
+            $service = $this->assistantTools($user);
+            $out = $service->execute('create_contact_interaction', [
+                'contact_id' => $contact->id,
+                'tipo' => 'whatsapp',
+                'asunto' => 'Contabilidad',
+                'fecha' => '28/05/2026',
+            ]);
+
+            $this->assertStringContainsString('at 2026-05-28 13:11:22', $out);
+
+            $interaction = ContactInteraction::withoutGlobalScopes()
+                ->where('contact_id', $contact->id)
+                ->latest('id')
+                ->first();
+
+            $this->assertNotNull($interaction);
+            $this->assertSame('2026-05-28 13:11:22', $interaction->occurred_at?->format('Y-m-d H:i:s'));
+        } finally
+        {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_create_calendar_event_rejects_overlapping_slot(): void
