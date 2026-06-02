@@ -355,6 +355,14 @@ class ChatController extends Controller
         {
             $selectedPhone = null;
         }
+        if ($selectedPhone !== null && auth()->check() && auth()->user()->currentTeam)
+        {
+            $currentTeam = auth()->user()->currentTeam;
+            if (app(TeamInboundAssistantPolicy::class)->isBlacklistedWhatsAppPhone($currentTeam, $selectedPhone))
+            {
+                abort(403);
+            }
+        }
         $messages = collect();
         $selectedUser = null;
         $assistantMessages = [];
