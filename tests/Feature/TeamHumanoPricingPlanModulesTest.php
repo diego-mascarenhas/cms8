@@ -135,6 +135,40 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         );
     }
 
+    public function test_demo_team_extra_modules_includes_financial_by_default(): void
+    {
+        $this->assertContains('financial', config('humano_pricing.demo_team_extra_modules', []));
+    }
+
+    public function test_assistant_plan_sync_plus_demo_extra_modules_keeps_financial_enabled(): void
+    {
+        $this->seedModulesFromPricingConfig();
+
+        Module::query()->firstOrCreate(
+            ['key' => 'financial'],
+            [
+                'name' => 'Financial',
+                'icon' => 'layout',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'assistant');
+        $this->assertFalse($team->fresh()->hasModule('financial'));
+
+        foreach (config('humano_pricing.demo_team_extra_modules', []) as $moduleKey)
+        {
+            $team->enableModule($moduleKey);
+        }
+
+        $this->assertTrue($team->fresh()->hasModule('financial'));
+    }
+
     public function test_assistant_demo_plan_excludes_commerce_and_contents_modules(): void
     {
         $keys = config('humano_pricing.plan_team_modules.assistant', []);

@@ -17,6 +17,8 @@
     $monthlyTrend = $report['monthly_trend'];
     $incomeCategories = $report['income_categories'];
     $expenseCategories = $report['expense_categories'];
+    $incomeChartColors = ['#28c76f', '#55d187', '#83df9e', '#b2edc4', '#1f9d57', '#3dd68c', '#6ee7a8', '#9ef0c4'];
+    $expenseChartColors = ['#ea5455', '#f08182', '#f5adaf', '#fad8d9', '#d43f3f', '#ff6b6b', '#ff9999', '#ffc9c9'];
 @endphp
 
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
@@ -164,8 +166,16 @@
                             </thead>
                             <tbody>
                                 @foreach($incomeCategories as $row)
+                                    @php
+                                        $swatchColor = $incomeChartColors[$loop->index % count($incomeChartColors)];
+                                    @endphp
                                     <tr>
-                                        <td>{{ $row['name'] }}</td>
+                                        <td>
+                                            <span class="d-inline-flex align-items-center gap-2">
+                                                <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
+                                                <span>{{ $row['name'] }}</span>
+                                            </span>
+                                        </td>
                                         <td class="text-end">{{ number_format($row['total'], 2) }}</td>
                                         <td class="text-end">{{ number_format($row['share_percent'], 1) }}%</td>
                                     </tr>
@@ -199,8 +209,16 @@
                             </thead>
                             <tbody>
                                 @foreach($expenseCategories as $row)
+                                    @php
+                                        $swatchColor = $expenseChartColors[$loop->index % count($expenseChartColors)];
+                                    @endphp
                                     <tr>
-                                        <td>{{ $row['name'] }}</td>
+                                        <td>
+                                            <span class="d-inline-flex align-items-center gap-2">
+                                                <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
+                                                <span>{{ $row['name'] }}</span>
+                                            </span>
+                                        </td>
                                         <td class="text-end">{{ number_format($row['total'], 2) }}</td>
                                         <td class="text-end">{{ number_format($row['share_percent'], 1) }}%</td>
                                     </tr>
@@ -232,12 +250,12 @@
                     ] as $suggestionText)
                         <button
                             type="button"
-                            class="btn btn-sm btn-outline-primary"
-                            onclick="Livewire.dispatch('finance-assistant-prefill', { message: @json($suggestionText) })"
+                            class="btn btn-sm btn-outline-primary finance-assistant-suggestion"
+                            data-prompt="{{ $suggestionText }}"
                         >{{ $suggestionText }}</button>
                     @endforeach
                 </div>
-                <div style="min-height: 22rem;">
+                <div id="finance-projection-assistant" style="min-height: 22rem;">
                     @livewire('assistant-chat', [
                         'promptKey' => 'assistant_finanzas',
                         'hideHeader' => false,
@@ -252,7 +270,36 @@
 
 @section('page-script')
 <script>
+function prefillFinanceProjectionAssistant(message) {
+    const root = document.getElementById('finance-projection-assistant');
+    if (!root) {
+        return;
+    }
+
+    const wireId = root.querySelector('[wire\\:id]')?.getAttribute('wire:id');
+    if (wireId && typeof Livewire !== 'undefined') {
+        const component = Livewire.find(wireId);
+        if (component) {
+            component.set('input', message);
+            root.querySelector('#assistant-chat-input')?.focus();
+            return;
+        }
+    }
+
+    if (typeof Livewire !== 'undefined') {
+        Livewire.dispatch('finance-assistant-prefill', { message: message });
+        root.querySelector('#assistant-chat-input')?.focus();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.finance-assistant-suggestion').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const prompt = btn.getAttribute('data-prompt') || btn.textContent.trim();
+            prefillFinanceProjectionAssistant(prompt);
+        });
+    });
+
     const monthlyTrend = @json($monthlyTrend);
     const incomeCategories = @json($incomeCategories);
     const expenseCategories = @json($expenseCategories);
@@ -294,7 +341,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }).render();
     }
 
-    function renderDonut(elId, rows, color) {
+    const incomeChartColors = @json($incomeChartColors);
+    const expenseChartColors = @json($expenseChartColors);
+
+    function expandChartColors(palette, count) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(palette[i % palette.length]);
+        }
+        return colors;
+    }
+
+    function renderDonut(elId, rows, palette) {
         const el = document.querySelector(elId);
         if (!el || !rows.length) {
             return;
@@ -308,17 +366,17 @@ document.addEventListener('DOMContentLoaded', function () {
             series.push(otherTotal);
         }
         new ApexCharts(el, {
-            chart: { type: 'donut', height: 260 },
+            chart: { type: 'donut', height: 220 },
             labels: labels,
             series: series,
-            colors: color,
-            legend: { position: 'bottom', fontSize: '11px' },
+            colors: expandChartColors(palette, labels.length),
+            legend: { show: false },
             dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + '%'; } },
         }).render();
     }
 
-    renderDonut('#incomeCategoryChart', incomeCategories, ['#28c76f', '#55d187', '#83df9e', '#b2edc4']);
-    renderDonut('#expenseCategoryChart', expenseCategories, ['#ea5455', '#f08182', '#f5adaf', '#fad8d9']);
+    renderDonut('#incomeCategoryChart', incomeCategories, incomeChartColors);
+    renderDonut('#expenseCategoryChart', expenseCategories, expenseChartColors);
 
     const multiplierInput = document.getElementById('growth-multiplier');
     const resultEl = document.getElementById('growth-scenario-result');

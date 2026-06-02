@@ -205,6 +205,18 @@ class TeamDemoSeeder extends Seeder
                 $this->command->warn("⚠️  Plan «{$planSlug}» lists «{$moduleKey}» but no module row or pivot — check ModuleSeeder.");
             }
         }
+
+        foreach (config('humano_pricing.demo_team_extra_modules', []) as $moduleKey)
+        {
+            $team->enableModule($moduleKey);
+            if ($team->fresh()->hasModule($moduleKey))
+            {
+                $this->command->info("✅ Demo extra module enabled: {$moduleKey}");
+            } else
+            {
+                $this->command->warn("⚠️  Demo extra module «{$moduleKey}» missing — check ModuleSeeder.");
+            }
+        }
     }
 
     private function createDemoCategories(): void

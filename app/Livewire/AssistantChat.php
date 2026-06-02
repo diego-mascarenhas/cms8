@@ -139,12 +139,16 @@ class AssistantChat extends Component
     }
 
     /**
-     * @param  string|array{message?: string}  $payload
+     * @param  string|array{message?: string}  $message  Livewire 3 passes named params from dispatch({ message: '...' }).
      */
-    public function prefillInput(string|array $payload): void
+    public function prefillInput(string|array $message = ''): void
     {
-        $message = is_array($payload) ? (string) ($payload['message'] ?? '') : $payload;
-        $this->input = trim($message);
+        if (is_array($message))
+        {
+            $message = (string) ($message['message'] ?? '');
+        }
+
+        $this->input = trim((string) $message);
     }
 
     public function clearChat(AgentConversationContextService $conversationContext): void
