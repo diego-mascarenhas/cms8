@@ -3,13 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransactionType;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
+use App\Services\Finance\InvoiceAnalyticsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class FinancialDashboardController extends Controller
 {
+    public function __construct(
+        protected InvoiceAnalyticsService $invoiceAnalytics,
+    ) {}
+
     public function index(Request $request)
     {
         $payments = Payment::query();
@@ -46,7 +52,7 @@ class FinancialDashboardController extends Controller
             ->groupBy('account_id')
             ->selectRaw(
                 'account_id, COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance',
-                [$incomeType]
+                [$incomeType],
             )
             ->pluck('balance', 'account_id');
 
@@ -76,7 +82,7 @@ class FinancialDashboardController extends Controller
                 'EXTRACT(MONTH FROM "date")::int as month_num, '.
                 'COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE 0 END), 0) as monthly_income, '.
                 'COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE 0 END), 0) as monthly_expense',
-                [$incomeType, $expenseType]
+                [$incomeType, $expenseType],
             )
             ->get()
             ->keyBy(fn ($row) => (int) $row->month_num);
@@ -120,5 +126,27 @@ class FinancialDashboardController extends Controller
             'monthlyData',
             'profitMargin',
         ));
+    }
+
+    public function projection(Request $request)
+    {
+        $this->authorize('viewAny', Invoice::class);
+
+        $team = auth()->user()->currentTeam;
+        abort_if($team === null, 403);
+
+        $teamId = (int) $team->id;
+        $bounds = $this->invoiceAnalytics->resolveYearBounds($teamId);
+        $currentYear = (int) Carbon::now()->year;
+        $requestedYear = (int) $request->query('year', $currentYear);
+        $selectedYear = max($bounds['min'], min($requestedYear > 0 ? $requestedYear : $currentYear, $bounds['max']));
+
+        $report = $this->invoiceAnalytics->buildYearReport($teamId, $selectedYear);
+
+        return view('finance-dashboard.projection', [
+            'report' => $report,
+            'selectedYear' => $selectedYear,
+            'availableYears' => $report['available_years'],
+        ]);
     }
 }
