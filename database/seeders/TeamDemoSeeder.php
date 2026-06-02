@@ -39,6 +39,13 @@ use Illuminate\Support\Facades\DB;
  */
 class TeamDemoSeeder extends Seeder
 {
+    /**
+     * Módulos activos en el team Demo además del plan assistant. Vacía el array cuando termines.
+     *
+     * @var list<string>
+     */
+    public const DEMO_DEV_MODULES = ['financial'];
+
     private $teamId = 1;
 
     public function run(): void
@@ -206,16 +213,9 @@ class TeamDemoSeeder extends Seeder
             }
         }
 
-        foreach (config('humano_pricing.demo_team_extra_modules', []) as $moduleKey)
+        foreach (self::DEMO_DEV_MODULES as $moduleKey)
         {
             $team->enableModule($moduleKey);
-            if ($team->fresh()->hasModule($moduleKey))
-            {
-                $this->command->info("✅ Demo extra module enabled: {$moduleKey}");
-            } else
-            {
-                $this->command->warn("⚠️  Demo extra module «{$moduleKey}» missing — check ModuleSeeder.");
-            }
         }
     }
 

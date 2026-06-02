@@ -52,15 +52,6 @@ return [
     },
 
     /*
-     * | Extra module keys enabled on the Demo team after plan sync ({@see TeamDemoSeeder}).
-     * | Comma-separated in HUMANO_PRICING_DEMO_TEAM_EXTRA_MODULES (default: financial).
-     */
-    'demo_team_extra_modules' => array_values(array_filter(array_map(
-        static fn (string $key): string => trim($key),
-        explode(',', (string) env('HUMANO_PRICING_DEMO_TEAM_EXTRA_MODULES', 'financial')),
-    ))),
-
-    /*
      * | Referral / friend promotion code label (e.g. for copy in UI or translations).
      * | Not appended to Payment Link URLs — users enter it in Stripe checkout if they have it.
      */
