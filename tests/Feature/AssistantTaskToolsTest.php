@@ -2,11 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\Enterprise;
+use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\ProjectStatusSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -112,6 +118,98 @@ class AssistantTaskToolsTest extends TestCase
         $this->assertStringContainsString('REVIEW', $out);
         $task->refresh();
         $this->assertSame((int) $review->id, (int) $task->status_id);
+    }
+
+    public function test_create_task_uses_board_for_request_team_without_http_auth(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $teamAId = $user->currentTeam->id;
+
+        $otherTeam = Team::factory()->create();
+        TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $otherTeam->id,
+            'name' => 'Other team default',
+            'description' => null,
+            'is_default' => true,
+            'order' => 0,
+        ]);
+
+        $out = $this->assistantTools($user)->execute('create_task', [
+            'title' => 'Enviar acceso al área de cliente',
+            'due_days' => 1,
+        ]);
+
+        $this->assertStringContainsString('Task created:', $out);
+
+        $task = Task::withoutGlobalScopes()
+            ->where('team_id', $teamAId)
+            ->where('title', 'Enviar acceso al área de cliente')
+            ->first();
+
+        $this->assertNotNull($task);
+        $board = TaskBoard::withoutGlobalScopes()->find($task->board_id);
+        $this->assertNotNull($board);
+        $this->assertSame($teamAId, $board->team_id);
+    }
+
+    public function test_create_task_avoids_project_only_default_board(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            ProjectStatusSeeder::class,
+        ]);
+
+        $user = $this->createAdminWithTeam();
+        $teamId = $user->currentTeam->id;
+
+        $projectBoard = TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Project board',
+            'description' => null,
+            'is_default' => true,
+            'order' => 0,
+        ]);
+
+        $generalBoard = TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'General board',
+            'description' => null,
+            'is_default' => false,
+            'order' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Test Enterprise',
+            'code' => 'TST',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'board_id' => $projectBoard->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Revision Alpha',
+            'description' => null,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $this->assistantTools($user)->execute('create_task', [
+            'title' => 'Task on general kanban',
+        ]);
+
+        $task = Task::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('title', 'Task on general kanban')
+            ->first();
+
+        $this->assertNotNull($task);
+        $this->assertSame((int) $generalBoard->id, (int) $task->board_id);
     }
 
     public function test_update_task_status_reports_already_in_target_status(): void

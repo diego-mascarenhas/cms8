@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TeamTaskBoardResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -62,24 +63,23 @@ class TaskBoard extends Model
         return $this->hasOne(Project::class, 'board_id');
     }
 
-    public static function getDefaultBoard()
+    public static function getDefaultBoard(): self
     {
-        $defaultBoard = self::where('is_default', true)->first();
-
-        if (! $defaultBoard)
+        $teamId = auth()->user()?->currentTeam?->id;
+        if ($teamId)
         {
-            // Create a default board if none exists
-            $teamId = auth()->user()->currentTeam->id;
-            $defaultBoard = self::create([
-                'team_id' => $teamId,
-                'name' => 'Default',
-                'description' => 'Default board',
-                'is_default' => true,
-                'order' => 0,
-            ]);
+            $boardId = TeamTaskBoardResolver::resolveBoardId($teamId);
+
+            return self::withoutGlobalScopes()->findOrFail($boardId);
         }
 
-        return $defaultBoard;
+        $defaultBoard = self::where('is_default', true)->first();
+        if ($defaultBoard)
+        {
+            return $defaultBoard;
+        }
+
+        throw new \RuntimeException('No default task board available without team context.');
     }
 
     public static function getOptions()
