@@ -52,10 +52,13 @@ class UserResolverWhatsAppContactTest extends TestCase
 
         $this->assertNotNull($contact);
         $this->assertSame($owner->id, (int) $contact->creator_id);
-        $this->assertNotNull($contact->user_id);
+        $this->assertNull($contact->user_id);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'wa-34722372858@chat.placeholder',
+        ]);
     }
 
-    public function test_resolve_user_matches_contacts_phone_and_links_user_when_user_id_null(): void
+    public function test_resolve_user_returns_null_for_contact_without_linked_user(): void
     {
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
@@ -71,18 +74,18 @@ class UserResolverWhatsAppContactTest extends TestCase
         ]);
 
         $service = app(UserResolverService::class);
-        $user = $service->resolveUserForConversation('34600222004', null);
+        $user = $service->resolveUserForConversation('34600222004', null, (int) $team->id);
 
-        $this->assertNotNull($user);
+        $this->assertNull($user);
         $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
             ->where('phone', 34600222004)
             ->first();
         $this->assertNotNull($contact);
-        $this->assertSame($user->id, (int) $contact->user_id);
+        $this->assertNull($contact->user_id);
     }
 
-    public function test_resolve_user_matches_contacts_phone_national_digits_against_international_input(): void
+    public function test_resolve_user_returns_null_for_national_phone_when_contact_has_no_user(): void
     {
         $owner = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $owner->id]);
@@ -98,15 +101,9 @@ class UserResolverWhatsAppContactTest extends TestCase
         ]);
 
         $service = app(UserResolverService::class);
-        $user = $service->resolveUserForConversation('+34 600 222 004', null);
+        $user = $service->resolveUserForConversation('+34 600 222 004', null, (int) $team->id);
 
-        $this->assertNotNull($user);
-        $contact = Contact::withoutGlobalScopes()
-            ->where('team_id', $team->id)
-            ->where('phone', 600222004)
-            ->first();
-        $this->assertNotNull($contact);
-        $this->assertSame($user->id, (int) $contact->user_id);
+        $this->assertNull($user);
     }
 
     public function test_resolve_user_prefers_team_staff_account_when_team_id_given(): void

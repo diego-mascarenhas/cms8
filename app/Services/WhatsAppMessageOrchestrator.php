@@ -884,8 +884,16 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
+            $chatController = null;
+            $shouldHandleRegistration = false;
+            if ($channel === 'whatsapp' && $this->team)
+            {
+                $chatController = app(\App\Http\Controllers\ChatController::class);
+                $shouldHandleRegistration = $chatController->shouldHandleWhatsAppRegistration($cleanFrom, $this->team);
+            }
+
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
-            if ($channel == 'whatsapp')
+            if ($channel == 'whatsapp' && ! $shouldHandleRegistration)
             {
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
@@ -938,24 +946,37 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 );
             }
 
+            if ($shouldHandleRegistration && $chatController !== null)
+            {
+                $registrationTeam = $this->team;
+                if ($registrationTeam === null && $resolvedInboundTeamId !== null)
+                {
+                    $registrationTeam = Team::find($resolvedInboundTeamId);
+                }
+
+                $registrationResponse = $chatController->processRegistration(
+                    $cleanFrom,
+                    (string) $body,
+                    $this->getSender() !== $this ? $this->getSender() : null,
+                    $registrationTeam,
+                );
+
+                if ($registrationResponse !== null)
+                {
+                    return response()->json([
+                        'status' => ($registrationResponse['success'] ?? true) ? 'success' : 'error',
+                        'conversation_id' => $conversation->id,
+                        'registration' => (bool) ($registrationResponse['success'] ?? true),
+                        'registration_handoff' => (bool) ($registrationResponse['handoff'] ?? false),
+                    ]);
+                }
+            }
+
             // Check if this is part of a registration process
             if ($channel == 'whatsapp')
             {
                 if ($shouldProcessAutoAi)
                 {
-                    $chatController = app(\App\Http\Controllers\ChatController::class);
-                    $registrationResponse = $chatController->processRegistration(
-                        $cleanFrom,
-                        $body,
-                        $this->getSender() !== $this ? $this->getSender() : null,
-                    );
-
-                    // If this was a registration step, we've already handled it
-                    if ($registrationResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
-                    }
-
                     // Detect user intent first, then route to the most relevant flow.
                     // This prevents false positives (for example: "agregar cita..." should not go to cart).
                     $detectedIntent = $this->detectWhatsAppIntent((string) $body);
@@ -1055,12 +1076,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $assistantTeamId,
                     );
                     $contextContactId = null;
-                    if ($contextUser !== null && $assistantTeamId !== null)
+                    if ($assistantTeamId !== null)
                     {
-                        $contextContactId = Contact::withoutGlobalScopes()
-                            ->where('user_id', $contextUser->id)
-                            ->where('team_id', $assistantTeamId)
-                            ->value('id');
+                        if ($contextUser !== null)
+                        {
+                            $contextContactId = Contact::withoutGlobalScopes()
+                                ->where('user_id', $contextUser->id)
+                                ->where('team_id', $assistantTeamId)
+                                ->value('id');
+                        }
+                        if ($contextContactId === null)
+                        {
+                            $contextContactId = app(UserResolverService::class)
+                                ->findContactInTeamByPhone((int) $assistantTeamId, $cleanFrom)
+                                ?->id;
+                        }
                     }
 
                     if ($contextUser !== null && $assistantTeamId !== null && trim((string) $body) !== '')

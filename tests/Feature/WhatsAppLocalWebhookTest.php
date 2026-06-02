@@ -157,15 +157,16 @@ class WhatsAppLocalWebhookTest extends TestCase
 
         $response->assertStatus(200);
 
-        $user = User::withoutGlobalScopes()->where('email', 'wa-34600000099@chat.placeholder')->first();
-        $this->assertNotNull($user);
-        $this->assertSame('María WhatsApp', $user->name);
+        $this->assertNull(
+            User::withoutGlobalScopes()->where('email', 'wa-34600000099@chat.placeholder')->first(),
+        );
 
         $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
-            ->where('user_id', $user->id)
+            ->where('phone', 34600000099)
             ->first();
         $this->assertNotNull($contact);
+        $this->assertNull($contact->user_id);
         $this->assertSame('María WhatsApp', $contact->name);
         $this->assertSame(34600000099, (int) $contact->phone);
     }
@@ -263,6 +264,9 @@ class WhatsAppLocalWebhookTest extends TestCase
         Contact::factory()->create([
             'team_id' => $team->id,
             'phone' => '34600000000',
+            'name' => 'Test',
+            'surname' => 'Client',
+            'email' => 'test.client@example.com',
             'creator_id' => $user->id,
             'responsible_id' => $user->id,
             'data' => (object) ['chat_assistant_ai_enabled' => false],
@@ -345,6 +349,9 @@ class WhatsAppLocalWebhookTest extends TestCase
         Contact::factory()->create([
             'team_id' => $team->id,
             'phone' => '600000000',
+            'name' => 'Test',
+            'surname' => 'Client',
+            'email' => 'national.client@example.com',
             'creator_id' => $user->id,
             'responsible_id' => $user->id,
             'data' => (object) ['chat_assistant_ai_enabled' => false],

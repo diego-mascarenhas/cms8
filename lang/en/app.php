@@ -596,4 +596,12 @@ return [
     'Google scope profile' => 'Profile (OAuth)',
     'Google scope userinfo email' => 'Basic profile: email',
     'Google scope userinfo profile' => 'Basic profile: name and picture',
+    'whatsapp_registration_complete_handoff' => "Thank you for registering, :name!\n\nWe have received your details. We will contact you shortly on this channel.",
+    'whatsapp_registration_complete_active' => "Thank you, :name!\n\nWe have saved your details. You can keep messaging us here anytime.",
+    'whatsapp_registration_ask_full_name' => "Welcome to our help desk!\nWe do not have your details yet.\n\nCould you tell us your first and last name?",
+    'whatsapp_registration_ask_full_name_retry' => 'Could you type your full first and last name?',
+    'whatsapp_registration_ask_email' => "Thank you, :name!\n\nCould you share your email address?",
+    'whatsapp_registration_invalid_name' => 'We need your first and last name (for example: Jane Smith).',
+    'whatsapp_registration_invalid_email' => "That does not look like a valid email address.\n\nCould you type it again?",
+    'whatsapp_registration_error' => "Sorry, something went wrong while saving your details.\nPlease email administracion@revisionalpha.com so we can help you.",
 ];
