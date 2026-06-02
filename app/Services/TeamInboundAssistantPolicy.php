@@ -10,8 +10,13 @@ use App\Models\User;
  */
 class TeamInboundAssistantPolicy
 {
-    public function allowsWhatsAppAutoReply(Team $team, ?User $inboundSender = null, ?int $membershipTeamId = null): bool
+    public function allowsWhatsAppAutoReply(Team $team, ?User $inboundSender = null, ?int $membershipTeamId = null, ?string $inboundSenderPhone = null): bool
     {
+        if ($this->isBlacklistedWhatsAppPhone($team, $inboundSenderPhone))
+        {
+            return false;
+        }
+
         if (filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN))
         {
             return true;
@@ -23,6 +28,47 @@ class TeamInboundAssistantPolicy
         }
 
         return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
+    }
+
+    public function isBlacklistedWhatsAppPhone(Team $team, ?string $phone): bool
+    {
+        $normalizedSenderPhone = preg_replace('/\D/', '', (string) $phone);
+        if ($normalizedSenderPhone === '')
+        {
+            return false;
+        }
+
+        $rawBlacklist = $team->getSetting('assistant_whatsapp_blacklist_numbers', '');
+        if (! is_string($rawBlacklist) || trim($rawBlacklist) === '')
+        {
+            return false;
+        }
+
+        $items = preg_split('/[\r\n,;]+/', $rawBlacklist) ?: [];
+
+        foreach ($items as $item)
+        {
+            $normalizedItem = preg_replace('/\D/', '', (string) $item);
+            if ($normalizedItem === '')
+            {
+                continue;
+            }
+
+            if ($normalizedItem === $normalizedSenderPhone)
+            {
+                return true;
+            }
+
+            if (strlen($normalizedItem) > 9 && strlen($normalizedSenderPhone) > 9)
+            {
+                if (substr($normalizedItem, -9) === substr($normalizedSenderPhone, -9))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

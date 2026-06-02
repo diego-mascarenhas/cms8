@@ -367,4 +367,41 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
         $response->assertJsonMissing(['auto_ai_skipped' => 'contact_assistant_disabled']);
     }
+
+    public function test_webhook_skips_all_auto_replies_for_blacklisted_sender_number(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->setSetting('assistant_whatsapp_blacklist_numbers', "34600000000\n34611111111");
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'Hola necesito ayuda',
+            'id' => 'msg_blacklist_skip_1',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+        ]);
+        $this->assertDatabaseHas('conversations', [
+            'message_sid' => 'msg_blacklist_skip_1',
+            'direction' => 'inbound',
+        ]);
+        $this->assertDatabaseMissing('conversations', [
+            'direction' => 'outbound',
+            'body' => 'Team auto reply',
+        ]);
+    }
 }

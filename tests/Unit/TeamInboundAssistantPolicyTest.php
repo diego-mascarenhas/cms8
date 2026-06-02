@@ -51,4 +51,17 @@ class TeamInboundAssistantPolicyTest extends TestCase
 
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, $admin));
     }
+
+    public function test_blacklisted_sender_phone_blocks_auto_reply_even_when_team_is_on(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->setSetting('assistant_whatsapp_blacklist_numbers', "34600000000\n+34 611 222 333");
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34600000000'));
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '+34 611 222 333'));
+        $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34699999999'));
+    }
 }

@@ -204,6 +204,10 @@ class ChatController extends Controller
         {
             $normalizedUnique = $normalizedUnique->filter(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p) !== $teamNumber)->values();
         }
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
+        $normalizedUnique = $normalizedUnique
+            ->filter(fn ($p) => ! $inboundPolicy->isBlacklistedWhatsAppPhone($team, (string) $p))
+            ->values();
 
         $contacts = collect();
         foreach ($normalizedUnique as $normalizedPhone)
@@ -256,7 +260,7 @@ class ChatController extends Controller
                 ? $userData
                 : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
             $contact->assistant_inbound_enabled = app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser);
+                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly);
             $contacts->push($contact);
         }
 
@@ -786,7 +790,7 @@ class ChatController extends Controller
         return response()->json([
             'success' => true,
             'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser),
+                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
             'assistant_toggle_available' => true,
         ]);
     }
@@ -821,6 +825,8 @@ class ChatController extends Controller
             'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
                 $team,
                 $crm->user_id ? User::query()->find($crm->user_id) : null,
+                (int) $team->id,
+                $digits,
             ),
             'assistant_toggle_available' => true,
         ];

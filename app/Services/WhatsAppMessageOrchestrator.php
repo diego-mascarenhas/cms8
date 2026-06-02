@@ -903,73 +903,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $this->dispatchSentimentAnalysis($cleanFrom, $body);
             }
 
-            // Check if this is part of a registration process
-            if ($channel == 'whatsapp')
-            {
-                $chatController = app(\App\Http\Controllers\ChatController::class);
-                $registrationResponse = $chatController->processRegistration(
-                    $cleanFrom,
-                    $body,
-                    $this->getSender() !== $this ? $this->getSender() : null,
-                );
-
-                // If this was a registration step, we've already handled it
-                if ($registrationResponse)
-                {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
-                }
-
-                // Detect user intent first, then route to the most relevant flow.
-                // This prevents false positives (for example: "agregar cita..." should not go to cart).
-                $detectedIntent = $this->detectWhatsAppIntent((string) $body);
-
-                if ($detectedIntent === 'cart')
-                {
-                    $cartResponse = $this->processCartCommands($cleanFrom, $body);
-                    if ($cartResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
-                    }
-                }
-
-                if ($detectedIntent === 'product')
-                {
-                    $productResponse = $this->processProductCommands($cleanFrom, $body);
-                    if ($productResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
-                    }
-                }
-
-                if ($detectedIntent === 'service')
-                {
-                    $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
-                    if ($serviceResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
-                    }
-                }
-
-                if ($detectedIntent === 'demo')
-                {
-                    $demoResponse = $this->processDemoCommand($cleanFrom, $body);
-                    if ($demoResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
-                    }
-                }
-
-                if ($detectedIntent === 'qr')
-                {
-                    $qrResponse = $this->processQrCommand($cleanFrom, $body);
-                    if ($qrResponse)
-                    {
-                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
-                    }
-                }
-            }
-
-            // Automatic AI response: team settings prevail over per-contact preferences.
+            // Automatic AI response: team settings prevail over per-contact preferences and blacklist.
             $shouldProcessAutoAi = false;
             if ($channel === 'whatsapp' && $this->team)
             {
@@ -983,7 +917,77 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $this->team,
                     $earlyUser,
                     $assistantTeamIdEarly,
+                    $cleanFrom,
                 );
+            }
+
+            // Check if this is part of a registration process
+            if ($channel == 'whatsapp')
+            {
+                if ($shouldProcessAutoAi)
+                {
+                    $chatController = app(\App\Http\Controllers\ChatController::class);
+                    $registrationResponse = $chatController->processRegistration(
+                        $cleanFrom,
+                        $body,
+                        $this->getSender() !== $this ? $this->getSender() : null,
+                    );
+
+                    // If this was a registration step, we've already handled it
+                    if ($registrationResponse)
+                    {
+                        return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
+                    }
+
+                    // Detect user intent first, then route to the most relevant flow.
+                    // This prevents false positives (for example: "agregar cita..." should not go to cart).
+                    $detectedIntent = $this->detectWhatsAppIntent((string) $body);
+
+                    if ($detectedIntent === 'cart')
+                    {
+                        $cartResponse = $this->processCartCommands($cleanFrom, $body);
+                        if ($cartResponse)
+                        {
+                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
+                        }
+                    }
+
+                    if ($detectedIntent === 'product')
+                    {
+                        $productResponse = $this->processProductCommands($cleanFrom, $body);
+                        if ($productResponse)
+                        {
+                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
+                        }
+                    }
+
+                    if ($detectedIntent === 'service')
+                    {
+                        $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
+                        if ($serviceResponse)
+                        {
+                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
+                        }
+                    }
+
+                    if ($detectedIntent === 'demo')
+                    {
+                        $demoResponse = $this->processDemoCommand($cleanFrom, $body);
+                        if ($demoResponse)
+                        {
+                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
+                        }
+                    }
+
+                    if ($detectedIntent === 'qr')
+                    {
+                        $qrResponse = $this->processQrCommand($cleanFrom, $body);
+                        if ($qrResponse)
+                        {
+                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
+                        }
+                    }
+                }
             }
             if ($shouldProcessAutoAi)
             {
