@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Team;
 use App\Services\TokenUsageLogService;
+use App\Services\UserResolverService;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
 
@@ -31,6 +32,11 @@ PROMPT;
     public function shouldHandleRegistration(string $phone, ?Team $team): bool
     {
         if ($team === null)
+        {
+            return false;
+        }
+
+        if (app(UserResolverService::class)->resolveTeamStaffByPhone((int) $team->id, $phone) !== null)
         {
             return false;
         }
@@ -74,6 +80,11 @@ PROMPT;
         }
 
         if ($team === null)
+        {
+            return null;
+        }
+
+        if (app(UserResolverService::class)->resolveTeamStaffByPhone((int) $team->id, $phone) !== null)
         {
             return null;
         }

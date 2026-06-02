@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class WhatsAppRegistrationHandoffTest extends TestCase
@@ -34,8 +35,60 @@ class WhatsAppRegistrationHandoffTest extends TestCase
         $this->seed(CountrySeeder::class);
         $this->seed(LanguageSeeder::class);
         $this->seed(ContactStatusSeeder::class);
+        Role::findOrCreate('admin');
         Bus::fake();
         Mail::fake();
+    }
+
+    public function test_webhook_skips_registration_for_team_admin_phone_on_users_table(): void
+    {
+        $admin = User::factory()->create(['phone' => 722372858]);
+        $admin->assignRole('admin');
+        $team = Team::factory()->create(['user_id' => $admin->id]);
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Conversation::create([
+            'channel' => 'whatsapp',
+            'direction' => 'inbound',
+            'from' => '34722372858',
+            'to' => '34600000001',
+            'body' => 'Earlier today',
+            'created_at' => now(),
+        ]);
+
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'out_admin_skip_reg'], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372858',
+            'to' => '34600000001',
+            'body' => 'Hola, soy el admin',
+            'id' => 'msg_admin_skip_registration',
+            'team_id' => $team->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonMissing(['registration' => true]);
+
+        Http::assertNotSent(function ($request): bool
+        {
+            if (! str_contains($request->url(), '/send-message'))
+            {
+                return false;
+            }
+
+            $body = (string) ($request->data()['body'] ?? '');
+
+            return str_contains($body, 'nombre y apellido');
+        });
     }
 
     public function test_process_registration_returns_handoff_when_team_auto_respond_disabled(): void

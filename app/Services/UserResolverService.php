@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
@@ -82,6 +83,22 @@ class UserResolverService
         {
             report($e);
         }
+    }
+
+    /**
+     * Team staff or global admin whose {@see User::$phone} matches the inbound WhatsApp number.
+     */
+    public function resolveTeamStaffByPhone(int $teamId, string $phone): ?User
+    {
+        $cleanNumber = preg_replace('/[^0-9]/', '', $phone);
+        if ($cleanNumber === '')
+        {
+            return null;
+        }
+
+        return $this->findTeamStaffUserByPhone($teamId, $cleanNumber)
+            ?? $this->findKnownStaffUserByPhoneDigits($teamId, $cleanNumber)
+            ?? $this->findStaffUserBySamePhoneLine($teamId, $cleanNumber);
     }
 
     public function findContactInTeamByPhone(int $teamId, string $phone): ?Contact
@@ -451,6 +468,40 @@ class UserResolverService
     /**
      * @return list<string>
      */
+    private function findStaffUserBySamePhoneLine(int $teamId, string $cleanNumber): ?User
+    {
+        $candidates = User::withoutGlobalScopes()
+            ->whereNotNull('phone')
+            ->where(function ($query) use ($teamId)
+            {
+                $query->whereHas('teams', function ($teamQuery) use ($teamId)
+                {
+                    $teamQuery->where('teams.id', $teamId)
+                        ->whereIn('team_user.role', ['admin', 'editor', 'collaborator']);
+                })
+                    ->orWhereHas('roles', function ($roleQuery)
+                    {
+                        $roleQuery->whereIn('name', ['admin', 'root']);
+                    });
+            })
+            ->get();
+
+        foreach ($candidates as $candidate)
+        {
+            if (! PhoneHelper::digitsBelongToSameLine((string) $candidate->phone, $cleanNumber))
+            {
+                continue;
+            }
+
+            if ($candidate->hasAnyRole(['admin', 'root']) || $this->userIsTeamStaff($candidate, $teamId))
+            {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     private function findKnownStaffUserByPhoneDigits(int $teamId, string $cleanNumber): ?User
     {
         foreach ($this->phoneVariantsForDigits($cleanNumber) as $variant)
