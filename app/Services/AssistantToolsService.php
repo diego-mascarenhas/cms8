@@ -20,7 +20,6 @@ use App\Models\OpportunityStage;
 use App\Models\Product;
 use App\Models\Prompt;
 use App\Models\Task;
-use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\Template;
@@ -32,6 +31,7 @@ use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
+use App\Support\TeamTaskBoardResolver;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -1581,8 +1581,7 @@ class AssistantToolsService
             }
         }
 
-        $board = TaskBoard::getDefaultBoard();
-        $boardId = $board ? $board->id : null;
+        $boardId = TeamTaskBoardResolver::resolveBoardId($teamId);
         $defaultStatus = TaskStatus::orderBy('order')->first();
         $statusId = $defaultStatus ? $defaultStatus->id : 1;
 
@@ -1598,10 +1597,21 @@ class AssistantToolsService
             'order' => 0,
         ]);
 
-        $assignee = $responsibleId === $currentUserId ? 'you' : "user id {$responsibleId}";
-        $dueStr = $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : 'N/A';
+        Log::info('AssistantToolsService create_task success', [
+            'team_id' => $teamId,
+            'task_id' => $task->id,
+            'board_id' => $boardId,
+            'responsible_id' => $responsibleId,
+        ]);
 
-        return $this->truncate("Task created: {$task->title} (id: {$task->id}), assigned to {$assignee}, due {$dueStr}.");
+        $assigneeUser = User::withoutGlobalScopes()->find($responsibleId);
+        $assigneeLabel = $assigneeUser
+            ? $assigneeUser->name.' ('.$assigneeUser->email.')'
+            : "user id {$responsibleId}";
+        $dueStr = $task->due_date ? Carbon::parse($task->due_date)->format('Y-m-d') : 'N/A';
+        $editUrl = route('task.edit', $task->id);
+
+        return $this->truncate("Task created: {$task->title} (id: {$task->id}), assigned to {$assigneeLabel}, due {$dueStr}, board_id {$boardId}. Edit URL: {$editUrl}");
     }
 
     private function searchTasks(int $teamId, array $input): string

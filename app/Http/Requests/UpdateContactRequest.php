@@ -101,9 +101,14 @@ class UpdateContactRequest extends FormRequest
                 'phone' => $validated['enterprise']['phone'] ?? null,
                 'email' => $validated['enterprise']['email'] ?? null,
                 'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
-                'status_id' => (int) ($validated['enterprise']['status_id'] ?? ($validated['status_id'] == 5 ? 2 : 1)),
                 'responsible_id' => $validated['responsible_id'] ?? $contact->responsible_id ?? null,
             ];
+
+            $enterpriseStatusId = $validated['enterprise']['status_id'] ?? null;
+            if ($enterpriseStatusId !== null && $enterpriseStatusId !== '')
+            {
+                $enterpriseData['status_id'] = (int) $enterpriseStatusId;
+            }
         }
 
         $selectedEnterpriseId = (int) (data_get($validated, 'enterprise.enterprise_id') ?: 0);
