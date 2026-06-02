@@ -393,15 +393,11 @@ class WhatsAppLocalWebhookTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJson([
-            'status' => 'success',
-        ]);
-        $this->assertDatabaseHas('conversations', [
-            'message_sid' => 'msg_blacklist_skip_1',
-            'direction' => 'inbound',
+            'status' => 'ignored',
+            'reason' => 'blacklisted_sender',
         ]);
         $this->assertDatabaseMissing('conversations', [
-            'direction' => 'outbound',
-            'body' => 'Team auto reply',
+            'message_sid' => 'msg_blacklist_skip_1',
         ]);
     }
 }

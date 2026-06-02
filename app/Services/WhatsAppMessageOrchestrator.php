@@ -619,6 +619,23 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
+            if ($channel === 'whatsapp' && $this->team !== null)
+            {
+                $isBlacklistedSender = app(TeamInboundAssistantPolicy::class)
+                    ->isBlacklistedWhatsAppPhone($this->team, $cleanFrom);
+                if ($isBlacklistedSender)
+                {
+                    Log::info('Incoming WhatsApp message ignored: blacklisted sender', [
+                        'message_sid' => $messageSid,
+                        'from' => $cleanFrom,
+                        'to' => $cleanTo,
+                        'team_id' => $this->team->id,
+                    ]);
+
+                    return response()->json(['status' => 'ignored', 'reason' => 'blacklisted_sender'], 200);
+                }
+            }
+
             if ($channel === 'whatsapp' && $resolvedInboundTeamId !== null && strlen($cleanFrom) >= 8)
             {
                 \App\Models\Prospect::captureFromWhatsApp($cleanFrom, $resolvedInboundTeamId);
