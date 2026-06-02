@@ -51,6 +51,7 @@ class AssistantChat extends Component
 
     protected $listeners = [
         'assistant-reset-context' => 'clearChat',
+        'finance-assistant-prefill' => 'prefillInput',
     ];
 
     public function mount(
@@ -135,6 +136,15 @@ class AssistantChat extends Component
         $this->audio = null;
         $this->loading = false;
         $this->dispatch('scroll-to-bottom');
+    }
+
+    /**
+     * @param  string|array{message?: string}  $payload
+     */
+    public function prefillInput(string|array $payload): void
+    {
+        $message = is_array($payload) ? (string) ($payload['message'] ?? '') : $payload;
+        $this->input = trim($message);
     }
 
     public function clearChat(AgentConversationContextService $conversationContext): void

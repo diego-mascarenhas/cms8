@@ -90,6 +90,98 @@ class InvoiceAnalyticsService
     /**
      * @return array{min: int, max: int}
      */
+    /**
+     * @return array{
+     *     year: int,
+     *     multiplier: float,
+     *     avg_monthly_profit: float,
+     *     target_monthly_profit: float,
+     *     monthly_gap: float,
+     *     income_increase_percent: float|null,
+     *     expense_decrease_percent: float|null,
+     * }
+     */
+    public function buildGrowthScenario(int $teamId, int $year, float $multiplier): array
+    {
+        $multiplier = max(1.0, min(20.0, $multiplier));
+        $report = $this->buildYearReport($teamId, $year);
+        $scenario = $report['scenario'];
+        $avgProfit = (float) $scenario['avg_monthly_profit'];
+        $avgIncome = (float) $scenario['avg_monthly_income'];
+        $avgExpense = (float) $scenario['avg_monthly_expense'];
+        $targetProfit = $avgProfit * $multiplier;
+        $gap = $targetProfit - $avgProfit;
+
+        return [
+            'year' => $report['year'],
+            'multiplier' => $multiplier,
+            'avg_monthly_profit' => $avgProfit,
+            'target_monthly_profit' => $targetProfit,
+            'monthly_gap' => $gap,
+            'income_increase_percent' => ($gap > 0 && $avgIncome > 0) ? ($gap / $avgIncome) * 100 : null,
+            'expense_decrease_percent' => ($gap > 0 && $avgExpense > 0) ? ($gap / $avgExpense) * 100 : null,
+        ];
+    }
+
+    /**
+     * Compact text summary for the assistant (truncated externally if needed).
+     */
+    public function formatYearReportForAssistant(array $report): string
+    {
+        $year = $report['year'];
+        $summary = $report['summary'];
+        $scenario = $report['scenario'];
+        $lines = [
+            "Financial projection (invoiced line items) for {$year}:",
+            'Income: '.number_format($summary['income'], 2),
+            'Expenses: '.number_format($summary['expense'], 2),
+            'Net profit: '.number_format($summary['profit'], 2).' (margin '.number_format($summary['margin_percent'], 1).'%)',
+            'Prior year profit: '.number_format($summary['prior_year_profit'], 2),
+            'Avg monthly profit: '.number_format($scenario['avg_monthly_profit'], 2),
+        ];
+
+        $lines[] = 'Top income categories:';
+        foreach (array_slice($report['income_categories'], 0, 8) as $row)
+        {
+            $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2).' ('.number_format($row['share_percent'], 1).'%)';
+        }
+
+        $lines[] = 'Top expense categories:';
+        foreach (array_slice($report['expense_categories'], 0, 8) as $row)
+        {
+            $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2).' ('.number_format($row['share_percent'], 1).'%)';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    public function formatGrowthScenarioForAssistant(array $scenario): string
+    {
+        $lines = [
+            "Growth scenario for {$scenario['year']} (×{$scenario['multiplier']} on avg monthly profit):",
+            'Current avg monthly profit: '.number_format($scenario['avg_monthly_profit'], 2),
+            'Target monthly profit: '.number_format($scenario['target_monthly_profit'], 2),
+            'Monthly gap: '.number_format($scenario['monthly_gap'], 2),
+        ];
+
+        if ($scenario['income_increase_percent'] !== null)
+        {
+            $lines[] = 'Equivalent (~holding expenses): increase invoiced income by '
+                .number_format($scenario['income_increase_percent'], 1).'% per month.';
+        }
+
+        if ($scenario['expense_decrease_percent'] !== null)
+        {
+            $lines[] = 'Equivalent (~holding income): reduce invoiced expenses by '
+                .number_format($scenario['expense_decrease_percent'], 1).'% per month.';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @return array{min: int, max: int}
+     */
     public function resolveYearBounds(int $teamId): array
     {
         $currentYear = (int) Carbon::now()->year;

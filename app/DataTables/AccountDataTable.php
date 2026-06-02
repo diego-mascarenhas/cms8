@@ -27,7 +27,7 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('owner_name', function ($account)
             {
-                return $account->owner->name;
+                return $account->owner?->name ?? '—';
             })
             ->filterColumn('owner_name', function ($query, $keyword)
             {

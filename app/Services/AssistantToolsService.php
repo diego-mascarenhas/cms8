@@ -27,6 +27,7 @@ use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
+use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
@@ -310,6 +311,45 @@ class AssistantToolsService
                         ],
                     ],
                     'required' => ['report_type'],
+                ],
+            ],
+            [
+                'name' => 'get_financial_projection',
+                'description' => 'Get invoiced financial projection for a calendar year: income, expenses, profit, margin, YoY comparison, top categories, average monthly profit. Based on invoice line items by category.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'year' => ['type' => 'integer', 'description' => 'Calendar year (default: current year)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'get_financial_category_breakdown',
+                'description' => 'Breakdown of invoiced amounts by category for a year. Use operation sell for revenue categories, buy for expense categories, both for combined view.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'year' => ['type' => 'integer', 'description' => 'Calendar year (default: current year)'],
+                        'operation' => [
+                            'type' => 'string',
+                            'description' => 'sell (income), buy (expenses), or both',
+                            'enum' => ['sell', 'buy', 'both'],
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'run_financial_growth_scenario',
+                'description' => 'Calculate what is needed to reach a profit multiplier (e.g. 2 = double avg monthly profit, 5 = 5x). Returns monthly gap and equivalent % income increase or % expense decrease.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'multiplier' => ['type' => 'number', 'description' => 'Target multiple of average monthly profit (e.g. 2, 5)'],
+                        'year' => ['type' => 'integer', 'description' => 'Base year for averages (default: current year)'],
+                    ],
+                    'required' => ['multiplier'],
                 ],
             ],
             [
@@ -738,6 +778,9 @@ class AssistantToolsService
                 'update_contact' => $this->updateContact($teamId, $user, $input),
                 'create_contact_interaction' => $this->createContactInteraction($teamId, $user, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
+                'get_financial_projection' => $this->getFinancialProjection($teamId, $input),
+                'get_financial_category_breakdown' => $this->getFinancialCategoryBreakdown($teamId, $input),
+                'run_financial_growth_scenario' => $this->runFinancialGrowthScenario($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
                 'search_tasks' => $this->searchTasks($teamId, $input),
@@ -1433,6 +1476,79 @@ class AssistantToolsService
         {
             return null;
         }
+    }
+
+    private function getFinancialProjection(int $teamId, array $input): string
+    {
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        if ($year < 1990 || $year > 2100)
+        {
+            return 'Invalid year. Use a year between 1990 and 2100.';
+        }
+
+        $analytics = app(InvoiceAnalyticsService::class);
+        $report = $analytics->buildYearReport($teamId, $year);
+
+        return $this->truncate($analytics->formatYearReportForAssistant($report));
+    }
+
+    private function getFinancialCategoryBreakdown(int $teamId, array $input): string
+    {
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        $operation = strtolower(trim((string) ($input['operation'] ?? 'both')));
+        if (! in_array($operation, ['sell', 'buy', 'both'], true))
+        {
+            return 'Invalid operation. Use sell, buy, or both.';
+        }
+
+        $analytics = app(InvoiceAnalyticsService::class);
+        $report = $analytics->buildYearReport($teamId, $year);
+        $lines = ["Category breakdown for {$report['year']}:"];
+
+        if ($operation === 'sell' || $operation === 'both')
+        {
+            $lines[] = 'Income (sell):';
+            foreach ($report['income_categories'] as $row)
+            {
+                $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2)
+                    .' ('.number_format($row['share_percent'], 1).'%)';
+            }
+            if ($report['income_categories'] === [])
+            {
+                $lines[] = '  (none)';
+            }
+        }
+
+        if ($operation === 'buy' || $operation === 'both')
+        {
+            $lines[] = 'Expenses (buy):';
+            foreach ($report['expense_categories'] as $row)
+            {
+                $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2)
+                    .' ('.number_format($row['share_percent'], 1).'%)';
+            }
+            if ($report['expense_categories'] === [])
+            {
+                $lines[] = '  (none)';
+            }
+        }
+
+        return $this->truncate(implode("\n", $lines));
+    }
+
+    private function runFinancialGrowthScenario(int $teamId, array $input): string
+    {
+        $multiplier = isset($input['multiplier']) ? (float) $input['multiplier'] : 0.0;
+        if ($multiplier < 1)
+        {
+            return 'multiplier is required and must be at least 1 (e.g. 2 for double profit).';
+        }
+
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        $analytics = app(InvoiceAnalyticsService::class);
+        $scenario = $analytics->buildGrowthScenario($teamId, $year, $multiplier);
+
+        return $this->truncate($analytics->formatGrowthScenarioForAssistant($scenario));
     }
 
     private function getAccountReport(int $teamId, array $input): string

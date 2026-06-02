@@ -27,6 +27,7 @@ use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\DemoDataService;
+use App\Services\Finance\FinancialProjectionHistoryGenerator;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
@@ -113,6 +114,10 @@ class TeamDemoSeeder extends Seeder
 
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
+
+        // 15. Ten years of categorized invoices for /finance-dashboard/projection
+        $this->command->info('📈 Seeding 10-year financial projection history (HIST-* invoices)...');
+        app(FinancialProjectionHistoryGenerator::class)->seedForTeam($team->fresh(), 10, true);
 
         $this->command->info('✅ Demo Team setup completed successfully');
     }

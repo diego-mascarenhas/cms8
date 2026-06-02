@@ -213,6 +213,41 @@
         </div>
     </div>
 </div>
+
+@can('viewAny', App\Models\Invoice::class)
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-0">{{ __('Financial assistant') }}</h5>
+                <p class="text-muted small mb-0">{{ __('Ask about projections, x2/x5 scenarios, and cost reduction using your invoiced data.') }}</p>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @foreach([
+                        __('What do I need to double profit in :year?', ['year' => $selectedYear]),
+                        __('Which expense categories should we cut first in :year?', ['year' => $selectedYear]),
+                        __('Compare invoiced profit vs last year'),
+                        __('Run a x5 growth scenario for :year', ['year' => $selectedYear]),
+                    ] as $suggestionText)
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-primary"
+                            onclick="Livewire.dispatch('finance-assistant-prefill', { message: @json($suggestionText) })"
+                        >{{ $suggestionText }}</button>
+                    @endforeach
+                </div>
+                <div style="min-height: 22rem;">
+                    @livewire('assistant-chat', [
+                        'promptKey' => 'assistant_finanzas',
+                        'hideHeader' => false,
+                    ], key('finance-projection-assistant-'.auth()->id().'-'.$selectedYear))
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
 @endsection
 
 @section('page-script')

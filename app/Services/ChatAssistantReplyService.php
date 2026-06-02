@@ -525,6 +525,9 @@ When the user asks to see their contacts, list of contacts, "lista de contactos"
 - get_account_report with report_type "contacts" → list of contacts (real data from their team)
 - get_account_report with report_type "tasks" → recent tasks
 - get_account_report with report_type "summary" → counts of contacts and tasks
+- get_financial_projection (optional year) → invoiced income, expenses, profit, margin, top categories, avg monthly profit for that year
+- get_financial_category_breakdown (optional year, operation sell|buy|both) → amounts by invoice category for revenue or costs
+- run_financial_growth_scenario (multiplier required, optional year) → gap and % needed to reach x2/x5 profit vs avg monthly profit; use when they ask to double revenue, grow profit, or cut costs to hit a target
 - list_contact_categories → all contact categories in the team
 - list_contact_statuses → CRM lifecycle statuses for contacts (Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado, etc.); use exact names as contact_status_name when filtering campaign recipients
 - get_contact_categories (with contact_id) → categories that a specific contact belongs to
