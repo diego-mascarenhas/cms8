@@ -11,7 +11,7 @@ class TeamContactMatcher
 {
     public const SEARCH_DEFAULT_LIMIT = 10;
 
-    public function findExisting(int $teamId, ?string $email, ?int $phone, ?string $name): ?Contact
+    public function findExisting(int $teamId, ?string $email, ?int $phone, ?string $name, ?string $surname = null): ?Contact
     {
         $base = Contact::withoutGlobalScopes()->where('team_id', $teamId);
         $connection = $this->connection();
@@ -37,7 +37,7 @@ class TeamContactMatcher
             }
         }
 
-        return $this->findExistingByName($base, $name, $connection);
+        return $this->findExistingByName($base, $name, $surname, $connection);
     }
 
     /**
@@ -148,17 +148,46 @@ class TeamContactMatcher
     /**
      * @param  \Illuminate\Database\Eloquent\Builder<Contact>  $base
      */
-    private function findExistingByName($base, ?string $name, Connection $connection): ?Contact
+    private function findExistingByName($base, ?string $name, ?string $surname, Connection $connection): ?Contact
     {
         $normalizedName = $name !== null ? mb_strtolower(trim($name)) : '';
-        if ($normalizedName === '')
+        $normalizedSurname = $surname !== null ? mb_strtolower(trim($surname)) : '';
+
+        if ($normalizedName === '' && $normalizedSurname === '')
         {
             return null;
         }
 
         $nameLower = SearchNormalizer::contactTextColumnLowerSql('name', $connection);
+        $surnameLower = SearchNormalizer::contactTextColumnLowerSql('surname', $connection);
 
-        $existing = (clone $base)->whereRaw($nameLower.' = ?', [$normalizedName])->first();
+        if ($normalizedName !== '' && $normalizedSurname !== '')
+        {
+            $existing = (clone $base)
+                ->whereRaw($nameLower.' = ?', [$normalizedName])
+                ->whereRaw($surnameLower.' = ?', [$normalizedSurname])
+                ->first();
+            if ($existing)
+            {
+                return $existing;
+            }
+
+            return null;
+        }
+
+        if ($normalizedName === '')
+        {
+            return null;
+        }
+
+        $existing = (clone $base)
+            ->whereRaw($nameLower.' = ?', [$normalizedName])
+            ->where(function ($builder) use ($surnameLower)
+            {
+                $builder->whereNull('surname')
+                    ->orWhereRaw($surnameLower.' = ?', ['']);
+            })
+            ->first();
         if ($existing)
         {
             return $existing;
@@ -176,11 +205,11 @@ class TeamContactMatcher
         if (count($parts) >= 2)
         {
             $firstName = $parts[0];
-            $surname = implode(' ', array_slice($parts, 1));
+            $nameSurname = implode(' ', array_slice($parts, 1));
 
             $existing = (clone $base)
                 ->whereRaw($nameLower.' = ?', [$firstName])
-                ->whereRaw(SearchNormalizer::contactTextColumnLowerSql('surname', $connection).' = ?', [$surname])
+                ->whereRaw($surnameLower.' = ?', [$nameSurname])
                 ->first();
             if ($existing)
             {

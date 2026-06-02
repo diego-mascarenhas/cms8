@@ -100,6 +100,25 @@ class TeamContactMatcherTest extends TestCase
         $this->assertSame('Pepe', $results->first()->name);
     }
 
+    public function test_find_existing_requires_surname_when_provided(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->create(['current_team_id' => $team->id]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'name' => 'Juan',
+            'surname' => 'Pérez',
+        ]);
+
+        $matcher = app(TeamContactMatcher::class);
+
+        $this->assertNull($matcher->findExisting($team->id, null, null, 'Juan', 'García'));
+        $this->assertNotNull($matcher->findExisting($team->id, null, null, 'Juan', 'Pérez'));
+        $this->assertNull($matcher->findExisting($team->id, null, null, 'Juan', null));
+    }
+
     public function test_find_existing_by_single_name_does_not_throw_on_postgresql_style_sql(): void
     {
         $team = Team::factory()->create();
