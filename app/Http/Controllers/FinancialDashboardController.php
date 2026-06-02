@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Services\Finance\InvoiceAnalyticsService;
+use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -24,8 +25,11 @@ class FinancialDashboardController extends Controller
         $requestedYear = (int) $request->query('year', $currentYear);
         $selectedYear = $requestedYear > 0 ? $requestedYear : $currentYear;
 
-        $yearBounds = $payments->clone()->whereNotNull('date')
-            ->selectRaw('COALESCE(MIN(EXTRACT(YEAR FROM "date"))::int, 0) as min_year, COALESCE(MAX(EXTRACT(YEAR FROM "date"))::int, 0) as max_year')
+        $paymentYearSql = SqlDateExpressions::year('payments.date');
+        $paymentMonthSql = SqlDateExpressions::month('payments.date');
+
+        $yearBounds = $payments->clone()->whereNotNull('payments.date')
+            ->selectRaw("COALESCE(MIN({$paymentYearSql}), 0) as min_year, COALESCE(MAX({$paymentYearSql}), 0) as max_year")
             ->first();
 
         $minYear = (int) ($yearBounds->min_year ?? 0);
@@ -76,10 +80,10 @@ class FinancialDashboardController extends Controller
 
         $monthRows = $payments->clone()
             ->where('status', 2)
-            ->whereYear('date', $selectedYear)
-            ->groupByRaw('EXTRACT(MONTH FROM "date")::int')
+            ->whereYear('payments.date', $selectedYear)
+            ->groupByRaw($paymentMonthSql)
             ->selectRaw(
-                'EXTRACT(MONTH FROM "date")::int as month_num, '.
+                "{$paymentMonthSql} as month_num, ".
                 'COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE 0 END), 0) as monthly_income, '.
                 'COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE 0 END), 0) as monthly_expense',
                 [$incomeType, $expenseType],

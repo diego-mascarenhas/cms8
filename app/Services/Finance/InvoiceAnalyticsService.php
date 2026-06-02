@@ -5,10 +5,10 @@ namespace App\Services\Finance;
 use App\Models\Category;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Aggregates invoiced line items (by category and period) for financial projection reports.
@@ -213,7 +213,7 @@ class InvoiceAnalyticsService
     private function aggregateMonthlyTotals(int $teamId, Carbon $from, Carbon $to): Collection
     {
         $lineAmount = self::LINE_AMOUNT_SQL;
-        $monthSql = $this->sqlMonthExpression('invoices.date');
+        $monthSql = SqlDateExpressions::month('invoices.date');
 
         return $this->baseItemsQuery($teamId, $from, $to)
             ->selectRaw("{$monthSql} as month_num")
@@ -318,25 +318,5 @@ class InvoiceAnalyticsService
             ->whereNotNull('invoices.date')
             ->whereDate('invoices.date', '>=', $from->toDateString())
             ->whereDate('invoices.date', '<=', $to->toDateString());
-    }
-
-    private function sqlYearExpression(string $dateColumn): string
-    {
-        return match (DB::connection()->getDriverName())
-        {
-            'pgsql' => "EXTRACT(YEAR FROM {$dateColumn})::int",
-            'sqlite' => "CAST(strftime('%Y', {$dateColumn}) AS INTEGER)",
-            default => "YEAR({$dateColumn})",
-        };
-    }
-
-    private function sqlMonthExpression(string $dateColumn): string
-    {
-        return match (DB::connection()->getDriverName())
-        {
-            'pgsql' => "EXTRACT(MONTH FROM {$dateColumn})::int",
-            'sqlite' => "CAST(strftime('%m', {$dateColumn}) AS INTEGER)",
-            default => "MONTH({$dateColumn})",
-        };
     }
 }
