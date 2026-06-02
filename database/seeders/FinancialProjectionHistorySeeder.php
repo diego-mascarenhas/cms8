@@ -49,11 +49,12 @@ class FinancialProjectionHistorySeeder extends Seeder
         $stats = app(FinancialProjectionHistoryGenerator::class)->seedForTeam($team, $years, $fresh);
 
         $this->command?->info(sprintf(
-            'Done. Years %d–%d: %d invoices, %d line items (prefix %s).',
+            'Done. Years %d–%d: %d invoices, %d line items, %d payments (prefix %s).',
             $stats['start_year'],
             $stats['end_year'],
             $stats['invoices'],
             $stats['items'],
+            $stats['payments'],
             'HIST-',
         ));
 

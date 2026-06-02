@@ -2,12 +2,16 @@
 
 namespace App\Services\Finance;
 
+use App\Enums\TransactionType;
 use App\Models\Category;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
+use App\Models\Payment;
+use App\Models\PaymentAccount;
+use App\Models\PaymentType;
 use App\Models\Team;
 use Carbon\Carbon;
 
@@ -38,6 +42,8 @@ class FinancialProjectionHistoryGenerator
         {
             $this->purgeHistoricalInvoices($teamId);
         }
+
+        $paymentContext = $this->ensurePaymentContext($teamId);
 
         $context = $this->ensureContext($team);
 
@@ -106,12 +112,15 @@ class FinancialProjectionHistoryGenerator
             }
         }
 
+        $paymentsCreated = $this->seedPaymentsForHistoricalInvoices($teamId, $paymentContext);
+
         return [
             'team_id' => $teamId,
             'start_year' => $startYear,
             'end_year' => $endYear,
             'invoices' => $invoiceCount,
             'items' => $itemCount,
+            'payments' => $paymentsCreated,
         ];
     }
 
@@ -127,8 +136,167 @@ class FinancialProjectionHistoryGenerator
             return;
         }
 
+        Payment::withoutGlobalScopes()->whereIn('invoice_id', $invoiceIds)->delete();
         InvoiceItem::query()->whereIn('invoice_id', $invoiceIds)->delete();
         Invoice::withoutGlobalScopes()->whereIn('id', $invoiceIds)->delete();
+    }
+
+    /**
+     * @param  array{account_id: int, type_id: int}  $paymentContext
+     */
+    public function seedPaymentsForHistoricalInvoices(int $teamId, array $paymentContext): int
+    {
+        $created = 0;
+        $currentMonth = now()->startOfMonth();
+
+        Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('number', 'like', self::INVOICE_NUMBER_PREFIX.'%')
+            ->orderBy('id')
+            ->chunkById(200, function ($invoices) use ($teamId, $paymentContext, $currentMonth, &$created)
+            {
+                foreach ($invoices as $invoice)
+                {
+                    $invoiceDate = Carbon::parse($invoice->date)->startOfDay();
+                    $paymentDate = $invoiceDate->copy()->addDays(mt_rand(1, 18));
+                    if ($paymentDate->isFuture())
+                    {
+                        $paymentDate = now()->startOfDay();
+                    }
+
+                    $status = $this->resolveHistoricalPaymentStatus($invoiceDate, $currentMonth);
+                    $transactionType = $invoice->operation === 'buy'
+                        ? TransactionType::EXPENSE
+                        : TransactionType::INCOME;
+
+                    Payment::withoutGlobalScopes()->updateOrCreate(
+                        [
+                            'team_id' => $teamId,
+                            'invoice_id' => $invoice->id,
+                        ],
+                        [
+                            'enterprise_id' => $invoice->enterprise_id,
+                            'transaction_type' => $transactionType,
+                            'date' => $paymentDate->toDateString(),
+                            'account_id' => $paymentContext['account_id'],
+                            'type_id' => $paymentContext['type_id'],
+                            'amount' => $invoice->total_amount,
+                            'remarks' => 'HIST payment '.$invoice->number,
+                            'status' => $status,
+                        ],
+                    );
+
+                    $created++;
+                }
+            });
+
+        $this->ensureMinimumRejectedPayments($teamId);
+
+        return $created;
+    }
+
+    private function ensureMinimumRejectedPayments(int $teamId): void
+    {
+        $histInvoiceIds = Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('number', 'like', self::INVOICE_NUMBER_PREFIX.'%')
+            ->pluck('id');
+
+        $baseQuery = Payment::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('invoice_id', $histInvoiceIds);
+
+        $total = (clone $baseQuery)->count();
+        if ($total < 50)
+        {
+            return;
+        }
+
+        $rejected = (clone $baseQuery)->where('status', 4)->count();
+        $target = max(1, (int) round($total * 0.015));
+
+        if ($rejected >= $target)
+        {
+            return;
+        }
+
+        $toFlip = $target - $rejected;
+
+        (clone $baseQuery)
+            ->where('status', 2)
+            ->inRandomOrder()
+            ->limit($toFlip)
+            ->get()
+            ->each(function (Payment $payment)
+            {
+                $payment->update(['status' => 4]);
+            });
+    }
+
+    private function resolveHistoricalPaymentStatus(Carbon $invoiceDate, Carbon $currentMonth): int
+    {
+        $roll = mt_rand(1, 10_000);
+        $invoiceMonth = $invoiceDate->copy()->startOfMonth();
+        $monthsAgo = (int) $currentMonth->diffInMonths($invoiceMonth);
+        $isRecent = $monthsAgo <= 1;
+
+        if ($isRecent)
+        {
+            if ($roll <= 3_500)
+            {
+                return 3;
+            }
+
+            if ($roll <= 3_700)
+            {
+                return 4;
+            }
+
+            return 2;
+        }
+
+        if ($roll <= 200)
+        {
+            return 4;
+        }
+
+        if ($roll <= 300)
+        {
+            return 1;
+        }
+
+        return 2;
+    }
+
+    /**
+     * @return array{account_id: int, type_id: int}
+     */
+    private function ensurePaymentContext(int $teamId): array
+    {
+        $account = PaymentAccount::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('status', 1)
+            ->orderBy('id')
+            ->first();
+
+        if ($account === null)
+        {
+            $account = PaymentAccount::withoutGlobalScopes()->create([
+                'team_id' => $teamId,
+                'code' => 'EUR',
+                'name' => 'Cuenta demo EUR',
+                'symbol' => '€',
+                'currency_id' => 978,
+                'status' => 1,
+            ]);
+        }
+
+        $typeId = (int) (PaymentType::query()->value('id') ?? 1);
+
+        return [
+            'account_id' => (int) $account->id,
+            'type_id' => $typeId,
+        ];
     }
 
     /**
