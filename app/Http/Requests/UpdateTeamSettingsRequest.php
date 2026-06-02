@@ -39,6 +39,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
             'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
+            'chat.assistant_whatsapp_blacklist_numbers' => 'nullable|string|max:5000',
             'documents.documents_ocr_mode' => 'nullable|string|in:local,ai,hybrid',
 
             // Twilio settings

@@ -206,7 +206,9 @@ class TeamSettingController extends Controller
             {
                 $type = $this->getSettingType($key);
                 $isBoolean = $type === 'boolean';
-                $shouldSet = $isBoolean ? true : (! empty($value) || $value === '0');
+                $shouldSet = $isBoolean
+                    ? true
+                    : (! empty($value) || $value === '0' || in_array($key, ['assistant_whatsapp_blacklist_numbers'], true));
                 if ($shouldSet)
                 {
                     $storedValue = $isBoolean ? (bool) ($value ?? false) : $value;
@@ -591,6 +593,13 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
+                    ],
+                    'assistant_whatsapp_blacklist_numbers' => [
+                        'label' => __('WhatsApp auto-reply blacklist numbers'),
+                        'type' => 'textarea',
+                        'value' => (string) $team->getSetting('assistant_whatsapp_blacklist_numbers', ''),
+                        'is_encrypted' => false,
+                        'help' => __('Numbers separated by comma, semicolon, or line break. If a number is listed here, the assistant will never auto-reply on inbound WhatsApp for that sender.'),
                     ],
                 ],
             ],

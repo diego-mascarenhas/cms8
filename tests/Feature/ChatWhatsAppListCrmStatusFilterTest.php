@@ -130,4 +130,27 @@ class ChatWhatsAppListCrmStatusFilterTest extends TestCase
 
         $this->assertSame([$digitsB], collect($res->json('contacts'))->pluck('from')->all());
     }
+
+    public function test_chat_list_excludes_blacklisted_whatsapp_numbers(): void
+    {
+        $this->team->setSetting('assistant_whatsapp_blacklist_numbers', $this->phoneB);
+
+        $res = $this->actingAs($this->user)->getJson(route('chat.list'));
+        $res->assertOk();
+
+        $froms = collect($res->json('contacts'))
+            ->pluck('from')
+            ->map(fn ($f) => (string) $f)
+            ->sort()
+            ->values()
+            ->all();
+
+        $expected = collect([$this->phoneA, $this->phoneC])
+            ->map(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p))
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame($expected, $froms);
+    }
 }

@@ -26,12 +26,12 @@ use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
-use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -204,6 +204,10 @@ class ChatController extends Controller
         {
             $normalizedUnique = $normalizedUnique->filter(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p) !== $teamNumber)->values();
         }
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
+        $normalizedUnique = $normalizedUnique
+            ->filter(fn ($p) => ! $inboundPolicy->isBlacklistedWhatsAppPhone($team, (string) $p))
+            ->values();
 
         $contacts = collect();
         foreach ($normalizedUnique as $normalizedPhone)
@@ -248,6 +252,14 @@ class ChatController extends Controller
                 $contact->user_id = $userData->id;
             }
             $crmProfile = $this->findContactForTeamByChatPhone((int) $team->id, $digitsOnly);
+            if (! $userData && $crmProfile !== null)
+            {
+                $crmDisplayName = trim($crmProfile->name.' '.(string) ($crmProfile->surname ?? ''));
+                if ($crmDisplayName !== '')
+                {
+                    $contact->user_name = $crmDisplayName;
+                }
+            }
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
@@ -256,7 +268,7 @@ class ChatController extends Controller
                 ? $userData
                 : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
             $contact->assistant_inbound_enabled = app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser);
+                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly);
             $contacts->push($contact);
         }
 
@@ -350,6 +362,14 @@ class ChatController extends Controller
         if ($selectedPhone !== null && $selectedPhone === '')
         {
             $selectedPhone = null;
+        }
+        if ($selectedPhone !== null && auth()->check() && auth()->user()->currentTeam)
+        {
+            $currentTeam = auth()->user()->currentTeam;
+            if (app(TeamInboundAssistantPolicy::class)->isBlacklistedWhatsAppPhone($currentTeam, $selectedPhone))
+            {
+                abort(403);
+            }
         }
         $messages = collect();
         $selectedUser = null;
@@ -786,7 +806,7 @@ class ChatController extends Controller
         return response()->json([
             'success' => true,
             'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser),
+                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
             'assistant_toggle_available' => true,
         ]);
     }
@@ -821,6 +841,8 @@ class ChatController extends Controller
             'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
                 $team,
                 $crm->user_id ? User::query()->find($crm->user_id) : null,
+                (int) $team->id,
+                $digits,
             ),
             'assistant_toggle_available' => true,
         ];
@@ -2013,126 +2035,27 @@ class ChatController extends Controller
             ->toArray();
     }
 
+    public function shouldHandleWhatsAppRegistration(string $phone, ?Team $team = null): bool
+    {
+        return app(WhatsAppInboundContactRegistrationService::class)
+            ->shouldHandleRegistration($phone, $team);
+    }
+
+    public function hasWhatsAppRegistrationInProgress(string $phone): bool
+    {
+        return app(WhatsAppInboundContactRegistrationService::class)
+            ->hasRegistrationInProgress($phone);
+    }
+
     /**
-     * Check if the phone has a registration in progress and process accordingly
-     *
-     * @param  string  $phone  The phone number
-     * @param  string  $message  The user message
-     * @param  WhatsAppGateway|null  $gateway  Optional gateway for sending (e.g. local webhook)
-     * @return array|null Response to send or null if no registration in progress
+     * @return array<string, mixed>|null
      */
-    public function processRegistration($phone, $message, ?WhatsAppGateway $gateway = null)
+    public function processRegistration($phone, $message, ?WhatsAppGateway $gateway = null, ?Team $team = null)
     {
         $sender = $gateway ?? app(WhatsAppMessageService::class);
-        $lastMessage = Conversation::where('to', $phone)
-            ->where('channel', 'whatsapp')
-            ->orderBy('created_at', 'desc')
-            ->first();
 
-        if (! $lastMessage)
-        {
-            return null;
-        }
-
-        $metadata = $lastMessage->metadata ?? [];
-        $registrationStep = $metadata['registration_step'] ?? null;
-
-        // If no registration in progress, start one
-        if (! $registrationStep)
-        {
-            // Check if the user exists first
-            $user = $this->getUserByPhone($phone);
-            if (! $user)
-            {
-                $response = "¡Bienvenido a nuestra mesa de ayuda!\nVemos que aún nuca nos has escrito por aquí.\n\n¿Podrás decirnos tu nombre completo?";
-
-                $sender->sendMessage($phone, $response, ['registration_step' => 'name']);
-
-                return ['success' => true, 'message' => 'Registration initiated'];
-            }
-
-            return null;
-        }
-
-        // Process registration steps
-        if ($registrationStep === 'name')
-        {
-            $name = $message;
-
-            // Validate name has at least 3 letters
-            if (strlen(trim($name)) < 3)
-            {
-                $response = "No parece ser un nombre válido.\n\n¿Podrías escribirlo nuevamente?";
-                $sender->sendMessage($phone, $response, ['registration_step' => 'name']);
-
-                return ['success' => true, 'message' => 'Invalid name'];
-            }
-
-            $response = "¡Gracias, $name!\n\n¿Podrás decirnos tu dirección de email para asociarla a tu cuenta?";
-
-            $sender->sendMessage($phone, $response, [
-                'registration_step' => 'email',
-                'user_name' => $name,
-            ]);
-
-            return ['success' => true, 'message' => 'Name collected'];
-        }
-
-        if ($registrationStep === 'email')
-        {
-            $email = $message;
-            $userName = $metadata['user_name'] ?? 'User';
-
-            // Validate email
-            if (! filter_var($email, FILTER_VALIDATE_EMAIL))
-            {
-                $response = "No parece ser una dirección de email válida.\n\n¿Podrás escribirla nuevamente?";
-                $sender->sendMessage($phone, $response, [
-                    'registration_step' => 'email',
-                    'user_name' => $userName,
-                ]);
-
-                return ['success' => true, 'message' => 'Invalid email'];
-            }
-
-            // Create the new user
-            try
-            {
-                $user = User::create([
-                    'name' => $userName,
-                    'email' => $email,
-                    'phone' => preg_replace('/[^0-9]/', '', $phone),
-                    'password' => bcrypt(substr(md5(rand()), 0, 10)), // Random password
-                ]);
-
-                // Assign client role (ID 7)
-                if (class_exists('\\Spatie\\Permission\\Models\\Role'))
-                {
-                    $clientRole = \Spatie\Permission\Models\Role::findById(7);
-                    if ($clientRole)
-                    {
-                        $user->assignRole($clientRole);
-                    }
-                }
-
-                NewUserWelcomeEmailNotifier::queue($user, null);
-
-                $response = "¡Gracias por registrarte!\n\nVamos a confirmar tus datos y a partir de ahora todas las comunicaciones con nosotros estarán validadas con este número telefónico.\nEn breve nos pondremos en contacto por este mismo medio.";
-
-                $sender->sendMessage($phone, $response, null, $user->id);
-
-                return ['success' => true, 'message' => 'User registered', 'user_id' => $user->id];
-            } catch (\Exception $e)
-            {
-                Log::error('User registration error: '.$e->getMessage());
-                $response = "Lo sentimos, ha ocurrido un error al crear tu cuenta.\nPor favor escríbenos a administracion@revisionalpha.com para que podamos ayudarte.";
-                $sender->sendMessage($phone, $response);
-
-                return ['success' => false, 'message' => 'Registration error'];
-            }
-        }
-
-        return null;
+        return app(WhatsAppInboundContactRegistrationService::class)
+            ->processRegistration($phone, (string) $message, $sender, $team);
     }
 
     /**
