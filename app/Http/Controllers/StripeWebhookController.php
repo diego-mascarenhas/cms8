@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Jobs\ProcessStripeInvoiceWebhookJob;
 use App\Models\Team;
 use App\Services\AffiliateCommissionRecorder;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
@@ -10,10 +11,20 @@ use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
 class StripeWebhookController extends CashierController
 {
     /**
+     * Handle invoice paid event (includes external / manual payments recorded in Stripe).
+     */
+    public function handleInvoicePaid(array $payload): void
+    {
+        $this->dispatchInvoiceSyncJob($payload, 'invoice.paid');
+    }
+
+    /**
      * Handle invoice payment succeeded event
      */
     public function handleInvoicePaymentSucceeded(array $payload)
     {
+        $this->dispatchInvoiceSyncJob($payload, 'invoice.payment_succeeded');
+
         if ($this->isInvalidInvoice($payload))
         {
             return;
@@ -58,6 +69,22 @@ class StripeWebhookController extends CashierController
         }
 
         app(AffiliateCommissionRecorder::class)->recordFromInvoice($team, $invoice);
+    }
+
+    /**
+     * Refresh core invoice when Stripe marks it paid, void, or uncollectible.
+     */
+    public function handleInvoiceUpdated(array $payload): void
+    {
+        $invoice = $payload['data']['object'] ?? [];
+        $status = strtolower((string) ($invoice['status'] ?? ''));
+
+        if (
+            ($invoice['paid'] ?? false)
+            || in_array($status, ['paid', 'void', 'uncollectible'], true)
+        ) {
+            $this->dispatchInvoiceSyncJob($payload, 'invoice.updated');
+        }
     }
 
     /**
@@ -163,5 +190,16 @@ class StripeWebhookController extends CashierController
         }
 
         return false;
+    }
+
+    private function dispatchInvoiceSyncJob(array $payload, string $eventType): void
+    {
+        $invoice = $payload['data']['object'] ?? null;
+        if (! is_array($invoice))
+        {
+            return;
+        }
+
+        ProcessStripeInvoiceWebhookJob::dispatch($invoice, $eventType);
     }
 }
