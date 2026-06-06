@@ -242,6 +242,76 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame(['NC-002'], $creditNotesQuery->pluck('number')->all());
     }
 
+    public function test_default_list_filter_hides_collected_invoices(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OPEN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-PAID',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 90,
+            'discount' => 0,
+            'total_amount' => 90,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'NC-001',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 30,
+            'discount' => 0,
+            'total_amount' => 30,
+            'balance' => 0,
+            'status' => 4,
+        ]);
+
+        $defaultQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($defaultQuery, InvoiceSummaryService::DEFAULT_LIST_FILTER);
+        $this->assertSame(['F-OPEN'], $defaultQuery->pluck('number')->all());
+
+        $collectedQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($collectedQuery, 'collected');
+        $this->assertSame(['F-PAID'], $collectedQuery->pluck('number')->all());
+
+        $creditNotesQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($creditNotesQuery, 'credit_notes');
+        $this->assertSame(['NC-001'], $creditNotesQuery->pluck('number')->all());
+    }
+
     public function test_build_index_stats_defaults_to_eur_when_currency_id_is_missing(): void
     {
         Carbon::setTestNow('2026-06-06 12:00:00');

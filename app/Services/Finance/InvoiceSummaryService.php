@@ -28,6 +28,8 @@ class InvoiceSummaryService
     /** @var list<string> */
     public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue'];
 
+    public const DEFAULT_LIST_FILTER = 'excluding_collected';
+
     /**
      * @return array{
      *     unpaid: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
@@ -94,7 +96,7 @@ class InvoiceSummaryService
     {
         return match ($filter)
         {
-            'unpaid' => $query
+            'unpaid', 'excluding_collected' => $query
                 ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
                 ->where('invoices.balance', '>', 0),
             'credit_notes' => $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),

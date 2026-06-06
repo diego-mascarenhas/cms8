@@ -93,8 +93,13 @@ class InvoiceDataTable extends DataTable
     {
         $query = $model->newQuery()->with(['enterprise', 'currency']);
 
-        $summaryFilter = request()->input('summary_filter', 'all');
-        if (in_array($summaryFilter, InvoiceSummaryService::SUMMARY_FILTERS, true))
+        $summaryFilter = request()->input('summary_filter', InvoiceSummaryService::DEFAULT_LIST_FILTER);
+        $applicableFilters = array_merge(
+            InvoiceSummaryService::SUMMARY_FILTERS,
+            [InvoiceSummaryService::DEFAULT_LIST_FILTER],
+        );
+
+        if (in_array($summaryFilter, $applicableFilters, true))
         {
             app(InvoiceSummaryService::class)->applySummaryFilter($query, (string) $summaryFilter);
         }
@@ -106,7 +111,7 @@ class InvoiceDataTable extends DataTable
     {
         $initComplete = "function () {
             var api = this.api();
-            window.invoiceSummaryFilter = window.invoiceSummaryFilter || 'all';
+            window.invoiceSummaryFilter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';
 
             function syncInvoiceSummaryFilterUi() {
                 jQuery('.filter-invoice-summary').each(function () {
@@ -118,7 +123,9 @@ class InvoiceDataTable extends DataTable
             jQuery('.filter-invoice-summary').off('click.invoiceSummary').on('click.invoiceSummary', function (e) {
                 e.preventDefault();
                 var filter = jQuery(this).data('filter');
-                window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter ? 'all' : filter;
+                window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter
+                    ? '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'
+                    : filter;
                 syncInvoiceSummaryFilterUi();
                 api.ajax.reload();
             });
@@ -132,7 +139,7 @@ class InvoiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax(
                 '',
-                "data.summary_filter = window.invoiceSummaryFilter || 'all';",
+                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';",
             )
             ->dom('frtip')
             ->orderBy(2, 'desc')
