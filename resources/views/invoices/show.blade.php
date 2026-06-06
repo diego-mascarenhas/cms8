@@ -3,7 +3,14 @@
 @section('title', __('Invoice Detail'))
 
 @section('page-style')
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-invoice.css')}}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 @endsection
 
 @section('content')
@@ -196,6 +203,12 @@
     <div class="card mt-3">
       <div class="card-body">
         <h6 class="mb-3">{{ __('Payments') }}</h6>
+        @if (session('success'))
+          <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        @endif
         @forelse($paymentDetails as $paymentDetail)
           <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -225,6 +238,79 @@
         @endforelse
       </div>
     </div>
+    @if ($canRegisterPayment && $paymentFormDefaults)
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">{{ __('invoice_payment.register_title') }}</h6>
+        @if (empty($paymentFormDefaults['accounts']))
+          <p class="mb-0 text-muted">{{ __('invoice_payment.no_accounts', ['currency' => $paymentFormDefaults['currency_code']]) }}</p>
+        @else
+          <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" class="row g-3">
+            @csrf
+            <div class="col-12">
+              <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="{{ $paymentFormDefaults['amount'] }}"
+                  name="amount"
+                  id="amount"
+                  class="form-control @error('amount') is-invalid @enderror"
+                  value="{{ old('amount', $paymentFormDefaults['amount']) }}"
+                  required
+                >
+                <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
+              </div>
+              @error('amount')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+              @enderror
+            </div>
+            <div class="col-12">
+              <x-input-date
+                id="date"
+                label="{{ __('invoice_payment.date') }} (*)"
+                value="{{ old('date', $paymentFormDefaults['date']) }}"
+              />
+            </div>
+            <div class="col-12">
+              <x-input-select
+                id="account_id"
+                label="{{ __('invoice_payment.account') }}"
+                :options="$paymentFormDefaults['accounts']"
+                value="{{ old('account_id', $paymentFormDefaults['account_id']) }}"
+                placeholder="{{ __('Select') }}"
+                required
+              />
+            </div>
+            <div class="col-12">
+              <x-input-select
+                id="type_id"
+                label="{{ __('invoice_payment.type') }}"
+                :options="$paymentFormDefaults['payment_types']"
+                value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
+                placeholder="{{ __('Select') }}"
+                required
+              />
+            </div>
+            <div class="col-12">
+              <x-input-textarea
+                id="remarks"
+                label="{{ __('invoice_payment.remarks') }}"
+                value="{{ old('remarks', '') }}"
+              />
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="ti ti-cash me-1"></i>{{ __('invoice_payment.submit') }}
+              </button>
+            </div>
+          </form>
+        @endif
+      </div>
+    </div>
+    @endif
   </div>
   <!-- /Invoice Actions -->
 </div>

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\InvoiceDataTable;
+use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoicePaymentDetailService;
+use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,8 +18,9 @@ use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private readonly InvoicePaymentRegistrationService $invoicePaymentRegistrationService,
+    ) {
         // Note: Manual authorization in each method due to non-standard route parameter names
         // Laravel's authorizeResource() expects {invoice} parameter, but routes use {id}
     }
@@ -151,7 +154,39 @@ class InvoiceController extends Controller
 
         $paymentDetails = app(InvoicePaymentDetailService::class)->forInvoice($invoice);
         $displayLineItems = app(InvoiceDisplayLineItemService::class)->forInvoice($invoice);
+        $canRegisterPayment = $this->invoicePaymentRegistrationService->canRegisterPayment(auth()->user(), $invoice);
+        $paymentFormDefaults = $canRegisterPayment
+            ? $this->invoicePaymentRegistrationService->formDefaults($invoice)
+            : null;
 
-        return view('invoices.show', compact('invoice', 'paymentDetails', 'displayLineItems'));
+        return view('invoices.show', compact(
+            'invoice',
+            'paymentDetails',
+            'displayLineItems',
+            'canRegisterPayment',
+            'paymentFormDefaults',
+        ));
+    }
+
+    public function storePayment(StoreInvoicePaymentRequest $request, Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        if (! $this->invoicePaymentRegistrationService->canRegisterPayment($request->user(), $invoice))
+        {
+            abort(403);
+        }
+
+        try
+        {
+            $this->invoicePaymentRegistrationService->register($request->user(), $invoice, $request->validated());
+        } catch (\Illuminate\Validation\ValidationException $exception)
+        {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return redirect()
+            ->route('invoice.show', $invoice->id)
+            ->with('success', __('invoice_payment.success'));
     }
 }

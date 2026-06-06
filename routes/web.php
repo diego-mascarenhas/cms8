@@ -813,6 +813,7 @@ Route::middleware(['auth'])->group(function ()
     });
     Route::get('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterpriseForm'])->name('invoice.link-enterprise');
     Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
+    Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoice.payments.store');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 

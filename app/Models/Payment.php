@@ -38,7 +38,7 @@ class Payment extends Model
     {
         static::addGlobalScope('team', function ($builder)
         {
-            if (auth()->check())
+            if (auth()->check() && auth()->user()->currentTeam)
             {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
@@ -63,6 +63,53 @@ class Payment extends Model
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function getCurrencyCodeAttribute(): string
+    {
+        if ($this->relationLoaded('account'))
+        {
+            $currency = $this->account?->currency;
+            if ($currency instanceof Currency)
+            {
+                return strtoupper((string) $currency->code);
+            }
+        }
+
+        if ($this->account_id)
+        {
+            $code = PaymentAccount::withoutGlobalScopes()
+                ->with('currency')
+                ->whereKey($this->account_id)
+                ->first()
+                ?->currency
+                ?->code;
+
+            if (filled($code))
+            {
+                return strtoupper((string) $code);
+            }
+        }
+
+        if ($this->relationLoaded('invoice') && $this->invoice instanceof Invoice)
+        {
+            return $this->invoice->currency_code;
+        }
+
+        if ($this->invoice_id)
+        {
+            $code = Invoice::query()->whereKey($this->invoice_id)->value('currency_id');
+            if ($code !== null)
+            {
+                $iso = Currency::query()->whereKey($code)->value('code');
+                if (filled($iso))
+                {
+                    return strtoupper((string) $iso);
+                }
+            }
+        }
+
+        return strtoupper((string) config('verifactu.default_currency', 'EUR'));
     }
 
     public function account()
