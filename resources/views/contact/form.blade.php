@@ -166,18 +166,12 @@
                                         value="{{ old('surname', $data->surname ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <label for="email" class="form-label">Email</label>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}">
-                                    @error('email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <x-input-general id="email" type="email" label="Email"
+                                        value="{{ old('email', $data->email ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <label for="phone" class="form-label">{{ __('Teléfono') }}</label>
-                                    <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $data->phone ?? '') }}">
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <x-input-general id="phone" type="tel" label="{{ __('Teléfono') }}"
+                                        value="{{ old('phone', $data->phone ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
                                     <x-team-users-select
