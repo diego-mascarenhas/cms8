@@ -80,7 +80,7 @@ class InvoiceCurrencyServiceTest extends TestCase
             'source_reference_id' => 'in_usd_test',
         ]);
 
-        $stats = $this->service->resync(teamId: $team->id, fromLegacy: false);
+        $stats = $this->service->resync(teamId: $team->id, fromLegacy: false, manualDefault: false);
 
         $this->assertSame(1, $stats['stripe']);
         $this->assertSame(840, (int) $invoice->fresh()->currency_id);
@@ -115,6 +115,41 @@ class InvoiceCurrencyServiceTest extends TestCase
             'currency_id' => Currency::query()->where('code', 'ARS')->value('id'),
         ]);
 
+        $this->assertSame('ARS', $invoice->fresh(['currency'])->currency_code);
+    }
+
+    public function test_resync_sets_manual_invoices_to_ars_when_currency_id_is_missing(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0001-00000102',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 210,
+            'discount' => 0,
+            'total_amount' => 210,
+            'balance' => 210,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $stats = $this->service->resync(teamId: $team->id, fromLegacy: false);
+
+        $this->assertSame(1, $stats['manual_default']);
+        $this->assertSame(32, (int) $invoice->fresh()->currency_id);
         $this->assertSame('ARS', $invoice->fresh(['currency'])->currency_code);
     }
 }

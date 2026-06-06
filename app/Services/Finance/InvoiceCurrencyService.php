@@ -52,13 +52,14 @@ class InvoiceCurrencyService
     }
 
     /**
-     * @return array{updated: int, stripe: int, legacy: int, skipped: int}
+     * @return array{updated: int, stripe: int, legacy: int, manual_default: int}
      */
     public function resync(
         ?int $teamId = null,
         bool $fromLegacy = true,
         bool $onlyNull = false,
         bool $dryRun = false,
+        bool $manualDefault = true,
     ): array {
         if (! Schema::hasColumn('invoices', 'currency_id'))
         {
@@ -66,7 +67,7 @@ class InvoiceCurrencyService
                 'updated' => 0,
                 'stripe' => 0,
                 'legacy' => 0,
-                'skipped' => 0,
+                'manual_default' => 0,
             ];
         }
 
@@ -74,7 +75,7 @@ class InvoiceCurrencyService
             'updated' => 0,
             'stripe' => 0,
             'legacy' => 0,
-            'skipped' => 0,
+            'manual_default' => 0,
         ];
 
         $stats['stripe'] = $this->resyncFromStripeSyncs($teamId, $onlyNull, $dryRun);
@@ -84,6 +85,12 @@ class InvoiceCurrencyService
         {
             $stats['legacy'] = $this->resyncFromLegacyFacturas($teamId, $onlyNull, $dryRun);
             $stats['updated'] += $stats['legacy'];
+        }
+
+        if ($manualDefault)
+        {
+            $stats['manual_default'] = $this->resyncManualDefaultCurrency($teamId, $dryRun);
+            $stats['updated'] += $stats['manual_default'];
         }
 
         return $stats;
@@ -220,6 +227,30 @@ class InvoiceCurrencyService
             });
 
         return $updated;
+    }
+
+    /**
+     * CMS manual invoices without id_moneda in legacy default to pesos (id_moneda = 1 → ARS).
+     */
+    private function resyncManualDefaultCurrency(?int $teamId, bool $dryRun): int
+    {
+        $currencyId = $this->legacyMonedaIdToCurrencyId(1);
+
+        $query = Invoice::withoutGlobalScopes()
+            ->where('source_provider', 'manual')
+            ->whereNull('currency_id');
+
+        if ($teamId !== null)
+        {
+            $query->where('team_id', $teamId);
+        }
+
+        if ($dryRun)
+        {
+            return (int) $query->count();
+        }
+
+        return (int) $query->update(['currency_id' => $currencyId]);
     }
 
     private function legacyConnectionAvailable(): bool

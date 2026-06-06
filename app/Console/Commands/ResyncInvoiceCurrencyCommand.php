@@ -41,6 +41,7 @@ class ResyncInvoiceCurrencyCommand extends Command
             'Updated: '.$stats['updated']
             .' | stripe: '.$stats['stripe']
             .' | legacy: '.$stats['legacy']
+            .' | manual ARS: '.$stats['manual_default']
             .($dryRun ? ' | dry-run' : '')
             .($onlyNull ? ' | only-null' : ''),
         );
