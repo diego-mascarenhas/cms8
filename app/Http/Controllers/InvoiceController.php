@@ -6,6 +6,8 @@ use App\DataTables\InvoiceDataTable;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
+use App\Services\Finance\InvoiceDisplayLineItemService;
+use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoiceSummaryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -139,10 +141,17 @@ class InvoiceController extends Controller
 
     public function show($id): View
     {
-        $invoice = Invoice::with(['enterprise', 'items.category', 'type'])->findOrFail($id);
+        $invoice = Invoice::with([
+            'enterprise',
+            'items.category',
+            'type',
+        ])->findOrFail($id);
 
         $this->authorize('view', $invoice);
 
-        return view('invoices.show', compact('invoice'));
+        $paymentDetails = app(InvoicePaymentDetailService::class)->forInvoice($invoice);
+        $displayLineItems = app(InvoiceDisplayLineItemService::class)->forInvoice($invoice);
+
+        return view('invoices.show', compact('invoice', 'paymentDetails', 'displayLineItems'));
     }
 }

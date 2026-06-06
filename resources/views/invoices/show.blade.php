@@ -7,6 +7,11 @@
 @endsection
 
 @section('content')
+@php
+    $currencyCode = $invoice->currency_code;
+    $formatAmount = fn (float|int|null $amount): string => \App\Helpers\Helpers::formatDecimal($amount).' '.$currencyCode;
+    $formatPaymentAmount = fn (float $amount, string $code): string => \App\Helpers\Helpers::formatDecimal($amount).' '.strtoupper($code);
+@endphp
 <div class="row invoice-preview">
   <!-- Invoice -->
   <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
@@ -43,7 +48,7 @@
         <hr class="my-4 mx-n4" />
 
         <div class="row p-sm-3 p-0">
-          <div class="col-xl-6 col-md-12 col-sm-5 col-12 mb-xl-0 mb-md-4 mb-sm-0 mb-4">
+          <div class="col-12 mb-xl-0 mb-md-4 mb-sm-0 mb-4">
             <h6 class="mb-3">{{ __('Invoice To') }}:</h6>
             @if($invoice->enterprise)
             <p class="mb-1 fw-medium">{{ $invoice->enterprise->name }}</p>
@@ -63,36 +68,11 @@
             <p class="mb-0 text-muted">{{ __('No enterprise assigned') }}</p>
             @endif
           </div>
-          <div class="col-xl-6 col-md-12 col-sm-7 col-12">
-            <h6 class="mb-4">{{ __('Payment Details') }}:</h6>
-            <table>
-              <tbody>
-                <tr>
-                  <td class="pe-4">{{ __('Total Amount') }}:</td>
-                  <td class="fw-medium">${{ number_format($invoice->total_amount, 2) }}</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">{{ __('Gross Amount') }}:</td>
-                  <td>${{ number_format($invoice->gross_amount, 2) }}</td>
-                </tr>
-                @if($invoice->discount > 0)
-                <tr>
-                  <td class="pe-4">{{ __('Discount') }}:</td>
-                  <td>${{ number_format($invoice->discount, 2) }}</td>
-                </tr>
-                @endif
-                <tr>
-                  <td class="pe-4">{{ __('Balance') }}:</td>
-                  <td class="fw-medium text-danger">${{ number_format($invoice->balance, 2) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
         <hr class="my-4 mx-n4" />
 
-        @if($invoice->items && $invoice->items->count() > 0)
+        @if($displayLineItems->isNotEmpty())
         <div class="table-responsive border-top">
           <table class="table m-0">
             <thead>
@@ -105,13 +85,13 @@
               </tr>
             </thead>
             <tbody>
-              @foreach($invoice->items as $item)
+              @foreach($displayLineItems as $lineItem)
               <tr>
-                <td>{{ $item->description ?? ($item->category?->name ?? '-') }}</td>
-                <td class="text-center">{{ $item->quantity }}</td>
-                <td class="text-end">${{ number_format($item->unit_price, 2) }}</td>
-                <td class="text-end">${{ number_format($item->discount, 2) }}</td>
-                <td class="text-end">${{ number_format(($item->unit_price * $item->quantity) - $item->discount, 2) }}</td>
+                <td>{{ $lineItem['description'] }}</td>
+                <td class="text-center">{{ (float) $lineItem['quantity'] == (int) $lineItem['quantity'] ? (int) $lineItem['quantity'] : \App\Helpers\Helpers::formatDecimal($lineItem['quantity']) }}</td>
+                <td class="text-end">{{ $formatAmount($lineItem['unit_price']) }}</td>
+                <td class="text-end">{{ $formatAmount($lineItem['discount']) }}</td>
+                <td class="text-end">{{ $formatAmount($lineItem['total']) }}</td>
               </tr>
               @endforeach
             </tbody>
@@ -135,20 +115,24 @@
                   <tbody>
                     <tr>
                       <td class="pe-3">{{ __('Subtotal') }}:</td>
-                      <td class="text-end fw-medium">${{ number_format($invoice->gross_amount, 2) }}</td>
+                      <td class="text-end fw-medium">{{ $formatAmount($invoice->gross_amount) }}</td>
                     </tr>
                     @if($invoice->discount > 0)
                     <tr>
                       <td class="pe-3">{{ __('Discount') }}:</td>
-                      <td class="text-end text-danger">-${{ number_format($invoice->discount, 2) }}</td>
+                      <td class="text-end text-danger">-{{ $formatAmount($invoice->discount) }}</td>
                     </tr>
                     @endif
+                    <tr>
+                      <td class="pe-3">{{ __('Balance') }}:</td>
+                      <td @class(['text-end fw-medium', 'text-danger' => (float) $invoice->balance > 0])>{{ $formatAmount($invoice->balance) }}</td>
+                    </tr>
                     <tr>
                       <td class="border-top-0 pe-3">
                         <h6 class="mb-0">{{ __('Total') }}:</h6>
                       </td>
                       <td class="border-top-0 text-end">
-                        <h6 class="mb-0 fw-medium">${{ number_format($invoice->total_amount, 2) }}</h6>
+                        <h6 class="mb-0 fw-medium">{{ $formatAmount($invoice->total_amount) }}</h6>
                       </td>
                     </tr>
                   </tbody>
@@ -207,6 +191,38 @@
         <div class="d-flex justify-content-between align-items-center">
           {!! $invoice->status_badge !!}
         </div>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">{{ __('Payments') }}</h6>
+        @forelse($paymentDetails as $paymentDetail)
+          <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <span class="fw-medium">{{ \Carbon\Carbon::parse($paymentDetail['date'])->format('d-m-Y') }}</span>
+              @if($paymentDetail['status_html'])
+                {!! $paymentDetail['status_html'] !!}
+              @endif
+            </div>
+            <p @class(['mb-2 fw-medium', 'text-success' => $paymentDetail['is_income'], 'text-danger' => ! $paymentDetail['is_income']])>
+              {{ $paymentDetail['is_income'] ? '+' : '-' }}{{ $formatPaymentAmount($paymentDetail['amount'], $paymentDetail['currency_code']) }}
+            </p>
+            @if($paymentDetail['method'])
+            <p class="mb-1">
+              <span class="text-muted">{{ __('Type') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['method'] }}</span>
+            </p>
+            @endif
+            @if($paymentDetail['account'])
+            <p class="mb-0">
+              <span class="text-muted">{{ __('Account') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['account'] }}</span>
+            </p>
+            @endif
+          </div>
+        @empty
+          <p class="mb-0 text-muted">{{ __('No payments linked to this invoice') }}</p>
+        @endforelse
       </div>
     </div>
   </div>
