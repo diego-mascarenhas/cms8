@@ -345,6 +345,73 @@ class InvoiceSummaryServiceTest extends TestCase
 
         $this->assertSame(1, $stats['unpaid']['count']);
         $this->assertSame(['EUR' => 40.0], $stats['unpaid']['totals_by_currency']);
-        $this->assertSame('€40.00', $stats['unpaid']['amount_label']);
+        $this->assertSame('€40,00', $stats['unpaid']['amount_label']);
+    }
+
+    public function test_amount_label_converts_multi_currency_totals_to_eur(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        \App\Models\ExchangeRate::query()->create([
+            'base_currency' => 'ARS',
+            'target_currency' => 'EUR',
+            'rate' => 0.001,
+            'date' => now()->toDateString(),
+            'fetched_at' => now(),
+        ]);
+
+        $arsCurrencyId = (int) \App\Models\Currency::query()->where('code', 'ARS')->value('id');
+        $eurCurrencyId = (int) \App\Models\Currency::query()->where('code', 'EUR')->value('id');
+
+        $this->assertNotSame(0, $arsCurrencyId);
+        $this->assertNotSame(0, $eurCurrencyId);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Global Corp',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => $arsCurrencyId,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-ARS',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(3)->toDateString(),
+            'gross_amount' => 10000,
+            'discount' => 0,
+            'total_amount' => 10000,
+            'balance' => 10000,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => $eurCurrencyId,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-EUR',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(3)->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 1,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(2, $stats['unpaid']['count']);
+        $this->assertSame(['ARS' => 10000.0, 'EUR' => 50.0], $stats['unpaid']['totals_by_currency']);
+        $this->assertSame('€60,00', $stats['unpaid']['amount_label']);
     }
 }

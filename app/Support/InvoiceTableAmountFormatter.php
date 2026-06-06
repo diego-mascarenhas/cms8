@@ -2,12 +2,14 @@
 
 namespace App\Support;
 
+use App\Helpers\Helpers;
+
 class InvoiceTableAmountFormatter
 {
     public static function formatNative(float $amount, string $baseCurrency): string
     {
         return '<span class="fw-bold">'
-            .number_format($amount, 2, '.', ',')
+            .Helpers::formatDecimal($amount)
             .' '
             .e(strtoupper($baseCurrency))
             .'</span>';

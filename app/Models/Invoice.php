@@ -82,15 +82,8 @@ class Invoice extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        if ((int) $this->status === 1 && $this->isOverdue())
-        {
-            return 'Vencida';
-        }
-
         return match ((int) $this->status)
         {
-            1 => 'Pendiente',
-            2 => 'Cobrada',
             3 => 'Anulada',
             4 => 'Nota de Crédito',
             5 => 'Bonificada',
@@ -98,13 +91,13 @@ class Invoice extends Model
             7 => 'Error',
             8 => 'Emitiendo',
             9 => 'Borrador',
-            default => 'Desconocido',
+            default => $this->collectionStatusLabel(),
         };
     }
 
     public function isOverdue(): bool
     {
-        if ((int) $this->status !== 1)
+        if (in_array((int) $this->status, [3, 4, 5, 6, 7, 9], true))
         {
             return false;
         }
@@ -120,21 +113,33 @@ class Invoice extends Model
     public function getStatusBadgeAttribute(): string
     {
         $label = $this->status_label;
-        $color = match ((int) $this->status)
+        $color = match ($label)
         {
-            1 => $this->isOverdue() ? 'danger' : 'warning',
-            2 => 'success',
-            3 => 'danger',
-            4 => 'info',
-            5 => 'success',
-            6 => 'success',
-            7 => 'danger',
-            8 => 'warning',
-            9 => 'secondary',
+            'Vencida' => 'danger',
+            'Pendiente', 'Emitiendo' => 'warning',
+            'Cobrada', 'Bonificada', 'Bonificada (Nota de Crédito)' => 'success',
+            'Anulada', 'Error' => 'danger',
+            'Nota de Crédito' => 'info',
+            'Borrador' => 'secondary',
             default => 'secondary',
         };
 
         return '<span class="badge rounded-pill bg-label-'.$color.'">'.$label.'</span>';
+    }
+
+    private function collectionStatusLabel(): string
+    {
+        if ((float) $this->balance <= 0)
+        {
+            return 'Cobrada';
+        }
+
+        if ($this->isOverdue())
+        {
+            return 'Vencida';
+        }
+
+        return 'Pendiente';
     }
 
     public function getCurrencyCodeAttribute(): string

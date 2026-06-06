@@ -4,6 +4,7 @@ namespace App\Services\Finance;
 
 use App\Helpers\Helpers;
 use App\Models\Invoice;
+use App\Support\StripeInvoiceMetrics;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
@@ -141,18 +142,23 @@ class InvoiceSummaryService
             ];
         }
 
+        $defaultCurrencyCode = strtoupper((string) config('verifactu.default_currency', 'EUR'));
+
         $rows = (clone $query)
             ->leftJoin('currencies', 'invoices.currency_id', '=', 'currencies.id')
-            ->selectRaw('COALESCE(currencies.code, ?) as currency_code', ['EUR'])
-            ->selectRaw("COALESCE(SUM(invoices.{$amountColumn}), 0) as total")
-            ->groupBy('currency_code')
+            ->select("invoices.{$amountColumn} as amount")
+            ->addSelect('currencies.code as resolved_currency_code')
+            ->toBase()
             ->get();
 
         $totalsByCurrency = [];
         foreach ($rows as $row)
         {
-            $currency = strtoupper((string) $row->currency_code);
-            $totalsByCurrency[$currency] = round((float) $row->total, 2);
+            $currency = strtoupper((string) ($row->resolved_currency_code ?: $defaultCurrencyCode));
+            $totalsByCurrency[$currency] = round(
+                ($totalsByCurrency[$currency] ?? 0) + (float) $row->amount,
+                2,
+            );
         }
 
         return [
@@ -170,6 +176,12 @@ class InvoiceSummaryService
         if ($totalsByCurrency === [])
         {
             return Helpers::formatMoney(0, 'EUR');
+        }
+
+        $eurTotal = StripeInvoiceMetrics::sumAmountsConvertedToCurrency($totalsByCurrency, 'EUR');
+        if ($eurTotal !== null)
+        {
+            return Helpers::formatMoney(round($eurTotal, 2), 'EUR');
         }
 
         ksort($totalsByCurrency);

@@ -20,10 +20,35 @@ class InvoiceStatusLabelTest extends TestCase
         $this->assertSame('Pendiente', $invoice->status_label);
 
         $invoice->status = 2;
+        $invoice->balance = 0;
         $this->assertSame('Cobrada', $invoice->status_label);
 
         $invoice->status = 9;
+        $invoice->balance = 100;
         $this->assertSame('Borrador', $invoice->status_label);
+    }
+
+    public function test_legacy_printed_status_with_balance_uses_collection_state(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        $overdue = new Invoice([
+            'status' => 2,
+            'due_date' => '2026-06-01',
+            'balance' => 164224.83,
+        ]);
+
+        $this->assertSame('Vencida', $overdue->status_label);
+        $this->assertStringContainsString('bg-label-danger', $overdue->status_badge);
+
+        $pending = new Invoice([
+            'status' => 2,
+            'due_date' => '2026-06-20',
+            'balance' => 100,
+        ]);
+
+        $this->assertSame('Pendiente', $pending->status_label);
+        $this->assertStringContainsString('bg-label-warning', $pending->status_badge);
     }
 
     public function test_pending_invoice_past_due_shows_vencida(): void
@@ -51,7 +76,7 @@ class InvoiceStatusLabelTest extends TestCase
             'balance' => 50,
         ]);
 
-        $collected = new Invoice(['status' => 2]);
+        $collected = new Invoice(['status' => 2, 'balance' => 0]);
 
         $this->assertStringContainsString('bg-label-warning', $pending->status_badge);
         $this->assertStringContainsString('Pendiente', $pending->status_badge);
