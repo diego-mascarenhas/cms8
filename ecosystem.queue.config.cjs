@@ -6,12 +6,16 @@ const whatsappServiceDir =
     path.join(__dirname, '..', 'humano-whatsapp-service');
 
 /**
- * PM2 — local services for Humano (queues + WhatsApp).
+ * PM2 — local services for Humano (scheduler + queues + WhatsApp).
  *
  * One command (from project root, PM2 installed globally):
  *   pm2 start ecosystem.queue.config.cjs
  *
- * WhatsApp runs from ../humano-whatsapp-service (override: HUMANO_WHATSAPP_SERVICE_DIR).
+ * Processes:
+ *   humano-scheduler      — Laravel schedule (campaigns:process-active, campaigns:send-scheduled, …)
+ *   humano-queue-email    — mailer, campaign, notifications, task-communications
+ *   humano-queue-default  — default queue
+ *   whatsapp-service      — ../humano-whatsapp-service (override: HUMANO_WHATSAPP_SERVICE_DIR)
  *
  * Stop / restart / remove all apps in this file:
  *   pm2 stop ecosystem.queue.config.cjs
@@ -20,6 +24,7 @@ const whatsappServiceDir =
  *
  * Logs:
  *   pm2 logs
+ *   pm2 logs humano-scheduler
  *   pm2 logs humano-queue-email
  *   pm2 logs humano-queue-default
  *   pm2 logs whatsapp-service
@@ -29,10 +34,21 @@ const whatsappServiceDir =
  *
  * Persist across reboots:
  *   pm2 save
- *   pm2 startup   (follow the printed command once)
+ *   pm2 startup   (follow the printed command once; use quoted PATH on macOS)
  */
 module.exports = {
     apps: [
+        {
+            name: 'humano-scheduler',
+            cwd: __dirname,
+            script: 'artisan',
+            interpreter: 'php',
+            args: 'schedule:work',
+            autorestart: true,
+            watch: false,
+            max_restarts: 20,
+            min_uptime: '10s',
+        },
         {
             name: 'humano-queue-email',
             cwd: __dirname,
