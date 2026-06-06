@@ -925,6 +925,9 @@ window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.s
 window.humaMessageTemplateMergeFields = @json(\App\Support\MessageTemplateMergeFields::forUi());
 window.humaMessageTemplateQuillLabels = {
     imageUrl: @json(__('app.message_quill_image_url')),
+    imageUrlPrompt: @json(__('app.message_quill_image_url_prompt')),
+    imageUrlConfirm: @json(__('app.message_quill_image_url_confirm')),
+    imageUrlCancel: @json(__('Cancel')),
     imageUpload: @json(__('app.message_quill_image_upload')),
     imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
     mergeFieldSelect: @json(__('app.message_merge_field_select_label')),
@@ -1049,6 +1052,80 @@ window.humaMessageTemplateQuillLabels = {
         }
 
         return null;
+    }
+
+    function humaPromptMessageTemplateQuillImageUrl(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+
+        function insertUrl(url)
+        {
+            if (! url || String(url).trim() === '')
+            {
+                return;
+            }
+
+            humaInsertImageIntoQuill(quill, String(url).trim());
+        }
+
+        if (typeof Swal !== 'undefined')
+        {
+            Swal.fire({
+                title: labels.imageUrl || 'Insert image from URL',
+                input: 'url',
+                inputPlaceholder: labels.imageUrlPrompt || 'https://example.com/image.png',
+                showCancelButton: true,
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2',
+                    cancelButton: 'btn btn-label-secondary',
+                },
+                confirmButtonText: labels.imageUrlConfirm || 'Insert',
+                cancelButtonText: labels.imageUrlCancel || 'Cancel',
+                inputValidator: function (value)
+                {
+                    if (! value || String(value).trim() === '')
+                    {
+                        return labels.imageUrlPrompt || 'Paste the image URL';
+                    }
+                },
+            }).then(function (result)
+            {
+                if (result.isConfirmed)
+                {
+                    insertUrl(result.value);
+                }
+            });
+
+            return;
+        }
+
+        var url = window.prompt(labels.imageUrlPrompt || labels.imageUrl || 'Image URL');
+        insertUrl(url);
+    }
+
+    function humaBindMessageTemplateQuillImageUrlHandler(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var toolbar = quill.getModule('toolbar');
+        if (! toolbar || typeof toolbar.addHandler !== 'function')
+        {
+            return;
+        }
+
+        toolbar.addHandler('image', function ()
+        {
+            humaPromptMessageTemplateQuillImageUrl(quill);
+        });
     }
 
     function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
@@ -1452,6 +1529,7 @@ window.humaMessageTemplateQuillLabels = {
         }
         else
         {
+            humaBindMessageTemplateQuillImageUrlHandler(quill);
             humaBindMessageTemplateQuillImageUpload(quill, mountEl);
             humaBindMessageTemplateQuillMergeFields(quill, mountEl, root);
         }

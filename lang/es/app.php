@@ -266,6 +266,8 @@ return [
     'message_email_test_send_button' => 'Enviar prueba',
     'message_visual_editor_button' => 'Editor visual',
     'message_quill_image_url' => 'Insertar imagen por URL',
+    'message_quill_image_url_prompt' => 'Pegá la URL de la imagen',
+    'message_quill_image_url_confirm' => 'Insertar',
     'message_quill_image_upload' => 'Subir imagen',
     'message_quill_image_upload_failed' => 'No se pudo subir la imagen.',
     'message_merge_field_select_label' => 'Campo personalizado',
