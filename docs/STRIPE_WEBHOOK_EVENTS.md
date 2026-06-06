@@ -8,9 +8,22 @@ Estos son los eventos que tu aplicación está preparada para manejar:
 
 | Evento | Método | Descripción |
 |--------|--------|-------------|
-| `invoice.payment_succeeded` | `handleInvoicePaymentSucceeded()` | Cuando se paga una factura exitosamente |
+| `invoice.paid` | `handleInvoicePaid()` | Factura marcada como pagada en Stripe (incluye transferencias externas) |
+| `invoice.payment_succeeded` | `handleInvoicePaymentSucceeded()` | Pago registrado; sincroniza factura + plan de email + afiliados |
+| `invoice.updated` | `handleInvoiceUpdated()` | Refresca factura cuando pasa a paid/void/uncollectible |
 | `customer.subscription.deleted` | `handleCustomerSubscriptionDeleted()` | Cuando se cancela/elimina una suscripción |
 | `customer.subscription.updated` | `handleCustomerSubscriptionUpdated()` | Cuando cambia el estado de una suscripción |
+
+Los eventos de factura encolan `ProcessStripeInvoiceWebhookJob`: upsert en `invoice_syncs`, import a `invoices` y reconciliación de pago si falta.
+
+### ⏱ Respaldo programado (si el webhook no llega)
+
+| Comando | Frecuencia | Función |
+|---------|------------|---------|
+| `stripe:sync-invoices` | Cada 10 min | Refresca `invoice_syncs` desde API (incluye `open` obsoletas) |
+| `invoice-syncs:import-stripe --reconcile` | Cada 10 min | Importa estado/balance al core |
+| `stripe:sync-payments` + `payment-syncs:import-stripe` | Cada ~15 min | Cargos `ch_` → pagos |
+| `invoices:reconcile-stripe-collected-payments` | :20 y :50 | Actualiza core desde sync pagado + crea pagos faltantes |
 
 ### 📌 Eventos Adicionales Recomendados
 
@@ -25,6 +38,42 @@ Considera agregar estos eventos en el Dashboard de Stripe:
 
 ---
 
+## 📍 Añadir eventos en el Dashboard (producción)
+
+Si tu webhook solo tiene suscripciones e `invoice.payment_succeeded`, **faltan eventos críticos**. Pasos en modo **Live**:
+
+1. Ir a [https://dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)
+2. Confirmar selector **Live** (no Test)
+3. Abrir el endpoint `POST /stripe/webhook` de producción
+4. **Edit destination** / **Update details** → **Add events**
+5. Categoría **Invoice** → marcar **`invoice.paid`** e **`invoice.updated`**
+6. Guardar
+
+### Lista mínima recomendada
+
+**Customer:** `customer.subscription.created`, `.updated`, `.deleted`
+
+**Invoice:** `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` (opcional)
+
+### Por qué `invoice.paid`
+
+| Tipo de cobro | `payment_succeeded` | `paid` |
+|---------------|---------------------|--------|
+| Tarjeta / cargo (`ch_`) | Sí | Sí |
+| Transferencia externa en Stripe | A veces no | **Sí** |
+
+`invoice.updated` refresca la factura cuando pasa a paid, void o uncollectible.
+
+### Verificar
+
+- Pestaña **Event deliveries** → respuesta **200** en `invoice.paid`
+- **Send test webhook** → `invoice.paid` → **200 OK**
+- Worker de colas activo (job `ProcessStripeInvoiceWebhookJob`)
+
+Documentación en la app: ruta **`/help/stripe-webhook`**.
+
+---
+
 ## 🔧 Configuración en Stripe Dashboard
 
 ### Opción 1: Eventos Específicos (Recomendado)
@@ -33,7 +82,9 @@ Considera agregar estos eventos en el Dashboard de Stripe:
 ✅ customer.subscription.created
 ✅ customer.subscription.updated  
 ✅ customer.subscription.deleted
+✅ invoice.paid
 ✅ invoice.payment_succeeded
+✅ invoice.updated
 ✅ invoice.payment_failed
 ✅ customer.updated
 ```

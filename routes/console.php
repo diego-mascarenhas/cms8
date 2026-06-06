@@ -78,6 +78,13 @@ Schedule::command('payment-syncs:import-stripe --limit=120 --fallback-email --li
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('invoices:reconcile-stripe-collected-payments --limit=80')
+    ->cron('20,50 * * * *')
+    ->name('stripe-collected-invoice-payments-reconcile')
+    ->description('Create missing payments for collected Stripe invoices without linked payments')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('ovh:sync')->daily();
 
 Schedule::command('notifications:send-pending')

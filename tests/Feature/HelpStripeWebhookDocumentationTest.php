@@ -13,5 +13,7 @@ class HelpStripeWebhookDocumentationTest extends TestCase
         $response->assertOk();
         $response->assertSee('/stripe/webhook', false);
         $response->assertSee('customer.subscription', false);
+        $response->assertSee('invoice.paid', false);
+        $response->assertSee('invoice.updated', false);
     }
 }
