@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Invoice;
+use App\Services\Finance\InvoiceSummaryService;
 use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -147,16 +148,49 @@ class InvoiceDataTable extends DataTable
 
     public function query(Invoice $model): QueryBuilder
     {
-        return $model->newQuery()->with('enterprise');
+        $query = $model->newQuery()->with('enterprise');
+
+        $summaryFilter = request()->input('summary_filter', 'all');
+        if (in_array($summaryFilter, InvoiceSummaryService::SUMMARY_FILTERS, true))
+        {
+            app(InvoiceSummaryService::class)->applySummaryFilter($query, (string) $summaryFilter);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $initComplete = "function () {
+            var api = this.api();
+            window.invoiceSummaryFilter = window.invoiceSummaryFilter || 'all';
+
+            function syncInvoiceSummaryFilterUi() {
+                jQuery('.filter-invoice-summary').each(function () {
+                    var el = jQuery(this);
+                    el.toggleClass('active-filter', el.data('filter') === window.invoiceSummaryFilter);
+                });
+            }
+
+            jQuery('.filter-invoice-summary').off('click.invoiceSummary').on('click.invoiceSummary', function (e) {
+                e.preventDefault();
+                var filter = jQuery(this).data('filter');
+                window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter ? 'all' : filter;
+                syncInvoiceSummaryFilterUi();
+                api.ajax.reload();
+            });
+
+            syncInvoiceSummaryFilterUi();
+        }";
+
         return $this
             ->builder()
             ->setTableId('invoice-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.summary_filter = window.invoiceSummaryFilter || 'all';",
+            )
             ->dom('frtip')
             ->orderBy(2, 'desc')
             ->responsive(true)
@@ -167,6 +201,7 @@ class InvoiceDataTable extends DataTable
             ->parameters([
                 'select' => false,
                 'autoWidth' => false,
+                'initComplete' => $initComplete,
                 'drawCallback' => 'function() {
 					$("#invoice-table tbody tr").css({
 						"user-select": "none",

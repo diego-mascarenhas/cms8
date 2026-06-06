@@ -38,6 +38,14 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    .filter-invoice-summary {
+        cursor: pointer;
+    }
+
+    .filter-invoice-summary.active-filter {
+        box-shadow: 0 0 0 2px var(--bs-primary);
+    }
 </style>
 
 @section('content')
@@ -53,6 +61,89 @@
         </a>
     </div>
     @endcan
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Pendientes de pago</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $invoiceStats['unpaid']['amount_label'] }}</h3>
+                        </div>
+                        <p class="mb-0">{{ $invoiceStats['unpaid']['count'] }} {{ $invoiceStats['unpaid']['count'] === 1 ? 'factura' : 'facturas' }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-warning filter-invoice-summary" data-filter="unpaid" title="Filtrar pendientes de pago">
+                            <i class="ti ti-alert-circle ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Notas de crédito</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $invoiceStats['credit_notes']['amount_label'] }}</h3>
+                        </div>
+                        <p class="mb-0">{{ $invoiceStats['credit_notes']['count'] }} {{ $invoiceStats['credit_notes']['count'] === 1 ? 'nota' : 'notas' }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-info filter-invoice-summary" data-filter="credit_notes" title="Filtrar notas de crédito">
+                            <i class="ti ti-receipt-refund ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Cobradas</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $invoiceStats['collected']['amount_label'] }}</h3>
+                        </div>
+                        <p class="mb-0">{{ $invoiceStats['collected']['count'] }} {{ $invoiceStats['collected']['count'] === 1 ? 'factura' : 'facturas' }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-success filter-invoice-summary" data-filter="collected" title="Filtrar cobradas">
+                            <i class="ti ti-circle-check ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Vencidas</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $invoiceStats['overdue']['amount_label'] }}</h3>
+                        </div>
+                        <p class="mb-0">{{ $invoiceStats['overdue']['count'] }} {{ $invoiceStats['overdue']['count'] === 1 ? 'factura' : 'facturas' }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-danger filter-invoice-summary" data-filter="overdue" title="Filtrar vencidas">
+                            <i class="ti ti-clock-exclamation ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if(session('success'))
