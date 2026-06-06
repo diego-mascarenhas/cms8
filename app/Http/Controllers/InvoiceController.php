@@ -48,7 +48,16 @@ class InvoiceController extends Controller
             (int) auth()->user()->currentTeam->id,
         );
 
-        return $dataTable->render('invoice.index', compact('exchangeRates', 'lastUpdate', 'invoiceStats'));
+        $initialSummaryFilter = app(InvoiceSummaryService::class)->resolveListFilter(
+            request()->query('summary_filter'),
+        );
+
+        return $dataTable->render('invoice.index', compact(
+            'exchangeRates',
+            'lastUpdate',
+            'invoiceStats',
+            'initialSummaryFilter',
+        ));
     }
 
     /**

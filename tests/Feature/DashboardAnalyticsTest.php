@@ -8,13 +8,17 @@ use App\Models\Contact;
 use App\Models\ContactInteraction;
 use App\Models\Enterprise;
 use App\Models\Module;
+use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Permission\Models\Permission;
@@ -32,6 +36,98 @@ class DashboardAnalyticsTest extends TestCase
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
             $user->givePermissionTo($permission);
         }
+    }
+
+    public function test_dashboard_shows_invoice_summary_cards_when_invoices_module_enabled(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+            CurrencySeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'invoices'],
+            [
+                'name' => 'Invoices',
+                'icon' => 'file-invoice',
+                'description' => 'Team invoices',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('invoices');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        \App\Models\Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-UNPAID',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        \App\Models\Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OVERDUE',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Pendientes de pago', false);
+        $response->assertSee('Vencidas', false);
+        $response->assertSee('1 factura', false);
+        $response->assertSee(route('invoice.index', ['summary_filter' => 'unpaid']), false);
+        $response->assertSee(route('invoice.index', ['summary_filter' => 'overdue']), false);
+        $response->assertDontSee('Notas de crédito', false);
+    }
+
+    public function test_dashboard_hides_invoice_summary_cards_when_invoices_module_disabled(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Pendientes de pago', false);
     }
 
     public function test_dashboard_does_not_show_analytics_chart_when_team_has_no_analytics(): void
@@ -346,6 +442,58 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee(__('app.clients'), false);
         $response->assertSee('ti-user-heart', false);
         $this->assertMatchesRegularExpression('/text-danger[^>]*>3</', $response->getContent());
+    }
+
+    public function test_dashboard_ongoing_projects_table_links_to_project_and_client(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            ProjectStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'projects'],
+            [
+                'name' => 'Projects',
+                'icon' => 'folder',
+                'description' => 'Team projects',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('projects');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Kydep',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Presupuesto de Reestructuración Web',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('Ongoing Projects'), false);
+        $response->assertSee(route('project.show', $project->id), false);
+        $response->assertSee(route('client.show', $enterprise->id), false);
+        $response->assertSee('Presupuesto de Reestructuración Web', false);
+        $response->assertSee('Kydep', false);
     }
 
     public function test_dashboard_hides_ongoing_projects_card_when_projects_module_disabled(): void

@@ -7,11 +7,13 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
 use App\Services\ContactInteractionChartDataService;
+use App\Services\Finance\InvoiceSummaryService;
 use App\Services\UserDailyPerformanceInsightService;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
@@ -481,6 +483,12 @@ class DashboardController extends Controller
 
         $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
 
+        $invoiceStats = null;
+        if ($activeTeam->hasModule('invoices') && auth()->user()->can('viewAny', Invoice::class))
+        {
+            $invoiceStats = app(InvoiceSummaryService::class)->buildIndexStats((int) $activeTeam->id);
+        }
+
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -509,6 +517,7 @@ class DashboardController extends Controller
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
             'dashboardCalendarData',
+            'invoiceStats',
         ));
     }
 
