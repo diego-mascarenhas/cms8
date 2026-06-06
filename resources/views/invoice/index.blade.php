@@ -46,6 +46,10 @@
     .filter-invoice-summary.active-filter {
         box-shadow: 0 0 0 2px var(--bs-primary);
     }
+
+    .invoice-summary-card-subtitle {
+        min-height: 1.125rem;
+    }
 </style>
 
 @section('content')
@@ -70,6 +74,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
                         <span>Pendientes de pago</span>
+                        <small class="text-muted d-block invoice-summary-card-subtitle">Saldo pendiente</small>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ $invoiceStats['unpaid']['amount_label'] }}</h3>
                         </div>
@@ -90,6 +95,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
                         <span>Notas de crédito</span>
+                        <small class="text-muted d-block invoice-summary-card-subtitle">Últimos 30 días</small>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ $invoiceStats['credit_notes']['amount_label'] }}</h3>
                         </div>
@@ -110,6 +116,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
                         <span>Cobradas</span>
+                        <small class="text-muted d-block invoice-summary-card-subtitle">Últimos 30 días</small>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ $invoiceStats['collected']['amount_label'] }}</h3>
                         </div>
@@ -130,6 +137,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
                         <span>Vencidas</span>
+                        <small class="text-muted d-block invoice-summary-card-subtitle">Vencimiento superado</small>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ $invoiceStats['overdue']['amount_label'] }}</h3>
                         </div>
