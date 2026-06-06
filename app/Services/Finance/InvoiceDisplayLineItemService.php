@@ -5,6 +5,7 @@ namespace App\Services\Finance;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceSync;
+use App\Models\SubscriptionProduct;
 use Illuminate\Support\Collection;
 
 class InvoiceDisplayLineItemService
@@ -12,6 +13,7 @@ class InvoiceDisplayLineItemService
     /**
      * @return Collection<int, array{
      *     description: string,
+     *     category: string|null,
      *     quantity: float,
      *     unit_price: float,
      *     discount: float,
@@ -27,23 +29,26 @@ class InvoiceDisplayLineItemService
 
         if ($invoice->items()->exists())
         {
-            return $invoice->items()->get()->map(fn (InvoiceItem $item): array => $this->fromInvoiceItem($item));
+            return $invoice->items()->with('category')->get()->map(fn (InvoiceItem $item): array => $this->fromInvoiceItem($item));
         }
 
         return $this->fromStripeInvoiceSync($invoice);
     }
 
     /**
-     * @return array{description: string, quantity: float, unit_price: float, discount: float, total: float}
+     * @return array{description: string, category: string|null, quantity: float, unit_price: float, discount: float, total: float}
      */
     private function fromInvoiceItem(InvoiceItem $item): array
     {
         $quantity = (float) ($item->quantity ?: 1);
         $unitPrice = (float) $item->unit_price;
         $discount = (float) ($item->discount ?? 0);
+        $description = trim((string) ($item->description ?? ''));
+        $categoryName = trim((string) ($item->category?->name ?? ''));
 
         return [
-            'description' => (string) ($item->description ?? $item->category?->name ?? '-'),
+            'description' => $description !== '' ? $description : ($categoryName !== '' ? $categoryName : '-'),
+            'category' => $this->displayCategoryLabel($categoryName, $description),
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'discount' => $discount,
@@ -54,6 +59,7 @@ class InvoiceDisplayLineItemService
     /**
      * @return Collection<int, array{
      *     description: string,
+     *     category: string|null,
      *     quantity: float,
      *     unit_price: float,
      *     discount: float,
@@ -94,7 +100,7 @@ class InvoiceDisplayLineItemService
 
     /**
      * @param  array<string, mixed>  $line
-     * @return array{description: string, quantity: float, unit_price: float, discount: float, total: float}
+     * @return array{description: string, category: string|null, quantity: float, unit_price: float, discount: float, total: float}
      */
     private function fromStripeLine(array $line, string $currency): array
     {
@@ -120,13 +126,80 @@ class InvoiceDisplayLineItemService
             2,
         );
 
+        $description = (string) (data_get($line, 'description') ?: '-');
+
         return [
-            'description' => (string) (data_get($line, 'description') ?: '-'),
+            'description' => $description,
+            'category' => $this->resolveStripeLineCategory($line),
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'discount' => $discount,
             'total' => round(max(0, ($unitPrice * $quantity) - $discount), 2),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     */
+    private function resolveStripeLineCategory(array $line): ?string
+    {
+        $productRef = data_get($line, 'price.product') ?? data_get($line, 'plan.product');
+        $priceId = data_get($line, 'price.id') ?? data_get($line, 'plan.id');
+        $categorySlug = null;
+        $productId = null;
+
+        if (is_array($productRef))
+        {
+            $productId = data_get($productRef, 'id');
+            $categorySlug = data_get($productRef, 'metadata.category');
+        } elseif (filled($productRef))
+        {
+            $productId = (string) $productRef;
+        }
+
+        if (filled($categorySlug))
+        {
+            return SubscriptionProduct::getCategoryLabel((string) $categorySlug);
+        }
+
+        $subscriptionProduct = null;
+
+        if (filled($productId))
+        {
+            $subscriptionProduct = SubscriptionProduct::query()
+                ->where('stripe_product', $productId)
+                ->orWhere('stripe_id', $productId)
+                ->first();
+        }
+
+        if (! $subscriptionProduct instanceof SubscriptionProduct && filled($priceId))
+        {
+            $subscriptionProduct = SubscriptionProduct::query()
+                ->where('stripe_price', $priceId)
+                ->first();
+        }
+
+        if ($subscriptionProduct instanceof SubscriptionProduct && filled($subscriptionProduct->category))
+        {
+            return SubscriptionProduct::getCategoryLabel($subscriptionProduct->category);
+        }
+
+        return null;
+    }
+
+    private function displayCategoryLabel(string $categoryName, string $description): ?string
+    {
+        if ($categoryName === '')
+        {
+            return null;
+        }
+
+        if ($description !== '' && strcasecmp($categoryName, $description) === 0)
+        {
+            return null;
+        }
+
+        return $categoryName;
     }
 
     private function amountDivisor(string $currency): int

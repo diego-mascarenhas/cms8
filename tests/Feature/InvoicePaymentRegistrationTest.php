@@ -203,4 +203,49 @@ class InvoicePaymentRegistrationTest extends TestCase
             ->assertOk()
             ->assertDontSee(__('invoice_payment.register_title'), false);
     }
+
+    public function test_invoice_show_hides_payment_form_when_balance_is_zero(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $owner->forceFill(['current_team_id' => $team->id])->save();
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-eur',
+            'name' => 'Caja Rural',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-004',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('invoice.show', $invoice->id))
+            ->assertOk()
+            ->assertDontSee(__('invoice_payment.register_title'), false);
+    }
 }
