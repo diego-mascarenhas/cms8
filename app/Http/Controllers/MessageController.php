@@ -30,7 +30,6 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use stdClass;
@@ -169,15 +168,9 @@ class MessageController extends Controller
                 'scheduled_send_at' => $scheduledSendAt,
             ];
 
-            if ($mailHtml !== null)
+            if ($mailHtml !== null && trim($mailHtml) !== '')
             {
-                if (Schema::hasColumn('messages', 'mail_html'))
-                {
-                    $payload['mail_html'] = $mailHtml;
-                } elseif ($templateId !== null && $templateId > 0)
-                {
-                    $this->persistTemplateHtmlToTemplateModel($templateId, $mailHtml);
-                }
+                $payload['mail_html'] = $mailHtml;
             }
 
             $messageModel = Message::updateOrCreate(
@@ -505,11 +498,24 @@ class MessageController extends Controller
             {
                 abort(422, 'Invalid message for email template.');
             }
+
+            if (MessageDelivery::query()->where('message_id', $messageIdGate)->exists())
+            {
+                $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+                if ($returnUrl === null || $returnUrl === '')
+                {
+                    $returnUrl = route('message.edit', $messageIdGate);
+                }
+
+                return redirect()
+                    ->to($returnUrl)
+                    ->with('warning', __('app.email_template_update_blocked_deliveries'));
+            }
         }
 
         $this->persistTemplateHtmlToTemplateModel($templateId, $html);
 
-        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        if ($messageIdGate !== null)
         {
             Message::query()->whereKey($messageIdGate)->update(['mail_html' => null]);
         }
@@ -586,7 +592,7 @@ class MessageController extends Controller
                 ->with('warning', __('app.email_template_update_empty'));
         }
 
-        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        if ($messageIdGate !== null)
         {
             $message = Message::query()->whereKey($messageIdGate)->first();
             if ($message instanceof Message)
@@ -1634,24 +1640,31 @@ class MessageController extends Controller
      */
     private function resolveMailHtmlForTemplatePreview(Template $template, ?Message $message = null): string
     {
+        if ($message instanceof Message
+            && (int) $message->template_id === (int) $template->id
+            && is_string($message->mail_html)
+            && trim($message->mail_html) !== '')
+        {
+            return $message->mail_html;
+        }
+
         $template->refresh();
 
         return $this->rawTemplateHtmlFromModel($template);
     }
 
     /**
-     * Writes Quill / composer HTML into the template's GrapesJS payload. Skipped when the message
+     * Writes Quill / composer HTML into the message record. Skipped when the message
      * already has deliveries (readonly body) or the HTML is empty.
      */
     private function persistTemplateHtmlFromMessageComposer(int $templateId, string $rawHtml, ?int $messageIdForDeliveryGate): void
     {
-        if ($templateId <= 0)
+        if ($messageIdForDeliveryGate === null || $messageIdForDeliveryGate <= 0)
         {
             return;
         }
 
-        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
-            && MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
+        if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
         {
             return;
         }
@@ -1662,24 +1675,11 @@ class MessageController extends Controller
             return;
         }
 
-        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
-            && Schema::hasColumn('messages', 'mail_html'))
+        $message = Message::query()->whereKey($messageIdForDeliveryGate)->first();
+        if ($message instanceof Message)
         {
-            if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
-            {
-                return;
-            }
-
-            $message = Message::query()->whereKey($messageIdForDeliveryGate)->first();
-            if ($message instanceof Message)
-            {
-                $message->forceFill(['mail_html' => $trimmed])->save();
-            }
-
-            return;
+            $message->forceFill(['mail_html' => $trimmed])->save();
         }
-
-        $this->persistTemplateHtmlToTemplateModel($templateId, $trimmed);
     }
 
     private function persistTemplateHtmlToTemplateModel(int $templateId, string $rawHtml): bool
