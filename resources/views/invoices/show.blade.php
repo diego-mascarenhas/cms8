@@ -18,6 +18,8 @@
     $currencyCode = $invoice->currency_code;
     $formatAmount = fn (float|int|null $amount): string => \App\Helpers\Helpers::formatDecimal($amount).' '.$currencyCode;
     $formatPaymentAmount = fn (float $amount, string $code): string => \App\Helpers\Helpers::formatDecimal($amount).' '.strtoupper($code);
+    $invoicePrintUrl = $invoice->stripeHostedInvoiceUrl();
+    $invoiceDownloadUrl = $invoice->stripeInvoicePdfUrl();
 @endphp
 <div class="row invoice-preview">
   <!-- Invoice -->
@@ -164,20 +166,41 @@
 
   <!-- Invoice Actions -->
   <div class="col-xl-3 col-md-4 col-12 invoice-actions">
+    @if (session('success'))
+      <div class="alert alert-success alert-dismissible mb-3" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
     <div class="card">
       <div class="card-body">
         <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index') }}">
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
-        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" href="#">
+        @if ($invoicePrintUrl)
+        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoicePrintUrl }}">
           <i class="ti ti-printer ti-xs me-2"></i>
           {{ __('Print') }}
         </a>
-        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" href="#">
+        @endif
+        @if ($invoiceDownloadUrl)
+        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoiceDownloadUrl }}">
           <i class="ti ti-download ti-xs me-2"></i>
           {{ __('Download') }}
         </a>
+        @endif
+        @if ($canShowCreditNoteForm)
+        <button
+          type="button"
+          class="btn btn-label-info d-grid w-100 mb-2"
+          data-bs-toggle="modal"
+          data-bs-target="#creditNoteModal"
+        >
+          <i class="ti ti-receipt-refund ti-xs me-2"></i>
+          {{ __('invoice_credit_note.issue_title') }}
+        </button>
+        @endif
         @can('invoice.edit')
         <a class="btn btn-label-secondary d-grid w-100 mb-2" href="#">
           <i class="ti ti-edit ti-xs me-2"></i>
@@ -315,6 +338,60 @@
   <!-- /Invoice Actions -->
 </div>
 
+@if ($canShowCreditNoteForm)
+<div class="modal fade" id="creditNoteModal" tabindex="-1" aria-labelledby="creditNoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form
+        action="{{ route('invoice.credit-notes.store', $invoice) }}"
+        method="POST"
+        onsubmit="return confirm(@json(__('invoice_credit_note.confirm')))"
+      >
+        @csrf
+        <div class="modal-header">
+          <h5 class="modal-title" id="creditNoteModalLabel">
+            <i class="ti ti-receipt-refund me-2"></i>{{ __('invoice_credit_note.issue_title') }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+        </div>
+        <div class="modal-body">
+          @unless ($canIssueCreditNote)
+            <div class="alert alert-warning mb-3" role="alert">
+              {{ __('invoice_credit_note.errors.stripe_not_configured') }}
+            </div>
+          @endunless
+          <label for="credit_note_reason" class="form-label">{{ __('invoice_credit_note.reason') }}</label>
+          <select
+            id="credit_note_reason"
+            name="reason"
+            class="form-select @error('reason') is-invalid @enderror"
+            @disabled(! $canIssueCreditNote)
+            required
+          >
+            @foreach ($creditNoteReasons as $reason)
+              <option value="{{ $reason }}" @selected(old('reason', $defaultCreditNoteReason) === $reason)>
+                {{ __('invoice_credit_note.reasons.'.$reason) }}
+              </option>
+            @endforeach
+          </select>
+          @error('reason')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
+            {{ __('Cancel') }}
+          </button>
+          <button type="submit" class="btn btn-primary" @disabled(! $canIssueCreditNote)>
+            <i class="ti ti-receipt-refund me-1"></i>{{ __('invoice_credit_note.issue_button') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endif
+
 @section('page-script')
 <script>
 function deleteInvoice(id) {
@@ -332,6 +409,16 @@ function deleteInvoice(id) {
         });
     }
 }
+
+@if ($errors->has('reason') && ($canShowCreditNoteForm ?? false))
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('creditNoteModal');
+
+    if (modalElement) {
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }
+});
+@endif
 </script>
 @endsection
 @endsection
