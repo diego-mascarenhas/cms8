@@ -14,7 +14,8 @@ class ProcessActiveCampaigns extends Command
      *
      * @var string
      */
-    protected $signature = 'campaigns:process-active';
+    protected $signature = 'campaigns:process-active
+                            {--message= : Process only this message ID}';
 
     /**
      * The console command description.
@@ -30,10 +31,18 @@ class ProcessActiveCampaigns extends Command
     {
         $this->info('🚀 Processing active campaigns...');
 
-        // Get all active messages that have been started
-        $activeMessages = Message::where('status_id', 1)
-            ->whereNotNull('started_at')
-            ->get();
+        $messageId = $this->option('message');
+
+        $query = Message::query()
+            ->where('status_id', 1)
+            ->whereNotNull('started_at');
+
+        if ($messageId !== null && $messageId !== '')
+        {
+            $query->whereKey((int) $messageId);
+        }
+
+        $activeMessages = $query->get();
 
         if ($activeMessages->isEmpty())
         {

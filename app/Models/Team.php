@@ -416,6 +416,38 @@ class Team extends JetstreamTeam
         return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
     }
 
+    public function googleContactsInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_contacts_inbound_sync_enabled', false);
+    }
+
+    public function googleCalendarInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_calendar_inbound_sync_enabled', false);
+    }
+
+    public function googleContactsOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_contacts_outbound_sync_enabled', false);
+    }
+
+    public function googleCalendarOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_calendar_outbound_sync_enabled', false);
+    }
+
+    private function booleanTeamSetting(string $key, bool $default): bool
+    {
+        $raw = $this->getSetting($key);
+
+        if ($raw === null || $raw === '')
+        {
+            return $default;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
     /**
      * Whether daily performance insights create an in-app notification (navbar bell).
      */

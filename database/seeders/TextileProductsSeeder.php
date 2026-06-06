@@ -208,6 +208,11 @@ class TextileProductsSeeder extends Seeder
 
         app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
 
+        foreach (TeamDemoSeeder::DEMO_DEV_MODULES as $moduleKey)
+        {
+            $team->enableModule($moduleKey);
+        }
+
         $this->command?->info("🔧 Demo team modules re-synced to Humano plan «{$planSlug}» (commerce modules stay off assistant).");
     }
 

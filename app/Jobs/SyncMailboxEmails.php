@@ -6,6 +6,7 @@ use App\Models\Mailbox;
 use App\Services\Imap\MailboxConnectionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
 
 class SyncMailboxEmails implements ShouldQueue
@@ -30,8 +31,12 @@ class SyncMailboxEmails implements ShouldQueue
             $service->syncMessages($this->mailbox, $this->limit);
         } catch (ConnectionFailedException $e)
         {
-            report($e);
-            throw $e;
+            Log::warning('Mailbox sync skipped: IMAP connection failed', [
+                'mailbox_id' => $this->mailbox->id,
+                'mailbox_name' => $this->mailbox->name,
+                'host' => $this->mailbox->host,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

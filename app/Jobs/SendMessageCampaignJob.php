@@ -196,7 +196,7 @@ class SendMessageCampaignJob implements ShouldQueue
         $emailData = [
             'to' => $this->messageDelivery->contact->email,
             'from' => $fromName.' <'.$fromEmail.'>',
-            'subject' => $this->messageDelivery->message->name,
+            'subject' => $this->messageDelivery->getSubjectForContact(),
             'body' => $htmlContent,
             'message_id' => $this->messageDelivery->id,
         ];

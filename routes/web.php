@@ -843,6 +843,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Financial Dashboard (Accounting)
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
+    Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
 
     Route::prefix('payment')->group(function ()
     {

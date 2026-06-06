@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Models\Invoice;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Prompt;
@@ -68,6 +69,9 @@ class AssistantToolAuthorizationService
         'update_message' => ['update', Prompt::class],
         'list_product_catalog' => ['viewAny', Product::class],
         'search_products' => ['viewAny', Product::class],
+        'get_financial_projection' => ['viewAny', Invoice::class],
+        'get_financial_category_breakdown' => ['viewAny', Invoice::class],
+        'run_financial_growth_scenario' => ['viewAny', Invoice::class],
     ];
 
     /**

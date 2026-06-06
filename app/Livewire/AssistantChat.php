@@ -51,6 +51,7 @@ class AssistantChat extends Component
 
     protected $listeners = [
         'assistant-reset-context' => 'clearChat',
+        'finance-assistant-prefill' => 'prefillInput',
     ];
 
     public function mount(
@@ -135,6 +136,19 @@ class AssistantChat extends Component
         $this->audio = null;
         $this->loading = false;
         $this->dispatch('scroll-to-bottom');
+    }
+
+    /**
+     * @param  string|array{message?: string}  $message  Livewire 3 passes named params from dispatch({ message: '...' }).
+     */
+    public function prefillInput(string|array $message = ''): void
+    {
+        if (is_array($message))
+        {
+            $message = (string) ($message['message'] ?? '');
+        }
+
+        $this->input = trim((string) $message);
     }
 
     public function clearChat(AgentConversationContextService $conversationContext): void

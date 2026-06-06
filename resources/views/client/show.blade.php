@@ -382,11 +382,8 @@
                                             </td>
                                             <td>{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
                                             <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '—' }}</td>
-                                            @php
-                                                $invoiceCurrency = $invoice->currency ?: config('verifactu.default_currency', 'EUR');
-                                            @endphp
-                                            <td class="text-end text-nowrap">{{ number_format((float) ($invoice->total_amount ?? 0), 2) }} <span class="text-muted">{{ $invoiceCurrency }}</span></td>
-                                            <td class="text-end text-nowrap">{{ number_format((float) ($invoice->balance ?? 0), 2) }} <span class="text-muted">{{ $invoiceCurrency }}</span></td>
+                                            <td class="text-end text-nowrap">{{ number_format((float) ($invoice->total_amount ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
+                                            <td class="text-end text-nowrap">{{ number_format((float) ($invoice->balance ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
                                             <td class="text-center">{!! $invoice->status_badge !!}</td>
                                         </tr>
                                     @endforeach

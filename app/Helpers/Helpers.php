@@ -246,6 +246,14 @@ class Helpers
     }
 
     /**
+     * Format a numeric amount using Spanish locale (comma decimals, dot thousands).
+     */
+    public static function formatDecimal(float|int|null $amount, int $decimals = 2): string
+    {
+        return number_format((float) $amount, $decimals, ',', '.');
+    }
+
+    /**
      * Format money amount with currency
      *
      * @param  float  $amount  Amount to format
@@ -265,7 +273,7 @@ class Helpers
         ];
 
         $symbol = $symbols[$currency] ?? $currency.' ';
-        $formattedAmount = number_format($amount, $decimals, '.', ',');
+        $formattedAmount = self::formatDecimal($amount, $decimals);
 
         return $symbol.$formattedAmount;
     }

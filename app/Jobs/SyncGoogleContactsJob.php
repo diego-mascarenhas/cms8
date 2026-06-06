@@ -16,15 +16,18 @@ class SyncGoogleContactsJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(private readonly int $externalAccountId)
-    {
-    }
+    public function __construct(private readonly int $externalAccountId) {}
 
     public function handle(GoogleContactSyncProvider $provider): void
     {
-        $account = ExternalAccount::query()->find($this->externalAccountId);
+        $account = ExternalAccount::query()->with('team')->find($this->externalAccountId);
 
-        if ($account === null)
+        if ($account === null || $account->team === null)
+        {
+            return;
+        }
+
+        if (! $account->team->googleContactsInboundSyncEnabled())
         {
             return;
         }

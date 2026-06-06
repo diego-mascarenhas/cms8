@@ -23,12 +23,14 @@ return new class extends Migration
             $table->decimal('discount', 10, 2)->unsigned()->nullable();
             $table->decimal('total_amount', 10, 2)->unsigned();
             $table->decimal('balance', 10, 2)->unsigned();
+            $table->unsignedInteger('currency_id')->nullable();
             $table->unsignedTinyInteger('status')->default(1);
             $table->timestamps();
 
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('billing_id')->references('id')->on('enterprise_billing_addresses')->onDelete('set null');
             $table->foreign('type_id')->references('id')->on('invoice_types')->onDelete('cascade');
+            $table->foreign('currency_id')->references('id')->on('currencies')->nullOnDelete();
         });
     }
 

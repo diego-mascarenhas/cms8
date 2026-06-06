@@ -404,11 +404,19 @@ document.addEventListener('DOMContentLoaded', function () {
 					<div class="form-text mt-1">{{ __('app.message_form_template_required_help') }}</div>
 				@endif
 			</div>
-			<div class="col-md-12">
+			<div class="col-12">
 				<x-input-textarea id="text" label="{{ __('app.Preview') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">
 					{{ __('app.message_form_alt_text_help') }}
 				</div>
+			</div>
+			<div class="col-12">
+				<div class="border rounded bg-label-secondary p-3" id="message-merge-fields-inbox-preview" aria-live="polite">
+					<div class="small text-muted mb-2">{{ __('app.message_merge_fields_inbox_preview_label') }}</div>
+					<div class="fw-semibold" id="message-merge-preview-subject"></div>
+					<div class="small text-muted mt-1" id="message-merge-preview-text"></div>
+				</div>
+				<script type="application/json" id="message-merge-fields-sample-json">@json(\App\Support\MessageTemplateMergeFields::valuesForContact(\App\Support\MessageTemplateMergeFields::sampleContact()))</script>
 			</div>
 		</div>
 		</div>
@@ -504,6 +512,54 @@ document.addEventListener('DOMContentLoaded', function () {
 	</form>
 @push('scripts')
 @include('message.partials.email-test-send-modal-script')
+<script>
+(function ()
+{
+    var subjectEl = document.getElementById('name');
+    var previewTextEl = document.getElementById('text');
+    var subjectOut = document.getElementById('message-merge-preview-subject');
+    var previewTextOut = document.getElementById('message-merge-preview-text');
+    var sampleJsonEl = document.getElementById('message-merge-fields-sample-json');
+
+    if (! subjectEl || ! previewTextEl || ! subjectOut || ! previewTextOut || ! sampleJsonEl)
+    {
+        return;
+    }
+
+    var mergeMap = {};
+    try
+    {
+        mergeMap = JSON.parse(sampleJsonEl.textContent || '{}');
+    }
+    catch (e)
+    {
+        mergeMap = {};
+    }
+
+    function applyMergeFields(value)
+    {
+        var out = String(value || '');
+        Object.keys(mergeMap).forEach(function (token)
+        {
+            out = out.split(token).join(String(mergeMap[token] ?? ''));
+        });
+
+        return out;
+    }
+
+    function refreshInboxPreview()
+    {
+        var subject = applyMergeFields(subjectEl.value).trim();
+        var previewText = applyMergeFields(previewTextEl.value).trim();
+        subjectOut.textContent = subject || '—';
+        previewTextOut.textContent = previewText || '—';
+    }
+
+    subjectEl.addEventListener('input', refreshInboxPreview);
+    previewTextEl.addEventListener('input', refreshInboxPreview);
+    refreshInboxPreview();
+})();
+</script>
 <script>
 (function ()
 {
@@ -869,6 +925,9 @@ window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.s
 window.humaMessageTemplateMergeFields = @json(\App\Support\MessageTemplateMergeFields::forUi());
 window.humaMessageTemplateQuillLabels = {
     imageUrl: @json(__('app.message_quill_image_url')),
+    imageUrlPrompt: @json(__('app.message_quill_image_url_prompt')),
+    imageUrlConfirm: @json(__('app.message_quill_image_url_confirm')),
+    imageUrlCancel: @json(__('Cancel')),
     imageUpload: @json(__('app.message_quill_image_upload')),
     imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
     mergeFieldSelect: @json(__('app.message_merge_field_select_label')),
@@ -993,6 +1052,80 @@ window.humaMessageTemplateQuillLabels = {
         }
 
         return null;
+    }
+
+    function humaPromptMessageTemplateQuillImageUrl(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+
+        function insertUrl(url)
+        {
+            if (! url || String(url).trim() === '')
+            {
+                return;
+            }
+
+            humaInsertImageIntoQuill(quill, String(url).trim());
+        }
+
+        if (typeof Swal !== 'undefined')
+        {
+            Swal.fire({
+                title: labels.imageUrl || 'Insert image from URL',
+                input: 'url',
+                inputPlaceholder: labels.imageUrlPrompt || 'https://example.com/image.png',
+                showCancelButton: true,
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2',
+                    cancelButton: 'btn btn-label-secondary',
+                },
+                confirmButtonText: labels.imageUrlConfirm || 'Insert',
+                cancelButtonText: labels.imageUrlCancel || 'Cancel',
+                inputValidator: function (value)
+                {
+                    if (! value || String(value).trim() === '')
+                    {
+                        return labels.imageUrlPrompt || 'Paste the image URL';
+                    }
+                },
+            }).then(function (result)
+            {
+                if (result.isConfirmed)
+                {
+                    insertUrl(result.value);
+                }
+            });
+
+            return;
+        }
+
+        var url = window.prompt(labels.imageUrlPrompt || labels.imageUrl || 'Image URL');
+        insertUrl(url);
+    }
+
+    function humaBindMessageTemplateQuillImageUrlHandler(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var toolbar = quill.getModule('toolbar');
+        if (! toolbar || typeof toolbar.addHandler !== 'function')
+        {
+            return;
+        }
+
+        toolbar.addHandler('image', function ()
+        {
+            humaPromptMessageTemplateQuillImageUrl(quill);
+        });
     }
 
     function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
@@ -1396,6 +1529,7 @@ window.humaMessageTemplateQuillLabels = {
         }
         else
         {
+            humaBindMessageTemplateQuillImageUrlHandler(quill);
             humaBindMessageTemplateQuillImageUpload(quill, mountEl);
             humaBindMessageTemplateQuillMergeFields(quill, mountEl, root);
         }

@@ -47,7 +47,10 @@ class MessageQuillImageUploadTest extends TestCase
         $this->assertStringContainsString('humaMessageTemplateQuillUploadUrl', $html);
         $this->assertStringContainsString('laravel-grapesjs\/asset\/store', $html);
         $this->assertStringContainsString('humaBindMessageTemplateQuillImageUpload', $html);
+        $this->assertStringContainsString('humaBindMessageTemplateQuillImageUrlHandler', $html);
+        $this->assertStringContainsString("addHandler('image'", $html);
         $this->assertStringContainsString("['link', 'image']", $html);
+        $this->assertStringContainsString('imageUrlPrompt', $html);
     }
 
     public function test_grapesjs_asset_store_uploads_image_to_template_storage_path(): void

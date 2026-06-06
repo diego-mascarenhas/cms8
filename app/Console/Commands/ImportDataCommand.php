@@ -1584,9 +1584,11 @@ class ImportDataCommand extends Command
                     $invoiceNumber = $data->numero_factura ?? '1';
                 }
 
+                $currencyService = app(\App\Services\Finance\InvoiceCurrencyService::class);
+
                 // Create a data object for additional fields not in the main table
                 $additionalData = [
-                    'currency_id' => $data->id_moneda ?? 1,
+                    'currency_id' => $currencyService->legacyMonedaIdToCurrencyId((int) ($data->id_moneda ?? 1)),
                     'payment_type_id' => $data->id_forma_pago ?? 1,
                     'observations' => $data->observaciones,
                     'condition' => $data->condicion,
@@ -1611,10 +1613,14 @@ class ImportDataCommand extends Command
                     'total_amount' => $data->total_neto ?? 0,
                     'balance' => $data->saldo ?? 0,
                     'status' => $data->estado,
-                    // 'data' => json_encode($additionalData),
                     'created_at' => $data->fecha_alta ?? now(),
                     'updated_at' => $data->fecha_modificacion ?? now(),
                 ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'currency_id'))
+                {
+                    $invoiceData['currency_id'] = $additionalData['currency_id'];
+                }
 
                 if (! $existingInvoice)
                 {

@@ -27,6 +27,7 @@ use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\DemoDataService;
+use App\Services\Finance\FinancialProjectionHistoryGenerator;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
@@ -38,6 +39,13 @@ use Illuminate\Support\Facades\DB;
  */
 class TeamDemoSeeder extends Seeder
 {
+    /**
+     * Módulos activos en el team Demo además del plan assistant. Vacía el array cuando termines.
+     *
+     * @var list<string>
+     */
+    public const DEMO_DEV_MODULES = ['financial'];
+
     private $teamId = 1;
 
     public function run(): void
@@ -113,6 +121,10 @@ class TeamDemoSeeder extends Seeder
 
         // 14. Fix GrapesJS structure
         $this->fixGrapesJsStructure();
+
+        // 15. Ten years of categorized invoices for /finance-dashboard/projection
+        $this->command->info('📈 Seeding 10-year financial projection history (HIST-* invoices)...');
+        app(FinancialProjectionHistoryGenerator::class)->seedForTeam($team->fresh(), 10, true);
 
         $this->command->info('✅ Demo Team setup completed successfully');
     }
@@ -199,6 +211,11 @@ class TeamDemoSeeder extends Seeder
             {
                 $this->command->warn("⚠️  Plan «{$planSlug}» lists «{$moduleKey}» but no module row or pivot — check ModuleSeeder.");
             }
+        }
+
+        foreach (self::DEMO_DEV_MODULES as $moduleKey)
+        {
+            $team->enableModule($moduleKey);
         }
     }
 

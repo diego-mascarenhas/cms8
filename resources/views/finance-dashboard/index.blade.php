@@ -32,6 +32,11 @@
         <a href="{{ route('expense.index') }}" class="btn btn-outline-danger">
             <i class="ti ti-trending-down me-1"></i> {{ __('Expenses') }}
         </a>
+        @can('viewAny', App\Models\Invoice::class)
+        <a href="{{ route('finance-dashboard.projection', ['year' => $selectedYear]) }}" class="btn btn-primary">
+            <i class="ti ti-chart-dots me-1"></i> {{ __('Projection report') }}
+        </a>
+        @endcan
     </div>
 </div>
 
