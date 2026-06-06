@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Contact;
+use App\Models\Team;
 use App\Services\HumanoToGoogleContactPusher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,6 +27,13 @@ class PushContactToGoogleJob implements ShouldQueue
         $contact = Contact::withTrashed()->find($this->contactId);
 
         if ($contact === null)
+        {
+            return;
+        }
+
+        $team = Team::query()->find($contact->team_id);
+
+        if ($team === null || ! $team->googleContactsOutboundSyncEnabled())
         {
             return;
         }

@@ -82,6 +82,11 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Calendar settings
             'calendar.google_calendar_id' => 'nullable|string|max:255',
 
+            'google.google_contacts_inbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_contacts_outbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_calendar_inbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_calendar_outbound_sync_enabled' => 'nullable|in:0,1',
+
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
 

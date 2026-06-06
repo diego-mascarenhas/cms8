@@ -284,6 +284,26 @@ class TeamSettingController extends Controller
                     }
                 }
             }
+
+            if ($group === 'google')
+            {
+                foreach ([
+                    'google_contacts_inbound_sync_enabled',
+                    'google_contacts_outbound_sync_enabled',
+                    'google_calendar_inbound_sync_enabled',
+                    'google_calendar_outbound_sync_enabled',
+                ] as $googleSyncBooleanKey)
+                {
+                    if (! array_key_exists($googleSyncBooleanKey, $settings))
+                    {
+                        $team->setSetting($googleSyncBooleanKey, false, [
+                            'group' => 'google',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -336,6 +356,10 @@ class TeamSettingController extends Controller
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
+            'google_contacts_outbound_sync_enabled',
+            'google_calendar_outbound_sync_enabled',
+            'google_contacts_inbound_sync_enabled',
+            'google_calendar_inbound_sync_enabled',
             'public_catalog_enabled',
         ];
 
@@ -1007,6 +1031,48 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'placeholder' => '123456789',
                         'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
+                    ],
+                ],
+            ],
+            'google' => [
+                'title' => __('app.team_setting_google_sync_title'),
+                'icon' => 'ti ti-arrows-exchange',
+                'settings' => [
+                    'google_contacts_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_contacts_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleContactsInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_google_contacts_inbound_sync_help'),
+                    ],
+                    'google_calendar_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_calendar_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleCalendarInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_google_calendar_inbound_sync_help'),
+                    ],
+                    'google_contacts_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_contacts_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleContactsOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_google_contacts_outbound_sync_help'),
+                    ],
+                    'google_calendar_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_calendar_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleCalendarOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_google_calendar_outbound_sync_help'),
                     ],
                 ],
             ],

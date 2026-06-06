@@ -285,6 +285,7 @@
                                 @else
                                     <a href="{{ route('integrations.google.connect') }}" class="btn btn-primary">Connect</a>
                                 @endif
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'google']) }}" class="btn btn-label-secondary">{{ __('app.team_setting_google_sync_configure') }}</a>
                             </div>
                         </div>
                     </div>
