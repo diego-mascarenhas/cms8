@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Support\DataTableFormatter;
 use App\Support\InvoiceTableAmountFormatter;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -64,11 +65,58 @@ class InvoiceDataTable extends DataTable
 
                 return '<span class="text-muted">'.e(__('invoice_enterprise.no_enterprise')).'</span>';
             })
-            ->filterColumn('enterprise_id', function ($query, $keyword)
+            ->filterColumn('number_with_indicator', function ($query, $keyword): void
             {
-                $query->whereHas('enterprise', function ($q) use ($keyword)
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
                 {
-                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    return;
+                }
+
+                $query->where('invoices.number', 'like', '%'.$keyword.'%');
+            })
+            ->filterColumn('enterprise_id', function ($query, $keyword): void
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->whereHas('enterprise', function ($enterpriseQuery) use ($keyword): void
+                {
+                    SearchNormalizer::applyEnterpriseNavbarConditions($enterpriseQuery, $keyword);
+                });
+            })
+            ->filterColumn('date', function ($query, $keyword): void
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->where(function ($dateQuery) use ($keyword): void
+                {
+                    $dateQuery->where('invoices.date', 'like', '%'.$keyword.'%');
+
+                    foreach (['d-m-Y', 'd/m/Y', 'Y-m-d'] as $format)
+                    {
+                        try
+                        {
+                            $parsed = Carbon::createFromFormat($format, $keyword);
+
+                            if ($parsed !== false)
+                            {
+                                $dateQuery->orWhereDate('invoices.date', $parsed->toDateString());
+                            }
+                        } catch (\Throwable)
+                        {
+                        }
+                    }
                 });
             })
             ->editColumn('date', function ($data)
@@ -169,12 +217,13 @@ class InvoiceDataTable extends DataTable
             Column::computed('number_with_indicator')
                 ->title('Comprobante')
                 ->addClass('all')
-                ->searchable(false)
+                ->searchable(true)
                 ->orderable(false),
             Column::make('date')
                 ->title('Fecha')
                 ->addClass('min-tablet')
-                ->className('text-center'),
+                ->className('text-center')
+                ->searchable(true),
             Column::make('enterprise_id')
                 ->title('Empresa')
                 ->addClass('min-tablet')
@@ -183,15 +232,18 @@ class InvoiceDataTable extends DataTable
             Column::make('total_amount')
                 ->title('Total')
                 ->addClass('min-desktop')
-                ->className('text-end'),
+                ->className('text-end')
+                ->searchable(false),
             Column::make('balance')
                 ->title('Saldo')
                 ->addClass('min-desktop')
-                ->className('text-end'),
+                ->className('text-end')
+                ->searchable(false),
             Column::make('status')
                 ->title('Estado')
                 ->addClass('min-phone')
-                ->className('text-center'),
+                ->className('text-center')
+                ->searchable(false),
             Column::computed('action')
                 ->title('Acciones')
                 ->addClass('all')
