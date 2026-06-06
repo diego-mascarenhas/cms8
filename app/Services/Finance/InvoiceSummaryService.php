@@ -93,6 +93,28 @@ class InvoiceSummaryService
         return $this->buildMetric($query, 'balance');
     }
 
+    public function resolveListFilter(?string $filter): string
+    {
+        $filter = $filter ?? self::DEFAULT_LIST_FILTER;
+
+        if ($filter === 'all')
+        {
+            return self::DEFAULT_LIST_FILTER;
+        }
+
+        $applicableFilters = array_merge(
+            self::SUMMARY_FILTERS,
+            [self::DEFAULT_LIST_FILTER],
+        );
+
+        if (! in_array($filter, $applicableFilters, true))
+        {
+            return self::DEFAULT_LIST_FILTER;
+        }
+
+        return $filter;
+    }
+
     public function applySummaryFilter(Builder $query, string $filter): Builder
     {
         return match ($filter)

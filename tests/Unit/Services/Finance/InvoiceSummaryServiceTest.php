@@ -414,4 +414,65 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame(['ARS' => 10000.0, 'EUR' => 50.0], $stats['unpaid']['totals_by_currency']);
         $this->assertSame('€60,00', $stats['unpaid']['amount_label']);
     }
+
+    public function test_resolve_list_filter_maps_legacy_all_to_default(): void
+    {
+        $this->assertSame('excluding_collected', $this->service->resolveListFilter('all'));
+    }
+
+    public function test_resolve_list_filter_falls_back_to_default_for_unknown_values(): void
+    {
+        $this->assertSame('excluding_collected', $this->service->resolveListFilter(null));
+        $this->assertSame('excluding_collected', $this->service->resolveListFilter('invalid'));
+    }
+
+    public function test_excluding_collected_filter_excludes_bonificada_with_zero_balance(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0001-00000102',
+            'date' => '2005-03-01',
+            'due_date' => '2005-03-01',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 5,
+            'source_provider' => 'manual',
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0001-00000541',
+            'date' => '2006-11-14',
+            'due_date' => '2006-11-14',
+            'gross_amount' => 94.5,
+            'discount' => 0,
+            'total_amount' => 94.5,
+            'balance' => 0.5,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $query = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($query, 'excluding_collected');
+
+        $this->assertSame(['0001-00000541'], $query->pluck('number')->all());
+    }
 }
