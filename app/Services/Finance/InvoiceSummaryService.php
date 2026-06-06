@@ -127,7 +127,7 @@ class InvoiceSummaryService
     {
         $count = (int) (clone $query)->count();
 
-        if (! Schema::hasColumn('invoices', 'currency'))
+        if (! Schema::hasColumn('invoices', 'currency_id'))
         {
             $total = round((float) (clone $query)->sum($amountColumn), 2);
             $totalsByCurrency = ['EUR' => $total];
@@ -140,7 +140,8 @@ class InvoiceSummaryService
         }
 
         $rows = (clone $query)
-            ->selectRaw('COALESCE(invoices.currency, ?) as currency_code', ['EUR'])
+            ->leftJoin('currencies', 'invoices.currency_id', '=', 'currencies.id')
+            ->selectRaw('COALESCE(currencies.code, ?) as currency_code', ['EUR'])
             ->selectRaw("COALESCE(SUM(invoices.{$amountColumn}), 0) as total")
             ->groupBy('currency_code')
             ->get();

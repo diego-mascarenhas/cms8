@@ -24,10 +24,10 @@ class Invoice extends Model
         'total_amount',
         'balance',
         'status',
+        'currency_id',
         'source_provider',
         'source_reference_id',
         'source_synced_at',
-        'currency',
     ];
 
     protected static function booted()
@@ -67,6 +67,11 @@ class Invoice extends Model
     public function items()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
     }
 
     public function payments()
@@ -111,12 +116,35 @@ class Invoice extends Model
         return '<span class="badge rounded-pill bg-label-'.$color.'">'.$label.'</span>';
     }
 
+    public function getCurrencyCodeAttribute(): string
+    {
+        if ($this->relationLoaded('currency'))
+        {
+            $currency = $this->getRelation('currency');
+            if ($currency instanceof Currency)
+            {
+                return strtoupper((string) $currency->code);
+            }
+        }
+
+        if ($this->currency_id)
+        {
+            $code = Currency::query()->whereKey($this->currency_id)->value('code');
+            if (filled($code))
+            {
+                return strtoupper((string) $code);
+            }
+        }
+
+        return strtoupper((string) config('verifactu.default_currency', 'EUR'));
+    }
+
     /**
      * Convert invoice amount to different currency
      */
     public function convertTo(string $targetCurrency, string $field = 'total_amount'): ?float
     {
-        $baseCurrency = $this->currency ?? 'USD';
+        $baseCurrency = $this->currency_code;
         $amount = $this->$field ?? 0;
 
         if ($baseCurrency === $targetCurrency)
@@ -132,7 +160,7 @@ class Invoice extends Model
      */
     public function getMultiCurrencyAttribute()
     {
-        $baseCurrency = $this->currency ?? 'USD';
+        $baseCurrency = $this->currency_code;
         $currencies = ['USD', 'EUR', 'ARS'];
         $amounts = [];
 

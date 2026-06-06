@@ -6,6 +6,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
 use App\Services\Billing\StripeInvoiceCoreMapper;
+use App\Services\Finance\InvoiceCurrencyService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -23,7 +24,7 @@ class ImportStripeInvoiceSyncsCommand extends Command
 
     protected $description = 'Map Stripe invoice_syncs rows into core invoices table (idempotent by source reference)';
 
-    public function handle(StripeInvoiceCoreMapper $mapper): int
+    public function handle(StripeInvoiceCoreMapper $mapper, InvoiceCurrencyService $currencyService): int
     {
         if (! Schema::hasTable('invoice_syncs'))
         {
@@ -74,8 +75,6 @@ class ImportStripeInvoiceSyncsCommand extends Command
         $created = 0;
         $updated = 0;
         $skipped = 0;
-
-        $invoicesHasCurrency = Schema::hasColumn('invoices', 'currency');
 
         foreach ($rows as $row)
         {
@@ -133,9 +132,10 @@ class ImportStripeInvoiceSyncsCommand extends Command
                 'source_synced_at' => $row->last_synced_at ?? now(),
             ];
 
-            if ($invoicesHasCurrency)
+            if (Schema::hasColumn('invoices', 'currency_id'))
             {
-                $payload['currency'] = strtoupper((string) ($row->currency ?: 'USD'));
+                $payload['currency_id'] = $currencyService->resolveCurrencyIdFromStripeSync($row)
+                    ?? $currencyService->defaultCurrencyId();
             }
 
             if ($dryRun)

@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Invoice;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Support\DataTableFormatter;
+use App\Support\InvoiceTableAmountFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -14,9 +15,6 @@ use Yajra\DataTables\Services\DataTable;
 
 class InvoiceDataTable extends DataTable
 {
-    // Fix N+1: Cache exchange rates to avoid querying in the loop
-    protected $exchangeRatesCache = null;
-
     /**
      * Build the DataTable class.
      *
@@ -24,21 +22,10 @@ class InvoiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        // Fix N+1: Load all exchange rates once
-        $this->exchangeRatesCache = \App\Models\ExchangeRate::query()
-            ->whereIn('base_currency', ['USD', 'ARS', 'EUR'])
-            ->whereIn('target_currency', ['USD', 'ARS', 'EUR'])
-            ->latest('date')
-            ->get()
-            ->groupBy(function ($rate)
-            {
-                return $rate->base_currency.'_'.$rate->target_currency;
-            });
-
         return (new EloquentDataTable($query))
             ->addColumn('action', 'invoices.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount'])
+            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount', 'balance'])
             ->addColumn('number_with_indicator', function ($data)
             {
                 // Punto de color según tipo de operación (rojo: compra, verde: venta)
@@ -84,26 +71,17 @@ class InvoiceDataTable extends DataTable
             })
             ->editColumn('total_amount', function ($data)
             {
-                $conversions = '';
-
-                // Fix N+1: Use cached rates for conversion
-                $ars = $this->convertToWithCache($data, 'ARS', 'total_amount');
-                if ($ars !== null)
-                {
-                    $conversions .= '<span class="fw-bold">'.\App\Helpers\Helpers::formatMoney($ars, 'ARS').' ARS</span>';
-                }
-
-                $eur = $this->convertToWithCache($data, 'EUR', 'total_amount');
-                if ($eur !== null)
-                {
-                    if ($conversions)
-                    {
-                        $conversions .= '<br>';
-                    }
-                    $conversions .= '<small class="text-muted">≈ '.\App\Helpers\Helpers::formatMoney($eur, 'EUR').' EUR</small>';
-                }
-
-                return $conversions ?: '<span class="text-muted">N/A</span>';
+                return InvoiceTableAmountFormatter::formatNative(
+                    (float) ($data->total_amount ?? 0),
+                    $data->currency_code,
+                );
+            })
+            ->editColumn('balance', function ($data)
+            {
+                return InvoiceTableAmountFormatter::formatNative(
+                    (float) ($data->balance ?? 0),
+                    $data->currency_code,
+                );
             })
             ->editColumn('status', function ($data)
             {
@@ -111,44 +89,9 @@ class InvoiceDataTable extends DataTable
             });
     }
 
-    /**
-     * Fix N+1: Convert using cached exchange rates
-     */
-    protected function convertToWithCache($invoice, string $targetCurrency, string $field = 'total_amount'): ?float
-    {
-        $baseCurrency = $invoice->currency ?? 'USD';
-        $amount = $invoice->$field ?? 0;
-
-        if ($baseCurrency === $targetCurrency)
-        {
-            return $amount;
-        }
-
-        $key = $baseCurrency.'_'.$targetCurrency;
-        $rates = $this->exchangeRatesCache[$key] ?? collect();
-        $rate = $rates->first();
-
-        if ($rate)
-        {
-            return $amount * (float) $rate->rate;
-        }
-
-        // Try inverse conversion
-        $inverseKey = $targetCurrency.'_'.$baseCurrency;
-        $inverseRates = $this->exchangeRatesCache[$inverseKey] ?? collect();
-        $inverseRate = $inverseRates->first();
-
-        if ($inverseRate && $inverseRate->rate > 0)
-        {
-            return $amount / (float) $inverseRate->rate;
-        }
-
-        return null;
-    }
-
     public function query(Invoice $model): QueryBuilder
     {
-        $query = $model->newQuery()->with('enterprise');
+        $query = $model->newQuery()->with(['enterprise', 'currency']);
 
         $summaryFilter = request()->input('summary_filter', 'all');
         if (in_array($summaryFilter, InvoiceSummaryService::SUMMARY_FILTERS, true))
@@ -234,10 +177,6 @@ class InvoiceDataTable extends DataTable
             Column::make('total_amount')
                 ->title('Total')
                 ->addClass('min-desktop')
-                ->className('text-end'),
-            Column::make('discount')
-                ->title('Descuento')
-                ->addClass('none')
                 ->className('text-end'),
             Column::make('balance')
                 ->title('Saldo')

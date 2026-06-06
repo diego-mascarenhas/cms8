@@ -26,6 +26,7 @@ class InvoiceSummaryServiceTest extends TestCase
             EnterpriseTypeSeeder::class,
             EnterpriseStatusSeeder::class,
             InvoiceTypeSeeder::class,
+            \Database\Seeders\CurrencySeeder::class,
         ]);
         $this->service = app(InvoiceSummaryService::class);
     }
@@ -241,7 +242,7 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame(['NC-002'], $creditNotesQuery->pluck('number')->all());
     }
 
-    public function test_build_index_stats_defaults_to_eur_when_currency_column_is_missing(): void
+    public function test_build_index_stats_defaults_to_eur_when_currency_id_is_missing(): void
     {
         Carbon::setTestNow('2026-06-06 12:00:00');
 
