@@ -10,11 +10,20 @@ use Illuminate\Support\Facades\Schema;
 
 class InvoiceSummaryService
 {
-    /** @var list<int> */
+    /** @var list<int> Void, error, draft — excluded from payment summaries. */
     public const EXCLUDED_STATUSES = [3, 7, 9];
 
     /** @var list<int> */
     public const CREDIT_NOTE_STATUSES = [4, 6];
+
+    /** @var list<int> Bonificada — treated as zero balance, not pending collection. */
+    public const BONIFIED_STATUSES = [5, 6];
+
+    /** @var list<int> Not treated as pending collection. */
+    public const UNPAID_EXCLUDED_STATUSES = [3, 4, 5, 6, 7, 9];
+
+    /** @var list<int> */
+    public const COLLECTED_EXCLUDED_STATUSES = [3, 4, 6, 7, 9];
 
     /** @var list<string> */
     public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue'];
@@ -86,17 +95,21 @@ class InvoiceSummaryService
         return match ($filter)
         {
             'unpaid' => $query
-                ->where('balance', '>', 0)
-                ->whereNotIn('status', self::EXCLUDED_STATUSES),
-            'credit_notes' => $query->whereIn('status', self::CREDIT_NOTE_STATUSES),
+                ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
+                ->where('invoices.balance', '>', 0),
+            'credit_notes' => $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
             'collected' => $query
-                ->where('balance', '<=', 0)
-                ->whereNotIn('status', array_merge(self::EXCLUDED_STATUSES, self::CREDIT_NOTE_STATUSES)),
+                ->whereNotIn('invoices.status', self::COLLECTED_EXCLUDED_STATUSES)
+                ->where(function (Builder $inner): void
+                {
+                    $inner->whereIn('invoices.status', self::BONIFIED_STATUSES)
+                        ->orWhere('invoices.balance', '<=', 0);
+                }),
             'overdue' => $query
-                ->where('balance', '>', 0)
-                ->whereNotIn('status', self::EXCLUDED_STATUSES)
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<', Carbon::now()->startOfDay()->toDateString()),
+                ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
+                ->where('invoices.balance', '>', 0)
+                ->whereNotNull('invoices.due_date')
+                ->whereDate('invoices.due_date', '<', Carbon::now()->startOfDay()->toDateString()),
             default => $query,
         };
     }
@@ -127,8 +140,8 @@ class InvoiceSummaryService
         }
 
         $rows = (clone $query)
-            ->selectRaw('COALESCE(currency, ?) as currency_code', ['EUR'])
-            ->selectRaw("COALESCE(SUM({$amountColumn}), 0) as total")
+            ->selectRaw('COALESCE(invoices.currency, ?) as currency_code', ['EUR'])
+            ->selectRaw("COALESCE(SUM(invoices.{$amountColumn}), 0) as total")
             ->groupBy('currency_code')
             ->get();
 

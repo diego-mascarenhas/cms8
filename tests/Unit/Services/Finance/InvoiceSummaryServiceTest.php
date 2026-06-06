@@ -132,6 +132,62 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame(['EUR' => 50.0], $stats['overdue']['totals_by_currency']);
     }
 
+    public function test_unpaid_excludes_bonificada_even_when_balance_is_positive(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'BON-001',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 90,
+            'discount' => 0,
+            'total_amount' => 90,
+            'balance' => 90,
+            'status' => 5,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OPEN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 40,
+            'discount' => 0,
+            'total_amount' => 40,
+            'balance' => 40,
+            'status' => 2,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(1, $stats['unpaid']['count']);
+        $this->assertSame(['EUR' => 40.0], $stats['unpaid']['totals_by_currency']);
+        $this->assertSame(1, $stats['collected']['count']);
+        $this->assertSame(['EUR' => 90.0], $stats['collected']['totals_by_currency']);
+
+        $unpaidQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($unpaidQuery, 'unpaid');
+        $this->assertSame(['F-OPEN'], $unpaidQuery->pluck('number')->all());
+    }
+
     public function test_apply_summary_filter_limits_query_results(): void
     {
         Carbon::setTestNow('2026-06-06 12:00:00');
