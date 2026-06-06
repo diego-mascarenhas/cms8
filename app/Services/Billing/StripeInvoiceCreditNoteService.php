@@ -14,6 +14,7 @@ class StripeInvoiceCreditNoteService
     public function __construct(
         private readonly StripeInvoiceSyncRefresher $invoiceSyncRefresher,
         private readonly StripeInvoiceCoreImportService $coreImportService,
+        private readonly StripeCreditNoteCreatePayloadBuilder $payloadBuilder,
     ) {}
 
     /**
@@ -42,14 +43,21 @@ class StripeInvoiceCreditNoteService
 
         try
         {
-            $creditNote = $client->creditNotes->create([
-                'invoice' => $externalId,
-                'reason' => $reason,
-                'metadata' => [
-                    'humano_invoice_id' => (string) $invoice->id,
-                    'humano_team_id' => (string) $invoice->team_id,
-                ],
+            $stripeInvoice = $client->invoices->retrieve($externalId, [
+                'expand' => ['lines.data'],
             ]);
+
+            $createParams = $this->payloadBuilder->build(
+                $externalId,
+                $invoice,
+                $reason,
+                $stripeInvoice,
+            );
+
+            $creditNote = $client->creditNotes->create($createParams);
+        } catch (ValidationException $exception)
+        {
+            throw $exception;
         } catch (ApiErrorException $exception)
         {
             Log::warning('Stripe credit note creation failed', [

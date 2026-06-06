@@ -16,5 +16,6 @@ return [
         'not_allowed' => 'You cannot issue a credit note for this invoice.',
         'team_not_found' => 'The invoice team could not be found.',
         'stripe_not_configured' => 'Configure the team Stripe secret key in team settings.',
+        'no_creditable_amount' => 'There is no amount available to issue a credit note for this invoice.',
     ],
 ];
