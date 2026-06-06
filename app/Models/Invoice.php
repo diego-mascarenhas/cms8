@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -79,12 +80,17 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function getStatusLabelAttribute()
+    public function getStatusLabelAttribute(): string
     {
-        return match ($this->status)
+        if ((int) $this->status === 1 && $this->isOverdue())
         {
-            1 => 'Imprimir',
-            2 => 'Impresa',
+            return 'Vencida';
+        }
+
+        return match ((int) $this->status)
+        {
+            1 => 'Pendiente',
+            2 => 'Cobrada',
             3 => 'Anulada',
             4 => 'Nota de Crédito',
             5 => 'Bonificada',
@@ -96,13 +102,28 @@ class Invoice extends Model
         };
     }
 
-    public function getStatusBadgeAttribute()
+    public function isOverdue(): bool
+    {
+        if ((int) $this->status !== 1)
+        {
+            return false;
+        }
+
+        if ($this->due_date === null || (float) $this->balance <= 0)
+        {
+            return false;
+        }
+
+        return Carbon::parse($this->due_date)->startOfDay()->lt(Carbon::now()->startOfDay());
+    }
+
+    public function getStatusBadgeAttribute(): string
     {
         $label = $this->status_label;
-        $color = match ($this->status)
+        $color = match ((int) $this->status)
         {
-            1 => 'primary',
-            2 => 'warning',
+            1 => $this->isOverdue() ? 'danger' : 'warning',
+            2 => 'success',
             3 => 'danger',
             4 => 'info',
             5 => 'success',

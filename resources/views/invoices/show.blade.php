@@ -205,22 +205,7 @@
       <div class="card-body">
         <h6>{{ __('Status') }}</h6>
         <div class="d-flex justify-content-between align-items-center">
-          @php
-            $statusColor = match($invoice->status) {
-              1 => 'bg-label-primary',
-              2 => 'bg-label-warning',
-              3 => 'bg-label-danger',
-              4 => 'bg-label-info',
-              5 => 'bg-label-success',
-              6 => 'bg-label-success',
-              7 => 'bg-label-danger',
-              8 => 'bg-label-warning',
-              default => 'bg-label-secondary',
-            };
-          @endphp
-          <span class="badge {{ $statusColor }} rounded-pill">
-            {{ $invoice->status_label }}
-          </span>
+          {!! $invoice->status_badge !!}
         </div>
       </div>
     </div>
